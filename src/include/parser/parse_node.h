@@ -405,6 +405,10 @@ struct ParseState
 	/* Begin - SRS-SQL-MULTITABLEINSERT */
 	ParseStmtKind p_stmt_kind;
 	/* End - SRS-SQL-MULTITABLEINSERT */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	bool	mys_load_local;		/* mark its load local case on mysql mode */
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 };
 
 /*

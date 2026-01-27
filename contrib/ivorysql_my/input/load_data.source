@@ -1,0 +1,71 @@
+-- create table
+create table test_load_data(id int, age int, name varchar(20));
+
+-- default value
+load data infile '@abs_srcdir@/data/test_load_data_1.csv' into table test_load_data;
+select * from test_load_data;
+delete from test_load_data;
+
+-- test TERMINATED BY
+load data infile '@abs_srcdir@/data/test_load_data_2.csv' into table test_load_data FIELDS TERMINATED BY E'\t';
+select * from test_load_data;
+delete from test_load_data;
+
+load data infile '@abs_srcdir@/data/test_load_data_3.csv' into table test_load_data FIELDS TERMINATED BY '|';
+select * from test_load_data;
+delete from test_load_data;
+
+-- test ENCLOSED by and ESCAPED BY
+load data infile '@abs_srcdir@/data/test_load_data_4.csv' into table test_load_data FIELDS ENCLOSED BY '''' ESCAPED BY '$';
+select * from test_load_data;
+delete from test_load_data;
+
+-- test OPTIONALLY ENCLOSED BY
+load data infile '@abs_srcdir@/data/test_load_data_4.csv' into table test_load_data FIELDS OPTIONALLY ENCLOSED BY '''' ESCAPED BY '$';
+select * from test_load_data;
+delete from test_load_data;
+
+-- test FIELDS or COLUMNS
+load data infile '@abs_srcdir@/data/test_load_data_4.csv' into table test_load_data COLUMNS ENCLOSED BY '''' ESCAPED BY '$';
+select * from test_load_data;
+delete from test_load_data;
+
+-- test column list
+load data infile '@abs_srcdir@/data/test_load_data_5.csv' into table test_load_data COLUMNS ENCLOSED BY '''' ESCAPED BY '$' (age,name);
+select * from test_load_data;
+delete from test_load_data;
+
+-- test CHARACTER SET
+create database gbk_copy encoding='gbk' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+\c gbk_copy;
+create table test_load_data(id int, age int, name varchar(20));
+select pg_catalog.getdatabaseencoding();
+
+load data infile '@abs_srcdir@/data/test_load_data_1.csv' into table test_load_data;
+select * from test_load_data;
+delete from test_load_data;
+
+load data infile '@abs_srcdir@/data/test_load_data_1.csv' into table test_load_data CHARACTER SET 'utf8';
+select * from test_load_data;
+delete from test_load_data;
+
+-- error case
+-- double into
+load data infile '@abs_srcdir@/data/test_load_data_1.csv' into table test_load_data into table test_load_data;
+-- double fields
+load data infile '@abs_srcdir@/data/test_load_data_1.csv' into table test_load_data COLUMNS TERMINATED BY '|' TERMINATED BY ',';
+load data infile '@abs_srcdir@/data/test_load_data_1.csv' into table test_load_data FIELDS TERMINATED BY '|' COLUMNS TERMINATED BY ',';
+
+-- file did not exit
+load data infile '@abs_srcdir@/data/test_load_data_7.csv' into table test_load_data;
+
+-- could alter the local_infile guc
+show local_infile;
+set local_infile = off;
+alter system set local_infile = off;
+select pg_reload_conf();
+
+-- clean up
+\c contrib_regression
+drop database gbk_copy;
+drop table test_load_data;

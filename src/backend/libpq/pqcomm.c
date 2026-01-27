@@ -1989,3 +1989,8 @@ pq_comm_reset(void)
 	PqCommMethods->comm_reset();
 }
 /* End - Req: SRS-MYSQL-PROTOCOL */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+mysql_has_client_capabilities_hook_type mysql_has_client_capabilities_hook = NULL;
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+

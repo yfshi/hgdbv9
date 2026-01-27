@@ -449,53 +449,91 @@ have_loading_data_rest:
 
 			readmessage:
 					HOLD_CANCEL_INTERRUPTS();
-					pq_startmsgread();
-					mtype = pq_getbyte();
-					if (mtype == EOF)
+
+					/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+					/*
+					 * if load local
+					 * received the data package
+					 * then received a NULL package
+					 */
+					if (cstate->mys_load_local && IsA(MyProcPort->protocol_config, ProtocolMysql) &&
+							MyProcPort->protocol_config->fn_receive_copy_data)
 					{
-						/* Begin - BUG#z1616 */
-						/* if read file error, break the PG_CATCH() in copyfrom() */
-						if(cstate->opts.tolerate)
-							cstate->copy_fail_message = true;
-						/* End - BUG#z1616 */	
-						ereport(ERROR,
-								(errcode(ERRCODE_CONNECTION_FAILURE),
-								 errmsg("unexpected EOF on client connection with an open transaction")));
+						StringInfo buf =  makeStringInfo();
+
+						mtype = 'd';
+
+						MyProcPort->protocol_config->fn_receive_copy_data(buf);
+
+						if (buf->len > 0)
+						{
+							appendBinaryStringInfo(cstate->fe_msgbuf, buf->data, buf->len);
+						}
+						else if (buf->len == 0)
+						{
+							mtype = 'c';
+						}
+						else
+						{
+							/* should not happened */
+						}
+
+						DestroyStringInfo(buf);
+
 					}
-					/* Validate message type and set packet size limit */
-					switch (mtype)
+					/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+					else
 					{
-						case 'd':	/* CopyData */
-							maxmsglen = PQ_LARGE_MESSAGE_LIMIT;
-							break;
-						case 'c':	/* CopyDone */
-						case 'f':	/* CopyFail */
-						case 'H':	/* Flush */
-						case 'S':	/* Sync */
-							maxmsglen = PQ_SMALL_MESSAGE_LIMIT;
-							break;
-						default:
+						pq_startmsgread();
+						mtype = pq_getbyte();
+						if (mtype == EOF)
+						{
 							/* Begin - BUG#z1616 */
+							/* if read file error, break the PG_CATCH() in copyfrom() */
 							if(cstate->opts.tolerate)
 								cstate->copy_fail_message = true;
 							/* End - BUG#z1616 */	
 							ereport(ERROR,
-									(errcode(ERRCODE_PROTOCOL_VIOLATION),
-									 errmsg("unexpected message type 0x%02X during COPY from stdin",
+									(errcode(ERRCODE_CONNECTION_FAILURE),
+									 errmsg("unexpected EOF on client connection with an open transaction")));
+						}
+
+						/* Validate message type and set packet size limit */
+						switch (mtype)
+						{
+							case 'd':	/* CopyData */
+								maxmsglen = PQ_LARGE_MESSAGE_LIMIT;
+								break;
+							case 'c':	/* CopyDone */
+							case 'f':	/* CopyFail */
+							case 'H':	/* Flush */
+							case 'S':	/* Sync */
+								maxmsglen = PQ_SMALL_MESSAGE_LIMIT;
+								break;
+							default:
+								/* Begin - BUG#z1616 */
+								if(cstate->opts.tolerate)
+									cstate->copy_fail_message = true;
+								/* End - BUG#z1616 */
+								ereport(ERROR,
+										(errcode(ERRCODE_PROTOCOL_VIOLATION),
+										 errmsg("unexpected message type 0x%02X during COPY from stdin",
 											mtype)));
-							maxmsglen = 0;	/* keep compiler quiet */
-							break;
-					}
-					/* Now collect the message body */
-					if (pq_getmessage(cstate->fe_msgbuf, maxmsglen))
-					{
-						/* Begin - BUG#z1616 */
-						if(cstate->opts.tolerate)
-							cstate->copy_fail_message = true;
-						/* End - BUG#z1616 */
-						ereport(ERROR,
-								(errcode(ERRCODE_CONNECTION_FAILURE),
-								 errmsg("unexpected EOF on client connection with an open transaction")));
+								maxmsglen = 0;	/* keep compiler quiet */
+								break;
+						}
+						/* Now collect the message body */
+						if (pq_getmessage(cstate->fe_msgbuf, maxmsglen))
+						{
+							/* Begin - BUG#z1616 */
+							if(cstate->opts.tolerate)
+								cstate->copy_fail_message = true;
+							/* End - BUG#z1616 */
+							ereport(ERROR,
+									(errcode(ERRCODE_CONNECTION_FAILURE),
+									 errmsg("unexpected EOF on client connection with an open transaction")));
+						}
+
 					}
 					RESUME_CANCEL_INTERRUPTS();
 					/* ... and process it */

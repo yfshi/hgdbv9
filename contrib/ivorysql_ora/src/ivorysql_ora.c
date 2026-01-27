@@ -112,7 +112,9 @@ static ProtocolExtensionConfig ora_protocol_config = {
 	NULL,
 	printtup_create_DR,
 	NULL, /* fn_process_command */
-	libpq_report_param_status
+	libpq_report_param_status,
+	NULL, /* ReqID:SRS-MYSQL-SQL-LOADDATA */
+	NULL  /* ReqID:SRS-MYSQL-SQL-LOADDATA */
 };
 
 static void

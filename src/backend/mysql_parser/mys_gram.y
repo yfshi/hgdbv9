@@ -80,6 +80,10 @@
 /* End - ReqID:SRS-MYSQL-CASE */
 #include "parser/analyze.h"
 #include "utils/formatting.h"
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+#include "miscadmin.h"
+#include "libpq/libpq-be.h"
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -323,6 +327,10 @@ static void CheckHostId(char *hostId);
 static char *checkRoleSpec(RoleSpec *spc);
 /* End - ReqID:SRS-MYSQL-RENAME */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+static Node *processIntoClauseInSelectStmt(SelectStmt *stmt, IntoClause *itc);
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+
 static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 
 static List *
@@ -449,6 +457,14 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <node>    character_set_without_equal
 %type <node>	opt_col_charset
 /* End - SRS-MYSQL-CREATE-TABLE */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+%type <boolean> opt_local
+%type <node>    opt_character fields_option
+%type <list>    fields_list opt_fields_options
+%type <into>    into_outfile
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+
 %type <list>	alter_table_cmds alter_type_cmds
 %type <list>    alter_identity_column_option_list
 %type <defelt>  alter_identity_column_option
@@ -878,7 +894,8 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	DIV DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP DUAL /* ReqID:SRS-MYSQL-SELECT */ DUPLICATE_P
 
-	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCODING ENCRYPTED END_P ENGINE_P ENGINES /* ReqID: SRS-MYSQL-PROTOCOL */ ENUM_P ESCAPE EVENT EXCEPT
+	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCLOSED /* ReqID:SRS-MYSQL-SQL-LOADDATA */ ENCODING ENCRYPTED END_P ENGINE_P ENGINES /* ReqID: SRS-MYSQL-PROTOCOL */
+	ENUM_P ESCAPE ESCAPED /* ReqID:SRS-MYSQL-SQL-LOADDATA */ EVENT EXCEPT
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
@@ -893,7 +910,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
 
 	IDENTITY_P IF_P IFNULL_P /* Bug - #z5512 */ IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
-	INCLUDING INCREMENT INDEX INDEXES INHERIT INHERITS INITIALLY INLINE_P
+	INCLUDING INCREMENT INDEX INDEXES INFILE /* ReqID:SRS-MYSQL-SQL-LOADDATA */ INHERIT INHERITS INITIALLY INLINE_P
 	INNER_P INOUT INPLACE /* ReqID:SRS-MYSQL-CREATE-INDEX */ INPUT_P INSENSITIVE INSERT INSTEAD INT_P INT1 INT3 INTEGER
 	INTERSECT INTERVAL INTO INVOKER IS ISNULL ISOLATION
 
@@ -914,8 +931,8 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	NULLS_P NUMERIC
 	NVARCHAR /* SRS-MYSQL-PROTOCOL */
 
-	OBJECT_P OF OFF OFFSET OIDS OLD ON ONLY OPERATOR OPTION OPTIONS OR
-	ORDER ORDINALITY OTHERS OUT_P OUTER_P
+	OBJECT_P OF OFF OFFSET OIDS OLD ON ONLY OPERATOR OPTION OPTIONALLY /* ReqID:SRS-MYSQL-SQL-LOADDATA */ OPTIONS OR
+	ORDER ORDINALITY OTHERS OUT_P OUTER_P OUTFILE /* ReqID:SRS-MYSQL-SQL-LOADDATA */
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER
 
 	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PLACING PLANS PLUGINS /* ReqID: SRS-MYSQL-PROTOCOL */ POLICY
@@ -941,7 +958,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	START STATEMENT STATISTICS STATUS /* ReqID:SRS-MYSQL-SHOW */ STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
-	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TEXT_P THEN
+	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TERMINATED /* ReqID:SRS-MYSQL-SQL-LOADDATA */ TEXT_P THEN
 	TIES TIME TIMESTAMP TIMESTAMPADD TIMESTAMPDIFF TINYBLOB TINYINT TO TRAILING TRANSACTION TRANSFORM
 	TREAT TRIGGER TRIGGERS /* ReqID:SRS-MYSQL-SHOW */ TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
@@ -1016,6 +1033,8 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %nonassoc	lower_than_on
 %left ON USING
 /* End - ReqID:SRS-MYSQL-UPDATE */
+%right		INTO /* ReqID:SRS-MYSQL-SQL-LOADDATA */
+
 %nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
@@ -4018,7 +4037,101 @@ CopyStmt:	COPY BINARY qualified_name opt_column_list
 
 					$$ = (Node *)n;
 				}
+			 /* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+			| LOAD DATA_P opt_local INFILE file_name INTO TABLE qualified_name opt_character opt_fields_options opt_column_list
+				{
+					CopyStmt *n = makeNode(CopyStmt);
+					n->mys_load_local = $3;
+
+					if (n->mys_load_local)
+					{
+						if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolPg))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("The used command is not allowed with PostgreSQL protocol")));
+						}
+
+						if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql) &&
+							(!mysql_local_infile || !mysql_has_client_capabilities_hook()))
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("The used command is not allowed with this Server version")));
+						}
+					}
+
+					n->filename = $5;
+					n->relation = $8;
+					n->query = NULL;
+					n->is_from = true;
+					n->options = NIL;
+					n->options = lappend(n->options, makeDefElem("format", (Node *)makeString("csv"), @1));
+
+					if ($9)
+						n->options = lappend(n->options, $9);
+					if ($10)
+						n->options = list_concat(n->options, $10);
+
+					n->attlist = $11;
+
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 		;
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+opt_local:
+		LOCAL	{	$$ = true;	}
+		| 	{	$$ = false;	}
+		;
+
+opt_character:
+                multi_charset multi_encoding
+                        {
+                                $$ = (Node *)makeDefElem("encoding", (Node *)makeString ($2), @1);
+                        }
+                | /* EMPTY */
+                        {       $$ = NULL;
+                        }
+                ;
+
+fields_list:
+                fields_list fields_option
+                        {
+                                $$ = lappend($1, $2);
+                        }
+                | fields_option
+                        {
+                                $$ = list_make1($1);
+                        }
+                ;
+
+fields_option:
+                TERMINATED BY Sconst
+                        {
+                                $$ = (Node *)makeDefElem("delimiter", (Node *)makeString($3), @1);
+                        }
+                | OPTIONALLY ENCLOSED BY Sconst
+                        {
+                                 $$ = (Node *)makeDefElem("quote", (Node *)makeString($4), @1);
+                        }
+                | ENCLOSED BY Sconst
+                        {
+                                $$ = (Node *)makeDefElem("quote", (Node *)makeString($3), @1);
+                        }
+                | ESCAPED BY Sconst
+                        {
+                                $$ = (Node *)makeDefElem("escape", (Node *)makeString($3), @1);
+                        }
+                ;
+
+opt_fields_options:
+                FIELDS fields_list      { $$ = $2; }
+                | COLUMNS fields_list   { $$ = $2; }
+                | /* EMPTY */           { $$ = NIL; }
+                ;
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 copy_from:
 			FROM									{ $$ = true; }
@@ -14019,6 +14132,16 @@ select_no_parens:
 										yyscanner);
 					$$ = $1;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+			| select_clause opt_sort_clause opt_select_limit into_outfile
+				{
+					insertSelectOptions((SelectStmt *) $1, $2, NIL,
+										$3,
+										NULL,
+										yyscanner);
+					$$ = processIntoClauseInSelectStmt((SelectStmt *) $1, (IntoClause *) $4);
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| with_clause select_clause
 				{
 					insertSelectOptions((SelectStmt *) $2, NULL, NIL,
@@ -14274,6 +14397,25 @@ opt_with_clause:
 		with_clause								{ $$ = $1; }
 		| /*EMPTY*/								{ $$ = NULL; }
 		;
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+into_outfile:
+		INTO OUTFILE file_name opt_character opt_fields_options
+			{
+				IntoClause *n = makeNode(IntoClause);
+				n->filename = $3;
+				n->is_outfile = true;
+				n->copy_options = NIL;
+				n->copy_options = lappend(n->options, makeDefElem("format", (Node *)makeString("csv"), @1));
+
+				if ($4)
+					n->copy_options = lappend(n->copy_options, $4);
+				if ($5)
+					n->copy_options = list_concat(n->copy_options, $5);
+
+				$$ = n;
+			}
+		;
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 into_clause:
 			INTO OptTempTableName
@@ -14300,8 +14442,27 @@ into_clause:
 					$$->skipData = false;
 				}
 			/* End - ReqID:SRS-MYSQL-SET */
-			| /*EMPTY*/
-				{ $$ = NULL; }
+			/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+			| INTO OUTFILE file_name opt_character opt_fields_options
+				{
+					IntoClause *n = makeNode(IntoClause);
+					n->filename = $3;
+					n->is_outfile = true;
+					n->copy_options = NIL;
+					n->copy_options = lappend(n->options, makeDefElem("format", (Node *)makeString("csv"), @1));
+
+					if ($4)
+						n->copy_options = lappend(n->copy_options, $4);
+					if ($5)
+						n->copy_options = list_concat(n->copy_options, $5);
+
+					$$ = n;
+				}
+			| /*EMPTY*/             %prec INTO
+				{
+					$$ = NULL;
+				}
+			/* End -  ReqID:SRS-MYSQL-SQL-LOADDATA */
 		;
 
 /* Begin - ReqID:SRS-MYSQL-SET */
@@ -20056,10 +20217,12 @@ unreserved_keyword:
 			| DUPLICATE_P	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| EACH
 			| ENABLE_P
+			| ENCLOSED	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| ENCODING
 			| ENCRYPTED
 			| ENGINE_P      /* SRS-MYSQL-CREATE-TABLE */
 			| ESCAPE
+			| ESCAPED	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| EVENT
 			| EXCLUDE
 			| EXCLUDING
@@ -20095,6 +20258,7 @@ unreserved_keyword:
 			| INCLUDING
 			| INCREMENT
 			| INDEXES
+			| INFILE	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| INHERIT
 			| INHERITS
 			| INLINE_P
@@ -20155,9 +20319,11 @@ unreserved_keyword:
 			| OLD
 			| OPERATOR
 			| OPTION
+			| OPTIONALLY	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| OPTIONS
 			| ORDINALITY
 			| OTHERS
+			| OUTFILE	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| OVER
 			| OVERRIDING
 			| OWNED
@@ -20266,6 +20432,7 @@ unreserved_keyword:
 			| TEMP
 			| TEMPLATE
 			| TEMPORARY
+			| TERMINATED	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| TIES
 			| TRANSACTION
 			| TRANSFORM
@@ -20724,6 +20891,7 @@ bare_label_keyword:
 			| ELSE
 			| ELT 			/* ReqID:SRS-MYSQL-BINARYTYPE */
 			| ENABLE_P
+			| ENCLOSED	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| ENCODING
 			| ENCRYPTED
 			| END_P
@@ -20731,6 +20899,7 @@ bare_label_keyword:
 			| ENGINES
 			| ENUM_P
 			| ESCAPE
+			| ESCAPED	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| EVENT
 			| EXCLUDE
 			| EXCLUDING
@@ -20786,6 +20955,7 @@ bare_label_keyword:
 			| INCREMENT
 			| INDEX
 			| INDEXES
+			| INFILE	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| INHERIT
 			| INHERITS
 			| INITIALLY
@@ -20877,12 +21047,14 @@ bare_label_keyword:
 			| ONLY
 			| OPERATOR
 			| OPTION
+			| OPTIONALLY	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| OPTIONS
 			| OR
 			| ORDINALITY
 			| OTHERS
 			| OUT_P
 			| OUTER_P
+			| OUTFILE	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| OVERLAY
 			| OVERRIDING
 			| OWNED
@@ -21000,6 +21172,7 @@ bare_label_keyword:
 			| TEMP
 			| TEMPLATE
 			| TEMPORARY
+			| TERMINATED	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 			| TEXT_P
 			| THEN
 			| TIES
@@ -23049,3 +23222,30 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location)
 	return renamestmts;	
 }
 /* End - ReqID:SRS-MYSQL-RENAME */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+static Node *
+processIntoClauseInSelectStmt(SelectStmt *stmt, IntoClause *itc)
+{
+	if (itc != NULL)
+	{
+		if (stmt->intoClause != NULL)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("select statement can contain only one into_clause")));
+		}
+		if (itc->rel != NULL)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("select statement can contain only one into_clause")));
+		}
+
+		stmt->intoClause = itc;
+	}
+
+	return (Node *)stmt;
+}
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+

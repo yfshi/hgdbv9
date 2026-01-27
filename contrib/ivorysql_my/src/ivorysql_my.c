@@ -29,6 +29,8 @@
 #include "mysql_parser/mys_set_hook.h"
 #include "utils/float.h"
 #include "parser/parse_coerce.h"
+#include "common/connect.h"
+#include "message.h"
 
 
 /* Only include it once in any C file */
@@ -98,6 +100,10 @@ static mysql_hash_hook_type 				pre_mysql_hash_hook;
 static mysql_strcmp_hook_type 				pre_mysql_strcmp_hook;
 static import_mysql_collation_hook_type 	pre_import_mysql_collation_hook;
 /* End - Req: SRS-MYSQL-CHARSET */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+static mysql_has_client_capabilities_hook_type pre_mysql_has_client_capabilities_hook = NULL;
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 /*
  * Module initialization function.
@@ -200,6 +206,11 @@ _PG_init(void)
 	pre_mys_agg_field_type_hook = mys_agg_field_type_hook;
 	mys_agg_field_type_hook = mysql_agg_field_type;
 	/* End - bug#z6172 */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	pre_mysql_has_client_capabilities_hook = mysql_has_client_capabilities_hook;
+	mysql_has_client_capabilities_hook = has_client_load_local_capabilities;
+	/* End  ReqID:SRS-MYSQL-SQL-LOADDATA */	
 }
 
 /*
@@ -262,6 +273,10 @@ _PG_fini(void)
 	uservariable_hash_search_hook = pre_uservariable_hash_search_hook;
 	setuservarinternal_hook = pre_setuservarinternal_hook;
 	/* End - ReqID:SRS-MYSQL-SET */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	mysql_has_client_capabilities_hook = pre_mysql_has_client_capabilities_hook;
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
     /* Begin - Req: SRS-MYSQL-PROTOCOL */
 	unregister_mysql_listener();

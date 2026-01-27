@@ -1721,6 +1721,20 @@ BeginCopyFrom(ParseState *pstate,
 	/* Extract options from the statement node tree */
 	ProcessCopyOptions(pstate, &cstate->opts, true /* is_from */ , options);
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	/*
+	 * pipe = true (filename == NULL)
+	 *      stdin, no need set pipe again
+	 * pipe = false (filename != NULL)
+	 *      maybe stdin, set pipe by my_load_local
+	 *      for mysql load local ---> stdin
+	 */
+	if(!pipe && compatible_mode == MYS_MODE && pstate)
+	{
+		pipe = pstate->mys_load_local;
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-LOADATA */
+
 	/* Process the target relation */
 	cstate->rel = rel;
 
@@ -2105,7 +2119,39 @@ BeginCopyFrom(ParseState *pstate,
 		progress_vals[1] = PROGRESS_COPY_TYPE_PIPE;
 		Assert(!is_program);	/* the grammar does not allow this */
 		if (whereToSendOutput == DestRemote)
-			ReceiveCopyBegin(cstate);
+		{
+			/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+			/*
+			 * pstate should not null for load data case
+			 */
+			if (pstate)
+			{
+				/*
+				 * save this flag
+				 * will used in CopyGetData() and EndCopyFrom()
+				 */
+				cstate->mys_load_local = pstate->mys_load_local;
+
+				/* used fn_receive_copy_begin() */
+				if (filename)
+					cstate->filename = pstrdup(filename);
+			}
+
+			/*
+			 * if mysql load local
+			 * send a reponse(filename) to the client
+			 */
+			if (pstate && pstate->mys_load_local && IsA(MyProcPort->protocol_config, ProtocolMysql) &&
+						MyProcPort->protocol_config->fn_receive_copy_begin) 
+			{
+				MyProcPort->protocol_config->fn_receive_copy_begin(cstate);
+			}
+			/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+			else
+			{
+				ReceiveCopyBegin(cstate);
+			}
+		}
 		else
 			cstate->copy_file = stdin;
 
@@ -2226,6 +2272,17 @@ EndCopyFrom(CopyFromState cstate)
 	{
 		ClosePipeFromProgram(cstate);
 	}
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	else if (cstate->filename != NULL && cstate->mys_load_local)
+	{
+		/*
+		 * for mysql load local case
+		 * filename is used to stored the remote file name(client read it)
+		 * no need to close this file on server part
+		 * do nothing
+		 */
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 	else
 	{
 		if (cstate->filename != NULL && FreeFile(cstate->copy_file))

@@ -189,6 +189,8 @@ typedef struct CopyFromStateData
 	bool line_buf_error_rn;
 	/* End - OA-REQ-1488, OA-REQ-1541 */
 
+	bool    mys_load_local;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
+
 } CopyFromStateData;
 
 extern void ReceiveCopyBegin(CopyFromState cstate);

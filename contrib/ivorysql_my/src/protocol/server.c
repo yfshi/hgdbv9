@@ -49,7 +49,9 @@ static ProtocolExtensionConfig mysql_protocol_config = {
 	mysql_end_command,
 	mysql_printtup_create_DR,
 	mysql_process_command, /* fn_process_command */
-	NULL
+	NULL,
+	mysql_receive_copy_begin, /* ReqID:SRS-MYSQL-SQL-LOADDATA */
+	mysql_receive_copy_data   /* ReqID:SRS-MYSQL-SQL-LOADDATA */
 };
 
 static ProtocolExtensionConfig mysql_pg_protocol_config = {
@@ -66,7 +68,9 @@ static ProtocolExtensionConfig mysql_pg_protocol_config = {
 	NULL,
 	printtup_create_DR,
 	NULL, /* fn_process_command */
-	libpq_report_param_status
+	libpq_report_param_status,
+	NULL,	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
+	NULL	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 };
 
 static TypeItem type_items[] = {

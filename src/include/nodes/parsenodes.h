@@ -2586,6 +2586,15 @@ typedef struct CopyStmt
 	char	   *filename;		/* filename, or NULL for STDIN/STDOUT */
 	List	   *options;		/* List of DefElem nodes */
 	Node	   *whereClause;	/* WHERE condition (or NULL) */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	/*
+	 * for mysql case
+	 * filename is stored above
+	 * using mys_load_local to indentify stdin
+	 */
+	bool       mys_load_local;
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 } CopyStmt;
 
 /* ----------------------

@@ -189,6 +189,142 @@ PreparedStatement batch executed: 3 inserts
 New records inserted: 3
 
 Database connection closed
+-- /* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+-- load data
+-- allowLoadLocalInfile default is on
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Database connection successful
+Success generated the CSV file
+1,highgo
+2,wor$k
+3,high,go
+Succesed to delete the CSV file
+
+Database connection closed
+-- allowLoadLocalInfile set to false manual
+-- return an error
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalOffTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Exception in thread "main" java.sql.SQLException: The used command is not allowed with this Server version
+	at com.mysql.jdbc.SQLError.createSQLException(SQLError.java:965)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3978)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3914)
+	at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2530)
+	at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2683)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2491)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2449)
+	at com.mysql.jdbc.StatementImpl.executeInternal(StatementImpl.java:845)
+	at com.mysql.jdbc.StatementImpl.execute(StatementImpl.java:745)
+	at MySQLJdbcLoadDataLocalOffTest.main(MySQLJdbcLoadDataLocalOffTest.java:56)
+-- set server local_infile to off
+show local_infile;
+ local_infile 
+--------------
+ on
+(1 row)
+
+alter system set local_infile = off;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+-- return an error
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Database connection successful
+Success generated the CSV file
+Test failed: The used command is not allowed with this Server version
+java.sql.SQLException: The used command is not allowed with this Server version
+	at com.mysql.jdbc.SQLError.createSQLException(SQLError.java:965)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3978)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3914)
+	at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2530)
+	at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2683)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2491)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2449)
+	at com.mysql.jdbc.StatementImpl.executeInternal(StatementImpl.java:845)
+	at com.mysql.jdbc.StatementImpl.execute(StatementImpl.java:745)
+	at MySQLJdbcLoadDataLocalTest.testLoadDataLocal(MySQLJdbcLoadDataLocalTest.java:85)
+	at MySQLJdbcLoadDataLocalTest.main(MySQLJdbcLoadDataLocalTest.java:46)
+
+Database connection closed
+-- set server local_infile to on
+show local_infile;
+ local_infile 
+--------------
+ off
+(1 row)
+
+alter system set local_infile = on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+-- success
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Database connection successful
+Success generated the CSV file
+1,highgo
+2,wor$k
+3,high,go
+Succesed to delete the CSV file
+
+Database connection closed
+-- select into test
+-- return an error as proto_user is not superuser, so could not write file on server
+\du proto_user
+            List of roles
+ Role name  | Attributes | Member of 
+------------+------------+-----------
+ proto_user |            | {}
+
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+CREATE TABLE t_select_into SUCCESS
+Insert data (1,1,'highgo')
+Insert data (2,2,'wor$k')
+Insert data (3,3,'high,go')
+Insert data SUCCESS
+java.sql.SQLException: permission denied
+	at com.mysql.jdbc.SQLError.createSQLException(SQLError.java:965)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3978)
+	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3914)
+	at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2530)
+	at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2683)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2491)
+	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2449)
+	at com.mysql.jdbc.StatementImpl.executeInternal(StatementImpl.java:845)
+	at com.mysql.jdbc.StatementImpl.execute(StatementImpl.java:745)
+	at MySQLJdbcSelectIntoFileTest.selectIntoData(MySQLJdbcSelectIntoFileTest.java:106)
+	at MySQLJdbcSelectIntoFileTest.main(MySQLJdbcSelectIntoFileTest.java:57)
+-- give super priv to proto_user
+ALTER USER proto_user WITH SUPERUSER;
+\du proto_user
+            List of roles
+ Role name  | Attributes | Member of 
+------------+------------+-----------
+ proto_user | Admin      | {}
+
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+CREATE TABLE t_select_into SUCCESS
+Insert data (1,1,'highgo')
+Insert data (2,2,'wor$k')
+Insert data (3,3,'high,go')
+Insert data SUCCESS
+Read the outfile
+1,1,highgo
+2,2,wor$k
+3,3,"high,go"
+Succesed to delete the CSV file
+ALTER USER proto_user WITH NOSUPERUSER;
+\du proto_user
+            List of roles
+ Role name  | Attributes | Member of 
+------------+------------+-----------
+ proto_user |            | {}
+
+-- /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

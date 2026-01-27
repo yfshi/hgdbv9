@@ -1,6 +1,10 @@
 #include "postgres.h"
 
 #include "commands/prepare.h"
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+#include "commands/copy.h"
+#include "commands/copyfrom_internal.h"
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 #include "executor/spi.h"
 #include "fmgr.h"
 #include "libpq/libpq.h"
@@ -1203,3 +1207,45 @@ read_switch_response(StringInfo buf)
 {
 	return mq_get_string_eof(buf, NULL);
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+/*
+ * send copy begin message to the client
+ * followed mysql protocol format
+ */
+void
+mysql_receive_copy_begin(CopyFromState cstate)
+{
+	StringInfo buf = makeStringInfo();
+
+	mq_append_int1(buf, 0xfb);
+	mq_append_string_len(buf, cstate->filename, strlen(cstate->filename));
+	mq_putmessage(buf->data, buf->len);
+
+	cstate->copy_src = COPY_FRONTEND;
+	cstate->fe_msgbuf = makeStringInfo();
+
+	pq_flush();
+
+	DestroyStringInfo(buf);
+}
+
+/*
+ * received the data from client
+ * followed mysql protocol format
+ */
+int
+mysql_receive_copy_data(StringInfo buf)
+{
+       return mq_getmessage(buf, 0);
+}
+
+/*
+ * check the client has local file capabilities
+ */
+bool
+has_client_load_local_capabilities(void)
+{
+	return has_client_capabilities(CLIENT_LOCAL_FILES);
+}
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */

@@ -146,6 +146,7 @@ bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 bool 		qm_as_param = false; /* SRS-MYSQL-SQL-PREPARE */
+bool		mysql_local_infile = true;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -336,6 +337,18 @@ bool 		qm_as_param = false; /* SRS-MYSQL-SQL-PREPARE */
 		NULL, NULL, NULL
 	},
 	/* End - SRS-MYSQL-HEX-LITERAL */
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	{
+		{"local_infile", PGC_SIGHUP, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Sets the capabilities of Load Local file for mysql on mysql protocol."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&mysql_local_infile,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - RedID:SRS-MYSQL-SQL-LOADDATA */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS

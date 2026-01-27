@@ -77,6 +77,23 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 	RawStmt    *query = NULL;
 	Node	   *whereClause = NULL;
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	/*
+	 * pipe = true, filename == NULL
+	 *      stdin, no need set pipe again
+	 * pipe = false, filename != NULL
+	 * 	for mysql load local ---> stdin
+	 * 	set pipe by my_load_local
+	 */
+	if(!pipe && compatible_mode == MYS_MODE )
+	{
+		pipe = stmt->mys_load_local;
+	}
+
+	/* set pstate->mys_load_local, will used in BeginCopyFrom() */
+	pstate->mys_load_local = stmt->mys_load_local;
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+
 	/*
 	 * Disallow COPY to/from file or program except to users with the
 	 * appropriate role.

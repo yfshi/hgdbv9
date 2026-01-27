@@ -1,0 +1,214 @@
+-- create test table and insert data
+create table test_select_into(id int, age int, name varchar(20));
+insert into test_select_into values(1,1,'hello');
+insert into test_select_into values(2,2,'wor$k');
+insert into test_select_into values(3,3,'high,go');
+select * from test_select_into;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+create table test_check(like test_select_into);
+-- test the default value
+select * into OUTFILE '@abs_builddir@/results/test_select_into_1.csv' from test_select_into;
+copy test_check from '@abs_builddir@/results/test_select_into_1.csv' with(format csv, delimiter ',');
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+delete from test_check;
+-- test select id*2
+select id*2,name into OUTFILE '@abs_builddir@/results/test_select_into_2.csv' from test_select_into;
+copy test_check(id,name) from '@abs_builddir@/results/test_select_into_2.csv' with(format csv, delimiter ',');
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+  2 |     | hello
+  4 |     | wor$k
+  6 |     | high,go
+(3 rows)
+
+delete from test_check;
+-- test select from where id >= 2
+select name into OUTFILE '@abs_builddir@/results/test_select_into_3.csv' from test_select_into where id>=2;
+copy test_check(name) from '@abs_builddir@/results/test_select_into_3.csv' with(format csv, delimiter ',');
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+    |     | wor$k
+    |     | high,go
+(2 rows)
+
+delete from test_check;
+-- '\t' is two-byte character, err
+select * into OUTFILE '@abs_builddir@/results/test_select_into_4.csv' FIELDS TERMINATED BY '\t' from test_select_into;
+ERROR:  COPY delimiter must be a single one-byte character
+-- E'\t' ---> one-byte character for TAB
+select * into OUTFILE '@abs_builddir@/results/test_select_into_5.csv' FIELDS TERMINATED BY E'\t' from test_select_into;
+copy test_check from '@abs_builddir@/results/test_select_into_5.csv' with(format csv, delimiter E'\t');
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+delete from test_check;
+-- using standard_conforming_strings to control \
+show standard_conforming_strings;
+ standard_conforming_strings 
+-----------------------------
+ on
+(1 row)
+
+set standard_conforming_strings = off;
+select * into OUTFILE '@abs_builddir@/results/test_select_into_7.csv' FIELDS TERMINATED BY '\t' from test_select_into;
+WARNING:  nonstandard use of escape in a string literal
+LINE 1: ...ults/test_select_into_7.csv' FIELDS TERMINATED BY '\t' from ...
+                                                             ^
+HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
+copy test_check from '@abs_builddir@/results/test_select_into_7.csv' with(format csv, delimiter '\t');
+WARNING:  nonstandard use of escape in a string literal
+LINE 1: ...ts/test_select_into_7.csv' with(format csv, delimiter '\t');
+                                                                 ^
+HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+delete from test_check;
+reset standard_conforming_strings;
+-- test enclosed by
+select * into OUTFILE '@abs_builddir@/results/test_select_into_8.csv' FIELDS ENCLOSED BY '"' from test_select_into;
+copy test_check from '@abs_builddir@/results/test_select_into_8.csv' with(format csv, quote '"');
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+delete from test_check;
+-- test escape
+create temp table test_select_into_escaped(
+       style   text,
+       test    text,
+       filler  int);
+create temp table test_check_tmp (like test_select_into_escaped);
+insert into test_select_into_escaped values('DOS',E'abc\r\ndef',1);
+insert into test_select_into_escaped values('Unix',E'abc\ndef',2);
+insert into test_select_into_escaped values('Mac',E'abc\rdef',3);
+insert into test_select_into_escaped values(E'esc\\ape',E'a\\r\\\r\\\n\\nb',4);
+select * from test_select_into_escaped;
+  style  |   test   | filler 
+---------+----------+--------
+ DOS     | abc\r   +|      1
+         | def      | 
+ Unix    | abc     +|      2
+         | def      | 
+ Mac     | abc\rdef |      3
+ esc\ape | a\r\\r\ +|      4
+         | \nb      | 
+(4 rows)
+
+select * into OUTFILE '@abs_builddir@/results/test_select_into_9.csv' FIELDS ENCLOSED BY '''' ESCAPED BY E'\\' from test_select_into_escaped;
+copy test_check_tmp from '@abs_builddir@/results/test_select_into_9.csv' csv quote '''' escape E'\\';
+select * from test_check_tmp;
+  style  |   test   | filler 
+---------+----------+--------
+ DOS     | abc\r   +|      1
+         | def      | 
+ Unix    | abc     +|      2
+         | def      | 
+ Mac     | abc\rdef |      3
+ esc\ape | a\r\\r\ +|      4
+         | \nb      | 
+(4 rows)
+
+delete from test_check_tmp;
+-- test select from into outfile
+select * from test_select_into;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+select * from test_select_into into OUTFILE '@abs_builddir@/results/test_select_into_10.csv';
+copy test_check from '@abs_builddir@/results/test_select_into_10.csv' with(format csv, delimiter ',');
+select * from test_check;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+delete from test_check;
+-- test select from limit into outfile
+select * from test_select_into limit 2 into OUTFILE '@abs_builddir@/results/test_select_into_11.csv';
+copy test_check from '@abs_builddir@/results/test_select_into_11.csv' with(format csv, delimiter ',');
+select * from test_check;
+ id | age | name  
+----+-----+-------
+  1 |   1 | hello
+  2 |   2 | wor$k
+(2 rows)
+
+delete from test_check;
+-- test select from into for update -- error
+select * from test_select_into into OUTFILE '@abs_builddir@/results/test_select_into_11.csv' for update;
+ERROR:  syntax error at or near "for"
+LINE 1: ...trib/ivorysql_my/results/test_select_into_11.csv' for update...
+                                                             ^
+-- test character set
+create database select_into_gbk encoding='gbk' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
+\c select_into_gbk
+select pg_catalog.getdatabaseencoding();
+ getdatabaseencoding 
+---------------------
+ GBK
+(1 row)
+
+create table test_select_gbk(id int, age int, name varchar(20));
+insert into test_select_gbk values(1,1,'hello');
+insert into test_select_gbk values(2,2,'wor$k');
+insert into test_select_gbk values(3,3,'high,go');
+select * from test_select_gbk;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+create table test_check_gbk(like test_select_gbk);
+select * into OUTFILE '@abs_builddir@/results/test_select_into_12.csv' CHARACTER SET 'UTF8' from test_select_gbk;
+copy test_check_gbk from '@abs_builddir@/results/test_select_into_12.csv' with(format csv, delimiter ',' , encoding 'utf8');
+select * from test_check_gbk;
+ id | age |  name   
+----+-----+---------
+  1 |   1 | hello
+  2 |   2 | wor$k
+  3 |   3 | high,go
+(3 rows)
+
+-- clean up
+\c contrib_regression
+drop database select_into_gbk;
+drop table test_check;
+drop table test_select_into;

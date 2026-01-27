@@ -130,6 +130,12 @@ typedef struct IntoClause
 	char	   *tableSpaceName; /* table space to use, or NULL */
 	Node	   *viewQuery;		/* materialized view's SELECT query */
 	bool		skipData;		/* true for WITH NO DATA */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	bool      is_outfile;		/* mark its select into outfile on mysql mode */
+	char      *filename;		/* file name for output */
+	List      *copy_options;	/* options for select into outfile xxx */
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 } IntoClause;
 
 

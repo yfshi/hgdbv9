@@ -16,4 +16,10 @@ extern void send_column_definition41_packet(mysql_column_definition_t *field);
 extern int  mysql_process_command(StringInfo buf);
 extern void send_auth_switch_packet(char *method, uint8 *scramble);
 extern char *read_switch_response(StringInfo buf);
+
+/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+extern void mysql_receive_copy_begin(CopyFromState cstate);
+extern int  mysql_receive_copy_data(StringInfo buf);
+extern bool has_client_load_local_capabilities(void);
+/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 #endif

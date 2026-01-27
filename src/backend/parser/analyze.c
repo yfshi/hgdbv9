@@ -404,6 +404,26 @@ transformOptionalSelectInto(ParseState *pstate, Node *parseTree)
 			}
 			/* End - ReqID:SRS-MYSQL-SET */
 
+			/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+			if (compatible_mode == MYS_MODE && stmt->intoClause->is_outfile)
+			{
+
+				CopyStmt *copys = makeNode(CopyStmt);
+				copys->relation = NULL;
+				copys->attlist = NIL;
+				copys->is_from = false;
+				copys->options = stmt->intoClause->copy_options;
+				copys->filename = stmt->intoClause->filename;
+
+				stmt->intoClause = NULL;
+				copys->query = parseTree;
+
+				parseTree = (Node *) copys;
+
+				return transformStmt(pstate, parseTree);
+			}
+			/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+
 			ctas->query = parseTree;
 			ctas->into = stmt->intoClause;
 			ctas->objtype = OBJECT_TABLE;

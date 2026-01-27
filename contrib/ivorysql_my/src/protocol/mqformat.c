@@ -103,6 +103,10 @@ mq_getmessage(StringInfo buf, uint32 maxlen)
         buf->cursor = 0;
         buf->data[len] = '\0';
     }
+    else	/* receive a null package, set the buf to null */
+    {
+        resetStringInfo(buf);
+    }
 
     pq_endmsgread();
 
