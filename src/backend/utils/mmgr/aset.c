@@ -49,6 +49,10 @@
 #include "port/pg_bitutils.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/guc.h"
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /*--------------------
  * Chunk freelist k holds chunks of size 1 << (k + ALLOC_MINBITS),
@@ -686,7 +690,12 @@ AllocSetDelete(MemoryContext context)
 		AllocBlock	next = block->next;
 
 		if (block != set->keeper)
+		{
 			context->mem_allocated -= block->endptr - ((char *) block);
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+			sql_resource_limit_check_memory((block->endptr - ((char *) block)), MEM_SUB);
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		}
 
 #ifdef CLOBBER_FREED_MEMORY
 		wipe_mem(block, block->freeptr - ((char *) block));
@@ -737,9 +746,19 @@ AllocSetAlloc(MemoryContext context, Size size)
 	{
 		chunk_size = MAXALIGN(size);
 		blksize = chunk_size + ALLOC_BLOCKHDRSZ + ALLOC_CHUNKHDRSZ;
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory(blksize, MEM_ADD);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		block = (AllocBlock) malloc(blksize);
 		if (block == NULL)
+		{
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+			sql_resource_limit_check_memory(blksize, MEM_SUB);
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 			return NULL;
+		}
 
 		context->mem_allocated += blksize;
 
@@ -916,6 +935,10 @@ AllocSetAlloc(MemoryContext context, Size size)
 		while (blksize < required_size)
 			blksize <<= 1;
 
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory(blksize, MEM_ADD);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		/* Try to allocate it */
 		block = (AllocBlock) malloc(blksize);
 
@@ -932,7 +955,12 @@ AllocSetAlloc(MemoryContext context, Size size)
 		}
 
 		if (block == NULL)
+		{
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+			sql_resource_limit_check_memory(blksize, MEM_SUB);
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 			return NULL;
+		}
 
 		context->mem_allocated += blksize;
 
@@ -1034,6 +1062,10 @@ AllocSetFree(MemoryContext context, void *pointer)
 			block->next->prev = block->prev;
 
 		context->mem_allocated -= block->endptr - ((char *) block);
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory((block->endptr - ((char *) block)), MEM_SUB);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 #ifdef CLOBBER_FREED_MEMORY
 		wipe_mem(block, block->freeptr - ((char *) block));
@@ -1138,6 +1170,10 @@ AllocSetRealloc(MemoryContext context, void *pointer, Size size)
 		/* updated separately, not to underflow when (oldblksize > blksize) */
 		context->mem_allocated -= oldblksize;
 		context->mem_allocated += blksize;
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory(oldblksize, MEM_SUB);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 		block->freeptr = block->endptr = ((char *) block) + blksize;
 

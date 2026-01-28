@@ -113,6 +113,9 @@
 /* End - ReqID:Performance-GUC */
 #include "utils/restrict.h"		/* ReqID: SRS-CLIENT-AUTH */
 #include "utils/formatting.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /* ----------------
  *		global variables
@@ -5318,6 +5321,10 @@ PostgresMain(int argc, char *argv[],
 			(*audit_CommandStart_hook)();
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_start();
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		/* Begin - BUG#Z5597, BUG#z6159 */
 		/*
 		 * MyProc->pgxactoff is the index of current PROC in procArray->pgprocnos[]
@@ -5681,6 +5688,12 @@ PostgresMain(int argc, char *argv[],
 			has_savepoint = SetAutoSavepoint(AUTO_SAVEPOINT_NAME);
 		}
 		/* End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK */
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#ifndef WIN32
+		reset_process_to_origin_cpu();
+#endif
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 	}							/* end of input-reading loop */
 }
 

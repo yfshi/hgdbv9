@@ -23,6 +23,9 @@
 #include "utils/guc.h"
 #include "utils/memutils.h"
 #include "utils/resowner_private.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 
 /*#define LBDEBUG*/
@@ -312,7 +315,13 @@ MarkLocalBufferDirty(Buffer buffer)
 	buf_state = pg_atomic_read_u32(&bufHdr->state);
 
 	if (!(buf_state & BM_DIRTY))
+	{
 		pgBufferUsage.local_blks_dirtied++;
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_io_write_count();
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+	}
 
 	buf_state |= BM_DIRTY;
 

@@ -556,6 +556,20 @@ extern PGDLLIMPORT bool restricted_dba;
 extern bool convert_multiinsert_with_cte;
 /* End - SRS-SQL-MULTITABLEINSERT */
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+typedef enum ResourcelimitMode
+{
+	RESOURCE_LIMIT_OFF = 0,
+	RESOURCE_LIMIT_STRICT,
+	RESOURCE_LIMIT_LOOSE
+} ResourcelimitMode;
+
+extern PGDLLIMPORT int sqlallocated_memory;	/* record allocated memory size */
+extern PGDLLIMPORT int sqlread_buffer;
+extern PGDLLIMPORT int sqlwrite_buffer;	/* there is I of IO */
+extern PGDLLIMPORT int sqlcpu_usage;
+extern PGDLLIMPORT int source_limit_mode;
+/* End- ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /*
  * Functions exported by guc.c

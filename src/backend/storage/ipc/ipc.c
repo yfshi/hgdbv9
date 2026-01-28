@@ -30,6 +30,9 @@
 #include "storage/dsm.h"
 #include "storage/ipc.h"
 #include "tcop/tcopprot.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 
 /*
@@ -152,6 +155,12 @@ proc_exit(int code)
 #endif
 
 	elog(DEBUG3, "exit(%d)", code);
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#ifndef WIN32
+	release_sql_resource_limit_cgroup(MyProcPid);
+#endif
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 	exit(code);
 }

@@ -157,3 +157,7 @@ test: copy_skipbadR
 #/* Begin - BUG#Z4610 */
 test: aggregates_without_group_by
 #/* End - BUG#Z4610 */
+
+#/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+test: sql-resourece-limit
+#/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
