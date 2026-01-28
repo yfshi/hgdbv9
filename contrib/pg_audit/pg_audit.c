@@ -1570,7 +1570,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[23] = (Datum)0;
 		nulls[23] = true;
 	}
-#if !defined(_WIN32) && !defined(_WIN64)
+
 	if (event->errtext)
 	{
 		values[24] = PointerGetDatum(cstring_to_text(event->errtext));
@@ -1580,16 +1580,15 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[24] = PointerGetDatum(cstring_to_text(audit_msg));
 	}
 	else
-#endif
 	{
 		values[24] = (Datum)0;
 		nulls[24] = true;
 	}
+
 	if (strlen(clientInfo.authmethod) > 0)
 	{
 		values[25] = PointerGetDatum(cstring_to_text(clientInfo.authmethod));
 	}
-
 	else
 	{
 		values[25] = (Datum)0;
@@ -1907,9 +1906,7 @@ audit_write_record_system(AuditEvent *event)
 static void 
 audit_CommandStart(void)
 {	
-#if !defined(_WIN32) && !defined(_WIN64)
 	memset(audit_msg, '\0', MAXPGPATH);
-#endif
 	
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return;
@@ -1982,13 +1979,11 @@ stack_pop_to_list(AuditResult result)
 
 	auditEventStack->auditEvent->result = result;
 
-#if !defined(_WIN32) && !defined(_WIN64)
 	if (audit_msg[0] != '\0')
 	{
 		auditEventStack->auditEvent->errtext = pstrdup(audit_msg);
 		memset(audit_msg, '\0', MAXPGPATH);
 	}
-#endif
 
 	audit_list_append(auditEventStack->auditEvent);
 	
@@ -5572,7 +5567,7 @@ audit_system_event_info(bool flag, SystemEventType sqlerrcode)
 
 		return;
 	}
-#if defined(USE_SQLITE) && !defined(_WIN32)
+#if defined(USE_SQLITE) //&& !defined(_WIN32)
 	else
 	{
 		if (sqlite_open_db_for_audit_hook && sqlerrcode == ERRCODE_TOO_MANY_CONNECTIONS)

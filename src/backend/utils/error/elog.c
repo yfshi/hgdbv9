@@ -142,14 +142,13 @@ bool		syslog_split_messages = true;
 static bool openlog_done = false;
 static char *syslog_ident = NULL;
 static int	syslog_facility = LOG_LOCAL0;
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-#ifndef _WIN32
-char audit_msg[MAXPGPATH];
-#endif
-/* End - ReqID:SRS-SECURITY-AUDIT */
 
 static void write_syslog(int level, const char *line);
 #endif
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+char audit_msg[MAXPGPATH];
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 #ifdef WIN32
 extern char *event_source;
@@ -598,11 +597,9 @@ errfinish(const char *filename, int lineno, const char *funcname)
 	if (elevel == ERROR)
 	{
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-#ifndef _WIN32
 		unsigned int len;
-#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
-			
+
 		/*
 		 * We do some minimal cleanup before longjmp'ing so that handlers can
 		 * execute in a reasonably sane state.
@@ -626,14 +623,12 @@ errfinish(const char *filename, int lineno, const char *funcname)
 		recursion_depth--;
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-#ifndef _WIN32
 		len = strlen(edata->message);
 
 		if (len > 0)
 		{
 			memcpy(audit_msg, edata->message, len > 1023 ? 1023 : len);
 		}
-#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/* Begin - ReqID:SRS-SECURITY-AUDIT */
@@ -647,12 +642,10 @@ errfinish(const char *filename, int lineno, const char *funcname)
 	/* Emit the message to the right places */
 	EmitErrorReport();
 
-/* Begin - ReqID:SRS-SECURITY-AUDIT */	
-#ifndef _WIN32
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
 	if (elevel == FATAL || elevel == PANIC)
 	{
 		unsigned int len;
-		
 		len = strlen(edata->message);
 
 		if (len > 0)
@@ -660,7 +653,6 @@ errfinish(const char *filename, int lineno, const char *funcname)
 			memcpy(audit_msg, edata->message, len > 1023 ? 1023 : len);
 		}
 	}
-#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* Now free up subsidiary data attached to stack entry, and release it */

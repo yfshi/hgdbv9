@@ -455,9 +455,7 @@ extern bool syslog_split_messages;
 #define LOG_DESTINATION_CSVLOG	 8
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-#ifndef _WIN32
 extern PGDLLIMPORT char	audit_msg[MAXPGPATH];
-#endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* Other exported functions */
