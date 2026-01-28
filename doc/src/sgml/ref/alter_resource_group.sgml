@@ -1,0 +1,51 @@
+<!--
+doc/src/sgml/ref/alter_resource_group.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="sql-alterresourcegroup">
+ <indexterm zone="sql-alterresourcegroup">
+  <primary>ALTER RESOURCE GROUP</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>ALTER RESOURCE GROUP</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>ALTER RESOURCE GROUP</refname>
+  <refpurpose>change resource group configuration parameters</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+ALTER RESOURCE GROUP <replaceable class="parameter">name</replaceable> SET <replaceable class="parameter">option</replaceable> [, ... ]
+
+<phrase>where <replaceable class="parameter">option</replaceable> can be:</phrase>
+
+  | CONCURRENCY <replaceable class="parameter">value</replaceable>
+  | CPU_MAX_PERCENT <replaceable class="parameter">value</replaceable>
+  | CPU_WEIGHT <replaceable class="parameter">value</replaceable>
+  | CPUSET <replaceable class="parameter">value</replaceable>
+  | MEMORY_LIMIT <replaceable class="parameter">value</replaceable>
+  | MIN_COST <replaceable class="parameter">value</replaceable>
+  | IO_LIMIT <replaceable class="parameter">value</replaceable>
+
+</synopsis>
+ </refsynopsisdiv>
+
+ <refsect1>
+  <title>Description</title>
+
+  <para>
+   <command>ALTER RESOURCE GROUP</command> changes the attributes of a resource group.
+   This is an obsolete command, though still accepted for backwards
+   compatibility, because groups (and users too) have been superseded by the
+   more general concept of roles.
+  </para>
+
+ </refsect1>
+
+</refentry>
