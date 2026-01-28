@@ -13,7 +13,7 @@ DATA = pg_audit--1.0.sql pg_audit.control \
 	sqlite.db
 
 REGRESS = pg_audit
-ORA_REGRESS = pg_audit
+ORA_REGRESS = ivy_audit
 
 ifdef USE_PGXS
 PG_CONFIG = pg_config

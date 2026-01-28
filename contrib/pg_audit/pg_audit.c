@@ -74,6 +74,7 @@
 #include "catalog/pg_secmon_rule.h"
 #include "catalog/pg_secmon_threshold.h"
 #include "catalog/indexing.h"
+#include "catalog/pg_synonym.h"	/* BUG#Z5807 */
 #include "access/table.h"
 #include "access/relation.h"
 #include "commands/event_trigger.h"
@@ -116,6 +117,7 @@
 #include "utils/relcache.h"
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
+#include "utils/datetime.h"	/* BUG#Z6995 */
 #include "utils/varlena.h"
 #include "storage/pmsignal.h"
 #include "commands/sequence.h"
@@ -791,7 +793,7 @@ audit_logdir_check_hook(char **newvalue, void **extra, GucSource source)
 	}
 
 	/* It must be an absolute path */
-	if (*newvalue[0] != '/')
+	if (!is_absolute_path(*newvalue))	/* BUG#Z6995 */
 	{
 		GUC_check_errdetail("Archive directory does not support related paths: %s :%m", *newvalue);
 		return false;
@@ -1274,7 +1276,12 @@ audit_get_privilege(char *type)
 		pg_strcasecmp(type, COPY_FROM_S) == 0 ||
 		pg_strcasecmp(type, REINDEX_S) == 0 ||
 		pg_strcasecmp(type, LOCK_S) == 0 ||
-		pg_strcasecmp(type, CALL_S) == 0)
+		pg_strcasecmp(type, CALL_S) == 0 ||
+		/* Begin - BUG#Z5807 */
+		pg_strcasecmp(type, CREATE_SYNONYM_S) ||
+		pg_strcasecmp(type, ALTER_SYNONYM_S) ||
+		pg_strcasecmp(type, DROP_SYNONYM_S))
+		/* End - BUG#Z5807 */
 		strcpy(pri, AUDIT_PRIVILEGE_SCHEMAOBJECT_S);
 	else if (pg_strcasecmp(type, START_S) == 0 ||
 		pg_strcasecmp(type, STOP_S) == 0 ||
@@ -3115,10 +3122,13 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 //			break;
 		/* Begin - BUG#Z5791 */
 		case T_CreateSynonymStmt:
+			strcpy(buf, CREATE_SYNONYM_S);	/* BUG#Z5807 */
 			break;
 		case T_AlterSynonymStmt:
+			strcpy(buf, ALTER_SYNONYM_S);	/* BUG#Z5807 */
 			break;
 		case T_DropSynStmt:
+			strcpy(buf, DROP_SYNONYM_S);	/* BUG#Z5807 */
 			break;
 		/* End - BUG#Z5791 */
 		default:
@@ -7757,6 +7767,17 @@ audit_stmttype_to_string(AuditStmtType type)
 		case CREATE_TABLE_AS:
 			tag = CREATE_TABLE_AS_S;
 			break;
+		/* Begin - BUG#Z5807 */
+		case CREATE_SYNONYM:
+			tag = CREATE_SYNONYM_S;
+			break;
+		case ALTER_SYNONYM:
+			tag = ALTER_SYNONYM_S;
+			break;
+		case DROP_SYNONYM:
+			tag = DROP_SYNONYM_S;
+			break;
+		/* End - BUG#Z5807 */
 		case CREATE_TRIGGER:
 			tag = CREATE_TRIGGER_S;
 			break;
@@ -8104,6 +8125,14 @@ audit_get_stmt_type(char *statment, bool is_obj, ObjectType objtype)
 	else if (pg_strcasecmp(statment, ALTER_RESOURCE_GROUP_S) == 0)
 		type = ALTER_RESOURCE_GROUP;
 	/* End - BUG#Z6075 */
+	/* Begin - BUG#Z5807 */
+	else if (pg_strcasecmp(statment, CREATE_SYNONYM_S) == 0)
+		type = CREATE_SYNONYM;
+	else if (pg_strcasecmp(statment, ALTER_SYNONYM_S) == 0)
+		type = ALTER_SYNONYM;
+	else if (pg_strcasecmp(statment, DROP_SYNONYM_S) == 0)
+		type = DROP_SYNONYM;
+	/* End - BUG#Z5807 */
 	else if (pg_strcasecmp(statment, CREATE_TABLE_S) == 0)
 		type = CREATE_TABLE;
 	else if (pg_strcasecmp(statment, CREATE_TABLE_AS_S) == 0)
@@ -9095,6 +9124,10 @@ audit_get_objtype(char *key)
 		type = OBJECT_PROCEDURE;
 	else if (pg_strcasecmp(key, FUNCTION_S) == 0)
 		type = OBJECT_FUNCTION;
+	/* Begin - BUG#Z5807 */
+	else if (pg_strcasecmp(key, SYNONYM_S) == 0)
+		type = OBJECT_SYNONYM;
+	/* End - BUG#Z5807 */
 	else
 		type = -1;
 
@@ -9525,6 +9558,51 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 					}
 				}
 				break;
+			/* Begin - BUG#Z5807 */
+			case OBJECT_SYNONYM:
+				auditevent = lfirst_int(list_head(optionlist));
+				if(auditevent == ALL_T)
+				{
+					options = list_make5_int(INSERT_T, UPDATE_T, DELETE_T, SELECT_T, LOCK_T);
+					options = lappend_int(options, ALTER_TABLE);
+					options = lappend_int(options, COMMENT_T);
+					options = lappend_int(options, TRUNCATE_T);
+					options = lappend_int(options, ALTER_INDEX);
+					options = lappend_int(options, DROP_INDEX);
+					options = lappend_int(options, CALL_T);
+					options = lappend_int(options, ALTER_SEQUENCE);
+					options = lappend_int(options, ALTER_PROCEDURE);
+					options = lappend_int(options, ALTER_FUNCTION);
+					break;
+				}
+				options = optionlist;
+				foreach(auditeventcell, options)
+				{
+					auditevent = lfirst_int(auditeventcell);
+					switch(auditevent)
+					{
+						case INSERT_T:
+						case UPDATE_T:
+						case DELETE_T:
+						case SELECT_T:
+						case LOCK_T:
+						case COMMENT_T:
+						case TRUNCATE_T:
+						case ALTER_TABLE:
+						case ALTER_INDEX:
+						case DROP_INDEX:
+						case CALL_T:
+						case ALTER_SEQUENCE:
+						case ALTER_PROCEDURE:
+						case ALTER_FUNCTION:
+							break;
+						default:
+							ereport(ERROR,
+									(errmsg("option %s on synonym is not supported to audit", audit_stmttype_to_string(auditevent))));
+					}
+				}
+				break;
+				/* End - BUG#Z5807 */
 			default:
 				ereport(ERROR,
 							 (errmsg("object %d is not supported to audit", objtype)));
@@ -9658,7 +9736,40 @@ audit_get_object_from_namelist(List *obj, ObjectType objtype, char *schema)
 			res->schema = schema;
 			res->schemaid = get_namespace_oid(schema,false);
 			break;
+		/* Begin - BUG#Z5807 */
+		case OBJECT_SYNONYM:
+			{
+				HeapTuple	tuple;
+				Oid	namespaceId;
+				char	*synname;
+				char	*schemaname = NULL;
+				Form_pg_synonym syn_struct;
 
+				DeconstructQualifiedName(obj, &schemaname, &synname);
+				if (schemaname)
+					namespaceId = LookupExplicitNamespace(schemaname, false);
+				else
+					namespaceId = SynnameGetSynnsp(synname);
+				tuple = SearchSysCache3(SYNONYMNAMENSP, PointerGetDatum(synname),
+								ObjectIdGetDatum(namespaceId), BoolGetDatum(false));
+				if (!HeapTupleIsValid(tuple))
+				{
+					tuple = SearchSysCache3(SYNONYMNAMENSP, PointerGetDatum(synname),
+								ObjectIdGetDatum(namespaceId), BoolGetDatum(true));
+					if (!HeapTupleIsValid(tuple))
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_OBJECT),
+								errmsg("synonym \"%s\" does not exist", synname)));
+				}
+				syn_struct = (Form_pg_synonym)GETSTRUCT(tuple);
+				res->objectid = syn_struct->oid;
+				res->schema = schema;
+				res->schemaid = namespaceId;
+
+				ReleaseSysCache(tuple);
+				break;
+			}
+		/* End - BUG#Z5807 */
 		default:
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -10218,6 +10329,13 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 	char	   *archpath;
 	TimestampTz cur_time;
 	char *time_str = NULL;
+	/* Begin - BUG#Z6995 */
+	struct	pg_tm    tt,
+					   *tm = &tt;
+	fsec_t		fesc;
+	int			tz;
+	char	   *result = palloc(MAXDATELEN);
+	/* End - BUG#Z6995 */
 	char	   *username = NULL;
 	Oid 		userid = GetUserId();
 
@@ -10243,9 +10361,13 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 	}
 
 	cur_time = GetCurrentTimestamp();
-	time_str = pstrdup(timestamptz_to_str(cur_time));
-	time_str[10] = '-';
-
+	/* Begin - BUG#Z6995 */
+	timestamp2tm(cur_time, &tz, tm, &fesc, NULL, NULL);
+	snprintf(result, MAXDATELEN, "%04d-%02d-%02d-%02d-%02d-%02d.%06d",
+					tm->tm_year, tm->tm_mon, tm->tm_mday,
+					tm->tm_hour, tm->tm_min, tm->tm_sec, fesc);
+	time_str = pstrdup(result);
+	/* End - BUG#Z6995 */
 	username = GetUserNameFromId(userid, true);
 
 	if (se_feature_mode)
