@@ -716,6 +716,17 @@ static bool isAconstNode(Node *node);
 %type <list> opt_returning_into_clause
 /* End - ReqID:SRS-PLSQL-DSQL */
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+%type <node> MultiTableInsertStmt insert_into_clause
+%type <range> opt_into_rel into_rel_target
+%type <node> opt_error_logging_clause opt_simple_expression
+%type <node> opt_reject_limit condition_default_insert when_condition_insert
+%type <list> into_rel_list condition_into_list opt_columns_list
+%type <list> opt_values when_condition_list
+%type <boolean> opt_all_first
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -973,6 +984,11 @@ static bool isAconstNode(Node *node);
 %type <node> ora_trg_on_table
 /* End - ReqID:SRS-SQL-TRIGGER */
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+%token <keyword> ERRORS_P LOG_P REJECT_P UNLIMITED
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
  * list and so can never be entered directly.  The filter in parser.c
@@ -1015,9 +1031,18 @@ static bool isAconstNode(Node *node);
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/* see detail for opt_values */
+%nonassoc	VALUES
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 /* Begin - BUG#M0000307 */
 %nonassoc	DAY_P YEAR_P    /* see param_name */
 /* End - BUG#M0000307 */
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+%nonassoc  INTO
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 /* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 %nonassoc	NOCYCLE
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
@@ -1355,6 +1380,9 @@ stmt:
 			/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 			| PurgeStmt
 			/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			| MultiTableInsertStmt
+			/* End - SRS-SQL-MULTITABLEINSERT */
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
@@ -14155,6 +14183,7 @@ ExplainableStmt:
 			| CreateMatViewStmt
 			| RefreshMatViewStmt
 			| ExecuteStmt					/* by default all are $$=$1 */
+			| MultiTableInsertStmt	/* SRS-SQL-MULTITABLEINSERT */
 		;
 
 /*****************************************************************************
@@ -14184,6 +14213,7 @@ PreparableStmt:
 			| UpdateStmt
 			| DeleteStmt
 			| MergeStmt	/* ReqID:SRS-SQL-MERGE */	/* by default all are $$=$1 */
+			| MultiTableInsertStmt	/* SRS-SQL-MULTITABLEINSERT */
 		;
 
 /*****************************************************************************
@@ -21088,6 +21118,214 @@ jdbc_call_function_parameter_el:
 		;
 /* End - BUG#M0000201: support question marks as binding variables */
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+MultiTableInsertStmt:
+				opt_with_clause INSERT ALL into_rel_list SelectStmt
+					{
+						MultiTableInsertStmt *mtinstmt = makeNode(MultiTableInsertStmt);
+						ConditionInsertClause *cst = makeNode(ConditionInsertClause);
+
+						mtinstmt->subquery = $5;
+						mtinstmt->withClause = $1;
+						mtinstmt->is_first = false;
+						cst->whenClause = NULL;
+						cst->intos = $4;
+						mtinstmt->condition_list = list_make1(cst);
+
+						$$ = (Node *) mtinstmt;
+					}
+				| opt_with_clause INSERT opt_all_first condition_into_list SelectStmt
+					{
+						MultiTableInsertStmt *mtinstmt = makeNode(MultiTableInsertStmt);
+
+						mtinstmt->subquery = $5;
+						mtinstmt->withClause = $1;
+						mtinstmt->is_first = $3;
+						mtinstmt->condition_list = $4;
+
+						$$ = (Node *) mtinstmt;
+					}
+			;
+
+
+opt_all_first:
+			ALL		{ $$ = false; }
+			|FIRST_P	{ $$ = true; };
+			| /* EMPTY */ { $$ = false; }
+		;
+
+into_rel_list:
+		insert_into_clause		{ $$ = list_make1($1); }
+		| into_rel_list insert_into_clause	{ $$ = lappend($1, $2); }
+		;
+
+insert_into_clause:
+		INTO into_rel_target opt_columns_list opt_values opt_error_logging_clause
+			{
+				InsertIntoClause *intoclause = makeNode(InsertIntoClause);
+
+				intoclause->relation = $2;
+				intoclause->cols = $3;
+				intoclause->values = $4;
+				intoclause->error_logging_clause = (ErrorLogClause *) $5;
+				intoclause->location = @1;
+
+				$$ = (Node *) intoclause;
+			}
+		;
+
+/*
+ * doesn't support alias
+ */
+into_rel_target:
+			qualified_name
+				{
+					$$ = $1;
+				}
+			| qualified_name Op ColId
+				{
+					if (strcmp($2, "@") != 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near"),
+								 parser_errposition(@2)));
+					$$ = $1;
+					$$->inh = true;
+					$$->alias = NULL;
+					$$->srvname = $3;
+				}
+	;
+
+/*
+ * there SelectStmt maybe have a
+ * bracket and columns list also
+ * have bracket,we consider columns list
+ * first
+ */
+opt_columns_list:
+				'(' insert_column_list ')'  { $$ = $2; }
+				| /* EMPTY */ { $$ = NIL; }		%prec UMINUS
+		;
+
+/*
+ * there SelectStmt maybe a value_clause
+ * opt_values also has values
+ * we consider opt_values
+ * first
+ */
+
+opt_values:
+			VALUES '(' expr_list ')' { $$ = $3; }
+			| /* EMPTY */ { $$ = NIL; }		%prec SET
+		;
+
+opt_error_logging_clause:
+			LOG_P ERRORS_P opt_into_rel opt_simple_expression opt_reject_limit
+				{
+					ErrorLogClause *errlog = (ErrorLogClause *) $5;
+
+					if (errlog == NULL)
+						errlog = (ErrorLogClause *) makeNode(ErrorLogClause);
+
+					/* report warning for grammer support ? */
+					ereport(WARNING,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("log errors has not supported only support grammer"),
+									parser_errposition(@1)));
+					errlog->intoRel = $3;
+					errlog->simple_expr = $4;
+					errlog->location = @1;
+
+					$$ = (Node *) errlog;
+				}
+			| /* EMPTY */ { $$ = NULL; }
+		;
+
+/*
+ * There is a conflict here.
+ * Does into belong to log_error_clause or insert_into_clause?
+ * We use priority processing and prioritize log_error_clause.
+ */
+opt_into_rel:
+			INTO qualified_name { $$ = $2; }
+			|/* EMPTY */ { $$ = NULL; } %prec SET
+		;
+
+/*
+ * There is a conflict here.
+ * SelectStmt can also have parentheses,
+ * and opt_simple_expression can also have parentheses.
+ * We use priority processing,
+ * and the priority is the parentheses of opt_simple_expression.
+ */
+opt_simple_expression:
+			'(' a_expr ')'	{ $$ = $2; }
+			|/* EMPTY */ { $$ = NULL; } %prec SET
+		;
+
+opt_reject_limit:
+			REJECT_P LIMIT UNLIMITED
+				{
+					ErrorLogClause *errlog = (ErrorLogClause *) makeNode(ErrorLogClause);
+
+					errlog->ulimited = true;
+					$$ = (Node *) errlog;
+				}
+			| REJECT_P LIMIT ICONST
+				{
+					ErrorLogClause *errlog = (ErrorLogClause *) makeNode(ErrorLogClause);
+
+					errlog->limite_num = $3;
+					$$ = (Node *) errlog;
+				}
+			| /* EMPTY */ { $$ = NULL; }
+		;
+
+condition_into_list:
+			when_condition_list condition_default_insert
+				{
+					if ($2 != NULL)
+						$$ = lappend($1, $2);
+					else
+						$$ = $1;
+				}
+		;
+
+when_condition_list:
+			when_condition_insert { $$ = list_make1($1); }
+		| when_condition_list when_condition_insert { $$ = lappend($1, $2); }
+		;
+
+when_condition_insert:
+		WHEN a_expr THEN into_rel_list
+			{
+				ConditionInsertClause *cinsert = makeNode(ConditionInsertClause);
+
+				cinsert->whenClause = $2;
+				cinsert->intos = $4;
+
+				$$ = (Node *) cinsert;
+			}
+		;
+
+condition_default_insert:
+		ELSE into_rel_list
+			{
+				ConditionInsertClause *cinsert = makeNode(ConditionInsertClause);
+
+				cinsert->whenClause = NULL;
+				cinsert->intos = $2;
+				cinsert->is_else = true;
+
+				$$ = (Node *) cinsert;
+			}
+		|/* EMPTY */ { $$ = NULL; }
+
+
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
+
 /*
  * Name classification hierarchy.
  *
@@ -21262,6 +21500,7 @@ unreserved_keyword:
 			| ENCRYPTED
 			| ENUM_P
 			| ERROR_P	/* ReqID:SRS-SQL-SYSFUNC */
+			| ERRORS_P /* SRS-SQL-MULTITABLEINSERT */
 			| ESCAPE
 			| EVENT
 			| EXCLUDE
@@ -21331,6 +21570,7 @@ unreserved_keyword:
 			| LOCATION
 			| LOCK_P
 			| LOCKED
+			| LOG_P  /* SRS-SQL-MULTITABLEINSERT */
 			| LOGBAD  /* BUG#Z1087 */
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
@@ -21433,6 +21673,7 @@ unreserved_keyword:
 			| REFERENCING
 			| REFRESH
 			| REINDEX
+			| REJECT_P /* SRS-SQL-MULTITABLEINSERT */
 			| RELATIVE_P
 			| RELEASE
 			| RELIES_ON	/* ReqID:SRS-SQL-PROC */
@@ -21524,6 +21765,7 @@ unreserved_keyword:
 			| UNCOMMITTED
 			| UNENCRYPTED
 			| UNKNOWN
+			| UNLIMITED /* SRS-SQL-MULTITABLEINSERT */
 			| UNLISTEN
 			| UNLOGGED
 			| UNTIL
@@ -21935,6 +22177,7 @@ bare_label_keyword:
 			| END_P
 			| ENUM_P
 			| ERROR_P	/* ReqID:SRS-SQL-SYSFUNC */
+			| ERRORS_P /* SRS-SQL-MULTITABLEINSERT */
 			| ESCAPE
 			| EVENT
 			| EXCLUDE
@@ -22031,6 +22274,7 @@ bare_label_keyword:
 			| LOCATION
 			| LOCK_P
 			| LOCKED
+			| LOG_P /* SRS-SQL-MULTITABLEINSERT */
 			| LOGBAD  /* BUG#Z1087 */
 			| LOGGED
 			| LONG_P	/*BUGID:0000649*/
@@ -22155,6 +22399,7 @@ bare_label_keyword:
 			| REFERENCING
 			| REFRESH
 			| REINDEX
+			| REJECT_P /* SRS-SQL-MULTITABLEINSERT */
 			| RELATIVE_P
 			| RELEASE
 			| RELIES_ON	/* ReqID:SRS-SQL-PROC */
@@ -22268,6 +22513,7 @@ bare_label_keyword:
 			| UNENCRYPTED
 			| UNIQUE
 			| UNKNOWN
+			| UNLIMITED /* SRS-SQL-MULTITABLEINSERT */
 			| UNLISTEN
 			| UNLOGGED
 			| UNTIL

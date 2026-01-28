@@ -97,6 +97,10 @@ typedef struct _SPI_plan *SPIPlanPtr;
 #define SPI_OK_REL_UNREGISTER	16
 #define SPI_OK_TD_REGISTER		17
 #define SPI_OK_MERGE			18
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+#define SPI_OK_MULTI_INSERT		19
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 
 #define SPI_OPT_NONATOMIC		(1 << 0)
 

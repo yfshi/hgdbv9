@@ -306,6 +306,12 @@ _readQuery(void)
 	READ_NODE_FIELD(partreloids);
 	READ_BOOL_FIELD(hasuservar);			/* ReqID:SRS-MYSQL-SET */
 	READ_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	READ_NODE_FIELD(multiInsertActionList);
+	READ_BOOL_FIELD(multiInsertFirst);
+	READ_BOOL_FIELD(multiInsertUseCte);
+	READ_BOOL_FIELD(multiInsertRewrite);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
 
@@ -354,6 +360,9 @@ _readWithCheckOption(void)
 	READ_STRING_FIELD(polname);
 	READ_NODE_FIELD(qual);
 	READ_BOOL_FIELD(cascaded);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	READ_INT_FIELD(target_index);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	READ_DONE();
 }
@@ -532,6 +541,39 @@ _readMergeAction(void)
 
 	READ_DONE();
 }
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/*
+ * _readInsertIntoAction
+ */
+static InsertIntoAction *
+_readInsertIntoAction(void)
+{
+	READ_LOCALS(InsertIntoAction);
+
+	READ_INT_FIELD(target_rte);
+	READ_NODE_FIELD(targetList);
+
+	READ_DONE();
+}
+
+
+/*
+ * _readInsertIntoAction
+ */
+static ConditionInsertAction *
+_readConditionInsertAction(void)
+{
+	READ_LOCALS(ConditionInsertAction);
+
+	READ_NODE_FIELD(qual);
+	READ_NODE_FIELD(intos);
+	READ_NODE_FIELD(is_else);
+
+	READ_DONE();
+}
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 
 /*
  * _readSetOperationStmt
@@ -1822,6 +1864,9 @@ _readPlannedStmt(void)
 	READ_LOCATION_FIELD(stmt_location);
 	READ_INT_FIELD(stmt_len);
 	READ_INT_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	READ_BOOL_FIELD(multiInsertUseCte);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	READ_DONE();
 }
@@ -1941,6 +1986,10 @@ _readModifyTable(void)
 	READ_NODE_FIELD(rootRelations);
 	READ_NODE_FIELD(partresultRelations);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	READ_NODE_FIELD(multiInsertActionLists);
+	READ_BOOL_FIELD(multiInsertFirst);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	READ_DONE();
 }
@@ -3110,6 +3159,12 @@ parseNodeString(void)
 		return_value = _readMergeWhenClause();
 	else if (MATCH("MERGEACTION", 11))
 		return_value = _readMergeAction();
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	else if (MATCH("INSERTINTOACTION", 16))
+		return_value = _readInsertIntoAction();
+	else if (MATCH("CONDITIONINSERTACTION", 21))
+		return_value = _readConditionInsertAction();
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	else if (MATCH("SETOPERATIONSTMT", 16))
 		return_value = _readSetOperationStmt();
 	else if (MATCH("ALIAS", 5))

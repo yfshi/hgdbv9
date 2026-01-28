@@ -534,6 +534,9 @@ standard_planner(Query *parse, const char *query_string, int cursorOptions,
 	result->stmt_location = parse->stmt_location;
 	result->stmt_len = parse->stmt_len;
 	result->countnode_num = glob->countnode_num;	/* ReqID:SRS-SQL-ROWNUM */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	result->multiInsertUseCte = parse->multiInsertUseCte;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	result->jitFlags = PGJIT_NONE;
 	if (jit_enabled && jit_above_cost >= 0 &&
@@ -688,8 +691,22 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	}
 	else
 	{
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		if (parse->commandType == CMD_MULTI_INSERT)
+		{
+			ListCell *lc;
+			foreach (lc, parse->resultRelations)
+			{
+				int rtindex = lfirst_int(lc);
+
+				root->all_result_relids =  bms_add_member(root->all_result_relids,
+												 rtindex);
+			}
+		}
+		else
 			root->all_result_relids =
-					parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+				parse->resultRelation ? bms_make_singleton(parse->resultRelation) : NULL;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 	}
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -837,7 +854,24 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	else
 	{
-		if (parse->resultRelation)
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		if (parse->commandType == CMD_MULTI_INSERT)
+		{
+			ListCell *lc;
+
+			foreach (lc, parse->resultRelations)
+			{
+				int rtindex = lfirst_int(lc);
+
+				RangeTblEntry *rte = rt_fetch(rtindex, parse->rtable);
+
+				if (!rte->inh)
+					root->leaf_result_relids =
+						bms_add_member(root->leaf_result_relids,
+												 rtindex);
+			}
+		}
+		else if (parse->resultRelation)
 		{
 			RangeTblEntry *rte = rt_fetch(parse->resultRelation, parse->rtable);
 
@@ -845,6 +879,7 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 				root->leaf_result_relids =
 					bms_make_singleton(parse->resultRelation);
 		}
+		/* End - SRS-SQL-MULTITABLEINSERT */
 	}
 
 	/*
@@ -974,6 +1009,26 @@ subquery_planner(PlannerGlobal *glob, Query *parse,
 								  (Node *) action->qual,
 								  EXPRKIND_QUAL);
 	}
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	foreach (l, parse->multiInsertActionList)
+	{
+		ConditionInsertAction *cinsert = (ConditionInsertAction *) lfirst(l);
+		ListCell *lc;
+
+		foreach (lc, cinsert->intos)
+		{
+			InsertIntoAction *ina = (InsertIntoAction *) lfirst(lc);
+
+			ina->targetList = (List *) preprocess_expression(root,
+												(Node *) ina->targetList,
+												EXPRKIND_TARGET);
+		}
+		cinsert->qual = preprocess_expression(root,
+								  cinsert->qual,
+								  EXPRKIND_QUAL);
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	root->append_rel_list = (List *)
 		preprocess_expression(root, (Node *) root->append_rel_list,
@@ -2161,7 +2216,67 @@ grouping_planner(PlannerInfo *root, double tuple_fraction)
 			/* End - ReqID:SRS-MYSQL-UPDATE */
 			else
 			{
-				if (bms_membership(root->all_result_relids) == BMS_MULTIPLE)
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				/* insert all/first doesn't expand child people */
+				if (parse->commandType == CMD_MULTI_INSERT)
+				{
+					ListCell *lresult;
+					ModifyTablePath *modify_path;
+
+					resultRelations = parse->resultRelations;
+
+					/* make resultReations match the withCheckOptionsLists */
+					foreach (lresult, resultRelations)
+					{
+						List *lcheck = NIL;
+						int rt_index = lfirst_int(lresult);
+						ListCell *withlc;
+
+						foreach (withlc, parse->withCheckOptions)
+						{
+							WithCheckOption *wc = (WithCheckOption *) lfirst(withlc);
+
+							if (wc->target_index == rt_index)
+							{
+								lcheck = lappend(lcheck, wc);
+							}
+						}
+						withCheckOptionLists = lappend(withCheckOptionLists, lcheck);
+					}
+
+					/*
+					 * If there was a FOR [KEY] UPDATE/SHARE clause, the LockRows node
+					 * will have dealt with fetching non-locked marked rows, else we
+					 * need to have ModifyTable do that.
+					 */
+					if (parse->rowMarks)
+						rowMarks = NIL;
+					else
+						rowMarks = root->rowMarks;
+					modify_path = create_modifytable_path(root, final_rel,
+											path,
+											parse->commandType,
+											parse->canSetTag,
+											parse->resultRelation,
+											rootRelation,
+											root->partColsUpdated,
+											resultRelations,
+											updateColnosLists,
+											withCheckOptionLists,
+											returningLists,
+											rowMarks,
+											parse->onConflict,
+											mergeActionLists,
+											assign_special_exec_param(root));
+					modify_path->multiInsertActionLists = parse->multiInsertActionList;
+					modify_path->multiInsertFirst = parse->multiInsertFirst;
+					path = (Path *) modify_path;
+
+					/* And shove it into final_rel */
+					add_path(final_rel, path);
+				}
+				/* End - SRS-SQL-MULTITABLEINSERT */
+				else if (bms_membership(root->all_result_relids) == BMS_MULTIPLE)
 				{
 					/* Inherited UPDATE/DELETE */
 					RelOptInfo *top_result_rel = find_base_rel(root,
@@ -2670,8 +2785,17 @@ preprocess_rowmarks(PlannerInfo *root)
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	else
 	{
-		if (parse->resultRelation)
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		if (parse->commandType == CMD_MULTI_INSERT)
+		{
+			ListCell *lc;
+
+			foreach (lc, parse->resultRelations)
+				rels = bms_del_member(rels, lfirst_int(lc));
+		}
+		else if (parse->resultRelation)
 			rels = bms_del_member(rels, parse->resultRelation);
+		/* End - SRS-SQL-MULTITABLEINSERT */
 	}
 
 	/*

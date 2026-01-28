@@ -187,6 +187,7 @@ CreateExecutorState(void)
 	estate->delimiter = NULL;
 	/* End - ReqID:SRS-MISC-BULKLOAD */
 	estate->skipbad_fk = false;	/* BUG#Z1616 */
+	estate->es_multi_insert_usecte = false; /* SRS-SQL-MULTITABLEINSERT */
 
 	/*
 	 * Return the executor state structure

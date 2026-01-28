@@ -5242,7 +5242,8 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 			if (plansource->commandTag == CMDTAG_INSERT ||
 				plansource->commandTag == CMDTAG_UPDATE ||
 				plansource->commandTag == CMDTAG_DELETE ||
-				plansource->commandTag == CMDTAG_MERGE) /* BUG#Z1389 */
+				plansource->commandTag == CMDTAG_MERGE || /* BUG#Z1389 */
+				plansource->commandTag == CMDTAG_MULTIINSERT) /* SRS-SQL-MULTITABLEINSERT */
 			{
 				stmt->mod_stmt = true;
 				break;
@@ -5300,6 +5301,7 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 			break;
 
 		case SPI_OK_INSERT:
+		case SPI_OK_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
 		case SPI_OK_UPDATE:
 		case SPI_OK_DELETE:
 		case SPI_OK_INSERT_RETURNING:
@@ -5541,6 +5543,7 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	switch (exec_res)
 	{
 		case SPI_OK_SELECT:
+		case SPI_OK_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
 		case SPI_OK_INSERT:
 		case SPI_OK_UPDATE:
 		case SPI_OK_DELETE:

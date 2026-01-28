@@ -2920,6 +2920,14 @@ create_modifytable_plan(PlannerInfo *root, ModifyTablePath *best_path)
 							best_path->mergeActionLists,
 							best_path->epqParam);
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (best_path->operation == CMD_MULTI_INSERT)
+	{
+		plan->multiInsertActionLists = best_path->multiInsertActionLists;
+		plan->multiInsertFirst = best_path->multiInsertFirst;
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	copy_generic_path_info(&plan->plan, &best_path->path);
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
@@ -7169,7 +7177,7 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 		   (operation == CMD_UPDATE ?
 			list_length(resultRelations) == list_length(updateColnosLists) :
 			updateColnosLists == NIL));
-	Assert(withCheckOptionLists == NIL ||
+	Assert(withCheckOptionLists == NIL || operation == CMD_MULTI_INSERT || /* SRS-SQL-MULTITABLEINSERT */
 		   list_length(resultRelations) == list_length(withCheckOptionLists));
 	Assert(returningLists == NIL ||
 		   list_length(resultRelations) == list_length(returningLists));

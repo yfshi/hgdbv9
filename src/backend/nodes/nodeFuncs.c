@@ -2388,6 +2388,26 @@ expression_tree_walker(Node *node,
 					return true;
 			}
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_InsertIntoAction:
+			{
+				InsertIntoAction *insert = (InsertIntoAction *) node;
+
+				if (walker(insert->targetList, context))
+					return true;
+			}
+			break;
+		case T_ConditionInsertAction:
+			{
+				ConditionInsertAction *cinsert = (ConditionInsertAction *) node;
+
+				if (walker(cinsert->qual, context))
+					return true;
+				if (walker(cinsert->intos, context))
+					return true;
+			}
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_PartitionPruneStepOp:
 			{
 				PartitionPruneStepOp *opstep = (PartitionPruneStepOp *) node;
@@ -2551,6 +2571,10 @@ query_tree_walker(Query *query,
 		return true;
 	if (walker((Node *) query->mergeActionList, context))
 		return true;
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (walker((Node *) query->multiInsertActionList, context))
+		return true;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	if (walker((Node *) query->returningList, context))
 		return true;
 	if (walker((Node *) query->jointree, context))
@@ -3348,6 +3372,31 @@ expression_tree_mutator(Node *node,
 				return (Node *) newnode;
 			}
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_InsertIntoAction:
+			{
+				InsertIntoAction *insert = (InsertIntoAction *) node;
+				InsertIntoAction *newnode;
+
+				FLATCOPY(newnode, insert, InsertIntoAction);
+				MUTATE(newnode->targetList, insert->targetList, List *);
+
+				return (Node *) newnode;
+			}
+			break;
+		case T_ConditionInsertAction:
+			{
+				ConditionInsertAction *cinsert = (ConditionInsertAction *) node;
+				ConditionInsertAction *newnode;
+
+				FLATCOPY(newnode, cinsert, ConditionInsertAction);
+				MUTATE(newnode->qual, cinsert->qual, Node *);
+				MUTATE(newnode->intos, cinsert->intos, List *);
+
+				return (Node *) newnode;
+			}
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_PartitionPruneStepOp:
 			{
 				PartitionPruneStepOp *opstep = (PartitionPruneStepOp *) node;
@@ -3543,6 +3592,9 @@ query_tree_mutator(Query *query,
 	MUTATE(query->havingQual, query->havingQual, Node *);
 	MUTATE(query->limitOffset, query->limitOffset, Node *);
 	MUTATE(query->limitCount, query->limitCount, Node *);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	MUTATE(query->multiInsertActionList, query->multiInsertActionList, List *);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/*
 	 * Most callers aren't interested in SortGroupClause nodes since those
@@ -3937,6 +3989,54 @@ raw_expression_tree_walker(Node *node,
 					return true;
 			}
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_MultiTableInsertStmt:
+			{
+				MultiTableInsertStmt  *stmt = (MultiTableInsertStmt *) node;
+
+				if (walker(stmt->subquery, context))
+					return true;
+				if (walker(stmt->condition_list, context))
+					return true;
+				if (walker(stmt->withClause, context))
+					return true;
+			}
+			break;
+		case T_ConditionInsertClause:
+			{
+				ConditionInsertClause *stmt = (ConditionInsertClause *) node;
+
+				if (walker(stmt->whenClause, context))
+					return true;
+				if (walker(stmt->intos, context))
+					return true;
+			}
+			break;
+		case T_InsertIntoClause:
+			{
+				InsertIntoClause *stmt = (InsertIntoClause *) node;
+
+				if (walker(stmt->relation, context))
+					return true;
+				if (walker(stmt->cols, context))
+					return true;
+				if (walker(stmt->values, context))
+					return true;
+				if (walker(stmt->error_logging_clause, context))
+					return true;
+			}
+			break;
+		case T_ErrorLogClause:
+			{
+				ErrorLogClause *stmt = (ErrorLogClause *) node;
+
+				if (walker(stmt->intoRel, context))
+					return true;
+				if (walker(stmt->simple_expr, context))
+					return true;
+			}
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_MergeWhenClause:
 			{
 				MergeWhenClause *mergeWhenClause = (MergeWhenClause *) node;

@@ -487,6 +487,10 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 		case T_OnConflictExpr:
 		case T_SortGroupClause:
 		case T_MergeAction:
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_InsertIntoAction:
+		case T_ConditionInsertAction:
+		/* End - SRS-SQL-MULTITABLEINSERT */
 			(void) expression_tree_walker(node,
 										  assign_collations_walker,
 										  (void *) &loccontext);

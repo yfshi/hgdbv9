@@ -250,6 +250,11 @@ bool enable_flashback_recycle_bin = false; /* ReqID:SRS-RECOVERY-FLASHBACK */
 
 bool enable_coverwritten_ora_trigger = true;	/* ReqID:SRS-SQL-TRIGGER */
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+bool convert_multiinsert_with_cte = false;
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -1058,6 +1063,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG:6022 */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	{
+		{"ivorysql.convert_multiinsert_with_cte", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Whether convert insert all/first use cte."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&convert_multiinsert_with_cte,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 #endif
 #if 0

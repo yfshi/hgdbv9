@@ -267,3 +267,8 @@ test: ora_trigger
 test: ora_sysview
 #/* End - ReqID: RQ-SQL-SYSVIEW */
 
+
+#/* Begin - MULTITABLEINSERT */
+test: ora_insert_all_first
+test: ora_insert_all_first_usewith
+#/* End - MULTITABLEINSERT */

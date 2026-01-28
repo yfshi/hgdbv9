@@ -86,6 +86,9 @@ make_parsestate(ParseState *parentParseState)
 		/* End - BUG#M0000376 */
 		pstate->p_myssetvar = parentParseState->p_myssetvar;	/* ReqID:SRS-MYSQL-SET  BUG#Z6860 */
 		pstate->p_subselect = parentParseState->p_subselect;	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		pstate->p_stmt_kind = parentParseState->p_stmt_kind;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 	}
 
 	pstate->p_check_column_auto_increment = true; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */

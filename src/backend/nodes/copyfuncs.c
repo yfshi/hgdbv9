@@ -113,6 +113,9 @@ _copyPlannedStmt(const PlannedStmt *from)
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
 	COPY_SCALAR_FIELD(countnode_num);	/* ReqID:SRS-SQL-ROWNUM */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COPY_SCALAR_FIELD(multiInsertUseCte);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	return newnode;
 }
@@ -251,6 +254,10 @@ _copyModifyTable(const ModifyTable *from)
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COPY_NODE_FIELD(rootRelations);
 	COPY_NODE_FIELD(partresultRelations);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COPY_NODE_FIELD(multiInsertActionLists);
+	COPY_SCALAR_FIELD(multiInsertFirst);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	return newnode;
 }
@@ -2652,6 +2659,9 @@ _copyWithCheckOption(const WithCheckOption *from)
 	COPY_STRING_FIELD(polname);
 	COPY_NODE_FIELD(qual);
 	COPY_SCALAR_FIELD(cascaded);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COPY_SCALAR_FIELD(target_index);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	return newnode;
 }
@@ -3440,6 +3450,12 @@ _copyQuery(const Query *from)
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	COPY_SCALAR_FIELD(hasuservar);	/* ReqID:SRS-MYSQL-SET */
 	COPY_NODE_FIELD(oriredactiontargetList);	/* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COPY_NODE_FIELD(multiInsertActionList);
+	COPY_SCALAR_FIELD(multiInsertFirst);
+	COPY_SCALAR_FIELD(multiInsertUseCte);
+	COPY_SCALAR_FIELD(multiInsertRewrite);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	COPY_LOCATION_FIELD(stmt_location);
 	COPY_SCALAR_FIELD(stmt_len);
 
@@ -3532,6 +3548,92 @@ _copyMergeStmt(const MergeStmt *from)
 	return newnode;
 }
 
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+static ErrorLogClause *
+ _copyErrorLogClause(const ErrorLogClause *from)
+{
+	ErrorLogClause *newnode = makeNode(ErrorLogClause);
+
+	COPY_NODE_FIELD(intoRel);
+	COPY_NODE_FIELD(simple_expr);
+	COPY_SCALAR_FIELD(ulimited);
+	COPY_SCALAR_FIELD(limite_num);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+
+static InsertIntoClause *
+_copyInsertIntoClause(const InsertIntoClause *from)
+{
+	InsertIntoClause *newnode = makeNode(InsertIntoClause);
+
+	COPY_NODE_FIELD(relation);
+	COPY_NODE_FIELD(cols);
+	COPY_NODE_FIELD(values);
+	COPY_NODE_FIELD(error_logging_clause);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
+
+static ConditionInsertClause *
+_copyConditionInsertClause(const ConditionInsertClause *from)
+{
+	ConditionInsertClause *newnode = makeNode(ConditionInsertClause);
+
+	COPY_NODE_FIELD(whenClause);
+	COPY_NODE_FIELD(intos);
+	COPY_SCALAR_FIELD(is_else);
+
+	return newnode;
+}
+
+
+static MultiTableInsertStmt *
+_copyMultiTableInsertStmt(const MultiTableInsertStmt *from)
+{
+	MultiTableInsertStmt *newnode = makeNode(MultiTableInsertStmt);
+
+	COPY_NODE_FIELD(subquery);
+	COPY_SCALAR_FIELD(is_first);
+	COPY_NODE_FIELD(condition_list);
+	COPY_NODE_FIELD(withClause);
+
+	return newnode;
+}
+
+
+static InsertIntoAction *
+_copyInsertIntoAction(const InsertIntoAction *from)
+{
+	InsertIntoAction *newnode = makeNode(InsertIntoAction);
+
+	COPY_SCALAR_FIELD(target_rte);
+	COPY_NODE_FIELD(targetList);
+
+	return newnode;
+}
+
+
+static ConditionInsertAction *
+_copyConditionInsertAction(const ConditionInsertAction *from)
+{
+	ConditionInsertAction *newnode = makeNode(ConditionInsertAction);
+
+	COPY_NODE_FIELD(qual);
+	COPY_NODE_FIELD(intos);
+	COPY_SCALAR_FIELD(is_else);
+
+	return newnode;
+}
+
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 static SelectStmt *
 _copySelectStmt(const SelectStmt *from)
 {
@@ -3563,6 +3665,10 @@ _copySelectStmt(const SelectStmt *from)
 	COPY_SCALAR_FIELD(all);
 	COPY_NODE_FIELD(larg);
 	COPY_NODE_FIELD(rarg);
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	COPY_SCALAR_FIELD(multiInsert);
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	return newnode;
 }
 
@@ -6135,6 +6241,26 @@ copyObjectImpl(const void *from)
 		case T_MergeStmt:
 			retval = _copyMergeStmt(from);
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case T_ErrorLogClause:
+			retval = _copyErrorLogClause(from);
+			break;
+		case T_InsertIntoClause:
+			retval = _copyInsertIntoClause(from);
+			break;
+		case T_ConditionInsertClause:
+			retval = _copyConditionInsertClause(from);
+			break;
+		case T_MultiTableInsertStmt:
+			retval = _copyMultiTableInsertStmt(from);
+			break;
+		case T_InsertIntoAction:
+			retval = _copyInsertIntoAction(from);
+			break;
+		case T_ConditionInsertAction:
+			retval = _copyConditionInsertAction(from);
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case T_SelectStmt:
 			retval = _copySelectStmt(from);
 			break;

@@ -5383,6 +5383,10 @@ make_execsql_stmt(int firsttoken, int location)
 	Oid					pkgoid;
 	/* End - ReqID:SRS-PLSQL-Collection */
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	bool				is_multi_insert = false;
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	initStringInfo(&ds);
 	initStringInfo(&ds_collect); /* ReqID:SRS-PLSQL-Collection */
 
@@ -5438,6 +5442,17 @@ make_execsql_stmt(int firsttoken, int location)
 		if (tok == 0)
 			yyerror("unexpected end of function definition");
 
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		/*
+		 * record insert all/first
+		 */
+		if (prev_tok == K_INSERT &&
+			(tok == K_ALL || tok == K_FIRST))
+		{
+			is_multi_insert = true;
+		}
+		/* End - SRS-SQL-MULTITABLEINSERT */
+
 		if (tok == K_INTO)
 		{
 			if (prev_tok == K_INSERT)
@@ -5446,6 +5461,12 @@ make_execsql_stmt(int firsttoken, int location)
 				continue;		/* MERGE INTO is not an INTO-target */
 			if (firsttoken == K_IMPORT)
 				continue;		/* IMPORT ... INTO is not an INTO-target */
+
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			if (is_multi_insert)
+				continue;	/* insert all/first is not an INTO-target */
+
+			/* End - SRS-SQL-MULTITABLEINSERT */
 			if (have_into)
 				yyerror("INTO specified more than once");
 			have_into = true;

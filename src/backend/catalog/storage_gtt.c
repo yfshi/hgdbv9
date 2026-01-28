@@ -1434,7 +1434,8 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 	ListCell   *l;
 	Relation	rel;
 
-	if (!(operation == CMD_INSERT || operation == CMD_MERGE))
+	if (!(operation == CMD_INSERT || operation == CMD_MERGE ||
+			operation == CMD_MULTI_INSERT)) /* SRS-SQL-MULTITABLEINSERT */
 		return;
 
 	if (!RELKIND_HAS_STORAGE(relation->rd_rel->relkind))

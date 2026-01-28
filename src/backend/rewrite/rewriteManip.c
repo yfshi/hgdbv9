@@ -462,6 +462,25 @@ OffsetVarNodes(Node *node, int offset, int sublevels_up)
 
 				rc->rti += offset;
 			}
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			foreach (l, qry->resultRelations)
+			{
+				lfirst_int(l) += offset;
+			}
+
+			foreach (l, qry->multiInsertActionList)
+			{
+				ConditionInsertAction *cinsert = (ConditionInsertAction *) lfirst(l);
+				ListCell *lc;
+
+				foreach (lc, cinsert->intos)
+				{
+					InsertIntoAction *ina = (InsertIntoAction *) lfirst(lc);
+
+					ina->target_rte += offset;
+				}
+			}
+			/* End - SRS-SQL-MULTITABLEINSERT */
 		}
 		query_tree_walker(qry, OffsetVarNodes_walker,
 						  (void *) &context, 0);
@@ -669,6 +688,22 @@ ChangeVarNodes(Node *node, int rt_index, int new_index, int sublevels_up)
 				if (rc->rti == rt_index)
 					rc->rti = new_index;
 			}
+
+			/* Begin - SRS-SQL-MULTITABLEINSERT */
+			foreach (l, qry->multiInsertActionList)
+			{
+				ConditionInsertAction *cinsert = (ConditionInsertAction *) lfirst(l);
+				ListCell *lc;
+
+				foreach (lc, cinsert->intos)
+				{
+					InsertIntoAction *ina = (InsertIntoAction *) lfirst(lc);
+
+					if (ina->target_rte == rt_index)
+						ina->target_rte = new_index;
+				}
+			}
+			/* End - SRS-SQL-MULTITABLEINSERT */
 		}
 		query_tree_walker(qry, ChangeVarNodes_walker,
 						  (void *) &context, 0);

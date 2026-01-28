@@ -1202,6 +1202,11 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				case CMD_MERGE:
 					pname = operation = "Merge";
 					break;
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				case CMD_MULTI_INSERT:
+					pname = operation = "MultiInsert";
+					break;
+				/* End - SRS-SQL-MULTITABLEINSERT */
 				default:
 					pname = "???";
 					break;
@@ -1304,6 +1309,12 @@ ExplainNode(PlanState *planstate, List *ancestors,
 					pname = "Foreign Delete";
 					operation = "Delete";
 					break;
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				case CMD_MULTI_INSERT:
+					pname = "Foreign MultiInsert";
+					operation = "MultiInsert";
+					break;
+				/* End - SRS-SQL-MULTITABLEINSERT */
 				default:
 					pname = "???";
 					break;
@@ -1521,7 +1532,12 @@ ExplainNode(PlanState *planstate, List *ancestors,
 			}
 			break;
 		case T_ModifyTable:
-			ExplainModifyTarget((ModifyTable *) plan, es);
+			{
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				if (((ModifyTable *) plan)->operation != CMD_MULTI_INSERT)
+					ExplainModifyTarget((ModifyTable *) plan, es);
+				/* End - SRS-SQL-MULTITABLEINSERT */
+			}
 			break;
 		case T_NestLoop:
 		case T_MergeJoin:
@@ -3953,6 +3969,12 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 			/* XXX unsupported for now, but avoid compiler noise */
 			foperation = "Foreign Merge";
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case CMD_MULTI_INSERT:
+			operation = "MultiInsert";
+			foperation = "Foreign MultiInsert";
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		default:
 			operation = "???";
 			foperation = "Foreign ???";
@@ -3964,6 +3986,12 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 					(mtstate->mt_nrels == 1 &&
 					 mtstate->resultRelInfo[0].ri_RangeTableIndex != node->nominalRelation));
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/* multi insert doesn't need group target */
+	if (node->operation == CMD_MULTI_INSERT)
+		labeltargets = false;
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	if (labeltargets)
 		ExplainOpenGroup("Target Tables", "Target Tables", false, es);
 
@@ -3971,6 +3999,12 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 	{
 		ResultRelInfo *resultRelInfo = mtstate->resultRelInfo + j;
 		FdwRoutine *fdwroutine = resultRelInfo->ri_FdwRoutine;
+
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		/* multi insert doesn't need group target */
+		if (node->operation == CMD_MULTI_INSERT)
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 
 		if (labeltargets)
 		{
@@ -4113,6 +4147,72 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 			}
 		}
 	}
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	else if (node->operation == CMD_MULTI_INSERT)
+	{
+		ListCell *lc;
+
+		foreach (lc, node->multiInsertActionLists)
+		{
+			ConditionInsertAction *ca = (ConditionInsertAction *) lfirst(lc);
+			ListCell *lc1;
+
+			ExplainOpenGroup("INTO Tables", "INTO Tables", false, es);
+			if (ca->qual != NULL)
+			{
+				show_upper_qual((List *) ca->qual, "When Filter",
+							&mtstate->ps, ancestors, es);
+			}
+			else if (ca->is_else && es->format == EXPLAIN_FORMAT_TEXT)
+			{
+				ExplainIndentText(es);
+				appendStringInfo(es->str, "%s\n", "ELSE");
+			}
+			foreach (lc1, ca->intos)
+			{
+				InsertIntoAction *intoa = (InsertIntoAction *) lfirst(lc1);
+				ResultRelInfo *resultRelInfo = mtstate->resultRelInfo + intoa->target_rte - 1;
+
+				/*
+				 * In text mode, decorate each target with operation type, so that
+				 * ExplainTargetRel's output of " on foo" will read nicely.
+				 */
+				if (es->format == EXPLAIN_FORMAT_TEXT)
+				{
+					ExplainIndentText(es);
+					appendStringInfoString(es->str,
+										   "  INTO");
+				}
+
+				/* Identify target */
+				ExplainTargetRel((Plan *) node,
+								 resultRelInfo->ri_RangeTableIndex,
+								 es, false);	/* ReqID:SRS-MYSQL-UPDATE */
+
+				if (es->format == EXPLAIN_FORMAT_TEXT)
+				{
+					appendStringInfoChar(es->str, '\n');
+				}
+			}
+			ExplainCloseGroup("INTO Tables", "INTO Tables", false, es);
+		}
+		/* EXPLAIN ANALYZE display of tuples processed */
+		if (es->analyze && mtstate->ps.instrument)
+		{
+			double		source_rows;
+			double		insert_path;
+
+			InstrEndLoop(outerPlanState(mtstate)->instrument);
+
+			/* count the number of source rows */
+			source_rows = outerPlanState(mtstate)->instrument->ntuples;
+			insert_path = mtstate->mt_multi_inserted;
+
+			ExplainPropertyFloat("Source Tuples", NULL, source_rows, 0, es);
+			ExplainPropertyFloat("Tuples Inserted", NULL, insert_path, 0, es);
+		}
+	}
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	/* Gather names of ON duplicate key update */

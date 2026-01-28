@@ -72,6 +72,11 @@
 
 #include "utils/lsyscache.h"
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+#include "partitioning/partdesc.h"
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 typedef struct MTTargetRelLookup
 {
 	Oid			relationOid;	/* hash key, must be first */
@@ -118,6 +123,14 @@ static void ExecInitMerge(ModifyTableState *mtstate, EState *estate);
 static void ExecMergeNotMatched(ModifyTableContext *context,
 								ResultRelInfo *resultRelInfo,
 								bool canSetTag);
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+static void ExecInitMultiInsert(ModifyTableState *mtstate, EState *estate);
+static TupleTableSlot *ExecMultiInsert(ModifyTableContext *context,
+							ResultRelInfo *resultRelInfo,
+							TupleTableSlot *slot,
+							bool canSetTag);
+/* End - SRS-SQL-MULTITABLEINSERT */
+
 
 /* Begin - ReqID:SRS-SQL-MERGE */
 exec_merge_matched_hook_type pg_exec_merge_matched_hook = ExecMergeMatched;
@@ -1391,7 +1404,11 @@ ExecInsert(ModifyTableContext *context,
 		}
 	}
 
-	if (canSetTag)
+	/*
+	 * there, multi table insert convert to insert + cte
+	 * we should inclue cte insert rows
+	 */
+	if (canSetTag || estate->es_multi_insert_usecte) /* SRS-SQL-MULTITABLEINSERT */
 		(estate->es_processed)++;
 
 	/*
@@ -3992,6 +4009,172 @@ mergeGetUpdateNewTuple(ResultRelInfo *relinfo,
 	return ExecProject(relaction->mas_proj);
 }
 
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/*
+ * Initialize state for execution of insert all/first.
+ */
+static void
+ExecInitMultiInsert(ModifyTableState *mtstate, EState *estate)
+{
+	ModifyTable *node = (ModifyTable *) mtstate->ps.plan;
+	ResultRelInfo *resultRelInfo;
+	ExprContext *econtext;
+	ListCell   *lc;
+
+	if (node->multiInsertActionLists == NIL)
+		return;
+
+	if (mtstate->ps.ps_ExprContext == NULL)
+		ExecAssignExprContext(estate, &mtstate->ps);
+	econtext = mtstate->ps.ps_ExprContext;
+
+	/*
+	 * Create a ConditionInsertActionState for each action on the mergeActionList and
+	 * add it to either a list of matched actions or not-matched actions.
+	 *
+	 * Similar logic appears in ExecInitPartitionInfo(), so if changing
+	 * anything here, do so there too.
+	 */
+	foreach(lc, node->multiInsertActionLists)
+	{
+		ConditionInsertAction *condinsert = (ConditionInsertAction *) lfirst(lc);
+		ListCell   *llc;
+		ConditionInsertState *cstate = makeNode(ConditionInsertState);
+
+		cstate->whenqual = ExecInitQual((List *) condinsert->qual,
+													  &mtstate->ps);
+		cstate->is_else = condinsert->is_else;
+
+		foreach (llc, condinsert->intos)
+		{
+			InsertIntoAction *intoa = (InsertIntoAction *) lfirst(llc);
+			TupleTableSlot *tgtslot;
+			TupleDesc	tgtdesc;
+
+			resultRelInfo = mtstate->resultRelInfo + intoa->target_rte - 1;
+
+			/* initialize slots for insert fetches from this rel */
+			if (unlikely(!resultRelInfo->ri_projectNewInfoValid))
+				ExecInitMergeTupleSlots(mtstate, resultRelInfo);
+
+			ExecCheckPlanOutput(resultRelInfo->ri_RelationDesc,
+										intoa->targetList);
+			if (resultRelInfo->ri_RelationDesc->rd_rel->relkind ==
+						RELKIND_PARTITIONED_TABLE &&
+				resultRelInfo->ri_partition_tuple_routing == NULL)
+			{
+				PartitionDirectory save_direc = estate->es_partition_directory;
+
+				resultRelInfo->ri_partition_tuple_routing =
+								ExecSetupPartitionTupleRouting(estate,
+															   resultRelInfo->ri_RelationDesc);
+				resultRelInfo->ri_part_dir = estate->es_partition_directory;
+				estate->es_partition_directory = save_direc;
+			}
+			tgtslot = resultRelInfo->ri_newTupleSlot;
+			tgtdesc = RelationGetDescr(resultRelInfo->ri_RelationDesc);
+
+			cstate->projs = lappend(cstate->projs,
+							ExecBuildProjectionInfo(intoa->targetList, econtext,
+												tgtslot,
+												&mtstate->ps,
+												tgtdesc));
+		}
+		cstate->intos = condinsert->intos;
+		mtstate->mt_multi_inserts = lappend(mtstate->mt_multi_inserts,
+								cstate);
+	}
+}
+
+
+/*
+ * handle Insert ALL/FIRST
+ */
+static TupleTableSlot *
+ExecMultiInsert(ModifyTableContext *context,
+						ResultRelInfo *resultRelInfo,
+						TupleTableSlot *slot,
+						bool canSetTag)
+{
+	ModifyTableState *mtstate = context->mtstate;
+	TupleTableSlot *newslot;
+	ExprContext *econtext = mtstate->ps.ps_ExprContext;
+	ListCell   *l;
+	bool	has_match = false;
+	bool	is_multi_first = ((ModifyTable *) mtstate->ps.plan)->multiInsertFirst;
+
+	/*
+	 * Make source tuple available to ExecQual and ExecProject. We don't need
+	 * the target tuple, since the WHEN quals and targetlist can't refer to
+	 * the target columns.
+	 */
+	econtext->ecxt_scantuple = NULL;
+	econtext->ecxt_innertuple = slot;
+	econtext->ecxt_outertuple = NULL;
+
+	foreach (l, mtstate->mt_multi_inserts)
+	{
+		ConditionInsertState *cstate = (ConditionInsertState *) lfirst(l);
+		ListCell *lc;
+		ListCell *lc1;
+
+		/*
+		 * Test condition, if any
+		 */
+		if (!ExecQual(cstate->whenqual, econtext))
+			continue;
+
+		/*
+		 * ignore else stmt, which has match
+		 */
+		if (cstate->is_else && has_match)
+			continue;
+
+		forboth(lc, cstate->intos, lc1, cstate->projs)
+		{
+			ProjectionInfo *proj = (ProjectionInfo *) lfirst(lc1);
+			InsertIntoAction *intoa = (InsertIntoAction *) lfirst(lc);
+			TransitionCaptureState *save_catptrue = mtstate->mt_transition_capture;
+			struct PartitionTupleRouting *save_routing = mtstate->mt_partition_tuple_routing;
+			ResultRelInfo *save_rootinfo = mtstate->rootResultRelInfo;
+			PartitionDirectory save_dir = context->estate->es_partition_directory;
+
+			resultRelInfo = mtstate->resultRelInfo + intoa->target_rte - 1;
+			mtstate->mt_partition_tuple_routing = resultRelInfo->ri_partition_tuple_routing;
+			mtstate->rootResultRelInfo = resultRelInfo;
+			Assert(intoa->target_rte <= mtstate->mt_nrels);
+			mtstate->mt_transition_capture = mtstate->mt_transition_captures[intoa->target_rte - 1];
+			context->estate->es_partition_directory = resultRelInfo->ri_part_dir;
+
+			newslot = ExecProject(proj);
+			(void ) ExecInsert(context, resultRelInfo, newslot, canSetTag,
+								NULL, NULL);
+			/*
+			 * es_partition_directory mabye set in ExecFindPartition,
+			 * so we save it in resultRenInfo
+			 */
+			resultRelInfo->ri_part_dir = context->estate->es_partition_directory;
+
+			/* recover mtstate attributes */
+			mtstate->mt_transition_capture = save_catptrue;
+			mtstate->mt_partition_tuple_routing = save_routing;
+			mtstate->rootResultRelInfo = save_rootinfo;
+			context->estate->es_partition_directory = save_dir;
+
+			mtstate->mt_multi_inserted += 1;
+		}
+		/* first,we can break */
+		if (is_multi_first)
+			break;
+		has_match = true;
+	}
+
+	return NULL;
+}
+
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 /*
  * Process BEFORE EACH STATEMENT triggers
  */
@@ -4095,6 +4278,28 @@ fireBSTriggers(ModifyTableState *node)
 			if (node->mt_merge_subcommands & MERGE_DELETE)
 				ExecBSDeleteTriggers(node->ps.state, resultRelInfo);
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case CMD_MULTI_INSERT:
+			{
+				ListCell *lc;
+
+				foreach (lc, node->mt_multi_inserts)
+				{
+					ConditionInsertState *cstate = (ConditionInsertState *) lfirst(lc);
+					ListCell *llc;
+
+					foreach (llc, cstate->intos)
+					{
+						InsertIntoAction *intoa = (InsertIntoAction *) lfirst(llc);
+
+						resultRelInfo = node->resultRelInfo + intoa->target_rte - 1;
+
+						ExecBSInsertTriggers(node->ps.state, resultRelInfo);
+					}
+				}
+			}
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		default:
 			elog(ERROR, "unknown operation");
 			break;
@@ -4231,6 +4436,29 @@ fireASTriggers(ModifyTableState *node)
 										 node->mt_transition_capture);
 			}
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case CMD_MULTI_INSERT:
+			{
+				ListCell *lc;
+
+				foreach (lc, node->mt_multi_inserts)
+				{
+					ConditionInsertState *cstate = (ConditionInsertState *) lfirst(lc);
+					ListCell *llc;
+
+					foreach (llc, cstate->intos)
+					{
+						InsertIntoAction *intoa = (InsertIntoAction *) lfirst(llc);
+
+						resultRelInfo = node->resultRelInfo + intoa->target_rte - 1;
+
+						ExecASInsertTriggers(node->ps.state, resultRelInfo,
+								 node->mt_transition_captures[intoa->target_rte - 1]);
+					}
+				}
+			}
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		default:
 			elog(ERROR, "unknown operation");
 			break;
@@ -4248,10 +4476,37 @@ ExecSetupTransitionCaptureState(ModifyTableState *mtstate, EState *estate)
 	ResultRelInfo *targetRelInfo = mtstate->rootResultRelInfo;
 
 	/* Check for transition tables on the directly targeted relation. */
-	mtstate->mt_transition_capture =
-		MakeTransitionCaptureState(targetRelInfo->ri_TrigDesc,
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (mtstate->operation == CMD_MULTI_INSERT)
+	{
+		int i = 0;
+		ListCell *lc;
+		ModifyTable *plan = (ModifyTable *) mtstate->ps.plan;
+
+		mtstate->mt_transition_captures = (struct TransitionCaptureState **) palloc0(mtstate->mt_nrels *
+			sizeof(struct TransitionCaptureState *));
+
+		foreach (lc, plan->resultRelations)
+		{
+			int rt_index = lfirst_int(lc);
+			ResultRelInfo *relinfo = mtstate->resultRelInfo + rt_index - 1;
+
+			Assert(rt_index <= mtstate->mt_nrels);
+			Assert(mtstate->mt_transition_captures[rt_index - 1] == NULL);
+			mtstate->mt_transition_captures[rt_index - 1] =
+				MakeTransitionCaptureState(relinfo->ri_TrigDesc,
+								   RelationGetRelid(relinfo->ri_RelationDesc),
+								   mtstate->operation);
+			i++;
+		}
+		Assert(i == mtstate->mt_nrels);
+	}
+	else
+		mtstate->mt_transition_capture =
+			MakeTransitionCaptureState(targetRelInfo->ri_TrigDesc,
 								   RelationGetRelid(targetRelInfo->ri_RelationDesc),
 								   mtstate->operation);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	if (plan->operation == CMD_INSERT &&
 		plan->onConflictAction == ONCONFLICT_UPDATE)
 		mtstate->mt_oc_transition_capture =
@@ -4847,6 +5102,10 @@ ExecModifyTable(PlanState *pstate)
 				slot = ExecMerge(&context, resultRelInfo, tupleid, node->canSetTag);
 				break;
 
+			case CMD_MULTI_INSERT:
+				slot = ExecMultiInsert(&context, resultRelInfo, slot,
+									  node->canSetTag);
+				break;
 			default:
 				elog(ERROR, "unknown operation");
 				break;
@@ -5111,6 +5370,9 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	mtstate->mt_merge_inserted = 0;
 	mtstate->mt_merge_updated = 0;
 	mtstate->mt_merge_deleted = 0;
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	mtstate->mt_multi_inserted = 0;
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	upsertState = (UpsertState*)palloc0(sizeof(UpsertState));
@@ -5173,8 +5435,9 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		{
 			/* Begin - ReqID:SRS-MYSQL-UPDATE */
 			if(!(MYS_MODE == compatible_mode && node->parseresultrelations &&
-			list_length(node->parseresultrelations) > 1)) /* BUG#Z5121 */
-				Assert(list_length(node->resultRelations) == 1);
+				list_length(node->parseresultrelations) > 1)) /* BUG#Z5121 */
+				Assert(operation == CMD_MULTI_INSERT || /* SRS-SQL-MULTITABLEINSERT */
+				list_length(node->resultRelations) == 1);
 			/* End - ReqID:SRS-MYSQL-UPDATE */
 			mtstate->rootResultRelInfo = mtstate->resultRelInfo;
 			ExecInitResultRelation(estate, mtstate->resultRelInfo,
@@ -5186,13 +5449,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	EvalPlanQualInitExt(&mtstate->mt_epqstate, estate, NULL, NIL,
 						node->epqParam, node->resultRelations);
 	mtstate->fireBSTriggers = true;
-
-	/*
-	 * Build state for collecting transition tuples.  This requires having a
-	 * valid trigger query context, so skip it in explain-only mode.
-	 */
-	if (!(eflags & EXEC_FLAG_EXPLAIN_ONLY))
-		ExecSetupTransitionCaptureState(mtstate, estate);
 
 	/*
 	 * Open all the result relations and initialize the ResultRelInfo structs.
@@ -5240,6 +5496,10 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 				{
 					resultRelInfo->ri_RootResultRelInfo = NULL;
 				}
+				/* Begin - SRS-SQL-MULTITABLEINSERT */
+				else if (operation == CMD_MULTI_INSERT)
+					resultRelInfo->ri_RootResultRelInfo = NULL;
+				/* End - SRS-SQL-MULTITABLEINSERT */
 				else
 					resultRelInfo->ri_RootResultRelInfo = mtstate->rootResultRelInfo;
 			}
@@ -5259,6 +5519,17 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		resultRelInfo++;
 		i++;
 	}
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	/*
+	 * Build state for collecting transition tuples.  This requires having a
+	 * valid trigger query context, so skip it in explain-only mode.
+	 *
+	 * multi insert should ExecInitResultRelation first
+	 */
+	if (!(eflags & EXEC_FLAG_EXPLAIN_ONLY))
+		ExecSetupTransitionCaptureState(mtstate, estate);
+	/* End - SRS-SQL-MULTITABLEINSERT */
 
 	/*
 	 * Now we may initialize the subplan.
@@ -5371,7 +5642,9 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 		 * (This is probably not necessary any longer, but we'll refrain from
 		 * changing it in back branches, in case extension code expects it.)
 		 */
-		if (operation == CMD_INSERT || operation == CMD_UPDATE)
+		if (operation == CMD_INSERT ||
+			operation == CMD_UPDATE ||
+			operation == CMD_MULTI_INSERT)
 			ExecInitStoredGenerated(resultRelInfo, estate, operation);
 	}
 
@@ -5387,7 +5660,8 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
 	if (!(MYS_MODE == compatible_mode && node->parseresultrelations &&
 		list_length(node->parseresultrelations) > 1)) /* BUG#Z5121 */
-		Assert(AttributeNumberIsValid(mtstate->mt_resultOidAttno) || nrels == 1);
+		Assert(AttributeNumberIsValid(mtstate->mt_resultOidAttno) ||
+			nrels == 1 || operation == CMD_MULTI_INSERT); /* SRS-SQL-MULTITABLEINSERT */
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	mtstate->mt_lastResultOid = InvalidOid; /* force lookup at first tuple */
@@ -5614,6 +5888,11 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	if (mtstate->operation == CMD_MERGE)
 		ExecInitMerge(mtstate, estate);
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	if (mtstate->operation == CMD_MULTI_INSERT)
+		ExecInitMultiInsert(mtstate, estate);
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	EvalPlanQualSetPlan(&mtstate->mt_epqstate, subplan, arowmarks);
 
 	/*
@@ -5657,7 +5936,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 				ereport(ERROR,
 						(errcode(ERRCODE_DUPLICATE_TABLE),
 						 errmsg("The partition relation %s is duplicated.", RelationGetRelationName(resultRelInfo->ri_RelationDesc))));
-			else
+			else if (mtstate->operation != CMD_MULTI_INSERT) /* SRS-SQL-MULTITABLEINSERT */
 				Assert(!found);
 			/* End - ReqID:SRS-MYSQL-UPDATE */
 			mtlookup->relationIndex = i;
@@ -5773,6 +6052,18 @@ ExecEndModifyTable(ModifyTableState *node)
 			ExecDropSingleTupleTableSlot(resultRelInfo->ri_Slots[j]);
 			ExecDropSingleTupleTableSlot(resultRelInfo->ri_PlanSlots[j]);
 		}
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		if (node->operation == CMD_MULTI_INSERT)
+		{
+			if (resultRelInfo->ri_partition_tuple_routing != NULL)
+				ExecCleanupTupleRouting(node, resultRelInfo->ri_partition_tuple_routing);
+			if (resultRelInfo->ri_part_dir != NULL)
+			{
+				DestroyPartitionDirectory(resultRelInfo->ri_part_dir);
+				resultRelInfo->ri_part_dir = NULL;
+			}
+		}
+		/* End - SRS-SQL-MULTITABLEINSERT */
 	}
 
 	/*

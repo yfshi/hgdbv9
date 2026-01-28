@@ -90,6 +90,9 @@ typedef struct PlannedStmt
 	int			stmt_location;	/* start location, or -1 if unknown */
 	int			stmt_len;		/* length in bytes; 0 means "rest of string" */
 	int			countnode_num;	/* ReqID:SRS-SQL-ROWNUM */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	bool		multiInsertUseCte;	/* is mulit insert conver to cte */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } PlannedStmt;
 
 /* macro for fetching the Plan associated with a SubPlan node */
@@ -259,6 +262,10 @@ typedef struct ModifyTable
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 	List	   *rootRelations;
 	List	   *partresultRelations;
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	List		*multiInsertActionLists;	/* insert all/first lists */
+	bool		multiInsertFirst;				/* is insert first? */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } ModifyTable;
 
 struct PartitionPruneInfo;		/* forward reference to struct below */

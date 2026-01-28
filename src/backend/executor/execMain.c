@@ -202,6 +202,10 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 	estate->count = (int64*)palloc0(sizeof(int64)*queryDesc->plannedstmt->countnode_num);
 	/* End - ReqID:SRS-SQL-ROWNUM */
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	estate->es_multi_insert_usecte = queryDesc->plannedstmt->multiInsertUseCte;
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	/*
 	 * Fill in external parameters, if any, from queryDesc; and allocate
 	 * workspace for internal parameters
@@ -255,6 +259,7 @@ standard_ExecutorStart(QueryDesc *queryDesc, int eflags)
 		case CMD_DELETE:
 		case CMD_UPDATE:
 		case CMD_MERGE:
+		case CMD_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
 			estate->es_output_cid = GetCurrentCommandId(true);
 			break;
 

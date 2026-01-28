@@ -37,6 +37,9 @@ typedef enum NodeTag
 	T_OnConflictSetState,
 	T_MergeActionState,
 	T_ResultRelInfo,
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	T_ConditionInsertState,
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	T_EState,
 	T_TupleTableSlot,
 
@@ -334,6 +337,14 @@ typedef enum NodeTag
 	T_DeleteStmt,
 	T_UpdateStmt,
 	T_MergeStmt,
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	T_ErrorLogClause,
+	T_InsertIntoClause,
+	T_ConditionInsertClause,
+	T_MultiTableInsertStmt,
+	T_InsertIntoAction,
+	T_ConditionInsertAction,
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	T_SelectStmt,
 	T_ReturnStmt,
 	T_PLAssignStmt,
@@ -775,6 +786,9 @@ typedef enum CmdType
 	CMD_MERGE,					/* merge stmt */
 	CMD_UTILITY,				/* cmds like create, destroy, copy, vacuum,
 								 * etc. */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	CMD_MULTI_INSERT,			/* insert all/first */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 	CMD_NOTHING					/* dummy command for instead nothing rules
 								 * with qual */
 } CmdType;

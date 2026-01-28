@@ -203,7 +203,7 @@ EndCommand(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_o
 							 tagname, qc->nprocessed);
 				else
 					snprintf(completionTag, COMPLETION_TAG_BUFSIZE,
-							 tag == CMDTAG_INSERT ?
+							 (tag == CMDTAG_INSERT || tag == CMDTAG_MULTIINSERT) ?
 							 "%s 0 " UINT64_FORMAT : "%s " UINT64_FORMAT,
 							 tagname, qc->nprocessed);
 			}

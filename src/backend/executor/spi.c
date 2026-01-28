@@ -2138,6 +2138,10 @@ SPI_result_code_string(int code)
 			return "SPI_OK_SELINTO";
 		case SPI_OK_INSERT:
 			return "SPI_OK_INSERT";
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case SPI_OK_MULTI_INSERT:
+			return "SPI_OK_MULTI_INSERT";
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		case SPI_OK_DELETE:
 			return "SPI_OK_DELETE";
 		case SPI_OK_UPDATE:
@@ -3049,6 +3053,11 @@ _SPI_pquery(QueryDesc *queryDesc, bool fire_triggers, uint64 tcount)
 		case CMD_MERGE:
 			res = SPI_OK_MERGE;
 			break;
+		/* Begin - SRS-SQL-MULTITABLEINSERT */
+		case CMD_MULTI_INSERT:
+			res = SPI_OK_MULTI_INSERT;
+			break;
+		/* End - SRS-SQL-MULTITABLEINSERT */
 		default:
 			return SPI_ERROR_OPUNKNOWN;
 	}

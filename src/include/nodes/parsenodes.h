@@ -217,6 +217,13 @@ typedef struct Query
 	List	   *oriredactiontargetList;
 	/* End - BUG#Z6106 */
 
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	List	   *multiInsertActionList;	/* list of actions for INSERT all/first */
+	bool		multiInsertFirst;		/* is insert first? */
+	bool		multiInsertUseCte;		/* wether it is multi insert convert to cte */
+	bool		multiInsertRewrite;		/* wether it is rewriting insert all/first? */
+	/* End - SRS-SQL-MULTITABLEINSERT */
+
 	/*
 	 * The following two fields identify the portion of the source text string
 	 * containing this query.  They are typically only populated in top-level
@@ -1349,6 +1356,9 @@ typedef struct WithCheckOption
 	char	   *polname;		/* name of RLS policy being checked */
 	Node	   *qual;			/* constraint qual to check */
 	bool		cascaded;		/* true for a cascaded WCO on a view */
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	int			target_index;		/* result index for insert all/first */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } WithCheckOption;
 
 /*
@@ -1915,6 +1925,93 @@ typedef struct MergeStmt
 	WithClause *withClause;		/* WITH clause */
 } MergeStmt;
 
+
+/* Begin - SRS-SQL-MULTITABLEINSERT */
+/* -------------------------------------
+ *       ErrorLogClause
+ * -------------------------------------
+ */
+typedef struct ErrorLogClause
+{
+	NodeTag		type;
+	RangeVar	*intoRel;		/* optional:into target rel */
+	Node		*simple_expr;	/* optional: simple express */
+	bool		ulimited;		/* limit unlimited ? */
+	int			limite_num;		/* the limit number */
+	int			location;
+} ErrorLogClause;
+
+
+/* -----------------------
+ *       InsertIntoClause
+ * ------------------------
+ */
+typedef struct InsertIntoClause
+{
+	NodeTag		type;
+	RangeVar	*relation;		/* target relation to into */
+	List		*cols;			/* optional: names of the target columns */
+	List		*values;		/* optional: names of the values */
+	ErrorLogClause		*error_logging_clause; /* the error logging_caluse */
+	int			location;
+} InsertIntoClause;
+
+
+/* -------------------------------
+ *     ConditionInsertClause
+ * -------------------------------
+ */
+typedef struct ConditionInsertClause
+{
+	NodeTag		type;
+	Node		*whenClause;	/* optional: the when expr */
+	List		*intos;			/* the list of InsertIntoClause */
+	bool		is_else;		/* is the else ConditonInsertCaluse */
+} ConditionInsertClause;
+
+
+/* ------------------------------
+ *          Insert All/First stmt
+ * -------------------------------
+ */
+typedef struct MultiTableInsertStmt
+{
+	NodeTag		type;
+	Node		*subquery;		/* the Source of SelectStmt */
+	bool		is_first;		/* is first or all option */
+	List		*condition_list;	/* the list of 	ConditionInsertClause */
+	WithClause *withClause;		/* WITH clause */
+} MultiTableInsertStmt;
+
+
+/* --------------------------
+ * InsertIntoAction
+ * Transformed representation of a InsertIntoClause+
+ * --------------------------
+ */
+typedef struct InsertIntoAction
+{
+	NodeTag		type;
+	int target_rte;
+	List	*targetList;
+} InsertIntoAction;
+
+
+/*-----------------------------------
+ *     ConditionInsertAction
+ * Transformed representation of a ConditionInsertClause
+ * ----------------------------------
+ */
+typedef struct ConditionInsertAction
+{
+	NodeTag		type;
+	Node		*qual;		/* the qual */
+	List		*intos;		/* the into action */
+	bool		is_else;	/* is the else condition */
+} ConditionInsertAction;
+/* End - SRS-SQL-MULTITABLEINSERT */
+
+
 /* ----------------------
  *		Select Statement
  *
@@ -1991,6 +2088,10 @@ typedef struct SelectStmt
 	struct SelectStmt *larg;	/* left child */
 	struct SelectStmt *rarg;	/* right child */
 	/* Eventually add fields for CORRESPONDING spec here */
+
+	/* Begin - SRS-SQL-MULTITABLEINSERT */
+	bool	multiInsert;	/* for insert all/first change */
+	/* End - SRS-SQL-MULTITABLEINSERT */
 } SelectStmt;
 
 
