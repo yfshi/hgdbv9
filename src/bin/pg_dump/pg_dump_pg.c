@@ -1186,6 +1186,13 @@ selectDumpableExtension(ExtensionInfo *extinfo, DumpOptions *dopt)
 				simple_oid_list_member(&extension_include_oids,
 									   extinfo->dobj.catId.oid) ?
 				DUMP_COMPONENT_ALL : DUMP_COMPONENT_NONE;
+		/* Begin - BUG #Z7100 */
+		else if (extension_exclude_oids.head != NULL)
+			extinfo->dobj.dump = extinfo->dobj.dump_contains =
+				simple_oid_list_member(&extension_exclude_oids,
+									   extinfo->dobj.catId.oid) ?
+				DUMP_COMPONENT_NONE : DUMP_COMPONENT_ALL;
+		/* End - BUG #Z7100 */
 		else
 			extinfo->dobj.dump = extinfo->dobj.dump_contains =
 				dopt->include_everything ?
@@ -18250,6 +18257,17 @@ processExtensionTables(Archive *fout, ExtensionInfo extinfo[],
 			!simple_oid_list_member(&extension_include_oids,
 									curext->dobj.catId.oid))
 			continue;
+
+		/* Being - BUG #Z7100 */
+		/*
+		 * Check if this extension is listed as to exclude in the dump.  If
+		 * so, any table data associated with it is discarded.
+		 */
+		if (extension_exclude_oids.head != NULL &&
+			simple_oid_list_member(&extension_exclude_oids,
+									curext->dobj.catId.oid))
+			continue;
+		/* End - BUG #Z7100 */
 
 		if (strlen(extconfig) != 0 || strlen(extcondition) != 0)
 		{

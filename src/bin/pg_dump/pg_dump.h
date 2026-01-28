@@ -829,6 +829,11 @@ extern SimpleOidList foreign_servers_include_oids;
 extern SimpleStringList extension_include_patterns;
 extern SimpleOidList extension_include_oids;
 
+/* Begin - BUG #Z7100 */
+extern SimpleStringList extension_exclude_patterns;
+extern SimpleOidList extension_exclude_oids;
+/* End - BUG #Z7100 */
+
 extern const CatalogId nilCatalogId;
 
 extern bool have_extra_float_digits;

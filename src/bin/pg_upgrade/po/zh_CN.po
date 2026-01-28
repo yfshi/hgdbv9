@@ -1416,6 +1416,11 @@ msgstr "  -V, --version                 显示版本信息，然后退出\n"
 msgid "  -G, --highgo-version          output version of highgo information, then exit\n"
 msgstr "  -G, --highgo-version          输出版本信息, 然后退出\n"
 
+#option.c:468
+#, c-format
+msgid "  -X, --exclude-extension       do not dump and restore extension\n"
+msgstr "  -X, --exclude-extension       不转储指定的扩展\n"
+
 #: option.c:413
 #, c-format
 #| msgid "  -p, --old-port=PORT           old cluster port number (default %d)\n"

@@ -73,6 +73,9 @@ parseCommandLine(int argc, char *argv[])
 		/* Begin - Bug# Z1638 */
 		{"dbname", required_argument, NULL, 'N'},
 		/* End - Bug# Z1638 */
+		/* Begin - BUG #Z7100 */
+		{"exclude-extension", required_argument, NULL, 'X'},
+		/* End - BUG #Z7100 */
 
 		{NULL, 0, NULL, 0}
 	};
@@ -106,6 +109,11 @@ parseCommandLine(int argc, char *argv[])
 	old_cluster.dbname = "postgres";
 	new_cluster.dbname = "postgres";
 	/* End - Bug# Z1638 */
+
+	/* Begin - BUG #Z7100 */
+	old_cluster.extension_exclude_patterns.head = NULL;
+	old_cluster.extension_exclude_patterns.tail = NULL;
+	/* End - BUG #Z7100 */
 
 	#ifndef USE_ROOT
 	os_user_effective_id = 
@@ -171,7 +179,7 @@ parseCommandLine(int argc, char *argv[])
 #endif
 /* End - Bug#M0000315 */
 
-	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rRs:U:vN:",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME *//* Bug# Z1638 */
+	while ((option = getopt_long(argc, argv, "d:D:b:B:cj:ko:O:p:P:q:Q:y:Y:rRs:U:vN:X:",	/* ReqID:SRS-GKC-DATATYPE_001 */  /* ReqID:SRS-MISC-MYSQL-FRAME *//* Bug# Z1638 */
 								 long_options, &optindex)) != -1)
 	{
 		switch (option)
@@ -306,6 +314,12 @@ parseCommandLine(int argc, char *argv[])
 					pg_fatal("invalid new port number\n");
 				break;
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+
+			/* Begin - BUG #Z7100 */
+			case 'X':
+				simple_string_list_append(&old_cluster.extension_exclude_patterns, optarg);
+				break;
+			/* End - BUG #Z7100 */
 
 			case 1:
 				user_opts.transfer_mode = TRANSFER_MODE_CLONE;
@@ -450,6 +464,9 @@ usage(void)
 	printf(_("  -G, --highgo-version          output version of highgo information, then exit\n"));
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
+	/* Begin - BUG #Z7100 */
+	printf(_("  -X, --exclude-extension       do not dump and restore extension\n"));
+	/* End - BUG #Z7100 */
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 	printf(_("  -y, --old-mysport=PORT        old cluster mysql port number (default %d)\n"), old_cluster.mysport);
 	printf(_("  -Y, --new-mysport=PORT        new cluster mysql port number (default %d)\n"), new_cluster.mysport);

@@ -16,6 +16,10 @@
 #include "common/kmgr_utils.h"
 /* End - ReqID:SRS-SECURITY-TDE */
 
+/* Begin - BUG #Z7100 */
+#include "fe_utils/simple_list.h"
+/* End - BUG #Z7100 */
+
 /* Use port in the private/dynamic port number range */
 #define DEF_PGUPORT			50432
 #define DEF_ORAUPORT		50433	/* ReqID:SRS-GKC-DATATYPE_001 */
@@ -287,6 +291,7 @@ typedef struct
 	uint32		bin_version;	/* version returned from pg_ctl */
 	const char *tablespace_suffix;	/* directory specification */
 	char *dbname;					/* db name *//* Bug# Z1638 */
+	SimpleStringList extension_exclude_patterns;  /* BUG #Z7100 */
 } ClusterInfo;
 
 

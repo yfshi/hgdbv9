@@ -172,6 +172,7 @@ static char *filename = NULL;
 
 static SimpleStringList database_exclude_patterns = {NULL, NULL};
 static SimpleStringList database_exclude_names = {NULL, NULL};
+static SimpleStringList extension_exclude_patterns = {NULL, NULL};		/* BUG #Z7100 */
 
 static char *restrict_key;
 
@@ -297,6 +298,7 @@ main(int argc, char *argv[])
 		{"password", no_argument, NULL, 'W'},
 		{"no-privileges", no_argument, NULL, 'x'},
 		{"no-acl", no_argument, NULL, 'x'},
+		{"exclude-extension", required_argument, NULL, 'X'},	/* BUG #Z7100 */
 
 		/*
 		 * the following options don't have an equivalent short option letter
@@ -402,7 +404,7 @@ main(int argc, char *argv[])
 
 	pgdumpopts = createPQExpBuffer();
 
-	while ((c = getopt_long(argc, argv, "acd:E:f:gh:l:Op:rsS:tU:vwWx", long_options, &optindex)) != -1)
+	while ((c = getopt_long(argc, argv, "acd:E:f:gh:l:Op:rsS:tU:vwWxX:", long_options, &optindex)) != -1)
 	{
 		switch (c)
 		{
@@ -532,6 +534,11 @@ main(int argc, char *argv[])
 				appendShellString(pgdumpopts, optarg);
 				break;
 
+			/* Begin - BUG #Z7100 */
+			case 'X':
+				simple_string_list_append(&extension_exclude_patterns, optarg);
+				break;
+			/* End - BUG #Z7100 */
 			default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 				exit_nicely(1);
@@ -954,6 +961,7 @@ help(void)
 	printf(_("  -S, --superuser=NAME         superuser user name to use in the dump\n"));
 	printf(_("  -t, --tablespaces-only       dump only tablespaces, no databases or roles\n"));
 	printf(_("  -x, --no-privileges          do not dump privileges (grant/revoke)\n"));
+	printf(_("  -X, --exclude-extension      do not dump extension\n"));	/* BUG #Z7100 */
 	printf(_("  --binary-upgrade             for use by upgrade utilities only\n"));
 	printf(_("  --column-inserts             dump data as INSERT commands with column names\n"));
 	printf(_("  --disable-dollar-quoting     disable dollar quoting, use SQL standard quoting\n"));
@@ -4872,6 +4880,17 @@ runPgDump(const char *dbname, const char *create_opts)
 	appendConnStrVal(connstrbuf, dbname);
 
 	appendShellString(cmd, connstrbuf->data);
+
+	/* Begin - BUG #Z7100 */
+	if (extension_exclude_patterns.head != NULL)
+	{
+		SimpleStringListCell *cell;
+		for (cell = extension_exclude_patterns.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(cmd, " -X %s", cell->val);
+		}
+	}
+	/* End - BUG #Z7100 */
 
 	pg_log_info("running \"%s\"", cmd->data);
 

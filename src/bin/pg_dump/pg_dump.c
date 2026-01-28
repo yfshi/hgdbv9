@@ -167,6 +167,11 @@ SimpleOidList foreign_servers_include_oids = {NULL, NULL};
 SimpleStringList extension_include_patterns = {NULL, NULL};
 SimpleOidList extension_include_oids = {NULL, NULL};
 
+/* Begin - BUG #Z7100 */
+SimpleStringList extension_exclude_patterns = {NULL, NULL};
+SimpleOidList extension_exclude_oids = {NULL, NULL};
+/* End - BUG #Z7100 */
+
 const CatalogId nilCatalogId = {0, 0};
 
 /* override for standard extra_float_digits setting */
@@ -321,6 +326,7 @@ main(int argc, char **argv)
 		{"encoding", required_argument, NULL, 'E'},
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
+		{"exclude-extension", required_argument, NULL, 'X'},	/*  BUG #Z7100 */
 
 		/*
 		 * the following options don't have an equivalent short option letter
@@ -400,7 +406,7 @@ main(int argc, char **argv)
 
 	InitDumpOptions(&dopt);
 
-	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:M:n:N:Op:RsS:t:T:U:vwWxZ:",	/* ReqID:SRS-CMD-PGDUMP */
+	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:M:n:N:Op:RsS:t:T:U:vwWxZ:X:",	/* ReqID:SRS-CMD-PGDUMP */
 							long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -602,6 +608,12 @@ main(int argc, char **argv)
 			case 25:
 				dopt.restrict_key = pg_strdup(optarg);
 				break;
+			/* Begin - BUG #Z7100 */
+			case 'X':
+				simple_string_list_append(&extension_exclude_patterns, optarg);
+				dopt.include_everything = false;
+				break;
+			/* End - BUG #Z7100 */
 			default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 				exit_nicely(1);
@@ -892,6 +904,19 @@ main(int argc, char **argv)
 			fatal("no matching extensions were found");
 	}
 
+	/* Begin - BUG #Z7100 */
+	if (extension_exclude_patterns.head != NULL)
+	{
+		if (extension_include_patterns.head != NULL)
+		{
+			fatal("Parameter include-extension and exclude-extension cannot be set at the same time");
+		}
+		dM->expand_extension_name_patterns(fout, &extension_exclude_patterns,
+									   &extension_exclude_oids,
+									   strict_names);
+	}
+	/* End - BUG #Z7100 */
+
 	/*
 	 * Dumping blobs is the default for dumps where an inclusion switch is not
 	 * used (an "include everything" dump).  -B can be used to exclude blobs
@@ -1097,6 +1122,7 @@ help(const char *progname)
 	printf(_("  -c, --clean                  clean (drop) database objects before recreating\n"));
 	printf(_("  -C, --create                 include commands to create database in dump\n"));
 	printf(_("  -e, --extension=PATTERN      dump the specified extension(s) only\n"));
+	printf(_("  -X, --exclude-extension      do not dump extension\n"));	/* BUG #Z7100 */
 	printf(_("  -E, --encoding=ENCODING      dump the data in encoding ENCODING\n"));
 	printf(_("  -M                           dump the specified compatible_mode data only(pg, oracle, mysql)\n"));	/* BUGZ1299 */
 	printf(_("  -n, --schema=PATTERN         dump the specified schema(s) only\n"));

@@ -17,6 +17,20 @@ generate_old_dump(void)
 {
 	int			dbnum;
 
+	/* Begin - BUG #Z7100 */
+	PQExpBufferData exclude_ext;
+
+	if (old_cluster.extension_exclude_patterns.head != NULL)
+	{
+		SimpleStringListCell *cell;
+		initPQExpBuffer(&exclude_ext);
+		for (cell = old_cluster.extension_exclude_patterns.head; cell; cell = cell->next)
+		{
+			appendPQExpBuffer(&exclude_ext, "--exclude-extension %s ", cell->val);
+		}
+	}
+	/* End - BUG #Z7100 */
+
 	prep_status("Creating dump of global objects");
 
 	/* run new pg_dumpall binary for globals */
@@ -32,10 +46,12 @@ generate_old_dump(void)
 /* END - ReqID:SRS-CMD-highgo2pg */
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
 			  "\"%s/pg_dumpall\" %s --globals-only --quote-all-identifiers "
-			  "--binary-upgrade %s -f %s",
+			  "--binary-upgrade %s -f %s %s",		// BUG #Z7100
 			  new_cluster.bindir, cluster_conn_opts(&old_cluster),
 			  log_opts.verbose ? "--verbose" : "",
-			  GLOBALS_DUMP_FILE);
+			  GLOBALS_DUMP_FILE,
+			  old_cluster.extension_exclude_patterns.head != NULL ? exclude_ext.data : ""	// BUG #Z7100
+			  );
 #endif /* ReqID:SRS-CMD-highgo2pg */
 	check_ok();
 
@@ -72,15 +88,22 @@ generate_old_dump(void)
 #else
 /* END - ReqID:SRS-CMD-highgo2pg */
 		parallel_exec_prog(log_file_name, NULL,
-						   "\"%s/pg_dump\" %s --schema-only --quote-all-identifiers "
-						   "--binary-upgrade --format=custom %s --file=\"%s\" %s",
+						   "\"%s/pg_dump\" %s --schema-only --quote-all-identifiers "		// BUG #Z7100
+						   "--binary-upgrade --format=custom %s --file=\"%s\" %s %s",
 						   new_cluster.bindir, cluster_conn_opts(&old_cluster),
 						   log_opts.verbose ? "--verbose" : "",
-						   sql_file_name, escaped_connstr.data);
+						   sql_file_name, escaped_connstr.data,
+						   old_cluster.extension_exclude_patterns.head != NULL ? exclude_ext.data : ""	// BUG #Z7100
+						   );
 #endif /* ReqID:SRS-CMD-highgo2pg */
 
 		termPQExpBuffer(&escaped_connstr);
 	}
+
+	/* Begin - BUG #Z7100 */
+	if (old_cluster.extension_exclude_patterns.head != NULL)
+		termPQExpBuffer(&exclude_ext);
+	/* End - BUG #Z7100 */
 
 	/* reap all children */
 	while (reap_child(true) == true)
