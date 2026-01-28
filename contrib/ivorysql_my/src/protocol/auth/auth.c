@@ -251,7 +251,7 @@ read_ssl_request(StringInfo buf, Port *port, mysql_handshake_response_t *auth)
     if (mq_getmessage(buf, 0) != STATUS_OK)
     {
         DestroyStringInfo(buf);
-        return NULL;
+        return;
     }
 }
 

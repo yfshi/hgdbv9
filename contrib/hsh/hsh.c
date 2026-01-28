@@ -1887,6 +1887,9 @@ GetTuple(Datum* values, int val_len, bool* nulls, int null_len, SessionHistEntry
 		case CMD_INSERT:
 			values[NATTS_CMDTYPE] = CStringGetTextDatum("insert");
 			break;
+		case CMD_MULTI_INSERT:
+			values[NATTS_CMDTYPE] = CStringGetTextDatum("multiinsert");
+			break;
 		case CMD_DELETE:
 			values[NATTS_CMDTYPE] = CStringGetTextDatum("delete");
 			break;

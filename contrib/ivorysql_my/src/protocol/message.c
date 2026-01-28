@@ -355,7 +355,7 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
 {
     #define SIGNED_BIT (1 << 15)
 
-    Datum   value;
+    Datum   value = 0;
     int     is_unsigned = flag & SIGNED_BIT;
     enum    enum_field_types type = flag & ~SIGNED_BIT;
     Oid     param_type = param->ptype;

@@ -3302,7 +3302,6 @@ main(int argc, char **argv)
 	if ((fpin = fopen(path, "rb")) == NULL)	
 	{
 		fprintf(stderr, _("%s: could not open file.\n"), path);
-		fclose(fpin);
 		return false;
 	}
 
