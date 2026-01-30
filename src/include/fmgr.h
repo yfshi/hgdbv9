@@ -282,6 +282,8 @@ extern struct varlena *pg_detoast_datum_packed(struct varlena *datum);
 #define PG_GETARG_UINT32(n)  DatumGetUInt32(PG_GETARG_DATUM(n))
 #define PG_GETARG_INT16(n)	 DatumGetInt16(PG_GETARG_DATUM(n))
 #define PG_GETARG_UINT16(n)  DatumGetUInt16(PG_GETARG_DATUM(n))
+#define PG_GETARG_INT8(n)	 DatumGetInt8(PG_GETARG_DATUM(n))	/* ReqID: SRS-MYSQL-DATATYPE-INT1 */
+#define PG_GETARG_UINT8(n)	 DatumGetUInt8(PG_GETARG_DATUM(n))	/* ReqID: SRS-MYSQL-DATATYPE-INT1 */
 #define PG_GETARG_CHAR(n)	 DatumGetChar(PG_GETARG_DATUM(n))
 #define PG_GETARG_BOOL(n)	 DatumGetBool(PG_GETARG_DATUM(n))
 #define PG_GETARG_OID(n)	 DatumGetObjectId(PG_GETARG_DATUM(n))

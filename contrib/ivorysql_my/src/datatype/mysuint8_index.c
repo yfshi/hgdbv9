@@ -1,6 +1,6 @@
 /*------------------------------------------------------------------
  * 
- * File: myuint1.c
+ * File: mysuint8_index.c
  *
  * Abstract: 
  * 		Compatible with MySQL's UINT data type.
@@ -16,65 +16,56 @@
  */
 
 #include "postgres.h"
-#include <ctype.h>
-#include <math.h>
-#include <float.h>
-#include "fmgr.h"
-#include <limits.h>
-#include <sys/time.h>
-#include "access/hash.h"
-#include "access/xact.h"
-#include "catalog/pg_type.h"
-#include "funcapi.h"
-#include "libpq/pqformat.h"
-#include "miscadmin.h"
-#include "pgtime.h"
-#include "nodes/makefuncs.h"
-#include "nodes/nodeFuncs.h"
-#include "parser/scansup.h"
-#include "utils/array.h"
 #include "utils/builtins.h"
-#include "utils/datetime.h"
-#include "utils/formatting.h"
-#include "utils/guc.h"
-#include "utils/timestamp.h"
-#include "utils/varlena.h"
-#include "utils/numeric.h"
 #include "../include/ivorysql_my.h"
 
 /*****************************************************************************
  *	 uint8 hash
 *****************************************************************************/
-PG_FUNCTION_INFO_V1(mysuint8_hash);
-PG_FUNCTION_INFO_V1(mysuint8_hash_extended);
+PG_FUNCTION_INFO_V1(uint8_hash);
+PG_FUNCTION_INFO_V1(uint8_hash_extended);
 
 Datum
-mysuint8_hash(PG_FUNCTION_ARGS)
+uint8_hash(PG_FUNCTION_ARGS)
 {
 	return hashint4(fcinfo);
 }
 
 Datum
-mysuint8_hash_extended(PG_FUNCTION_ARGS)
+uint8_hash_extended(PG_FUNCTION_ARGS)
 {
 	return hashint4extended(fcinfo);
 }
 /*****************************************************************************
  *	 uint8 btree
  *****************************************************************************/
-PG_FUNCTION_INFO_V1(mysuint8int2_cmp);
-PG_FUNCTION_INFO_V1(int2mysuint8_cmp);
-PG_FUNCTION_INFO_V1(mysuint8int4_cmp);
-PG_FUNCTION_INFO_V1(int4mysuint8_cmp);
-PG_FUNCTION_INFO_V1(mysuint8int8_cmp);
-PG_FUNCTION_INFO_V1(int8mysuint8_cmp);
-PG_FUNCTION_INFO_V1(mysuint81_cmp);
-PG_FUNCTION_INFO_V1(mysuint82_cmp);
-PG_FUNCTION_INFO_V1(mysuint84_cmp);
-PG_FUNCTION_INFO_V1(mysuint88_cmp);
+PG_FUNCTION_INFO_V1(uint8int1_cmp);
+PG_FUNCTION_INFO_V1(uint8int2_cmp);
+PG_FUNCTION_INFO_V1(int2uint8_cmp);
+PG_FUNCTION_INFO_V1(uint8int4_cmp);
+PG_FUNCTION_INFO_V1(int4uint8_cmp);
+PG_FUNCTION_INFO_V1(uint8int8_cmp);
+PG_FUNCTION_INFO_V1(int8uint8_cmp);
+PG_FUNCTION_INFO_V1(uint81_cmp);
+PG_FUNCTION_INFO_V1(uint82_cmp);
+PG_FUNCTION_INFO_V1(uint84_cmp);
+PG_FUNCTION_INFO_V1(uint88_cmp);
 
 Datum
-mysuint8int2_cmp(PG_FUNCTION_ARGS)
+uint8int1_cmp(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
+
+	if (val1 < val2)
+		PG_RETURN_INT32(A_LESS_THAN_B);
+	else if (val1 > val2)
+		PG_RETURN_INT32(A_GREATER_THAN_B);
+	PG_RETURN_INT32(A_EQUAL_B);
+}
+
+Datum
+uint8int2_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	int16		val2 = PG_GETARG_INT16(1);
@@ -85,8 +76,9 @@ mysuint8int2_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-int2mysuint8_cmp(PG_FUNCTION_ARGS)
+int2uint8_cmp(PG_FUNCTION_ARGS)
 {
 	int16		val1 = PG_GETARG_INT16(0);
 	uint64		val2 = PG_GETARG_UINT64(1);
@@ -97,8 +89,9 @@ int2mysuint8_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-mysuint8int4_cmp(PG_FUNCTION_ARGS)
+uint8int4_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	int32		val2 = PG_GETARG_INT32(1);
@@ -109,8 +102,9 @@ mysuint8int4_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-int4mysuint8_cmp(PG_FUNCTION_ARGS)
+int4uint8_cmp(PG_FUNCTION_ARGS)
 {
 	int32		val1 = PG_GETARG_INT32(0);
 	uint64		val2 = PG_GETARG_UINT64(1);
@@ -121,8 +115,9 @@ int4mysuint8_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-mysuint8int8_cmp(PG_FUNCTION_ARGS)
+uint8int8_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	int64		val2 = PG_GETARG_INT64(1);
@@ -133,8 +128,9 @@ mysuint8int8_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-int8mysuint8_cmp(PG_FUNCTION_ARGS)
+int8uint8_cmp(PG_FUNCTION_ARGS)
 {
 	int64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = PG_GETARG_UINT64(1);
@@ -145,11 +141,12 @@ int8mysuint8_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-mysuint81_cmp(PG_FUNCTION_ARGS)
+uint81_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	if (val1 < val2)
 		PG_RETURN_INT32(A_LESS_THAN_B);
@@ -157,11 +154,12 @@ mysuint81_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-mysuint82_cmp(PG_FUNCTION_ARGS)
+uint82_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	if (val1 < val2)
 		PG_RETURN_INT32(A_LESS_THAN_B);
@@ -169,11 +167,12 @@ mysuint82_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-mysuint84_cmp(PG_FUNCTION_ARGS)
+uint84_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
 
 	if (val1 < val2)
 		PG_RETURN_INT32(A_LESS_THAN_B);
@@ -181,8 +180,9 @@ mysuint84_cmp(PG_FUNCTION_ARGS)
 		PG_RETURN_INT32(A_GREATER_THAN_B);
 	PG_RETURN_INT32(A_EQUAL_B);
 }
+
 Datum
-mysuint88_cmp(PG_FUNCTION_ARGS)
+uint88_cmp(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
 	uint64		val2 = PG_GETARG_UINT64(1);
@@ -195,188 +195,248 @@ mysuint88_cmp(PG_FUNCTION_ARGS)
 }
 
 /*****************************************************************************
- *	 uint8 --> uint1 uint2 uint4 
+ *	 uint8 --> uint1 uint2 uint4 int1
 *****************************************************************************/
-PG_FUNCTION_INFO_V1(mysuint81_eq);
-PG_FUNCTION_INFO_V1(mysuint81_ne);
-PG_FUNCTION_INFO_V1(mysuint81_lt);
-PG_FUNCTION_INFO_V1(mysuint81_gt);
-PG_FUNCTION_INFO_V1(mysuint81_le);
-PG_FUNCTION_INFO_V1(mysuint81_ge);
+PG_FUNCTION_INFO_V1(uint81_eq);
+PG_FUNCTION_INFO_V1(uint81_ne);
+PG_FUNCTION_INFO_V1(uint81_lt);
+PG_FUNCTION_INFO_V1(uint81_gt);
+PG_FUNCTION_INFO_V1(uint81_le);
+PG_FUNCTION_INFO_V1(uint81_ge);
 
 Datum
-mysuint81_eq(PG_FUNCTION_ARGS)
+uint81_eq(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	PG_RETURN_BOOL(val1 == val2);
 }
 
 Datum
-mysuint81_ne(PG_FUNCTION_ARGS)
+uint81_ne(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	PG_RETURN_BOOL(val1 != val2);
 }
 
 Datum
-mysuint81_lt(PG_FUNCTION_ARGS)
+uint81_lt(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	PG_RETURN_BOOL(val1 < val2);
 }
 
 Datum
-mysuint81_gt(PG_FUNCTION_ARGS)
+uint81_gt(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	PG_RETURN_BOOL(val1 > val2);
 }
 
 Datum
-mysuint81_le(PG_FUNCTION_ARGS)
+uint81_le(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	PG_RETURN_BOOL(val1 <= val2);
 }
 
 Datum
-mysuint81_ge(PG_FUNCTION_ARGS)
+uint81_ge(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint8		val2 = PG_GETARG_UINT64(1);
+	uint8		val2 = PG_GETARG_UINT8(1);
 
 	PG_RETURN_BOOL(val1 >= val2);
 }
 
-PG_FUNCTION_INFO_V1(mysuint82_eq);
-PG_FUNCTION_INFO_V1(mysuint82_ne);
-PG_FUNCTION_INFO_V1(mysuint82_lt);
-PG_FUNCTION_INFO_V1(mysuint82_gt);
-PG_FUNCTION_INFO_V1(mysuint82_le);
-PG_FUNCTION_INFO_V1(mysuint82_ge);
+PG_FUNCTION_INFO_V1(uint82_eq);
+PG_FUNCTION_INFO_V1(uint82_ne);
+PG_FUNCTION_INFO_V1(uint82_lt);
+PG_FUNCTION_INFO_V1(uint82_gt);
+PG_FUNCTION_INFO_V1(uint82_le);
+PG_FUNCTION_INFO_V1(uint82_ge);
 
 Datum
-mysuint82_eq(PG_FUNCTION_ARGS)
+uint82_eq(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	PG_RETURN_BOOL(val1 == val2);
 }
 
 Datum
-mysuint82_ne(PG_FUNCTION_ARGS)
+uint82_ne(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	PG_RETURN_BOOL(val1 != val2);
 }
 
 Datum
-mysuint82_lt(PG_FUNCTION_ARGS)
+uint82_lt(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	PG_RETURN_BOOL(val1 < val2);
 }
 
 Datum
-mysuint82_gt(PG_FUNCTION_ARGS)
+uint82_gt(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	PG_RETURN_BOOL(val1 > val2);
 }
 
 Datum
-mysuint82_le(PG_FUNCTION_ARGS)
+uint82_le(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	PG_RETURN_BOOL(val1 <= val2);
 }
 
 Datum
-mysuint82_ge(PG_FUNCTION_ARGS)
+uint82_ge(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint16		val2 = PG_GETARG_UINT64(1);
+	uint16		val2 = PG_GETARG_UINT16(1);
 
 	PG_RETURN_BOOL(val1 >= val2);
 }
 
-PG_FUNCTION_INFO_V1(mysuint84_eq);
-PG_FUNCTION_INFO_V1(mysuint84_ne);
-PG_FUNCTION_INFO_V1(mysuint84_lt);
-PG_FUNCTION_INFO_V1(mysuint84_gt);
-PG_FUNCTION_INFO_V1(mysuint84_le);
-PG_FUNCTION_INFO_V1(mysuint84_ge);
-
+PG_FUNCTION_INFO_V1(uint84_eq);
+PG_FUNCTION_INFO_V1(uint84_ne);
+PG_FUNCTION_INFO_V1(uint84_lt);
+PG_FUNCTION_INFO_V1(uint84_gt);
+PG_FUNCTION_INFO_V1(uint84_le);
+PG_FUNCTION_INFO_V1(uint84_ge);
 
 Datum
-mysuint84_eq(PG_FUNCTION_ARGS)
+uint84_eq(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_BOOL(val1 == val2);
 }
 
 Datum
-mysuint84_ne(PG_FUNCTION_ARGS)
+uint84_ne(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_BOOL(val1 != val2);
 }
 
 Datum
-mysuint84_lt(PG_FUNCTION_ARGS)
+uint84_lt(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_BOOL(val1 < val2);
 }
 
 Datum
-mysuint84_gt(PG_FUNCTION_ARGS)
+uint84_gt(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_BOOL(val1 > val2);
 }
 
 Datum
-mysuint84_le(PG_FUNCTION_ARGS)
+uint84_le(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
 
 	PG_RETURN_BOOL(val1 <= val2);
 }
 
 Datum
-mysuint84_ge(PG_FUNCTION_ARGS)
+uint84_ge(PG_FUNCTION_ARGS)
 {
 	uint64		val1 = PG_GETARG_UINT64(0);
-	uint32		val2 = PG_GETARG_UINT64(1);
+	uint32		val2 = PG_GETARG_UINT32(1);
+
+	PG_RETURN_BOOL(val1 >= val2);
+}
+
+PG_FUNCTION_INFO_V1(uint8int1_eq);
+PG_FUNCTION_INFO_V1(uint8int1_ne);
+PG_FUNCTION_INFO_V1(uint8int1_lt);
+PG_FUNCTION_INFO_V1(uint8int1_gt);
+PG_FUNCTION_INFO_V1(uint8int1_le);
+PG_FUNCTION_INFO_V1(uint8int1_ge);
+
+Datum
+uint8int1_eq(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
+
+	PG_RETURN_BOOL(val1 == val2);
+}
+
+Datum
+uint8int1_ne(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
+
+	PG_RETURN_BOOL(val1 != val2);
+}
+
+Datum
+uint8int1_lt(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
+
+	PG_RETURN_BOOL(val1 < val2);
+}
+
+Datum
+uint8int1_gt(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
+
+	PG_RETURN_BOOL(val1 > val2);
+}
+
+Datum
+uint8int1_le(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
+
+	PG_RETURN_BOOL(val1 <= val2);
+}
+
+Datum
+uint8int1_ge(PG_FUNCTION_ARGS)
+{
+	uint64		val1 = PG_GETARG_UINT64(0);
+	int8		val2 = PG_GETARG_INT8(1);
 
 	PG_RETURN_BOOL(val1 >= val2);
 }

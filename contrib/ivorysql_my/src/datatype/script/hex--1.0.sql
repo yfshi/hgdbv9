@@ -508,6 +508,21 @@ AS ASSIGNMENT;
 /* End - bug#z6026 */
 
 --
+-- cast (ivy_hex as int1)
+--
+CREATE FUNCTION ivymy.hex2int1(ivy_hex, int, bool, int8)
+RETURNS int1
+AS 'MODULE_PATHNAME', 'hex2int1'
+LANGUAGE C 
+STRICT 
+PARALLEL SAFE 
+IMMUTABLE;
+
+CREATE CAST(ivy_hex as int1) 
+WITH FUNCTION ivymy.hex2int1(ivy_hex, int, bool, int8)
+AS ASSIGNMENT;
+
+--
 -- cast (ivy_hex as int2)
 --
 CREATE FUNCTION ivymy.hex2int2(ivy_hex, int, bool, int8)

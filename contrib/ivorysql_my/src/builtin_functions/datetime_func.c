@@ -604,7 +604,7 @@ static bool extract_date_time(Date_time_format *format,
 						break;
 					default:
 						goto err;
-			}			
+			}	
 			if (error)				// Error from my_strtoll10
 				goto err;
 		}
@@ -823,7 +823,7 @@ str_to_date(PG_FUNCTION_ARGS)
 			|| year != 1000 || mon != 1 || day != 1)
 		{
 			PG_RETURN_DATUM(result);
-		}								
+		}
 	}
 
 	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);

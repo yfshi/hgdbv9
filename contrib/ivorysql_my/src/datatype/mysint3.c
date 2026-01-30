@@ -19,7 +19,6 @@
 #include "postgres.h"
 #include "libpq/pqformat.h"
 #include "utils/builtins.h"
-#include "utils/guc.h"
 #include "../include/ivorysql_my.h"
 
 PG_FUNCTION_INFO_V1(int3_in);
@@ -30,8 +29,9 @@ PG_FUNCTION_INFO_V1(int3_scale);
 PG_FUNCTION_INFO_V1(int8_int3);
 PG_FUNCTION_INFO_V1(int4_int3);
 PG_FUNCTION_INFO_V1(int3_boolean);
-PG_FUNCTION_INFO_V1(myint3_positive);
-PG_FUNCTION_INFO_V1(myint3_negative);
+PG_FUNCTION_INFO_V1(int3_numeric);
+PG_FUNCTION_INFO_V1(int3_positive);
+PG_FUNCTION_INFO_V1(int3_negative);
 
 /* Begin - ReqID: SRS-MYSQL-DATATYPE-INT3 */
 Datum
@@ -91,30 +91,64 @@ Datum
 int8_int3(PG_FUNCTION_ARGS)
 {
 	int64	val1 = PG_GETARG_INT64(0);
+	int32	val2 = val1;
+	bool	is_insert = CALL_IN_INSERT();
 	
-	if (val1 < PG_INT24_MIN || val1 > PG_INT24_MAX)
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
-		val1 = val1 < 0 ? PG_INT24_MIN : PG_INT24_MAX;
+		if (val1 < PG_INT24_MIN || val1 > PG_INT24_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
+			val2 = val1 < 0 ? PG_INT24_MIN : PG_INT24_MAX;
+		}
 	}
-
-	PG_RETURN_INT32(val1);
+	else
+	{
+		if (val1 < PG_INT24_MIN || val1 > PG_INT24_MAX)
+		{
+			ereport(WARNING, (errmsg("integer out of range")));
+			val2 = val1 < 0 ? PG_INT24_MIN : PG_INT24_MAX;
+		}
+	}
+	
+	PG_RETURN_INT32(val2);
 }
 
 Datum
 int4_int3(PG_FUNCTION_ARGS)
 {
 	int32	val1 = PG_GETARG_INT32(0);
+	int32	val2 = val1;
+	bool	is_insert = CALL_IN_INSERT();
 	
-	if (val1 < PG_INT24_MIN || val1 > PG_INT24_MAX)
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
-		val1 = val1 < 0 ? PG_INT24_MIN : PG_INT24_MAX;
+		if (val1 < PG_INT24_MIN || val1 > PG_INT24_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
+			val2 = val1 < 0 ? PG_INT24_MIN : PG_INT24_MAX;
+		}
 	}
+	else
+	{
+		if (val1 < PG_INT24_MIN || val1 > PG_INT24_MAX)
+		{
+			ereport(WARNING, (errmsg("integer out of range")));
+			val2 = val1 < 0 ? PG_INT24_MIN : PG_INT24_MAX;
+		}
+	}
+	
+	PG_RETURN_INT32(val2);
+}
 
-	PG_RETURN_INT32(val1);
+Datum
+int3_numeric(PG_FUNCTION_ARGS)
+{
+	int32	val1 = PG_GETARG_INT32(0);
+
+	PG_RETURN_NUMERIC(int64_to_numeric((int64) val1));
 }
 
 Datum
@@ -128,7 +162,7 @@ int3_boolean(PG_FUNCTION_ARGS)
 
 /* operator +int3 */
 Datum
-myint3_positive(PG_FUNCTION_ARGS)
+int3_positive(PG_FUNCTION_ARGS)
 {
 	int32 num = PG_GETARG_INT32(0);
 
@@ -137,7 +171,7 @@ myint3_positive(PG_FUNCTION_ARGS)
 
 /* operator -int3 */
 Datum
-myint3_negative(PG_FUNCTION_ARGS)
+int3_negative(PG_FUNCTION_ARGS)
 {
 	int32 num = PG_GETARG_INT32(0);
 

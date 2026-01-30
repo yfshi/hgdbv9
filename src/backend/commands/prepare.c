@@ -199,7 +199,6 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 		case CMD_DELETE:
 		case CMD_MERGE:
 		case CMD_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
-		case CMDTAG_REPLACE: /* ReqID:SRS-MYSQL-SQL-PREPARE */
 			/* OK */
 			break;
 		/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
@@ -209,6 +208,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 			{
 				break;
 			}
+			/* fallthrough */
 		/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 		default:
 			ereport(ERROR,

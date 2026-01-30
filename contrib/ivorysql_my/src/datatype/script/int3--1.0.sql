@@ -93,14 +93,25 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE CAST (pg_catalog.numeric AS ivymy.mediumint)
-WITH FUNCTION numeric_mediumint(pg_catalog.numeric, int, bool, int8)
-AS ASSIGNMENT;
-
 CREATE CAST (ivymy.mediumint AS boolean)
 WITH FUNCTION ivymy.int3_boolean(ivymy.mediumint)
 AS ASSIGNMENT;
 
+CREATE FUNCTION ivymy.int3_numeric(ivymy.mediumint)
+RETURNS pg_catalog.numeric
+AS 'MODULE_PATHNAME','int3_numeric'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mediumint AS pg_catalog.numeric)
+WITH FUNCTION ivymy.int3_numeric(ivymy.mediumint)
+AS ASSIGNMENT;
+
+CREATE CAST (pg_catalog.numeric AS ivymy.mediumint)
+WITH FUNCTION numeric_mediumint(pg_catalog.numeric, int, bool, int8)
+AS ASSIGNMENT;
 
 --  "+"
 CREATE FUNCTION ivymy.int3_pl(ivymy.mediumint, ivymy.mediumint)
@@ -135,7 +146,7 @@ CREATE OPERATOR ivymy.- (
 --"sign +"
 CREATE FUNCTION ivymy.int3_positive(ivymy.mediumint)
 RETURNS ivymy.mediumint
-AS 'MODULE_PATHNAME','myint3_positive'
+AS 'MODULE_PATHNAME','int3_positive'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -149,7 +160,7 @@ CREATE OPERATOR ivymy.+ (
 --"sign -"
 CREATE FUNCTION ivymy.int3_negative(ivymy.mediumint)
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','myint3_negative'
+AS 'MODULE_PATHNAME','int3_negative'
 LANGUAGE C
 PARALLEL SAFE
 STRICT

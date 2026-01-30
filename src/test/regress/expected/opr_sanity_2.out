@@ -2260,10 +2260,11 @@ ORDER BY 1, 2, 3;
                        | binary_ops            | binary_ops        | binary
                        | float_ops             | float4_ops        | real
                        | float_ops             | float8_ops        | double precision
-                       | integer_ops           | mysuint1_ops      | ivymy.uint1
-                       | integer_ops           | mysuint2_ops      | ivymy.uint2
-                       | integer_ops           | mysuint4_class    | ivymy.uint4
-                       | integer_ops           | mysuint8_ops      | ivymy.uint8
+                       | integer_ops           | int1_ops          | ivymy.tinyint
+                       | integer_ops           | uint1_ops         | ivymy.uint1
+                       | integer_ops           | uint2_ops         | ivymy.uint2
+                       | integer_ops           | uint4_ops         | ivymy.uint4
+                       | integer_ops           | uint8_ops         | ivymy.uint8
                        | interval_ops          | interval_ops      | interval
                        | jsonb_ops             | jsonb_ops         | jsonb
                        | longblob_ops          | longblob_ops      | longblob
@@ -2286,7 +2287,7 @@ ORDER BY 1, 2, 3;
                        | tsvector_ops          | tsvector_ops      | tsvector
                        | varbinary_ops         | varbinary_ops     | varbinary
                        | year_ops              | year_ops          | ivymy.year
-(35 rows)
+(36 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.

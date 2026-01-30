@@ -3,57 +3,57 @@
  * MySQL uint8 type support
  *
 ***************************************************************/
-CREATE FUNCTION ivymy.mysuint8_in(pg_catalog.cstring, oid, integer, bigint)
+CREATE FUNCTION ivymy.uint8_in(pg_catalog.cstring, oid, integer, bigint)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_in'
+AS 'MODULE_PATHNAME','uint8_in'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_out(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_out(ivymy.uint8)
 RETURNS pg_catalog.cstring
-AS 'MODULE_PATHNAME','mysuint8_out'
+AS 'MODULE_PATHNAME','uint8_out'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_recv(internal, oid, integer, bigint)
+CREATE FUNCTION ivymy.uint8_recv(internal, oid, integer, bigint)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_recv'
+AS 'MODULE_PATHNAME','uint8_recv'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_send(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_send(ivymy.uint8)
 RETURNS bytea
-AS 'MODULE_PATHNAME','mysuint8_send'
+AS 'MODULE_PATHNAME','uint8_send'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_typmodin(pg_catalog.cstring[])
+CREATE FUNCTION ivymy.uint8_typmodin(pg_catalog.cstring[])
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','mysuint8_typmodin'
+AS 'MODULE_PATHNAME','uint8_typmodin'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_typmodout(pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_typmodout(pg_catalog.int4)
 RETURNS pg_catalog.cstring
-AS 'MODULE_PATHNAME','mysuint8_typmodout'
+AS 'MODULE_PATHNAME','uint8_typmodout'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_scale(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_scale(ivymy.uint8, pg_catalog.int4)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_scale'
+AS 'MODULE_PATHNAME','uint8_scale'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -61,35 +61,35 @@ IMMUTABLE;
 
 -- Register the basic I/O for 'uint8' in pg_type.
 UPDATE pg_type
-SET typinput=(SELECT oid FROM pg_proc WHERE proname='mysuint8_in')
+SET typinput=(SELECT oid FROM pg_proc WHERE proname='uint8_in')
 WHERE oid = 9218;
 
 UPDATE pg_type
-SET typoutput=(SELECT oid FROM pg_proc WHERE proname='mysuint8_out')
+SET typoutput=(SELECT oid FROM pg_proc WHERE proname='uint8_out')
 WHERE oid = 9218;
 
 UPDATE pg_type
-SET typreceive=(SELECT oid FROM pg_proc WHERE proname='mysuint8_recv')
+SET typreceive=(SELECT oid FROM pg_proc WHERE proname='uint8_recv')
 WHERE oid = 9218;
 
 UPDATE pg_type
-SET typsend=(SELECT oid FROM pg_proc WHERE proname='mysuint8_send')
+SET typsend=(SELECT oid FROM pg_proc WHERE proname='uint8_send')
 WHERE oid = 9218;
 
 UPDATE pg_type
-SET typmodin=(SELECT oid FROM pg_proc WHERE proname='mysuint8_typmodin')
+SET typmodin=(SELECT oid FROM pg_proc WHERE proname='uint8_typmodin')
 WHERE oid = 9218;
 
 UPDATE pg_type
-SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint8_typmodout')
+SET typmodout=(SELECT oid FROM pg_proc WHERE proname='uint8_typmodout')
 WHERE oid = 9218;
 
 UPDATE pg_type
-SET typmodin=(SELECT oid FROM pg_proc WHERE proname='mysuint8_typmodin')
+SET typmodin=(SELECT oid FROM pg_proc WHERE proname='uint8_typmodin')
 WHERE oid = 9219;
 
 UPDATE pg_type
-SET typmodout=(SELECT oid FROM pg_proc WHERE proname='mysuint8_typmodout')
+SET typmodout=(SELECT oid FROM pg_proc WHERE proname='uint8_typmodout')
 WHERE oid = 9219;
 
 -- Compatible MySQL Cast
@@ -316,63 +316,63 @@ AS ASSIGNMENT;
 
 /* CREATE OPERATOR */
 ----function eq
-CREATE FUNCTION ivymy.mysuint8_eq(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_eq(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_eq'
+AS 'MODULE_PATHNAME','uint8_eq'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_eq(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_eq(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_eqint2'
+AS 'MODULE_PATHNAME','uint8_eqint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_eq(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_eq(pg_catalog.int2, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int2_eqmysuint8'
+AS 'MODULE_PATHNAME','int2_equint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_eq(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_eq(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_eqint4'
+AS 'MODULE_PATHNAME','uint8_eqint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_eq(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_eq(pg_catalog.int4, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_eqmysuint8'
+AS 'MODULE_PATHNAME','int4_equint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_eq(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_eq(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_eqint8'
+AS 'MODULE_PATHNAME','uint8_eqint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_eq(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_eq(pg_catalog.int8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_eqmysuint8'
+AS 'MODULE_PATHNAME','int8_equint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -381,63 +381,63 @@ LEAKPROOF;
 
 
 ----function ne
-CREATE FUNCTION ivymy.mysuint8_ne(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ne(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_ne'
+AS 'MODULE_PATHNAME','uint8_ne'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ne(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_ne(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_neint2'
+AS 'MODULE_PATHNAME','uint8_neint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ne(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_ne(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_neint4'
+AS 'MODULE_PATHNAME','uint8_neint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ne(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_ne(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_neint8'
+AS 'MODULE_PATHNAME','uint8_neint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ne(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ne(pg_catalog.int2, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int2_nemysuint8'
+AS 'MODULE_PATHNAME','int2_neuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ne(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ne(pg_catalog.int4, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_nemysuint8'
+AS 'MODULE_PATHNAME','int4_neuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ne(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ne(pg_catalog.int8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_nemysuint8'
+AS 'MODULE_PATHNAME','int8_neuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -446,63 +446,63 @@ LEAKPROOF;
 
 
 ----function lt
-CREATE FUNCTION ivymy.mysuint8_lt(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_lt(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_lt'
+AS 'MODULE_PATHNAME','uint8_lt'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_lt(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_lt(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_ltint2'
+AS 'MODULE_PATHNAME','uint8_ltint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_lt(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_lt(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_ltint4'
+AS 'MODULE_PATHNAME','uint8_ltint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_lt(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_lt(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_ltint8'
+AS 'MODULE_PATHNAME','uint8_ltint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_lt(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_lt(pg_catalog.int2, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int2_ltmysuint8'
+AS 'MODULE_PATHNAME','int2_ltuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_lt(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_lt(pg_catalog.int4, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_ltmysuint8'
+AS 'MODULE_PATHNAME','int4_ltuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_lt(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_lt(pg_catalog.int8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_ltmysuint8'
+AS 'MODULE_PATHNAME','int8_ltuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -510,63 +510,63 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function gt
-CREATE FUNCTION ivymy.mysuint8_gt(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_gt(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_gt'
+AS 'MODULE_PATHNAME','uint8_gt'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_gt(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_gt(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_gtint2'
+AS 'MODULE_PATHNAME','uint8_gtint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_gt(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_gt(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_gtint4'
+AS 'MODULE_PATHNAME','uint8_gtint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_gt(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_gt(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_gtint8'
+AS 'MODULE_PATHNAME','uint8_gtint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_gt(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_gt(pg_catalog.int2, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int2_gtmysuint8'
+AS 'MODULE_PATHNAME','int2_gtuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_gt(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_gt(pg_catalog.int4, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_gtmysuint8'
+AS 'MODULE_PATHNAME','int4_gtuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_gt(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_gt(pg_catalog.int8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_gtmysuint8'
+AS 'MODULE_PATHNAME','int8_gtuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -574,63 +574,63 @@ IMMUTABLE
 LEAKPROOF;
 
 --function le
-CREATE FUNCTION ivymy.mysuint8_le(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_le(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_le'
+AS 'MODULE_PATHNAME','uint8_le'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_le(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_le(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_leint2'
+AS 'MODULE_PATHNAME','uint8_leint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_le(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_le(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_leint4'
+AS 'MODULE_PATHNAME','uint8_leint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_le(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_le(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_leint8'
+AS 'MODULE_PATHNAME','uint8_leint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_le(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_le(pg_catalog.int2, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int2_lemysuint8'
+AS 'MODULE_PATHNAME','int2_leuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_le(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_le(pg_catalog.int4, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_lemysuint8'
+AS 'MODULE_PATHNAME','int4_leuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_le(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_le(pg_catalog.int8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_lemysuint8'
+AS 'MODULE_PATHNAME','int8_leuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -638,46 +638,18 @@ IMMUTABLE
 LEAKPROOF;
 
 ---function ge
-CREATE FUNCTION ivymy.mysuint8_ge(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ge(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_ge'
+AS 'MODULE_PATHNAME','uint8_ge'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ge(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_ge(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_geint2'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-
-CREATE FUNCTION ivymy.mysuint8_ge(ivymy.uint8, pg_catalog.int4)
-RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_geint4'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_ge(ivymy.uint8, pg_catalog.int8)
-RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_geint8'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-CREATE FUNCTION ivymy.mysuint8_ge(pg_catalog.int2, ivymy.uint8)
-RETURNS boolean
-AS 'MODULE_PATHNAME','int2_gemysuint8'
+AS 'MODULE_PATHNAME','uint8_geint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -685,18 +657,46 @@ IMMUTABLE
 LEAKPROOF;
 
 
-CREATE FUNCTION ivymy.mysuint8_ge(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ge(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_gemysuint8'
+AS 'MODULE_PATHNAME','uint8_geint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_ge(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_ge(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_gemysuint8'
+AS 'MODULE_PATHNAME','uint8_geint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.uint8_ge(pg_catalog.int2, ivymy.uint8)
+RETURNS boolean
+AS 'MODULE_PATHNAME','int2_geuint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+
+CREATE FUNCTION ivymy.uint8_ge(pg_catalog.int4, ivymy.uint8)
+RETURNS boolean
+AS 'MODULE_PATHNAME','int4_geuint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE FUNCTION ivymy.uint8_ge(pg_catalog.int8, ivymy.uint8)
+RETURNS boolean
+AS 'MODULE_PATHNAME','int8_geuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -704,120 +704,120 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function seq
-CREATE FUNCTION ivymy.mysuint8_seq(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_seq(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_seq'
+AS 'MODULE_PATHNAME','uint8_seq'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_seq(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_seq(ivymy.uint8, pg_catalog.int2)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_seqint2'
+AS 'MODULE_PATHNAME','uint8_seqint2'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_seq(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_seq(ivymy.uint8, pg_catalog.int4)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_seqint4'
+AS 'MODULE_PATHNAME','uint8_seqint4'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_seq(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_seq(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_seqint8'
+AS 'MODULE_PATHNAME','uint8_seqint8'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_seq(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_seq(pg_catalog.int2, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_seqmysuint8'
+AS 'MODULE_PATHNAME','int4_sequint8'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_seq(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_seq(pg_catalog.int4, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int4_seqmysuint8'
+AS 'MODULE_PATHNAME','int4_sequint8'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_seq(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_seq(pg_catalog.int8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','int8_seqmysuint8'
+AS 'MODULE_PATHNAME','int8_sequint8'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
 ----function add
-CREATE FUNCTION ivymy.mysuint8_add(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_add(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_addmysuint8'
+AS 'MODULE_PATHNAME','uint8_adduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_add(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_add(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_addint2'
+AS 'MODULE_PATHNAME','uint8_addint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_add(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_add(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_addint4'
+AS 'MODULE_PATHNAME','uint8_addint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_add(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_add(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_addint8'
+AS 'MODULE_PATHNAME','uint8_addint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_add(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_add(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_addmysuint8'
+AS 'MODULE_PATHNAME','int2_adduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_add(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_add(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_addmysuint8'
+AS 'MODULE_PATHNAME','int4_adduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_add(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_add(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_addmysuint8'
+AS 'MODULE_PATHNAME','int8_adduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -825,9 +825,9 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function negative
-CREATE FUNCTION ivymy.mysuint8_negative(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_negative(ivymy.uint8)
 RETURNS  bigint
-AS 'MODULE_PATHNAME','mysuint8_negative'
+AS 'MODULE_PATHNAME','uint8_negative'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -835,63 +835,63 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function sub
-CREATE FUNCTION ivymy.mysuint8_sub(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_sub(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_submysuint8'
+AS 'MODULE_PATHNAME','uint8_subuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_sub(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_sub(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_subint2'
+AS 'MODULE_PATHNAME','uint8_subint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_sub(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_sub(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_subint4'
+AS 'MODULE_PATHNAME','uint8_subint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_sub(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_sub(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_subint8'
+AS 'MODULE_PATHNAME','uint8_subint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_sub(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_sub(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_submysuint8'
+AS 'MODULE_PATHNAME','int2_subuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_sub(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_sub(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_submysuint8'
+AS 'MODULE_PATHNAME','int4_subuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_sub(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_sub(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_submysuint8'
+AS 'MODULE_PATHNAME','int8_subuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -899,36 +899,36 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function multiply
-CREATE FUNCTION ivymy.mysuint8_mul(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mul(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_mulmysuint8'
+AS 'MODULE_PATHNAME','uint8_muluint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mul(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_mul(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_mulint2'
+AS 'MODULE_PATHNAME','uint8_mulint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mul(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_mul(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_mulint4'
+AS 'MODULE_PATHNAME','uint8_mulint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mul(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_mul(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_mulint8'
+AS 'MODULE_PATHNAME','uint8_mulint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -936,27 +936,27 @@ IMMUTABLE
 LEAKPROOF;
 
 
-CREATE FUNCTION ivymy.mysuint8_mul(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mul(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_mulmysuint8'
+AS 'MODULE_PATHNAME','int2_muluint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mul(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mul(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_mulmysuint8'
+AS 'MODULE_PATHNAME','int4_muluint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mul(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mul(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_mulmysuint8'
+AS 'MODULE_PATHNAME','int8_muluint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -964,16 +964,16 @@ IMMUTABLE
 LEAKPROOF;
 
 /* Begin - BUG#6039 */
-CREATE FUNCTION ivymy.mysuint8_mul(double, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mul(double, ivymy.uint8)
 RETURNS  double
-AS 'MODULE_PATHNAME','double_mulmysuint8'
+AS 'MODULE_PATHNAME','double_muluint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mul(ivymy.uint8, double)
+CREATE FUNCTION ivymy.uint8_mul(ivymy.uint8, double)
 RETURNS  double
 AS 'MODULE_PATHNAME','uint8_muldouble'
 LANGUAGE C
@@ -984,63 +984,63 @@ LEAKPROOF;
 /* End - BUG#6039 */
 
 ----function divide
-CREATE FUNCTION ivymy.mysuint8_div(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_div(ivymy.uint8, ivymy.uint8)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mysuint8_divmysuint8'
+AS 'MODULE_PATHNAME','uint8_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_div(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_div(ivymy.uint8, pg_catalog.int2)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mysuint8_divint2'
+AS 'MODULE_PATHNAME','uint8_divint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_div(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_div(ivymy.uint8, pg_catalog.int4)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mysuint8_divint4'
+AS 'MODULE_PATHNAME','uint8_divint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_div(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_div(ivymy.uint8, pg_catalog.int8)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mysuint8_divint8'
+AS 'MODULE_PATHNAME','uint8_divint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_div(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_div(pg_catalog.int2, ivymy.uint8)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','int2_divmysuint8'
+AS 'MODULE_PATHNAME','int2_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_div(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_div(pg_catalog.int4, ivymy.uint8)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','int4_divmysuint8'
+AS 'MODULE_PATHNAME','int4_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_div(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_div(pg_catalog.int8, ivymy.uint8)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','int8_divmysuint8'
+AS 'MODULE_PATHNAME','int8_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1050,7 +1050,7 @@ LEAKPROOF;
 ----function exact division
 CREATE FUNCTION ivymy.mys_div(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_exact_divmysuint8'
+AS 'MODULE_PATHNAME','uint8_exact_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1059,7 +1059,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_exact_divint2'
+AS 'MODULE_PATHNAME','uint8_exact_divint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1068,7 +1068,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_exact_divint4'
+AS 'MODULE_PATHNAME','uint8_exact_divint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1077,7 +1077,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_exact_divint8'
+AS 'MODULE_PATHNAME','uint8_exact_divint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1086,7 +1086,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint4
-AS 'MODULE_PATHNAME','int2_exact_divmysuint8'
+AS 'MODULE_PATHNAME','int2_exact_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1095,7 +1095,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint4
-AS 'MODULE_PATHNAME','int4_exact_divmysuint8'
+AS 'MODULE_PATHNAME','int4_exact_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1104,7 +1104,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mys_div(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_exact_divmysuint8'
+AS 'MODULE_PATHNAME','int8_exact_divuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1112,27 +1112,27 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function mod
-CREATE FUNCTION ivymy.mysuint8_mod(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mod(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_modmysuint8'
+AS 'MODULE_PATHNAME','uint8_moduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mod(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_mod(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_modint2'
+AS 'MODULE_PATHNAME','uint8_modint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mod(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_mod(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_modint4'
+AS 'MODULE_PATHNAME','uint8_modint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1141,43 +1141,43 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mod(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_modint4'
+AS 'MODULE_PATHNAME','uint8_modint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mod(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_mod(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_modint8'
+AS 'MODULE_PATHNAME','uint8_modint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mod(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mod(pg_catalog.int2, ivymy.uint8)
 RETURNS int8
-AS 'MODULE_PATHNAME','int2_modmysuint8'
+AS 'MODULE_PATHNAME','int2_moduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mod(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mod(pg_catalog.int4, ivymy.uint8)
 RETURNS  int8
-AS 'MODULE_PATHNAME','int4_modmysuint8'
+AS 'MODULE_PATHNAME','int4_moduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_mod(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_mod(pg_catalog.int8, ivymy.uint8)
 RETURNS  int8
-AS 'MODULE_PATHNAME','int8_modmysuint8'
+AS 'MODULE_PATHNAME','int8_moduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1185,63 +1185,63 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function &
-CREATE FUNCTION ivymy.mysuint8_bitand(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitand(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitandmysuint8'
+AS 'MODULE_PATHNAME','uint8_bitanduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitand(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_bitand(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitandint2'
+AS 'MODULE_PATHNAME','uint8_bitandint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitand(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_bitand(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitandint4'
+AS 'MODULE_PATHNAME','uint8_bitandint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitand(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_bitand(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitandint8'
+AS 'MODULE_PATHNAME','uint8_bitandint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitand(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitand(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_bitandmysuint8'
+AS 'MODULE_PATHNAME','int2_bitanduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitand(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitand(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_bitandmysuint8'
+AS 'MODULE_PATHNAME','int4_bitanduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitand(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitand(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_bitandmysuint8'
+AS 'MODULE_PATHNAME','int8_bitanduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1249,63 +1249,63 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function |
-CREATE FUNCTION ivymy.mysuint8_bitor(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitor(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitormysuint8'
+AS 'MODULE_PATHNAME','uint8_bitoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitor(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_bitor(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitorint2'
+AS 'MODULE_PATHNAME','uint8_bitorint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitor(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_bitor(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitorint4'
+AS 'MODULE_PATHNAME','uint8_bitorint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitor(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_bitor(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitorint8'
+AS 'MODULE_PATHNAME','uint8_bitorint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitor(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitor(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_bitormysuint8'
+AS 'MODULE_PATHNAME','int2_bitoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitor(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitor(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_bitormysuint8'
+AS 'MODULE_PATHNAME','int4_bitoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitor(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitor(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_bitormysuint8'
+AS 'MODULE_PATHNAME','int8_bitoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1313,9 +1313,9 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function ~
-CREATE FUNCTION ivymy.mysuint8_nega(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_nega(ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_negamysuint8'
+AS 'MODULE_PATHNAME','uint8_negauint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1323,63 +1323,63 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function ^
-CREATE FUNCTION ivymy.mysuint8_bitxor(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitxor(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitxormysuint8'
+AS 'MODULE_PATHNAME','uint8_bitxoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitxor(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_bitxor(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitxorint2'
+AS 'MODULE_PATHNAME','uint8_bitxorint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitxor(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_bitxor(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitxorint4'
+AS 'MODULE_PATHNAME','uint8_bitxorint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitxor(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_bitxor(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_bitxorint8'
+AS 'MODULE_PATHNAME','uint8_bitxorint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitxor(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitxor(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_bitxormysuint8'
+AS 'MODULE_PATHNAME','int2_bitxoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitxor(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitxor(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_bitxormysuint8'
+AS 'MODULE_PATHNAME','int4_bitxoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_bitxor(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_bitxor(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_bitxormysuint8'
+AS 'MODULE_PATHNAME','int8_bitxoruint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1388,63 +1388,63 @@ LEAKPROOF;
 
 
 ----function >>
-CREATE FUNCTION ivymy.mysuint8_rightmov(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_rightmov(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_rightmovmysuint8'
+AS 'MODULE_PATHNAME','uint8_rightmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_rightmov(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_rightmov(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_rightmovint2'
+AS 'MODULE_PATHNAME','uint8_rightmovint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_rightmov(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_rightmov(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_rightmovint4'
+AS 'MODULE_PATHNAME','uint8_rightmovint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_rightmov(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_rightmov(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_rightmovint8'
+AS 'MODULE_PATHNAME','uint8_rightmovint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_rightmov(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_rightmov(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_rightmovmysuint8'
+AS 'MODULE_PATHNAME','int2_rightmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_rightmov(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_rightmov(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_rightmovmysuint8'
+AS 'MODULE_PATHNAME','int4_rightmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_rightmov(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_rightmov(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_rightmovmysuint8'
+AS 'MODULE_PATHNAME','int8_rightmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1452,63 +1452,63 @@ IMMUTABLE
 LEAKPROOF;
 
 ----function <<
-CREATE FUNCTION ivymy.mysuint8_leftmov(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_leftmov(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_leftmovmysuint8'
+AS 'MODULE_PATHNAME','uint8_leftmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_leftmov(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_leftmov(ivymy.uint8, pg_catalog.int2)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_leftmovint2'
+AS 'MODULE_PATHNAME','uint8_leftmovint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_leftmov(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_leftmov(ivymy.uint8, pg_catalog.int4)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_leftmovint4'
+AS 'MODULE_PATHNAME','uint8_leftmovint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_leftmov(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_leftmov(ivymy.uint8, pg_catalog.int8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_leftmovint8'
+AS 'MODULE_PATHNAME','uint8_leftmovint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_leftmov(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_leftmov(pg_catalog.int2, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int2_leftmovmysuint8'
+AS 'MODULE_PATHNAME','int2_leftmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_leftmov(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_leftmov(pg_catalog.int4, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int4_leftmovmysuint8'
+AS 'MODULE_PATHNAME','int4_leftmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_leftmov(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_leftmov(pg_catalog.int8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','int8_leftmovmysuint8'
+AS 'MODULE_PATHNAME','int8_leftmovuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1519,7 +1519,7 @@ LEAKPROOF;
 --  "bit_count"
 CREATE FUNCTION ivymy.bit_count(ivymy.uint8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_bit_count'
+AS 'MODULE_PATHNAME','uint8_bit_count'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1527,63 +1527,63 @@ IMMUTABLE;
 
 
 ----function &&
-CREATE FUNCTION ivymy.mysuint8_and(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_and(ivymy.uint8, ivymy.uint8)
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','mysuint8_andmysuint8'
+AS 'MODULE_PATHNAME','uint8_anduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_and(ivymy.uint8, pg_catalog.int2)
+CREATE FUNCTION ivymy.uint8_and(ivymy.uint8, pg_catalog.int2)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_andint2'
+AS 'MODULE_PATHNAME','uint8_andint2'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_and(ivymy.uint8, pg_catalog.int4)
+CREATE FUNCTION ivymy.uint8_and(ivymy.uint8, pg_catalog.int4)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_andint4'
+AS 'MODULE_PATHNAME','uint8_andint4'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_and(ivymy.uint8, pg_catalog.int8)
+CREATE FUNCTION ivymy.uint8_and(ivymy.uint8, pg_catalog.int8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysuint8_andint8'
+AS 'MODULE_PATHNAME','uint8_andint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_and(pg_catalog.int2, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_and(pg_catalog.int2, ivymy.uint8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int2_andmysuint8'
+AS 'MODULE_PATHNAME','int2_anduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_and(pg_catalog.int4, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_and(pg_catalog.int4, ivymy.uint8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int4_andmysuint8'
+AS 'MODULE_PATHNAME','int4_anduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE FUNCTION ivymy.mysuint8_and(pg_catalog.int8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_and(pg_catalog.int8, ivymy.uint8)
 RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','int8_andmysuint8'
+AS 'MODULE_PATHNAME','int8_anduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1601,9 +1601,9 @@ IMMUTABLE
 LEAKPROOF;
 
 ----operator invert !
-CREATE FUNCTION ivymy.mysuint8_invert(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_invert(ivymy.uint8)
 RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME','mysuint8_invertmysuint8'
+AS 'MODULE_PATHNAME','uint8_invertuint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -1625,34 +1625,34 @@ CREATE CAST (pg_catalog.int8 AS boolean)
 WITH FUNCTION ivymy.int8_boolean(pg_catalog.int8)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.mysuint8_boolean(ivymy.uint8) 
+CREATE FUNCTION ivymy.uint8_boolean(ivymy.uint8) 
 RETURNS boolean 
-AS 'MODULE_PATHNAME','mysuint8_boolean'
+AS 'MODULE_PATHNAME','uint8_boolean'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
 CREATE CAST (ivymy.uint8 AS boolean)
-WITH FUNCTION ivymy.mysuint8_boolean(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_boolean(ivymy.uint8)
 AS ASSIGNMENT;
 
 --uint8 to numeric
-CREATE FUNCTION ivymy.mysuint8_numeric(ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_numeric(ivymy.uint8)
 RETURNS pg_catalog.numeric 
-AS 'MODULE_PATHNAME','mysuint8_numeric'
+AS 'MODULE_PATHNAME','uint8_numeric'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
 CREATE CAST (ivymy.uint8 AS pg_catalog.numeric)
-WITH FUNCTION ivymy.mysuint8_numeric(ivymy.uint8)
+WITH FUNCTION ivymy.uint8_numeric(ivymy.uint8)
 AS IMPLICIT;
 
 ----operator =
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = =,
@@ -1664,7 +1664,7 @@ CREATE OPERATOR = (
 );
 
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = =,
@@ -1675,7 +1675,7 @@ CREATE OPERATOR = (
 );
 
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = =,
@@ -1686,7 +1686,7 @@ CREATE OPERATOR = (
 );
 
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = =,
@@ -1697,7 +1697,7 @@ CREATE OPERATOR = (
 );
 
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = =,
@@ -1708,7 +1708,7 @@ CREATE OPERATOR = (
 );
 
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = =,
@@ -1719,7 +1719,7 @@ CREATE OPERATOR = (
 );
 
 CREATE OPERATOR = (
-	procedure = ivymy.mysuint8_eq,
+	procedure = ivymy.uint8_eq,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = =,
@@ -1731,7 +1731,7 @@ CREATE OPERATOR = (
 
 ----operator <>
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = <>,
@@ -1741,7 +1741,7 @@ CREATE OPERATOR <> (
 );
 
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = <>,
@@ -1751,7 +1751,7 @@ CREATE OPERATOR <> (
 );
 
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = <>,
@@ -1761,7 +1761,7 @@ CREATE OPERATOR <> (
 );
 
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = <>,
@@ -1771,7 +1771,7 @@ CREATE OPERATOR <> (
 );
 
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = <>,
@@ -1781,7 +1781,7 @@ CREATE OPERATOR <> (
 );
 
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = <>,
@@ -1791,7 +1791,7 @@ CREATE OPERATOR <> (
 );
 
 CREATE OPERATOR <> (
-	procedure = ivymy.mysuint8_ne,
+	procedure = ivymy.uint8_ne,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = <>,
@@ -1802,7 +1802,7 @@ CREATE OPERATOR <> (
 
 --operator >
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = <,
@@ -1812,7 +1812,7 @@ CREATE OPERATOR > (
 );
 
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = <,
@@ -1822,7 +1822,7 @@ CREATE OPERATOR > (
 );
 
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = <,
@@ -1832,7 +1832,7 @@ CREATE OPERATOR > (
 );
 
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = <,
@@ -1843,7 +1843,7 @@ CREATE OPERATOR > (
 );
 
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = <,
@@ -1853,7 +1853,7 @@ CREATE OPERATOR > (
 );
 
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = <,
@@ -1863,7 +1863,7 @@ CREATE OPERATOR > (
 );
 
 CREATE OPERATOR > (
-	procedure = ivymy.mysuint8_gt,
+	procedure = ivymy.uint8_gt,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = <,
@@ -1874,7 +1874,7 @@ CREATE OPERATOR > (
 
 ----operator <
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = >,
@@ -1884,7 +1884,7 @@ CREATE OPERATOR < (
 );
 
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = >,
@@ -1894,7 +1894,7 @@ CREATE OPERATOR < (
 );
 
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = >,
@@ -1904,7 +1904,7 @@ CREATE OPERATOR < (
 );
 
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = >,
@@ -1914,7 +1914,7 @@ CREATE OPERATOR < (
 );
 
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = >,
@@ -1924,7 +1924,7 @@ CREATE OPERATOR < (
 );
 
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = >,
@@ -1934,7 +1934,7 @@ CREATE OPERATOR < (
 );
 
 CREATE OPERATOR < (
-	procedure = ivymy.mysuint8_lt,
+	procedure = ivymy.uint8_lt,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = >,
@@ -1945,7 +1945,7 @@ CREATE OPERATOR < (
 
 --operator <=
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = >=,
@@ -1955,7 +1955,7 @@ CREATE OPERATOR <= (
 );
 
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = >=,
@@ -1965,7 +1965,7 @@ CREATE OPERATOR <= (
 );
 
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = >=,
@@ -1975,7 +1975,7 @@ CREATE OPERATOR <= (
 );
 
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = >=,
@@ -1985,7 +1985,7 @@ CREATE OPERATOR <= (
 );
 
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = >=,
@@ -1995,7 +1995,7 @@ CREATE OPERATOR <= (
 );
 
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = >=,
@@ -2005,7 +2005,7 @@ CREATE OPERATOR <= (
 );
 
 CREATE OPERATOR <= (
-	procedure = ivymy.mysuint8_le,
+	procedure = ivymy.uint8_le,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = >=,
@@ -2016,7 +2016,7 @@ CREATE OPERATOR <= (
 
 --operator >=
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = <=,
@@ -2026,7 +2026,7 @@ CREATE OPERATOR >= (
 );
 
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = <=,
@@ -2036,7 +2036,7 @@ CREATE OPERATOR >= (
 );
 
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = <=,
@@ -2046,7 +2046,7 @@ CREATE OPERATOR >= (
 );
 
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = <=,
@@ -2056,7 +2056,7 @@ CREATE OPERATOR >= (
 );
 
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = <=,
@@ -2066,7 +2066,7 @@ CREATE OPERATOR >= (
 );
 
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = <=,
@@ -2076,7 +2076,7 @@ CREATE OPERATOR >= (
 );
 
 CREATE OPERATOR >= (
-	procedure = ivymy.mysuint8_ge,
+	procedure = ivymy.uint8_ge,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = <=,
@@ -2088,57 +2088,57 @@ CREATE OPERATOR >= (
 
 --operator <=>
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR <=> (
-	procedure = ivymy.mysuint8_seq,
+	procedure = ivymy.uint8_seq,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator +
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8,
 	commutator = +
 );
 
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2,
 	commutator = +
@@ -2146,35 +2146,35 @@ CREATE OPERATOR + (
 
 
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4,
 	commutator = +
 );
 
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8,
 	commutator = +
 );
 
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8,
 	commutator = +
 );
 
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8,
 	commutator = +
 );
 
 CREATE OPERATOR + (
-	procedure = ivymy.mysuint8_add,
+	procedure = ivymy.uint8_add,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8,
 	commutator = +
@@ -2182,147 +2182,147 @@ CREATE OPERATOR + (
 
 --operator -
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_negative,
+	procedure = ivymy.uint8_negative,
 	rightarg = ivymy.uint8
 );
 
 --operator -
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR - (
-	procedure = ivymy.mysuint8_sub,
+	procedure = ivymy.uint8_sub,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator *
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = double,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR * (
-	procedure = ivymy.mysuint8_mul,
+	procedure = ivymy.uint8_mul,
 	leftarg = ivymy.uint8,
 	rightarg = double
 );
 
 --operator /
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR / (
-	procedure = ivymy.mysuint8_div,
+	procedure = ivymy.uint8_div,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
@@ -2372,222 +2372,222 @@ CREATE OPERATOR // (
 
 --operator %
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR % (
-	procedure = ivymy.mysuint8_mod,
+	procedure = ivymy.uint8_mod,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator &
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR & (
-	procedure = ivymy.mysuint8_bitand,
+	procedure = ivymy.uint8_bitand,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator |
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR | (
-	procedure = ivymy.mysuint8_bitor,
+	procedure = ivymy.uint8_bitor,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator ~
 CREATE OPERATOR ~ (
-	procedure = ivymy.mysuint8_nega,
+	procedure = ivymy.uint8_nega,
 	rightarg = ivymy.uint8
 );
 
 
 --operator ^
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR ^ (
-	procedure = ivymy.mysuint8_bitxor,
+	procedure = ivymy.uint8_bitxor,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator >>
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR >> (
-	procedure = ivymy.mysuint8_rightmov,
+	procedure = ivymy.uint8_rightmov,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
@@ -2595,86 +2595,86 @@ CREATE OPERATOR >> (
 
 --operator <<
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR << (
-	procedure = ivymy.mysuint8_leftmov,
+	procedure = ivymy.uint8_leftmov,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
 
 --operator &&
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int2
 );
 
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int4
 );
 
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = pg_catalog.int2,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = pg_catalog.int4,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR && (
-	procedure = ivymy.mysuint8_and,
+	procedure = ivymy.uint8_and,
 	leftarg = pg_catalog.int8,
 	rightarg = ivymy.uint8
 );
@@ -2688,60 +2688,60 @@ CREATE OPERATOR || (
 
 --operator !
 CREATE OPERATOR ! (
-	procedure = ivymy.mysuint8_invert,
+	procedure = ivymy.uint8_invert,
 	rightarg = ivymy.uint8
 );
 
 
 ----operator ~~ like
-CREATE  OR REPLACE FUNCTION ivymy.mysuint8_like(ivymy.uint8, ivymy.uint8)
+CREATE  OR REPLACE FUNCTION ivymy.uint8_like(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_like'
+AS 'MODULE_PATHNAME','uint8_like'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE  OR REPLACE FUNCTION ivymy.mysuint8_like(ivymy.uint8, pg_catalog.int8)
+CREATE  OR REPLACE FUNCTION ivymy.uint8_like(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_int8_like'
+AS 'MODULE_PATHNAME','uint8_int8_like'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE  OR REPLACE FUNCTION ivymy.mysuint8_like(ivymy.uint8, pg_catalog.text)
+CREATE  OR REPLACE FUNCTION ivymy.uint8_like(ivymy.uint8, pg_catalog.text)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_text_like'
+AS 'MODULE_PATHNAME','uint8_text_like'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE  OR REPLACE FUNCTION ivymy.mysuint8_notlike(ivymy.uint8, pg_catalog.text)
+CREATE  OR REPLACE FUNCTION ivymy.uint8_notlike(ivymy.uint8, pg_catalog.text)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_text_notlike'
+AS 'MODULE_PATHNAME','uint8_text_notlike'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE  OR REPLACE FUNCTION ivymy.mysuint8_notlike(ivymy.uint8, ivymy.uint8)
+CREATE  OR REPLACE FUNCTION ivymy.uint8_notlike(ivymy.uint8, ivymy.uint8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_notlike'
+AS 'MODULE_PATHNAME','uint8_notlike'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
 
-CREATE  OR REPLACE FUNCTION ivymy.mysuint8_notlike(ivymy.uint8, pg_catalog.int8)
+CREATE  OR REPLACE FUNCTION ivymy.uint8_notlike(ivymy.uint8, pg_catalog.int8)
 RETURNS boolean
-AS 'MODULE_PATHNAME','mysuint8_notlike'
+AS 'MODULE_PATHNAME','uint8_notlike'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -2751,37 +2751,37 @@ LEAKPROOF;
 
 
 CREATE OPERATOR ~~ (
-	procedure = ivymy.mysuint8_like,
+	procedure = ivymy.uint8_like,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR ~~ (
-	procedure = ivymy.mysuint8_like,
+	procedure = ivymy.uint8_like,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
 
 CREATE OPERATOR ~~ (
-	procedure = ivymy.mysuint8_like,
+	procedure = ivymy.uint8_like,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.text
 );
 
 CREATE OPERATOR !~~ (
-	procedure = ivymy.mysuint8_notlike,
+	procedure = ivymy.uint8_notlike,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.text
 );
 
 CREATE OPERATOR !~~ (
-	procedure = ivymy.mysuint8_notlike,
+	procedure = ivymy.uint8_notlike,
 	leftarg = ivymy.uint8,
 	rightarg = ivymy.uint8
 );
 
 CREATE OPERATOR !~~ (
-	procedure = ivymy.mysuint8_notlike,
+	procedure = ivymy.uint8_notlike,
 	leftarg = ivymy.uint8,
 	rightarg = pg_catalog.int8
 );
@@ -2790,68 +2790,68 @@ CREATE OPERATOR !~~ (
 -- CREATE AGGREGATE 
 --
 /* max */
-CREATE FUNCTION ivymy.mysuint8_larger(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_larger(ivymy.uint8, ivymy.uint8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME', 'mysuint8_larger'
+AS 'MODULE_PATHNAME', 'uint8_larger'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE ivymy.max(ivymy.uint8) (
-  SFUNC = ivymy.mysuint8_larger,
+  SFUNC = ivymy.uint8_larger,
   STYPE = ivymy.uint8,
   SORTOP = >,
   PARALLEL = SAFE
 );
 
 /* min */
-CREATE FUNCTION ivymy.mysuint8_smaller(ivymy.uint8, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_smaller(ivymy.uint8, ivymy.uint8)
 RETURNS ivymy.uint8
-AS 'MODULE_PATHNAME', 'mysuint8_smaller'
+AS 'MODULE_PATHNAME', 'uint8_smaller'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
 CREATE AGGREGATE ivymy.min(ivymy.uint8) (
-  SFUNC = ivymy.mysuint8_smaller,
+  SFUNC = ivymy.uint8_smaller,
   STYPE = ivymy.uint8,
   SORTOP = <,
   PARALLEL = SAFE
 );
 
 /* AVG */
-CREATE FUNCTION ivymy.mysuint8_avg_accum(internal, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_avg_accum(internal, ivymy.uint8)
 RETURNS internal
-AS 'MODULE_PATHNAME', 'mysuint8_avg_accum'
+AS 'MODULE_PATHNAME', 'uint8_avg_accum'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.mysuint8_avg(internal)
+CREATE FUNCTION ivymy.uint8_avg(internal)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME', 'mysuint8_avg'
+AS 'MODULE_PATHNAME', 'uint8_avg'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE AGGREGATE ivymy.avg(ivymy.uint8) (
-   sfunc = mysuint8_avg_accum, 
+   sfunc = uint8_avg_accum, 
    stype = internal,
-   finalfunc = mysuint8_avg
+   finalfunc = uint8_avg
 );
 
 /* sum */
-CREATE FUNCTION ivymy.mysuint8_sum(pg_catalog.numeric, ivymy.uint8)
+CREATE FUNCTION ivymy.uint8_sum(pg_catalog.numeric, ivymy.uint8)
 RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME', 'mysuint8_sum'
+AS 'MODULE_PATHNAME', 'uint8_sum'
 LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
 CREATE AGGREGATE ivymy.sum(ivymy.uint8) (
-  SFUNC = ivymy.mysuint8_sum,
+  SFUNC = ivymy.uint8_sum,
   STYPE = pg_catalog.numeric
 );
 
@@ -2860,7 +2860,7 @@ CREATE AGGREGATE ivymy.sum(ivymy.uint8) (
 --
 CREATE FUNCTION ivymy.MOD(ivymy.uint8, ivymy.uint8)
 RETURNS  ivymy.uint8
-AS 'MODULE_PATHNAME','mysuint8_modmysuint8'
+AS 'MODULE_PATHNAME','uint8_moduint8'
 LANGUAGE C
 PARALLEL SAFE
 STRICT

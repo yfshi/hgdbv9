@@ -4671,6 +4671,80 @@ numeric_mediumint(PG_FUNCTION_ARGS)
 }
 /* End - ReqID: SRS-MYSQL-DATATYPE-INT3 */
 
+/* Begin - ReqID: SRS-MYSQL-DATATYPE-INT1 */
+Datum
+numeric_tinyint(PG_FUNCTION_ARGS)
+{
+	Numeric		num = PG_GETARG_NUMERIC(0);
+	NumericVar	x;
+	int8		result;
+
+	if (NUMERIC_IS_SPECIAL(num))
+	{
+		if (NUMERIC_IS_NAN(num))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert NaN to %s", "tinyint")));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot convert infinity to %s", "tinyint")));
+	}
+
+	/* Convert to variable format and thence to tinyint */
+	init_var_from_num(num, &x);
+
+	if (!numericvar_to_int8(&x, &result))
+	{
+		if (compatible_mode == MYS_MODE)
+		{
+			bool is_insert = CALL_IN_INSERT();
+
+			if (is_insert)
+			{
+				if (numeric_is_neg(num))
+					result = PG_INT8_MIN;
+				else
+					result = PG_INT8_MAX;
+
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errmsg("Out of range value for column")));
+			}
+			else
+			{
+				uint8 tmp;
+				
+				// num is integer and no more than UINT8_MAX
+				if (x.dscale == 0 && numericvar_to_uint8(&x, &tmp))
+				{
+					result = (int8) tmp;
+				}
+				else
+				{
+					if (numeric_is_neg(num))
+						result = PG_INT8_MIN;
+					else
+						result = PG_INT8_MAX;
+
+					ereport(WARNING,
+							(errmsg("Truncated incorrect DECIMAL value: '%s'",
+									DatumGetCString(DirectFunctionCall1(numeric_out,
+																		PointerGetDatum(num))))));
+				}
+			}
+		}
+		else
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+					 errmsg(" integer out of range")));
+		}
+	}
+
+	PG_RETURN_INT8(result);
+}
+/* End - ReqID: SRS-MYSQL-DATATYPE-INT1 */
+
 Datum
 int2_numeric(PG_FUNCTION_ARGS)
 {
