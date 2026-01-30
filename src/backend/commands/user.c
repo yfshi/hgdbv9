@@ -1661,6 +1661,14 @@ DropRole(DropRoleStmt *stmt)
 		 */
 		DropSetting(InvalidOid, roleid);
 
+		/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+		/* delete roles_status reltation data when drop role */
+		if (RoleDropRoleStatus)
+		{
+			(*RoleDropRoleStatus)(roleid);
+		}
+		/* End - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+
 		/*
 		 * Advance command counter so that later iterations of this loop will
 		 * see the changes already made.  This is essential if, for example,
@@ -1888,6 +1896,19 @@ GrantRole(GrantRoleStmt *stmt)
 					 errmsg("column names cannot be included in GRANT/REVOKE ROLE")));
 
 		roleid = get_role_oid(rolename, false);
+
+		/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+		/* grant revoke role to user need role enable */
+		if (RoleGetStatus)
+		{
+			bool role_status = (*RoleGetStatus)(roleid);
+			if (!role_status)
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
+					 errmsg("The role[%s] has been disabled, Not GRANT/REVOKE ROLE to other user",rolename)));
+		}
+		/* End - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+
 		if (stmt->is_grant)
 			AddRoleMems(rolename, roleid,
 						stmt->grantee_roles, grantee_ids,

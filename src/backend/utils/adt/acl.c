@@ -51,6 +51,11 @@ typedef struct
 	AclMode		value;
 } priv_map;
 
+/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+RoleGetStatus_type RoleGetStatus = NULL;
+RoleDropRoleStatus_type RoleDropRoleStatus = NULL;
+/* End - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+
 /*
  * We frequently need to test whether a given role is a member of some other
  * role.  In most of these tests the "given role" is the same, namely the
@@ -1402,6 +1407,18 @@ aclmask(const Acl *acl, Oid roleid, Oid ownerId,
 		if (aidata->ai_grantee == ACL_ID_PUBLIC ||
 			aidata->ai_grantee == roleid)
 			continue;			/* already checked it */
+
+		/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+		/* if role has been disabled, continue
+		 * Not get role privs
+		 */
+		if (RoleGetStatus)
+		{
+			bool role_status = (*RoleGetStatus)(aidata->ai_grantee);
+			if (!role_status)
+				continue;
+		}
+		/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
 
 		if ((aidata->ai_privs & remaining) &&
 			has_privs_of_role(roleid, aidata->ai_grantee))
