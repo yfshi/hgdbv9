@@ -191,6 +191,9 @@ static int varstrfastcmp_mysql(Datum x, Datum y, SortSupport ssup);
 static int mysql_varstr_cmp(char* arg1, int len1, char* arg2, int len2, Oid collid);
 /* End - Req:SRS-MYSQL-CHARSET */
 
+/* Beign - Req:SRS-SQL-SYSFUNC */
+static text *ora_regex_translate(text *pattern);
+/* End - Req:SRS-SQL-SYSFUNC */
 
 /*****************************************************************************
  *	 CONVERSION ROUTINES EXPORTED FOR USE BY C CODE							 *
@@ -5655,9 +5658,12 @@ ora_substr_text_regexp(text *src_text,text *pattern_arg ,
 {
 	regex_t    *re;
 	pg_re_flags flags;
+	text		*trans;
 
 	ora_parse_re_flags(&flags, match_para);
-	re = ora_re_compile_and_cache(pattern_arg, flags.cflags, collation);
+
+	trans = ora_regex_translate(pattern_arg);
+	re = ora_re_compile_and_cache(trans, flags.cflags, collation);
 	return ora_setup_regexp_substr_matches(src_text,re,flags,start_posn,
                                                       occur_posn,subexpr_pos,
                                                       substr,false);
@@ -5671,9 +5677,13 @@ ora_instr_text_regexp(text *src_text,text *pattern_arg,
 {
 	regex_t    *re;
 	pg_re_flags flags;
+	text		*trans;
 
 	ora_parse_re_flags(&flags, match_para);
-	re = ora_re_compile_and_cache(pattern_arg, flags.cflags, collation);
+
+	trans = ora_regex_translate(pattern_arg);
+
+	re = ora_re_compile_and_cache(trans, flags.cflags, collation);
 	return ora_setup_regexp_instr_matches(src_text,re,flags,start_posn,
 										  occur_posn,ret_opt,subexpr_pos,
 										  substr,false);
@@ -7494,3 +7504,55 @@ varstrfastcmp_mysql(Datum x, Datum y, SortSupport ssup)
 	return result;
 }
 /* End - ReqID:SRS-MYSQL-CASE */
+
+/* Beign - Req:SRS-SQL-SYSFUNC */
+static text *
+ora_regex_translate(text *pattern)
+{
+	StringInfoData	buf;
+	char			*src = NULL;
+
+	src = text_to_cstring(pattern);
+	initStringInfo(&buf);
+
+	for (char *p = src; *p; p++)
+	{
+		if (*p == '\\')
+		{
+			p++;
+			if (*p == '\0')
+				break;
+
+			switch (*p)
+			{
+				case 'd':
+					appendStringInfoString(&buf, "[0-9]");
+					continue;
+				case 'D':
+					appendStringInfoString(&buf, "[^0-9]");
+					continue;
+				case 's':
+					appendStringInfoString(&buf, "[ \t\r\n\f]");
+					continue;
+				case 'S':
+					appendStringInfoString(&buf, "[^ \t\r\n\f]");
+					continue;
+				case 'w':
+					appendStringInfoString(&buf, "[A-Za-z0-9_]");
+					continue;
+				case 'W':
+					appendStringInfoString(&buf, "[^A-Za-z0-9_]");
+					continue;
+				default:
+					/* keep original escape for PG */
+					appendStringInfoChar(&buf, '\\');
+					appendStringInfoChar(&buf, *p);
+					continue;
+			}
+		}
+		appendStringInfoChar(&buf, *p);
+	}
+
+	return cstring_to_text(buf.data);
+}
+/* End - Req:SRS-SQL-SYSFUNC */

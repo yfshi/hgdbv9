@@ -447,10 +447,107 @@ parse_re_flags(pg_re_flags *flags, text *opts)
 void
 ora_parse_re_flags(pg_re_flags *flags, text *opts)
 {
-	parse_re_flags(flags,opts);
+	/* regex flavor is always folded into the compile flags */
+	flags->cflags = REG_ADVANCED;
+	flags->glob = false;
+
+	/*
+	 * In Oracle compatibility mode, enable REG_NLSTOP by default so that
+	 * the dot (.) does not match newline characters.
+	 * This behavior is consistent with Oracle's default semantics.
+	 */
+	flags->cflags |= REG_NLSTOP;
+	flags->cflags &= ~REG_NLANCH;  /* Ensure that ^ and $ are not anchored at newline boundaries */
+
+	if (opts)
+	{
+		char	   *opt_p = VARDATA_ANY(opts);
+		int			opt_len = VARSIZE_ANY_EXHDR(opts);
+		int			i;
+
+		for (i = 0; i < opt_len; i++)
+		{
+			switch (opt_p[i])
+			{
+				case 'g':
+					flags->glob = true;
+					break;
+				case 'b':		/* BREs (but why???) */
+					flags->cflags &= ~(REG_ADVANCED | REG_EXTENDED | REG_QUOTE);
+					break;
+				case 'c':		/* case sensitive */
+					flags->cflags &= ~REG_ICASE;
+					break;
+				case 'e':		/* plain EREs */
+					flags->cflags |= REG_EXTENDED;
+					flags->cflags &= ~(REG_ADVANCED | REG_QUOTE);
+					break;
+				case 'i':		/* case insensitive */
+					flags->cflags |= REG_ICASE;
+					break;
+				/*
+				 * Compatible Oracle 'm' semantics:
+				 *		- Multi-line mode
+				 *		- ^ matches start of string OR after newline
+				 *		- $ matches end of string OR before newline
+				 *		- DOES NOT change '.' behavior
+				 *
+				 * PostgreSQL:
+				 *		REG_NEWLINE + REG_NLANCH enable ^/$ to respect newline
+				 */
+				case 'm':
+					/* do Not touch dot behavior */
+					flags->cflags |= REG_NEWLINE;   /* enable newline-sensitive anchors */
+					flags->cflags |= REG_NLANCH;    /* allow ^/$ to anchor at newlines */
+					break;
+				/*
+				 * Compatible Oracle 'n' semantics (DOTALL):
+				 *		- '.' matches newline
+				 *		- newline does NOT change ^ or $
+				 *
+				 * In PostgreSQL:
+				 *
+				 *		- '.' matches newline when REG_NEWLINE is NOT set
+				 *		- so we must REMOVE REG_NEWLINE and REMOVE NLSTOP/NLANCH
+				 */
+				case 'n':
+					/* DOTALL: '.' should match newline */
+					flags->cflags &= ~REG_NEWLINE;  /* remove newline-sensitive mode */
+					flags->cflags &= ~REG_NLSTOP;   /* do not stop '.' at newline */
+					flags->cflags &= ~REG_NLANCH;   /* do not alter ^/$ with newline */
+					break;
+				case 'p':		/* ~Perl, \n affects . [^ */
+					flags->cflags |= REG_NLSTOP;
+					flags->cflags &= ~REG_NLANCH;
+					break;
+				case 'q':		/* literal string */
+					flags->cflags |= REG_QUOTE;
+					flags->cflags &= ~(REG_ADVANCED | REG_EXTENDED);
+					break;
+				case 's':		/* single line, \n ordinary */
+					flags->cflags &= ~REG_NEWLINE;
+					break;
+				case 't':		/* tight syntax */
+					flags->cflags &= ~REG_EXPANDED;
+					break;
+				case 'w':		/* weird, \n affects ^ $ only */
+					flags->cflags &= ~REG_NLSTOP;
+					flags->cflags |= REG_NLANCH;
+					break;
+				case 'x':		/* expanded syntax */
+					flags->cflags |= REG_EXPANDED;
+					break;
+				default:
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							 errmsg("invalid regular expression option: \"%.*s\"",
+									pg_mblen(opt_p + i), opt_p + i)));
+					break;
+			}
+		}
+	}
 }
 /* End - SRS-CKC-Oracle-SupportOra_Regexp_245 */
-
 
 /*
  *	interface routines called by the function manager
@@ -1317,15 +1414,16 @@ ora_setup_regexp_substr_matches(text *src_text,
 static bool
 ora_build_regexp_instr_matches_result(regexp_matches_ctx *matchctx ,int ret_opt,int subexpr_pos,Datum *subpattern)
 {
-	int	loc;
-	char    ret_str_val[100] = {0};
+	int    loc;
+	char   ret_str_val[100] = {0};
 
 	/* Extract matching substrings from the original string */
 	loc = matchctx->next_match * matchctx->npatterns * 2;
+
 	if (subexpr_pos <= matchctx->npatterns)
 	{
-		int	so = 0;
-		int	eo = 0;
+		int    so = 0;
+		int    eo = 0;
 
 		if (matchctx->npatterns >= 1 && matchctx->use_subpatterns && subexpr_pos > 0)
 		{
@@ -1335,9 +1433,12 @@ ora_build_regexp_instr_matches_result(regexp_matches_ctx *matchctx ,int ret_opt,
 		else if (matchctx->npatterns == 1)
 		{
 			so = matchctx->match_locs[loc];
-			eo = matchctx->match_locs[loc + matchctx->npatterns * 2 -1] - 1;
+			eo = matchctx->match_locs[loc + matchctx->npatterns * 2 -1];
+
 			if(eo < 0)
 				eo = 0;
+
+			/* If so and eo are the same, it indicates an empty match; return false */
 			if(so == eo)
 				return false;
 		}
@@ -1350,14 +1451,15 @@ ora_build_regexp_instr_matches_result(regexp_matches_ctx *matchctx ,int ret_opt,
 		{
 			if (ret_opt == 0)
 			{
+				/* Return the start position of the match */
 				sprintf(ret_str_val,"%d",so + 1);
-				*subpattern = PointerGetDatum(cstring_to_text(ret_str_val));
 			}
 			else
 			{
-				sprintf(ret_str_val,"%d",eo + 2);
-				*subpattern = PointerGetDatum(cstring_to_text(ret_str_val));
+				/* Return the position following the end of the match */
+				sprintf(ret_str_val,"%d",eo + 1);
 			}
+			*subpattern = PointerGetDatum(cstring_to_text(ret_str_val));
 		}
 		return true;
 	}
@@ -1376,24 +1478,28 @@ ora_build_regexp_instr_matches_result(regexp_matches_ctx *matchctx ,int ret_opt,
  */
 bool
 ora_setup_regexp_instr_matches(text *src_text,
-											regex_t *re, pg_re_flags re_flags,
-											int start_posn, int occur_posn,
-											int ret_opt,int subexpr_pos,
-											Datum *substr,bool ignore_degenerate)
+										  regex_t *re, pg_re_flags re_flags,
+										  int start_posn, int occur_posn,
+										  int ret_opt, int subexpr_pos,
+										  Datum *substr, bool ignore_degenerate)
 {
 	regexp_matches_ctx *matchctx = palloc0(sizeof(regexp_matches_ctx));
-	int			array_len;
-	int			array_idx;
-	int			prev_match_end = 0;
-	int			src_text_len = VARSIZE_ANY_EXHDR(src_text);
-	regmatch_t	pmatch[10];
+	int         array_len;
+	int         array_idx;
+	int         src_text_len = VARSIZE_ANY_EXHDR(src_text);
+	regmatch_t  pmatch[10];
 	pg_wchar   *data;
-	size_t		data_len;
-	int			search_start;
-	bool		use_subpatterns;
+	size_t      data_len;
+	int         search_start;
+	bool        use_subpatterns;
+	int         match_count = 0;
+	int			required;
+	char       *src_str = text_to_cstring(src_text);
+
 
 	/* save original string --- we'll extract result substrings from it */
 	matchctx->orig_str = src_text;
+	matchctx->next_match = 0;
 
 	/* do we want to remember subpatterns? */
 	if (re->re_nsub > 0 && subexpr_pos != 0)
@@ -1423,72 +1529,82 @@ ora_setup_regexp_instr_matches(text *src_text,
 
 	if(start_posn > 1)
 		search_start = start_posn - 1;
-	while (RE_wchar_execute(re, data, data_len, search_start,
-							10, pmatch))
+
+	while (RE_wchar_execute(re, data, data_len, search_start, 10, pmatch))
 	{
-		matchctx->nmatches++;
+		match_count++;
 
-		if (matchctx->nmatches != occur_posn)
+		/* Check whether the specified occurrence of the match has been found*/
+		if (match_count == occur_posn)
 		{
-			search_start = pmatch[0].rm_eo;
+			/* Set nmatches to 1 because we have saved only one match */
+			matchctx->nmatches = 1;
 
-			if (pmatch[0].rm_so == pmatch[0].rm_eo)
-				search_start++;
-			if (search_start > data_len)
-				break;
-			continue;
-		}
-		else
-		{
+			/* Save the position information of this match */
 			if (pmatch[0].rm_so >= 0)
 			{
-				if (!ignore_degenerate ||
-					(pmatch[0].rm_so < data_len &&
-					 pmatch[0].rm_eo > prev_match_end))
+				/* enlarge output space if needed */
+				required = array_idx + matchctx->npatterns * 2;
+
+				if (required > array_len)
 				{
-					/* enlarge output space if needed */
-					while (array_idx + matchctx->npatterns * 2 > array_len)
+					int 	new_len = array_len;
+
+					while (new_len < required)
+						new_len *= 2;
+
+					matchctx->match_locs = (int *)
+						repalloc(matchctx->match_locs, sizeof(int) * new_len);
+					array_len = new_len;
+				}
+
+				/* save this match's locations */
+				if (use_subpatterns)
+				{
+					int         i;
+					for (i = 1; i <= matchctx->npatterns; i++)
 					{
-						array_len *= 2;
-						matchctx->match_locs = (int *) repalloc(matchctx->match_locs,
-										sizeof(int) * array_len);
-					}
-					/* save this match's locations */
-					if (use_subpatterns)
-					{
-						int			i;
-						for (i = 1; i <= matchctx->npatterns; i++)
-						{
-							matchctx->match_locs[array_idx++] = pmatch[i].rm_so;
-							matchctx->match_locs[array_idx++] = pmatch[i].rm_eo;
-						}
-					}
-					else
-					{
-						matchctx->match_locs[array_idx++] = pmatch[0].rm_so;
-						matchctx->match_locs[array_idx++] = pmatch[0].rm_eo;
+						matchctx->match_locs[array_idx++] = pmatch[i].rm_so;
+						matchctx->match_locs[array_idx++] = pmatch[i].rm_eo;
 					}
 				}
-				break;
+				else
+				{
+					/* Save the position of the entire match */
+					matchctx->match_locs[array_idx++] = pmatch[0].rm_so;
+					matchctx->match_locs[array_idx++] = pmatch[0].rm_eo;
+				}
+
+				pfree(data);
+				pfree(src_str);
+
+				/* Successfully found the specified occurrence of the match */
+				if (ora_build_regexp_instr_matches_result(matchctx, ret_opt, subexpr_pos, substr))
+					return true;
+				else
+					return false;
 			}
+			break;  /* Exit the loop after locating the target match */
 		}
+
+		/* Update the search start position to prepare for finding the next match */
+		search_start = pmatch[0].rm_eo;
+
+		/* Advance by one character on an empty match to avoid an infinite loop */
+		if (pmatch[0].rm_so == pmatch[0].rm_eo)
+			search_start++;
+
+		/* Exceeded the string length, exit the loop */
+		if (search_start > data_len)
+			break;
 	}
 
-	/* BEGIN - BUG#M0000170 */
-	if (occur_posn > matchctx->nmatches)
-		return false;
-	/* END - BUG#M0000170 */
-	/*
-	 * If the substring position of the regular expression is not specified,
-	 * or if there is no string matching the regular expression,
-	 * the entire string that matches is directly returned.
-	 */
-	if (ora_build_regexp_instr_matches_result(matchctx,ret_opt,subexpr_pos,substr))
-		return true;
-	else
-		return false;
-}
+	pfree(data);
+	pfree(src_str);
 
+	/* If the specified occurrence of the match is not found, return false */
+	return false;
+}
 /* End - SRS-CKC-Oracle-SupportOra_Regexp_245 */
 
 /* This is separate to keep the opr_sanity regression test from complaining */

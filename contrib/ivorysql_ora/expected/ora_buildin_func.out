@@ -1,0 +1,1508 @@
+/*
+ * Test compatible Oracle's build-in functions
+ */
+--
+-- REGEXP_REPLACE
+--
+SELECT REGEXP_REPLACE('abc123def456', '\d+') AS result FROM dual; -- abcdef
+ result 
+--------
+ abcdef
+(1 row)
+
+SELECT REGEXP_REPLACE('abc123def456', '\d+', '#') AS result FROM dual; -- abc#def#
+  result  
+----------
+ abc#def#
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         '\3/\2/\1'
+       ) AS result
+FROM dual; -- 31/12/2024
+   result   
+------------
+ 31/12/2024
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'a\b\c',
+         '\\',
+         '\\\\'
+       ) AS result
+FROM dual; -- a\\b\\c
+ result  
+---------
+ a\\b\\c
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'abc123def456',
+         '\d+',
+         '#',
+         7
+       ) AS result
+FROM dual; -- abc123def#
+   result   
+------------
+ abc123def#
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'x1y2z3',
+         '\d',
+         '#',
+         1,
+         0
+       ) AS result
+FROM dual; -- x#y#z#
+ result 
+--------
+ x#y#z#
+(1 row)
+
+--occurrence = 1
+SELECT REGEXP_REPLACE(
+         'x1y2z3',
+         '\d',
+         '#',
+         1,
+         1
+       ) AS result
+FROM dual; -- x#y2z3
+ result 
+--------
+ x#y2z3
+(1 row)
+
+--ccurrence = 2
+SELECT REGEXP_REPLACE(
+         'x1y2z3',
+         '\d',
+         '#',
+         1,
+         2
+       ) AS result
+FROM dual; -- x1y#z3
+ result 
+--------
+ x1y#z3
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'AbCabc',
+         'abc',
+         '#',
+         1,
+         0,
+         'i'
+       ) AS result
+FROM dual; -- ##
+ result 
+--------
+ ##
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'AbCabc',
+         'abc',
+         '#',
+         1,
+         0,
+         'c'
+       ) AS result
+FROM dual; -- AbC#
+ result 
+--------
+ AbC#
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'a\nb\nc',
+         'a.*c',
+         '#',
+         1,
+         0,
+         'n'
+       ) AS result
+FROM dual; -- #
+ result 
+--------
+ #
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'a\nb\nc',
+         'a.*c',
+         '#'
+       ) AS result
+FROM dual; -- #
+ result 
+--------
+ #
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'a\nb\nc',
+         '^.',
+         '#',
+         1,
+         0,
+         'm'
+       ) AS result
+FROM dual; -- #\nb\nc
+ result  
+---------
+ #\nb\nc
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'ABC\nabc',
+         '^abc',
+         '#',
+         1,
+         0,
+         'im'
+       ) AS result
+FROM dual; -- #\nabc
+ result 
+--------
+ #\nabc
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'abc',
+         RPAD('a', 512, 'a'),
+         '#'
+       )
+FROM dual; -- abc
+ regexp_replace 
+----------------
+ abc
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'a1b2',
+         '\d',
+         '#',
+         1,
+         5
+       ) AS result
+FROM dual; -- a1b2
+ result 
+--------
+ a1b2
+(1 row)
+
+SELECT REGEXP_REPLACE(
+         'abc123def456ghi',
+         '(\d+)',
+         '[\1]',
+         4,
+         2,
+         'c'
+       ) AS result
+FROM dual; -- abc123def[456]ghi
+      result       
+-------------------
+ abc123def[456]ghi
+(1 row)
+
+--
+-- REGEXP_SUBSTR
+--
+SELECT REGEXP_SUBSTR('abc123def', '\d+') AS result FROM dual; -- 123
+ result 
+--------
+ 123
+(1 row)
+
+SELECT REGEXP_SUBSTR('abcdef', '\d+') AS result FROM dual; -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'abc123def456',
+         '\d+',
+         7
+       ) AS result
+FROM dual; -- 456
+ result 
+--------
+ 456
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'abc123',
+         '\d+',
+         100
+       ) AS result
+FROM dual; -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'x1y2z3',
+         '\d',
+         1,
+         1
+       ) AS result
+FROM dual; -- 1
+ result 
+--------
+ 1
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'x1y2z3',
+         '\d',
+         1,
+         2
+       ) AS result
+FROM dual; -- 2
+ result 
+--------
+ 2
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'x1y2',
+         '\d',
+         1,
+         5
+       ) AS result
+FROM dual;  -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'aaaa',
+         'aa',
+         1,
+         2
+       ) AS result
+FROM dual;  -- aa
+ result 
+--------
+ aa
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'AbCabc',
+         'abc',
+         1,
+         2,
+         'i'
+       ) AS result
+FROM dual; -- abc
+ result 
+--------
+ abc
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'AbCabc',
+         'abc',
+         1,
+         1,
+         'c'
+       ) AS result
+FROM dual; -- abc
+ result 
+--------
+ abc
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         'a.*c',
+         1,
+         1,
+         'n'
+       ) AS result
+FROM dual; 
+ result 
+--------
+ a     +
+ b     +
+ c
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         'a.*c'
+       ) AS result
+FROM dual; -- (null) 
+ result 
+--------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         '^.',
+         1,
+         2,
+         'm'
+       ) AS result
+FROM dual;   -- b
+ result 
+--------
+ b
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'ABC'||CHR(10)||'abc',
+         '^abc',
+         1,
+         2,
+         'im'
+       ) AS result
+FROM dual;   -- abc
+ result 
+--------
+ abc
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         'c',
+         0
+       ) AS result
+FROM dual; -- 2024-12-31
+   result   
+------------
+ 2024-12-31
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         'c',
+         1
+       ) AS result
+FROM dual;  -- 2024
+ result 
+--------
+ 2024
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         'c',
+         2
+       ) AS result
+FROM dual; -- 12
+ result 
+--------
+ 12
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         'c',
+         9
+       ) AS result
+FROM dual;  -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'aaaaaaaaaa',
+         RPAD('a', 512, 'a')
+       )
+FROM dual; -- (null)
+ regexp_substr 
+---------------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         '',
+         '.+'
+       ) AS result
+FROM dual;  -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT REGEXP_SUBSTR(
+         'abc123def456ghi',
+         '(\d+)',
+         4,
+         2,
+         'c',
+         1
+       ) AS result
+FROM dual;  -- 456
+ result 
+--------
+ 456
+(1 row)
+
+--
+-- REGEXP_INSTR
+--
+SELECT REGEXP_INSTR('abc123def', '\d+') AS pos FROM dual; -- 4
+ pos 
+-----
+ 4
+(1 row)
+
+SELECT REGEXP_INSTR('abcdef', '\d+') AS pos FROM dual; -- 0
+ pos 
+-----
+ 0
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'abc123def456',
+         '\d+',
+         7
+       ) AS pos
+FROM dual; -- 10
+ pos 
+-----
+ 10
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'abc123',
+         '\d+',
+         100
+       ) AS pos
+FROM dual;  -- 0
+ pos 
+-----
+ 0
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'x1y2z3',
+         '\d',
+         1,
+         1
+       ) AS pos
+FROM dual; -- 2
+ pos 
+-----
+ 2
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'x1y2z3',
+         '\d',
+         1,
+         2
+       ) AS pos
+FROM dual; -- 4
+ pos 
+-----
+ 4
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'x1y2',
+         '\d',
+         1,
+         5
+       ) AS pos
+FROM dual;  -- 0
+ pos 
+-----
+ 0
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'aaaa',
+         'aa',
+         1,
+         2
+       ) AS pos
+FROM dual;  -- 3
+ pos 
+-----
+ 3
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'abc123def',
+         '\d+',
+         1,
+         1,
+         0
+       ) AS pos
+FROM dual;  -- 4
+ pos 
+-----
+ 4
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'abc123def',
+         '\d+',
+         1,
+         1,
+         1
+       ) AS pos
+FROM dual;  -- 7
+ pos 
+-----
+ 7
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'x1y2z3',
+         '\d',
+         1,
+         2,
+         1
+       ) AS pos
+FROM dual;  -- 5
+ pos 
+-----
+ 5
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'AbCabc',
+         'abc',
+         1,
+         2,
+         0,
+         'i'
+       ) AS pos
+FROM dual;  -- 4
+ pos 
+-----
+ 4
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'AbCabc',
+         'abc',
+         1,
+         1,
+         0,
+         'c'
+       ) AS pos
+FROM dual;  -- 4
+ pos 
+-----
+ 4
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         'a.*c',
+         1,
+         1,
+         0,
+         'n'
+       ) AS pos
+FROM dual;  -- 1
+ pos 
+-----
+ 1
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         'a.*c'
+       ) AS pos
+FROM dual;  -- 0
+ pos 
+-----
+ 0
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         '^.',
+         1,
+         2,
+         0,
+         'm'
+       ) AS pos
+FROM dual; -- 3
+ pos 
+-----
+ 3
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'ABC'||CHR(10)||'abc',
+         '^abc',
+         1,
+         2,
+         0,
+         'im'
+       ) AS pos
+FROM dual;  -- 5
+ pos 
+-----
+ 5
+(1 row)
+
+SELECT REGEXP_INSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         0,
+         'c',
+         0
+       ) AS pos
+FROM dual;  -- 1
+ pos 
+-----
+ 1
+(1 row)
+
+SELECT REGEXP_INSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         0,
+         'c',
+         1
+       ) AS pos
+FROM dual;  -- 1
+ pos 
+-----
+ 1
+(1 row)
+
+SELECT REGEXP_INSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         0,
+         'c',
+         2
+       ) AS pos
+FROM dual;  -- 6
+ pos 
+-----
+ 6
+(1 row)
+
+SELECT REGEXP_INSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         0,
+         'c',
+         3
+       ) AS pos
+FROM dual; -- 9
+ pos 
+-----
+ 9
+(1 row)
+
+SELECT REGEXP_INSTR(
+         '2024-12-31',
+         '(\d{4})-(\d{2})-(\d{2})',
+         1,
+         1,
+         0,
+         'c',
+         9
+       ) AS pos
+FROM dual;  -- 0
+ pos 
+-----
+ 0
+(1 row)
+
+SELECT REGEXP_INSTR(
+         '2024-12-31',
+         '(\d{4})',
+         1,
+         1,
+         0,
+         'c',
+         NULL
+       ) AS pos
+FROM dual;  -- (null)
+ pos 
+-----
+ 
+(1 row)
+
+SELECT REGEXP_INSTR(
+         'abc123def456ghi',
+         '(\d+)',
+         4,
+         2,
+         1,
+         'c',
+         1
+       ) AS pos
+FROM dual;  -- 13
+ pos 
+-----
+ 13
+(1 row)
+
+--
+-- REGEXP_LIKE
+--
+SELECT
+  CASE
+    WHEN REGEXP_LIKE('abc123def', '\d+') THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- Y
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE('abcdef', '\d+') THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N
+ result 
+--------
+ N
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE('AbC', 'abc', 'i') THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- Y
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE('AbC', 'abc', 'c') THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N
+ result 
+--------
+ N
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE('AbC', 'abc', 'ic') THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N
+ result 
+--------
+ N
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'a'||CHR(10)||'b',
+           'a.*b'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N
+ result 
+--------
+ N
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'a'||CHR(10)||'b',
+           'a.*b',
+           'n'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- Y 
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'a'||CHR(10)||'b',
+           '^b'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N
+ result 
+--------
+ N
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'a'||CHR(10)||'b',
+           '^b',
+           'm'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- Y
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'a'||CHR(10)||'b'||CHR(10)||'c',
+           '^a.*c$',
+           'mn'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;   -- Y 
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'abc123',
+           'a b c \d+',
+           'x'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- Y
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'abc123',
+           'a b c \d+'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N 
+ result 
+--------
+ N
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'ABC'||CHR(10)||'abc',
+           '^abc',
+           'im'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- Y
+ result 
+--------
+ Y
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'ABC',
+           'abc',
+           'imc'
+         )
+    THEN 'Y'
+    ELSE 'N'
+  END AS result
+FROM dual;  -- N
+ result 
+--------
+ N
+(1 row)
+
+SELECT REGEXP_LIKE(
+         'abc',
+         RPAD('a', 513, 'a')
+       )
+FROM dual;
+ regexp_like 
+-------------
+ f
+(1 row)
+
+SELECT REGEXP_LIKE(
+         'abc',
+         'a',
+         'z'
+       )
+FROM dual;
+ERROR:  invalid option of regexp_like: z
+SELECT 1 FROM dual WHERE REGEXP_LIKE(
+         'abc',
+         'a',
+         'z'
+       );
+ERROR:  invalid option of regexp_like: z
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           'user.name@example.com',
+           '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+         )
+    THEN 'VALID'
+    ELSE 'INVALID'
+  END AS email_check
+FROM dual;  -- VALID
+ email_check 
+-------------
+ VALID
+(1 row)
+
+SELECT
+  CASE
+    WHEN REGEXP_LIKE(
+           '001234',
+           '^\d+$'
+         )
+    THEN 'NUMERIC'
+    ELSE 'NON-NUMERIC'
+  END AS result
+FROM dual;  -- NUMERIC
+ result  
+---------
+ NUMERIC
+(1 row)
+
+--
+-- REGEXP_COUNT
+--
+SELECT REGEXP_COUNT('abc123def123', '\d+') AS cnt FROM dual;  -- 2
+ cnt 
+-----
+   2
+(1 row)
+
+SELECT REGEXP_COUNT('abcdef', '\d+') AS cnt FROM dual;  -- 0
+ cnt 
+-----
+   0
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'abc123def456ghi789',
+         '\d+',
+         7
+       ) AS cnt
+FROM dual;  -- 2
+ cnt 
+-----
+   2
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'abc123',
+         '\d+',
+         100
+       ) AS cnt
+FROM dual;  -- 0
+ cnt 
+-----
+   0
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'aaaa',
+         'aa'
+       ) AS cnt
+FROM dual;  -- 2
+ cnt 
+-----
+   2
+(1 row)
+
+SELECT REGEXP_COUNT(
+         '1234512345',
+         '(123(45))'
+       ) AS cnt
+FROM dual;  -- 2
+ cnt 
+-----
+   2
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'AbCabcABC',
+         'abc',
+         1,
+         'i'
+       ) AS cnt
+FROM dual;  -- 3
+ cnt 
+-----
+   3
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'AbCabcABC',
+         'abc',
+         1,
+         'c'
+       ) AS cnt
+FROM dual;  -- 1
+ cnt 
+-----
+   1
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'AbCabcABC',
+         'abc',
+         1,
+         'ic'
+       ) AS cnt
+FROM dual;   -- 1
+ cnt 
+-----
+   1
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         'a.*c',
+         1,
+         'n'
+       ) AS cnt
+FROM dual;  -- 1
+ cnt 
+-----
+   1
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         'a.*c'
+       ) AS cnt
+FROM dual;  -- 0
+ cnt 
+-----
+   0
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'a'||CHR(10)||'b'||CHR(10)||'c',
+         '^.',
+         1,
+         'm'
+       ) AS cnt
+FROM dual;  -- 3
+ cnt 
+-----
+   3
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'abc123abc',
+         'a b c',
+         1,
+         'x'
+       ) AS cnt
+FROM dual;  -- 2
+ cnt 
+-----
+   2
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'ABC'||CHR(10)||'abc',
+         '^abc',
+         1,
+         'im'
+       ) AS cnt
+FROM dual;   -- 2
+ cnt 
+-----
+   2
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'abc',
+         'a',
+         1,
+         'z'
+       )
+FROM dual;
+ERROR:  the 4th argument is illegal parameter for function. the parameter can be one of x, m, i, c, n.
+SELECT REGEXP_COUNT(
+         'one two  three   four',
+         '\S+'
+       ) AS word_count
+FROM dual;  -- 4
+ word_count 
+------------
+          4
+(1 row)
+
+SELECT REGEXP_COUNT(
+         'a@x.com;b@y.com;c@z.com',
+         '[^;]+@[^;]+'
+       ) AS cnt
+FROM dual;  -- 3
+ cnt 
+-----
+   3
+(1 row)
+
+--
+-- REPLACE
+--
+SELECT REPLACE('abcabc', 'a', 'x') AS result FROM dual;  -- xbcxbc
+ result 
+--------
+ xbcxbc
+(1 row)
+
+SELECT REPLACE('2024-12-31', '-', '/') AS result FROM dual; -- 2024/12/31
+   result   
+------------
+ 2024/12/31
+(1 row)
+
+SELECT REPLACE('abcdef', 'xyz', '123') AS result FROM dual; -- abcdef
+ result 
+--------
+ abcdef
+(1 row)
+
+SELECT REPLACE('abc123abc', 'abc') AS result FROM dual;  -- 123
+ result 
+--------
+ 123
+(1 row)
+
+SELECT REPLACE('abc123abc', 'abc', NULL) AS result FROM dual;  -- 123
+ result 
+--------
+ 123
+(1 row)
+
+SELECT REPLACE('1,234,567', ',', '') AS result FROM dual; -- 1234567
+ result  
+---------
+ 1234567
+(1 row)
+
+SELECT REPLACE('abcdef', NULL, 'x') AS result FROM dual;  -- abcdef
+ result 
+--------
+ abcdef
+(1 row)
+
+SELECT REPLACE('abcdef', NULL, NULL) AS result FROM dual; -- abcdef
+ result 
+--------
+ abcdef
+(1 row)
+
+SELECT REPLACE(NULL, 'a', 'b') AS result FROM dual;  -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT REPLACE('AbcABCabc', 'abc', 'x') AS result FROM dual;  -- AbcABCx
+ result  
+---------
+ AbcABCx
+(1 row)
+
+SELECT REPLACE('aaaa', 'aa', 'b') AS result FROM dual;  -- bb
+ result 
+--------
+ bb
+(1 row)
+
+SELECT REPLACE('aaa', 'a', 'aa') AS result FROM dual; -- aaaaaa
+ result 
+--------
+ aaaaaa
+(1 row)
+
+SELECT REPLACE('abc123abc', 'abc', '') AS result FROM dual;  -- 123
+ result 
+--------
+ 123
+(1 row)
+
+SELECT REPLACE('abcabc', 'ab', 'X') AS replace_result FROM dual;  -- XcXc
+ replace_result 
+----------------
+ XcXc
+(1 row)
+
+SELECT TRANSLATE('abcabc', 'ab', 'X') AS translate_result FROM dual; -- XcXc
+ translate_result 
+------------------
+ XcXc
+(1 row)
+
+SELECT REPLACE(
+         REPLACE('(010)-1234-5678', '-', ''),
+         '(', ''
+       ) AS cleaned
+FROM dual;  -- 010)12345678
+   cleaned    
+--------------
+ 010)12345678
+(1 row)
+
+SELECT REPLACE(
+         REPLACE('<b>hello</b>', '<b>', ''),
+         '</b>', ''
+       ) AS result
+FROM dual;  -- hello
+ result 
+--------
+ hello
+(1 row)
+
+ 
+--
+-- TRIM 
+--
+SELECT
+  TRIM('  Oracle 21c  ') AS result
+FROM dual; -- Oracle 21c
+   result   
+------------
+ Oracle 21c
+(1 row)
+
+SELECT
+  TRIM('  Oracle   21c  ') AS result
+FROM dual; -- Oracle   21c
+    result    
+--------------
+ Oracle   21c
+(1 row)
+
+SELECT
+  TRIM(LEADING FROM '   Oracle  ') AS result
+FROM dual; -- Oracle  
+  result  
+----------
+ Oracle  
+(1 row)
+
+SELECT
+  TRIM(TRAILING FROM '   Oracle  ') AS result
+FROM dual; --    Oracle
+  result   
+-----------
+    Oracle
+(1 row)
+
+SELECT
+  TRIM(BOTH FROM '   Oracle  ') AS result
+FROM dual; -- Oracle
+ result 
+--------
+ Oracle
+(1 row)
+
+SELECT
+  TRIM(LEADING '0' FROM '000123') AS result
+FROM dual; -- 123
+ result 
+--------
+ 123
+(1 row)
+
+SELECT
+  TRIM(TRAILING 'x' FROM 'dataxxx') AS result
+FROM dual; -- data
+ result 
+--------
+ data
+(1 row)
+
+SELECT
+  TRIM(BOTH '*' FROM '***core***') AS result
+FROM dual;  -- core
+ result 
+--------
+ core
+(1 row)
+
+SELECT
+  TRIM('#' FROM '##ABC##') AS result
+FROM dual;  -- ABC
+ result 
+--------
+ ABC
+(1 row)
+
+SELECT
+  TRIM('#ABC#') AS result
+FROM dual; -- #ABC#
+ result 
+--------
+ #ABC#
+(1 row)
+
+SELECT
+  TRIM(LEADING 'ab' FROM 'ababDATA') AS result
+FROM dual;  -- ORA-30001: trim set should have only one character
+ result 
+--------
+ DATA
+(1 row)
+
+SELECT
+  TRIM(LEADING 'a' FROM 'aaabDATA') AS result
+FROM dual; -- bDATA
+ result 
+--------
+ bDATA
+(1 row)
+
+SELECT
+  TRIM(LEADING 'ab' FROM 'abaXDATA') AS result
+FROM dual;
+ result 
+--------
+ XDATA
+(1 row)
+
+SELECT
+  LTRIM('abaXDATA', 'ab') AS result
+FROM dual; -- XDATA
+ result 
+--------
+ XDATA
+(1 row)
+
+SELECT
+  TRIM(NULL) AS result
+FROM dual;  -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT
+  TRIM(LEADING NULL FROM 'ABC') AS result
+FROM dual;  -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT
+  TRIM(LEADING '0' FROM 00123) AS result
+FROM dual;  -- 123
+ result 
+--------
+ 123
+(1 row)
+
+SELECT
+  '"' || TRIM(CAST(' A ' AS CHAR(5))) || '"' AS trimmed_value,
+  LENGTH(TRIM(CAST(' A ' AS CHAR(5)))) AS trimmed_length
+FROM dual; -- "A"	1
+ trimmed_value | trimmed_length 
+---------------+----------------
+ "A"           |              1
+(1 row)
+
+SELECT
+  TRIM(LEADING 'X' FROM TO_CLOB('XXXCLOB')) AS result
+FROM dual;  -- CLOB
+ result 
+--------
+ CLOB
+(1 row)
+
+SELECT
+  TRIM('AAA' FROM 'AAA') AS result
+FROM dual;
+ result 
+--------
+ 
+(1 row)
+
+SELECT TRIM(LEADING 'A' FROM 'AAA') AS result FROM dual; -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT TRIM(TRAILING 'A' FROM 'AAA') AS result FROM dual; -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT TRIM(BOTH 'A' FROM 'AAA') AS result FROM dual; -- (null)
+ result 
+--------
+ 
+(1 row)
+
+SELECT
+  TRIM('Z' FROM 'ABC') AS result
+FROM dual;  -- ABC
+ result 
+--------
+ ABC
+(1 row)
+

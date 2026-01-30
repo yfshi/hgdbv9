@@ -719,72 +719,118 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 }
 
 /*
- * ora_regexp_like()
+ * Oracle-compatible REGEXP_LIKE implementation
+ *
  * if source string matched by a regular expression return true or return false;
+ *
+ * Supports the following flags:
+ *
+ *	'i' - case-insensitive matching (REG_ICASE)
+ *	'c' - case-sensitive matching (clears REG_ICASE)
+ *	'n' - dot matches newline (REG_DOTALL in PostgreSQL, opposite of REG_NEWLINE!)
+ *	'm' - treat string as multiple lines (REG_NEWLINE for ^/$ matching)
+ *	'x' - ignore whitespace in pattern (REG_EXPANDED)
  */
 Datum
 ora_regexp_like(PG_FUNCTION_ARGS)
 {
-    text		*s = PG_ARGISNULL(0) ? NULL :PG_GETARG_TEXT_P(0);
-    text		*p = PG_ARGISNULL(1) ? NULL :PG_GETARG_TEXT_P(1);
-    text		*in_flag = PG_ARGISNULL(2) ? PG_STR_GET_TEXT("") : PG_GETARG_TEXT_P(2);
-    char		*in_flag_p = NULL;
-    int			in_flag_len, i, out_flag;
-    bool		match;
-    regmatch_t	pmatch[2];
+	text		*s = PG_ARGISNULL(0) ? NULL :PG_GETARG_TEXT_P(0);
+	text		*p = PG_ARGISNULL(1) ? NULL :PG_GETARG_TEXT_P(1);
+	text		*in_flag = PG_ARGISNULL(2) ? PG_STR_GET_TEXT("") : PG_GETARG_TEXT_P(2);
+	char		*in_flag_p = NULL;
+	int			in_flag_len, i, out_flag;
+	bool		match;
+	regmatch_t	pmatch[2];
 
-    if ((NULL == s) || (NULL == p))
-    {
+	if ((NULL == s) || (NULL == p))
+	{
 		PG_RETURN_BOOL(false);
-    }
+	}
 
-    in_flag_p = VARDATA(in_flag);
-    in_flag_len = (VARSIZE(in_flag) - VARHDRSZ);
+	in_flag_p = VARDATA(in_flag);
+	in_flag_len = (VARSIZE(in_flag) - VARHDRSZ);
 
-    /* parse flag options */
-    out_flag = REG_ADVANCED;
-    for (i = 0; i <in_flag_len; i++)
-    {
-        switch (in_flag_p[i])
-        {
-            case 'i':
-                out_flag  |=  REG_ICASE;
-                break;
-            case 'n':
-                out_flag |= REG_NEWLINE;
-                break;
-            case 'c':
-                out_flag  &=  ~REG_ICASE;
-                break;
-            case 'x':
-                out_flag |= REG_EXPANDED;
-                break;
-            default:
-                ereport(ERROR,
-                        (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-                         errmsg("invalid option of regexp_like: %c",
-                         in_flag_p[i])));
+	/*
+	 * Oracle default (NO FLAGS):
+	 *	- '.' does NOT match newline  (no dotall)
+	 *	- '^' and '$' match ONLY start/end of entire string (no multiline)
+	 *
+	 * PostgreSQL equivalent:
+	 *	- DO NOT set REG_NEWLINE
+	 */
+	out_flag = REG_ADVANCED;
+
+	for (i = 0; i <in_flag_len; i++)
+	{
+		switch (in_flag_p[i])
+		{
+			case 'i':	/* Case-insensitive matching */
+				out_flag  |= REG_ICASE;
 				break;
-        }
-    }
+			case 'n':	/* Dot matches newline - Oracle 'n' = REG_DOTALL */
+				/*
+				 * Compatible Oracle 'n' semantics (DOTALL):
+				 *		- '.' matches newline
+				 *		- newline does NOT change ^ or $
+				 *
+				 * In PostgreSQL:
+				 *
+				 *		- '.' matches newline when REG_NEWLINE is NOT set
+				 *		- so we must REMOVE REG_NEWLINE and REMOVE NLSTOP/NLANCH
+				 */
+				/* DOTALL: '.' should match newline */
+				out_flag &= ~REG_NEWLINE;	/* remove newline-sensitive mode */
+				out_flag &= ~REG_NLSTOP;	/* do not stop '.' at newline */
+				out_flag &= ~REG_NLANCH;	/* do not alter ^/$ with newline */
+				break;
+			/*
+			 * Compatible Oracle 'm' semantics:
+			 *		- Multi-line mode
+			 *		- ^ matches start of string OR after newline
+			 *		- $ matches end of string OR before newline
+			 *		- DOES NOT change '.' behavior
+			 *
+			 * PostgreSQL:
+			 *		REG_NEWLINE + REG_NLANCH enable ^/$ to respect newline
+			 */
+			case 'm':
+				/* do Not touch dot behavior */
+				out_flag |= REG_NEWLINE;   /* enable newline-sensitive anchors */
+				out_flag |= REG_NLANCH;    /* allow ^/$ to anchor at newlines */
+				break;
+			case 'c':	/* Case-sensitive matching (Oracle-specific) */
+				out_flag  &= ~REG_ICASE;
+				break;
+			case 'x':
+				out_flag |= REG_EXPANDED;
+				break;
+			default:
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						errmsg("invalid option of regexp_like: %c",
+						in_flag_p[i])));
+				break;
+		}
+	}
 
-    /*
-     * We pass two regmatch_t structs to get info about the overall match and
-     * the match for the first parenthesized subexpression (if any). If there
-     * is a parenthesized subexpression, we return what it matched; else
-     * return what the whole regexp matched.
-     */
-    match = RE_compile_and_execute(p,
-                                   VARDATA(s),
-                                   VARSIZE(s) - VARHDRSZ,
-                                   out_flag,
-                                   PG_GET_COLLATION(),
-                                   2, pmatch);
+	/*
+	 * We pass two regmatch_t structs to get info about the overall match and
+	 * the match for the first parenthesized subexpression (if any). If there
+	 * is a parenthesized subexpression, we return what it matched; else
+	 * return what the whole regexp matched.
+	 */
+	match = RE_compile_and_execute(p,
+								   VARDATA(s),
+								   VARSIZE(s) - VARHDRSZ,
+								   out_flag,
+								   PG_GET_COLLATION(),
+								   2,
+								   pmatch);
 
-    /* match? then return the substring matching the pattern */
-    if (match)
+	/* match? then return the substring matching the pattern */
+	if (match)
 		PG_RETURN_BOOL(true);
-    else
+	else
 		PG_RETURN_BOOL(false);
 }
 
@@ -796,36 +842,46 @@ ora_regexp_like(PG_FUNCTION_ARGS)
 Datum
 ora_regexp_like_no_flags(PG_FUNCTION_ARGS)
 {
-    text		*s = PG_ARGISNULL(0) ? NULL :PG_GETARG_TEXT_P(0);
-    text		*p = PG_ARGISNULL(1) ? NULL :PG_GETARG_TEXT_P(1);
-    int			out_flag;
-    bool		match;
-    regmatch_t	pmatch[2];
+	text		*s = PG_ARGISNULL(0) ? NULL :PG_GETARG_TEXT_P(0);
+	text		*p = PG_ARGISNULL(1) ? NULL :PG_GETARG_TEXT_P(1);
+	int			out_flag;
+	bool		match;
+	regmatch_t	pmatch[2];
 
-    if ((NULL == s) || (NULL == p) )
-    {
+	if ((NULL == s) || (NULL == p) )
+	{
 		PG_RETURN_BOOL(false);
-    }
-    /* parse flag options */
-    out_flag = REG_ADVANCED;
+	}
 
-    /*
-     * We pass two regmatch_t structs to get info about the overall match and
-     * the match for the first parenthesized subexpression (if any). If there
-     * is a parenthesized subexpression, we return what it matched; else
-     * return what the whole regexp matched.
-     */
-    match = RE_compile_and_execute(p,
-                                   VARDATA(s),
-                                   VARSIZE(s) - VARHDRSZ,
-                                   out_flag,
-                                   PG_GET_COLLATION(),
-                                   2, pmatch);
+	/*
+	 * Oracle default (NO FLAGS):
+	 *	- '.' does NOT match newline  (no dotall)
+	 *	- '^' and '$' match ONLY start/end of entire string (no multiline)
+	 *
+	 * PostgreSQL equivalent:
+	 *	- DO NOT set REG_NEWLINE
+	 */
+	out_flag = REG_ADVANCED;
+	out_flag |= REG_NLSTOP;
 
-    /* match? then return the substring matching the pattern */
-    if (match)
+	/*
+	 * We pass two regmatch_t structs to get info about the overall match and
+	 * the match for the first parenthesized subexpression (if any). If there
+	 * is a parenthesized subexpression, we return what it matched; else
+	 * return what the whole regexp matched.
+	 */
+	match = RE_compile_and_execute(p,
+								   VARDATA(s),
+								   VARSIZE(s) - VARHDRSZ,
+								   out_flag,
+								   PG_GET_COLLATION(),
+								   2,
+								   pmatch);
+
+	/* match? then return the substring matching the pattern */
+	if (match)
 		PG_RETURN_BOOL(true);
-    else
+	else
 		PG_RETURN_BOOL(false);
 }
 /* End - SRS-CKC-Oracle-SupportOra_Regexp_245 */
@@ -854,9 +910,13 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 	size_t		data_len;
 	pg_re_flags flags;
 	/* Begin - ReqID:SRS-SQL-SYSFUNC: */
-	int			num = 0;
-	bool		flag = false;
-	
+	int			num_newlines = 0;
+	bool		is_caret_pattern = false;
+	bool		is_multiline = false;
+	bool		has_n_flag = false;
+	bool		has_m_flag = false;
+
+
 	if (PG_ARGISNULL(2))
 		PG_RETURN_NULL();
 
@@ -908,7 +968,7 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 	p = PG_GETARG_TEXT_PP(1);
 	src_text_len = VARSIZE_ANY_EXHDR(s);
 	
-	if(PG_NARGS() == 4)
+	if(PG_NARGS() == 4 && !PG_ARGISNULL(0))
 	{
 		char	*str = text_to_cstring(s);
 		int 	 len = strlen(str);
@@ -916,10 +976,9 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 		for(i = 0;i < len; i++)
 		{
 			if(str[i] == '\n')
-				num++;
+				num_newlines++;
 		}
-		if(str[len - 1] == '\n')
-			flag = true;
+		pfree(str);
 	}
 	/* End - ReqID:SRS-SQL-SYSFUNC. */
 	
@@ -930,10 +989,76 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 	data = (pg_wchar *) palloc((src_text_len + 1) * sizeof(pg_wchar));
 	data_len = pg_mb2wchar_with_len(VARDATA_ANY(s), data, src_text_len);
 	
+
+	/*
+	 * Oracle 'm' mode special handling for patterns starting with '^'
+	 *
+	 * In Oracle:
+	 *	 - '^' matches the start of the string
+	 *	 - '^' also matches immediately after each newline
+	 *
+	 * PostgreSQL REG_NEWLINE + REG_NLANCH does not automatically
+	 * re-evaluate the regex at line start positions, so we must
+	 * manually scan all line-start locations.
+	 */
+	is_caret_pattern =
+		(VARSIZE_ANY_EXHDR(p) > 0 &&
+		 VARDATA_ANY(p)[0] == '^');
+
+	is_multiline = ((flags.cflags & REG_NLANCH) != 0);
+
+	if (is_caret_pattern && is_multiline)
+	{
+		int 		i;
+		int 		regexec_result;
+
+		occurrence_cnt = 0;
+
+		/*
+		 * Match at the start of the whole string.
+		 */
+		regexec_result = pg_regexec(re,
+									data,
+									data_len,
+									0,				/* start at beginning */
+									NULL,
+									REGEXP_REPLACE_BACKREF_CNT,
+									pmatch,
+									0);
+
+		if (regexec_result == REG_OKAY)
+			occurrence_cnt++;
+
+		/*
+		 * Match after every newline, i.e., at pos = (newline index + 1)
+		 */
+		for (i = 0; i < data_len; i++)
+		{
+			if (data[i] == (pg_wchar)'\n' && (i + 1) < data_len)
+			{
+				regexec_result = pg_regexec(re,
+											data,
+											data_len,
+											i + 1,
+											NULL,
+											REGEXP_REPLACE_BACKREF_CNT,
+											pmatch,
+											0);
+
+				if (regexec_result == REG_OKAY)
+					occurrence_cnt++;
+			}
+		}
+
+		pfree(data);
+		PG_RETURN_INT32(occurrence_cnt);
+	}
+
 	search_start = position - 1;
+
 	while (search_start <= data_len)
 	{
-		int			regexec_result;
+		int 	regexec_result;
 
 		CHECK_FOR_INTERRUPTS();
 
@@ -941,7 +1066,7 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 									data,
 									data_len,
 									search_start,
-									NULL,		/* no details */
+									NULL,
 									REGEXP_REPLACE_BACKREF_CNT,
 									pmatch,
 									0);
@@ -951,7 +1076,7 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 
 		if (regexec_result != REG_OKAY)
 		{
-			char		errMsg[100];
+			char	errMsg[100];
 
 			CHECK_FOR_INTERRUPTS();
 			pg_regerror(regexec_result, re, errMsg, sizeof(errMsg));
@@ -960,37 +1085,35 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 					 errmsg("regular expression failed: %s", errMsg)));
 		}
 
-		/* Count the number of matches */
 		occurrence_cnt++;
 
-		/*
-		 * Advance search position.  Normally we start the next search at the
-		 * end of the previous match; but if the match was of zero length, we
-		 * have to advance by one character, or we'd just find the same match
-		 * again.
-		 */
+		/* Advance by length or 1 if zero-length match */
 		search_start = pmatch[0].rm_eo;
 		if (pmatch[0].rm_so == pmatch[0].rm_eo)
 			search_start++;
 	}
 
 	/* Begin - ReqID:SRS-SQL-SYSFUNC: count newlines. */
-	if(flags.cflags == (REG_ICASE | REG_ADVANCED) || (flags.cflags == REG_ADVANCED))
+	if (match_param)
 	{
-		if (!strncmp(p->vl_dat ,".",1))
-			occurrence_cnt -= num;
-	}	
-	if(flags.cflags == (REG_NEWLINE | REG_ADVANCED) && !strncmp(p->vl_dat ,".",1))
-		occurrence_cnt += num;
-	if(flags.cflags == (REG_NEWLINE | REG_ADVANCED) && !strncmp(p->vl_dat ,"^",1))
-	{
-		if(num)
-			occurrence_cnt = num;
+		char	*paramstr = text_to_cstring(match_param);
+		has_n_flag = (strchr(paramstr, 'n') != NULL);
+		has_m_flag = (strchr(paramstr, 'm') != NULL);
+		pfree(paramstr);
 	}
-	if(flags.cflags ==  REG_ADVANCED && !strncmp(p->vl_dat ,"^",1) && flag)
+
+	if (!strncmp(VARDATA_ANY(p), ".", 1))
 	{
-		if (num > 1)
-			occurrence_cnt += 1;
+		if (!has_n_flag)
+		{
+			if (occurrence_cnt > (data_len - num_newlines))
+				occurrence_cnt -= num_newlines;
+		}
+	}
+	else if (!strncmp(VARDATA_ANY(p), "^", 1))
+	{
+		if (has_m_flag)
+			occurrence_cnt = num_newlines + 1;
 	}
 	/* End - ReqID:SRS-SQL-SYSFUNC. */
 	
