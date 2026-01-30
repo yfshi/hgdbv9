@@ -66,6 +66,8 @@ bool hg_antitamper_enabled = false;
 
 #define HG_SYS_SCHEMA_ANTITAMPER "schema_antitamper"
 #define Natts_schema_antitamper (2)
+#define Anum_schema_antitamper_schemaoid_col (1)
+#define Anum_schema_antitamper_antitamper_col (2)
 
 /* schema_set_antitamper_rel:
  *    set schema_antitamper relation 
@@ -94,8 +96,8 @@ schema_set_antitamper_rel(uint32 schemaoid, bool isantitamper)
 	memset(values, 0, sizeof(values));
 	memset(nulls, 0, sizeof(nulls));
 
-	values[0] = UInt32GetDatum(schemaoid);
-	values[1] = BoolGetDatum(isantitamper);
+	values[Anum_schema_antitamper_schemaoid_col - 1] = UInt32GetDatum(schemaoid);
+	values[Anum_schema_antitamper_antitamper_col - 1] = BoolGetDatum(isantitamper);
 
 	/* insert the rule attribute into the table. */
 	tup = heap_form_tuple(RelationGetDescr(rel), values, nulls);
@@ -143,7 +145,7 @@ schema_get_antitamper_flag(uint32 schemaoid)
 	tup = heap_getnext(scandesc, ForwardScanDirection);
 	if (HeapTupleIsValid(tup))
 	{
-		isantitamper = heap_getattr(tup, 1, RelationGetDescr(rel), &isNull);
+		isantitamper = heap_getattr(tup, Anum_schema_antitamper_antitamper_col, RelationGetDescr(rel), &isNull);
 		is_antitamper = DatumGetBool(isantitamper);
 	}
 
