@@ -1,0 +1,29 @@
+<!--
+doc/src/sgml/ref/create_resource_group.sgml
+PostgreSQL documentation
+-->
+
+<refentry id="sql-createresourcegroup">
+ <indexterm zone="sql-createresourcegroup">
+  <primary>CREATE RESOURCE GROUP</primary>
+ </indexterm>
+
+ <refmeta>
+  <refentrytitle>CREATE RESOURCE GROUP</refentrytitle>
+  <manvolnum>7</manvolnum>
+  <refmiscinfo>SQL - Language Statements</refmiscinfo>
+ </refmeta>
+
+ <refnamediv>
+  <refname>CREATE RESOURCE GROUP</refname>
+  <refpurpose>define a new resource group</refpurpose>
+ </refnamediv>
+
+ <refsynopsisdiv>
+<synopsis>
+CREATE RESOURCE GROUP <replaceable class="parameter">name</replaceable>
+[ WITH ( <replaceable class="parameter">resource_group_option</replaceable> = <replaceable class="parameter">value</replaceable> [, ... ] ) ]
+</synopsis>
+ </refsynopsisdiv>
+
+</refentry>
