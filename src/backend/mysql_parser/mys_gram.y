@@ -414,7 +414,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 		DropTransformStmt
 		DropUserMappingStmt ExplainStmt FetchStmt
 		GrantStmt GrantRoleStmt ImportForeignSchemaStmt IndexStmt InsertStmt
-		ListenStmt LoadStmt LockStmt MergeStmt MysDoStmt NotifyStmt ExplainableStmt PreparableStmt
+		ListenStmt LoadStmt LockStmt MergeStmt MysDoStmt NotifyStmt ExplainableStmt PreparableStmt M_PreparableStmt
 		CreateFunctionStmt AlterFunctionStmt ReindexStmt RemoveAggrStmt
 		RemoveFuncStmt RemoveOperStmt RenameStmt ReturnStmt RevokeStmt RevokeRoleStmt
 		RuleActionStmt RuleActionStmtOrEmpty RuleStmt
@@ -2411,6 +2411,22 @@ MysqlShowStmt:
 				}
 /* End - Req: SRS-MYSQL-CHARSET */
 /* Begin - Req: SRS-MYSQL-SHOW */
+			| SHOW CREATE database ColId
+				{
+					$$ = (Node *)makeShowCreateDatabaseStmt($4, false);
+				}
+			| SHOW CREATE database IF_P NOT EXISTS ColId
+				{
+					$$ = (Node *)makeShowCreateDatabaseStmt($7, true);
+				}
+			| SHOW CREATE TABLE qualified_name
+				{
+					$$ = (Node *)makeShowCreateTableStmt($4);
+				}
+			| SHOW CREATE VIEW qualified_name
+				{
+					$$ = (Node *)makeShowCreateViewStmt($4);
+				}
 			| SHOW TRIGGERS opt_db opt_show_filter
 				{
 					$$ = (Node *)makeShowTriggersStmt($3, $4);
@@ -2427,10 +2443,6 @@ MysqlShowStmt:
 				{
 					$$ = (Node *)makeShowTablesStmt($4, $5, $2);
 				}
-			| SHOW CREATE VIEW qualified_name
-				{
-					$$ = (Node *)makeShowCreateViewStmt($4);
-				}
 			| SHOW databases_or_schemas opt_show_filter
 				{
 					$$ = (Node *)makeShowSchemasStmt($3);
@@ -2442,18 +2454,6 @@ MysqlShowStmt:
 			| describe qualified_name opt_col_wild
 				{
 					$$ = (Node *)makeShowColumnsStmt($2, NULL, $3, false);
-				}
-			| SHOW CREATE database ColId
-				{
-					$$ = (Node *)makeShowCreateDatabaseStmt($4, false);
-				}
-			| SHOW CREATE database IF_P NOT EXISTS ColId
-				{
-					$$ = (Node *)makeShowCreateDatabaseStmt($7, true);
-				}
-			| SHOW CREATE TABLE qualified_name
-				{
-					$$ = (Node *)makeShowCreateTableStmt($4);
 				}
 			| SHOW VARIABLES opt_show_filter
 				{
@@ -12984,7 +12984,18 @@ ExplainableStmt:
  *				PREPARE <plan_name> [(args, ...)] AS <query>
  *
  *****************************************************************************/
-
+/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+M_PreparableStmt:
+		SCONST
+			{
+				$$ = (Node *) makeString($1);
+			}
+		| USER_VARIABLE_NAME
+			{
+				$$ = makeVarRef($1, USER_VAR, @1);
+			}
+	;
+/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 PrepareStmt: PREPARE name prep_type_clause AS PreparableStmt
 				{
 					PrepareStmt *n = makeNode(PrepareStmt);
@@ -12993,6 +13004,16 @@ PrepareStmt: PREPARE name prep_type_clause AS PreparableStmt
 					n->query = $5;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+			| PREPARE name prep_type_clause FROM M_PreparableStmt
+				{
+					PrepareStmt *n = makeNode(PrepareStmt);
+					n->name = $2;
+					n->argtypes = $3;
+					n->query = $5;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 		;
 
 prep_type_clause: '(' type_list ')'			{ $$ = $2; }
@@ -13005,12 +13026,6 @@ PreparableStmt:
 			| UpdateStmt
 			| DeleteStmt
 			| MergeStmt						/* by default all are $$=$1 */
-			/* Begin - ReqID:SRS-MYSQL-SET */
-			| USER_VARIABLE_NAME
-				{
-					$$ = makeVarRef($1, USER_VAR, @1);
-				}
-			/* End - ReqID:SRS-MYSQL-SET */
 		;
 
 /*****************************************************************************
@@ -13065,6 +13080,7 @@ ExecuteStmt: EXECUTE name execute_param_clause
 
 execute_param_clause: '(' expr_list ')'				{ $$ = $2; }
 					| /* EMPTY */					{ $$ = NIL; }
+					| USING expr_list				{ $$ = $2; }
 					;
 
 /*****************************************************************************
@@ -13098,6 +13114,14 @@ DeallocateStmt: DEALLOCATE name
 						n->name = NULL;
 						$$ = (Node *) n;
 					}
+				/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+				| DROP PREPARE name
+					{
+						DeallocateStmt *n = makeNode(DeallocateStmt);
+						n->name = $3;
+						$$ = (Node *) n;
+					}
+				/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 		;
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
 insert_partition_clause: update_delete_partition_clause

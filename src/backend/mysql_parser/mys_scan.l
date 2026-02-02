@@ -71,6 +71,7 @@ fprintf_to_ereport(const char *fmt, const char *msg)
 int			backslash_quote = BACKSLASH_QUOTE_SAFE_ENCODING;
 bool		escape_string_warning = true;
 bool		standard_conforming_strings = true;
+int 		param_no = 0;	/* SRS-MYSQL-SQL-PREPARE */
 
 /*
  * Constant data exported from this file.  This array maps from the
@@ -1052,6 +1053,16 @@ other			.
 					char	   *slashstar = strstr(yytext, "/*");
 					char	   *dashdash = strstr(yytext, "--");
 
+					/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+					if (nchars == 1 && qm_as_param && yytext[0] == '?')
+					{
+						SET_YYLLOC();
+						yyextra->param_no++;
+						yylval->ival = yyextra->param_no;
+						return PARAM;
+					}
+					/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
+
 					if (slashstar && dashdash)
 					{
 						/* if both appear, take the first one */
@@ -1169,6 +1180,7 @@ other			.
 
 {param}			{
 					SET_YYLLOC();
+					yyextra->param_no++;
 					yylval->ival = atol(yytext + 1);
 					return PARAM;
 				}
@@ -1457,6 +1469,7 @@ mys_scanner_init(const char *str,
 	yyext->keywordlist = keywordlist;
 	yyext->keyword_tokens = keyword_tokens;
 
+	yyext->param_no = 0; /* SRS-MYSQL-SQL-PREPARE */
 	yyext->backslash_quote = backslash_quote;
 	yyext->escape_string_warning = escape_string_warning;
 	yyext->standard_conforming_strings = standard_conforming_strings;

@@ -145,6 +145,7 @@ bool		at_or_atat = false;		/* ReqID:SRS-MYSQL-SET */
 bool		sql_quote_show_create = true;	/* ReqID:SRS-MYSQL-SHOW */
 bool		use_mysql_do = false;	/* ReqID:SRS-MYSQL-DO */
 bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
+bool 		qm_as_param = false; /* SRS-MYSQL-SQL-PREPARE */
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
@@ -275,6 +276,18 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-SET */
+	/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+	{
+		{"mysql.qm_as_param", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("MySQL question mark as a parameter placeholder."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&qm_as_param,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 	/* Begin - ReqID:SRS-MYSQL-SHOW */
 	{
 		{"sql_quote_show_create", PGC_USERSET, COMPAT_MYSQL_OPTIONS,

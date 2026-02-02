@@ -535,6 +535,7 @@ extern PGDLLIMPORT int default_week_format;
 extern PGDLLIMPORT bool at_or_atat;		/* ReqID:SRS-MYSQL-SET */
 extern PGDLLIMPORT bool sql_quote_show_create;	/* ReqID:SRS-MYSQL-SHOW */
 extern PGDLLIMPORT bool use_mysql_do;	/* ReqID:SRS-MYSQL-SHOW */
+extern PGDLLIMPORT bool qm_as_param;	/* SRS-MYSQL-SQL-PREPARE */
 
 /* Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
  * support data redaction policy

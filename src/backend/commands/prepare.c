@@ -82,49 +82,62 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 				 errmsg("invalid statement name: must not be empty")));
 
 	/* Begin - ReqID:SRS-MYSQL-SET */
-	if (compatible_mode == MYS_MODE && stmt->query != NULL &&
-		nodeTag(stmt->query) == T_VarRef)
+	if (compatible_mode == MYS_MODE)
 	{
 		Const	   *con;
 		char	   *oristring = NULL;
-		Oid			typOutput;
-		bool		typIsVarlena;
 		List	   *raw_parsetree_list = NIL;
 
-		if (uservariable_hash_search_hook)
+		if (IsA(stmt->query, String))
+		{
+			oristring = strVal(stmt->query);
+		}
+
+		if (IsA(stmt->query, VarRef))
+		{
+			Oid			typOutput;
+			bool		typIsVarlena;
+
+			Assert(uservariable_hash_search_hook);
+
 			con = (Const *)uservariable_hash_search_hook(pstate, (VarRef *)(stmt->query));
-		else
-			ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PSTATEMENT_DEFINITION),
-				 errmsg("invalid statement name: must not be empty")));
 
-		if (con == NULL || (con != NULL && con->constisnull))
-			ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("You have an error in your SQL syntax; check the manual that corresponds to you MySQL server version for the rigth syntax to use near 'NULL'")));
+			if (con == NULL || con->constisnull)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("You have an error in your SQL syntax")));
+			}
 
-		getTypeOutputInfo(con->consttype , &typOutput, &typIsVarlena);
-		oristring = OidOutputFunctionCall(typOutput, con->constvalue);
-		raw_parsetree_list = raw_parser(oristring, RAW_PARSE_DEFAULT);
+			getTypeOutputInfo(con->consttype , &typOutput, &typIsVarlena);
+			oristring = OidOutputFunctionCall(typOutput, con->constvalue);
+		}
 
-		rawstmt = (RawStmt *)linitial(raw_parsetree_list);
-		rawstmt->stmt_location = stmt_location;
-		rawstmt->stmt_len = stmt_len;
+		if (oristring)
+		{
+			raw_parsetree_list = raw_parser(oristring, RAW_PARSE_DEFAULT);
 
-		stmt->query = rawstmt->stmt;
-	}
-	else
-	{
-		/*
-		 * Need to wrap the contained statement in a RawStmt node to pass it to
-		 * parse analysis.
-		 */
-		rawstmt = makeNode(RawStmt);
-		rawstmt->stmt = stmt->query;
-		rawstmt->stmt_location = stmt_location;
-		rawstmt->stmt_len = stmt_len;
+			if (list_length(raw_parsetree_list) != 1)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("You have an error in your SQL syntax")));
+			}
+
+			rawstmt = (RawStmt *)linitial(raw_parsetree_list);
+			stmt->query = rawstmt->stmt;
+		}
 	}
 	/* End - ReqID:SRS-MYSQL-SET */
+
+	/*
+	 * Need to wrap the contained statement in a RawStmt node to pass it to
+	 * parse analysis.
+	 */
+	rawstmt = makeNode(RawStmt);
+	rawstmt->stmt = stmt->query;
+	rawstmt->stmt_location = stmt_location;
+	rawstmt->stmt_len = stmt_len;
 
 	/*
 	 * Create the CachedPlanSource before we do parse analysis, since it needs
@@ -186,8 +199,17 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 		case CMD_DELETE:
 		case CMD_MERGE:
 		case CMD_MULTI_INSERT: /* SRS-SQL-MULTITABLEINSERT */
+		case CMDTAG_REPLACE: /* ReqID:SRS-MYSQL-SQL-PREPARE */
 			/* OK */
 			break;
+		/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
+		case CMD_UTILITY:
+			if (IsA(query->utilityStmt, MysDoStmt) ||
+				IsA(query->utilityStmt, VariableSetStmt))
+			{
+				break;
+			}
+		/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 		default:
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PSTATEMENT_DEFINITION),

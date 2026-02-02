@@ -88,7 +88,7 @@ typedef struct mys_core_yy_extra_type
 	int			backslash_quote;
 	bool		escape_string_warning;
 	bool		standard_conforming_strings;
-
+	int			param_no; /* ReqID:SRS-MYSQL-SQL-PREPARE */
 	/*
 	 * literalbuf is used to accumulate literal values when multiple rules are
 	 * needed to parse a single literal.  Call startlit() to reset buffer to
