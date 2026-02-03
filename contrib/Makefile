@@ -22,6 +22,7 @@ SUBDIRS = \
 		fuzzystrmatch	\
 		hg_sysmac       \
 		hg_antitamper   \
+		hg_rolstatus	\
 		hstore		\
 		intagg		\
 		intarray	\

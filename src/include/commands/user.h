@@ -52,4 +52,12 @@ typedef char * (*mysql_encryt_password_hook_type) (PasswordType target_type, con
 extern PGDLLIMPORT mysql_encryt_password_hook_type mysql_encrypt_password_hook;
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
+/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+typedef bool (*RoleGetStatus_type)(uint32 roleoid);
+extern PGDLLIMPORT RoleGetStatus_type RoleGetStatus;
+
+typedef bool (*RoleDropRoleStatus_type)(uint32 roleoid);
+extern PGDLLIMPORT RoleDropRoleStatus_type RoleDropRoleStatus;
+/* End - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+
 #endif							/* USER_H */

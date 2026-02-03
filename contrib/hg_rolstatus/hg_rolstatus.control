@@ -1,0 +1,6 @@
+# hg_rolstatus extension
+comment = 'hg_rolstatus -- '
+default_version = '1.0'
+module_pathname = '$libdir/hg_rolstatus'
+relocatable = true
+trusted = true
