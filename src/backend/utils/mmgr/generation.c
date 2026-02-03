@@ -41,6 +41,9 @@
 #include "lib/ilist.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 
 #define Generation_BLOCKHDRSZ	MAXALIGN(sizeof(GenerationBlock))
@@ -283,6 +286,9 @@ GenerationReset(MemoryContext context)
 		dlist_delete(miter.cur);
 
 		context->mem_allocated -= block->blksize;
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory(block->blksize, MEM_SUB);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 #ifdef CLOBBER_FREED_MEMORY
 		wipe_mem(block, block->blksize);
@@ -335,9 +341,18 @@ GenerationAlloc(MemoryContext context, Size size)
 	{
 		Size		blksize = chunk_size + Generation_BLOCKHDRSZ + Generation_CHUNKHDRSZ;
 
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory(blksize, MEM_ADD);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		block = (GenerationBlock *) malloc(blksize);
 		if (block == NULL)
+		{
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+			sql_resource_limit_check_memory(blksize, MEM_SUB);
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 			return NULL;
+		}
 
 		context->mem_allocated += blksize;
 
@@ -389,10 +404,20 @@ GenerationAlloc(MemoryContext context, Size size)
 	{
 		Size		blksize = set->blockSize;
 
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_memory(blksize, MEM_ADD);
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		block = (GenerationBlock *) malloc(blksize);
 
 		if (block == NULL)
+		{
+			/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+			sql_resource_limit_check_memory(blksize, MEM_SUB);
+			/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 			return NULL;
+		}
 
 		context->mem_allocated += blksize;
 
@@ -510,6 +535,11 @@ GenerationFree(MemoryContext context, void *pointer)
 		set->block = NULL;
 
 	context->mem_allocated -= block->blksize;
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+	sql_resource_limit_check_memory(block->blksize, MEM_SUB);
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 	free(block);
 }
 

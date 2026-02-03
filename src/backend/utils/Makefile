@@ -28,7 +28,8 @@ SUBDIRS     = \
 	resowner \
 	resgroup \
 	sort \
-	time
+	time \
+	sqlresourcelimit
 
 # location of Catalog.pm
 catalogdir  = $(top_srcdir)/src/backend/catalog

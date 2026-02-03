@@ -80,6 +80,9 @@
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 #include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /*
  *	User-tweakable parameters
@@ -2186,6 +2189,10 @@ CommitTransaction(void)
 		(*audit_commited_hook)();
 	}
 /* End - ReqID:SRS-SECURITY-AUDIT */
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+	sql_resource_limit_check_io_write();
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 	is_parallel_worker = (s->blockState == TBLOCK_PARALLEL_INPROGRESS);
 

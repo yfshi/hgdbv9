@@ -211,6 +211,21 @@ char	   *GUC_check_errhint_string;
 bool hg_redaction_data;
 /* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+int sqlallocated_memory = 1024;	/* record allocated memory size */
+int sqlread_buffer = 1024;
+int sqlwrite_buffer = 1024;	/* there is I of IO */
+int sqlcpu_usage = 100;
+int source_limit_mode = RESOURCE_LIMIT_OFF;
+
+static const struct config_enum_entry source_limit_mode_options[] = {
+	{"off", RESOURCE_LIMIT_OFF, false},
+	{"strict", RESOURCE_LIMIT_STRICT, false},
+	{"loose", RESOURCE_LIMIT_LOOSE, false},
+	{NULL, 0, false}
+};
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 static void do_serialize(char **destptr, Size *maxbytes, const char *fmt,...) pg_attribute_printf(3, 4);
 
 static void set_config_sourcefile(const char *name, char *sourcefile,
@@ -322,6 +337,10 @@ static const char *restricted_dba_show(void);
 /* Begin - ReqID: SRS-MYSQL-PROTOCOL */
 static const char *show_XactIsoLevel(void);
 /* End - ReqID: SRS-MYSQL-PROTOCOL */
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+static bool check_sourcelimitmode(int *newval, void **extra, GucSource source);
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
@@ -3970,6 +3989,53 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - BUG#z6159 */
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+	{
+		{"sqlallocated_memory", PGC_USERSET, RESOURCES_MEM,
+			gettext_noop("Memory allocation for sql source limites."),
+			NULL,
+			GUC_UNIT_MB | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&sqlallocated_memory,
+		1024, 1, INT_MAX,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"sqlread_buffer", PGC_USERSET, RESOURCES_DISK,
+			gettext_noop("SQL resource limit on disk reads."),
+			NULL,
+			GUC_UNIT_MB | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&sqlread_buffer,
+		1024, 1, INT_MAX,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"sqlwrite_buffer", PGC_USERSET, RESOURCES_DISK,
+			gettext_noop("SQL resource limit on disk writes."),
+			NULL,
+			GUC_UNIT_MB | GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&sqlwrite_buffer,
+		1024, 1, INT_MAX,
+		NULL, NULL, NULL
+	},
+
+	{
+		{"sqlcpu_usage", PGC_USERSET, RESOURCES_MEM,
+			gettext_noop("SQL resource limits the maximum CPU usage."),
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_DISALLOW_IN_FILE
+		},
+		&sqlcpu_usage,
+		100, 1, 100,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_INT_PARAMS
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
@@ -5573,6 +5639,18 @@ static struct config_enum ConfigureNamesEnum[] =
 		RECOVERY_INIT_SYNC_METHOD_FSYNC, recovery_init_sync_method_options,
 		NULL, NULL, NULL
 	},
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+	{
+		{"sql_resource_limit", PGC_USERSET, DEVELOPER_OPTIONS,
+			gettext_noop("SQL resoure limit mode configuration"),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&source_limit_mode,
+		RESOURCE_LIMIT_OFF, source_limit_mode_options,
+		check_sourcelimitmode, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_ENUM_PARAMS
 	#include "ivy_oracle_guc.c"		/* ReqID:SRS-MISC-MYSQL-FRAME */
@@ -13240,7 +13318,18 @@ pgvars_check_pg_resource_manager_policy(char **newval, void **extra, GucSource s
 		!pg_strcasecmp("none", *newval) ||
 		!pg_strcasecmp("group", *newval) ||
 		!pg_strcasecmp("group-v2", *newval))
+	{
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		if (source_limit_mode == RESOURCE_LIMIT_STRICT ||
+			source_limit_mode == RESOURCE_LIMIT_LOOSE)
+		{
+			GUC_check_errmsg("Set the GUC parameter pg_resource_manager, If the GUC sql_resource_limit is enabled, pg_resource_manager is not allowed to be enabled.");
+			return false;
+		}
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
 		return true;
+	}
 
 	GUC_check_errmsg("invalid value for resource manager policy: \"%s\"", *newval);
 	return false;
@@ -13890,6 +13979,30 @@ show_XactIsoLevel(void)
 	return ret;
 }
 /* End - ReqID: SRS-MYSQL-PROTOCOL */
+
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+/* check_sourcelimitmode
+ *
+ * Set the GUC parameter sql_resource_limit, if the GUC
+ * parameter pg_resource_manager is enabled, sql_resource_limit
+ * is not allowed to be enabled.
+ */
+static bool
+check_sourcelimitmode(int *newval, void **extra, GucSource source)
+{
+	if (IsResGroupEnabled())
+	{
+		if (*newval == RESOURCE_LIMIT_STRICT || *newval == RESOURCE_LIMIT_LOOSE)
+		{
+			GUC_check_errmsg("Set the GUC parameter sql_resource_limit, If the GUC pg_resource_manager is enabled, sql_resource_limit is not allowed to be enabled.");
+
+			return false;
+		}
+	}
+
+	return true;
+}
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE

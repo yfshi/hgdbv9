@@ -58,6 +58,9 @@
 /* Begin - ReqID:SRS-SECURITY-TDE */
 #include "crypto/bufenc.h"
 /* End - ReqID:SRS-SECURITY-TDE */
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 /* Note: these two macros only work on shared buffers, not local ones! */
 #define BufHdrGetBlock(bufHdr)	((Block) (BufferBlocks + ((Size) (bufHdr)->buf_id) * BLCKSZ))
@@ -776,6 +779,11 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 							forkNum, blockNum, mode, strategy, &hit);
 	if (hit)
 		pgstat_count_buffer_hit(reln);
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+	if (!hit)
+		sql_resource_limit_check_io_read();
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 	/* Begin - ReqID:SRS-SECURITY-TDE */
 	/* We set/unset the encrypt flag after get the buffer immediately */
@@ -1682,6 +1690,10 @@ MarkBufferDirty(Buffer buffer)
 		pgBufferUsage.shared_blks_dirtied++;
 		if (VacuumCostActive)
 			VacuumCostBalance += VacuumCostPageDirty;
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_io_write_count();
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 	}
 }
 
@@ -3999,6 +4011,10 @@ MarkBufferDirtyHint(Buffer buffer, bool buffer_std)
 		bool		dirtied = false;
 		bool		delayChkpt = false;
 		uint32		buf_state;
+
+		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+		sql_resource_limit_check_io_write_count();
+		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 		/*
 		 * If we need to protect hint bit updates from torn writes, WAL-log a

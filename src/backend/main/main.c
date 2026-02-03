@@ -47,6 +47,9 @@
 #include "license.h"
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#include "utils/sqlresourcelimit.h"
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 
 const char *progname;
@@ -218,6 +221,12 @@ main(int argc, char *argv[])
 	hg_load_server_license(argv[0]);
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#ifndef WIN32
+	drop_all_sql_resoure_limit_for_cpu();
+#endif
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
 	if (argc > 1 && strcmp(argv[1], "--boot") == 0)
 		AuxiliaryProcessMain(argc, argv);	/* does not return */
