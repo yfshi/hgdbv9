@@ -276,5 +276,6 @@ extern Oid ResGroupGetGroupIdBySessionPid(int sessionPid);
 extern char *getCpuSetByRole(const char *cpuset);
 extern void checkCpuSetByRole(const char *cpuset);
 extern bool checkTablespaceInIOlimit(Oid tblspcid, bool errout);
+extern int64 get_group_memory_limit(void);
 
 #endif   /* RES_GROUP_H */

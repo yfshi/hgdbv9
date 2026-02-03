@@ -12,8 +12,11 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
+#include "miscadmin.h"
 #include "utils/guc.h"
 #include "utils/sqlresourcelimit.h"
+#include "utils/resgroup.h"
+#include "storage/proc.h"
 
 #define SQLRESOURCELIMITIO_I sqlread_buffer * 1024LL * 1024
 #define SQLRESOURCELIMITIO_O sqlwrite_buffer * 1024LL * 1024
@@ -116,35 +119,79 @@ sql_resource_limit_check_memory(Size size, MemCountOpt opt)
 	int		elevel;
 	long long int newsize = 0;
 
-	if (source_limit_mode == RESOURCE_LIMIT_OFF)
-		return;
-
-	if (opt == MEM_SUB)
+	if (source_limit_mode != RESOURCE_LIMIT_OFF)
 	{
-		newsize -= (long long int)size;
-	}
-	else
-	{
-		newsize = (long long int)size;
+		if (opt == MEM_SUB)
+		{
+			newsize -= (long long int)size;
+		}
+		else
+		{
+			newsize = (long long int)size;
+		}
+
+		if ((sqlallocated_memorycount = sqlallocated_memorycount + newsize) < 0)
+		{
+			sqlallocated_memorycount = 0;
+
+			return;
+		}
+
+		/* No error to be reported for memory release */
+		if (newsize > 0 && SQLRESOURCELIMITMEMORY < sqlallocated_memorycount &&
+			!sqlallocatedmem_warning)
+		{
+			sqlallocatedmem_warning = true;
+			elevel = (source_limit_mode == RESOURCE_LIMIT_STRICT) ? ERROR : WARNING;
+			ereport(elevel,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("The SQL resource limit has exceeded the maximum allowed memory value, please check sqlallocated_memory")));
+		}
 	}
 
-	if ((sqlallocated_memorycount = sqlallocated_memorycount + newsize) < 0)
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* User memory resources are restricted only for backend processes. */
+	if (MyBackendType == B_BACKEND &&
+		MyProc != NULL &&
+		IsResGroupEnabled())
 	{
-		sqlallocated_memorycount = 0;
+		long long int group_memory;
 
-		return;
-	}
+		if (opt == MEM_SUB)
+		{
+			newsize -= (long long int)size;
+		}
+		else
+		{
+			newsize = (long long int)size;
+		}
 
-	/* No error to be reported for memory release */
-	if (newsize > 0 && SQLRESOURCELIMITMEMORY < sqlallocated_memorycount &&
-		!sqlallocatedmem_warning)
-	{
-		sqlallocatedmem_warning = true;
-		elevel = (source_limit_mode == RESOURCE_LIMIT_STRICT) ? ERROR : WARNING;
-		ereport(elevel,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("The SQL resource limit has exceeded the maximum allowed memory value, please check sqlallocated_memory")));
+		if ((sqlallocated_memorycount = sqlallocated_memorycount + newsize) < 0)
+		{
+			sqlallocated_memorycount = 0;
+			return;
+		}
+
+		group_memory = get_group_memory_limit();
+
+		/*
+		 * If the current memory usage exceeds the memory limit configured
+		 * for the user's resource group, an error is reported and the
+		 * operation is aborted.
+		 */
+		if (newsize > 0 &&
+			!sqlallocatedmem_warning &&
+			group_memory > 0 &&
+			group_memory < sqlallocated_memorycount)
+		{
+			sqlallocatedmem_warning = true;
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("SQL resource limit-maxmum memory allocation is \"%lld\", now memory is \"%lld\"",
+									group_memory, sqlallocated_memorycount)));
+		}
 	}
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 }
 
 #ifndef WIN32
@@ -219,11 +266,13 @@ drop_all_sql_resoure_limit_for_cpu(void)
 void
 sql_resource_limit_start(void)
 {
-	if (source_limit_mode == RESOURCE_LIMIT_OFF)
-		return;
-
 	/* Initialize SQL resource limit variables. */
 	sql_resource_limit_init_variables();
+
+	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	if (source_limit_mode == RESOURCE_LIMIT_OFF)
+		return;
+	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 #ifndef WIN32
 	/* CPU throttling handling. */
