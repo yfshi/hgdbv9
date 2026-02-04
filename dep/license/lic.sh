@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-CPU_ARCH=`arch`
+CPU_ARCH=`uname -m`
 current_path=`pwd`
 work_path=/dep/license/$CPU_ARCH
 
