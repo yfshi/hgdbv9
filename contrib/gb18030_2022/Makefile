@@ -1,6 +1,5 @@
 # contrib/gb18030_2022/Makefile
 
-MODULES = gb18030_2022
 MODULE_big = gb18030_2022
 OBJS = \
 	$(WIN32RES) \
