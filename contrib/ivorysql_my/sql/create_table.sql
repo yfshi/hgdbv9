@@ -1801,3 +1801,24 @@ CREATE TABLE `auto_generated_keys2`  (
 drop table `auto_generated_keys`;
 drop table `auto_generated_keys2`;
 -- End: OA-2052
+
+-- Begin: OA-2123
+create table t (c int);
+create temporary table IF NOT EXISTS t1 like t;
+create temporary table IF NOT EXISTS t2 (like t);
+create temporary table t3 like t;
+create temporary table t4(like t);
+create table IF NOT EXISTS t5 like t;
+create table IF NOT EXISTS t6 (like t);
+create table t7 like t;
+create table t8 (like t);
+\d t1;
+\d t2;
+\d t3;
+\d t4;
+\d t5;
+\d t6;
+\d t7;
+\d t8;
+drop table t,t1,t2,t3,t4,t5,t6,t7,t8;
+-- End: OA-2123

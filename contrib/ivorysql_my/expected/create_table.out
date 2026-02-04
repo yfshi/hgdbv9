@@ -4093,3 +4093,63 @@ CREATE TABLE `auto_generated_keys2`  (
 drop table `auto_generated_keys`;
 drop table `auto_generated_keys2`;
 -- End: OA-2052
+-- Begin: OA-2123
+create table t (c int);
+create temporary table IF NOT EXISTS t1 like t;
+create temporary table IF NOT EXISTS t2 (like t);
+create temporary table t3 like t;
+create temporary table t4(like t);
+create table IF NOT EXISTS t5 like t;
+create table IF NOT EXISTS t6 (like t);
+create table t7 like t;
+create table t8 (like t);
+\d t1;
+               Table "pg_temp_4.t1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t2;
+               Table "pg_temp_4.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t3;
+               Table "pg_temp_4.t3"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t4;
+               Table "pg_temp_4.t4"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t5;
+                 Table "public.t5"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t6;
+                 Table "public.t6"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t7;
+                 Table "public.t7"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+\d t8;
+                 Table "public.t8"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ c      | integer |           |          | 
+
+drop table t,t1,t2,t3,t4,t5,t6,t7,t8;
+-- End: OA-2123
