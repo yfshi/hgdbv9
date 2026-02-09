@@ -1258,9 +1258,47 @@ SET NLS_TIMESTAMP_TZ_FORMAT='YYYY-MM-DD HH24:MI:SS.FF7 TZH:TZM';
 CREATE TABLE TB1 (a timestamp with time zone);
 SET ivorysql.compatible_mode=pg;
 insert into TB1 values ('08-19-22 11:11:11');
-ERROR:  The value of month is invalid.
+ERROR:  date/time field value out of range: "08-19-22 11:11:11"
 LINE 1: insert into TB1 values ('08-19-22 11:11:11');
                                 ^
 RESET NLS_TIMESTAMP_TZ_FORMAT;
 DROP TABLE TB1;
 /* End - BUG#Z1037 */
+/* Begin - OA-REQ-2030 */
+reset ivorysql.compatible_mode;
+CREATE TABLE OA_2030(
+A DATE,
+B TIMESTAMP,
+C TIMESTAMP WITH TIME ZONE,
+D TIMESTAMP WITH LOCAL TIME ZONE);
+INSERT INTO OA_2030 VALUES('-', '-', '-', '-'); -- error
+ERROR:  invalid value "-" for "YYYY"
+LINE 1: INSERT INTO OA_2030 VALUES('-', '-', '-', '-');
+                                   ^
+DETAIL:  Value must be an integer.
+ALTER SESSION SET NLS_DATE_FORMAT='-';
+ALTER SESSION SET NLS_TIMESTAMP_FORMAT='-';
+ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT='-';
+INSERT INTO OA_2030 VALUES('-', '-', '-', '-'); -- ok
+SELECT * FROM OA_2030;
+ a | b | c | d 
+---+---+---+---
+ - | - | - | -
+(1 row)
+
+SELECT
+TO_CHAR(A, 'DD HH24:MI:SS'),
+TO_CHAR(B, 'DD HH24:MI:SS'),
+TO_CHAR(C, 'DD HH24:MI:SS'),
+TO_CHAR(D, 'DD HH24:MI:SS')
+FROM OA_2030;
+   to_char   |   to_char   |   to_char   |   to_char   
+-------------+-------------+-------------+-------------
+ 01 00:00:00 | 01 00:00:00 | 01 00:00:00 | 01 00:00:00
+(1 row)
+
+RESET NLS_DATE_FORMAT;
+RESET NLS_TIMESTAMP_FORMAT;
+RESET NLS_TIMESTAMP_TZ_FORMAT;
+DROP TABLE OA_2030;
+/* End - OA-REQ-2030 */

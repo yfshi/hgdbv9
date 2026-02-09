@@ -78,7 +78,7 @@ extern text *datetime_to_char_body(TmToChar *tmtc, text *fmt,
 extern void
 ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 				struct pg_tm *tm, fsec_t *fsec, int *fprec,
-				uint32 *flags, bool *have_error, bool is_conv_func);
+				uint32 *flags, bool *have_error);
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 #ifdef WIN32

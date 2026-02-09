@@ -5654,59 +5654,7 @@ on_error:
 
 /* Begin - ReqID:SRS-GKC-DATATYPE_001 */
 static void
-final_datetime_check(TmFromChar *out)
-{
-	/*
-	 * Final check for valid day of month
-	 * now that we know for sure the month and year.
-	 * for 'DD-MM-YYYY' 'MM-DD-YYYY' format, when
-	 * analyze datetime format 'DD', we don`t known
-	 * the value of 'YYYY', so we don`t know that the
-	 * year is there a leap year ? so check again
-	 */
-	if (out->year != 0 && out->mm != 0)
-	{
-		/* Begin - BUG#Z1037 */
-		/*
-		 * When using the oratimestamp type in PG mode, the month value obtained from the
-		 * DCH_from_char function may be an arbitrary value. The following check for a leap
-		 * year may result in an array overflow, so we do a bulletproof here.
-		 */
-		if (out->mm < 1 || out->mm > 12)
-			ereport(ERROR,
-					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-				  errmsg("The value of month is invalid.")));
-		/* End - BUG#Z1037 */
-
-		if (out->dd > day_tab[isleap(out->year)][out->mm - 1])
-			ereport(ERROR,
-					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-				  errmsg("The value of day must be between 1 and the last day of the month.")));
-	}
-
-	if (out->hh == 24 && (out->mi > 0 || out->ss > 0))
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-			  errmsg("The value of datetime is invalid.")));
-
-	if (ORA_MODE == compatible_mode)
-	{
-		int year = out->year;
-
-		if (out->bc)
-			year = (-1) * year;
-
-		if (year == 0 || year > 9999 || year <= -4713)
-		{
-			ereport(ERROR,
-					(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
-				  errmsg("The year value must be between -4713 and +9999, and can not be 0")));
-		}
-	}
-}
-
-static void
-final_datetime_check_for_conv_func(struct pg_tm *out)
+ora_final_datetime_check(struct pg_tm *out)
 {
 	/*
 	 * Final check for valid day of month
@@ -5757,7 +5705,7 @@ final_datetime_check_for_conv_func(struct pg_tm *out)
 void
 ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 				struct pg_tm *tm, fsec_t *fsec, int *fprec,
-				uint32 *flags, bool *have_error, bool is_conv_func)	/* ReqID:SRS-GKC-DATATYPE_001 */
+				uint32 *flags, bool *have_error)	/* ReqID:SRS-GKC-DATATYPE_001 */
 {
 	FormatNode *format = NULL;
 	TmFromChar	tmfc;
@@ -5818,11 +5766,6 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 
 		DCH_from_char(format, date_str, &tmfc, collid, std, have_error);
 		CHECK_ERROR;
-
-		/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-		if (!is_conv_func)
-			final_datetime_check(&tmfc);
-		/* End - ReqID:SRS-GKC-DATATYPE_001 */
 
 		pfree(fmt_str);
 
@@ -6091,10 +6034,7 @@ ora_do_to_timestamp(text *date_txt, text *fmt, Oid collid, bool std,
 		tm->tm_zone = tz;
 	}
 
-	/* Begin - ReqID:SRS-GKC-DATATYPE_001 */
-	if (is_conv_func)
-		final_datetime_check_for_conv_func(tm);
-	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+	ora_final_datetime_check(tm);	/* OA-REQ-2030 */
 
 	DEBUG_TM(tm);
 

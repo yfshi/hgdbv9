@@ -234,7 +234,7 @@ oradate_in(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		ora_do_to_timestamp(cstring_to_text(str), cstring_to_text(nls_date_format), collid, false, &tm, &fsec, NULL, NULL, NULL, false);
+		ora_do_to_timestamp(cstring_to_text(str), cstring_to_text(nls_date_format), collid, false, &tm, &fsec, NULL, NULL, NULL);
 
 		/* cancel timezone and truncate fractional second for type oradate */
 		fsec = 0;

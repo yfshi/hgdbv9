@@ -2597,7 +2597,7 @@ coerce_type(ParseState *pstate, Node *node,
 				
 					date_txt = cstring_to_text(DatumGetCString(con->constvalue));
 					fmt = cstring_to_text("YYYY-MM-DD");
-					ora_do_to_timestamp(date_txt, fmt, C_COLLATION_OID, true, &tm, &fsec, NULL, NULL, NULL, false);
+					ora_do_to_timestamp(date_txt, fmt, C_COLLATION_OID, true, &tm, &fsec, NULL, NULL, NULL);
 					
 					/* truncate timezone and fractional second*/
 					fsec = 0;
