@@ -4338,6 +4338,42 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					}
 					$$ = (Node *)n;
 				}
+		/* Begin OA-2123: support create table like */
+		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name TableLikeClause
+				{
+					CreateStmt *n = makeNode(CreateStmt);
+					$7->relpersistence = $2;
+					n->relation = $7;
+					n->tableElts = list_make1($8);
+					n->inhRelations = NULL;
+					n->partspec = NULL;
+					n->ofTypename = NULL;
+					n->constraints = NIL;
+					n->accessMethod = NULL;
+					n->options = NULL;
+					n->oncommit = ONCOMMIT_NOOP;
+					n->tablespacename = NULL;
+					n->if_not_exists = true;
+					$$ = (Node *)n;
+				}
+		| CREATE OptTemp TABLE qualified_name TableLikeClause
+				{
+					CreateStmt *n = makeNode(CreateStmt);
+					$4->relpersistence = $2;
+					n->relation = $4;
+					n->tableElts = list_make1($5);
+					n->inhRelations = NULL;
+					n->partspec = NULL;
+					n->ofTypename = NULL;
+					n->constraints = NIL;
+					n->accessMethod = NULL;
+					n->options = NULL;
+					n->oncommit = ONCOMMIT_NOOP;
+					n->tablespacename = NULL;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
+				}
+		/* End OA-2123: support create table like */
 		;
 
 /*
