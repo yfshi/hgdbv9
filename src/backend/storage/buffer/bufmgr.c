@@ -122,6 +122,13 @@ typedef struct CkptTsStatus
 } CkptTsStatus;
 
 /*
+ * Hook for plugins to check permissions when doing a buffer extend.
+ * One example is to check whether there is additional disk quota for
+ * the table to be inserted.
+ */
+ReadBufferExtended_hook_type ReadBufferExtended_hook = NULL;
+
+/*
  * Type for array used to sort SMgrRelations
  *
  * FlushRelationsAllBuffers shares the same comparator function with
@@ -775,6 +782,15 @@ ReadBufferExtended(Relation reln, ForkNumber forkNum, BlockNumber blockNum,
 	 * miss.
 	 */
 	pgstat_count_buffer_read(reln);
+
+	/* hook function for doing a buffer extend */
+	if (blockNum == P_NEW && ReadBufferExtended_hook)
+	{
+		(*ReadBufferExtended_hook)(reln, forkNum, blockNum, mode, strategy);
+	}
+	if (save_relation_hook)
+		save_relation_hook(reln);
+
 	buf = ReadBuffer_common(RelationGetSmgr(reln), reln->rd_rel->relpersistence,
 							forkNum, blockNum, mode, strategy, &hit);
 	if (hit)

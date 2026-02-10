@@ -514,6 +514,7 @@ sub contribcheck
 		next if ($module eq "sslinfo"    && !defined($config->{openssl}));
 		next if ($module eq "xml2"       && !defined($config->{xml}));
 		next if ($module eq "sepgsql");
+		next if ($module eq "diskquota");
 	
 		subdircheck($module);
 		my $status = $? >> 8;

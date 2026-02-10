@@ -555,6 +555,7 @@ sub contribcheck
 		next if ($module eq "ivorysql_my");
 		# Native PostgreSQL does not perform the test of ora_synonym.
 		next if ($module eq "ora_synonym");
+		next if ($module eq "diskquota");
 
 		subdircheck($module);
 		my $status = $? >> 8;

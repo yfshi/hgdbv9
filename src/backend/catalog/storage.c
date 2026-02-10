@@ -153,6 +153,9 @@ RelationCreateStorage(RelFileNode rnode, char relpersistence, Relation rel)
 			return NULL;		/* placate compiler */
 	}
 
+	if (save_relation_hook)
+		save_relation_hook(rel);
+
 	srel = smgropen(rnode, backend);
 	smgrcreate(srel, MAIN_FORKNUM, false);
 
@@ -448,6 +451,9 @@ RelationTruncate(Relation rel, BlockNumber nblocks)
 		 */
 		XLogFlush(lsn);
 	}
+
+	if (save_relation_hook)
+		save_relation_hook(rel);
 
 	/*
 	 * This will first remove any buffers from the buffer pool that should no

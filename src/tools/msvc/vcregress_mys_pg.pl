@@ -516,6 +516,7 @@ sub contribcheck
 		next if ($module =~ /_plpython$/ && !defined($config->{python}));
 		next if ($module eq "sepgsql");
 		next if ($module eq "ivorysql_my");
+		next if ($module eq "diskquota");
 
 		subdircheck($module);
 		my $status = $? >> 8;
