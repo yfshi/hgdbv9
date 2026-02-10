@@ -25,6 +25,13 @@
 #include "server.h"
 #include "nodes/nodeFuncs.h"
 #include "../include/ivorysql_my.h"
+/* Begin - OA#2098  Not Full Group */
+#include "nodes/primnodes.h"
+#include "utils/lsyscache.h"
+#include "utils/memutils.h"
+#include "utils/datum.h"
+/* End - OA#2908  Not Full Group */
+
 
 /*
   Rules for merging different types of fields in UNION
@@ -36,6 +43,11 @@
 #define FIELDTYPE_TEAR_FROM (MYSQL_TYPE_BIT + 1)
 #define FIELDTYPE_TEAR_TO   (MYSQL_TYPE_JSON - 1)
 #define FIELDTYPE_NUM (FIELDTYPE_TEAR_FROM + (255 - FIELDTYPE_TEAR_TO))
+
+/* Begin - OA#2098  Not Full Group */
+PG_FUNCTION_INFO_V1(any_value_transfn);
+PG_FUNCTION_INFO_V1(any_value_finalfn);
+/* End - OA#2908  Not Full Group */
 
 
 static enum_field_types field_types_merge_rules [FIELDTYPE_NUM][FIELDTYPE_NUM]=
@@ -1179,3 +1191,116 @@ mysql_agg_field_type(List *exprs)
 }
 
 /* End - bug#z6172 */
+
+/* Begin - OA#2098  Not Full Group */
+/*
+ * any_value trans function
+ * state type value
+ */
+typedef struct AnyValueAggState
+{
+	bool	valuenull;
+	Datum	value;
+} AnyValueAggState;
+
+/*
+ * Prepare state data for any_value aggregate function that needs to compute
+ * first row value
+ */
+static AnyValueAggState *
+makeAnytvalueAggState(FunctionCallInfo fcinfo, bool isnull, Datum value)
+{
+	AnyValueAggState *state;
+	MemoryContext agg_context;
+	MemoryContext old_context;
+
+	if (!AggCheckCallContext(fcinfo, &agg_context))
+		elog(ERROR, "aggregate function called in non-aggregate context");
+
+	old_context = MemoryContextSwitchTo(agg_context);
+
+	state = (AnyValueAggState *) palloc0(sizeof(AnyValueAggState));
+	state->valuenull = isnull;
+	if (!isnull)
+	{
+		Aggref *aggref = AggGetAggref(fcinfo);
+		int16 typlen;
+		bool typbyval;
+
+		Assert(aggref != NULL);
+
+		get_typlenbyval(aggref->aggtype, &typlen, &typbyval);
+
+		if (typbyval)
+			state->value = value;
+		else
+		{
+			if (DatumIsReadWriteExpandedObject(value,
+											   false,
+											   typlen) &&
+				MemoryContextGetParent(DatumGetEOHP(value)->eoh_context) == CurrentMemoryContext)
+				 /* do nothing */ ;
+			else
+				value = datumCopy(value,
+									 typbyval,
+									 typlen);
+			state->value = value;
+		}
+	}
+	else
+		state->value = value;
+
+	MemoryContextSwitchTo(old_context);
+
+	return state;
+}
+
+
+/*
+ * Transition function for the ANY_VALUE aggregate
+ */
+Datum
+any_value_transfn(PG_FUNCTION_ARGS)
+{
+	AnyValueAggState *state;
+
+	state = PG_ARGISNULL(0) ? NULL : (AnyValueAggState *) PG_GETARG_POINTER(0);
+
+	/*
+	 * Create the state data on the first call, the first call
+	 * should use col origin value
+	 */
+	if (state == NULL)
+		state = makeAnytvalueAggState(fcinfo, PG_ARGISNULL(1), PG_GETARG_DATUM(1));
+
+	PG_RETURN_POINTER(state);
+}
+
+/*
+ * Final function for ANY_VALUE aggregate
+ * we return first row value
+ */
+
+Datum
+any_value_finalfn(PG_FUNCTION_ARGS)
+{
+	AnyValueAggState *state;
+
+	/* cannot be called directly because of internal-type argument */
+	Assert(AggCheckCallContext(fcinfo, NULL));
+
+	state = PG_ARGISNULL(0) ? NULL : (AnyValueAggState *) PG_GETARG_POINTER(0);
+
+	if (state != NULL)
+	{
+		if (state->valuenull)
+			PG_RETURN_NULL();
+		else
+			PG_RETURN_DATUM(state->value);
+	}
+	else
+		PG_RETURN_NULL();
+}
+
+/* End - OA#2908  Not Full Group */
+

@@ -177,7 +177,8 @@ MYS_REGRESS = cast_to_number \
 			  namespace \
 			  prepare \
 			  select_into \
-			  load_data
+			  load_data \
+			  not_full_group
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28

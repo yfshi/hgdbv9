@@ -30,6 +30,11 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 #include "utils/lsyscache.h"
+/* Begin - OA#2098  Not Full Group */
+#include "utils/syscache.h"
+#include "parser/parse_func.h"
+/* End - OA#2908  Not Full Group */
+
 
 
 typedef struct
@@ -53,6 +58,22 @@ typedef struct
 	bool		in_agg_direct_args;
 } check_ungrouped_columns_context;
 
+/* Begin - OA#2098  Not Full Group */
+typedef struct
+{
+	ParseState *pstate;
+	Query	   *qry;
+	bool		hasJoinRTEs;
+	List	   *groupClauses;
+	List	   *groupClauseCommonVars;
+	bool		have_non_var_grouping;
+	List	  **func_grouped_rels;
+	int			sublevels_up;
+	bool		in_agg_direct_args;
+} change_ungrouped_columns_context;
+/* End - OA#2908  Not Full Group */
+
+
 static int	check_agg_arguments(ParseState *pstate,
 								List *directargs,
 								List *args,
@@ -73,6 +94,17 @@ static bool finalize_grouping_exprs_walker(Node *node,
 static void check_agglevels_and_constraints(ParseState *pstate, Node *expr);
 static List *expand_groupingset_node(GroupingSet *gs);
 static Node *make_agg_arg(Oid argtype, Oid argcollation);
+/* Begin - OA#2098  Not Full Group */
+static Node *change_ungrouped_columns(Node *node, ParseState *pstate, Query *qry,
+						List *groupClauses, List *groupClauseCommonVars,
+						bool have_non_var_grouping,
+						List **func_grouped_rels);
+static Node *change_ungrouped_columns_mutator(Node *node,
+										   change_ungrouped_columns_context *context);
+static Node *buildAnyValueNode(Var *var, Query *qry);
+/* End - OA#2908  Not Full Group */
+
+
 
 
 /*
@@ -1275,7 +1307,20 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 							have_non_var_grouping);
 	if (hasJoinRTEs)
 		clause = flatten_join_alias_vars(qry, clause);
-	check_ungrouped_columns(clause, pstate, qry,
+	/*
+	 * In MySQL's non-full group sql_mode,
+	 * columns that are not referenced in the GROUP BY clause are
+	 * converted to `any_value`.
+	 */
+	if (compatible_mode == MYS_MODE &&
+		!has_sql_mode(MODE_ONLY_FULL_GROUP_BY))
+		qry->targetList =
+			(List *) change_ungrouped_columns(clause, pstate, qry,
+									groupClauses, groupClauseCommonVars,
+									have_non_var_grouping,
+									&func_grouped_rels);
+	else
+		check_ungrouped_columns(clause, pstate, qry,
 							groupClauses, groupClauseCommonVars,
 							have_non_var_grouping,
 							&func_grouped_rels);
@@ -1286,7 +1331,19 @@ parseCheckAggregates(ParseState *pstate, Query *qry)
 							have_non_var_grouping);
 	if (hasJoinRTEs)
 		clause = flatten_join_alias_vars(qry, clause);
-	check_ungrouped_columns(clause, pstate, qry,
+	/*
+	 *  In MySQL's non-full group sql_mode, change
+	 * ungrouped columns are converted to `any_value`
+	 */
+	if (compatible_mode == MYS_MODE &&
+		!has_sql_mode(MODE_ONLY_FULL_GROUP_BY))
+		qry->havingQual =
+			change_ungrouped_columns(clause, pstate, qry,
+							groupClauses, groupClauseCommonVars,
+							have_non_var_grouping,
+							&func_grouped_rels);
+	else
+		check_ungrouped_columns(clause, pstate, qry,
 							groupClauses, groupClauseCommonVars,
 							have_non_var_grouping,
 							&func_grouped_rels);
@@ -2239,3 +2296,275 @@ make_agg_arg(Oid argtype, Oid argcollation)
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	return (Node *) argp;
 }
+
+/* Begin - OA#2098  Not Full Group */
+/*
+ * like check_ungrouped_columns,but change ungrouped
+ * col to any_value(col)
+ */
+static Node *
+change_ungrouped_columns(Node *node, ParseState *pstate, Query *qry,
+						List *groupClauses, List *groupClauseCommonVars,
+						bool have_non_var_grouping,
+						List **func_grouped_rels)
+{
+	change_ungrouped_columns_context context;
+
+	context.pstate = pstate;
+	context.qry = qry;
+	context.hasJoinRTEs = false;	/* assume caller flattened join Vars */
+	context.groupClauses = groupClauses;
+	context.groupClauseCommonVars = groupClauseCommonVars;
+	context.have_non_var_grouping = have_non_var_grouping;
+	context.func_grouped_rels = func_grouped_rels;
+	context.sublevels_up = 0;
+	context.in_agg_direct_args = false;
+	return change_ungrouped_columns_mutator(node, &context);
+}
+
+
+static Node*
+change_ungrouped_columns_mutator(Node *node,
+							   change_ungrouped_columns_context *context)
+{
+	ListCell   *gl;
+
+	if (node == NULL)
+		return node;
+	if (IsA(node, Const) ||
+		IsA(node, Param))
+		return node;			/* constants are always acceptable */
+
+	if (IsA(node, Aggref))
+	{
+		Aggref	   *agg = (Aggref *) node;
+
+		if ((int) agg->agglevelsup == context->sublevels_up)
+		{
+			/*
+			 * If we find an aggregate call of the original level, do not
+			 * recurse into its normal arguments, ORDER BY arguments, or
+			 * filter; ungrouped vars there are not an error.  But we should
+			 * check direct arguments as though they weren't in an aggregate.
+			 * We set a special flag in the context to help produce a useful
+			 * error message for ungrouped vars in direct arguments.
+			 */
+
+			Assert(!context->in_agg_direct_args);
+			context->in_agg_direct_args = true;
+			agg->aggdirectargs = (List *) change_ungrouped_columns_mutator((Node *) agg->aggdirectargs,
+													context);
+			context->in_agg_direct_args = false;
+			return (Node *) agg;
+		}
+
+		/*
+		 * We can skip recursing into aggregates of higher levels altogether,
+		 * since they could not possibly contain Vars of concern to us (see
+		 * transformAggregateCall).  We do need to look at aggregates of lower
+		 * levels, however.
+		 */
+		if ((int) agg->agglevelsup > context->sublevels_up)
+			return node;
+	}
+
+	if (IsA(node, GroupingFunc))
+	{
+		GroupingFunc *grp = (GroupingFunc *) node;
+
+		/* handled GroupingFunc separately, no need to recheck at this level */
+
+		if ((int) grp->agglevelsup >= context->sublevels_up)
+			return node;
+	}
+
+	/*
+	 * If we have any GROUP BY items that are not simple Vars, check to see if
+	 * subexpression as a whole matches any GROUP BY item. We need to do this
+	 * at every recursion level so that we recognize GROUPed-BY expressions
+	 * before reaching variables within them. But this only works at the outer
+	 * query level, as noted above.
+	 */
+	if (context->have_non_var_grouping && context->sublevels_up == 0)
+	{
+		foreach(gl, context->groupClauses)
+		{
+			TargetEntry *tle = lfirst(gl);
+
+			if (equal(node, tle->expr))
+				return node;	/* acceptable, do not descend more */
+		}
+	}
+
+	/* Begin - ReqID:SRS-SQL-ROWNUM */
+	if (context->sublevels_up == 0 && IsA(node, PseudoColVar))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_GROUPING_ERROR),
+				 errmsg("column \"ROWNUM\" must appear in the GROUP BY clause or be used in an aggregate function")));
+
+	}
+	/* End - ReqID:SRS-SQL-ROWNUM */
+
+	/*
+	 * If we have an ungrouped Var of the original query level, we have a
+	 * failure.  Vars below the original query level are not a problem, and
+	 * neither are Vars from above it.  (If such Vars are ungrouped as far as
+	 * their own query level is concerned, that's someone else's problem...)
+	 */
+	if (IsA(node, Var))
+	{
+		Var		   *var = (Var *) node;
+		RangeTblEntry *rte;
+		char	   *attname;
+
+		if (var->varlevelsup != context->sublevels_up)
+			return node;		/* it's not local to my query, ignore */
+
+		/*
+		 * Check for a match, if we didn't do it above.
+		 */
+		if (!context->have_non_var_grouping || context->sublevels_up != 0)
+		{
+			foreach(gl, context->groupClauses)
+			{
+				Var		   *gvar = (Var *) ((TargetEntry *) lfirst(gl))->expr;
+
+				if (IsA(gvar, Var) &&
+					gvar->varno == var->varno &&
+					gvar->varattno == var->varattno &&
+					gvar->varlevelsup == 0)
+					return node;	/* acceptable, we're okay */
+			}
+		}
+
+		/*
+		 * Check whether the Var is known functionally dependent on the GROUP
+		 * BY columns.  If so, we can allow the Var to be used, because the
+		 * grouping is really a no-op for this table.  However, this deduction
+		 * depends on one or more constraints of the table, so we have to add
+		 * those constraints to the query's constraintDeps list, because it's
+		 * not semantically valid anymore if the constraint(s) get dropped.
+		 * (Therefore, this check must be the last-ditch effort before raising
+		 * error: we don't want to add dependencies unnecessarily.)
+		 *
+		 * Because this is a pretty expensive check, and will have the same
+		 * outcome for all columns of a table, we remember which RTEs we've
+		 * already proven functional dependency for in the func_grouped_rels
+		 * list.  This test also prevents us from adding duplicate entries to
+		 * the constraintDeps list.
+		 */
+		if (list_member_int(*context->func_grouped_rels, var->varno))
+			return node;		/* previously proven acceptable */
+
+		Assert(var->varno > 0 &&
+			   (int) var->varno <= list_length(context->pstate->p_rtable));
+		rte = rt_fetch(var->varno, context->pstate->p_rtable);
+		if (rte->rtekind == RTE_RELATION)
+		{
+			if (check_functional_grouping(rte->relid,
+										  var->varno,
+										  0,
+										  context->groupClauseCommonVars,
+										  &context->qry->constraintDeps))
+			{
+				*context->func_grouped_rels =
+					lappend_int(*context->func_grouped_rels, var->varno);
+				return node;	/* acceptable */
+			}
+		}
+
+		/*
+		 * nested aggreate, raise origin error and doesn't change it to first_value aggreate
+		 */
+		if (!context->in_agg_direct_args)
+			return (Node *) buildAnyValueNode(var, context->qry);
+
+		/* Found an ungrouped local variable; generate error message */
+		attname = get_rte_attribute_name(rte, var->varattno);
+		if (context->sublevels_up == 0)
+			ereport(ERROR,
+					(errcode(ERRCODE_GROUPING_ERROR),
+					 errmsg("column \"%s.%s\" must appear in the GROUP BY clause or be used in an aggregate function",
+							rte->eref->aliasname, attname),
+					 context->in_agg_direct_args ?
+					 errdetail("Direct arguments of an ordered-set aggregate must use only grouped columns.") : 0,
+					 parser_errposition(context->pstate, var->location)));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_GROUPING_ERROR),
+					 errmsg("subquery uses ungrouped column \"%s.%s\" from outer query",
+							rte->eref->aliasname, attname),
+					 parser_errposition(context->pstate, var->location)));
+	}
+
+	if (IsA(node, Query))
+	{
+		/* Recurse into subselects */
+		Query		*newnode;
+
+		context->sublevels_up++;
+		newnode = query_tree_mutator((Query *) node,
+								   change_ungrouped_columns_mutator,
+								   (void *) context,
+								   0);
+		context->sublevels_up--;
+		return (Node *) newnode;
+	}
+	return expression_tree_mutator(node, change_ungrouped_columns_mutator,
+								  (void *) context);
+}
+
+
+/*
+ * change var to any_value(var)
+ * and return
+ */
+static Node*
+buildAnyValueNode(Var *var, Query *qry)
+{
+	Aggref	   *aggref = makeNode(Aggref);
+	Oid			anfoid;
+	char		aggkind;
+	HeapTuple	tup;
+	Form_pg_aggregate classForm;
+	Oid			args[1];
+
+	args[0] = ANYELEMENTOID;
+	anfoid = LookupFuncName(list_make2(makeString("ivymy"), makeString("any_value")),
+								1, args, false);
+
+	tup = SearchSysCache1(AGGFNOID, ObjectIdGetDatum(anfoid));
+	if (!HeapTupleIsValid(tup)) /* should not happen */
+		elog(ERROR, "cache lookup failed for aggregate %u", anfoid);
+	classForm = (Form_pg_aggregate) GETSTRUCT(tup);
+	aggkind = classForm->aggkind;
+	ReleaseSysCache(tup);
+
+
+	aggref->aggfnoid = anfoid;
+	aggref->aggtype = exprType((Node *) var);
+	aggref->aggtranstype = InvalidOid;	/* will be set by planner */
+	aggref->aggfilter = NULL;
+	aggref->aggstar = false;
+	aggref->aggvariadic = false;
+	aggref->aggkind = aggkind;
+	aggref->aggsplit = AGGSPLIT_SIMPLE; /* planner might change this */
+	aggref->aggno = -1;		/* planner will set aggno and aggtransno */
+	aggref->aggtransno = -1;
+	aggref->has_outer_join = var->has_outer_join;
+	aggref->location = var->location;
+	aggref->aggdirectargs = NIL;
+	aggref->aggcollid = var->varcollid;
+
+	aggref->args = list_make1(makeTargetEntry((Expr *) var, 1, NULL, false));
+	aggref->aggorder = NIL;
+	aggref->aggdistinct = NIL;
+	aggref->aggargtypes = list_make1_oid(exprType((Node *) var));
+	aggref->agglevelsup = var->varlevelsup;
+
+	qry->hasAggs = true;
+
+	return (Node *) aggref;
+}
+/* End - OA#2908  Not Full Group */

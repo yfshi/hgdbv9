@@ -4016,3 +4016,23 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
+
+/* Begin - OA#2098  Not Full Group */
+CREATE FUNCTION ivymy.any_value_transfn(internal, anyelement)
+RETURNS internal
+AS 'MODULE_PATHNAME','any_value_transfn'
+LANGUAGE C;
+
+CREATE FUNCTION ivymy.any_value_finalfn(internal, anyelement)
+RETURNS anyelement
+AS 'MODULE_PATHNAME','any_value_finalfn'
+LANGUAGE C;
+
+CREATE AGGREGATE ivymy.any_value(anyelement) (
+  SFUNC = ivymy.any_value_transfn,
+  STYPE = internal,
+  FINALFUNC_EXTRA,
+  FINALFUNC = ivymy.any_value_finalfn
+);
+/* End - OA#2908  Not Full Group */
