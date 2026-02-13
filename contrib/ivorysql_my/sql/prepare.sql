@@ -1,0 +1,244 @@
+set mysql.qm_as_param = true;
+set mysql.at_or_atat = true;
+drop table if exists t1;
+--prepare select
+create table t1 (a int not null);
+prepare s1 from '
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in (
+  select a from t1 where a in ( select a from t1)
+  )))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))';
+execute s1;
+drop prepare s1;
+drop table t1;
+
+set mysql.at_or_atat = true;
+set mysql.qm_as_param = true;
+set @ivar= 1234;
+set @str1 = 'select ?';
+set @str2 = convert(@str1 using ucs2);
+prepare stmt1 from @str2;
+execute stmt1 using @ivar;
+drop prepare stmt1;
+
+create table t1 (utext varchar(20) character set ucs2);
+insert into t1 values ('lily');
+insert into t1 values ('river');
+prepare stmt from 'select utext from t1 where utext like ?';
+set @param1='%%';
+execute stmt using @param1;
+select utext from t1 where utext like '%%';
+deallocate prepare stmt;
+drop table t1;
+CREATE TABLE t1 (
+c1n varchar(1) NOT NULL,
+c1k varchar(2) DEFAULT NULL,
+KEY c1k (c1k)
+);
+INSERT INTO t1 VALUES ('j','jj'),('r','rr');
+CREATE TABLE t2 (
+c2k varchar(1) NOT NULL,
+c2n varchar(2) DEFAULT NULL,
+KEY c2k (c2k)
+);
+INSERT INTO t2 VALUES
+('f','ff'),('t','tt'),('c','cc'),('c','cc'),('r','rr'),('k','kk');
+CREATE TABLE empty (dummy INTEGER);
+SELECT alias1.dt_field AS field1
+FROM (SELECT t2.c2n AS dt_field
+FROM t1 RIGHT JOIN t2
+ON t2.c2k = t1.c1k
+) AS alias1
+RIGHT JOIN t2 AS alias2
+ON alias2.c2n = alias1.dt_field;
+prepare s from 'SELECT alias1.dt_field AS field1
+FROM (SELECT t2.c2n AS dt_field
+FROM t1 RIGHT JOIN t2
+ON t2.c2k = t1.c1k
+) AS alias1
+RIGHT JOIN t2 AS alias2
+ON alias2.c2n = alias1.dt_field';
+execute s;
+deallocate prepare s;
+SELECT alias1.dt_field AS field1
+FROM (SELECT t2.c2n AS dt_field
+FROM t2 LEFT JOIN t1
+ON t2.c2k = t1.c1k
+) AS alias1
+RIGHT JOIN t2 AS alias2
+ON alias2.c2n = alias1.dt_field;
+prepare s from 'SELECT alias1.dt_field AS field1
+FROM (SELECT t2.c2n AS dt_field
+FROM t2 LEFT JOIN t1
+ON t2.c2k = t1.c1k
+) AS alias1
+RIGHT JOIN t2 AS alias2
+ON alias2.c2n = alias1.dt_field';
+execute s;
+deallocate prepare s;
+drop table t1,t2;
+
+create table t1 (a int);
+insert into t1 values (1),(2);
+prepare stmt1 from 'SELECT COUNT(*) FROM t1';
+execute stmt1;
+deallocate prepare stmt1;
+drop table t1;
+
+--prepare insert
+CREATE TABLE t1 (pk INT, PRIMARY KEY (pk));
+CREATE TABLE t2 (pk INT, PRIMARY KEY (pk));
+INSERT INTO t1 VALUES (2);
+INSERT INTO t2 VALUES (2);
+CREATE VIEW v1 AS SELECT * FROM t2 AS a
+WHERE a.pk IN ( SELECT pk FROM t1 AS b WHERE b.pk = a.pk );
+CREATE VIEW v2 AS SELECT * FROM t1 AS a
+WHERE a.pk IN ( SELECT pk FROM v1 AS b WHERE b.pk = a.pk );
+PREPARE st1 FROM 'INSERT INTO v2 (pk) VALUES ( 1 )';
+EXECUTE st1;
+SELECT * FROM t1;
+SELECT * FROM t2;
+DROP VIEW v1, v2;
+DROP TABLE t1, t2;
+
+create table t (c int);
+prepare stmt from 'insert into t values (?),(?),(?)';
+set @a = 1;
+set @b = 2;
+set @c = 3;
+execute stmt using @a, @b, @c;
+select * from t;
+deallocate prepare stmt;
+prepare stmt from 'insert into t values (?),($2),(?)';
+execute stmt using @a, @b, @c;
+select * from t;
+deallocate prepare stmt;
+drop table t;
+
+--prepare update/delete
+CREATE TABLE t1 (a INT PRIMARY KEY);
+PREPARE stmt1 FROM 'INSERT INTO t1(a) value (?)';
+SET @val=1;
+EXECUTE stmt1 USING @val;
+SET @val=2;
+EXECUTE stmt1 USING @val;
+SET @val=3;
+EXECUTE stmt1 USING @val;
+PREPARE stmt2 FROM 'SELECT * FROM t1 WHERE a > ?';
+SET @val=0;
+EXECUTE stmt2 USING @val;
+PREPARE stmt3 FROM 'INSERT INTO t1(a) value (?)';
+SET @val=4;
+EXECUTE stmt3 USING @val;
+SET @val=5;
+EXECUTE stmt3 USING @val;
+SET @val=6;
+EXECUTE stmt3 USING @val;
+PREPARE stmt4 FROM 'UPDATE t1 SET a = a + ?';
+SET @val=10;
+EXECUTE stmt4 USING @val;
+PREPARE stmt5 FROM 'DELETE from t1 WHERE a = ?';
+EXECUTE stmt5 USING @val;
+SET @val=11;
+EXECUTE stmt5 USING @val;
+SET @val=12;
+EXECUTE stmt5 USING @val;
+PREPARE stmt6 FROM 'SELECT * FROM t1 WHERE a > ?';
+SET @val=10;
+EXECUTE stmt6 USING @val;
+PREPARE stmt7 FROM 'SELECT * FROM t1';
+EXECUTE stmt7;
+DEALLOCATE PREPARE stmt1;
+DEALLOCATE PREPARE stmt2;
+DEALLOCATE PREPARE stmt3;
+DEALLOCATE PREPARE stmt4;
+DEALLOCATE PREPARE stmt5;
+DEALLOCATE PREPARE stmt6;
+DEALLOCATE PREPARE stmt7;
+DROP TABLE t1;
+
+--prepare replace 
+create table t1 (a int);
+insert into t1 values (1),(2),(3);
+create table t2 (a int);
+prepare stmt from 'replace t2 select * from t1';
+execute stmt;
+select * from t2;
+DEALLOCATE PREPARE stmt;
+drop table t1,t2;
+
+--prepare do
+set mysql.use_mysql_do = true;
+PREPARE s FROM 'DO 1';
+EXECUTE s;
+DEALLOCATE PREPARE s;
+set mysql.use_mysql_do = false;
+
+--prepare set
+prepare stmt from 'set @a=1';
+execute stmt;
+select @a;
+deallocate prepare stmt;
+
+set mysql.qm_as_param = false;
+set mysql.at_or_atat = false;
+

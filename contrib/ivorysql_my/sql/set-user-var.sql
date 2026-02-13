@@ -317,9 +317,9 @@ set @selecttb = 'select * from settb';
 set @var = 'lisi';
 set @inserttbnew = 'insert into settb values (1, @var)';
 --PREPARE prep1 AS @cretetb;
-PREPARE prep2 AS @inserttb;
-PREPARE prep3 AS @selecttb;
-PREPARE prep4 AS @inserttbnew;
+PREPARE prep2 FROM @inserttb;
+PREPARE prep3 FROM @selecttb;
+PREPARE prep4 FROM @inserttbnew;
 --EXECUTE prep1;
 EXECUTE prep3;
 EXECUTE prep2;
@@ -330,6 +330,17 @@ EXECUTE prep3;
 EXECUTE prep4;
 EXECUTE prep3;
 drop table settb;
+
+set @var = 'select 1; select 2';
+PREPARE prep5 FROM @var; -- error
+
+set @var = 1;
+PREPARE prep5 FROM @var; -- error
+
+PREPARE prep5 FROM 1; -- error
+PREPARE prep5 FROM 'select 1; select 2'; -- error
+PREPARE prep5 FROM 'select 1';
+
 --user define  variable used in user function
 create or replace function func(id int) returns int as $$
 declare

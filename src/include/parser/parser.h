@@ -68,6 +68,7 @@ typedef enum
 /* BEGIN - SQL PARSER */
 extern int	PGDLLIMPORT backslash_quote;
 extern bool PGDLLIMPORT escape_string_warning;
+extern int	PGDLLIMPORT param_no; /* ReqID:SRS-MYSQL-SQL-PREPARE */
 /* END - SQL PARSER */
 extern PGDLLIMPORT bool standard_conforming_strings;
 
