@@ -124,6 +124,31 @@ typedef struct CollectVarrayValue
 	Datum			*value;
 } CollectVarrayValue;
 
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+/* the collect data of BULK COLLECT INTO */
+typedef struct
+{
+	Datum			target_value;		/* the last dim of collection value */
+	void 			*target_datatype;	/* the datatype of target collection */
+} BulkCollectIntoData;
+
+/* the parameters of BULK COLLECT INTO */
+typedef struct
+{
+	uint32			collect_num;		/* the number of collect targets */
+	Datum			*collect_data;		/* BulkCollectIntoData datum array */
+} BulkCollectIntoParams;
+
+/*
+ * Specialized DestReceiver for BULK COLLECT INTO
+ */
+typedef struct
+{
+	DestReceiver	 		pub;			/* publicly-known function pointers */
+	BulkCollectIntoParams	*bulk_params;
+} DR_bulkcollect;
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+
 /* functions */
 extern Datum collection_init(PG_FUNCTION_ARGS);
 extern void collection_init_internal(void);
@@ -167,5 +192,18 @@ extern bool collectype_cast_Check(Datum value, int32 reqtypmod);
 extern Datum get_collectype_name(Datum value);
 extern Datum get_collectype_mode(Datum value);
 extern MemoryContext get_collectype_mcxt(Datum value);
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+extern Datum init_bulk_collect_data(Datum datum,
+					int nSubscripts,
+					Datum *subscriptvals,
+					List **fieldnames,
+					Datum *keytypes,
+					void *root_datatype,
+					void *target_datatype,
+					MemoryContext cxt);
+extern Datum init_bulk_collect_params(int num, Datum *collect_data);
+extern void set_bulk_collect_destreceiver_params(Datum dest, Datum bulk_params);
+extern Datum create_bulk_collect_receiver(void);
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 #endif

@@ -544,6 +544,9 @@ static PLiSQL_type *get_collect_elem_type(PLiSQL_execstate *estate,
 					PLiSQL_datum *elem_datum,
 					bool *need_free_datatype);
 /* End - ReqID:SRS-PLSQL-Collection */
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+static Datum plisql_init_bulk_collect_params(PLiSQL_execstate *estate, PLiSQL_row *row);
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -5279,11 +5282,30 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 	else
 		tcount = 0;
 
-	/*
-	 * Execute the plan
-	 */
-	rc = SPI_execute_plan_with_paramlist(expr->plan, paramLI,
-										 estate->readonly_func, tcount);
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	/* If we have BULK COLLECT INTO, we need to get collections parameters */
+	if (stmt->bulk_collect_into)
+	{
+		Datum	 bulk_params;
+
+		bulk_params = plisql_init_bulk_collect_params(estate, (PLiSQL_row *) stmt->target);
+
+		/*
+		 * Execute the plan
+		 */
+		rc = SPI_execute_plan_with_paramlist_bulk_collect(expr->plan, paramLI,
+											 estate->readonly_func, tcount,
+											 bulk_params);
+	}
+	else
+	{
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+		/*
+		 * Execute the plan
+		 */
+		rc = SPI_execute_plan_with_paramlist(expr->plan, paramLI,
+											 estate->readonly_func, tcount);
+	}
 
 	/*
 	 * Check for error, and set FOUND if appropriate (for historical reasons
@@ -5432,6 +5454,15 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		exec_eval_cleanup(estate);
 		SPI_freetuptable(SPI_tuptable);
 	}
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	/* If we have BULK COLLECT INTO, we need to free collections parameters */
+	else if (stmt->bulk_collect_into)
+	{
+		/* Clean up */
+		exec_eval_cleanup(estate);
+		SPI_freetuptable(SPI_tuptable);
+	}
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 	else
 	{
 		/* If the statement returned a tuple table, complain */
@@ -5471,6 +5502,9 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	ListCell *lc;
 	int		pno;
 	/* End - ReqID:SRS-PLSQL-DSQL */
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	DestReceiver *dest = NULL;
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	/*
 	 * First we evaluate the string expression after the EXECUTE keyword. Its
@@ -5522,9 +5556,29 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	}
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
+
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	if (stmt->bulk_collect_into)
+	{
+		Datum	 bulk_params;
+
+		/* We need to get collections parameters for  BULK COLLECT target */
+		bulk_params = plisql_init_bulk_collect_params(estate, (PLiSQL_row *) stmt->target);
+
+		/*
+		 * Now we can create the destination receiver object.
+		 */
+		dest = CreateDestReceiver(DestBulkCollect);
+		collection_funcs.SetBulkCollectDestReceiverParams(PointerGetDatum(dest), bulk_params);
+	}
+	/* End ReqID:SRS-PLSQL-BULKCOLLECT */
+
 	memset(&options, 0, sizeof(options));
 	options.params = paramLI;
 	options.read_only = estate->readonly_func;
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	options.dest = dest;
+	/* End ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	/* Begin - BUG#M0000264 */
 	param_level = push_oraparam_stack();
@@ -6022,100 +6076,151 @@ exec_stmt_fetch(PLiSQL_execstate *estate, PLiSQL_stmt_fetch *stmt)
 		exec_eval_cleanup(estate);
 	}
 
-	if (!stmt->is_move)
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	if (!stmt->bulk_collect_into)
 	{
-		PLiSQL_variable *target;
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+		if (!stmt->is_move)
+		{
+			PLiSQL_variable *target;
 
-		/* ----------
-		 * Fetch 1 tuple from the cursor
-		 * ----------
+			/* ----------
+			 * Fetch 1 tuple from the cursor
+			 * ----------
+			 */
+			SPI_scroll_cursor_fetch(portal, stmt->direction, how_many);
+			tuptab = SPI_tuptable;
+			n = SPI_processed;
+
+
+			/* ----------
+			 * Set the target appropriately.
+			 * ----------
+			 */
+			/* Begin - ReqID:SRS-SQL-PACKAGE */
+			target = (PLiSQL_variable *) plisql_get_datum(estate,
+								estate->datums[stmt->target->dno]);
+
+			/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
+			/*
+			 * check target match, doesn't consider pg record
+			 */
+			if (tuptab->tupdesc != NULL &&
+				(target->dtype != PLISQL_DTYPE_REC ||
+				is_plisql_rowtype_record((PLiSQL_rec *) target)))
+			{
+				TupleDesc target_desc;
+				TupleDesc src_desc = NULL;
+
+				oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+				target_desc = plisql_get_tupledesc_fromvar(estate, target);
+				MemoryContextSwitchTo(oldcontext);
+				if (target_desc != NULL)
+				{
+					/* Begin - BUG#Z0001372 */
+					/*
+					 * there maybe select one rowtype column into var%rowtype
+					 * which we should check its rowtype tupdesc match to
+					 * target desc not the origin tuptab->tupdesc, which is
+					 * always one columns and its oid is RECORDOID
+					 */
+					if (tuptab->tupdesc->natts == 1 &&
+						tuptab->tupdesc->tdtypeid == RECORDOID &&
+						tuptab->tupdesc->attrs[0].atttypid == target_desc->tdtypeid)
+					{
+						oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+						src_desc = lookup_rowtype_tupdesc_domain(tuptab->tupdesc->attrs[0].atttypid,
+																tuptab->tupdesc->attrs[0].atttypmod,
+																true);
+						if (src_desc == NULL)
+							src_desc = tuptab->tupdesc;
+						else
+						{
+							TupleDesc tmp_desc = CreateTupleDescCopyConstr(src_desc);
+
+							ReleaseTupleDesc(src_desc);
+
+							src_desc = tmp_desc;
+						}
+
+						MemoryContextSwitchTo(oldcontext);
+					}
+					else
+						src_desc = tuptab->tupdesc;
+
+					Assert(src_desc != NULL);
+					ora_test_tupdesc_match(src_desc, target_desc, true);
+					/* End - BUG#Z00001372 */
+				}
+			}
+			/* End - ReqID:SRS-PLSQL-EXCEPTION */
+
+			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-PLSQL-CURSOR */
+			/*
+			 * no rows, we should handle like oracle and not assign
+			 * null
+			 */
+			if (n != 0)
+				exec_move_row(estate, target, tuptab->vals[0], tuptab->tupdesc);
+			/* End - ReqID:SRS-PLSQL-CURSOR */
+
+			exec_eval_cleanup(estate);
+			SPI_freetuptable(tuptab);
+		}
+		else
+		{
+			/* Move the cursor */
+			SPI_scroll_cursor_move(portal, stmt->direction, how_many);
+			n = SPI_processed;
+		}
+	}
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	else
+	{
+		Datum	 bulk_params;
+
+		/*
+		 * It's a BULK COLLECT statement if stmt->bulk_collect_into is true.
+		 * Calculate the value of LIMIT clause in the BULK COLLECT statement
 		 */
-		SPI_scroll_cursor_fetch(portal, stmt->direction, how_many);
+		if (stmt->limit_expr)
+		{
+			bool		isnull;
+
+			/* LIMIT clause should be doing this in LONG not INT width */
+			how_many = exec_eval_integer(estate, stmt->limit_expr, &isnull);
+
+			if (isnull)
+				ereport(ERROR,
+						(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+						 errmsg("fetch limit is nulll")));
+
+			exec_eval_cleanup(estate);
+
+			if (DatumGetInt32(how_many) <= 0)
+				ereport(ERROR,
+					(errcode(ERRCODE_VALUE_ERROR),
+					errmsg(" numeric or value error ")));
+		}
+		else
+			how_many = FETCH_ALL;
+
+		/* We need to get collections parameters for  BULK COLLECT target */
+		bulk_params = plisql_init_bulk_collect_params(estate, (PLiSQL_row *) stmt->target);
+
+		/*
+		 * Fetch tuple from the cursor BULK COLLECT INTO collection
+		 */
+		SPI_scroll_cursor_fetch_bulk_collect(portal, stmt->direction, how_many, bulk_params);
+
 		tuptab = SPI_tuptable;
 		n = SPI_processed;
-
-
-		/* ----------
-		 * Set the target appropriately.
-		 * ----------
-		 */
-		/* Begin - ReqID:SRS-SQL-PACKAGE */
-		target = (PLiSQL_variable *) plisql_get_datum(estate,
-							estate->datums[stmt->target->dno]);
-
-		/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
-		/*
-		 * check target match, doesn't consider pg record
-		 */
-		if (tuptab->tupdesc != NULL &&
-			(target->dtype != PLISQL_DTYPE_REC ||
-			is_plisql_rowtype_record((PLiSQL_rec *) target)))
-		{
-			TupleDesc target_desc;
-			TupleDesc src_desc = NULL;
-
-			oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
-			target_desc = plisql_get_tupledesc_fromvar(estate, target);
-			MemoryContextSwitchTo(oldcontext);
-			if (target_desc != NULL)
-			{
-				/* Begin - BUG#Z0001372 */
-				/*
-				 * there maybe select one rowtype column into var%rowtype
-				 * which we should check its rowtype tupdesc match to
-				 * target desc not the origin tuptab->tupdesc, which is
-				 * always one columns and its oid is RECORDOID
-				 */
-				if (tuptab->tupdesc->natts == 1 &&
-					tuptab->tupdesc->tdtypeid == RECORDOID &&
-					tuptab->tupdesc->attrs[0].atttypid == target_desc->tdtypeid)
-				{
-					oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
-					src_desc = lookup_rowtype_tupdesc_domain(tuptab->tupdesc->attrs[0].atttypid,
-															tuptab->tupdesc->attrs[0].atttypmod,
-															true);
-					if (src_desc == NULL)
-						src_desc = tuptab->tupdesc;
-					else
-					{
-						TupleDesc tmp_desc = CreateTupleDescCopyConstr(src_desc);
-
-						ReleaseTupleDesc(src_desc);
-
-						src_desc = tmp_desc;
-					}
-
-					MemoryContextSwitchTo(oldcontext);
-				}
-				else
-					src_desc = tuptab->tupdesc;
-
-				Assert(src_desc != NULL);
-				ora_test_tupdesc_match(src_desc, target_desc, true);
-				/* End - BUG#Z00001372 */
-			}
-		}
-		/* End - ReqID:SRS-PLSQL-EXCEPTION */
-
-		/* End - ReqID:SRS-SQL-PACKAGE */
-		/* Begin - ReqID:SRS-PLSQL-CURSOR */
-		/*
-		 * no rows, we should handle like oracle and not assign
-		 * null
-		 */
-		if (n != 0)
-			exec_move_row(estate, target, tuptab->vals[0], tuptab->tupdesc);
-		/* End - ReqID:SRS-PLSQL-CURSOR */
 
 		exec_eval_cleanup(estate);
 		SPI_freetuptable(tuptab);
 	}
-	else
-	{
-		/* Move the cursor */
-		SPI_scroll_cursor_move(portal, stmt->direction, how_many);
-		n = SPI_processed;
-	}
+	/* End ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	/* Set the ROW_COUNT and the global FOUND variable appropriately. */
 	estate->eval_processed = n;
@@ -13214,3 +13319,215 @@ get_collect_elem_type(PLiSQL_execstate *estate, PLiSQL_datum *elem_datum, bool *
 	return datatype;
 }
 /* End - ReqID:SRS-PLSQL-Collection */
+
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+/*
+ * Initializing BULK COLLECT INTO collection parameters.
+ */
+static Datum
+plisql_init_bulk_collect_params(PLiSQL_execstate *estate, PLiSQL_row *row)
+{
+	int 		i = 0;
+	Datum		bulk_params = (Datum) 0;
+	Datum		*bulk_colect_datas;
+
+	bulk_colect_datas = (Datum *)palloc0(sizeof(Datum) * row->nfields);
+
+	for (i = 0; i < row->nfields; i++)
+	{
+		PLiSQL_var		*var = NULL;
+		PLiSQL_datum	*target = estate->datums[row->varnos[i]];
+		PLiSQL_type 	*collect_type;
+		bool			is_collect_elem = false;
+		int 			nsubscripts = 0;
+		PLiSQL_expr 	*subscripts[MAX_UDT_DIM];
+		List			*fieldnames[MAXDIM];
+		Oid 			root_typoid;
+		int32			root_typmod;
+		Datum			root_value;
+		bool			root_value_isnull;
+		Datum			bulk_colect_data;
+		Datum			subscriptvalues[MAXDIM];
+		Datum			keytypes[MAXDIM];
+		Oid				keytypoid;
+
+		if (target->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+		{
+			is_collect_elem = true;
+			nsubscripts = 0;
+			do
+			{
+				PLiSQL_arrayelem *arrayelem = (PLiSQL_arrayelem *) target;
+				if (nsubscripts >= MAXDIM)
+					ereport(ERROR,
+							(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+							 errmsg("number of collection dimensions (%d) exceeds the maximum allowed (%d)",
+									nsubscripts + 1, MAXDIM)));
+				subscripts[nsubscripts] = arrayelem->subscript;
+				fieldnames[nsubscripts] = arrayelem->indirection;
+				nsubscripts++;
+				target = estate->datums[arrayelem->arrayparentno];
+			} while (target->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM);
+		}
+
+		if (target->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+		{
+			/* reference a package variable */
+			PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *)target;
+
+			var = (PLiSQL_var *)pkg_datum->pkgvar;
+			collect_type = var->datatype;
+
+			if (IS_PLSQL_ASSOCIATIVE_ARRAY(var->datatype->typtype))
+			{
+				Datum	typinfo;
+				Datum	typdatum;
+				MemoryContext	old;
+
+				if (collection_funcs.loadstate != LOADED)
+					elog(ERROR, "collection functions have not been loaded");
+
+				old = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+																	estate->datum_context));
+
+				typinfo = plisql_type_to_collectinfo(var->datatype);
+				typdatum = collection_funcs.InitCollectypeVar(typinfo);
+				MemoryContextSwitchTo(old);
+
+				assign_simple_var(estate, var, typdatum, false, false);
+			}
+		}
+		else
+		{
+			var = (PLiSQL_var *) DatumGetPointer(target);
+			collect_type = var->datatype;
+		}
+
+		if (!is_collect_elem)
+		{
+			Datum	typinfo;
+			Datum	typdatum;
+			MemoryContext	old;
+
+			if (var->dtype != PLISQL_DTYPE_VAR ||
+				var->datatype->ttype != PLISQL_TTYPE_COLLECT_TYPE)
+				ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("cannot mix between single row and multi-row (BULK) in INTO list")));
+
+			if (collection_funcs.loadstate != LOADED)
+				elog(ERROR, "collection functions have not been loaded");
+
+			/* initialize the a collection variable */
+			old = MemoryContextSwitchTo(plisql_get_relevantContext((PLiSQL_variable *) var,
+																estate->datum_context));
+			typinfo = plisql_type_to_collectinfo(var->datatype);
+
+			if (collection_funcs.loadstate != LOADED)
+				elog(ERROR, "collection functions have not been loaded");
+
+			typdatum = collection_funcs.InitCollectypeVar(typinfo);
+			MemoryContextSwitchTo(old);
+
+			assign_simple_var(estate, var, typdatum, false, false);
+		}
+		else
+		{
+			int 			j = 0;
+			SPITupleTable 	*save_eval_tuptable;
+			PLiSQL_type 	*key_type;
+			PLiSQL_type 	*val_type;
+
+			save_eval_tuptable = estate->eval_tuptable;
+			estate->eval_tuptable = NULL;
+
+			/* calculate the subscripts value */
+			for (j = 0; j < nsubscripts; j++)
+			{
+				bool		elem_isnull;
+
+				if (collect_type->ttype != PLISQL_TTYPE_COLLECT_TYPE)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							errmsg("must be a collection type")));
+
+				val_type = ((PLiSQL_ora_collection_type*)collect_type)->typdatatype;
+				key_type = ((PLiSQL_ora_collection_type*)collect_type)->typkey;
+
+				subscriptvalues[j] =
+					eval_collection_subscript(estate,
+											subscripts[nsubscripts - 1 - j],
+											key_type->typoid,
+											key_type->atttypmod,
+											&elem_isnull);
+				if (elem_isnull)
+					ereport(ERROR,
+							(errcode(ERRCODE_VALUE_ERROR),
+							errmsg("the collection subscript can not be NULL")));
+
+				if (fieldnames[nsubscripts - 1 - j] == NIL)
+					collect_type = val_type;
+				else
+				{
+					ListCell	*l;
+					char		*field;
+
+					foreach(l, fieldnames[nsubscripts - 1 - j])
+					{
+						/* get the filed name */
+						field = (char *)lfirst(l);
+						if (val_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+						{
+							val_type = get_record_field_type(val_type, field);
+							collect_type = val_type;
+						}
+						else if (val_type->ttype == PLISQL_TTYPE_REC ||
+							val_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+						{
+							val_type = get_row_field_type(val_type, field);
+							collect_type = val_type;
+						}
+					}
+				}
+				keytypes[j] = PointerGetDatum(key_type);
+			}
+
+			/* Now we can restore caller's SPI_execute result if any. */
+			Assert(estate->eval_tuptable == NULL);
+			estate->eval_tuptable = save_eval_tuptable;
+		}
+
+		if (!var || !var->value)
+			ereport(ERROR,
+				(errcode(ERRCODE_COLLECTION_IS_NULL),
+				errmsg("Reference to uninitialized collection")));
+
+		keytypoid = (((PLiSQL_ora_collection_type*)collect_type)->typkey)->typoid;
+		if (keytypoid != INT8OID &&
+			keytypoid != INT4OID &&
+			keytypoid != INT2OID)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("Implementation restriction: bulk SQL with collection with non-int key is not supported.")));
+
+		/* get first dim of the collect value */
+		exec_eval_datum(estate, target, &root_typoid,
+						&root_typmod, &root_value, &root_value_isnull);
+
+		bulk_colect_data = collection_funcs.InitBulkCollectData(root_value,
+																nsubscripts,
+																subscriptvalues,
+																fieldnames,
+																is_collect_elem ? keytypes : NULL,
+																(void *)var->datatype,
+																(void *)collect_type,
+																plisql_get_relevantContext((PLiSQL_variable *) var,
+																estate->datum_context));
+		bulk_colect_datas[i] = bulk_colect_data;
+	}
+
+	bulk_params = collection_funcs.InitBulkCollectParams(row->nfields, bulk_colect_datas);
+
+	return bulk_params;
+}
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */

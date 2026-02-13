@@ -289,6 +289,19 @@ typedef struct
 					Datum assign_value,
 					bool assign_value_isnull);
 	MemoryContext (*GetCollectypeMcxt)(Datum value);
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	Datum (*InitBulkCollectData)(Datum datum,
+						int nSubscripts,
+						Datum *subscriptvals,
+						List **fieldnames,
+						Datum *keytypes,
+						void *root_datatype,
+						void *target_datatype,
+						MemoryContext cxt);
+	Datum (*InitBulkCollectParams)(int num, Datum *collect_data);
+	void (*SetBulkCollectDestReceiverParams)(Datum dest, Datum bulk_params);
+	Datum (*CreateBulkCollectReceiver)(void);
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	UdtExtensionLoadState loadstate;	/* collection type functions loading state */
 } collection_funcs_call;

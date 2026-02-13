@@ -3654,3 +3654,89 @@ SPI_switch_atomic(bool atomic)
 	MemoryContextSetParent(_SPI_current->execCxt, _SPI_current->procCxt);
 	_SPI_current->atomic = t_atomic;
 }
+
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+
+/*
+ * SPI_execute_plan_with_paramlist_bulk_collect
+ *
+ * Execute a previously prepared plan for BULK COLLECT statment
+ */
+int
+SPI_execute_plan_with_paramlist_bulk_collect(SPIPlanPtr plan, ParamListInfo params,
+								bool read_only, long tcount,
+								Datum bulk_params)
+{
+	SPIExecuteOptions options;
+	int			res;
+	DestReceiver *dest;
+
+	if (plan == NULL || plan->magic != _SPI_PLAN_MAGIC || tcount < 0)
+		return SPI_ERROR_ARGUMENT;
+
+	res = _SPI_begin_call(true);
+	if (res < 0)
+		return res;
+
+	/*
+	 * Now we can create the destination receiver object.
+	 */
+	dest = CreateDestReceiver(DestBulkCollect);
+	collection_funcs.SetBulkCollectDestReceiverParams(PointerGetDatum(dest), bulk_params);
+
+	memset(&options, 0, sizeof(options));
+	options.params = params;
+	options.read_only = read_only;
+	options.tcount = tcount;
+	options.dest = dest;
+
+	PG_TRY();
+	{
+		res = _SPI_execute_plan(plan, &options,
+								InvalidSnapshot, InvalidSnapshot,
+								true);
+	}
+	PG_CATCH();
+	{
+		/* release bulk collect dest and propagate error */
+		if (dest != NULL)
+			(*dest->rDestroy) (dest);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	_SPI_end_call(true);
+	return res;
+}
+
+/*
+ * SPI_bulk_into_scroll_cursor_fetch()
+ *
+ * Fetch rows in a scrollable cursor
+ */
+void
+SPI_scroll_cursor_fetch_bulk_collect(Portal portal,
+									FetchDirection direction,
+									long count,
+									Datum bulk_params)
+{
+	DestReceiver *dest = CreateDestReceiver(DestBulkCollect);
+
+	collection_funcs.SetBulkCollectDestReceiverParams(PointerGetDatum(dest), bulk_params);
+
+	PG_TRY();
+	{
+		_SPI_cursor_operation(portal,
+							  direction, count,
+							  dest);
+	}
+	PG_CATCH();
+	{
+		/* release bulk collect dest and propagate error */
+		if (dest != NULL)
+			(*dest->rDestroy) (dest);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+}
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */

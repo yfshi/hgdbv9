@@ -23,10 +23,12 @@
 #include "executor/execExpr.h"
 #include "executor/spi.h"
 #include <limits.h>
+#include "parser/parse_type.h"	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 #include "parser/scansup.h"
 #include "utils/datum.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
+#include "utils/syscache.h"	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 #include "utils/typcache.h"
 #include "../include/collection.h"
 #include "utils/builtins.h"
@@ -73,6 +75,21 @@ static bool collection_element_compare(Datum value1, Datum value2, Oid typoid);
 static Datum init_heaptuple(Oid typoid,
 						int32 typmod,
 						PLiSQL_type *pl_datatype);
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+static Datum get_collect_value2(Datum datum,
+				int nsubscripts,
+				Datum *subscriptvals,
+				List **fieldnames,
+				void *top_datatype);
+static void check_bulkcollect_target_number_match(int target_number, int source_number);
+static bool bulk_collect_into_receive(TupleTableSlot *slot, DestReceiver *self);
+static void bulk_collect_into_startup(DestReceiver *self, int operation, TupleDesc typeinfo);
+static void bulk_collect_into_shutdown(DestReceiver *self);
+static void bulk_collect_into_destroy(DestReceiver *self);
+static Datum datum_type_cast(Datum value,
+				Oid valtype, int32 valtypmod,
+				Oid reqtype, int32 reqtypmod);
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 PG_FUNCTION_INFO_V1(collection_init);
 PG_FUNCTION_INFO_V1(collection_first);
@@ -121,6 +138,12 @@ collection_init_internal(void)
 	collection_funcs.GetCollectypeMode = get_collectype_mode;
 	collection_funcs.SetCollectValue = set_collect_value;
 	collection_funcs.GetCollectypeMcxt = get_collectype_mcxt;
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	collection_funcs.InitBulkCollectData = init_bulk_collect_data;
+	collection_funcs.InitBulkCollectParams = init_bulk_collect_params;
+	collection_funcs.SetBulkCollectDestReceiverParams = set_bulk_collect_destreceiver_params;
+	collection_funcs.CreateBulkCollectReceiver = create_bulk_collect_receiver;
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	collection_funcs.loadstate = LOADED;
 }
@@ -3165,3 +3188,621 @@ init_heaptuple(Oid typoid,
 
 	return val_datum;
 }
+
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+/*
+ *  get_collect_value2 is similar to get_collect_value,
+ *  except that it contains the case of record field.
+ *	return collect value in certain dimensional by nsubscripts.
+ *  datum: top dimensional collect value.
+ *  nsubscripts: the count of the subscripts
+ *  subscriptvals: subscript values
+ *  fieldnames is the array of field names,
+ *  top_datatype is the datatype of top collection
+ */
+Datum
+get_collect_value2(Datum datum,
+				int nsubscripts,
+				Datum *subscriptvals,
+				List **fieldnames,
+				void *top_datatype)
+{
+	int				i = 0;
+	CollectTypeInfo	*type;
+	CollectType		val = (CollectType)PointerGetDatum(datum);
+	CollecTypeKey	*key = NULL;
+	CollecTypeValue	*elem_val = NULL;
+
+	CHECK_COLLECTION_IS_NULL(val);
+	type = val->type;
+
+	Assert(nsubscripts >= 0);
+	while (i < nsubscripts)
+	{
+		Assert(val->valCxt != NULL);
+		Assert(IS_PLSQL_COLLECTYPE(type->typtype));
+
+		/* sanity check */
+		if (val->collect_typtype == NESTED_TABLE ||
+			val->collect_typtype == VARRAY)
+		{
+			if (DatumGetInt32(subscriptvals[i]) <= 0)
+				ereport(ERROR,
+					(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+					errmsg("subscript outside limit")));
+			else if (DatumGetInt32(subscriptvals[i]) > val->max_index)
+				ereport(ERROR,
+					(errcode(ERRCODE_SUBSCRIPT_BEYOND_COUNT),
+					errmsg("subscript beyond count")));
+		}
+
+		if (!IS_VARRAY(val))
+		{
+			c_map			*map;
+			c_iterator		iter;
+			c_iterator		end;
+
+			key = (CollecTypeKey *) palloc0(sizeof(CollecTypeKey));
+			key->value = subscriptvals[i];
+
+			map = (c_map*) DatumGetPointer(val->values);
+			end = c_map_end(map);
+
+			iter = c_map_find(map, (void*) key);
+			if (ITER_EQUAL(iter, end))
+			{
+				pfree(key);
+				ereport(ERROR,
+					(errcode(ERRCODE_NO_DATA_FOUND),
+					errmsg("data not found")));
+			}
+
+			elem_val = (CollecTypeValue *) PointerGetDatum(GET_COLLECT_ELEMENT_VALUE(iter));
+			pfree(key);
+		}
+		else
+		{
+			int32			key_val;
+			CollectVarrayValue	*varray;
+
+			key_val = DatumGetInt32(subscriptvals[i]);
+			varray = (CollectVarrayValue *) DatumGetPointer(val->values);
+
+			elem_val = (CollecTypeValue *) DatumGetPointer(varray->value[key_val - 1]);
+		}
+
+		if (IS_PLSQL_COLLECTYPE(type->typdatatype->typtype))
+		{
+			val = (CollectType) DatumGetPointer(elem_val->value);
+			type = type->typdatatype;
+		}
+		else if (type_is_rowtype(type->typdatatype->typoid) &&
+			fieldnames != NULL &&
+			fieldnames[nsubscripts - i - 1] != NULL)
+		{
+			ListCell 	*lc;
+			List 		*names = fieldnames[nsubscripts - i - 1];
+			Datum		cur_val;
+			int			j;
+			int			len;
+			Oid 		fieldOid;
+
+			cur_val = elem_val->value;
+			len = list_length(names);
+
+			j = 0;
+
+			/* there are fields after the subscript */
+			foreach(lc, names)
+			{
+				HeapTupleHeader td;
+				Oid 		tupType;
+				int32		tupTypmod;
+				TupleDesc	tupdesc;
+				HeapTupleData tmptup;
+				HeapTuple	tup;
+				int 		fno = 0;
+				bool		isnull;
+				char		*fieldname = (char *)lfirst(lc);
+
+				td = DatumGetHeapTupleHeader(cur_val);
+
+				/* Extract rowtype info and find a tupdesc */
+				tupType = HeapTupleHeaderGetTypeId(td);
+				tupTypmod = HeapTupleHeaderGetTypMod(td);
+				tupdesc = lookup_rowtype_tupdesc(tupType, tupTypmod);
+
+				/* Build a temporary HeapTuple control structure */
+				tmptup.t_len = HeapTupleHeaderGetDatumLength(td);
+				ItemPointerSetInvalid(&(tmptup.t_self));
+				tmptup.t_tableOid = InvalidOid;
+				tmptup.t_data = td;
+				tup = &tmptup;
+
+				fno = SPI_fnumber(tupdesc, fieldname);
+				if (fno <= 0)
+				{
+					char	name[(NAMEDATALEN * 2) + 100];
+
+					snprintf(name, sizeof(name), "%s.%s", type->typdatatype->typname, fieldname);
+					fno = SPI_fnumber(tupdesc, name);
+				}
+				if (fno <= 0)
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("record  has no field \"%s\"", fieldname)));
+
+				cur_val = heap_getattr(tup, fno, tupdesc, &isnull);
+				fieldOid = tupdesc->attrs[fno - 1].atttypid;
+				j++;
+				if (j < len  && !type_is_rowtype(fieldOid))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("field \"%s\" is not a record or a row ", fieldname)));
+				ReleaseTupleDesc(tupdesc);
+			}
+
+			if (IS_COLLECTOID(fieldOid))
+			{
+				val = (CollectType) DatumGetPointer(cur_val);
+				CHECK_COLLECTION_IS_NULL(val);
+				type = val->type;
+			}
+			else if (i < nsubscripts)
+				ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("not a collection")));
+			else
+				ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("not a collection")));
+		}
+		i++;
+	}
+
+	return PointerGetDatum(val);
+}
+
+/*
+ * init the collection target IN BULK COLLECT INTO statement
+ */
+Datum
+init_bulk_collect_data(Datum datum,
+					int nSubscripts,
+					Datum *subscriptvals,
+					List **fieldnames,
+					Datum *keytypes,
+					void *root_datatype,
+					void *target_datatype,
+					MemoryContext cxt)
+{
+	BulkCollectIntoData *collect_data;
+	Datum		init_value;
+	int			nth;
+
+	collect_data = (BulkCollectIntoData *)palloc0(sizeof(BulkCollectIntoData));
+	collect_data->target_datatype = target_datatype;
+
+	if (nSubscripts == 0)
+		collect_data->target_value = datum;
+	else
+	{
+		init_value = init_collectype_var(pl_type_to_collectinfo((PLiSQL_type *)target_datatype));
+
+		nth = 1;
+		set_collect_value(datum,
+						nSubscripts,
+						subscriptvals,
+						&nth,
+						fieldnames,
+						root_datatype,
+						init_value,
+						false);
+
+		collect_data->target_value = get_collect_value2(datum,
+														nSubscripts,
+														subscriptvals,
+														fieldnames,
+														root_datatype);
+	}
+
+	return PointerGetDatum(collect_data);
+}
+
+/*
+ * init the collection target in BULK COLLECT INTO statement
+ */
+Datum
+init_bulk_collect_params(int num, Datum *collect_data)
+{
+	BulkCollectIntoParams *params;
+
+	params = (BulkCollectIntoParams *)palloc0(sizeof(BulkCollectIntoParams));
+	params->collect_num = num;
+	params->collect_data = collect_data;
+
+	return PointerGetDatum(params);
+}
+
+/*
+ * set the DR_bulkcollect->bulk_params for BULK COLLECT statement
+ */
+void
+set_bulk_collect_destreceiver_params(Datum dest, Datum bulk_params)
+{
+	DR_bulkcollect *self = (DR_bulkcollect *)DatumGetPointer(dest);
+
+	self->bulk_params = (BulkCollectIntoParams *)DatumGetPointer(bulk_params);
+}
+
+
+/*
+ * create_bulk_collect_receiver -- create a DestReceiver object for BULK COLLECT statement
+ */
+Datum
+create_bulk_collect_receiver(void)
+{
+	DR_bulkcollect *self = (DR_bulkcollect *) palloc0(sizeof(DR_bulkcollect));
+
+	self->pub.receiveSlot = bulk_collect_into_receive;
+	self->pub.rStartup = bulk_collect_into_startup;
+	self->pub.rShutdown = bulk_collect_into_shutdown;
+	self->pub.rDestroy = bulk_collect_into_destroy;
+	self->pub.mydest = DestBulkCollect;
+	self->bulk_params = NULL;
+
+	return PointerGetDatum(self);
+}
+
+/*
+ * Check whether the numbers of the bulk collect target
+ * matches the number of result columns.
+ */
+static void
+check_bulkcollect_target_number_match(int target_number, int source_number)
+{
+	if (target_number > source_number)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("too many values")));
+
+	if (target_number < source_number)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("not enough values")));
+}
+
+/*
+ * bulk_collect_into_receive
+ *		store tuple retrieved by Executor into collection(BULK COLLECT INTO)
+ */
+static bool
+bulk_collect_into_receive(TupleTableSlot *slot, DestReceiver *self)
+{
+	DR_bulkcollect			*bulk_self = (DR_bulkcollect*)self;
+	BulkCollectIntoParams	*bulk_params;
+	TupleDesc				tupdesc;
+	int 					i = 0;
+
+	bulk_params = bulk_self->bulk_params;
+	tupdesc = slot->tts_tupleDescriptor;
+
+	/* make sure the tuple is fully deconstructed */
+	slot_getallattrs(slot);
+
+	/* loop by the target list */
+	for (i = 0; i < bulk_params->collect_num; i++)
+	{
+		MemoryContext			oldcxt = NULL;
+		BulkCollectIntoData 	*collect_data;
+		CollectType 			val;
+		Oid 					value_typoid;
+		int32					value_typmod;
+		PLiSQL_type 			*value_datatype;
+		bool					isnull;
+		Datum					value;
+
+		collect_data = (BulkCollectIntoData *)DatumGetPointer(bulk_params->collect_data[i]);
+
+		/* get the collect variable value */
+		val = (CollectType)DatumGetPointer(collect_data->target_value);
+
+		value_typoid = val->type->typdatatype->typoid;
+		value_typmod = val->type->typdatatype->typmod;
+		value_datatype = ((PLiSQL_ora_collection_type *)collect_data->target_datatype)->typdatatype;
+
+		oldcxt = MemoryContextSwitchTo(val->valCxt);
+
+		/*
+		 * handle the cases when the collection value type are %ROWTYPE or record, e.g.
+		 * DECLARE
+		 *	 TYPE dept_tab_type IS TABLE OF departments%ROWTYPE;
+		 *	 v_depts dept_tab_type;
+		 * BEGIN
+		 *	 SELECT * BULK COLLECT INTO v_depts FROM departments;
+		 * END;
+		 */
+		if (type_is_rowtype(value_typoid))
+		{
+			int 		rowtype_natts;
+
+			/*
+			 * Check whether the number of BULK COLLECT INTO target lists
+			 * is more than one.
+			 */
+			if (bulk_params->collect_num > 1)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("too many values")));
+
+			/* get the numbers of row type's field */
+			if (value_typoid == ORARECORDOID)
+			{
+				PLiSQL_ora_record_type *type;
+
+				type = (PLiSQL_ora_record_type *)value_datatype;
+				rowtype_natts = list_length(type->args);
+
+				check_bulkcollect_target_number_match(rowtype_natts, slot->tts_nvalid);
+				if (TTS_EMPTY(slot) || slot->tts_isnull[i])
+				{
+					isnull = true;
+					value = (Datum) 0;
+				}
+				else if (value_typoid == ORARECORDOID)
+				{
+					Datum		*values;
+					bool		*nulls;
+					int 		natts;
+					int 		j;
+					HeapTuple	newtup = NULL;
+					TupleDesc	newtupdesc;
+
+					natts = tupdesc->natts + 1;
+					values = palloc(sizeof(Datum) * natts);
+					nulls = palloc(sizeof(bool) * natts);
+					memset(nulls, false, sizeof(bool) * natts);
+					newtupdesc = CreateTemplateTupleDesc(natts, false);
+					newtupdesc->tdtypeid = ORARECORDOID;
+					TupleDescInitEntry(newtupdesc, 1,
+									"__###__",
+									UDTPOINTEROID, -1,
+									0);
+					TupleDescInitEntryCollation(newtupdesc,
+												1,
+												InvalidOid);
+
+					values[0] = PointerGetDatum(value_datatype);
+					nulls[0] = false;
+
+					for (j = 1; j < natts; j++)
+					{
+						PLiSQL_type *field_type;
+
+						field_type = ((PLiSQL_ora_record_argitem *)list_nth(((PLiSQL_ora_record_type *)value_datatype)->args, j - 1))->type;
+
+						/* cast the value */
+						values[j] = datum_type_cast(slot->tts_values[j - 1],
+												tupdesc->attrs[j - 1].atttypid, tupdesc->attrs[j - 1].atttypmod,
+												field_type->typoid, field_type->atttypmod);
+
+						/* copy the value */
+						copy_tupleAttrsValues(values[j],
+										slot->tts_isnull[j - 1],
+										field_type->typoid,
+										field_type->typbyval,
+										field_type->typlen,
+										&(values[j]));
+						nulls[j] = slot->tts_isnull[j - 1];
+
+						TupleDescInitEntry(newtupdesc, j + 1,
+									   field_type->typname,
+									   field_type->typoid,
+									   field_type->atttypmod,
+									   0);
+						TupleDescInitEntryCollation(newtupdesc,
+													j + 1,
+													field_type->collation);
+					}
+
+					BlessTupleDesc(newtupdesc);
+					newtup = heap_form_tuple(newtupdesc, values, nulls);
+					value = heap_copy_tuple_as_datum(newtup, newtupdesc);
+					isnull = slot->tts_isnull[i];
+
+					heap_freetuple(newtup);
+					pfree(values);
+					pfree(nulls);
+				}
+			}
+			else if (get_typtype(value_typoid) == TYPTYPE_COMPOSITE ||
+				(value_typoid == RECORDOID &&
+				value_datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR))
+			{
+				TupleDesc	target_tupdesc;
+
+				if (get_typtype(value_typoid) == TYPTYPE_COMPOSITE)
+				{
+					HeapTuple	tp;
+
+					tp = SearchSysCache1(RELOID, ObjectIdGetDatum(typeidTypeRelid(value_typoid)));
+					if (!HeapTupleIsValid(tp))
+						ereport(ERROR,
+								(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+								 errmsg("relation does not have a composite type")));
+
+					rowtype_natts = ((Form_pg_class) GETSTRUCT(tp))->relnatts;
+					target_tupdesc = lookup_rowtype_tupdesc(value_typoid, value_typmod);
+					ReleaseSysCache(tp);
+				}
+				else
+				{
+					PLiSQL_explicit_cursor_type *cursor_type;
+
+					cursor_type = (PLiSQL_explicit_cursor_type *) value_datatype;
+					target_tupdesc = cursor_type->retdesc;
+					rowtype_natts = target_tupdesc->natts;
+				}
+
+				check_bulkcollect_target_number_match(rowtype_natts, slot->tts_nvalid);
+
+				if (TTS_EMPTY(slot) || slot->tts_isnull[i])
+				{
+					isnull = true;
+					value = (Datum) 0;
+				}
+				else
+				{
+					Datum		*values;
+					bool		*nulls;
+					int 		j;
+					HeapTuple	newtup = NULL;
+
+					values = palloc(sizeof(Datum) * rowtype_natts);
+					nulls = palloc(sizeof(bool) * rowtype_natts);
+					for (j = 0; j < rowtype_natts; j++)
+					{
+						/* cast the value */
+						values[j] = datum_type_cast(slot->tts_values[j],
+												tupdesc->attrs[j].atttypid, tupdesc->attrs[j].atttypmod,
+												target_tupdesc->attrs[j].atttypid, target_tupdesc->attrs[j].atttypmod);
+
+						/* copy the value */
+						copy_tupleAttrsValues(values[j],
+										slot->tts_isnull[j],
+										target_tupdesc->attrs[j].atttypid,
+										target_tupdesc->attrs[j].attbyval,
+										target_tupdesc->attrs[j].attlen,
+										&(values[j]));
+						nulls[j] = slot->tts_isnull[j];
+					}
+
+					BlessTupleDesc(target_tupdesc);
+					newtup = heap_form_tuple(target_tupdesc, values, nulls);
+					value = heap_copy_tuple_as_datum(newtup, target_tupdesc);
+					isnull = slot->tts_isnull[i];
+
+					if (get_typtype(value_typoid) == TYPTYPE_COMPOSITE)
+						ReleaseTupleDesc(target_tupdesc);
+
+					heap_freetuple(newtup);
+					pfree(values);
+					pfree(nulls);
+				}
+			}
+			else
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("not a composite type or record type")));
+
+			collect_insert(PointerGetDatum(val), Int32GetDatum(++(val->max_index)), value, isnull);
+			break;
+		}
+		else
+		{
+			/*
+			 * Check whether the number of BULK COLLECT INTO target lists
+			 * matches the number of result columns.
+			 */
+			check_bulkcollect_target_number_match(bulk_params->collect_num, slot->tts_nvalid);
+
+			if (TTS_EMPTY(slot) || slot->tts_isnull[i])
+			{
+				isnull = true;
+				value = (Datum) 0;
+			}
+			else
+			{
+				value = datum_type_cast(slot->tts_values[i],
+										tupdesc->attrs[i].atttypid, tupdesc->attrs[i].atttypmod,
+										value_typoid, value_typmod);
+				value = datumCopy(value, get_typbyval(value_typoid), get_typlen(value_typoid));
+				isnull = slot->tts_isnull[i];
+			}
+			collect_insert(PointerGetDatum(val), Int32GetDatum(++(val->max_index)), value, isnull);
+		}
+
+		MemoryContextSwitchTo(oldcxt);
+	}
+
+	return true;
+}
+
+/*
+ * bulk_collect_into_startup --- query startup for BULK COLLECT INTO
+ */
+static void
+bulk_collect_into_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
+{
+	/* no-op */
+}
+
+/*
+ * bulk_collect_into_shutdown --- executor end
+ */
+static void
+bulk_collect_into_shutdown(DestReceiver *self)
+{
+	BulkCollectIntoParams *bulk_params = ((DR_bulkcollect *)self)->bulk_params;
+
+	if (bulk_params != NULL)
+	{
+		int i = 0;
+
+		for (i = 0; i < bulk_params->collect_num; i++)
+		{
+			BulkCollectIntoData	*collect_data = (BulkCollectIntoData *)DatumGetPointer(bulk_params->collect_data[i]);
+			if (collect_data)
+				pfree(collect_data);
+		}
+
+		pfree(bulk_params->collect_data);
+		bulk_params->collect_data = NULL;
+
+		pfree(bulk_params);
+		bulk_params = NULL;
+	}
+
+	pfree(self);
+}
+
+/*
+ * bulk_collect_into_destroy --- release DestReceiver object
+ */
+static void
+bulk_collect_into_destroy(DestReceiver *self)
+{
+	if (self != NULL)
+		bulk_collect_into_shutdown(self);
+}
+
+/*
+ * datum_type_cast --- Cast a value if required
+ */
+static Datum
+datum_type_cast(Datum value,
+				Oid valtype, int32 valtypmod,
+				Oid reqtype, int32 reqtypmod)
+{
+	Oid 		typOutput;
+	bool		typIsVarlena;
+	Oid 		typInput;
+	Oid 		typIOParam;
+	char		*str_value;
+	Datum		retult = value;
+
+	if (valtype == reqtype && valtypmod == reqtypmod)
+		return retult;
+
+	if (!OidIsValid(valtype))
+		elog(ERROR, "could not determine data source type(%d) input", valtype);
+
+	getTypeOutputInfo(valtype, &typOutput, &typIsVarlena);
+	str_value = OidOutputFunctionCall(typOutput, value);
+
+	getTypeInputInfo(reqtype, &typInput, &typIOParam);
+	retult = OidInputFunctionCall(typInput, str_value, typIOParam, reqtypmod);
+
+	return retult;
+}
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */

@@ -118,7 +118,8 @@ ORA_REGRESS = \
 	aggregates_without_group_by \
 	ora_dbms_output \
 	ora_collection \
-	ora_buildin_func
+	ora_buildin_func \
+	ora_bulk_collect
 
 #/* Begin - ReqID:SRS-PLSQL-Collection */
 PG_CPPFLAGS = -I$../src/tstl2cl/include -I$../src/tstl2cl -I$(srcdir) -I$../src/include

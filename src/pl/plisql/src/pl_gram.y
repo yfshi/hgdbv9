@@ -94,6 +94,7 @@ static	void			current_token_is_not_variable(int tok);
 static	PLiSQL_expr	*read_sql_construct(int until,
 											int until2,
 											int until3,
+											int until4,	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 											const char *expected,
 											RawParseMode parsemode,
 											bool isexpression,
@@ -196,6 +197,12 @@ static int read_out_scalar(char **fieldnames,
 				char param_info,
 				PLiSQL_expr **expr);
 /* End - ReqID:SRS-PLSQL-Collection */
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+static void read_bulk_collect_into_target(PLiSQL_variable **target);
+static PLiSQL_row *read_bulk_collect_into_udt_list(char *initial_name,
+												PLiSQL_datum *initial_datum,
+												int initial_location);
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 
 %}
@@ -444,6 +451,9 @@ static int read_out_scalar(char **fieldnames,
 /* End - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_BACKWARD
 %token <keyword>	K_BEGIN
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+%token <keyword>	K_BULK
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 %token <keyword>	K_BY
 %token <keyword>	K_CALL
 %token <keyword>	K_CASE
@@ -453,6 +463,9 @@ static int read_out_scalar(char **fieldnames,
 /* Begin - SRS-PLSQL-SUBPROC */
 %token <keyword>	K_COLLATION
 /* End - SRS-PLSQL-SUBPROC */
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+%token <keyword>	K_COLLECT
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 %token <keyword>	K_COLUMN
 %token <keyword>	K_COLUMN_NAME
 %token <keyword>	K_COMMIT
@@ -2140,7 +2153,7 @@ stmt_perform	: opt_stmt_label K_PERFORM
 						 * We can't do syntax-checking until after we make the
 						 * substitution.
 						 */
-						new->expr = read_sql_construct(';', 0, 0, ";",
+						new->expr = read_sql_construct(';', 0, 0, 0, ";",
 													   RAW_PARSE_DEFAULT,
 													   false, false, true,
 													   &startloc, NULL, false,
@@ -2252,7 +2265,7 @@ stmt_assign		: opt_stmt_label T_DATUM
 							plisql_push_back_token(T_DATUM);
 							plisql_location_to_lineno(@2);
 
-							expr = read_sql_construct(';', 0, 0, ";",
+							expr = read_sql_construct(';', 0, 0, 0, ";",
 												   pmode,
 												   false, true, true,
 												   NULL, NULL, false, &ismulticollectmethod/* ReqID:SRS-PLSQL-Collection */);
@@ -2875,6 +2888,7 @@ for_control		: for_variable K_IN
 							expr1 = read_sql_construct(DOT_DOT,
 													   K_LOOP,
 													   0,
+													   0,
 													   "LOOP",
 													   RAW_PARSE_DEFAULT,
 													   true,
@@ -3333,7 +3347,7 @@ stmt_raise		: opt_stmt_label K_RAISE
 								{
 									PLiSQL_expr *expr;
 
-									expr = read_sql_construct(',', ';', K_USING,
+									expr = read_sql_construct(',', ';', 0, K_USING,
 															  ", or ; or USING",
 															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
@@ -3612,7 +3626,8 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 						/* End - BUG#Z1438 */
 
 						expr = read_sql_construct(K_INTO, K_USING, ';',
-												  "INTO or USING or ;",
+												  K_BULK, /* ReqID:SRS-PLSQL-BULKCOLLECT */
+												  "INTO or USING or ; or BULK",
 												  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 												  true, true, true,
 												  NULL, &endtoken, false, NULL/* ReqID:SRS-PLSQL-Collection */);
@@ -3630,6 +3645,9 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 						new->haveout = false;
 						new->out = NULL;
 						/* End - ReqID:SRS-SQL-ANONYOUT */
+						/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+						new->bulk_collect_into = false;
+						/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 						/*
 						 * We loop to allow the INTO and USING clauses to
@@ -3715,7 +3733,7 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 									}
 									/* End - ReqID:SRS-PLSQL-DSQL */
 
-									expr = read_sql_construct(',', ';', K_INTO,
+									expr = read_sql_construct(',', ';', K_INTO, 0,
 															  ", or ; or INTO",
 															  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 															  true, true, true,
@@ -3734,7 +3752,7 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 
 								tok = yylex();
 								/* Eat INTO otherwise put token back into read-ahead stack */
-								if(tok != K_INTO)
+								if(tok != K_INTO && tok != K_BULK /* ReqID:SRS-PLSQL-BULKCOLLECT */)
 									plisql_push_back_token(tok);
 
 								if (has_returning)		/* multiple RETURN|RETURNING */
@@ -3749,13 +3767,59 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 								}
 
 								has_returning = true;
-								/* Begin - ReqID:SRS-PLSQL-Collection */
-								new->into = true;
-								read_into_target(&new->target, &new->strict);
+								if (tok == K_INTO)
+								{
+									/* Begin - ReqID:SRS-PLSQL-Collection */
+									new->into = true;
+									read_into_target(&new->target, &new->strict);
+								}
+								/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+								else if (tok == K_BULK)
+								{
+									endtoken = yylex();
+									if (endtoken == K_COLLECT)
+									{
+										endtoken = yylex();
+										if (endtoken == K_INTO)
+										{
+											if (new->bulk_collect_into || new->into)	/* multiple INTO or BULK COLLECT INTO */
+												yyerror("syntax error");
+											new->bulk_collect_into = true;
+											read_bulk_collect_into_target(&new->target);
+										}
+										else
+											yyerror("syntax error");
+									}
+									else
+										yyerror("syntax error");
+								}
+								/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 								endtoken = yylex();
 								/* End - ReqID:SRS-PLSQL-Collection */
 							}
 							/* End - ReqID:SRS-PLSQL-DSQL */
+							/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+							else if (endtoken == K_BULK)
+							{
+								endtoken = yylex();
+								if (endtoken == K_COLLECT)
+								{
+									endtoken = yylex();
+									if (endtoken == K_INTO)
+									{
+										if (new->bulk_collect_into || new->into)	/* multiple INTO or BULK COLLECT INTO */
+											yyerror("syntax error");
+										new->bulk_collect_into = true;
+										read_bulk_collect_into_target(&new->target);
+										endtoken = yylex();
+									}
+									else
+										yyerror("syntax error");
+								}
+								else
+									yyerror("syntax error");
+							}
+							/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 							else if (endtoken == ';')
 								break;
 							else
@@ -3922,7 +3986,7 @@ stmt_open		: opt_stmt_label K_OPEN cursor_variable
 								/*
 								 * maybe is select xxx from yy using
 								 */
-								new->query = read_sql_construct(';', K_USING, 0, ";",
+								new->query = read_sql_construct(';', K_USING, 0, 0, ";",
 												RAW_PARSE_DEFAULT,
 												false, true, true,
 												NULL, &endtoken, false,
@@ -4002,10 +4066,47 @@ stmt_fetch		: opt_stmt_label K_FETCH opt_fetch_direction cursor_variable K_INTO
 						fetch->target	= target;
 						fetch->curvar	= $4->dno;
 						fetch->is_move	= false;
+						/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+						fetch->bulk_collect_into = false;
+						fetch->limit_expr = NULL;
+						/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 						$$ = (PLiSQL_stmt *)fetch;
 					}
+				/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+				| opt_stmt_label K_FETCH opt_fetch_direction cursor_variable K_BULK K_COLLECT K_INTO
+					{
+						PLiSQL_stmt_fetch *fetch = $3;
+						PLiSQL_variable *target;
+						int	tok;
+
+						/* We have already parsed everything through the BULK COLLECT INTO keyword */
+						read_bulk_collect_into_target(&target);
+
+						tok = yylex();
+						if (tok == K_LIMIT)
+							fetch->limit_expr = read_sql_expression(';', ";");
+
+						/*
+						 * We don't allow multiple rows in PL/iSQL's FETCH
+						 * statement, only in MOVE.
+						 */
+						if (fetch->returns_multiple_rows)
+							ereport(ERROR,
+									(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+									 errmsg("FETCH statement cannot return multiple rows"),
+									 parser_errposition(@1)));
+
+						fetch->lineno = plisql_location_to_lineno(@1);
+						fetch->target	= target;
+						fetch->curvar	= $4->dno;
+						fetch->is_move	= false;
+						fetch->bulk_collect_into = true;
+
+						$$ = (PLiSQL_stmt *)fetch;
+					}
+				/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 				;
 
 stmt_move		: opt_stmt_label K_MOVE opt_fetch_direction cursor_variable ';'
@@ -4598,6 +4699,9 @@ unreserved_keyword	:
 				| K_AUTHID
 				/* End - SRS-PLSQL-SUBPROC */
 				| K_BACKWARD
+				/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+				| K_BULK
+				/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 				| K_CALL
 				| K_CHAIN
 				| K_CLOSE
@@ -4605,6 +4709,9 @@ unreserved_keyword	:
 				/* Begin - SRS-PLSQL-SUBPROC */
 				| K_COLLATION
 				/* End - SRS-PLSQL-SUBPROC */
+				/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+				| K_COLLECT
+				/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 				| K_COLUMN
 				| K_COLUMN_NAME
 				| K_COMMIT
@@ -4924,7 +5031,7 @@ current_token_is_not_variable(int tok)
 static PLiSQL_expr *
 read_sql_expression(int until, const char *expected)
 {
-	return read_sql_construct(until, 0, 0, expected,
+	return read_sql_construct(until, 0, 0, 0, expected,
 							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 							  true, true, true, NULL, NULL, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 }
@@ -4934,7 +5041,7 @@ static PLiSQL_expr *
 read_sql_expression2(int until, int until2, const char *expected,
 					 int *endtoken)
 {
-	return read_sql_construct(until, until2, 0, expected,
+	return read_sql_construct(until, until2, 0, 0, expected,
 							  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 							  true, true, true, NULL, endtoken, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 }
@@ -4943,7 +5050,7 @@ read_sql_expression2(int until, int until2, const char *expected,
 static PLiSQL_expr *
 read_sql_stmt(void)
 {
-	return read_sql_construct(';', 0, 0, ";",
+	return read_sql_construct(';', 0, 0, 0, ";",
 							  RAW_PARSE_DEFAULT,
 							  false, true, true, NULL, NULL, false, NULL/* ReqID:SRS-PLSQL-Collection */);
 }
@@ -4954,6 +5061,7 @@ read_sql_stmt(void)
  * until:		token code for expected terminator
  * until2:		token code for alternate terminator (pass 0 if none)
  * until3:		token code for another alternate terminator (pass 0 if none)
+ * until4:		token code for another alternate terminator (pass 0 if none)
  * expected:	text to use in complaining that terminator was not found
  * parsemode:	raw_parser() mode to use
  * isexpression: whether to say we're reading an "expression" or a "statement"
@@ -4967,6 +5075,7 @@ static PLiSQL_expr *
 read_sql_construct(int until,
 				   int until2,
 				   int until3,
+				   int until4,	/* ReqID:SRS-PLSQL-BULKCOLLECT */
 				   const char *expected,
 				   RawParseMode parsemode,
 				   bool isexpression,
@@ -5013,6 +5122,10 @@ read_sql_construct(int until,
 			break;
 		if (tok == until3 && parenlevel == 0)
 			break;
+		/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+		if (tok == until4 && parenlevel == 0)
+			break;
+		/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 		/* Begin - ReqID:SRS-PLSQL-DSQL */
 		if (parsemode == RAW_PARSE_PLISQL_EXPR && 
 			(tok == K_RETURN || tok == K_RETURNING) && 
@@ -5382,6 +5495,11 @@ make_execsql_stmt(int firsttoken, int location)
 	StringInfoData		ds_collect;
 	Oid					pkgoid;
 	/* End - ReqID:SRS-PLSQL-Collection */
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	bool				have_bulk_collect_into = false;
+	int					bulkcollect_start_loc = -1;
+	int					bulkcollect_end_loc = -1;
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	/* Begin - SRS-SQL-MULTITABLEINSERT */
 	bool				is_multi_insert = false;
@@ -5437,6 +5555,10 @@ make_execsql_stmt(int firsttoken, int location)
 		tok = yylex();
 		if (have_into && into_end_loc < 0)
 			into_end_loc = yylloc;		/* token after the INTO part */
+		/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+		if (have_bulk_collect_into && bulkcollect_end_loc < 0)
+			bulkcollect_end_loc = yylloc;
+		/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 		if (tok == ';')
 			break;
 		if (tok == 0)
@@ -5473,6 +5595,34 @@ make_execsql_stmt(int firsttoken, int location)
 			into_start_loc = yylloc;
 			read_into_target(&target, &have_strict);
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+		if (tok == K_BULK)
+		{
+			bulkcollect_start_loc = yylloc;
+
+			tok = yylex();
+			if (tok == K_COLLECT)
+			{
+				tok = yylex();
+				if (tok == K_INTO)
+				{
+					if (have_bulk_collect_into || have_into)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("INTO and BULK COLLECT INTO can't be used together")));
+
+					have_bulk_collect_into = true;
+					read_bulk_collect_into_target(&target);
+				}
+				else
+					plisql_push_back_token(tok);
+			}
+			else
+				plisql_push_back_token(tok);
+		}
+		/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+
 		/* Begin - ReqID:SRS-PLSQL-Collection */
 		if (tok == T_DATUM || tok == T_CWORD)
 		{
@@ -5549,6 +5699,46 @@ make_execsql_stmt(int firsttoken, int location)
 			plisql_append_source_text(&ds, into_end_loc, yylloc);
 		}
 	}
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	else if (have_bulk_collect_into)
+	{
+		/*
+		 * Insert an appropriate number of spaces corresponding to the
+		 * BULK COLLECT INTO text, so that locations within the redacted SQL statement
+		 * still line up with those in the original source text.
+		 */
+		if (have_collect)
+		{
+			if (bulkcollect_start_loc < collect_start_loc)
+			{
+				plisql_append_source_text(&ds, location, bulkcollect_start_loc);
+				appendStringInfoSpaces(&ds, bulkcollect_end_loc - bulkcollect_start_loc);
+
+				plisql_append_source_text(&ds, bulkcollect_end_loc, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				if (collect_end_loc != yylloc)
+				{
+					appendStringInfoSpaces(&ds, 1);
+					plisql_append_source_text(&ds, collect_end_loc, yylloc);
+				}
+			}
+			else
+			{
+				plisql_append_source_text(&ds, location, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				appendStringInfoSpaces(&ds, 1);
+				plisql_append_source_text(&ds, collect_end_loc, bulkcollect_start_loc);
+				appendStringInfoSpaces(&ds, bulkcollect_end_loc - bulkcollect_start_loc);
+			}
+		}
+		else
+		{
+			plisql_append_source_text(&ds, location, bulkcollect_start_loc);
+			appendStringInfoSpaces(&ds, bulkcollect_end_loc - bulkcollect_start_loc);
+			plisql_append_source_text(&ds, bulkcollect_end_loc, yylloc);
+		}
+	}
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 	else
 	{
 		/* Begin - ReqID:SRS-PLSQL-Collection */
@@ -5592,6 +5782,9 @@ make_execsql_stmt(int firsttoken, int location)
 	execsql->into	 = have_into;
 	execsql->strict	 = have_strict;
 	execsql->target	 = target;
+	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+	execsql->bulk_collect_into = have_bulk_collect_into;
+	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
 	/* Begin - BUG#M0000376 */
 	/*
@@ -6842,7 +7035,7 @@ read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQ
 				if (argitem->argmode == ARGMODE_OUT)
 					out_dnos[nouts++] = datum->dno;
 			}
-			item = read_sql_construct(',', ')', 0,
+			item = read_sql_construct(',', ')', 0, 0,
 								  ",\" or \")",
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
@@ -6856,7 +7049,7 @@ read_cursor_args(PLiSQL_var *cursor, int until, int *outrowno) /* ReqID:SRS-PLSQ
 		}
 		else
 		{
-			item = read_sql_construct(',', ')', 0,
+			item = read_sql_construct(',', ')', 0, 0,
 								  ",\" or \")",
 								  RAW_PARSE_PLISQL_EXPR, /* BUG:M0000079 */
 								  true, true,
@@ -8154,7 +8347,7 @@ read_collect_method(int start_token, const char *varname,
 							 errmsg("collection method %s has no parameter",
 							  methodname)));
 
-				index_expr = read_sql_construct(')', 0, 0,
+				index_expr = read_sql_construct(')', 0, 0, 0,
 							 ")",
 							 RAW_PARSE_PLISQL_EXPR,
 							 true, false, false, NULL, &tok, false, NULL);
@@ -8184,7 +8377,7 @@ read_collect_method(int start_token, const char *varname,
 						if (tok != ',' )
 							plisql_push_back_token(tok);
 
-						new = read_sql_construct(',', ')', 0,
+						new = read_sql_construct(',', ')', 0, 0,
 											")",
 											RAW_PARSE_PLISQL_EXPR,
 											true, false, false, NULL, &tok, false, NULL);
@@ -8354,7 +8547,7 @@ read_collection_constructor(PLiSQL_ora_collection_type *collect_type,
 			{
 				PLiSQL_expr		*new = NULL;
 
-				new = read_sql_construct(')', ',', 0,
+				new = read_sql_construct(')', ',', 0, 0,
 							 ")",
 							 RAW_PARSE_PLISQL_EXPR,
 							 true, false, false, NULL, &tok, false, NULL);
@@ -8823,3 +9016,181 @@ read_out_scalar(char **fieldnames,
 	return tok;
 }
 /* End - ReqID:SRS-PLSQL-Collection */
+
+/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
+/*
+ * Read the argument of an BULK COLLECT INTO clause.  On entry, we have just read the
+ * BULK COLLECT INTO keyword.
+ */
+static void
+read_bulk_collect_into_target(PLiSQL_variable **target)
+{
+	int			tok;
+
+	/* Set default results */
+	*target = NULL;
+
+	tok = yylex();
+
+	switch (tok)
+	{
+		case T_DATUM:
+			{
+				*target = (PLiSQL_variable *)
+					read_bulk_collect_into_udt_list(NameOfDatum(&(yylval.wdatum)),
+												yylval.wdatum.datum, yylloc);
+			}
+			break;
+
+		default:
+			/* just to give a better message than "syntax error" */
+			current_token_is_not_variable(tok);
+	}
+}
+
+/*
+ * Given the first datum and name in the BULK COLLECT INTO list, continue to read
+ * comma-separated scalar variables until we run out. Then construct
+ * and return a fake "row" variable that represents the list of
+ * collections.
+ */
+static PLiSQL_row *
+read_bulk_collect_into_udt_list(char *initial_name,
+								PLiSQL_datum *initial_datum,
+								int initial_location)
+{
+	int				 nfields;
+	char			*fieldnames[1024];
+	int				 varnos[1024];
+	PLiSQL_row		*row;
+	int				 tok;
+	PLiSQL_datum 	*cur_datum;
+	char 			*fieldname;
+
+	nfields		  = 0;
+	cur_datum 	  = initial_datum;
+	fieldname 	  = initial_name;
+	do
+	{
+		/* Check for array overflow */
+		if (nfields >= 1024)
+			ereport(ERROR,
+					(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+					 errmsg("too many BULK COLLECT INTO variables specified"),
+					 parser_errposition(yylloc)));
+
+		check_assignable(cur_datum, yylloc);
+
+		if (nfields > 0 &&
+			is_row_record_datum(cur_datum))
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("\"%s\" is not a collection variable",
+							fieldname),
+					 parser_errposition(yylloc)));
+
+		if ((cur_datum->dtype == PLISQL_DTYPE_VAR &&
+			((PLiSQL_var *)cur_datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE) ||
+			(cur_datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+			((PLiSQL_var *)(((PLiSQL_pkg_datum *)cur_datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE))
+		{
+			StringInfoData	var_ds;
+			StringInfoData	method_ds;
+			List			*list_elems = NIL;
+			bool			is_method = false;
+			PLiSQL_datum	*top_datum;
+
+			initStringInfo(&var_ds);
+			initStringInfo(&method_ds);
+
+			top_datum = cur_datum;
+			list_elems = read_collect_variable(top_datum, initial_location,
+											&var_ds, &method_ds, &is_method);
+
+			if (nfields > 0 && is_method)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("\"%s\" is not a collection variable",
+								fieldname),
+							parser_errposition(yylloc)));
+
+			/* put the arrayelem into plisql_Datums array if any */
+			if (list_elems != NIL)
+			{
+				ListCell	*lc;
+				int 		parent_dno = top_datum->dno;
+				PLiSQL_arrayelem *elem;
+				int			nlist = list_length(list_elems);
+				int			i;
+
+				i = 0;
+				foreach(lc, list_elems)
+				{
+					elem = (PLiSQL_arrayelem *) lfirst(lc);
+					plisql_adddatum((PLiSQL_datum *) elem);
+
+					elem->arrayparentno = parent_dno;
+					parent_dno = elem->dno;
+					i++;
+					if (i == nlist)
+					{
+						fieldnames[nfields] = fieldname;
+						varnos[nfields++]	= elem->dno;
+					}
+				}
+			}
+			else
+			{
+				fieldnames[nfields] = fieldname;
+				varnos[nfields++]	= cur_datum->dno;
+			}
+			pfree(var_ds.data);
+			pfree(method_ds.data);
+		}
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("\"%s\" is not a collection variable",
+							fieldname),
+					 parser_errposition(yylloc)));
+
+		tok = yylex();
+
+		if (tok != ',')
+			break;
+
+		tok = yylex();
+		if (tok != T_DATUM)
+		{
+			/* just to give a better message than "syntax error" */
+			current_token_is_not_variable(tok);
+		}
+		cur_datum = yylval.wdatum.datum;
+		fieldname = NameOfDatum(&yylval.wdatum);
+	} while(1);
+
+	/*
+	 * We read an extra, non-comma token from yylex(), so push it
+	 * back onto the input stream
+	 */
+	plisql_push_back_token(tok);
+
+	row = palloc0(sizeof(PLiSQL_row));
+	row->dtype = PLISQL_DTYPE_ROW;
+	row->refname = "(unnamed row)";
+	row->lineno = plisql_location_to_lineno(initial_location);
+	row->rowtupdesc = NULL;
+	row->nfields = nfields;
+	row->fieldnames = palloc(sizeof(char *) * nfields);
+	row->varnos = palloc(sizeof(int) * nfields);
+	while (--nfields >= 0)
+	{
+		row->fieldnames[nfields] = fieldnames[nfields];
+		row->varnos[nfields] = varnos[nfields];
+	}
+
+	plisql_adddatum((PLiSQL_datum *)row);
+
+	return row;
+}
+/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
