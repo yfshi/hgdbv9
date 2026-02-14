@@ -2485,14 +2485,14 @@ SELECT
         ELSE 'UNKNOWN'
     END::varchar2(16)                       AS trigger_type,
 
-    TRIM(BOTH ' ' FROM
-        CONCAT_WS(' ',
-            CASE WHEN trg.tgtype & 4 <> 0 THEN 'INSERT' END,
-            CASE WHEN trg.tgtype & 8 <> 0 THEN 'DELETE' END,
-            CASE WHEN trg.tgtype & 16 <> 0 THEN 'UPDATE' END,
-            CASE WHEN trg.tgtype & 32 <> 0 THEN 'TRUNCATE' END
-        )
+	/* Begin - BUG#Z7179 */
+    CONCAT_WS(' OR ',
+            CASE WHEN trg.tgtype & (1 << 2) <> 0 THEN 'INSERT' END,
+            CASE WHEN trg.tgtype & (1 << 3) <> 0 THEN 'DELETE' END,
+            CASE WHEN trg.tgtype & (1 << 4) <> 0 THEN 'UPDATE' END,
+            CASE WHEN trg.tgtype & (1 << 5) <> 0 THEN 'TRUNCATE' END
     )::varchar2(246)                        AS triggering_event,
+	/* End - BUG#Z7179 */
 
     SYS.ORA_CASE_TRANS(usr.usename::varchar2)::varchar2(128)              AS table_owner,
 	/* Begin - BUG#Z6216 */

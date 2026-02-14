@@ -393,7 +393,6 @@ do_compile(FunctionCallInfo fcinfo,
 	/* Begin - ReqID:SRS-SQL-TRIGGER */
 	PgObjectInfo 	objinfo = NULL;
 	ObjectAddress 	address;
-	Trigger			*otg = NULL;
 	Oid				funcOid = fcinfo->flinfo->fn_oid;
 	Oid				trigoid = InvalidOid;
 	bool			is_ora_trig = false;
@@ -1080,8 +1079,6 @@ do_compile(FunctionCallInfo fcinfo,
 			{
 				ObjectAddressSet(address, TriggerRelationId, trigoid);
 				objinfo =  pg_object_get_ori_infor_hook(address);
-				otg = ivyGetTriggerById(trigoid);
-				is_ora_trig = true;
 			}
 
 			if (objinfo && objinfo->oricompatible_mode == 'o')
@@ -1124,6 +1121,8 @@ do_compile(FunctionCallInfo fcinfo,
 				else
 					add_parameter_name(PLISQL_NSTYPE_REC, rec->dno, ":old");
 				function->old_varno = rec->dno;
+
+				is_ora_trig = true;		/* BUG#Z7179 */
 			}
 			else
 			{
@@ -1381,7 +1380,10 @@ do_compile(FunctionCallInfo fcinfo,
 	 * If ORA trigger function, here we add the RETURN clause
 	 */
 	if (is_ora_trig)
-		add_ora_trigfunc_return(function, ivy_tgtype_to_event(otg->tgtype)); /* BUG#Z6170 */
+	{
+		TriggerData *trigdata = (TriggerData *) fcinfo->context;	/* BUG#Z7179 */
+		add_ora_trigfunc_return(function, trigdata->tg_event); 		/* BUG#Z6170 */
+	}
 	/* End - ReqID:SRS-SQL-TRIGGER */
 
 	/*
