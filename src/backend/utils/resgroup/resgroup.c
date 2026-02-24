@@ -3324,6 +3324,33 @@ checkTablespaceInIOlimit(Oid tblspcid, bool errout)
 }
 
 /*
+ * Get the max session memory limit for the user,
+ * calculated as (memory_limit / concurrency).
+ */
+int64
+get_group_memory_limit(void)
+{
+	ResGroupCaps   *caps;
+	int64			queryMem = -1;
+
+	LWLockAcquire(ResGroupLock, LW_SHARED);
+
+	if (!self || !self->group || self->group->caps.concurrency <= 0)
+	{
+		LWLockRelease(ResGroupLock);
+		return queryMem;
+	}
+
+	caps = &self->group->caps;
+	if (caps->memory_limit > 0)
+		queryMem = (int64)(caps->memory_limit *1024L *1024L / caps->concurrency);
+
+	LWLockRelease(ResGroupLock);
+
+	return queryMem;
+}
+
+/*
  * Given a planned statement, check if it is pure catalog query or a very simple query.
  * Return true only when:
  *   - there must be only one slice
