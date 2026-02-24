@@ -1487,6 +1487,11 @@ msgstr "  -T, --exclude-table=PATTERN  不转储指定的表\n"
 msgid "  -x, --no-privileges          do not dump privileges (grant/revoke)\n"
 msgstr "  -x, --no-privileges          不要转储权限 (grant/revoke)\n"
 
+#: pg_dump.c:330 pg_dumpall.c:993
+#, c-format
+msgid "  -X, --exclude-extension      do not dump extension\n"
+msgstr "  -X, --exclude-extension      不转储指定的扩展\n"
+
 #: pg_dump.c:1050 pg_dumpall.c:642
 #, c-format
 msgid "  --binary-upgrade             for use by upgrade utilities only\n"
