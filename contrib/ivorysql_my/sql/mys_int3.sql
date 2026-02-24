@@ -84,6 +84,64 @@ create table test1(b int3(0) default 3);
 insert into test1 values ();
 drop table test1;
 
+--intx -> int3
+select 20000000::mediumint, (-20000000)::mediumint;
+select 6000000000::mediumint, (-6000000000)::mediumint;
+create table t_1(a1 int);
+create table t_2(a2 bigint);
+insert into t_1 values(20000000), (-20000000);
+insert into t_2 values(6000000000), (-6000000000);
+select cast(a1 as mediumint) from t_1;
+select cast(a2 as mediumint) from t_2;
+drop table t_1,t_2;
+
+create table test1(a mediumint);
+insert into test1 values(20000000);
+insert into test1 values(6000000000);
+insert into test1 values(8388607);
+insert into test1 values(8388608);
+insert into test1 values(0);
+insert into test1 values(-8388608);
+insert into test1 values(-8388609);
+insert into test1 values(-20000000);
+insert into test1 values(-6000000000);
+select * from test1;
+drop table test1;
+
+set SQL_MODE='';
+create table test1(a mediumint);
+insert into test1 values(20000000);
+insert into test1 values(6000000000);
+insert into test1 values(8388607);
+insert into test1 values(8388608);
+insert into test1 values(0);
+insert into test1 values(-8388608);
+insert into test1 values(-8388609);
+insert into test1 values(-20000000);
+insert into test1 values(-6000000000);
+select * from test1;
+drop table test1;
+set SQL_MODE to default;
+
+--int3 -> numeric
+select 20::int3::numeric;
+select 0::int3::numeric;
+select 8388607::int3::numeric;
+select (-8388608)::int3::numeric;
+
+CREATE TABLE tb1 (a mediumint);
+insert into tb1 values (10);
+insert into tb1 values (0);
+insert into tb1 values (8388607);
+insert into tb1 values (-8388608);
+select * from tb1;
+select cast(a as numeric) from tb1;
+select convert(a, numeric) from tb1;
+create table tb2 as select convert(a, decimal(20,8)) from tb1;
+desc tb2;
+select * from tb2;
+drop table tb1,tb2;
+
 --numeric -> int3
 select 2000.49999::int3;
 select 2000.5::int3;

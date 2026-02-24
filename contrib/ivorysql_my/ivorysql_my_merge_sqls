@@ -1,6 +1,6 @@
 src/datatype/script/datatype
 src/datatype/script/bool
-src/datatype/script/int
+src/datatype/script/int1
 src/datatype/script/int2
 src/datatype/script/int3
 src/datatype/script/int4
@@ -11,6 +11,7 @@ src/datatype/script/uint3
 src/datatype/script/uint4
 src/datatype/script/uint8
 src/datatype/script/numeric
+src/datatype/script/int1_index
 src/datatype/script/uint1_index
 src/datatype/script/uint2_index
 src/datatype/script/uint4_index

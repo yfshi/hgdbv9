@@ -25,28 +25,28 @@
 #include "utils/numeric.h"
 #include "../include/ivorysql_my.h"
 
-PG_FUNCTION_INFO_V1(myint2_bit_and);
-PG_FUNCTION_INFO_V1(myint2_bit_or);
-PG_FUNCTION_INFO_V1(myint2_pl);
-PG_FUNCTION_INFO_V1(myint2_mi);
-PG_FUNCTION_INFO_V1(myint2_mul);
-PG_FUNCTION_INFO_V1(myint2_div);
-PG_FUNCTION_INFO_V1(myint2_div_int4); /* bug#z5166 */
-PG_FUNCTION_INFO_V1(myint2_exact_div);
-PG_FUNCTION_INFO_V1(myint2_mod);
-PG_FUNCTION_INFO_V1(myint2_bit_xor);
-PG_FUNCTION_INFO_V1(myint2_and);
-PG_FUNCTION_INFO_V1(myint2_safeeq);
-PG_FUNCTION_INFO_V1(myint2_not);
-PG_FUNCTION_INFO_V1(myint2_bit_neg);
-PG_FUNCTION_INFO_V1(myint2_positive);
-PG_FUNCTION_INFO_V1(myint2_negative);
-PG_FUNCTION_INFO_V1(myint2_boolean);
-PG_FUNCTION_INFO_V1(boolean_myint2);
+PG_FUNCTION_INFO_V1(int2_bit_and);
+PG_FUNCTION_INFO_V1(int2_bit_or);
+PG_FUNCTION_INFO_V1(int2_pl);
+PG_FUNCTION_INFO_V1(int2_mi);
+PG_FUNCTION_INFO_V1(int2_mul);
+PG_FUNCTION_INFO_V1(int2_div);
+PG_FUNCTION_INFO_V1(int2_div_int4); /* bug#z5166 */
+PG_FUNCTION_INFO_V1(int2_exact_div);
+PG_FUNCTION_INFO_V1(int2_mod);
+PG_FUNCTION_INFO_V1(int2_bit_xor);
+PG_FUNCTION_INFO_V1(int2_and);
+PG_FUNCTION_INFO_V1(int2_safeeq);
+PG_FUNCTION_INFO_V1(int2_not);
+PG_FUNCTION_INFO_V1(int2_bit_neg);
+PG_FUNCTION_INFO_V1(int2_positive);
+PG_FUNCTION_INFO_V1(int2_negative);
+PG_FUNCTION_INFO_V1(int2_boolean);
+PG_FUNCTION_INFO_V1(boolean_int2);
 
 /* operator int2 & int2*/
 Datum 
-myint2_bit_and(PG_FUNCTION_ARGS)
+int2_bit_and(PG_FUNCTION_ARGS)
 {
 	uint64 arg1 = PG_GETARG_UINT64(0);
 	uint64 arg2 = PG_GETARG_UINT64(1);
@@ -56,7 +56,7 @@ myint2_bit_and(PG_FUNCTION_ARGS)
 
 /* operator int2 | int2*/
 Datum 
-myint2_bit_or(PG_FUNCTION_ARGS)
+int2_bit_or(PG_FUNCTION_ARGS)
 {
 	uint64 arg1 = PG_GETARG_UINT64(0);
 	uint64 arg2 = PG_GETARG_UINT64(1);
@@ -66,7 +66,7 @@ myint2_bit_or(PG_FUNCTION_ARGS)
 
 /* operator int2 + int2*/
 Datum 
-myint2_pl(PG_FUNCTION_ARGS)
+int2_pl(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = PG_GETARG_INT64(0);
 	int64 arg1 = PG_GETARG_INT64(1);
@@ -79,7 +79,7 @@ myint2_pl(PG_FUNCTION_ARGS)
 
 /* operator int2 - int2 */
 Datum 
-myint2_mi(PG_FUNCTION_ARGS)
+int2_mi(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = PG_GETARG_INT64(0);
 	int64 arg1 = PG_GETARG_INT64(1);
@@ -91,7 +91,7 @@ myint2_mi(PG_FUNCTION_ARGS)
 
 /* operator int2 * int2 */
 Datum 
-myint2_mul(PG_FUNCTION_ARGS)
+int2_mul(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = PG_GETARG_INT64(0);
 	int64 arg1 = PG_GETARG_INT64(1);
@@ -105,7 +105,7 @@ myint2_mul(PG_FUNCTION_ARGS)
 
 /* operator int2 / int2 */
 Datum
-myint2_div(PG_FUNCTION_ARGS)
+int2_div(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = PG_GETARG_INT16(0);
 	int64 arg1 = PG_GETARG_INT16(1);
@@ -128,7 +128,7 @@ myint2_div(PG_FUNCTION_ARGS)
 
 /* Begin - bug#z5166 */
 Datum
-myint2_div_int4(PG_FUNCTION_ARGS)
+int2_div_int4(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = PG_GETARG_INT16(0);
 	int64 arg1 = PG_GETARG_INT32(1);
@@ -152,7 +152,7 @@ myint2_div_int4(PG_FUNCTION_ARGS)
 
 /* operator int2 div int2 */
 Datum 
-myint2_exact_div(PG_FUNCTION_ARGS)
+int2_exact_div(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = 0;
 	int64 arg1 = 0;
@@ -189,7 +189,7 @@ myint2_exact_div(PG_FUNCTION_ARGS)
 
 /* operator int2 % int2 */
 Datum 
-myint2_mod(PG_FUNCTION_ARGS)
+int2_mod(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = 0;
 	int64 arg1 = 0;
@@ -219,7 +219,7 @@ myint2_mod(PG_FUNCTION_ARGS)
 
 /* operator int2 ^ int2*/
 Datum 
-myint2_bit_xor(PG_FUNCTION_ARGS)
+int2_bit_xor(PG_FUNCTION_ARGS)
 {
 	uint64 arg1 = PG_GETARG_UINT64(0);
 	uint64 arg2 = PG_GETARG_UINT64(1);
@@ -230,7 +230,7 @@ myint2_bit_xor(PG_FUNCTION_ARGS)
 /* Begin - BUG#5050 */
 /* operator int2 && int2 */
 Datum 
-myint2_and(PG_FUNCTION_ARGS)
+int2_and(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = 0;
 	int64 arg1 = 0;
@@ -259,7 +259,7 @@ myint2_and(PG_FUNCTION_ARGS)
 
 /* operator int2 <=> int2 */
 Datum 
-myint2_safeeq(PG_FUNCTION_ARGS)
+int2_safeeq(PG_FUNCTION_ARGS)
 {
 	int64 arg0 = 0;
 	int64 arg1 = 0;
@@ -280,7 +280,7 @@ myint2_safeeq(PG_FUNCTION_ARGS)
 
 /* operator !int2 */
 Datum 
-myint2_not(PG_FUNCTION_ARGS)
+int2_not(PG_FUNCTION_ARGS)
 {
 	int64 arg1 = PG_GETARG_INT64(0);
 
@@ -292,7 +292,7 @@ myint2_not(PG_FUNCTION_ARGS)
 	PG_RETURN_INT32(arg1 == 0 ? 1 : 0);
 }
 
-Datum myint2_bit_neg(PG_FUNCTION_ARGS)
+Datum int2_bit_neg(PG_FUNCTION_ARGS)
 {
 	uint64 arg1 = PG_GETARG_UINT64(0);
 
@@ -301,7 +301,7 @@ Datum myint2_bit_neg(PG_FUNCTION_ARGS)
 
 /* operator +int2 */
 Datum 
-myint2_positive(PG_FUNCTION_ARGS)
+int2_positive(PG_FUNCTION_ARGS)
 {
 	int64 num = PG_GETARG_INT64(0);
 
@@ -310,7 +310,7 @@ myint2_positive(PG_FUNCTION_ARGS)
 
 /* operator -int2 */
 Datum 
-myint2_negative(PG_FUNCTION_ARGS)
+int2_negative(PG_FUNCTION_ARGS)
 {
 	int64 num = PG_GETARG_INT32(0);
 
@@ -320,7 +320,7 @@ myint2_negative(PG_FUNCTION_ARGS)
 /* Begin - BUG#5050 BUG#5051 BUG#5052 */
 /* cast to boolean */
 Datum 
-myint2_boolean(PG_FUNCTION_ARGS)
+int2_boolean(PG_FUNCTION_ARGS)
 {
 	int64	val1 = PG_GETARG_INT64(0);
 
@@ -330,7 +330,7 @@ myint2_boolean(PG_FUNCTION_ARGS)
 
 /* cast boolean to int2 */
 Datum 
-boolean_myint2(PG_FUNCTION_ARGS)
+boolean_int2(PG_FUNCTION_ARGS)
 {
 	int64	val1 = PG_GETARG_BOOL(0);
 

@@ -96,7 +96,7 @@ SELECT CASE WHEN uuid_multicast_bit(uuid_generate_v1()) AND
        END;
  case 
 ------
-    1
+ 1
 (1 row)
 
 -- In any case, V1MC node addresses should be random.

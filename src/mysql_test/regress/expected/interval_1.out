@@ -234,7 +234,7 @@ LINE 1: INSERT INTO INTERVAL_TBL_OF (f1) VALUES ('-2147483648 years'...
                                                  ^
 -- Test edge-case overflow detection in interval multiplication
 select extract(epoch from '256 microseconds'::interval * (2^55)::float8);
-ERROR:  cannot cast type mysuint8 to double precision
+ERROR:  cannot cast type uint8 to double precision
 LINE 1: ...t(epoch from '256 microseconds'::interval * (2^55)::float8);
                                                              ^
 SELECT r1.*, r2.*

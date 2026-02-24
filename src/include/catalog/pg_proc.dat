@@ -12063,6 +12063,9 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
 { oid => '6054', descr => 'convert numeric to mediumint',
   proname => 'numeric_mediumint', prorettype => 'mediumint', proargtypes => 'numeric int4 bool int8',
   prosrc => 'numeric_mediumint' },
+{ oid => '6055', descr => 'convert numeric to tinyint',
+  proname => 'numeric_tinyint', prorettype => 'tinyint', proargtypes => 'numeric int4 bool int8',
+  prosrc => 'numeric_tinyint' },
 /*END MySQL Compatibility Metadatas*/
 /* Begin ReqID: LOCK-SESSION */
 { oid => '8302', descr => 'lock current session',

@@ -2478,18 +2478,18 @@ create table auto_inc_int1 (
 );
 insert into auto_inc_int1 values(127, 1);
 insert into auto_inc_int1(col2) values(2);
-ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+ERROR:  Out of range value for column
 insert into auto_inc_int1(col2) values(3);
-ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+ERROR:  Out of range value for column
 select * from auto_inc_int1 order by 1,2;
  col1 | col2 
 ------+------
-  127 |    1
+ 127  |    1
 (1 row)
 
 delete from auto_inc_int1;
 insert into auto_inc_int1(col2) values(4);
-ERROR:  value for domain "tinyint" violates check constraint "tinyint_check"
+ERROR:  Out of range value for column
 select * from auto_inc_int1 order by 1,2;
  col1 | col2 
 ------+------

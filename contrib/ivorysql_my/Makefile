@@ -30,6 +30,7 @@ OBJS = \
 	src/datatype/mysuint3.o \
 	src/datatype/mysuint4.o \
 	src/datatype/mysuint8.o \
+	src/datatype/mysint1_index.o \
 	src/datatype/mysuint1_index.o \
 	src/datatype/mysuint2_index.o \
 	src/datatype/mysuint4_index.o \

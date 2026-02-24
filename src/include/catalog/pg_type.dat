@@ -1130,13 +1130,13 @@
   typsend => '-', typalign => 'i' },
 /* End - ReqID: SRS-MYSQL-DATATYPE-INT3 */
 
+/* Begin - ReqID: SRS-MYSQL-DATATYPE-INT1 */
 { oid => '9200', array_type_oid => '9201',
-  descr => 'mysql tiny integer, domain int2',
-  typname => 'tinyint', typnamespace => 'ivymy', typlen => '2', typbyval => 't', typtype => 'd',
-  typcategory => 'N', typinput => 'domain_in', typoutput => 'int2out', typreceive => 'domain_recv',
-  typmodin => '-', typmodout => '-',
-  typsend => 'int2send', typalign => 's', typstorage => 'p', typbasetype => 'int2' },
-/* End - ReqID: SRS-MYSQL-NUMBERICTYPE-INT1 */
+  descr => 'mysql tiny integer',
+  typname => 'tinyint', typnamespace => 'ivymy', typlen => '1', typbyval => 't',
+  typcategory => 'N', typinput => '-', typoutput => '-', typreceive => '-',
+  typsend => '-', typalign => 'c' },
+/* End - ReqID: SRS-MYSQL-DATATYPE-INT1 */
 
 /* Begin - ReqID:SRS-MYSQL-NUMBERICTYPE-UINT123 */
 { oid => '9202', array_type_oid => '9203',
