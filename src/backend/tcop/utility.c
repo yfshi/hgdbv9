@@ -64,6 +64,7 @@
 /* End - SRS-SQL-PACKAGE */
 #include "miscadmin.h"
 #include "parser/parse_utilcmd.h"
+#include "partitioning/ora_partition.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "postmaster/bgwriter.h"
 #include "rewrite/rewriteDefine.h"
 #include "rewrite/rewriteRemove.h"
@@ -1431,67 +1432,118 @@ ProcessUtilitySlow(ParseState *pstate,
 
 			case T_AlterTableStmt:
 				{
-					AlterTableStmt *atstmt = (AlterTableStmt *) parsetree;
-					Oid			relid;
-					LOCKMODE	lockmode;
-					ListCell   *cell;
+					/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+					AlterTableStmt	*rawstmt = (AlterTableStmt *) parsetree;
+					List			*stmts;
 
-					/*
-					 * Disallow ALTER TABLE .. DETACH CONCURRENTLY in a
-					 * transaction block or function.  (Perhaps it could be
-					 * allowed in a procedure, but don't hold your breath.)
-					 */
-					foreach(cell, atstmt->cmds)
+					if (rawstmt->ora_modify_part_table)
 					{
-						AlterTableCmd *cmd = (AlterTableCmd *) lfirst(cell);
-
-						/* Disallow DETACH CONCURRENTLY in a transaction block */
-						if (cmd->subtype == AT_DetachPartition)
-						{
-							if (((PartitionCmd *) cmd->def)->concurrent)
-								PreventInTransactionBlock(isTopLevel,
-														  "ALTER TABLE ... DETACH CONCURRENTLY");
-						}
-					}
-
-					/*
-					 * Figure out lock mode, and acquire lock.  This also does
-					 * basic permissions checks, so that we won't wait for a
-					 * lock on (for example) a relation on which we have no
-					 * permissions.
-					 */
-					lockmode = AlterTableGetLockLevel(atstmt->cmds);
-					relid = AlterTableLookupRelation(atstmt, lockmode);
-
-					if (OidIsValid(relid))
-					{
-						AlterTableUtilityContext atcontext;
-
-						/* Set up info needed for recursive callbacks ... */
-						atcontext.pstmt = pstmt;
-						atcontext.queryString = queryString;
-						atcontext.relid = relid;
-						atcontext.params = params;
-						atcontext.queryEnv = queryEnv;
-
-						/* ... ensure we have an event trigger context ... */
-						EventTriggerAlterTableStart(parsetree);
-						EventTriggerAlterTableRelid(relid);
-
-						/* ... and do it */
-						AlterTable(atstmt, lockmode, &atcontext);
-
-						/* done */
-						EventTriggerAlterTableEnd();
+						stmts = transformOracleModifyPartitionStmt(rawstmt);
 					}
 					else
-						ereport(NOTICE,
-								(errmsg("relation \"%s\" does not exist, skipping",
-										atstmt->relation->relname)));
-				}
+						stmts = list_make1(rawstmt);
 
-				/* ALTER TABLE stashes commands internally */
-				commandCollected = true;
+					while (stmts != NIL)
+					{
+						Node	*stmt = (Node *) linitial(stmts);
+
+						stmts = list_delete_first(stmts);
+
+						if (IsA(stmt, AlterTableStmt))
+						{
+							AlterTableStmt *atstmt = (AlterTableStmt *) stmt;
+							Oid			relid;
+							LOCKMODE	lockmode;
+							ListCell   *cell;
+
+							/*
+							 * Disallow ALTER TABLE .. DETACH CONCURRENTLY in a
+							 * transaction block or function.  (Perhaps it could be
+							 * allowed in a procedure, but don't hold your breath.)
+							 */
+							foreach(cell, atstmt->cmds)
+							{
+								AlterTableCmd *cmd = (AlterTableCmd *) lfirst(cell);
+
+								/* Disallow DETACH CONCURRENTLY in a transaction block */
+								if (cmd->subtype == AT_DetachPartition)
+								{
+									if (((PartitionCmd *) cmd->def)->concurrent)
+										PreventInTransactionBlock(isTopLevel,
+																  "ALTER TABLE ... DETACH CONCURRENTLY");
+								}
+							}
+
+							/*
+							 * Figure out lock mode, and acquire lock.  This also does
+							 * basic permissions checks, so that we won't wait for a
+							 * lock on (for example) a relation on which we have no
+							 * permissions.
+							 */
+							lockmode = AlterTableGetLockLevel(atstmt->cmds);
+							relid = AlterTableLookupRelation(atstmt, lockmode);
+
+							if (OidIsValid(relid))
+							{
+								AlterTableUtilityContext atcontext;
+
+								/* Set up info needed for recursive callbacks ... */
+								atcontext.pstmt = pstmt;
+								atcontext.queryString = queryString;
+								atcontext.relid = relid;
+								atcontext.params = params;
+								atcontext.queryEnv = queryEnv;
+
+								/* ... ensure we have an event trigger context ... */
+								EventTriggerAlterTableStart(parsetree);
+								EventTriggerAlterTableRelid(relid);
+
+								/* ... and do it */
+								AlterTable(atstmt, lockmode, &atcontext);
+
+								/* done */
+								EventTriggerAlterTableEnd();
+							}
+							else
+								ereport(NOTICE,
+										(errmsg("relation \"%s\" does not exist, skipping",
+												atstmt->relation->relname)));
+						}
+						else
+						{
+							/*
+							 * Recurse for anything else.  Note the recursive
+							 * call will stash the objects so created into our
+							 * event trigger context.
+							 */
+							PlannedStmt *wrapper;
+
+							wrapper = makeNode(PlannedStmt);
+							wrapper->commandType = CMD_UTILITY;
+							wrapper->canSetTag = false;
+							wrapper->utilityStmt = stmt;
+							wrapper->stmt_location = pstmt->stmt_location;
+							wrapper->stmt_len = pstmt->stmt_len;
+
+							ProcessUtility(wrapper,
+										   queryString,
+										   false,
+										   PROCESS_UTILITY_SUBCOMMAND,
+										   params,
+										   NULL,
+										   None_Receiver,
+										   NULL);
+						}
+
+						/* Need CCI between commands */
+						if (stmts != NIL)
+							CommandCounterIncrement();
+					}
+					/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+					/* ALTER TABLE stashes commands internally */
+					commandCollected = true;
+				}
 				break;
 
 			case T_AlterDomainStmt:

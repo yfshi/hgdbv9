@@ -145,6 +145,8 @@ pg_object|t
 pg_opclass|t
 pg_operator|t
 pg_opfamily|t
+pg_ora_part_tables|t
+pg_ora_tab_partitions|t
 pg_package|t
 pg_package_body|t
 pg_partitioned_table|t

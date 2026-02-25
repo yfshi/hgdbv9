@@ -32,6 +32,7 @@
 #include "parser/parse_coerce.h"
 #include "parser/parse_expr.h"		/* ReqID:RSR-SQL-Partition-interval */
 #include "parser/parse_utilcmd.h"	/* ReqID:RSR-SQL-Partition-interval */
+#include "partitioning/ora_partition.h"	/* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "partitioning/partbounds.h"
 #include "partitioning/partdesc.h"
 #include "partitioning/partprune.h"
@@ -5092,7 +5093,7 @@ check_new_interval_partition(char *relname, Relation parent,
 		partdesc->intervalinfo == NULL)
 		return;
 
-	if (parent->definterval)
+	if (parent->defining_auto_part)
 	{
 		Assert(partdesc->nparts > 0);
 		return;
@@ -5369,3 +5370,164 @@ calc_new_interval_partition_rbound(ParseState *pstate, PartitionKey partkey,
 	else
 		return calc_interval_range(pstate, lower_base, true, interval, values, partkey, equal);
 }
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ *	transformOraclePartitionedTableTemplate
+ *		transform all subpartition bounds within subpartition template
+ *
+ * When creating a partitioned table, the subpartition template may not be used,
+ * so its errors may go undetected. Although we can modify and manage subpartition
+ * templates using ALTER TABLE SET SUBPARTITION TEMPLATE, it's still best to check
+ * its validity, which is more in line with Oracle's behavior.
+ */
+OraSubPartitionTemplateSpec *
+transformOraclePartitionedTableTemplate(PartitionKey subpartkey, OraSubPartitionTemplateSpec *subp_template)
+{
+	ListCell	*lc;
+	char		*pre_subp_name = NULL;
+	HTAB		*listboundcheck = NULL;
+	char		strategy = get_partition_strategy(subpartkey);
+	PartitionRangeBound *pre_bound = NULL;
+	OraSubPartitionTemplateSpec	*result = NULL;
+
+	typedef struct ListBoundItem
+	{
+		Const	bound_val;
+		char	*partname;
+	} ListBoundItem;
+
+	/* Avoid scribbling on input */
+	result = copyObject(subp_template);
+	checkOracleSubpartitionDesc(result,
+								get_partition_strategy(subpartkey),
+								get_partition_natts(subpartkey),
+								true);
+
+	if (strategy == PARTITION_STRATEGY_LIST)
+	{
+		HASHCTL		ctl;
+
+		ctl.keysize = sizeof(Const);
+		ctl.entrysize = sizeof(ListBoundItem);
+		ctl.hcxt = CurrentMemoryContext;
+		listboundcheck = hash_create("list bound value check", 32, &ctl,
+									HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+	}
+
+	/* transform the PartitionBoundSpec within subpartition template */
+	foreach(lc, result->subpartitons_desc)
+	{
+		OraPartitionBoundSpec	*item = (OraPartitionBoundSpec *) lfirst(lc);
+
+		if (!item->partition_name)
+			elog(ERROR, "Partition name missing in sub-partition template");
+
+		/* not hash subpartition desc */
+		if (item->bound)
+		{
+			ParseState	*pstate;
+
+			pstate = make_parsestate(NULL);
+			item->bound = transformSubPartitionTemplateBound(pstate, subpartkey, item);
+
+			/*
+			 * At this point, none of the partition's children have been created yet,
+			 * so we cannot rely on PartitionDesc. For range partitiom strategy check
+			 * the bound order of the subpartition within subpartition template, for
+			 * list partitiom strategy check for duplicate boundary values.
+			 */
+			if (strategy == PARTITION_STRATEGY_RANGE)
+			{
+				int			cmpval;
+				PartitionRangeBound	*cur_bound = make_one_partition_rbound(subpartkey, -1, item->bound->upperdatums, false);
+
+				if (!pre_bound)
+				{
+					pre_bound = cur_bound;
+					pre_subp_name = item->partition_name;
+				}
+				else
+				{
+					cmpval = partition_rbound_cmp(subpartkey->partnatts,
+												  subpartkey->partsupfunc,
+												  subpartkey->partcollation,
+												  pre_bound->datums, pre_bound->kind,
+												  false, cur_bound);
+
+					/* ORA-14202: subpartition bound of subpartition \"%s\" is too high */
+					if (cmpval > 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_AMBIGUOUS_PARAMETER),
+								 errmsg("subpartition bound of subpartition \"%s\" is too high", pre_subp_name)));
+
+					pre_bound = cur_bound;
+					pre_subp_name = item->partition_name;
+				}
+			}
+			else if (strategy == PARTITION_STRATEGY_LIST)
+			{
+				ListCell	*lb;
+
+				foreach(lb, item->bound->listdatums)
+				{
+					Const	*val = castNode(Const, lfirst(lb));
+					Const	*key;
+					bool	found;
+					ListBoundItem	*bitem;
+
+					key = makeConst(val->consttype,
+									val->consttypmod,
+									val->constcollid,
+									val->constlen,
+									val->constvalue,
+									val->constisnull,
+									val->constbyval);
+
+					bitem = (ListBoundItem *) hash_search(listboundcheck,
+															(void *) key,
+															HASH_ENTER,
+															&found);
+
+					if (!found)
+						bitem->partname = pstrdup(item->partition_name);
+					else
+					{
+						if (key->constisnull)
+						{
+							/* ORA-14615: List value '%s' specified twice in subpartitions '%s', '%s' */
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+									 errmsg("List value \"null\" specified twice in subpartitions \"%s\", \"%s\"",
+											bitem->partname, item->partition_name)));
+						}
+						else
+						{
+							char	*valuestr;
+							Oid		typOutput;
+							bool	typIsVarlena;
+
+							getTypeOutputInfo(get_partition_col_typid(subpartkey, 0),
+												&typOutput,
+												&typIsVarlena);
+
+							valuestr = OidOutputFunctionCall(typOutput, key->constvalue);
+
+							/* ORA-14615: List value '%s' specified twice in subpartitions '%s', '%s' */
+							ereport(ERROR,
+									(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+									 errmsg("List value \"%s\" specified twice in subpartitions \"%s\", \"%s\"",
+											valuestr, bitem->partname, item->partition_name)));
+						}
+					}
+				}
+			}
+		}
+	}
+
+	if (strategy == PARTITION_STRATEGY_LIST)
+		hash_destroy(listboundcheck);
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

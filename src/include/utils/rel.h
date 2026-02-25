@@ -293,7 +293,7 @@ typedef struct RelationData
 	ItemPointer	rd_conflictTid; /* ReqID:SRS-MYSQL-SQL-INSERT */
 	bool		rd_onduplicate; /* ReqID:SRS-MYSQL-SQL-REPLACE */
 
-	bool		definterval;	/* ReqID:RSR-SQL-Partition-interval */
+	bool		defining_auto_part;	/* ReqID:RSR-SQL-Partition-interval */ /* ReqID:SRS-SQL-PARTITION-TABLE: rename and reuse this field */
 } RelationData;
 
 

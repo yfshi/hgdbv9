@@ -70,6 +70,7 @@
 #include "parser/parse_utilcmd.h"
 #include "parser/parser.h"
 #include "parser/pg_object_hook.h"
+#include "partitioning/ora_partition.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "rewrite/rewriteManip.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
@@ -128,7 +129,6 @@ typedef struct
 	List	   *grants;			/* GRANT items */
 } CreateSchemaStmtContext;
 
-
 static void transformColumnDefinition(CreateStmtContext *cxt,
 									  ColumnDef *column);
 static void transformTableConstraint(CreateStmtContext *cxt,
@@ -171,6 +171,11 @@ static void TransformAutoIncStart(Node* autoIncStart);
 /* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
 static void  createTableHashCol(CreateStmtContext cxt);
 /* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static List *transformSubPartitionTemplateRangeBounds(ParseState *pstate, List *blist, PartitionKey key);
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 
 /* Begin - ReqID:SRS-SECURITY-TABLESPACE */
 List*
@@ -256,6 +261,20 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	AlterSeqStmt *altseqstmt;
 	List	   *relnamelist;
 	/* End - ReqID:SRS-SQL-ROWID */
+
+	bool		is_oracle_partition = stmt->ora_partspec != NULL;
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/*
+	 * ORA-14451:unsupported feature with temporary table
+	 */
+	if (is_oracle_partition &&
+		(stmt->relation->relpersistence == RELPERSISTENCE_GLOBAL_TEMP ||
+		 stmt->relation->relpersistence == RELPERSISTENCE_TEMP))
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+				 errmsg("unsupported feature with temporary table")));
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/* Set up pstate */
 	pstate = make_parsestate(NULL);
@@ -709,6 +728,18 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	result = lappend(cxt.blist, stmt);
 	result = list_concat(result, cxt.alist);
 	result = list_concat(result, save_alist);
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/* add partition and subpartition stmt list */
+	if (is_oracle_partition &&
+		(stmt->ora_partspec->partiton_desc != NIL ||
+		 stmt->ora_partspec->hash_partition_quantity != 0))
+	{
+		List	*partition_list = NIL;
+		partition_list = transformOraclePartitionSpec(stmt->ora_partspec, stmt->relation);
+		result = list_concat(result, partition_list);
+	}
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return result;
 }
@@ -5096,6 +5127,12 @@ transformPartitionRangeBounds(ParseState *pstate, List *blist,
 			}
 		}
 
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* bounds from subpartition template */
+		if (IsA(expr, PartitionRangeDatum))
+			prd = copyObject((PartitionRangeDatum *) expr);
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 		if (prd == NULL)
 		{
 			char	   *colname;
@@ -5697,3 +5734,286 @@ TransformAutoIncStart(Node *autoIncStart)
 	return ;
 }
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * transformSubPartitionTemplateRangeBounds
+ *		This converts the expressions for range partition bounds from the raw
+ *		grammar representation to PartitionRangeDatum structs
+ *
+ * copy from transformPartitionRangeBounds, modify parameter from Relation to PartitionKey.
+ */
+static List *
+transformSubPartitionTemplateRangeBounds(ParseState *pstate, List *blist, PartitionKey key)
+{
+	List	   *result = NIL;
+	ListCell   *lc;
+	int			i;
+
+	i = 0;
+	foreach(lc, blist)
+	{
+		Node	   *expr = lfirst(lc);
+		PartitionRangeDatum *prd = NULL;
+
+		/* Begin - ReqID:SRS-SQL-PROC */
+		/*
+		 * Infinite range bounds -- "minvalue" and "maxvalue" -- get passed in
+		 * as ColumnRefs or ColumnRefOrFuncCalls.
+		 */
+		if (IsA(expr, ColumnRef) ||
+			IsA(expr, ColumnRefOrFuncCall))
+		{
+			ColumnRef  *cref = NULL;
+			char	   *cname = NULL;
+
+			if (IsA(expr, ColumnRef))
+				cref = (ColumnRef *) expr;
+			else
+				cref = ((ColumnRefOrFuncCall *) expr)->cref;
+			/* End - ReqID:SRS-SQL-PROC */
+
+			/*
+			 * There should be a single field named either "minvalue" or
+			 * "maxvalue".
+			 */
+			if (list_length(cref->fields) == 1 &&
+				IsA(linitial(cref->fields), String))
+				cname = strVal(linitial(cref->fields));
+
+			if (cname == NULL)
+			{
+				/*
+				 * ColumnRef is not in the desired single-field-name form. For
+				 * consistency between all partition strategies, let the
+				 * expression transformation report any errors rather than
+				 * doing it ourselves.
+				 */
+			}
+			else if (strcmp("minvalue", cname) == 0)
+			{
+				prd = makeNode(PartitionRangeDatum);
+				prd->kind = PARTITION_RANGE_DATUM_MINVALUE;
+				prd->value = NULL;
+			}
+			else if (strcmp("maxvalue", cname) == 0)
+			{
+				prd = makeNode(PartitionRangeDatum);
+				prd->kind = PARTITION_RANGE_DATUM_MAXVALUE;
+				prd->value = NULL;
+			}
+		}
+
+		/* bounds from subpartition template */
+		if (IsA(expr, PartitionRangeDatum))
+			prd = copyObject((PartitionRangeDatum *) expr);
+
+		if (prd == NULL)
+		{
+			char	   *colname = "within subpartition template";
+			Oid			coltype;
+			int32		coltypmod;
+			Oid			partcollation;
+			Const	   *value;
+
+			/* Need its type data too */
+			coltype = get_partition_col_typid(key, i);
+			coltypmod = get_partition_col_typmod(key, i);
+			partcollation = get_partition_col_collation(key, i);
+
+			value = transformPartitionBoundValue(pstate, expr,
+												 colname,
+												 coltype, coltypmod,
+												 partcollation);
+			if (value->constisnull)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+						 errmsg("cannot specify NULL in range bound")));
+			prd = makeNode(PartitionRangeDatum);
+			prd->kind = PARTITION_RANGE_DATUM_VALUE;
+			prd->value = (Node *) value;
+		}
+
+		++i;
+		prd->location = exprLocation(expr);
+
+		result = lappend(result, prd);
+	}
+
+	/*
+	 * Once we see MINVALUE or MAXVALUE for one column, the remaining columns
+	 * must be the same.
+	 */
+	validateInfiniteBounds(pstate, result);
+
+	return result;
+}
+
+/*
+ * transformSubPartitionTemplateBound
+ *		This is a variant of transformPartitionBound used for
+ *		transform a subpartition template bound specification.
+ */
+PartitionBoundSpec *
+transformSubPartitionTemplateBound(ParseState *pstate, PartitionKey key, OraPartitionBoundSpec *item)
+{
+	PartitionBoundSpec *result_spec;
+	PartitionBoundSpec *spec = item->bound;
+	char		strategy = get_partition_strategy(key);
+	int			partnatts = get_partition_natts(key);
+
+	/* Avoid scribbling on input */
+	result_spec = copyObject(spec);
+
+	if (spec->is_default)
+	{
+		/*
+		 * Hash partitioning does not support a default partition; there's no
+		 * use case for it (since the set of partitions to create is perfectly
+		 * defined), and if users do get into it accidentally, it's hard to
+		 * back out from it afterwards.
+		 */
+		if (strategy == PARTITION_STRATEGY_HASH)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("a hash-partitioned table may not have a default partition")));
+
+		/*
+		 * In case of the default partition, parser had no way to identify the
+		 * partition strategy. Assign the parent's strategy to the default
+		 * partition bound spec.
+		 */
+		result_spec->strategy = strategy;
+
+		return result_spec;
+	}
+
+	if (strategy == PARTITION_STRATEGY_HASH)
+	{
+		if (spec->strategy != PARTITION_STRATEGY_HASH)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("invalid bound specification for a hash partition"),
+					 parser_errposition(pstate, exprLocation((Node *) spec))));
+
+		if (spec->modulus <= 0)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("modulus for hash partition must be an integer value greater than zero")));
+
+		Assert(spec->remainder >= 0);
+
+		if (spec->remainder >= spec->modulus)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("remainder for hash partition must be less than modulus")));
+	}
+	else if (strategy == PARTITION_STRATEGY_LIST)
+	{
+		ListCell   *cell;
+		char	   *colname = "within subpartition template";
+		Oid			coltype;
+		int32		coltypmod;
+		Oid			partcollation;
+
+		if (spec->strategy != PARTITION_STRATEGY_LIST)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("invalid bound specification for a list partition"),
+					 parser_errposition(pstate, exprLocation((Node *) spec))));
+
+		/* Get the only column's name in case we need to output an error */
+
+		/* Need its type data too */
+		coltype = get_partition_col_typid(key, 0);
+		coltypmod = get_partition_col_typmod(key, 0);
+		partcollation = get_partition_col_collation(key, 0);
+
+		result_spec->listdatums = NIL;
+		foreach(cell, spec->listdatums)
+		{
+			Node	   *expr = lfirst(cell);
+			Const	   *value;
+			ListCell   *cell2;
+			bool		duplicate;
+
+			value = transformPartitionBoundValue(pstate, expr,
+												 colname, coltype, coltypmod,
+												 partcollation);
+
+			/* Don't add to the result if the value is a duplicate */
+			duplicate = false;
+			foreach(cell2, result_spec->listdatums)
+			{
+				Const	   *value2 = castNode(Const, lfirst(cell2));
+
+				if (equal(value, value2))
+				{
+					duplicate = true;
+					break;
+				}
+			}
+
+			/*
+			 * PG allows duplicate boundary values within a single partition boundary,
+			 * but Oracle does not, so we are throwing an error here as well.
+			 *
+			 * ORA-14614: List value '%s' specified twice in subpartition '%s'
+			 */
+			if (duplicate)
+			{
+				if (value->constisnull)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+							 errmsg("List value \"null\" specified twice in subpartition \"%s\"",
+									item->partition_name)));
+				}
+				else
+				{
+					char	*valuestr;
+					Oid		typOutput;
+					bool	typIsVarlena;
+
+					getTypeOutputInfo(coltype, &typOutput, &typIsVarlena);
+					valuestr = OidOutputFunctionCall(typOutput, value->constvalue);
+
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+							 errmsg("List value \"%s\" specified twice in subpartition \"%s\"",
+									valuestr, item->partition_name)));
+				}
+			}
+
+			result_spec->listdatums = lappend(result_spec->listdatums,
+											  value);
+		}
+	}
+	else if (strategy == PARTITION_STRATEGY_RANGE)
+	{
+		if (spec->strategy != PARTITION_STRATEGY_RANGE)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("invalid bound specification for a range partition"),
+					 parser_errposition(pstate, exprLocation((Node *) spec))));
+
+		/* the lower bound of the Oracle subpartition template is invalid no need check it */
+		if (list_length(spec->upperdatums) != partnatts)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("TO must specify exactly one value per partitioning column")));
+
+		/*
+		 * Convert raw parse nodes into PartitionRangeDatum nodes and perform
+		 * any necessary validation.
+		 */
+		result_spec->lowerdatums = NIL;
+		result_spec->upperdatums = transformSubPartitionTemplateRangeBounds(pstate, spec->upperdatums, key);
+	}
+	else
+		elog(ERROR, "unexpected partition strategy: %d", (int) strategy);
+
+	return result_spec;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+

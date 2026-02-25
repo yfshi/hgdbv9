@@ -485,6 +485,9 @@ extern bool	enable_coverwritten_ora_trigger;	/* ReqID:SRS-SQL-TRIGGER */
 extern PGDLLIMPORT int max_interval_partition_failures;
 /* End - RSR-SQL-Partition-interval */
 
+extern PGDLLIMPORT bool enable_multi_step_partition;	/* ReqID:SRS-SQL-PARTITION-TABLE */
+
+
 #define ORADATE_MASK			0x01
 #define ORATIMESTAMP_MASK		0x02
 #define ORATIMESTAMPTZ_MASK		0x04

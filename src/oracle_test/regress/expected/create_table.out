@@ -402,7 +402,9 @@ DROP FUNCTION const_func();
 CREATE TABLE partitioned (
     a int
 ) PARTITION BY MAGIC (a);
-ERROR:  unrecognized partitioning strategy "magic"
+ERROR:  syntax error at or near "MAGIC"
+LINE 3: ) PARTITION BY MAGIC (a);
+                       ^
 -- specified column must be present in the table
 CREATE TABLE partitioned (
 	a int

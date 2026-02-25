@@ -926,6 +926,15 @@ typedef struct PartitionSpec
 								 * 'range') */
 	List	   *partParams;		/* List of PartitionElems */
 	Node	   *partInterval;	/* interval range partition */
+
+	/*
+	 * ReqID:SRS-SQL-PARTITION-TABLE
+	 *
+	 * If sibling is valid, it means that the partition key specification
+	 * is an internal component (auto-partitioning),and the partition key
+	 * information is the same as the partition indicated by sibling.
+	 */
+	Oid			sibling;
 	int			location;		/* token location, or -1 if unknown */
 } PartitionSpec;
 
@@ -993,7 +1002,107 @@ typedef struct PartitionCmd
 	RangeVar   *name;			/* name of partition to attach/detach */
 	PartitionBoundSpec *bound;	/* FOR VALUES, if attaching */
 	bool		concurrent;
+	char		*partname;		/* ReqID:SRS-SQL-PARTITION-TABLE */
 } PartitionCmd;
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/* Oracle Partitioning related definitions */
+
+/* Internal codes for Oracle partitioning strategies */
+typedef enum OraPartitionStrategy
+{
+	PARTITION_RANGE,
+	PARTITION_LIST,
+	PARTITION_HASH,
+	PARTITION_COMPOSITE_RANGE,
+	PARTITION_COMPOSITE_LIST,
+	PARTITION_COMPOSITE_HASH
+	/*
+	 * new partition types may be added in the future,
+	 * such as:
+	 * PARTITION_SYSTEM
+	 * PARTITION_REFERENCE
+	 */
+} OraPartitionStrategy;
+
+/*
+ * OraSubPartitionTemplateSpec is used for subpartition template and subpartition description.
+ * Subpartition template and subpartition description have slightly different syntax rules,
+ * but are stored using the same structure.
+ */
+typedef struct OraSubPartitionTemplateSpec
+{
+	NodeTag		type;
+	List		*subpartitons_desc;				/* subpartitions description list, NULL if hash subpartition by quantity */
+	int			hash_subpartition_quantity;		/* # of hash subpartitions if hash subpartition by quantity */
+
+	/* TODO: add for opt_store_in_clause */
+	
+} OraSubPartitionTemplateSpec;
+
+/*
+ * Description of the partition or subpartition bounds,
+ * OraPartitionBoundSpec is a wrapper of PartitionBoundSpec
+ *
+ * PartitionBoundSpecs is a structure to be stored in pg_class.relpartbound,
+ * so I don't want to destroy its contents.
+ */
+typedef struct OraPartitionBoundSpec
+{
+	NodeTag		type;
+	char		*partition_name;	/* name of partition, or NULL */
+	char		*tablespace_name;	/* name of partition's tablespace, or NULL */
+	PartitionBoundSpec	*bound;		/* partition bound, NULL for hash partition */
+	OraSubPartitionTemplateSpec *subpart_bound;	/* subpartition bound if any, or NULL */
+} OraPartitionBoundSpec;
+
+/*
+ * OraPartitionSpec - parse-time representation of an Oracle partitined table.
+ */
+typedef struct OraPartitionSpec
+{
+	NodeTag			type;
+	OraPartitionStrategy	partition_strategy;
+	PartitionSpec			*root_partiton_spec;		/* PARTITION BY clause */
+	PartitionSpec			*sub_partiton_spec;			/* SUBPARTITION BY clause */
+	List					*partiton_desc;				/* partition description */
+
+	/* hash_partitions_by_quantity of HASH strategy: */
+	int						hash_partition_quantity;	/* # of hash partition */
+
+	/* composite partitions */
+	OraSubPartitionTemplateSpec	*sub_part_template;		/* subpartition template */
+
+	/* interval and automatic partition */
+	bool	automatic;
+	PartitionInterval	*part_interval;
+} OraPartitionSpec;
+
+/*
+ * OraPartExtra save transformed auxiliary information
+ * to be used when creating partitions/subpartitions.
+ */
+typedef struct OraPartSup
+{
+	NodeTag	type;
+	char	*partname;
+	int16	partlevel;
+	int32	seqno;
+} OraPartSup;
+
+/*
+ * OraPartExtentedName is used to store Oracle's partition_extended_name
+ * clause to identify a partition. partition is the pure partition name,
+ * and forexpr is the partition specified by the FOR clause.
+ */
+typedef struct OraPartExtentedName
+{
+	NodeTag	type;
+	char	*partition;
+	List	*forexpr;
+} OraPartExtentedName;
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 
 /****************************************************************************
  *	Nodes for a Query tree
@@ -2281,6 +2390,7 @@ typedef struct AlterTableStmt
 	List	   *cmds;			/* list of subcommands */
 	ObjectType	objtype;		/* type of object */
 	bool		missing_ok;		/* skip error if table missing */
+	bool		ora_modify_part_table;	/* ReqID:SRS-SQL-PARTITION-TABLE */
 } AlterTableStmt;
 
 typedef enum AlterTableType
@@ -2368,8 +2478,23 @@ typedef enum AlterTableType
 	AT_SetInterval,				/* Table's partition interval */
 	/* End - ReqID:RSR-SQL-Partition-interval */
 	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	AT_SetAutoIncrement  
+	AT_SetAutoIncrement,
 	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	AT_SetPartitionAutomatic,
+	AT_SetSubPartitionTemplate,
+	AT_AddPartitions,
+	AT_DropPartitions,
+	AT_AddSubPartitions,
+	AT_DropSubPartitions,
+	AT_RenamePartition,
+	AT_RenameSubPartition,
+	AT_TruncatePartition,
+	AT_TruncateSubPartition,
+	AT_MovePartition,
+	AT_MoveSubPartition,
+	AT_SetPartitionStoreIn
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
@@ -2401,6 +2526,17 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	 */
 	bool		without_copy;
 	bool		is_create;		/* ReqID:SRS-SQL-NLSSORT */
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/* fields for ALTER oracle partitioned table */
+	OraPartExtentedName *partextname;
+	OraSubPartitionTemplateSpec *subptemplate;
+	Oid		part_oid;
+	bool	automatic;
+	List	*part_desc;
+	List	*partitions;
+	List	*store_in;
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 } AlterTableCmd;
 
 
@@ -2666,6 +2802,11 @@ typedef struct CreateStmt
 	Node	   *autoIncStart;	/* SRS-MYSQL-CREATE-TABLE */
 	Node	   *relcomment;		/* SRS-MYSQL-CREATE-TABLE */
 	bool	    isantitamper;   /* ReqID: SRS-SECURITY-ANTITAMPERING whether this table is antitamper */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/* used for oracle partitioning */
+	OraPartitionSpec	*ora_partspec;	/* not null for partitioned table */
+	OraPartSup			*ora_partsup;	/* not null for (sub)partitions */
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 } CreateStmt;
 
 /* ----------
@@ -3401,6 +3542,7 @@ typedef struct DropStmt
 	bool		missing_ok;		/* skip error if object is missing? */
 	bool		concurrent;		/* drop index concurrently? */
 	bool		is_purge;		/* purge mode? ReqID:SRS-RECOVERY-FLASHBACK */
+	bool		nocheckpart;	/* ReqID:SRS-SQL-PARTITION-TABLE */
 } DropStmt;
 
 /* ----------------------

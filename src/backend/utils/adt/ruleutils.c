@@ -33,6 +33,7 @@
 #include "catalog/pg_language.h"
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
+#include "catalog/pg_ora_part_tables.h"	/* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "catalog/pg_partitioned_table.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_statistic_ext.h"
@@ -551,6 +552,11 @@ static void pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate *
 								Datum values[9],
 								bool nulls[9]);
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static char *ora_get_subpartkeydef_worker(Oid relid, int prettyFlags, bool attrsOnly, bool missing_ok);
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 
 /* ----------
  * pg_get_ruledef		- Do it all and return a text
@@ -10732,6 +10738,94 @@ get_rule_expr(Node *node, deparse_context *context,
 		}
 		/* End - ReqID:SRS-MYSQL-SET */
 
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		case T_OraSubPartitionTemplateSpec:
+			{
+				OraSubPartitionTemplateSpec *subptmp = (OraSubPartitionTemplateSpec *) node;
+
+				if (subptmp->subpartitons_desc == NIL &&
+					subptmp->hash_subpartition_quantity == 0)
+					elog(ERROR, "invalid subpartition template");
+
+				if (subptmp->hash_subpartition_quantity > 0)
+					/* TODO: A store_in clause will be added here in the future */
+					appendStringInfo(buf, "SUBPARTITION TEMPLATE %d\n", subptmp->hash_subpartition_quantity);
+				else
+				{
+					ListCell	*lc;
+					char		*sep1;
+					char		*sep2;
+
+					appendStringInfoString(buf, "SUBPARTITION TEMPLATE\n");
+					appendStringInfoChar(buf, '(');
+					appendStringInfoChar(buf, '\n');
+
+					sep1 = "";
+					foreach(lc, subptmp->subpartitons_desc)
+					{
+						OraPartitionBoundSpec	*subpartspec = (OraPartitionBoundSpec *) lfirst(lc);
+
+						appendStringInfoString(buf, sep1);
+						appendStringInfo(buf, " SUBPARTITION %s", quote_identifier(subpartspec->partition_name));
+						sep1 = ",\n";
+
+						/* individual hash subpartition */
+						if (!subpartspec->bound)
+						{
+							if (subpartspec->tablespace_name)
+								appendStringInfo(buf, " TABLESPACE %s", quote_identifier(subpartspec->tablespace_name));
+							continue;
+						}
+
+						switch (subpartspec->bound->strategy)
+						{
+							case PARTITION_STRATEGY_LIST:
+								Assert(subpartspec->bound->listdatums != NIL);
+
+								appendStringInfoString(buf, " VALUES (");
+								sep2 = "";
+								foreach(lc, subpartspec->bound->listdatums)
+								{
+									Const	   *val = castNode(Const, lfirst(lc));
+
+									appendStringInfoString(buf, sep2);
+									get_const_expr(val, context, -1);
+									sep2 = ", ";
+								}
+
+								appendStringInfoChar(buf, ')');
+
+								if (subpartspec->tablespace_name)
+									appendStringInfo(buf, " TABLESPACE %s", quote_identifier(subpartspec->tablespace_name));
+								break;
+
+							case PARTITION_STRATEGY_RANGE:
+								Assert(subpartspec->bound->upperdatums != NIL);
+
+								appendStringInfo(buf, " VALUES LESS THAN %s",
+												get_range_partbound_string(subpartspec->bound->upperdatums));
+
+								if (subpartspec->tablespace_name)
+									appendStringInfo(buf, " TABLESPACE %s", quote_identifier(subpartspec->tablespace_name));
+								break;
+
+							case PARTITION_STRATEGY_HASH:
+								elog(ERROR, "hash partitions in sub-partition template do not require bound");
+								break;
+
+							default:
+								elog(ERROR, "unrecognized partition strategy: %d",
+									 (int) subpartspec->bound->strategy);
+								break;
+						}
+					}
+					appendStringInfoChar(buf, '\n');
+					appendStringInfoChar(buf, ')');
+				}
+			}
+			break;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(node));
 			break;
@@ -14004,13 +14098,26 @@ pg_get_partinterval_def_string(Oid relid)
 	char			   *intervalstr;
 	PartitionInterval  *pinterval;
 
-	intervalstr = GetRelationInterval(relid);
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (is_oracle_partitioned_table(relid))
+	{
+		pinterval = ora_get_partition_interval(relid);
 
-	/* Quick exit if no partition interval */
-	if (intervalstr == NULL)
-		return NULL;
+		/* Quick exit if no partition interval */
+		if (pinterval == NULL)
+			return NULL;
+	}
+	else
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	{
+		intervalstr = GetRelationInterval(relid);
 
-	pinterval = stringToNode(intervalstr);
+		/* Quick exit if no partition interval */
+		if (intervalstr == NULL)
+			return NULL;
+
+		pinterval = stringToNode(intervalstr);
+	}
 
 	context = deparse_context_for(get_relation_name(relid), relid);
 	consrc = deparse_expression_pretty((Node *) pinterval, context, false, false, false, 0);
@@ -14123,3 +14230,201 @@ ivy_extract_array_from_jbvBinary(JsonbValue *jbv_binary)
 	return rest;
 }
 /* End - ReqID:SRS-SQL-TRIGGER */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * ora_get_subpartkeydef
+ *
+ * Returns the subpartition key specification, ie, the following:
+ *
+ * SUBPARTITION BY { RANGE | LIST | HASH } (column opt_collation opt_opclass [, ...])
+ */
+Datum
+ora_get_subpartkeydef(PG_FUNCTION_ARGS)
+{
+	Oid			relid = PG_GETARG_OID(0);
+	char	   *res;
+
+	res = ora_get_subpartkeydef_worker(relid, PRETTYFLAG_INDENT, false, true);
+
+	if (res == NULL)
+		PG_RETURN_NULL();
+
+	PG_RETURN_TEXT_P(string_to_text(res));
+}
+
+/*
+ * Internal workhorse to decompile a subpartition key definition.
+ */
+static char *
+ora_get_subpartkeydef_worker(Oid relid, int prettyFlags, bool attrsOnly, bool missing_ok)
+{
+	Form_pg_ora_part_tables form;
+	HeapTuple	tuple;
+	oidvector  *subpartclass;
+	oidvector  *subpartcollation;
+	List	   *subpartexprs;
+	ListCell   *subpartexpr_item;
+	List	   *context;
+	Datum		datum;
+	bool		isnull;
+	StringInfoData buf;
+	int			keyno;
+	char	   *str;
+	char	   *sep;
+
+	tuple = SearchSysCache1(ORAPARTRELID, ObjectIdGetDatum(relid));
+	if (!HeapTupleIsValid(tuple))
+	{
+		if (missing_ok)
+			return NULL;
+
+		elog(ERROR, "cache lookup failed for subpartition key of %u", relid);
+	}
+
+	form = (Form_pg_ora_part_tables) GETSTRUCT(tuple);
+
+	Assert(form->partrelid == relid);
+
+	/* simple partition no subpartition key */
+	if (!form->composite)
+	{
+		ReleaseSysCache(tuple);
+		return NULL;
+	}
+
+	/* Must get subpartclass and subpartcollation the hard way */
+	datum = SysCacheGetAttr(ORAPARTRELID, tuple,
+							Anum_pg_ora_part_tables_subpartclass, &isnull);
+
+	if (isnull)
+		elog(ERROR, "the subpartclass is null of oracle partitioned table %u", relid);
+
+	subpartclass = (oidvector *) DatumGetPointer(datum);
+
+	datum = SysCacheGetAttr(ORAPARTRELID, tuple,
+							Anum_pg_ora_part_tables_subpartcollation, &isnull);
+
+	if (isnull)
+		elog(ERROR, "the subpartcollation is null of oracle partitioned table %u", relid);
+
+	subpartcollation = (oidvector *) DatumGetPointer(datum);
+
+
+	/*
+	 * Get the expressions, if any.  (NOTE: we do not use the relcache
+	 * versions of the expressions, because we want to display
+	 * non-const-folded expressions.)
+	 */
+	if (!heap_attisnull(tuple, Anum_pg_ora_part_tables_subpartexprs, NULL))
+	{
+		Datum		exprsDatum;
+		bool		isnull;
+		char	   *exprsString;
+
+		exprsDatum = SysCacheGetAttr(ORAPARTRELID, tuple,
+									 Anum_pg_ora_part_tables_subpartexprs, &isnull);
+		Assert(!isnull);
+		exprsString = TextDatumGetCString(exprsDatum);
+		subpartexprs = (List *) stringToNode(exprsString);
+
+		if (!IsA(subpartexprs, List))
+			elog(ERROR, "unexpected node type found in subpartexprs: %d",
+				 (int) nodeTag(subpartexprs));
+
+		pfree(exprsString);
+	}
+	else
+		subpartexprs = NIL;
+
+	subpartexpr_item = list_head(subpartexprs);
+	context = deparse_context_for(get_relation_name(relid), relid);
+
+	initStringInfo(&buf);
+
+	switch (form->subpartstrat)
+	{
+		case PARTITION_STRATEGY_HASH:
+			if (!attrsOnly)
+				appendStringInfoString(&buf, "HASH");
+			break;
+		case PARTITION_STRATEGY_LIST:
+			if (!attrsOnly)
+				appendStringInfoString(&buf, "LIST");
+			break;
+		case PARTITION_STRATEGY_RANGE:
+			if (!attrsOnly)
+				appendStringInfoString(&buf, "RANGE");
+			break;
+		default:
+			elog(ERROR, "unexpected subpartition strategy: %d",
+				 (int) form->subpartstrat);
+	}
+
+	if (!attrsOnly)
+		appendStringInfoString(&buf, " (");
+	sep = "";
+	for (keyno = 0; keyno < form->subpartnatts; keyno++)
+	{
+		AttrNumber	attnum = form->subpartattrs.values[keyno];
+		Oid			keycoltype;
+		Oid			keycolcollation;
+		Oid			subpartcoll;
+
+		appendStringInfoString(&buf, sep);
+		sep = ", ";
+		if (attnum != 0)
+		{
+			/* Simple attribute reference */
+			char	   *attname;
+			int32		keycoltypmod;
+
+			attname = get_attname(relid, attnum, false);
+			appendStringInfoString(&buf, quote_identifier(attname));
+			get_atttypetypmodcoll(relid, attnum,
+								  &keycoltype, &keycoltypmod,
+								  &keycolcollation);
+		}
+		else
+		{
+			/* Expression */
+			Node	   *subpartkey;
+
+			if (subpartexpr_item == NULL)
+				elog(ERROR, "too few entries in partexprs list");
+			subpartkey = (Node *) lfirst(subpartexpr_item);
+			subpartexpr_item = lnext(subpartexprs, subpartexpr_item);
+
+			/* Deparse */
+			str = deparse_expression_pretty(subpartkey, context, false, false,
+											prettyFlags, 0);
+			/* Need parens if it's not a bare function call */
+			if (looks_like_function(subpartkey))
+				appendStringInfoString(&buf, str);
+			else
+				appendStringInfo(&buf, "(%s)", str);
+
+			keycoltype = exprType(subpartkey);
+			keycolcollation = exprCollation(subpartkey);
+		}
+
+		/* Add collation, if not default for column */
+		subpartcoll = subpartcollation->values[keyno];
+		if (!attrsOnly && OidIsValid(subpartcoll))
+			appendStringInfo(&buf, " COLLATE %s",
+							 generate_collation_name((subpartcoll)));
+
+		/* Add the operator class name, if not default */
+		if (!attrsOnly)
+			get_opclass_name(subpartclass->values[keyno], keycoltype, &buf);
+	}
+
+	if (!attrsOnly)
+		appendStringInfoChar(&buf, ')');
+
+	/* Clean up */
+	ReleaseSysCache(tuple);
+
+	return buf.data;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

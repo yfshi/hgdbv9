@@ -389,3 +389,30 @@ get_proposed_default_constraint(List *new_part_constraints)
 
 	return make_ands_implicit(defPartConstraint);
 }
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * Similar to get_partition_parent, except that it returns InvalidOid
+ * instead of throwing an error when the parent does not exist.
+ */
+Oid
+ora_get_partition_parent(Oid relid, bool even_if_detached)
+{
+	Relation	catalogRelation;
+	Oid			result;
+	bool		detach_pending;
+
+	catalogRelation = table_open(InheritsRelationId, AccessShareLock);
+
+	result = get_partition_parent_worker(catalogRelation, relid,
+										 &detach_pending);
+
+	if (OidIsValid(result) && detach_pending && !even_if_detached)
+		elog(ERROR, "relation %u has no parent because it's being detached",
+			 relid);
+
+	table_close(catalogRelation, AccessShareLock);
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

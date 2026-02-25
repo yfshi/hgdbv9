@@ -47,6 +47,8 @@
 #include "catalog/pg_inherits.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_opclass.h"
+#include "catalog/pg_ora_part_tables.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
+#include "catalog/pg_ora_tab_partitions.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "catalog/pg_rewrite.h" /* ReqID:SRS-SQL-FORCEVIEW */
 #include "catalog/pg_tablespace.h"
 #include "catalog/pg_statistic_ext.h"
@@ -86,6 +88,7 @@
 #include "parser/parse_utilcmd.h"
 #include "parser/parser.h"
 #include "parser/pg_object_hook.h"
+#include "partitioning/ora_partition.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "partitioning/partbounds.h"
 #include "partitioning/partdesc.h"
 #include "pgstat.h"
@@ -364,8 +367,6 @@ struct DropRelationCallbackState
 #define		ATT_PARTITIONED_INDEX	0x0040
 #define		ATT_SEQUENCE			0x0080
 
-/* ReqID:RSR-SQL-Partition-interval */
-#define		GEN_INTERVAL_QUERY		"(auto generated interval partition)"
 
 /*
  * ForeignTruncateInfo
@@ -704,6 +705,14 @@ static void createAntitamperHistRelation(Relation rel, Datum reloptions);
 static void ATCheckAntiTamperTableCmd(Relation rel, AlterTableCmd* cmd);
 /* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static void ATPrepSetPartitioning(Relation rel, bool new_val);
+static void ATExecSetPartitioning(Relation rel, bool newval);
+static void ATExecSetSubPartitionTemplate(Relation rootrel, OraSubPartitionTemplateSpec *subptemp);
+static void ATExecRenamePartitionOrSubPartition(Relation rootrel, Oid partid, char *new_pname, bool is_partition);
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+
 /* ----------------------------------------------------------------
  *		DefineRelation
  *				Creates a new relation.
@@ -760,6 +769,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	Oid			objectOwner = OidIsValid(ownerId) ? ownerId : GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
 	bool		defIntervalPartition = false;	/* ReqID:RSR-SQL-Partition-interval */
 	bool		isparentantitamper = false;
+	bool		is_oracle_interval = false;		/* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->relation->relname != NULL)
@@ -844,7 +854,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * unacceptable consequences.
 	 */
 	parentLockmode = (stmt->partbound != NULL ?
-					  ((strcmp(queryString, GEN_INTERVAL_QUERY) == 0) ?
+					  ((strcmp(queryString, GEN_AUTO_PART_QUERY) == 0) ?
 					   ShareUpdateExclusiveLock : AccessExclusiveLock) :
 					  ShareUpdateExclusiveLock);
 	/* End - ReqID:RSR-SQL-Partition-interval */
@@ -868,6 +878,13 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 							get_rel_name(parentOid))));
 
 		inheritOids = lappend_oid(inheritOids, parentOid);
+
+		/*
+		 * PARTITION OF is not allowed on Oracle partitioned table otherwise
+		 * it will corrupt the Oracle partition structure.
+		 */
+		if (stmt->partbound && stmt->ora_partsup == NULL)
+			PreventOraclePartitions(parentOid);
 	}
 
 	/*
@@ -1375,6 +1392,27 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		StorePartitionBound(rel, parent, bound);
 
 		table_close(parent, NoLock);
+
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		if (stmt->ora_partsup)
+		{
+			Oid	rootpartid = InvalidOid;;
+
+			/* this is an Oracle partitioned table, retrieve root's OID */
+			rootpartid = ora_get_partition_parent(parentId, false);
+			if (!OidIsValid(rootpartid))
+				rootpartid = parentId;
+
+			StoreOraclePartitions(relationId,
+								parentId,
+								rootpartid,
+								stmt->ora_partsup->partname,
+								stmt->ora_partsup->partlevel);
+
+			if (stmt->ora_partsup->seqno > 0)
+				UpdateOraclePartitionedTableSeqno(rootpartid, stmt->ora_partsup->seqno);
+		}
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	}
 
 	/* Store inheritance information for new rel. */
@@ -1386,89 +1424,221 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 */
 	if (partitioned)
 	{
-		ParseState *pstate;
-		char		strategy;
-		int			partnatts;
-		AttrNumber	partattrs[PARTITION_MAX_KEYS];
-		Oid			partopclass[PARTITION_MAX_KEYS];
-		Oid			partcollation[PARTITION_MAX_KEYS];
-		List	   *partexprs = NIL;
-
-		pstate = make_parsestate(NULL);
-		pstate->p_sourcetext = queryString;
-
-		partnatts = list_length(stmt->partspec->partParams);
-
-		/* Protect fixed-size arrays here and in executor */
-		if (partnatts > PARTITION_MAX_KEYS)
-			ereport(ERROR,
-					(errcode(ERRCODE_TOO_MANY_COLUMNS),
-					 errmsg("cannot partition using more than %d columns",
-							PARTITION_MAX_KEYS)));
-
-		/*
-		 * We need to transform the raw parsetrees corresponding to partition
-		 * expressions into executable expression trees.  Like column defaults
-		 * and CHECK constraints, we could not have done the transformation
-		 * earlier.
-		 */
-		stmt->partspec = transformPartitionSpec(rel, stmt->partspec,
-												&strategy);
-
-		ComputePartitionAttrs(pstate, rel, stmt->partspec->partParams,
-							  partattrs, &partexprs, partopclass,
-							  partcollation, strategy);
-
-		StorePartitionKey(rel, strategy, partnatts, partattrs, partexprs,
-						  partopclass, partcollation);
-
-		/* Begin - ReqID:RSR-SQL-Partition-interval */
-		/*
-		 * We need to transform the raw parsetrees conrresponding to interval
-		 * expressions into executable expression trees.
-		 */
-		if (ORA_MODE == compatible_mode &&
-			stmt->partspec->partInterval != NULL &&
-			strategy == PARTITION_STRATEGY_RANGE)
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		if (OidIsValid(stmt->partspec->sibling))
+			StorePartitionKeyFromSibling(rel, stmt->partspec->sibling);
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		else
 		{
-			char   *attname;
-			Oid		atttypid;
-			int32	atttypmod;
-			Oid		attcollation;
+			ParseState *pstate;
+			char		strategy;
+			int			partnatts;
+			AttrNumber	partattrs[PARTITION_MAX_KEYS];
+			Oid			partopclass[PARTITION_MAX_KEYS];
+			Oid			partcollation[PARTITION_MAX_KEYS];
+			List	   *partexprs = NIL;
 
-			/* interval partition can only be used as a root partitioned table */
-			if (stmt->partbound)
+			pstate = make_parsestate(NULL);
+			pstate->p_sourcetext = queryString;
+
+			partnatts = list_length(stmt->partspec->partParams);
+
+			/* Protect fixed-size arrays here and in executor */
+			if (partnatts > PARTITION_MAX_KEYS)
 				ereport(ERROR,
-						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-						 errmsg("cannot create a partition of table with INTERVAL clause"),
-						 parser_errposition(pstate, exprLocation(stmt->partspec->partInterval))));
+						(errcode(ERRCODE_TOO_MANY_COLUMNS),
+						 errmsg("cannot partition using more than %d columns",
+								PARTITION_MAX_KEYS)));
 
-			if (partattrs[0] == 0)
-			{
-				List *dplist;
-				Node *expr;
-				if (list_length(partexprs) == 0)
-					elog(ERROR, "wrong number of partition key expressions");
-				expr = linitial(partexprs);
-				dplist = deparse_context_for(RelationGetRelationName(rel), rel->rd_id);
-				attname = deparse_expression(expr, dplist, false, false);
-				atttypid = exprType(expr);
-				atttypmod = exprTypmod(expr);
-				attcollation = exprCollation(expr);
-			}
-			else
-			{
-				attname = get_attname(rel->rd_id, partattrs[0], false);
-				atttypid = rel->rd_att->attrs[partattrs[0] - 1].atttypid;
-				atttypmod = rel->rd_att->attrs[partattrs[0] - 1].atttypmod;
-				attcollation = rel->rd_att->attrs[partattrs[0] - 1].attcollation;
-			}
+			/*
+			 * We need to transform the raw parsetrees corresponding to partition
+			 * expressions into executable expression trees.  Like column defaults
+			 * and CHECK constraints, we could not have done the transformation
+			 * earlier.
+			 */
+			stmt->partspec = transformPartitionSpec(rel, stmt->partspec,
+													&strategy);
 
-			TransformPartitionTableInterval(pstate, (PartitionInterval *) stmt->partspec->partInterval,
-											attname, atttypid, atttypmod, attcollation);
-			defIntervalPartition = true;
+			ComputePartitionAttrs(pstate, rel, stmt->partspec->partParams,
+								  partattrs, &partexprs, partopclass,
+								  partcollation, strategy);
+
+			StorePartitionKey(rel, strategy, partnatts, partattrs, partexprs,
+							  partopclass, partcollation);
+
+			/* Begin - ReqID:RSR-SQL-Partition-interval */
+			/*
+			 * We need to transform the raw parsetrees conrresponding to interval
+			 * expressions into executable expression trees.
+			 */
+			if (ORA_MODE == compatible_mode &&
+				stmt->partspec->partInterval != NULL &&
+				strategy == PARTITION_STRATEGY_RANGE)
+			{
+				char   *attname;
+				Oid		atttypid;
+				int32	atttypmod;
+				Oid		attcollation;
+
+				/* interval partition can only be used as a root partitioned table */
+				if (stmt->partbound)
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("cannot create a partition of table with INTERVAL clause"),
+							 parser_errposition(pstate, exprLocation(stmt->partspec->partInterval))));
+
+				if (partattrs[0] == 0)
+				{
+					List *dplist;
+					Node *expr;
+					if (list_length(partexprs) == 0)
+						elog(ERROR, "wrong number of partition key expressions");
+					expr = linitial(partexprs);
+					dplist = deparse_context_for(RelationGetRelationName(rel), rel->rd_id);
+					attname = deparse_expression(expr, dplist, false, false);
+					atttypid = exprType(expr);
+					atttypmod = exprTypmod(expr);
+					attcollation = exprCollation(expr);
+				}
+				else
+				{
+					attname = get_attname(rel->rd_id, partattrs[0], false);
+					atttypid = rel->rd_att->attrs[partattrs[0] - 1].atttypid;
+					atttypmod = rel->rd_att->attrs[partattrs[0] - 1].atttypmod;
+					attcollation = rel->rd_att->attrs[partattrs[0] - 1].attcollation;
+				}
+
+				TransformPartitionTableInterval(pstate, (PartitionInterval *) stmt->partspec->partInterval,
+												attname, atttypid, atttypmod, attcollation);
+				defIntervalPartition = true;
+			}
+			/* End - ReqID:RSR-SQL-Partition-interval */
+
+			/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+			if (stmt->ora_partspec)
+			{
+				/* transform Oracle interval expr if any */
+				if (stmt->ora_partspec->part_interval)
+				{
+					char   *attname;
+					Oid		atttypid;
+					int32	atttypmod;
+					Oid		attcollation;
+
+					/* interval partition can only be used as a root partitioned table */
+					if (stmt->partbound)
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("cannot create a partition of table with INTERVAL clause"),
+								 parser_errposition(pstate, exprLocation((Node *) stmt->ora_partspec->part_interval))));
+
+					if (partattrs[0] == 0)
+					{
+						List *dplist;
+						Node *expr;
+						if (list_length(partexprs) == 0)
+							elog(ERROR, "wrong number of partition key expressions");
+						expr = linitial(partexprs);
+						dplist = deparse_context_for(RelationGetRelationName(rel), rel->rd_id);
+						attname = deparse_expression(expr, dplist, false, false);
+						atttypid = exprType(expr);
+						atttypmod = exprTypmod(expr);
+						attcollation = exprCollation(expr);
+					}
+					else
+					{
+						attname = get_attname(rel->rd_id, partattrs[0], false);
+						atttypid = rel->rd_att->attrs[partattrs[0] - 1].atttypid;
+						atttypmod = rel->rd_att->attrs[partattrs[0] - 1].atttypmod;
+						attcollation = rel->rd_att->attrs[partattrs[0] - 1].attcollation;
+					}
+
+					TransformPartitionTableInterval(pstate, stmt->ora_partspec->part_interval,
+													attname, atttypid, atttypmod, attcollation);
+					defIntervalPartition = true;
+					is_oracle_interval = true;
+				}
+
+				/* transform the subpartitioning specification if any */
+				if (stmt->ora_partspec->sub_partiton_spec)
+				{
+					ParseState *pstate;
+					char		subpartstrat;
+					int			subpartnatts;
+					AttrNumber	subpartattrs[PARTITION_MAX_KEYS];
+					Oid			subpartopclass[PARTITION_MAX_KEYS];
+					Oid			subpartcollation[PARTITION_MAX_KEYS];
+					List	   *subpartexprs = NIL;
+
+					pstate = make_parsestate(NULL);
+					pstate->p_sourcetext = queryString;
+
+					subpartnatts = list_length(stmt->ora_partspec->sub_partiton_spec->partParams);
+
+					/* Protect fixed-size arrays here and in executor */
+					if (subpartnatts > PARTITION_MAX_KEYS)
+						ereport(ERROR,
+								(errcode(ERRCODE_TOO_MANY_COLUMNS),
+								 errmsg("cannot partition using more than %d columns",
+										PARTITION_MAX_KEYS)));
+
+					/*
+					 * We need to transform the raw parsetrees corresponding to partition
+					 * expressions into executable expression trees.  Like column defaults
+					 * and CHECK constraints, we could not have done the transformation
+					 * earlier.
+					 */
+					stmt->ora_partspec->sub_partiton_spec = transformPartitionSpec(rel,
+															stmt->ora_partspec->sub_partiton_spec,
+															&subpartstrat);
+
+					ComputePartitionAttrs(pstate, rel, stmt->ora_partspec->sub_partiton_spec->partParams,
+										  subpartattrs, &subpartexprs, subpartopclass,
+										  subpartcollation, subpartstrat);
+
+					if (stmt->ora_partspec->sub_part_template)
+					{
+						PartitionKey	sub_part_key = NULL;
+
+						sub_part_key = BuildPartitionKeyFromArray(rel->rd_att,
+																subpartstrat,
+																subpartnatts,
+																subpartattrs,
+																subpartexprs,
+																subpartopclass,
+																subpartcollation);
+
+						if (sub_part_key == NULL)
+							elog(ERROR, "subpartition key build error");
+
+						stmt->ora_partspec->sub_part_template =
+										transformOraclePartitionedTableTemplate(sub_part_key,
+														stmt->ora_partspec->sub_part_template);
+					}
+
+					/* composite partition */
+					StoreOraclePartitionedTable(relationId,
+												stmt->ora_partspec,
+												subpartstrat,
+												subpartnatts,
+												subpartattrs,
+												subpartexprs,
+												subpartopclass,
+												subpartcollation);
+				}
+				else
+					/* simple partition */
+					StoreOraclePartitionedTable(relationId,
+												stmt->ora_partspec,
+												'n',
+												0,
+												NULL,
+												NULL,
+												NULL,
+												NULL);
+			}
+			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 		}
-		/* End - ReqID:RSR-SQL-Partition-interval */
 
 		/* make it all visible */
 		CommandCounterIncrement();
@@ -1720,8 +1890,17 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/* Begin - ReqID:RSR-SQL-Partition-interval */
 	if (relkind == RELKIND_PARTITIONED_TABLE && defIntervalPartition)
 	{
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		PartitionInterval	*interval;
+
+		if (is_oracle_interval)
+			interval = stmt->ora_partspec->part_interval;
+		else
+			interval = (PartitionInterval *) stmt->partspec->partInterval;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 		CommandCounterIncrement();
-		StorePartitionInterval(rel, (PartitionInterval *) stmt->partspec->partInterval);
+		StorePartitionInterval(rel, interval);
 	}
 	/* End - ReqID:RSR-SQL-Partition-interval */
 
@@ -1921,6 +2100,7 @@ RemoveRelations(DropStmt *drop)
 	int			flags = 0;
 	LOCKMODE	lockmode = AccessExclusiveLock;
 	List *typlist = NULL;  /* ReqID:SRS-MYSQL-ENUMTYPE */
+	List		*removerels = NIL; /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/* DROP CONCURRENTLY uses a weaker lock, and has some restrictions */
 	if (drop->concurrent)
@@ -2072,6 +2252,7 @@ RemoveRelations(DropStmt *drop)
 		obj.objectSubId = 0;
 
 		add_exact_object_address(&obj, objects);
+		removerels = lappend_oid(removerels, relOid);	/* ReqID:SRS-SQL-PARTITION-TABLE */
 
 		/* Begin - BUG#Z1279 */
 		if (relkind == RELKIND_SEQUENCE)
@@ -2094,6 +2275,11 @@ RemoveRelations(DropStmt *drop)
 		}
 		/* End - BUG#Z1279 */
 	}
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (!drop->nocheckpart)
+		checkOraclePartitionTree(removerels);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	if (EnableRecycleBin() && !drop->is_purge)
@@ -4882,7 +5068,7 @@ CheckTableNotInUse(Relation rel, const char *stmt)
 	int			expected_refcnt;
 
 	expected_refcnt = rel->rd_isnailed ? 2 : 1;
-	if (rel->rd_refcnt != expected_refcnt && !rel->definterval)	/* ReqID:RSR-SQL-Partition-interval allow automatic creation or partition */
+	if (rel->rd_refcnt != expected_refcnt && !rel->defining_auto_part)	/* ReqID:RSR-SQL-Partition-interval allow automatic creation or partition */
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_IN_USE),
 		/* translator: first %s is a SQL command, eg ALTER TABLE */
@@ -4892,7 +5078,7 @@ CheckTableNotInUse(Relation rel, const char *stmt)
 	if (rel->rd_rel->relkind != RELKIND_INDEX &&
 		rel->rd_rel->relkind != RELKIND_PARTITIONED_INDEX &&
 		AfterTriggerPendingOnRel(RelationGetRelid(rel)) &&
-		!rel->definterval)	/* BUG#7040 */
+		!rel->defining_auto_part)	/* BUG#7040 */
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_IN_USE),
 		/* translator: first %s is a SQL command, eg ALTER TABLE */
@@ -5363,6 +5549,22 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
+			/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+			case AT_SetPartitionAutomatic:
+				cmd_lockmode = AccessExclusiveLock;
+				break;
+
+			case AT_SetSubPartitionTemplate:
+				cmd_lockmode = AccessExclusiveLock;
+				break;
+
+			case AT_RenamePartition:
+			case AT_RenameSubPartition:
+				cmd_lockmode = AccessExclusiveLock;
+				break;
+			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
 					 (int) cmd->subtype);
@@ -5862,16 +6064,22 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			break;
 		case AT_AttachPartition:
 			ATSimplePermissions(rel, ATT_TABLE | ATT_PARTITIONED_INDEX);
+			/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+			if (!enable_multi_step_partition)
+				PreventOraclePartitions(RelationGetRelid(rel));
+			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
 		case AT_DetachPartition:
 			ATSimplePermissions(rel, ATT_TABLE);
+			PreventOraclePartitions(RelationGetRelid(rel));	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
 		case AT_DetachPartitionFinalize:
 			ATSimplePermissions(rel, ATT_TABLE);
+			PreventOraclePartitions(RelationGetRelid(rel));	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
@@ -5893,6 +6101,28 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			pass = AT_PASS_MISC;
 			break;
 		/* End - ReqID:RSR-SQL-Partition-interval */
+
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		case AT_SetPartitionAutomatic:	/* SET PARTITIONING AUTOMATIC/MANUAL */
+			/*
+			 * TODO:
+			 * Add ATT_FOREIGN_TABLE if oracle partitoned table support foreign table.
+			 */
+			ATSimplePermissions(rel, ATT_TABLE);
+			ATPrepSetPartitioning(rel, cmd->automatic);
+			pass = AT_PASS_MISC;
+			break;
+		case AT_SetSubPartitionTemplate:
+			ATSimplePermissions(rel, ATT_TABLE);
+			pass = AT_PASS_MISC;
+			break;
+		case AT_RenamePartition:
+		case AT_RenameSubPartition:
+			ATSimplePermissions(rel, ATT_TABLE);
+			pass = AT_PASS_MISC;
+			break;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -6373,6 +6603,22 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			ATExecSetAutoIncrement(rel, (Value *)cmd->def);
 			break;
 		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		case AT_SetPartitionAutomatic:
+			ATExecSetPartitioning(rel, cmd->automatic);
+			break;
+		case AT_SetSubPartitionTemplate:
+			ATExecSetSubPartitionTemplate(rel, cmd->subptemplate);
+			break;
+		case AT_RenamePartition:
+			ATExecRenamePartitionOrSubPartition(rel, cmd->part_oid, cmd->name, true);
+			break;
+		case AT_RenameSubPartition:
+			ATExecRenamePartitionOrSubPartition(rel, cmd->part_oid, cmd->name, false);
+			break;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
 				 (int) cmd->subtype);
@@ -19920,6 +20166,158 @@ ATExecAttachPartition(List **wqueue, Relation rel, PartitionCmd *cmd,
 	check_new_partition_bound(RelationGetRelationName(attachrel), rel,
 							  cmd->bound, pstate);
 
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/*
+	 * We do not plan to support ATTACH and DETACH operations for Oracle partitioned
+	 * tables under normal circumstances. Therefore, no uniqueness check is performed
+	 * on the partition name here; instead, the unique index of the system catalog is
+	 * used to prevent duplicate names.
+	 */
+	if (is_oracle_partitioned_table(RelationGetRelid(rel)))
+	{
+		if (cmd->partname == NULL)
+			elog(ERROR, "attach lost partition name");
+
+		/*
+		 * The attachrel cannot have any children, otherwise it may cause the Oracle
+		 * partition level to exceed 2 levels, and the partition key at the same level
+		 * may have an incompatible partitioning strategy.
+		 *
+		 * Using has_subclass here might be too strict, but it's very efficient.
+		 * If you want to accurately check if the current attachrel has children,
+		 * please use find_inheritance_children instead. See the comments for
+		 * has_subclass for details.
+		 * Our goal is to ensure that the attachrel is clean, so using has_subclass
+		 * here is sufficient for pg_dump/pg_restore.
+		 */
+		if (has_subclass(RelationGetRelid(attachrel)))
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("relation \"%s\" currently being attached may have children",
+							RelationGetRelationName(attachrel))));
+
+		if (is_ora_composite_partitioning(RelationGetRelid(rel)))
+		{
+			PartitionKey	rel_subpartkey;
+			PartitionKey	attachrel_partkey;
+
+			/* composite partition */
+			if (attachrel->rd_rel->relkind != RELKIND_PARTITIONED_TABLE)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("cannot attach a non-partitioned relation \"%s\" as "
+						 		"partition of Oracle composite partitioned tables \"%s\"",
+								RelationGetRelationName(attachrel), RelationGetRelationName(rel))));
+
+			/* Sub-partitioning strategy consistency check */
+			rel_subpartkey = GetOracleSubpartitionKey(rel);
+			attachrel_partkey = RelationGetPartitionKey(attachrel);
+
+			if (rel_subpartkey->strategy != attachrel_partkey->strategy)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("attach relation has strategy \"%c\" but subpartition "
+						 		"strategy of Oracle composite partitioned table is \"%c\"",
+								attachrel_partkey->strategy, rel_subpartkey->strategy)));
+
+			if (rel_subpartkey->partnatts != attachrel_partkey->partnatts)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("attach relation has %d partition keys, but the "
+						 		"Oracle composite partitioned table has %d subpartition keys",
+								attachrel_partkey->partnatts, rel_subpartkey->partnatts)));
+
+			if (memcmp(rel_subpartkey->parttypid, attachrel_partkey->parttypid,
+						rel_subpartkey->partnatts * sizeof(Oid)) != 0 ||
+				memcmp(rel_subpartkey->parttypmod, attachrel_partkey->parttypmod,
+						rel_subpartkey->partnatts * sizeof(int32)) != 0 ||
+				memcmp(rel_subpartkey->parttyplen, attachrel_partkey->parttyplen,
+						rel_subpartkey->partnatts * sizeof(int16)) != 0 ||
+				memcmp(rel_subpartkey->parttypbyval, attachrel_partkey->parttypbyval,
+						rel_subpartkey->partnatts * sizeof(bool)) != 0 ||
+				memcmp(rel_subpartkey->parttypalign, attachrel_partkey->parttypalign,
+						rel_subpartkey->partnatts * sizeof(char)) != 0 ||
+				memcmp(rel_subpartkey->parttypcoll, attachrel_partkey->parttypcoll,
+						rel_subpartkey->partnatts * sizeof(Oid)) != 0)
+				elog(ERROR, "Inconsistent data types in partition keys");
+
+			/* Strictly speaking, attname must also be the same */
+			if (memcmp(rel_subpartkey->partattrs, attachrel_partkey->partattrs,
+					   rel_subpartkey->partnatts * sizeof(AttrNumber)) != 0)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("attach relation is inconsistent with the partition keys of the Oracle partitioned table"),
+						 errhint("ensure the targetlist and partition keys of the attach "
+						 		"relation are consistent with the Oracle partitioned table.")));
+
+			if (!equal(rel_subpartkey->partexprs, attachrel_partkey->partexprs))
+				elog(ERROR, "Inconsistent expressions in partition keys");
+
+			if (memcmp(rel_subpartkey->partopfamily, attachrel_partkey->partopfamily,
+					   rel_subpartkey->partnatts * sizeof(Oid)) != 0)
+				elog(ERROR, "Inconsistent operator family in partition keys");
+
+			if (memcmp(rel_subpartkey->partopcintype, attachrel_partkey->partopcintype,
+					   rel_subpartkey->partnatts * sizeof(Oid)) != 0)
+				elog(ERROR, "Inconsistent operator class input type in partition keys");
+
+			if (memcmp(rel_subpartkey->partcollation, attachrel_partkey->partcollation,
+					   rel_subpartkey->partnatts * sizeof(Oid)) != 0)
+				elog(ERROR, "Inconsistent collation in partition keys");
+		}
+		else
+		{
+			/* simple partition */
+			if (attachrel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+				ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("cannot attach a partitioned relation \"%s\" as "
+						 		"partition of Oracle simple partitioned tables \"%s\"",
+								RelationGetRelationName(attachrel), RelationGetRelationName(rel))));
+		}
+
+		StoreOraclePartitions(RelationGetRelid(attachrel),
+							  RelationGetRelid(rel),
+							  RelationGetRelid(rel),
+							  cmd->partname,
+							  1);
+	}
+	else if (is_oracle_partition(RelationGetRelid(rel)))
+	{
+		Oid		rootpartid = ora_get_partition_root(RelationGetRelid(rel));
+
+		if (cmd->partname == NULL)
+			elog(ERROR, "attach lost subpartition name");
+
+		if (attachrel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("cannot attach a partitioned relation \"%s\" as "
+					 		"subpartition of Oracle composite partitioned tables \"%s\"",
+							RelationGetRelationName(attachrel), RelationGetRelationName(rel))));
+
+		if (has_subclass(RelationGetRelid(attachrel)))
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("relation \"%s\" currently being attached may have children",
+							RelationGetRelationName(attachrel))));
+
+		if (!OidIsValid(rootpartid))
+			elog(ERROR, "unable to obtain the root of the Oracle partitioned table");
+
+		StoreOraclePartitions(RelationGetRelid(attachrel),
+							  RelationGetRelid(rel),
+							  rootpartid,
+							  cmd->partname,
+							  2);
+	}
+	else if (is_oracle_subpartition(RelationGetRelid(rel)))
+	{
+		/* Oracle only support 2-level partition strategy */
+		elog(ERROR, "cannot attach a relation to subpartition of oracle partitioned table");
+	}
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 	/* OK to create inheritance.  Rest of the checks performed there */
 	CreateInheritance(attachrel, rel);
 
@@ -21842,7 +22240,7 @@ DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partd
 	pstmt->canSetTag = false;
 	pstmt->utilityStmt = (Node *) cstmt;
 
-	parent->definterval = true;
+	parent->defining_auto_part = true;
 
 	/* Remove then partition directory and recreate it outside. */
 	if (partdirectory != NULL)
@@ -21859,7 +22257,7 @@ DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partd
 	{
 		BeginInternalSubTransaction(NULL);
 
-		ProcessUtility(pstmt, GEN_INTERVAL_QUERY, false,
+		ProcessUtility(pstmt, GEN_AUTO_PART_QUERY, false,
 					   PROCESS_UTILITY_SUBCOMMAND, NULL,
 					   NULL, None_Receiver, NULL);
 
@@ -21892,7 +22290,7 @@ DefinePartitionInterval(Relation parent, Datum *values, PartitionDirectory partd
 	}
 	PG_END_TRY();
 
-	parent->definterval = false;
+	parent->defining_auto_part = false;
 
 	CurrentMemoryContext = old_cxt;
 	CurrentResourceOwner = old_rsowner;
@@ -21924,6 +22322,13 @@ ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
 	int32			atttypmod;
 	Oid				attcollation;
 	Datum			highest;
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	int				i;
+	Oid				highger;
+	bool			is_ora_partitioned_tab = false;
+
+	is_ora_partitioned_tab = is_oracle_partitioned_table(RelationGetRelid(rel));
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * Create a dummy ParseState and insert the target relation as its sole
@@ -22009,8 +22414,43 @@ ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInterval,
 	TransformPartitionTableInterval(pstate, partInterval, attname,
 									atttypid, atttypmod, attcollation);
 
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/*
+	 * If this is an Oracle partitioned table must eliminate all gaps of bound.
+	 * the first and last elements of partdesc->boundinfo->indexes ara always -1,
+	 * if any array element value other than these two has a value of -1, it means
+	 * that there is a gap.
+	 */
+	if (is_ora_partitioned_tab)
+	{
+		Oid	pre_part_oid;
+
+		pre_part_oid = partdesc->oids[0];
+		for (i = 2; i < partdesc->boundinfo->nindexes; i++)
+		{
+			if (partdesc->boundinfo->indexes[i] == -1)
+			{
+				highger = update_next_range_partition_bound(pre_part_oid, RelationGetRelid(rel), false);
+
+				/* the bound of highger partition has changed */
+				if (OidIsValid(highger))
+					CacheInvalidateRelcacheByRelid(highger);
+			}
+			else
+				pre_part_oid = partdesc->oids[partdesc->boundinfo->indexes[i]];
+		}
+	}
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+	/*
+	 * ReqID:SRS-SQL-PARTITION-TABLE
+	 * For oracle partitioned table if the interval value is unchanged
+	 * we also put interval node into catalog, because the basevalue of
+	 * interval node maybe changed.
+	 */
 	/* If the interval value is unchanged, do nothing. */
-	if (partdesc->intervalinfo != NULL &&
+	if (!is_ora_partitioned_tab &&
+		partdesc->intervalinfo != NULL &&
 		equal(partdesc->intervalinfo->interval, partInterval->interval))
 		return;
 
@@ -22215,3 +22655,150 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 	}
 }
 /* End - BUG#Z5992 */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * ALTER TABLE SET PARTITIONING
+ */
+static void
+ATPrepSetPartitioning(Relation rel, bool new_val)
+{
+	bool	automatic;
+	Oid		defaultPartOid = InvalidOid;
+
+	/*
+	 * TODO:
+	 * ORA-14756: Table is not partitioned by the interval or by the autolist method.
+	 * ALTER TABLE PAR_TEST SET STORE IN(MYTEST_PARTITON_1, MYTEST_PARTITON_2);
+	 * PAR_TEST is not an AUTOMATIC partitioned table, fix this when do store in clasue.
+	 */
+
+	/* transformOracleModifyPartitionStmt ensures that this is an Oracle partitioned table */
+	automatic = is_atuomatic_list_partitioning(RelationGetRelid(rel));
+
+	/* ORA-14852: SET [SUB]PARTITIONING AUTOMATIC is not legal on this table */
+	defaultPartOid = get_default_partition_oid(RelationGetRelid(rel));
+	if (OidIsValid(defaultPartOid) && new_val == true)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("SET [SUB]PARTITIONING AUTOMATIC is not legal on this table")));
+
+	if (automatic == new_val)
+	{
+		/* ORA-14856: table is already an autolist partitioned table */
+		if (automatic)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("table is already an autolist partitioned table")));
+		/* ORA-14855: table is already a list partitioned table and not an automatic list partitioned table */
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("table is already a list partitioned table and not an automatic list partitioned table")));
+	}
+}
+
+/*
+ * ALTER TABLE SET PARTITIONING AUTOMATIC/MANUAL
+ */
+static void
+ATExecSetPartitioning(Relation rel, bool newval)
+{
+	Relation	pg_ora_part_tables;
+	Oid			relid;
+	HeapTuple	tuple;
+
+	relid = RelationGetRelid(rel);
+	pg_ora_part_tables = table_open(OraPartitionedRelationId, RowExclusiveLock);
+
+	tuple = SearchSysCacheCopy1(ORAPARTRELID, ObjectIdGetDatum(relid));
+
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for oracle partitioned table of relation %u", relid);
+
+	((Form_pg_ora_part_tables) GETSTRUCT(tuple))->automatic = newval;
+	CatalogTupleUpdate(pg_ora_part_tables, &tuple->t_self, tuple);
+
+	table_close(pg_ora_part_tables, RowExclusiveLock);
+	heap_freetuple(tuple);
+}
+
+/*
+ * ALTER TABLE SET SUBPARTITION TEMPLATE
+ */
+static void
+ATExecSetSubPartitionTemplate(Relation rootrel, OraSubPartitionTemplateSpec *subptemp)
+{
+	/*
+	 * ORA-14602: SUBPARTITION TEMPLATE is legal only for a composite partitioned table.
+	 */
+	if (!is_ora_composite_partitioning(RelationGetRelid(rootrel)))
+		ereport(ERROR,
+				(errcode(ERRCODE_AMBIGUOUS_PARAMETER),
+				 errmsg("SUBPARTITION TEMPLATE is legal only for a composite partitioned table")));
+
+	if (subptemp)
+	{
+		Oid				first_partition;
+		Relation		first_part_rel;
+		PartitionKey	subpartkey;
+		PartitionDesc	partdesc;
+
+		partdesc = RelationGetPartitionDesc(rootrel, true);
+
+		/* Oracle partitioned tables must have at least one child */
+		if (partdesc->nparts < 1 || !OidIsValid(partdesc->oids[0]))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("Oracle-compatible partitioned table \"%s\" must have at least one partition or subpartition",
+							RelationGetRelationName(rootrel))));
+
+		first_partition = partdesc->oids[0];
+		first_part_rel = relation_open(first_partition, AccessShareLock);
+
+		subpartkey = RelationGetPartitionKey(first_part_rel);
+		subptemp = transformOraclePartitionedTableTemplate(subpartkey, subptemp);
+		relation_close(first_part_rel, AccessShareLock);
+	}
+
+	UpdateOraclePartitionedTableTemplate(RelationGetRelid(rootrel), subptemp);
+}
+
+/*
+ * ALTER TABLE RENAME PARTITION TO NEW_NAME
+ */
+static void
+ATExecRenamePartitionOrSubPartition(Relation rootrel, Oid partid, char *new_pname, bool is_partition)
+{
+	Relation	pg_ora_tab_partitions;
+	Oid			rootid;
+	HeapTuple	tuple;
+	Form_pg_ora_tab_partitions tupform;
+
+	rootid = RelationGetRelid(rootrel);
+	pg_ora_tab_partitions = table_open(OraTabPartitionsId, RowExclusiveLock);
+
+	tuple = SearchSysCacheCopy1(ORATABPARTID, ObjectIdGetDatum(partid));
+
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for partition of relation %u", rootid);
+
+	tupform = (Form_pg_ora_tab_partitions) GETSTRUCT(tuple);
+
+	/* Security check */
+	if (tupform->partroot != rootid)
+		elog(ERROR, "Internal error of alter table rename partition");
+
+	if ((is_partition && tupform->partlevel != 1) ||
+		(!is_partition && tupform->partlevel != 2))
+		elog(ERROR, "Internal error of alter table rename partition");
+
+	/* update pg_ora_tab_partitions tuple with new partition name */
+	namestrcpy(&(tupform->partname), new_pname);
+	CatalogTupleUpdate(pg_ora_tab_partitions, &tuple->t_self, tuple);
+
+	heap_freetuple(tuple);
+	table_close(pg_ora_tab_partitions, RowExclusiveLock);
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+

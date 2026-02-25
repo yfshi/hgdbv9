@@ -42,6 +42,13 @@
 #include "nodes/nodeFuncs.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-SQL-VIRTUALCOL */
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+#include "commands/defrem.h"
+#include "parser/parse_utilcmd.h"
+#include "tcop/utility.h"
+#include "utils/resowner.h"
+#include "partitioning/ora_partition.h"
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 
 /*-----------------------
@@ -205,6 +212,11 @@ static void find_matching_subplans_recurse(PartitionPruningData *prunedata,
 										   PartitionedRelPruningData *pprune,
 										   bool initial_prune,
 										   Bitmapset **validsubplans);
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static void UpdatePartitionTableDispatch(PartitionDispatch dispatch, PartitionDesc partdesc);
+static bool ExecBuildAutomaticPartition(PartitionDispatch dispatch, Datum *values, bool *isnull);
+static bool ExecBuildOracleIntervalPartition(PartitionDispatch dispatch, Datum *values);
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
 
 
 /*
@@ -368,6 +380,7 @@ ExecFindPartition(ModifyTableState *mtstate,
 
 	/* start with the root partitioned table */
 	dispatch = pd[0];
+
 	while (dispatch != NULL)
 	{
 		int			partidx = -1;
@@ -407,70 +420,140 @@ ExecFindPartition(ModifyTableState *mtstate,
 		if (partdesc->nparts == 0 ||
 			(partidx = get_partition_for_tuple(dispatch, values, isnull)) < 0)
 		{
-			/* Begin - ReqID:RSR-SQL-Partition-interval */
-			MemoryContext saved_cxt;
-			Assert(OidIsValid(RelationGetRelid(rel)));
-
-			if (!CheckNewIntervalPartitionAllowedForTuple(rel->rd_partkey, partdesc, values, isnull) ||
-				(max_interval_partition_failures > -1 && trycnt > max_interval_partition_failures))
+			/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+			if (dispatch == pd[0] && is_oracle_partitioned_table(RelationGetRelid(rel)))
 			{
-				char	   *val_desc;
+				bool	builded = false;
+				MemoryContext	saved_cxt;
 
-				val_desc = ExecBuildSlotPartitionKeyDescription(rel,
-																values, isnull, 64);
+				if (is_atuomatic_list_partitioning(RelationGetRelid(rel)))
+				{
+					if (estate->es_partition_directory != NULL)
+						PartitionDirectoryRemove(estate->es_partition_directory, rel);
+					builded = ExecBuildAutomaticPartition(dispatch, values, isnull);
+				}
+				else if (CheckNewIntervalPartitionAllowedForTuple(rel->rd_partkey, partdesc, values, isnull))
+				{
+					if (estate->es_partition_directory != NULL)
+						PartitionDirectoryRemove(estate->es_partition_directory, rel);
+					builded = ExecBuildOracleIntervalPartition(dispatch, values);
+				}
+				else
+				{
+					char	   *val_desc;
+
+					val_desc = ExecBuildSlotPartitionKeyDescription(rel,
+																	values, isnull, 64);
+					Assert(OidIsValid(RelationGetRelid(rel)));
+					ereport(ERROR,
+							(errcode(ERRCODE_CHECK_VIOLATION),
+							errmsg("no partition of relation \"%s\" found for row",
+									RelationGetRelationName(rel)),
+							val_desc ?
+							errdetail("Partition key of the failing row contains %s.",
+									val_desc) : 0,
+							errtable(rel)));
+				}
+
+				/* Update partition directory and dispatch */
+				partdesc = PartitionDirectoryLookup(estate->es_partition_directory, rel);
+				saved_cxt = MemoryContextSwitchTo(proute->memcxt);
+				UpdatePartitionTableDispatch(dispatch, partdesc);
+				MemoryContextSwitchTo(saved_cxt);
+
+				if (!builded && (max_interval_partition_failures > -1 && trycnt++ <= max_interval_partition_failures))
+					continue;
+
+				if (builded)
+				{
+					trycnt = 0;
+					continue;	/* restart after update dispatch */
+				}
+				else
+				{
+					char	   *val_desc;
+
+					val_desc = ExecBuildSlotPartitionKeyDescription(rel,
+																	values, isnull, 64);
+					Assert(OidIsValid(RelationGetRelid(rel)));
+					ereport(ERROR,
+							(errcode(ERRCODE_CHECK_VIOLATION),
+							errmsg("no partition of relation \"%s\" found for row",
+									RelationGetRelationName(rel)),
+							val_desc ?
+							errdetail("Partition key of the failing row contains %s.",
+									val_desc) : 0,
+							errtable(rel)));
+				}
+			}
+			else
+			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+			{
+				/* Begin - ReqID:RSR-SQL-Partition-interval */
+				MemoryContext saved_cxt;
 				Assert(OidIsValid(RelationGetRelid(rel)));
-				ereport(ERROR,
-						(errcode(ERRCODE_CHECK_VIOLATION),
-						errmsg("no partition of relation \"%s\" found for row",
-								RelationGetRelationName(rel)),
-						val_desc ?
-						errdetail("Partition key of the failing row contains %s.",
-								val_desc) : 0,
-						errtable(rel)));
+
+				if (!CheckNewIntervalPartitionAllowedForTuple(rel->rd_partkey, partdesc, values, isnull) ||
+					(max_interval_partition_failures > -1 && trycnt > max_interval_partition_failures))
+				{
+					char	   *val_desc;
+
+					val_desc = ExecBuildSlotPartitionKeyDescription(rel,
+																	values, isnull, 64);
+					Assert(OidIsValid(RelationGetRelid(rel)));
+					ereport(ERROR,
+							(errcode(ERRCODE_CHECK_VIOLATION),
+							errmsg("no partition of relation \"%s\" found for row",
+									RelationGetRelationName(rel)),
+							val_desc ?
+							errdetail("Partition key of the failing row contains %s.",
+									val_desc) : 0,
+							errtable(rel)));
+				}
+
+				/*
+				 * Create new interval partition.
+				 *
+				 * To reduce the issue of parttial failures caused by multiple backends creating
+				 * interval partitions simultaneously, 10 attemps are allow here. The following
+				 * are some examples:
+				 *
+				 * 1. If two transactions A and B, attempt to create the same interval parition
+				 * simultaneously. B will be blocked until transaction A  iscompleted. If A commits,
+				 * B's attempt to create the partition will fail. When B retries, it will find
+				 * that the interval parititon already exists and can use it directly. Otherwise,
+				 * if a rollback, B will successfully create the partition.
+				 *
+				 * 2. If two transactions A and B, attempt to create different interval partitions
+				 * simultaneously. The success or failure of A has no impact on B, but B will wait
+				 * until A is completed.
+				 */
+
+				if (estate->es_partition_directory == NULL)
+					estate->es_partition_directory =
+						CreatePartitionDirectory(estate->es_query_cxt,
+												 !IsolationUsesXactSnapshot());
+
+				saved_cxt = MemoryContextSwitchTo(proute->memcxt);
+				partidx = DefinePartitionInterval(rel, values, estate->es_partition_directory);
+				partdesc = PartitionDirectoryLookup(estate->es_partition_directory, rel);
+				UpdatePartitionTableDispatch(dispatch, partdesc);
+				MemoryContextSwitchTo(saved_cxt);
+
+				if (partidx < 0)
+				{
+					trycnt++;
+					continue;
+				}
+
+				Assert(partdesc->nparts > 0);
+
+				/* Begin - BUG#5647 */
+				trycnt = 0;
+				continue;	/* try to refind partition */
+				/* End - BUG#5647 */
+				/* End - ReqID:RSR-SQL-Partition-interval */
 			}
-
-			/*
-			 * Create new interval partition.
-			 *
-			 * To reduce the issue of parttial failures caused by multiple backends creating
-			 * interval partitions simultaneously, 10 attemps are allow here. The following
-			 * are some examples:
-			 *
-			 * 1. If two transactions A and B, attempt to create the same interval parition
-			 * simultaneously. B will be blocked until transaction A  iscompleted. If A commits,
-			 * B's attempt to create the partition will fail. When B retries, it will find
-			 * that the interval parititon already exists and can use it directly. Otherwise,
-			 * if a rollback, B will successfully create the partition.
-			 *
-			 * 2. If two transactions A and B, attempt to create different interval partitions
-			 * simultaneously. The success or failure of A has no impact on B, but B will wait
-			 * until A is completed.
-			 */
-
-			if (estate->es_partition_directory == NULL)
-				estate->es_partition_directory =
-					CreatePartitionDirectory(estate->es_query_cxt,
-											 !IsolationUsesXactSnapshot());
-
-			saved_cxt = MemoryContextSwitchTo(proute->memcxt);
-			partidx = DefinePartitionInterval(rel, values, estate->es_partition_directory);
-			partdesc = PartitionDirectoryLookup(estate->es_partition_directory, rel);
-			UpdatePartitionTableDispatch(dispatch, partdesc);
-			MemoryContextSwitchTo(saved_cxt);
-
-			if (partidx < 0)
-			{
-				trycnt++;
-				continue;
-			}
-
-			Assert(partdesc->nparts > 0);
-
-			/* Begin - BUG#5647 */
-			trycnt = 0;
-			continue;	/* try to refind partition */
-			/* End - BUG#5647 */
-			/* End - ReqID:RSR-SQL-Partition-interval */
 		}
 
 		is_leaf = partdesc->is_leaf[partidx];
@@ -2509,3 +2592,475 @@ find_matching_subplans_recurse(PartitionPruningData *prunedata,
 		}
 	}
 }
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static bool
+ExecBuildAutomaticPartition(PartitionDispatch dispatch, Datum *values, bool *isnull)
+{
+	PartitionBoundSpec	*new_part_bound;
+	PartitionSpec		*new_part_spec;
+	PartitionKey		key = dispatch->key;
+	MemoryContext		oldcontext = CurrentMemoryContext;
+	ResourceOwner		oldowner = CurrentResourceOwner;
+	HTAB		*relname_duplicate_check = NULL;
+	HTAB		*partname_duplicate_check = NULL;
+	HASHCTL		hash_ctl;
+	CreateStmt	*cstmt;
+	List		*cstmt_list = NIL;
+	ListCell	*lc;
+	RangeVar	*new_part_rv;
+	RangeVar	*new_part_parent_rv;
+	char		*new_part_relname;
+	char		*new_part_name;
+	Const		*new_part_b;
+	int32		seqno;
+	bool		is_composite;
+	char		new_part_child_strategy;
+	int			new_part_child_partnatts;
+	bool		result = false;
+
+	/*
+	 * dispatch->reldesc must be an oracle partitioned table.
+	 */
+	if (!is_oracle_partitioned_table(RelationGetRelid(dispatch->reldesc)))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("object is not a oracle partitioned table")));
+
+	dispatch->reldesc->defining_auto_part = true;
+
+	hash_ctl.keysize = NAMEDATALEN;
+	hash_ctl.entrysize = NAMEDATALEN;
+	partname_duplicate_check = hash_create("partition name check",
+										32,
+										&hash_ctl,
+										HASH_ELEM | HASH_STRINGS);
+
+	FetchOraclePartNameToHash(RelationGetRelid(dispatch->reldesc), partname_duplicate_check);
+
+	is_composite = is_ora_composite_partitioning(RelationGetRelid(dispatch->reldesc));
+	seqno = ora_get_partitioned_table_seqno(RelationGetRelid(dispatch->reldesc));
+
+	new_part_name = make_system_partname_unique(partname_duplicate_check,
+												false, seqno, &seqno);
+
+	new_part_relname = ChooseRelationName(RelationGetRelationName(dispatch->reldesc),
+								   NULL,
+								   new_part_name,
+								   RelationGetNamespace(dispatch->reldesc),
+								   false);
+
+	new_part_rv = makeRangeVar(get_namespace_name(RelationGetNamespace(dispatch->reldesc)),
+							new_part_relname, -1);
+	new_part_parent_rv = makeRangeVar(get_namespace_name(RelationGetNamespace(dispatch->reldesc)),
+							RelationGetRelationName(dispatch->reldesc), -1);
+
+	/* list partition only one partition column */
+	new_part_b = makeConst(key->parttypid[0],
+						key->parttypmod[0],
+						key->parttypcoll[0],
+						key->parttyplen[0],
+						values[0],
+						isnull[0],
+						key->parttypbyval[0]);
+
+	new_part_bound = makeNode(PartitionBoundSpec);
+	new_part_bound->strategy = PARTITION_STRATEGY_LIST;
+	new_part_bound->listdatums = list_make1(new_part_b);
+	new_part_bound->is_default = false;
+	new_part_bound->location = -1;
+
+	if (is_composite)
+	{
+		Oid	siblingId;
+
+		/* Oracle partitioned tables must have at least one child */
+		if (dispatch->partdesc->nparts < 1 ||
+			!OidIsValid(dispatch->partdesc->oids[0]))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("Oracle-compatible partitioned table \"%s\" must have at least one partition or subpartition",
+							RelationGetRelationName(dispatch->reldesc))));
+
+		siblingId = dispatch->partdesc->oids[0];
+
+		new_part_child_strategy = get_partitioning_strategy(siblingId);
+		new_part_child_partnatts = get_partitioning_partnatts(siblingId);
+
+		/* make a dummy PartitionSpec */
+		new_part_spec = makeNode(PartitionSpec);
+		new_part_spec->strategy = "dummy";
+		new_part_spec->partParams = NIL;
+		new_part_spec->sibling = siblingId;
+		new_part_spec->location = -1;
+	}
+	else
+	{
+		new_part_spec = NULL;
+		/* keep compiler quiet */
+		new_part_child_strategy = '0';
+		new_part_child_partnatts = 0;
+	}
+
+	/* make CreateStmt for partition */
+	cstmt= makeNode(CreateStmt);
+	cstmt->relation = new_part_rv;
+	cstmt->tableElts = NIL;
+	cstmt->inhRelations = list_make1(new_part_parent_rv);
+	cstmt->partbound = new_part_bound;
+	cstmt->partspec = new_part_spec;
+	cstmt->ora_partsup = makeOraPartSup(new_part_name, 1, seqno);
+	cstmt->oncommit = ONCOMMIT_NOOP;
+	cstmt->tablespacename = NULL;	/* TODO: from stroe in clause */
+	cstmt->if_not_exists = false;
+
+	cstmt_list = lappend(cstmt_list, cstmt);
+
+	/* make CreateStmt for subpartition using subpartition template if any */
+	if (is_composite)
+	{
+		OraSubPartitionTemplateSpec	*sub_part_template;
+		List		*subpart_stmt_list = NIL;
+		CreateStmt	*lcstmt;
+		int			final_seqno;
+
+		hash_ctl.keysize = NAMEDATALEN;
+		hash_ctl.entrysize = NAMEDATALEN;
+		relname_duplicate_check = hash_create("subpartition relation name check",
+											32,
+											&hash_ctl,
+											HASH_ELEM | HASH_STRINGS);
+
+		/* insert the partition relation name that was just generated */
+		(void) hash_search(relname_duplicate_check, new_part_relname, HASH_ENTER, NULL);
+		sub_part_template = ora_get_subpartition_template(RelationGetRelid(dispatch->reldesc));
+		subpart_stmt_list = derivePostgresPartitionStmts(new_part_child_strategy,
+														 NULL,
+														 new_part_rv,
+														 NULL,
+														 sub_part_template,
+														 new_part_name,
+														 new_part_child_partnatts,
+														 true,
+														 0,
+														 false,
+														 false,
+														 NIL,
+														 partname_duplicate_check,
+														 relname_duplicate_check,
+														 seqno,
+														 &final_seqno);
+
+		Assert(subpart_stmt_list);
+
+		cstmt_list = list_concat(cstmt_list, subpart_stmt_list);
+		lcstmt = (CreateStmt *)llast(cstmt_list);
+		lcstmt->ora_partsup->seqno = final_seqno;
+	}
+
+	/* clean up */
+	hash_destroy(relname_duplicate_check);
+	relname_duplicate_check = NULL;
+	hash_destroy(partname_duplicate_check);
+	partname_duplicate_check = NULL;
+
+	BeginInternalSubTransaction(NULL);
+	MemoryContextSwitchTo(oldcontext);
+
+	PG_TRY();
+	{
+		foreach(lc, cstmt_list)
+		{
+			PlannedStmt	*pstmt;
+			CreateStmt	*stmt = (CreateStmt *) lfirst(lc);
+
+			pstmt = makeNode(PlannedStmt);
+			pstmt->commandType = CMD_UTILITY;
+			pstmt->canSetTag = false;
+			pstmt->utilityStmt = (Node *) stmt;
+			pstmt->stmt_location = -1;
+			pstmt->stmt_len = 0;
+
+			/* Execute statement */
+			ProcessUtility(pstmt, GEN_AUTO_PART_QUERY, false,
+						   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
+						   None_Receiver, NULL);
+		}
+
+		/* Commit the inner transaction, return to outer xact context */
+		ReleaseCurrentSubTransaction();
+		MemoryContextSwitchTo(oldcontext);
+		CurrentResourceOwner = oldowner;
+		result = true;	/* sucess */
+	}
+	PG_CATCH();
+	{
+		ErrorData  *edata;
+
+		/* Save error info */
+		MemoryContextSwitchTo(oldcontext);
+		edata = CopyErrorData();
+		FlushErrorState();
+
+		/* Abort the inner transaction */
+		RollbackAndReleaseCurrentSubTransaction();
+		MemoryContextSwitchTo(oldcontext);
+		CurrentResourceOwner = oldowner;
+		ereport(LOG,
+				(errcode(edata->sqlerrcode),
+				 errmsg("Automatic partitioning failed: %s", edata->message),
+				 edata->detail ? errdetail("%s", edata->message) : 0,
+				 edata->hint ? errhint("%s", edata->hint) : 0));
+		FreeErrorData(edata);
+
+		result = false;	/* failure */
+	}
+	PG_END_TRY();
+
+	dispatch->reldesc->defining_auto_part = false;
+
+	return result;
+}
+
+static bool
+ExecBuildOracleIntervalPartition(PartitionDispatch dispatch, Datum *values)
+{
+	PartitionBoundSpec	*new_part_bound;
+	PartitionSpec		*new_part_spec;
+	PartitionKey		key = dispatch->key;
+	MemoryContext		oldcontext = CurrentMemoryContext;
+	ResourceOwner		oldowner = CurrentResourceOwner;
+	HTAB		*relname_duplicate_check = NULL;
+	HTAB		*partname_duplicate_check = NULL;
+	HASHCTL		hash_ctl;
+	CreateStmt	*cstmt;
+	List		*cstmt_list = NIL;
+	List		*lowerupper;
+	ListCell	*lc;
+	RangeVar	*new_part_rv;
+	RangeVar	*new_part_parent_rv;
+	char		*new_part_relname;
+	char		*new_part_name;
+	int32		seqno;
+	bool		is_composite;
+	bool		equal;
+	char		new_part_child_strategy;
+	int			new_part_child_partnatts;
+	bool		result = false;
+
+	/*
+	 * dispatch->reldesc must be an oracle partitioned table.
+	 */
+	if (!is_oracle_partitioned_table(RelationGetRelid(dispatch->reldesc)))
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("object is not a oracle partitioned table")));
+
+	/*
+	 * the value to be inserted must be larger or equal to basevalue.
+	 */
+	if (DatumGetInt32(FunctionCall2Coll(&key->partsupfunc[0],
+										key->partcollation[0],
+										dispatch->partdesc->intervalinfo->base->constvalue,
+										values[0])) > 0)
+	{
+		Assert(OidIsValid(RelationGetRelid(dispatch->reldesc)));
+		ereport(ERROR,
+				(errcode(ERRCODE_CHECK_VIOLATION),
+				 errmsg("no partition of relation \"%s\" found for row less than base value",
+						RelationGetRelationName(dispatch->reldesc)),
+				 errtable(dispatch->reldesc)));
+	}
+
+	dispatch->reldesc->defining_auto_part = true;
+
+	hash_ctl.keysize = NAMEDATALEN;
+	hash_ctl.entrysize = NAMEDATALEN;
+	partname_duplicate_check = hash_create("partition name check",
+										32,
+										&hash_ctl,
+										HASH_ELEM | HASH_STRINGS);
+
+	FetchOraclePartNameToHash(RelationGetRelid(dispatch->reldesc), partname_duplicate_check);
+
+	is_composite = is_ora_composite_partitioning(RelationGetRelid(dispatch->reldesc));
+	seqno = ora_get_partitioned_table_seqno(RelationGetRelid(dispatch->reldesc));
+
+	new_part_name = make_system_partname_unique(partname_duplicate_check,
+												false, seqno, &seqno);
+
+	new_part_relname = ChooseRelationName(RelationGetRelationName(dispatch->reldesc),
+								   NULL,
+								   new_part_name,
+								   RelationGetNamespace(dispatch->reldesc),
+								   false);
+
+	new_part_rv = makeRangeVar(get_namespace_name(RelationGetNamespace(dispatch->reldesc)),
+							new_part_relname, -1);
+	new_part_parent_rv = makeRangeVar(get_namespace_name(RelationGetNamespace(dispatch->reldesc)),
+							RelationGetRelationName(dispatch->reldesc), -1);
+
+	/* Caculate the lower and upper by a target value */
+	lowerupper = calc_new_interval_partition_rbound(make_parsestate(NULL), key, dispatch->partdesc, values, &equal);
+	Assert(list_length(lowerupper) == 2);
+
+	/* Create partition range boundary */
+	new_part_bound = makeNode(PartitionBoundSpec);
+	new_part_bound->strategy = PARTITION_STRATEGY_RANGE;
+	new_part_bound->is_default = false;
+	new_part_bound->lowerdatums = list_make1(linitial(lowerupper));
+	new_part_bound->upperdatums = list_make1(lsecond(lowerupper));
+	new_part_bound->location = -1;
+
+	if (is_composite)
+	{
+		Oid	siblingId;
+
+		/* Oracle partitioned tables must have at least one child */
+		if (dispatch->partdesc->nparts < 1 ||
+			!OidIsValid(dispatch->partdesc->oids[0]))
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_TABLE_DEFINITION),
+					 errmsg("Oracle-compatible partitioned table \"%s\" must have at least one partition or subpartition",
+							RelationGetRelationName(dispatch->reldesc))));
+
+		siblingId = dispatch->partdesc->oids[0];
+
+		new_part_child_strategy = get_partitioning_strategy(siblingId);
+		new_part_child_partnatts = get_partitioning_partnatts(siblingId);
+
+		/* make a dummy PartitionSpec */
+		new_part_spec = makeNode(PartitionSpec);
+		new_part_spec->strategy = "dummy";
+		new_part_spec->partParams = NIL;
+		new_part_spec->sibling = siblingId;
+		new_part_spec->location = -1;
+	}
+	else
+	{
+		new_part_spec = NULL;
+		/* keep compiler quiet */
+		new_part_child_strategy = '0';
+		new_part_child_partnatts = 0;
+	}
+
+	/* make CreateStmt for partition */
+	cstmt= makeNode(CreateStmt);
+	cstmt->relation = new_part_rv;
+	cstmt->tableElts = NIL;
+	cstmt->inhRelations = list_make1(new_part_parent_rv);
+	cstmt->partbound = new_part_bound;
+	cstmt->partspec = new_part_spec;
+	cstmt->ora_partsup = makeOraPartSup(new_part_name, 1, seqno);
+	cstmt->oncommit = ONCOMMIT_NOOP;
+	cstmt->tablespacename = NULL;	/* TODO: from stroe in clause */
+	cstmt->if_not_exists = false;
+
+	cstmt_list = lappend(cstmt_list, cstmt);
+
+	/* make CreateStmt for subpartition using subpartition template if any */
+	if (is_composite)
+	{
+		OraSubPartitionTemplateSpec	*sub_part_template;
+		List		*subpart_stmt_list = NIL;
+		CreateStmt	*lcstmt;
+		int			final_seqno;
+
+		hash_ctl.keysize = NAMEDATALEN;
+		hash_ctl.entrysize = NAMEDATALEN;
+		relname_duplicate_check = hash_create("subpartition relation name check",
+											32,
+											&hash_ctl,
+											HASH_ELEM | HASH_STRINGS);
+
+		/* insert the partition relation name that was just generated */
+		(void) hash_search(relname_duplicate_check, new_part_relname, HASH_ENTER, NULL);
+		sub_part_template = ora_get_subpartition_template(RelationGetRelid(dispatch->reldesc));
+		subpart_stmt_list = derivePostgresPartitionStmts(new_part_child_strategy,
+														 NULL,
+														 new_part_rv,
+														 NULL,
+														 sub_part_template,
+														 new_part_name,
+														 new_part_child_partnatts,
+														 true,
+														 0,
+														 false,
+														 false,
+														 NIL,
+														 partname_duplicate_check,
+														 relname_duplicate_check,
+														 seqno,
+														 &final_seqno);
+
+		Assert(subpart_stmt_list);
+
+		cstmt_list = list_concat(cstmt_list, subpart_stmt_list);
+		lcstmt = (CreateStmt *)llast(cstmt_list);
+		lcstmt->ora_partsup->seqno = final_seqno;
+	}
+
+	/* clean up */
+	hash_destroy(relname_duplicate_check);
+	relname_duplicate_check = NULL;
+	hash_destroy(partname_duplicate_check);
+	partname_duplicate_check = NULL;
+
+	BeginInternalSubTransaction(NULL);
+	MemoryContextSwitchTo(oldcontext);
+
+	PG_TRY();
+	{
+		foreach(lc, cstmt_list)
+		{
+			PlannedStmt	*pstmt;
+			CreateStmt	*stmt = (CreateStmt *) lfirst(lc);
+
+			pstmt = makeNode(PlannedStmt);
+			pstmt->commandType = CMD_UTILITY;
+			pstmt->canSetTag = false;
+			pstmt->utilityStmt = (Node *) stmt;
+			pstmt->stmt_location = -1;
+			pstmt->stmt_len = 0;
+
+			/* Execute statement */
+			ProcessUtility(pstmt, GEN_AUTO_PART_QUERY, false,
+						   PROCESS_UTILITY_SUBCOMMAND, NULL, NULL,
+						   None_Receiver, NULL);
+		}
+
+		/* Commit the inner transaction, return to outer xact context */
+		ReleaseCurrentSubTransaction();
+		MemoryContextSwitchTo(oldcontext);
+		CurrentResourceOwner = oldowner;
+		result = true;	/* sucess */
+	}
+	PG_CATCH();
+	{
+		ErrorData  *edata;
+
+		/* Save error info */
+		MemoryContextSwitchTo(oldcontext);
+		edata = CopyErrorData();
+		FlushErrorState();
+
+		/* Abort the inner transaction */
+		RollbackAndReleaseCurrentSubTransaction();
+		MemoryContextSwitchTo(oldcontext);
+		CurrentResourceOwner = oldowner;
+		ereport(LOG,
+				(errcode(edata->sqlerrcode),
+				 errmsg("Interval partitioning failed: %s", edata->message),
+				 edata->detail ? errdetail("%s", edata->message) : 0,
+				 edata->hint ? errhint("%s", edata->hint) : 0));
+		FreeErrorData(edata);
+
+		result = false;	/* failure */
+	}
+	PG_END_TRY();
+
+	dispatch->reldesc->defining_auto_part = false;
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

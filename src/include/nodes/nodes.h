@@ -564,6 +564,13 @@ typedef enum NodeTag
 	T_ColumnRefOrFuncCall,	/* ReqID:SRS-SQL-PROC */
 	T_PseudoColumnRef, /* ReqID:SRS-SQL-ROWNUM */
 	T_TupdescNatts,	/* ReqID:SRS-SQL-DBLINK */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	T_OraPartSup,
+	T_OraPartitionSpec,
+	T_OraPartitionBoundSpec,
+	T_OraSubPartitionTemplateSpec,
+	T_OraPartExtentedName,
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * TAGS FOR REPLICATION GRAMMAR PARSE NODES (replnodes.h)

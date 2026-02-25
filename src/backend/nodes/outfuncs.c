@@ -2909,6 +2909,10 @@ _outCreateStmtInfo(StringInfo str, const CreateStmt *node)
 	WRITE_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	WRITE_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
 	WRITE_BOOL_FIELD(isantitamper);
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	WRITE_NODE_FIELD(ora_partspec);
+	WRITE_NODE_FIELD(ora_partsup);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 }
 
 static void
@@ -4166,6 +4170,7 @@ _outPartitionSpec(StringInfo str, const PartitionSpec *node)
 	WRITE_STRING_FIELD(strategy);
 	WRITE_NODE_FIELD(partParams);
 	WRITE_NODE_FIELD(partInterval);	/* ReqID:RSR-SQL-Partition-interval */
+	WRITE_OID_FIELD(sibling);		/* ReqID:SRS-SQL-PARTITION-TABLE */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -4260,6 +4265,61 @@ _outVarRef(StringInfo str, const VarRef *node)
 	WRITE_INT_FIELD(location);
 }
 /* End - ReqID:SRS-MYSQL-SET; End- BUG#Z6816 */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static void
+_outOraSubPartitionTemplateSpec(StringInfo str, const OraSubPartitionTemplateSpec *node)
+{
+	WRITE_NODE_TYPE("ORASUBPARTITIONTEMPLATESPEC");
+	WRITE_NODE_FIELD(subpartitons_desc);
+	WRITE_INT_FIELD(hash_subpartition_quantity);
+}
+
+static void
+_outOraPartitionBoundSpec(StringInfo str, const OraPartitionBoundSpec *node)
+{
+	WRITE_NODE_TYPE("ORAPARTITIONBOUNDSPEC");
+
+	WRITE_STRING_FIELD(partition_name);
+	WRITE_STRING_FIELD(tablespace_name);
+	WRITE_NODE_FIELD(bound);
+	WRITE_NODE_FIELD(subpart_bound);
+}
+
+static void
+_outOraPartitionSpec(StringInfo str, const OraPartitionSpec *node)
+{
+	WRITE_NODE_TYPE("ORAPARTITIONSPEC");
+
+	WRITE_ENUM_FIELD(partition_strategy, OraPartitionStrategy);
+	WRITE_NODE_FIELD(root_partiton_spec);
+	WRITE_NODE_FIELD(sub_partiton_spec);
+	WRITE_NODE_FIELD(partiton_desc);
+	WRITE_INT_FIELD(hash_partition_quantity);
+	WRITE_NODE_FIELD(sub_part_template);
+	WRITE_BOOL_FIELD(automatic);
+	WRITE_NODE_FIELD(part_interval);
+}
+
+static void
+_outOraPartExtentedName(StringInfo str, const OraPartExtentedName *node)
+{
+	WRITE_NODE_TYPE("ORAPARTEXTENTEDNAME");
+
+	WRITE_STRING_FIELD(partition);
+	WRITE_NODE_FIELD(forexpr);
+}
+
+static void
+_outOraPartSup(StringInfo str, const OraPartSup *node)
+{
+	WRITE_NODE_TYPE("ORAPARTSUP");
+
+	WRITE_STRING_FIELD(partname);
+	WRITE_INT_FIELD(partlevel);
+	WRITE_INT_FIELD(seqno);
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /*
  * outNode -
@@ -5062,7 +5122,23 @@ outNode(StringInfo str, const void *obj)
 				_outVarRef(str, obj);
 				break;
 			/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816  */
-
+			/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+			case T_OraSubPartitionTemplateSpec:
+				_outOraSubPartitionTemplateSpec(str, obj);
+				break;
+			case T_OraPartitionBoundSpec:
+				_outOraPartitionBoundSpec(str, obj);
+				break;
+			case T_OraPartitionSpec:
+				_outOraPartitionSpec(str, obj);
+				break;
+			case T_OraPartExtentedName:
+				_outOraPartExtentedName(str, obj);
+				break;
+			case T_OraPartSup:
+				_outOraPartSup(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 			default:
 
 				/*

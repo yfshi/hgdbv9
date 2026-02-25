@@ -54,4 +54,8 @@ void TransformPartitionTableInterval(ParseState *pstate, PartitionInterval *part
 List *InheritEncryptFromTablespace(List *options, char *tableSpace);
 /* End - ReqID:SRS-SECURITY-TABLESPACE */
 
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+extern PartitionBoundSpec *transformSubPartitionTemplateBound(ParseState *pstate, PartitionKey key, OraPartitionBoundSpec *item);
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 #endif							/* PARSE_UTILCMD_H */

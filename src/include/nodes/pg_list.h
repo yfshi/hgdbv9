@@ -606,6 +606,7 @@ extern void list_free_deep(List *list);
 
 extern pg_nodiscard List *list_copy(const List *list);
 extern pg_nodiscard List *list_copy_tail(const List *list, int nskip);
+extern pg_nodiscard List *list_copy_head(const List *oldlist, int len); /* ReqID:SRS-SQL-PARTITION-TABLE */
 extern pg_nodiscard List *list_copy_deep(const List *oldlist);
 
 typedef int (*list_sort_comparator) (const ListCell *a, const ListCell *b);

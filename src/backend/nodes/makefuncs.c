@@ -892,3 +892,21 @@ makeVacuumRelation(RangeVar *relation, Oid oid, List *va_cols)
 	v->va_cols = va_cols;
 	return v;
 }
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * makeOraPartSup -
+ *	  create a OraPartSup node
+ */
+OraPartSup *
+makeOraPartSup(char *part_name, int16 part_level, int32 seqno)
+{
+	OraPartSup *n = makeNode(OraPartSup);
+
+	n->partname = pstrdup(part_name);
+	n->partlevel = part_level;
+	n->seqno = seqno;
+
+	return n;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

@@ -402,6 +402,18 @@ typedef struct _tableInfo
 	struct _triggerInfo *triggers;	/* array of TriggerInfo structs */
 	char		*oncommit;		/* Req: SRS-SQL-NLSSORT */
 	Oid			default_collation; /* Req: SRS-SQL-NLSSORT */
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/*
+	 * Only for Oracle partitioned tables.
+	 */
+	char	*part_name;			/* name of (sub)partition */
+	bool	isoraclerootpart;	/* is root relation of oracle partitioned table? */
+	bool	iscomposite;		/* is oracle composite partitioned table? */
+	bool	isautomatic;		/* is automatic list partitioned table? */
+	bool	hastemplate;		/* does it have subpartition template? */
+	bool	isorainterval;		/* is interval range partitioned table? */	
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 } TableInfo;
 
 typedef struct _tableAttachInfo

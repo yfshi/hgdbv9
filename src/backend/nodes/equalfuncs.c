@@ -1315,6 +1315,7 @@ _equalAlterTableStmt(const AlterTableStmt *a, const AlterTableStmt *b)
 	COMPARE_NODE_FIELD(cmds);
 	COMPARE_SCALAR_FIELD(objtype);
 	COMPARE_SCALAR_FIELD(missing_ok);
+	COMPARE_SCALAR_FIELD(ora_modify_part_table); /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return true;
 }
@@ -1333,6 +1334,15 @@ _equalAlterTableCmd(const AlterTableCmd *a, const AlterTableCmd *b)
 	/* Begin - BUG:M0000325 */
 	COMPARE_SCALAR_FIELD(without_copy);
 	/* End - BUG:M0000325 */
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	COMPARE_SCALAR_FIELD(is_create); /* add lack field */
+	COMPARE_NODE_FIELD(partextname);
+	COMPARE_NODE_FIELD(subptemplate);
+	COMPARE_SCALAR_FIELD(part_oid);
+	COMPARE_SCALAR_FIELD(automatic);
+	COMPARE_NODE_FIELD(part_desc);
+	COMPARE_NODE_FIELD(partitions);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return true;
 }
@@ -1492,6 +1502,10 @@ _equalCreateStmt(const CreateStmt *a, const CreateStmt *b)
 	COMPARE_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	COMPARE_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
 	COMPARE_SCALAR_FIELD(isantitamper);
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	COMPARE_NODE_FIELD(ora_partspec);
+	COMPARE_NODE_FIELD(ora_partsup);
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return true;
 }
@@ -1531,6 +1545,7 @@ _equalDropStmt(const DropStmt *a, const DropStmt *b)
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	COMPARE_SCALAR_FIELD(is_purge);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	COMPARE_SCALAR_FIELD(nocheckpart); /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return true;
 }
@@ -3546,6 +3561,7 @@ _equalPartitionSpec(const PartitionSpec *a, const PartitionSpec *b)
 	COMPARE_STRING_FIELD(strategy);
 	COMPARE_NODE_FIELD(partParams);
 	COMPARE_NODE_FIELD(partInterval);	/* ReqID:RSR-SQL-Partition-interval */
+	COMPARE_SCALAR_FIELD(sibling);		/* ReqID:SRS-SQL-PARTITION-TABLE */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
@@ -3582,6 +3598,7 @@ _equalPartitionCmd(const PartitionCmd *a, const PartitionCmd *b)
 	COMPARE_NODE_FIELD(name);
 	COMPARE_NODE_FIELD(bound);
 	COMPARE_SCALAR_FIELD(concurrent);
+	COMPARE_STRING_FIELD(partname);	/* ReqID:SRS-SQL-PARTITION-TABLE */
 
 	return true;
 }
@@ -3784,6 +3801,61 @@ _equalAlterOraTrigStmt(const AlterOraTrigStmt* a, const AlterOraTrigStmt*b)
 	return true;
 }
 /* End - ReqID:SRS-SQL-TRIGGER */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+static bool
+_equalOraSubPartitionTemplateSpec(const OraSubPartitionTemplateSpec *a, const OraSubPartitionTemplateSpec *b)
+{
+	COMPARE_NODE_FIELD(subpartitons_desc);
+	COMPARE_SCALAR_FIELD(hash_subpartition_quantity);
+	return true;
+}
+
+static bool
+_equalOraPartitionBoundSpec(const OraPartitionBoundSpec *a, const OraPartitionBoundSpec *b)
+{
+	COMPARE_STRING_FIELD(partition_name);
+	COMPARE_STRING_FIELD(tablespace_name);
+	COMPARE_NODE_FIELD(bound);
+	COMPARE_NODE_FIELD(subpart_bound);
+
+	return true;
+}
+
+static bool
+_equalOraPartitionSpec(const OraPartitionSpec *a, const OraPartitionSpec *b)
+{
+	COMPARE_SCALAR_FIELD(partition_strategy);
+	COMPARE_NODE_FIELD(root_partiton_spec);
+	COMPARE_NODE_FIELD(sub_partiton_spec);
+	COMPARE_NODE_FIELD(partiton_desc);
+	COMPARE_SCALAR_FIELD(hash_partition_quantity);
+	COMPARE_NODE_FIELD(sub_part_template);
+	COMPARE_SCALAR_FIELD(automatic);
+	COMPARE_NODE_FIELD(part_interval);
+
+	return true;
+}
+
+static bool
+_equalOraPartExtentedName(const OraPartExtentedName *a, const OraPartExtentedName *b)
+{
+	COMPARE_STRING_FIELD(partition);
+	COMPARE_NODE_FIELD(forexpr);
+
+	return true;
+}
+
+static bool
+_equalOraPartSup(const OraPartSup *a, const OraPartSup *b)
+{
+	COMPARE_STRING_FIELD(partname);
+	COMPARE_SCALAR_FIELD(partlevel);
+	COMPARE_SCALAR_FIELD(seqno);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /*
  * equal
@@ -4711,6 +4783,23 @@ equal(const void *a, const void *b)
 			retval = _equalAlterOraTrigStmt(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-TRIGGER */
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		case T_OraSubPartitionTemplateSpec:
+			retval = _equalOraSubPartitionTemplateSpec(a, b);
+			break;
+		case T_OraPartitionBoundSpec:
+			retval = _equalOraPartitionBoundSpec(a, b);
+			break;
+		case T_OraPartitionSpec:
+			retval = _equalOraPartitionSpec(a, b);
+			break;
+		case T_OraPartExtentedName:
+			retval = _equalOraPartExtentedName(a, b);
+			break;
+		case T_OraPartSup:
+			retval = _equalOraPartSup(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

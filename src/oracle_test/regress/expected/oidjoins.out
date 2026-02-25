@@ -273,3 +273,7 @@ NOTICE:  checking pg_package_body {pkgoid} => pg_package {oid}
 NOTICE:  checking pg_resgroupcapability {resgroupid} => pg_resgroup {oid}
 NOTICE:  checking pg_synonym {synnamespace} => pg_namespace {oid}
 NOTICE:  checking pg_synonym {synowner} => pg_authid {oid}
+NOTICE:  checking pg_ora_part_tables {partrelid} => pg_class {oid}
+NOTICE:  checking pg_ora_tab_partitions {partroot} => pg_class {oid}
+NOTICE:  checking pg_ora_tab_partitions {partparent} => pg_class {oid}
+NOTICE:  checking pg_ora_tab_partitions {part} => pg_class {oid}

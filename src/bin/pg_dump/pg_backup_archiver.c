@@ -4968,6 +4968,7 @@ _doSetFixedOutputState(ArchiveHandle *AH)
 		ahprintf(AH, "SET ivorysql.enable_emptystring_to_NULL = off;\n");
 		/* End - ReqID:EMPTY_STIRNG_TO_NULL */
 		/* End - ReqID:SRS-MISC-GUC */
+		ahprintf(AH, "SET ivorysql.enable_multi_step_partition = true;\n");
 		/* Begin - bug:z774 */
 		ahprintf(AH, "SET NLS_DATE_FORMAT = 'YYYY-MM-DD HH24:MI:SS';\n");
 		ahprintf(AH, "SET NLS_TIMESTAMP_FORMAT = 'YYYY-MM-DD HH24:MI:SS.FF9';\n");
