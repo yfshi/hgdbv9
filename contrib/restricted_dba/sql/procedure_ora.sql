@@ -140,9 +140,11 @@ drop procedure public.func_sysdba_u1_f1;
 drop procedure sch_sysdba_u1.func_sysdba_u1_f1;
 drop procedure sch_u1.func_sysdba_u1_f1;
 drop procedure sch_syssso_u2.func_sysdba_u1_f1;
+drop procedure if exists proc_not_exists;
 ------ fail
 drop procedure func_syssso_u1;
 drop procedure func_syssao_u1;
+drop procedure proc_not_exists;
 
 -- Clean test object
 \c testdb syssso_u1

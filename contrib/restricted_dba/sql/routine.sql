@@ -96,9 +96,11 @@ grant all on routine func_syssao_u1 to u1;
 drop routine public.func_sysdba_u1_f1;
 drop routine sch_sysdba_u1.func_sysdba_u1_f1;
 drop routine sch_u1.func_sysdba_u1_f1;
+drop routine if exists routine_not_exist;
 ------ fail
 drop routine func_syssso_u1;
 drop routine func_syssao_u1;
+drop routine routine_not_exist;
 
 -- Clean test object
 \c testdb syssso_u1

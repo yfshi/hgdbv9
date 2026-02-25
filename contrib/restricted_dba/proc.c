@@ -400,7 +400,7 @@ bool drop_proc_check(DropStmt *stmt)
 		Form_pg_proc procform;
 		ObjectWithArgs *func = castNode(ObjectWithArgs, lfirst(cell));
 		
-		procid = LookupFuncWithArgs(stmt->removeType, func, false);
+		procid = LookupFuncWithArgs(stmt->removeType, func, stmt->missing_ok);
 		tup = SearchSysCache1(PROCOID, procid);
 
 		/*

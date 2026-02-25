@@ -140,9 +140,11 @@ drop function public.func_sysdba_u1_f1;
 drop function sch_sysdba_u1.func_sysdba_u1_f1;
 drop function sch_u1.func_sysdba_u1_f1;
 drop function sch_syssso_u2.func_sysdba_u1_f1;
+drop function if exists func_not_exists;
 ------ fail
 drop function func_syssso_u1;
 drop function func_syssao_u1;
+drop function func_not_exists;
 
 -- Clean test object
 \c testdb syssso_u1

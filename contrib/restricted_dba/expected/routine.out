@@ -124,6 +124,8 @@ DETAIL:  cannot grant privilege of syssso_role/syssao_role member to anyone
 drop routine public.func_sysdba_u1_f1;
 drop routine sch_sysdba_u1.func_sysdba_u1_f1;
 drop routine sch_u1.func_sysdba_u1_f1;
+drop routine if exists routine_not_exist;
+NOTICE:  routine routine_not_exist() does not exist, skipping
 ------ fail
 drop routine func_syssso_u1;
 ERROR:  permission denied
@@ -131,6 +133,8 @@ DETAIL:  cannot drop function/procedure/routine of syssso_role/syssao_role membe
 drop routine func_syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot drop function/procedure/routine of syssso_role/syssao_role member
+drop routine routine_not_exist;
+ERROR:  could not find a function named "routine_not_exist"
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;
