@@ -270,7 +270,7 @@ oratimestamptz_in(PG_FUNCTION_ARGS)
 		fsec_t		fsec;
 		int			tz;
 		
-		ora_do_to_timestamp(cstring_to_text(str), cstring_to_text(nls_timestamp_tz_format), collid, false, &tm, &fsec, NULL, NULL, NULL, false);
+		ora_do_to_timestamp(cstring_to_text(str), cstring_to_text(nls_timestamp_tz_format), collid, false, &tm, &fsec, NULL, NULL, NULL);
 		
 		/* Begin - BUG:0000846 */
 		if (tm.tm_zone)
