@@ -1160,3 +1160,61 @@ DROP TABLE salary_audit_log;
 DROP TABLE t_orders;
 DROP TABLE order_delete_log;
 /* Begin - BUG#Z6559 */
+
+/* Begin - BUG#Z7179*/
+CREATE TABLE TB1_Z7179 (
+    emp_id NUMBER PRIMARY KEY,
+    emp_name VARCHAR2(50),
+    salary NUMBER(10,2)
+);
+
+CREATE TABLE TB2_Z7179 (
+    log_id NUMBER PRIMARY KEY,
+    operation VARCHAR2(20),
+    emp_id NUMBER
+);
+
+CREATE SEQUENCE TB2SEQ_Z7179;
+
+CREATE OR REPLACE TRIGGER TRIGGER1_Z7179
+BEFORE INSERT OR UPDATE OR DELETE ON TB1_Z7179
+FOR EACH ROW
+DECLARE
+     v_action VARCHAR2(20);
+BEGIN
+    v_action := CASE
+        WHEN :OLD.emp_id IS NULL AND :NEW.emp_id IS NOT NULL THEN 'INSERT'
+        WHEN :OLD.emp_id IS NOT NULL AND :NEW.emp_id IS NOT NULL THEN 'UPDATE'
+        WHEN :OLD.emp_id IS NOT NULL AND :NEW.emp_id IS NULL THEN 'DELETE'
+        ELSE 'UNKNOWN'
+	END;
+
+    INSERT INTO TB2_Z7179 (log_id, operation, emp_id) VALUES (TB2SEQ_Z7179.NEXTVAL, v_action, NVL(:NEW.emp_id, :OLD.emp_id));
+END;
+/
+
+INSERT INTO TB1_Z7179 (emp_id, emp_name, salary) VALUES (1, 'Jelen', 5000);
+
+select triggering_event from all_triggers where upper(trigger_name) = 'TRIGGER1_Z7179';
+
+SELECT * FROM TB1_Z7179;
+SELECT * FROM TB2_Z7179;
+
+UPDATE TB1_Z7179 SET salary = 5500 WHERE emp_id = 1;
+SELECT * FROM TB1_Z7179;
+SELECT * FROM TB2_Z7179;
+
+INSERT INTO TB1_Z7179 (emp_id, emp_name, salary) VALUES (2, 'Hope', 6000);
+SELECT * FROM TB1_Z7179;
+SELECT * FROM TB2_Z7179;
+
+DELETE FROM TB1_Z7179 WHERE emp_id IN (1, 2);
+SELECT * FROM TB2_Z7179 ORDER BY log_id;
+SELECT COUNT(*) FROM TB1_Z7179 WHERE emp_id IN (1, 2);
+
+--cleanup
+drop trigger TRIGGER1_Z7179;
+drop sequence TB2SEQ_Z7179;
+drop table TB2_Z7179;
+drop table TB1_Z7179;
+/* End - BUG#Z7179*/

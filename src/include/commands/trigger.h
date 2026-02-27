@@ -305,7 +305,6 @@ extern int	RI_FKey_trigger_type(Oid tgfoid);
 /* Begin - ReqID:SRS-SQL-TRIGGER */
 extern bool orderTriggersByPrecedence(Trigger *triggers, int numtrigs, int **out_order, int *out_count);
 extern List *ivyExtractJsonbStringArray(JsonbValue *arrayValue);
-extern TriggerEvent ivy_tgtype_to_event(int16 tgtype);	/* BUG#Z6170 */
 extern void push_triggerdata(TriggerData *trigdata);
 extern void pop_triggerdata(void);
 extern TriggerData *peek_triggerdata(void);
