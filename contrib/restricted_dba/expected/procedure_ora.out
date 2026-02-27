@@ -172,6 +172,8 @@ drop procedure public.func_sysdba_u1_f1;
 drop procedure sch_sysdba_u1.func_sysdba_u1_f1;
 drop procedure sch_u1.func_sysdba_u1_f1;
 drop procedure sch_syssso_u2.func_sysdba_u1_f1;
+drop procedure if exists proc_not_exists;
+NOTICE:  procedure proc_not_exists() does not exist, skipping
 ------ fail
 drop procedure func_syssso_u1;
 ERROR:  permission denied
@@ -179,6 +181,8 @@ DETAIL:  cannot drop function/procedure/routine of syssso_role/syssao_role membe
 drop procedure func_syssao_u1;
 ERROR:  permission denied
 DETAIL:  cannot drop function/procedure/routine of syssso_role/syssao_role member
+drop procedure proc_not_exists;
+ERROR:  could not find a procedure named "proc_not_exists"
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;
