@@ -1797,7 +1797,7 @@ SELECT partrelid::regclass, automatic, composite, seqno, interval_expr, subpart_
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_range'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_range'::regclass order by partlevel, partname;
   partroot  | partparent |     part      | partname | partlevel 
 ------------+------------+---------------+----------+-----------
  test_range | test_range | test_range_p1 | p1       |         1
@@ -1806,7 +1806,7 @@ SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partl
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_list'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_list'::regclass order by partlevel, partname;
  partroot  | partparent |     part     | partname | partlevel 
 -----------+------------+--------------+----------+-----------
  test_list | test_list  | test_list_p1 | p1       |         1
@@ -1815,7 +1815,7 @@ SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partl
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_hash'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_hash'::regclass order by partlevel, partname;
  partroot  | partparent |     part     | partname | partlevel 
 -----------+------------+--------------+----------+-----------
  test_hash | test_hash  | test_hash_p1 | p1       |         1
@@ -1824,22 +1824,22 @@ SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partl
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
         partroot        |        partparent         |                part                 | partname  | partlevel 
 ------------------------+---------------------------+-------------------------------------+-----------+-----------
  test_compise_with_temp | test_compise_with_temp    | test_compise_with_temp_p1           | p1        |         1
  test_compise_with_temp | test_compise_with_temp    | test_compise_with_temp_p2           | p2        |         1
  test_compise_with_temp | test_compise_with_temp    | test_compise_with_temp_p3           | p3        |         1
- test_compise_with_temp | test_compise_with_temp_p1 | test_compise_with_temp_p1_s1        | s1        |         2
- test_compise_with_temp | test_compise_with_temp_p1 | test_compise_with_temp_p1_s2        | s2        |         2
  test_compise_with_temp | test_compise_with_temp_p2 | test_compise_with_temp_p2_tmp1      | p2_tmp1   |         2
  test_compise_with_temp | test_compise_with_temp_p2 | test_compise_with_temp_p2_tmp2      | p2_tmp2   |         2
+ test_compise_with_temp | test_compise_with_temp_p1 | test_compise_with_temp_p1_s1        | s1        |         2
+ test_compise_with_temp | test_compise_with_temp_p1 | test_compise_with_temp_p1_s2        | s2        |         2
  test_compise_with_temp | test_compise_with_temp_p3 | test_compise_with_temp_p3_sys_subp1 | sys_subp1 |         2
  test_compise_with_temp | test_compise_with_temp_p3 | test_compise_with_temp_p3_sys_subp2 | sys_subp2 |         2
 (9 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_no_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_no_temp'::regclass order by partlevel, partname;
        partroot       |       partparent        |               part                | partname  | partlevel 
 ----------------------+-------------------------+-----------------------------------+-----------+-----------
  test_compise_no_temp | test_compise_no_temp    | test_compise_no_temp_p1           | p1        |         1
@@ -1892,7 +1892,7 @@ SELECT partrelid::regclass, automatic, composite, seqno, interval_expr, subpart_
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
         partroot        |          partparent           |                part                 |  partname   | partlevel 
 ------------------------+-------------------------------+-------------------------------------+-------------+-----------
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p1           | p1          |         1
@@ -1900,22 +1900,22 @@ SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partl
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p3           | p3          |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_sys_p1       | sys_p1      |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_sys_p2       | sys_p2      |         1
- test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s1        | s1          |         2
- test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s2        | s2          |         2
  test_compise_with_temp | test_compise_with_temp_p2     | test_compise_with_temp_p2_tmp1      | p2_tmp1     |         2
  test_compise_with_temp | test_compise_with_temp_p2     | test_compise_with_temp_p2_tmp2      | p2_tmp2     |         2
- test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp3 | sys_subp3   |         2
- test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp4 | sys_subp4   |         2
+ test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s1        | s1          |         2
+ test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s2        | s2          |         2
  test_compise_with_temp | test_compise_with_temp_sys_p1 | test_compise_with_temp_sys_p1_tmp1  | sys_p1_tmp1 |         2
  test_compise_with_temp | test_compise_with_temp_sys_p1 | test_compise_with_temp_sys_p1_tmp2  | sys_p1_tmp2 |         2
  test_compise_with_temp | test_compise_with_temp_sys_p2 | test_compise_with_temp_sys_p2_tmp1  | sys_p2_tmp1 |         2
  test_compise_with_temp | test_compise_with_temp_sys_p2 | test_compise_with_temp_sys_p2_tmp2  | sys_p2_tmp2 |         2
+ test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp3 | sys_subp3   |         2
+ test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp4 | sys_subp4   |         2
 (15 rows)
 
 -- deleting a subpartition
 DROP TABLE test_compise_with_temp_sys_p2_tmp2;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
         partroot        |          partparent           |                part                 |  partname   | partlevel 
 ------------------------+-------------------------------+-------------------------------------+-------------+-----------
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p1           | p1          |         1
@@ -1923,34 +1923,34 @@ SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partl
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p3           | p3          |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_sys_p1       | sys_p1      |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_sys_p2       | sys_p2      |         1
- test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s1        | s1          |         2
- test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s2        | s2          |         2
  test_compise_with_temp | test_compise_with_temp_p2     | test_compise_with_temp_p2_tmp1      | p2_tmp1     |         2
  test_compise_with_temp | test_compise_with_temp_p2     | test_compise_with_temp_p2_tmp2      | p2_tmp2     |         2
- test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp3 | sys_subp3   |         2
- test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp4 | sys_subp4   |         2
+ test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s1        | s1          |         2
+ test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s2        | s2          |         2
  test_compise_with_temp | test_compise_with_temp_sys_p1 | test_compise_with_temp_sys_p1_tmp1  | sys_p1_tmp1 |         2
  test_compise_with_temp | test_compise_with_temp_sys_p1 | test_compise_with_temp_sys_p1_tmp2  | sys_p1_tmp2 |         2
  test_compise_with_temp | test_compise_with_temp_sys_p2 | test_compise_with_temp_sys_p2_tmp1  | sys_p2_tmp1 |         2
+ test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp3 | sys_subp3   |         2
+ test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp4 | sys_subp4   |         2
 (14 rows)
 
 -- deleting a partition automatically deletes all its subpartitions
 DROP TABLE test_compise_with_temp_sys_p1;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
         partroot        |          partparent           |                part                 |  partname   | partlevel 
 ------------------------+-------------------------------+-------------------------------------+-------------+-----------
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p1           | p1          |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p2           | p2          |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_p3           | p3          |         1
  test_compise_with_temp | test_compise_with_temp        | test_compise_with_temp_sys_p2       | sys_p2      |         1
- test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s1        | s1          |         2
- test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s2        | s2          |         2
  test_compise_with_temp | test_compise_with_temp_p2     | test_compise_with_temp_p2_tmp1      | p2_tmp1     |         2
  test_compise_with_temp | test_compise_with_temp_p2     | test_compise_with_temp_p2_tmp2      | p2_tmp2     |         2
+ test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s1        | s1          |         2
+ test_compise_with_temp | test_compise_with_temp_p1     | test_compise_with_temp_p1_s2        | s2          |         2
+ test_compise_with_temp | test_compise_with_temp_sys_p2 | test_compise_with_temp_sys_p2_tmp1  | sys_p2_tmp1 |         2
  test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp3 | sys_subp3   |         2
  test_compise_with_temp | test_compise_with_temp_p3     | test_compise_with_temp_p3_sys_subp4 | sys_subp4   |         2
- test_compise_with_temp | test_compise_with_temp_sys_p2 | test_compise_with_temp_sys_p2_tmp1  | sys_p2_tmp1 |         2
 (11 rows)
 
 -- deleteing the partition table, all partitions and subpartitions are automatically deleted
@@ -1962,7 +1962,7 @@ SELECT partrelid::regclass, automatic, composite, seqno, interval_expr, subpart_
 (0 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions;
+ FROM pg_ora_tab_partitions order by partlevel, partname;
  partroot | partparent | part | partname | partlevel 
 ----------+------------+------+----------+-----------
 (0 rows)
@@ -3597,12 +3597,12 @@ WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions
-WHERE partroot = 'par_test'::regclass;
+WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
- par_test | par_test   | par_test_sys_p1 | sys_p1   |         1
  par_test | par_test   | par_test_p2     | p2       |         1
  par_test | par_test   | par_test_p3     | p3       |         1
+ par_test | par_test   | par_test_sys_p1 | sys_p1   |         1
  par_test | par_test   | par_test_sys_p2 | sys_p2   |         1
 (4 rows)
 
@@ -3635,13 +3635,13 @@ WHERE partrelid = 'par_test'::regclass;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions
-WHERE partroot = 'par_test'::regclass;
+WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
- par_test | par_test   | par_test_sys_p1 | sys_p1   |         1
  par_test | par_test   | par_test_p2     | p2       |         1
  par_test | par_test   | par_test_p3     | p3       |         1
  par_test | par_test   | par_test_p4     | p4       |         1
+ par_test | par_test   | par_test_sys_p1 | sys_p1   |         1
  par_test | par_test   | par_test_sys_p2 | sys_p2   |         1
 (5 rows)
 
@@ -3666,13 +3666,13 @@ WHERE partrelid = 'par_test'::regclass;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions
-WHERE partroot = 'par_test'::regclass;
+WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |     partparent     |             part             | partname  | partlevel 
 ----------+--------------------+------------------------------+-----------+-----------
- par_test | par_test           | par_test_sys_subp1           | sys_subp1 |         1
  par_test | par_test           | par_test_p2                  | p2        |         1
  par_test | par_test           | par_test_p3                  | p3        |         1
  par_test | par_test           | par_test_p4                  | p4        |         1
+ par_test | par_test           | par_test_sys_subp1           | sys_subp1 |         1
  par_test | par_test_sys_subp1 | par_test_sys_subp1_sys_subp2 | sys_subp2 |         2
  par_test | par_test_p2        | par_test_p2_sys_subp3        | sys_subp3 |         2
  par_test | par_test_p3        | par_test_p3_sys_subp4        | sys_subp4 |         2
@@ -3857,7 +3857,7 @@ WHERE t.relid=c.oid;
 (12 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -3867,9 +3867,9 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test   | par_test_p5     | p5       |         1
  par_test | par_test   | par_test_p6     | p6       |         1
  par_test | par_test   | par_test_p7     | p7       |         1
+ par_test | par_test   | par_test_p8     | p8       |         1
  par_test | par_test   | par_test_sys_p1 | sys_p1   |         1
  par_test | par_test   | par_test_sys_p2 | sys_p2   |         1
- par_test | par_test   | par_test_p8     | p8       |         1
  par_test | par_test   | par_test_sys_p3 | sys_p3   |         1
 (11 rows)
 
@@ -3933,7 +3933,7 @@ WHERE t.relid=c.oid;
 (9 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -4004,23 +4004,23 @@ WHERE t.relid=c.oid;
 (19 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |   partparent    |           part            | partname  | partlevel 
 ----------+-----------------+---------------------------+-----------+-----------
  par_test | par_test        | par_test_p1               | p1        |         1
  par_test | par_test        | par_test_p2               | p2        |         1
  par_test | par_test        | par_test_p3               | p3        |         1
+ par_test | par_test        | par_test_p5               | p5        |         1
+ par_test | par_test        | par_test_p6               | p6        |         1
+ par_test | par_test        | par_test_p7               | p7        |         1
+ par_test | par_test        | par_test_sys_p2           | sys_p2    |         1
  par_test | par_test_p1     | par_test_p1_s1            | s1        |         2
  par_test | par_test_p1     | par_test_p1_s2            | s2        |         2
  par_test | par_test_p2     | par_test_p2_s3            | s3        |         2
  par_test | par_test_p2     | par_test_p2_s4            | s4        |         2
- par_test | par_test_p3     | par_test_p3_sys_subp1     | sys_subp1 |         2
- par_test | par_test        | par_test_p5               | p5        |         1
  par_test | par_test_p5     | par_test_p5_s5            | s5        |         2
  par_test | par_test_p5     | par_test_p5_s6            | s6        |         2
- par_test | par_test        | par_test_p6               | p6        |         1
- par_test | par_test        | par_test_p7               | p7        |         1
- par_test | par_test        | par_test_sys_p2           | sys_p2    |         1
+ par_test | par_test_p3     | par_test_p3_sys_subp1     | sys_subp1 |         2
  par_test | par_test_p6     | par_test_p6_sys_subp3     | sys_subp3 |         2
  par_test | par_test_p7     | par_test_p7_sys_subp4     | sys_subp4 |         2
  par_test | par_test_p7     | par_test_p7_sys_subp5     | sys_subp5 |         2
@@ -4077,18 +4077,18 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |      part      | partname | partlevel 
 ----------+-------------+----------------+----------+-----------
  par_test | par_test    | par_test_p1    | p1       |         1
  par_test | par_test    | par_test_p2    | p2       |         1
  par_test | par_test    | par_test_p3    | p3       |         1
+ par_test | par_test_p3 | par_test_p3_t1 | p3_t1    |         2
+ par_test | par_test_p3 | par_test_p3_t2 | p3_t2    |         2
  par_test | par_test_p1 | par_test_p1_s1 | s1       |         2
  par_test | par_test_p1 | par_test_p1_s2 | s2       |         2
  par_test | par_test_p2 | par_test_p2_s3 | s3       |         2
  par_test | par_test_p2 | par_test_p2_s4 | s4       |         2
- par_test | par_test_p3 | par_test_p3_t1 | p3_t1    |         2
- par_test | par_test_p3 | par_test_p3_t2 | p3_t2    |         2
 (9 rows)
 
 ALTER TABLE PAR_TEST ADD
@@ -4142,29 +4142,29 @@ WHERE t.relid=c.oid;
 (21 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |   partparent    |           part            | partname  | partlevel 
 ----------+-----------------+---------------------------+-----------+-----------
  par_test | par_test        | par_test_p1               | p1        |         1
  par_test | par_test        | par_test_p2               | p2        |         1
  par_test | par_test        | par_test_p3               | p3        |         1
+ par_test | par_test        | par_test_p4               | p4        |         1
+ par_test | par_test        | par_test_sys_p1           | sys_p1    |         1
+ par_test | par_test        | par_test_sys_p2           | sys_p2    |         1
+ par_test | par_test_p3     | par_test_p3_t1            | p3_t1     |         2
+ par_test | par_test_p3     | par_test_p3_t2            | p3_t2     |         2
+ par_test | par_test_p4     | par_test_p4_p4_1          | p4_1      |         2
+ par_test | par_test_p4     | par_test_p4_p4_2          | p4_2      |         2
+ par_test | par_test_p4     | par_test_p4_p4_3          | p4_3      |         2
  par_test | par_test_p1     | par_test_p1_s1            | s1        |         2
  par_test | par_test_p1     | par_test_p1_s2            | s2        |         2
  par_test | par_test_p2     | par_test_p2_s3            | s3        |         2
  par_test | par_test_p2     | par_test_p2_s4            | s4        |         2
- par_test | par_test_p3     | par_test_p3_t1            | p3_t1     |         2
- par_test | par_test_p3     | par_test_p3_t2            | p3_t2     |         2
- par_test | par_test        | par_test_p4               | p4        |         1
- par_test | par_test        | par_test_sys_p1           | sys_p1    |         1
- par_test | par_test        | par_test_sys_p2           | sys_p2    |         1
- par_test | par_test_p4     | par_test_p4_p4_1          | p4_1      |         2
- par_test | par_test_p4     | par_test_p4_p4_2          | p4_2      |         2
- par_test | par_test_p4     | par_test_p4_p4_3          | p4_3      |         2
+ par_test | par_test_sys_p2 | par_test_sys_p2_t1        | sys_p2_t1 |         2
+ par_test | par_test_sys_p2 | par_test_sys_p2_t2        | sys_p2_t2 |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_sys_subp4 | sys_subp4 |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_sys_subp5 | sys_subp5 |         2
- par_test | par_test_sys_p2 | par_test_sys_p2_t1        | sys_p2_t1 |         2
- par_test | par_test_sys_p2 | par_test_sys_p2_t2        | sys_p2_t2 |         2
 (20 rows)
 
 DROP TABLE PAR_TEST;
@@ -4208,18 +4208,18 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |      part      | partname | partlevel 
 ----------+-------------+----------------+----------+-----------
  par_test | par_test    | par_test_p1    | p1       |         1
  par_test | par_test    | par_test_p2    | p2       |         1
  par_test | par_test    | par_test_p3    | p3       |         1
+ par_test | par_test_p3 | par_test_p3_t1 | p3_t1    |         2
+ par_test | par_test_p3 | par_test_p3_t2 | p3_t2    |         2
  par_test | par_test_p1 | par_test_p1_s1 | s1       |         2
  par_test | par_test_p1 | par_test_p1_s2 | s2       |         2
  par_test | par_test_p2 | par_test_p2_s3 | s3       |         2
  par_test | par_test_p2 | par_test_p2_s4 | s4       |         2
- par_test | par_test_p3 | par_test_p3_t1 | p3_t1    |         2
- par_test | par_test_p3 | par_test_p3_t2 | p3_t2    |         2
 (9 rows)
 
 ALTER TABLE PAR_TEST ADD
@@ -4281,35 +4281,35 @@ WHERE t.relid=c.oid;
 (27 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |   partparent    |           part            |  partname  | partlevel 
 ----------+-----------------+---------------------------+------------+-----------
  par_test | par_test        | par_test_p1               | p1         |         1
  par_test | par_test        | par_test_p2               | p2         |         1
  par_test | par_test        | par_test_p3               | p3         |         1
+ par_test | par_test        | par_test_p4               | p4         |         1
+ par_test | par_test        | par_test_p5               | p5         |         1
+ par_test | par_test        | par_test_sys_p1           | sys_p1     |         1
+ par_test | par_test        | par_test_sys_p2           | sys_p2     |         1
+ par_test | par_test_p3     | par_test_p3_t1            | p3_t1      |         2
+ par_test | par_test_p3     | par_test_p3_t2            | p3_t2      |         2
+ par_test | par_test_p4     | par_test_p4_p4_1          | p4_1       |         2
+ par_test | par_test_p4     | par_test_p4_p4_2          | p4_2       |         2
+ par_test | par_test_p4     | par_test_p4_p4_3          | p4_3       |         2
  par_test | par_test_p1     | par_test_p1_s1            | s1         |         2
  par_test | par_test_p1     | par_test_p1_s2            | s2         |         2
  par_test | par_test_p2     | par_test_p2_s3            | s3         |         2
  par_test | par_test_p2     | par_test_p2_s4            | s4         |         2
- par_test | par_test_p3     | par_test_p3_t1            | p3_t1      |         2
- par_test | par_test_p3     | par_test_p3_t2            | p3_t2      |         2
- par_test | par_test        | par_test_p4               | p4         |         1
- par_test | par_test        | par_test_sys_p1           | sys_p1     |         1
- par_test | par_test        | par_test_sys_p2           | sys_p2     |         1
- par_test | par_test_p4     | par_test_p4_p4_1          | p4_1       |         2
- par_test | par_test_p4     | par_test_p4_p4_2          | p4_2       |         2
- par_test | par_test_p4     | par_test_p4_p4_3          | p4_3       |         2
+ par_test | par_test_sys_p2 | par_test_sys_p2_t1        | sys_p2_t1  |         2
+ par_test | par_test_sys_p2 | par_test_sys_p2_t2        | sys_p2_t2  |         2
+ par_test | par_test_p5     | par_test_p5_sys_subp10    | sys_subp10 |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_sys_subp3 | sys_subp3  |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_sys_subp4 | sys_subp4  |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_sys_subp5 | sys_subp5  |         2
- par_test | par_test_sys_p2 | par_test_sys_p2_t1        | sys_p2_t1  |         2
- par_test | par_test_sys_p2 | par_test_sys_p2_t2        | sys_p2_t2  |         2
- par_test | par_test        | par_test_p5               | p5         |         1
  par_test | par_test_p5     | par_test_p5_sys_subp6     | sys_subp6  |         2
  par_test | par_test_p5     | par_test_p5_sys_subp7     | sys_subp7  |         2
  par_test | par_test_p5     | par_test_p5_sys_subp8     | sys_subp8  |         2
  par_test | par_test_p5     | par_test_p5_sys_subp9     | sys_subp9  |         2
- par_test | par_test_p5     | par_test_p5_sys_subp10    | sys_subp10 |         2
 (26 rows)
 
 DROP TABLE PAR_TEST;
@@ -4348,7 +4348,7 @@ WHERE t.relid=c.oid;
 (8 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -4403,7 +4403,7 @@ WHERE t.relid=c.oid;
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p3           | p3        |         1
@@ -4440,16 +4440,16 @@ WHERE t.relid=c.oid;
 (9 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
- par_test | par_test    | par_test_p3           | p3        |         1
- par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
  par_test | par_test    | par_test_p1           | p1        |         1
- par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test    | par_test_p2           | p2        |         1
- par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
+ par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test    | par_test_p4           | p4        |         1
+ par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
+ par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
+ par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
  par_test | par_test_p4 | par_test_p4_sys_subp5 | sys_subp5 |         2
 (8 rows)
 
@@ -4476,12 +4476,12 @@ WHERE t.relid=c.oid;
 (5 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
- par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test    | par_test_p2           | p2        |         1
+ par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
 (4 rows)
 
@@ -4514,14 +4514,14 @@ WHERE t.relid=c.oid;
 (7 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |   partparent    |           part            | partname  | partlevel 
 ----------+-----------------+---------------------------+-----------+-----------
  par_test | par_test        | par_test_p1               | p1        |         1
- par_test | par_test_p1     | par_test_p1_sys_subp3     | sys_subp3 |         2
  par_test | par_test        | par_test_p2               | p2        |         1
- par_test | par_test_p2     | par_test_p2_sys_subp4     | sys_subp4 |         2
  par_test | par_test        | par_test_sys_p6           | sys_p6    |         1
+ par_test | par_test_p1     | par_test_p1_sys_subp3     | sys_subp3 |         2
+ par_test | par_test_p2     | par_test_p2_sys_subp4     | sys_subp4 |         2
  par_test | par_test_sys_p6 | par_test_sys_p6_sys_subp7 | sys_subp7 |         2
 (6 rows)
 
@@ -4548,12 +4548,12 @@ WHERE t.relid=c.oid;
 (5 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
- par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test    | par_test_p2           | p2        |         1
+ par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
 (4 rows)
 
@@ -4590,7 +4590,7 @@ WHERE t.relid=c.oid;
 (8 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -4645,7 +4645,7 @@ WHERE t.relid=c.oid;
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p3           | p3        |         1
@@ -4688,18 +4688,18 @@ WHERE t.relid=c.oid;
 (11 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
- par_test | par_test    | par_test_p3           | p3        |         1
- par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
  par_test | par_test    | par_test_p1           | p1        |         1
- par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test    | par_test_p2           | p2        |         1
- par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
+ par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test    | par_test_p4           | p4        |         1
- par_test | par_test_p4 | par_test_p4_sys_subp5 | sys_subp5 |         2
  par_test | par_test    | par_test_p5           | p5        |         1
+ par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
+ par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
+ par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
+ par_test | par_test_p4 | par_test_p4_sys_subp5 | sys_subp5 |         2
  par_test | par_test_p5 | par_test_p5_sys_subp6 | sys_subp6 |         2
 (10 rows)
 
@@ -4728,14 +4728,14 @@ WHERE t.relid=c.oid;
 (7 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
+ par_test | par_test    | par_test_p1           | p1        |         1
+ par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
- par_test | par_test    | par_test_p1           | p1        |         1
  par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
- par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
 (6 rows)
 
@@ -4762,12 +4762,12 @@ WHERE t.relid=c.oid;
 (5 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
+ par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
- par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test_p2 | par_test_p2_sys_subp4 | sys_subp4 |         2
 (4 rows)
 
@@ -4833,7 +4833,7 @@ WHERE t.relid=c.oid;
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |      part      | partname | partlevel 
 ----------+-------------+----------------+----------+-----------
  par_test | par_test    | par_test_p1    | p1       |         1
@@ -4880,7 +4880,7 @@ WHERE t.relid=c.oid;
 (8 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -4917,7 +4917,7 @@ WHERE t.relid=c.oid;
 (3 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p3           | p3        |         1
@@ -5022,7 +5022,7 @@ WHERE t.relid=c.oid;
 (12 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -5030,10 +5030,10 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test_p1 | par_test_p1_p1_1      | p1_1      |         2
  par_test | par_test_p1 | par_test_p1_p1_2      | p1_2      |         2
- par_test | par_test_p2 | par_test_p2_sys_subp1 | sys_subp1 |         2
- par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
  par_test | par_test_p1 | par_test_p1_p1_3      | p1_3      |         2
  par_test | par_test_p1 | par_test_p1_p1_4      | p1_4      |         2
+ par_test | par_test_p2 | par_test_p2_sys_subp1 | sys_subp1 |         2
+ par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
  par_test | par_test_p1 | par_test_p1_sys_subp3 | sys_subp3 |         2
  par_test | par_test_p1 | par_test_p1_sys_subp4 | sys_subp4 |         2
 (11 rows)
@@ -5099,7 +5099,7 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -5107,10 +5107,10 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test_p1 | par_test_p1_p1_1      | p1_1      |         2
  par_test | par_test_p1 | par_test_p1_p1_2      | p1_2      |         2
- par_test | par_test_p2 | par_test_p2_sys_subp1 | sys_subp1 |         2
- par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
  par_test | par_test_p1 | par_test_p1_p1_3      | p1_3      |         2
  par_test | par_test_p1 | par_test_p1_p1_4      | p1_4      |         2
+ par_test | par_test_p2 | par_test_p2_sys_subp1 | sys_subp1 |         2
+ par_test | par_test_p3 | par_test_p3_sys_subp2 | sys_subp2 |         2
 (9 rows)
 
 DROP TABLE PAR_TEST;
@@ -5256,7 +5256,7 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -5264,10 +5264,10 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test_p1 | par_test_p1_p1_1      | p1_1      |         2
  par_test | par_test_p1 | par_test_p1_p1_2      | p1_2      |         2
+ par_test | par_test_p1 | par_test_p1_p1_3      | p1_3      |         2
  par_test | par_test_p2 | par_test_p2_p2_1      | p2_1      |         2
  par_test | par_test_p2 | par_test_p2_p2_2      | p2_2      |         2
  par_test | par_test_p3 | par_test_p3_sys_subp1 | sys_subp1 |         2
- par_test | par_test_p1 | par_test_p1_p1_3      | p1_3      |         2
 (9 rows)
 
 -- ORA-14764: Partitions cannot be truncated, dropped or merged with mixed syntax
@@ -5312,17 +5312,17 @@ WHERE t.relid=c.oid;
 (9 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
  par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test_p1 | par_test_p1_p1_1      | p1_1      |         2
+ par_test | par_test_p1 | par_test_p1_p1_3      | p1_3      |         2
  par_test | par_test_p2 | par_test_p2_p2_1      | p2_1      |         2
  par_test | par_test_p2 | par_test_p2_p2_2      | p2_2      |         2
  par_test | par_test_p3 | par_test_p3_sys_subp1 | sys_subp1 |         2
- par_test | par_test_p1 | par_test_p1_p1_3      | p1_3      |         2
 (8 rows)
 
 INSERT INTO PAR_TEST VALUES(8, 8);
@@ -5383,7 +5383,7 @@ WHERE t.relid=c.oid;
 (6 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |    part     | partname | partlevel 
 ----------+------------+-------------+----------+-----------
  par_test | par_test   | par_test_p1 | p1       |         1
@@ -5416,14 +5416,14 @@ WHERE t.relid=c.oid;
 (6 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |    part     | partname | partlevel 
 ----------+------------+-------------+----------+-----------
+ par_test | par_test   | par_test_p1 | p11      |         1
  par_test | par_test   | par_test_p2 | p2       |         1
  par_test | par_test   | par_test_p3 | p3       |         1
  par_test | par_test   | par_test_p4 | p4       |         1
  par_test | par_test   | par_test_p5 | p5       |         1
- par_test | par_test   | par_test_p1 | p11      |         1
 (5 rows)
 
 DROP TABLE PAR_TEST;
@@ -5481,7 +5481,7 @@ WHERE t.relid=c.oid;
 (14 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -5530,9 +5530,10 @@ WHERE t.relid=c.oid;
 (14 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
+ par_test | par_test    | par_test_p1           | p11       |         1
  par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test    | par_test_p4           | p4        |         1
@@ -5545,7 +5546,6 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test_p3 | par_test_p3_sys_subp1 | sys_subp1 |         2
  par_test | par_test_p4 | par_test_p4_sys_subp2 | sys_subp2 |         2
  par_test | par_test_p5 | par_test_p5_sys_subp3 | sys_subp3 |         2
- par_test | par_test    | par_test_p1           | p11       |         1
 (13 rows)
 
 -- ORA-14251: Specified subpartition does not exist
@@ -5607,22 +5607,22 @@ WHERE t.relid=c.oid;
 (14 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
+ par_test | par_test    | par_test_p1           | p11       |         1
  par_test | par_test    | par_test_p2           | p2        |         1
  par_test | par_test    | par_test_p3           | p3        |         1
  par_test | par_test    | par_test_p4           | p4        |         1
  par_test | par_test    | par_test_p5           | p5        |         1
+ par_test | par_test_p1 | par_test_p1_p1_1      | p11_1     |         2
+ par_test | par_test_p1 | par_test_p1_p1_2      | p11_2     |         2
+ par_test | par_test_p1 | par_test_p1_p1_3      | p11_3     |         2
  par_test | par_test_p2 | par_test_p2_p2_1      | p2_1      |         2
  par_test | par_test_p2 | par_test_p2_p2_2      | p2_2      |         2
  par_test | par_test_p3 | par_test_p3_sys_subp1 | sys_subp1 |         2
  par_test | par_test_p4 | par_test_p4_sys_subp2 | sys_subp2 |         2
  par_test | par_test_p5 | par_test_p5_sys_subp3 | sys_subp3 |         2
- par_test | par_test    | par_test_p1           | p11       |         1
- par_test | par_test_p1 | par_test_p1_p1_1      | p11_1     |         2
- par_test | par_test_p1 | par_test_p1_p1_2      | p11_2     |         2
- par_test | par_test_p1 | par_test_p1_p1_3      | p11_3     |         2
 (13 rows)
 
 DROP TABLE PAR_TEST;
@@ -5916,7 +5916,7 @@ WHERE t.relid=c.oid;
 (12 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |       part       | partname | partlevel 
 ----------+-------------+------------------+----------+-----------
  par_test | par_test    | par_test_p1      | p1       |         1
@@ -5984,12 +5984,13 @@ WHERE t.relid=c.oid;
 (17 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |       part       | partname | partlevel 
 ----------+-------------+------------------+----------+-----------
  par_test | par_test    | par_test_p1      | p1       |         1
  par_test | par_test    | par_test_p2      | p2       |         1
  par_test | par_test    | par_test_p3      | p3       |         1
+ par_test | par_test    | par_test_p4      | p4       |         1
  par_test | par_test_p1 | par_test_p1_p1_1 | p1_1     |         2
  par_test | par_test_p1 | par_test_p1_p1_2 | p1_2     |         2
  par_test | par_test_p2 | par_test_p2_p2_1 | p2_1     |         2
@@ -5998,7 +5999,6 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test_p3 | par_test_p3_s2   | p3_s2    |         2
  par_test | par_test_p3 | par_test_p3_s3   | p3_s3    |         2
  par_test | par_test_p3 | par_test_p3_s4   | p3_s4    |         2
- par_test | par_test    | par_test_p4      | p4       |         1
  par_test | par_test_p4 | par_test_p4_s1   | p4_s1    |         2
  par_test | par_test_p4 | par_test_p4_s2   | p4_s2    |         2
  par_test | par_test_p4 | par_test_p4_s3   | p4_s3    |         2
@@ -6306,7 +6306,7 @@ WHERE t.relid=c.oid;
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent | part | partname | partlevel 
 ----------+------------+------+----------+-----------
 (0 rows)
@@ -6422,7 +6422,7 @@ WHERE t.relid=c.oid;
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent | part | partname | partlevel 
 ----------+------------+------+----------+-----------
 (0 rows)
@@ -6513,16 +6513,16 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |       part       | partname | partlevel 
 ----------+-------------+------------------+----------+-----------
  par_test | par_test    | par_test_p1      | p1       |         1
+ par_test | par_test    | par_test_p2      | p2       |         1
+ par_test | par_test    | par_test_p3      | p3       |         1
  par_test | par_test_p1 | par_test_p1_p1_1 | p1_1     |         2
  par_test | par_test_p1 | par_test_p1_p1_2 | p1_2     |         2
- par_test | par_test    | par_test_p2      | p2       |         1
  par_test | par_test_p2 | par_test_p2_p2_1 | p2_1     |         2
  par_test | par_test_p2 | par_test_p2_p2_2 | p2_2     |         2
- par_test | par_test    | par_test_p3      | p3       |         1
  par_test | par_test_p3 | par_test_p3_s1   | p3_s1    |         2
  par_test | par_test_p3 | par_test_p3_s3   | p3_s3    |         2
 (9 rows)
@@ -6586,7 +6586,7 @@ WHERE t.relid=c.oid;
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent | part | partname | partlevel 
 ----------+------------+------+----------+-----------
 (0 rows)
@@ -6675,7 +6675,7 @@ WHERE t.relid=c.oid;
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent | part | partname | partlevel 
 ----------+------------+------+----------+-----------
 (0 rows)
@@ -6772,16 +6772,16 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |       part       | partname | partlevel 
 ----------+-------------+------------------+----------+-----------
  par_test | par_test    | par_test_p1      | p1       |         1
+ par_test | par_test    | par_test_p2      | p2       |         1
+ par_test | par_test    | par_test_p3      | p3       |         1
  par_test | par_test_p1 | par_test_p1_p1_1 | p1_1     |         2
  par_test | par_test_p1 | par_test_p1_p1_2 | p1_2     |         2
- par_test | par_test    | par_test_p2      | p2       |         1
  par_test | par_test_p2 | par_test_p2_p2_1 | p2_1     |         2
  par_test | par_test_p2 | par_test_p2_p2_2 | p2_2     |         2
- par_test | par_test    | par_test_p3      | p3       |         1
  par_test | par_test_p3 | par_test_p3_s1   | p3_1     |         2
  par_test | par_test_p3 | par_test_p3_s2   | p3_2     |         2
 (9 rows)
@@ -6818,19 +6818,19 @@ WHERE t.relid=c.oid;
 (13 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |       part       | partname | partlevel 
 ----------+-------------+------------------+----------+-----------
  par_test | par_test    | par_test_p1      | p1       |         1
+ par_test | par_test    | par_test_p2      | p2       |         1
+ par_test | par_test    | par_test_p3      | p3       |         1
+ par_test | par_test    | par_test_p4      | p4       |         1
  par_test | par_test_p1 | par_test_p1_p1_1 | p1_1     |         2
  par_test | par_test_p1 | par_test_p1_p1_2 | p1_2     |         2
- par_test | par_test    | par_test_p2      | p2       |         1
  par_test | par_test_p2 | par_test_p2_p2_1 | p2_1     |         2
  par_test | par_test_p2 | par_test_p2_p2_2 | p2_2     |         2
- par_test | par_test    | par_test_p3      | p3       |         1
  par_test | par_test_p3 | par_test_p3_s1   | p3_1     |         2
  par_test | par_test_p3 | par_test_p3_s2   | p3_2     |         2
- par_test | par_test    | par_test_p4      | p4       |         1
  par_test | par_test_p4 | par_test_p4_s1   | p4_s1    |         2
  par_test | par_test_p4 | par_test_p4_s3   | p4_s3    |         2
 (12 rows)
@@ -6868,19 +6868,19 @@ WHERE t.relid=c.oid;
 (14 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |        part        | partname | partlevel 
 ----------+-------------+--------------------+----------+-----------
  par_test | par_test    | par_test_p1        | p1       |         1
+ par_test | par_test    | par_test_p2        | p2       |         1
+ par_test | par_test    | par_test_p3        | p3       |         1
+ par_test | par_test    | par_test_p4        | p4       |         1
  par_test | par_test_p1 | par_test_p1_p1_1   | p1_1     |         2
  par_test | par_test_p1 | par_test_p1_p1_2   | p1_2     |         2
- par_test | par_test    | par_test_p2        | p2       |         1
  par_test | par_test_p2 | par_test_p2_p2_1   | p2_1     |         2
  par_test | par_test_p2 | par_test_p2_p2_2   | p2_2     |         2
- par_test | par_test    | par_test_p3        | p3       |         1
  par_test | par_test_p3 | par_test_p3_s1     | p3_1     |         2
  par_test | par_test_p3 | par_test_p3_s2     | p3_2     |         2
- par_test | par_test    | par_test_p4        | p4       |         1
  par_test | par_test_p4 | par_test_p4_s1     | p4_s1    |         2
  par_test | par_test_p4 | par_test_p4_s3     | p4_s3    |         2
  par_test | par_test_p4 | par_test_p4_p4_xxx | p4_xxx   |         2
@@ -6908,7 +6908,7 @@ WHERE t.relid=c.oid;
 (1 row)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent | part | partname | partlevel 
 ----------+------------+------+----------+-----------
 (0 rows)
@@ -7187,19 +7187,19 @@ WHERE t.relid=c.oid;
 (11 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |  partparent   |       part        | partname | partlevel 
 ----------+---------------+-------------------+----------+-----------
  par_test | par_test      | "par_test_AB"     | AB       |         1
- par_test | par_test      | par_test_ab       | ab       |         1
  par_test | par_test      | "par_test_aB"     | aB       |         1
- par_test | "par_test_AB" | "par_test_AB_sp"  | sp       |         2
- par_test | "par_test_AB" | "par_test_AB_Sp"  | Sp       |         2
+ par_test | par_test      | par_test_ab       | ab       |         1
  par_test | par_test_ab   | "par_test_ab_SP"  | SP       |         2
+ par_test | "par_test_AB" | "par_test_AB_Sp"  | Sp       |         2
  par_test | "par_test_aB" | "par_test_aB_AAA" | aB_AAA   |         2
- par_test | "par_test_aB" | "par_test_aB_aaa" | aB_aaa   |         2
  par_test | "par_test_aB" | "par_test_aB_aBc" | aB_aBc   |         2
+ par_test | "par_test_aB" | "par_test_aB_aaa" | aB_aaa   |         2
  par_test | "par_test_aB" | "par_test_aB_abc" | aB_abc   |         2
+ par_test | "par_test_AB" | "par_test_AB_sp"  | sp       |         2
 (10 rows)
 
 SELECT ora_get_subpartkeydef('par_test'::regclass);
@@ -7222,76 +7222,76 @@ SELECT pg_get_expr(c.subpart_template, c.partrelid) from pg_ora_part_tables c wh
 
 ALTER TABLE PAR_TEST ADD PARTITION "Dd" VALUES(10,11);
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |  partparent   |       part        | partname | partlevel 
 ----------+---------------+-------------------+----------+-----------
  par_test | par_test      | "par_test_AB"     | AB       |         1
- par_test | par_test      | par_test_ab       | ab       |         1
- par_test | par_test      | "par_test_aB"     | aB       |         1
- par_test | "par_test_AB" | "par_test_AB_sp"  | sp       |         2
- par_test | "par_test_AB" | "par_test_AB_Sp"  | Sp       |         2
- par_test | par_test_ab   | "par_test_ab_SP"  | SP       |         2
- par_test | "par_test_aB" | "par_test_aB_AAA" | aB_AAA   |         2
- par_test | "par_test_aB" | "par_test_aB_aaa" | aB_aaa   |         2
- par_test | "par_test_aB" | "par_test_aB_aBc" | aB_aBc   |         2
- par_test | "par_test_aB" | "par_test_aB_abc" | aB_abc   |         2
  par_test | par_test      | "par_test_Dd"     | Dd       |         1
+ par_test | par_test      | "par_test_aB"     | aB       |         1
+ par_test | par_test      | par_test_ab       | ab       |         1
  par_test | "par_test_Dd" | "par_test_Dd_AAA" | Dd_AAA   |         2
- par_test | "par_test_Dd" | "par_test_Dd_aaa" | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_aBc" | Dd_aBc   |         2
+ par_test | "par_test_Dd" | "par_test_Dd_aaa" | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_abc" | Dd_abc   |         2
+ par_test | par_test_ab   | "par_test_ab_SP"  | SP       |         2
+ par_test | "par_test_AB" | "par_test_AB_Sp"  | Sp       |         2
+ par_test | "par_test_aB" | "par_test_aB_AAA" | aB_AAA   |         2
+ par_test | "par_test_aB" | "par_test_aB_aBc" | aB_aBc   |         2
+ par_test | "par_test_aB" | "par_test_aB_aaa" | aB_aaa   |         2
+ par_test | "par_test_aB" | "par_test_aB_abc" | aB_abc   |         2
+ par_test | "par_test_AB" | "par_test_AB_sp"  | sp       |         2
 (15 rows)
 
 ALTER TABLE PAR_TEST DROP PARTITION "aB";
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |  partparent   |       part        | partname | partlevel 
 ----------+---------------+-------------------+----------+-----------
  par_test | par_test      | "par_test_AB"     | AB       |         1
- par_test | par_test      | par_test_ab       | ab       |         1
- par_test | "par_test_AB" | "par_test_AB_sp"  | sp       |         2
- par_test | "par_test_AB" | "par_test_AB_Sp"  | Sp       |         2
- par_test | par_test_ab   | "par_test_ab_SP"  | SP       |         2
  par_test | par_test      | "par_test_Dd"     | Dd       |         1
+ par_test | par_test      | par_test_ab       | ab       |         1
  par_test | "par_test_Dd" | "par_test_Dd_AAA" | Dd_AAA   |         2
- par_test | "par_test_Dd" | "par_test_Dd_aaa" | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_aBc" | Dd_aBc   |         2
+ par_test | "par_test_Dd" | "par_test_Dd_aaa" | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_abc" | Dd_abc   |         2
+ par_test | par_test_ab   | "par_test_ab_SP"  | SP       |         2
+ par_test | "par_test_AB" | "par_test_AB_Sp"  | Sp       |         2
+ par_test | "par_test_AB" | "par_test_AB_sp"  | sp       |         2
 (10 rows)
 
 ALTER TABLE PAR_TEST MODIFY PARTITION "ab" ADD SUBPARTITION "NewSubP" VALUES LESS THAN(30,30);
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |  partparent   |         part          | partname | partlevel 
 ----------+---------------+-----------------------+----------+-----------
  par_test | par_test      | "par_test_AB"         | AB       |         1
- par_test | par_test      | par_test_ab           | ab       |         1
- par_test | "par_test_AB" | "par_test_AB_sp"      | sp       |         2
- par_test | "par_test_AB" | "par_test_AB_Sp"      | Sp       |         2
- par_test | par_test_ab   | "par_test_ab_SP"      | SP       |         2
  par_test | par_test      | "par_test_Dd"         | Dd       |         1
+ par_test | par_test      | par_test_ab           | ab       |         1
  par_test | "par_test_Dd" | "par_test_Dd_AAA"     | Dd_AAA   |         2
- par_test | "par_test_Dd" | "par_test_Dd_aaa"     | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_aBc"     | Dd_aBc   |         2
+ par_test | "par_test_Dd" | "par_test_Dd_aaa"     | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_abc"     | Dd_abc   |         2
  par_test | "par_test_AB" | "par_test_AB_NewSubP" | NewSubP  |         2
+ par_test | par_test_ab   | "par_test_ab_SP"      | SP       |         2
+ par_test | "par_test_AB" | "par_test_AB_Sp"      | Sp       |         2
+ par_test | "par_test_AB" | "par_test_AB_sp"      | sp       |         2
 (11 rows)
 
 ALTER TABLE PAR_TEST DROP SUBPARTITION "Sp";
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |  partparent   |         part          | partname | partlevel 
 ----------+---------------+-----------------------+----------+-----------
  par_test | par_test      | "par_test_AB"         | AB       |         1
- par_test | par_test      | par_test_ab           | ab       |         1
- par_test | "par_test_AB" | "par_test_AB_sp"      | sp       |         2
- par_test | par_test_ab   | "par_test_ab_SP"      | SP       |         2
  par_test | par_test      | "par_test_Dd"         | Dd       |         1
+ par_test | par_test      | par_test_ab           | ab       |         1
  par_test | "par_test_Dd" | "par_test_Dd_AAA"     | Dd_AAA   |         2
- par_test | "par_test_Dd" | "par_test_Dd_aaa"     | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_aBc"     | Dd_aBc   |         2
+ par_test | "par_test_Dd" | "par_test_Dd_aaa"     | Dd_aaa   |         2
  par_test | "par_test_Dd" | "par_test_Dd_abc"     | Dd_abc   |         2
  par_test | "par_test_AB" | "par_test_AB_NewSubP" | NewSubP  |         2
+ par_test | par_test_ab   | "par_test_ab_SP"      | SP       |         2
+ par_test | "par_test_AB" | "par_test_AB_sp"      | sp       |         2
 (10 rows)
 
 DROP TABLE PAR_TEST;
@@ -7419,7 +7419,7 @@ WHERE t.relid=c.oid;
 (4 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |    part     | partname | partlevel 
 ----------+------------+-------------+----------+-----------
  par_test | par_test   | par_test_p1 | p1       |         1
@@ -7469,7 +7469,7 @@ WHERE t.relid=c.oid;
 (7 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -7647,17 +7647,17 @@ WHERE t.relid=c.oid;
 (9 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |       part       | partname | partlevel 
 ----------+-------------+------------------+----------+-----------
  par_test | par_test    | par_test_p1      | p1       |         1
  par_test | par_test    | par_test_p2      | p2       |         1
  par_test | par_test    | par_test_p3      | p3       |         1
+ par_test | par_test_p3 | par_test_p3_tmp1 | p3_tmp1  |         2
+ par_test | par_test_p3 | par_test_p3_tmp2 | p3_tmp2  |         2
  par_test | par_test_p1 | par_test_p1_s1   | s1       |         2
  par_test | par_test_p1 | par_test_p1_s2   | s2       |         2
  par_test | par_test_p2 | par_test_p2_s3   | s3       |         2
- par_test | par_test_p3 | par_test_p3_tmp1 | p3_tmp1  |         2
- par_test | par_test_p3 | par_test_p3_tmp2 | p3_tmp2  |         2
 (8 rows)
 
 -- INTERVAL (10) BASEVALUE (55)
@@ -7713,24 +7713,24 @@ WHERE t.relid=c.oid;
 (18 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |   partparent    |         part         |  partname   | partlevel 
 ----------+-----------------+----------------------+-------------+-----------
  par_test | par_test        | par_test_p1          | p1          |         1
  par_test | par_test        | par_test_p2          | p2          |         1
  par_test | par_test        | par_test_p3          | p3          |         1
+ par_test | par_test        | par_test_sys_p1      | sys_p1      |         1
+ par_test | par_test        | par_test_sys_p2      | sys_p2      |         1
+ par_test | par_test        | par_test_sys_p3      | sys_p3      |         1
+ par_test | par_test_p3     | par_test_p3_tmp1     | p3_tmp1     |         2
+ par_test | par_test_p3     | par_test_p3_tmp2     | p3_tmp2     |         2
  par_test | par_test_p1     | par_test_p1_s1       | s1          |         2
  par_test | par_test_p1     | par_test_p1_s2       | s2          |         2
  par_test | par_test_p2     | par_test_p2_s3       | s3          |         2
- par_test | par_test_p3     | par_test_p3_tmp1     | p3_tmp1     |         2
- par_test | par_test_p3     | par_test_p3_tmp2     | p3_tmp2     |         2
- par_test | par_test        | par_test_sys_p1      | sys_p1      |         1
  par_test | par_test_sys_p1 | par_test_sys_p1_tmp1 | sys_p1_tmp1 |         2
  par_test | par_test_sys_p1 | par_test_sys_p1_tmp2 | sys_p1_tmp2 |         2
- par_test | par_test        | par_test_sys_p2      | sys_p2      |         1
  par_test | par_test_sys_p2 | par_test_sys_p2_tmp1 | sys_p2_tmp1 |         2
  par_test | par_test_sys_p2 | par_test_sys_p2_tmp2 | sys_p2_tmp2 |         2
- par_test | par_test        | par_test_sys_p3      | sys_p3      |         1
  par_test | par_test_sys_p3 | par_test_sys_p3_tmp1 | sys_p3_tmp1 |         2
  par_test | par_test_sys_p3 | par_test_sys_p3_tmp2 | sys_p3_tmp2 |         2
 (17 rows)
@@ -7985,7 +7985,7 @@ WHERE t.relid=c.oid;
 (6 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |    part     | partname | partlevel 
 ----------+------------+-------------+----------+-----------
  par_test | par_test   | par_test_p1 | p1       |         1
@@ -8018,7 +8018,7 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -8062,7 +8062,7 @@ WHERE t.relid=c.oid;
 (5 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -8098,7 +8098,7 @@ WHERE t.relid=c.oid;
 (7 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -8161,7 +8161,7 @@ WHERE t.relid=c.oid;
 (16 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent  |         part          | partname  | partlevel 
 ----------+-------------+-----------------------+-----------+-----------
  par_test | par_test    | par_test_p1           | p1        |         1
@@ -8222,7 +8222,7 @@ WHERE t.relid=c.oid;
 (28 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |    partparent    |            part             |  partname  | partlevel 
 ----------+------------------+-----------------------------+------------+-----------
  par_test | par_test         | par_test_p1                 | p1         |         1
@@ -8230,6 +8230,10 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test         | par_test_p3                 | p3         |         1
  par_test | par_test         | par_test_p4                 | p4         |         1
  par_test | par_test         | par_test_p5                 | p5         |         1
+ par_test | par_test         | par_test_sys_p12            | sys_p12    |         1
+ par_test | par_test         | par_test_sys_p3             | sys_p3     |         1
+ par_test | par_test         | par_test_sys_p6             | sys_p6     |         1
+ par_test | par_test         | par_test_sys_p9             | sys_p9     |         1
  par_test | par_test_p1      | par_test_p1_s1              | s1         |         2
  par_test | par_test_p1      | par_test_p1_s2              | s2         |         2
  par_test | par_test_p2      | par_test_p2_s3              | s3         |         2
@@ -8239,19 +8243,15 @@ FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
  par_test | par_test_p4      | par_test_p4_s7              | s7         |         2
  par_test | par_test_p4      | par_test_p4_s8              | s8         |         2
  par_test | par_test_p5      | par_test_p5_sys_subp1       | sys_subp1  |         2
- par_test | par_test_p5      | par_test_p5_sys_subp2       | sys_subp2  |         2
- par_test | par_test         | par_test_sys_p3             | sys_p3     |         1
- par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp4   | sys_subp4  |         2
- par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp5   | sys_subp5  |         2
- par_test | par_test         | par_test_sys_p6             | sys_p6     |         1
- par_test | par_test_sys_p6  | par_test_sys_p6_sys_subp7   | sys_subp7  |         2
- par_test | par_test_sys_p6  | par_test_sys_p6_sys_subp8   | sys_subp8  |         2
- par_test | par_test         | par_test_sys_p9             | sys_p9     |         1
  par_test | par_test_sys_p9  | par_test_sys_p9_sys_subp10  | sys_subp10 |         2
  par_test | par_test_sys_p9  | par_test_sys_p9_sys_subp11  | sys_subp11 |         2
- par_test | par_test         | par_test_sys_p12            | sys_p12    |         1
  par_test | par_test_sys_p12 | par_test_sys_p12_sys_subp13 | sys_subp13 |         2
  par_test | par_test_sys_p12 | par_test_sys_p12_sys_subp14 | sys_subp14 |         2
+ par_test | par_test_p5      | par_test_p5_sys_subp2       | sys_subp2  |         2
+ par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp4   | sys_subp4  |         2
+ par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp5   | sys_subp5  |         2
+ par_test | par_test_sys_p6  | par_test_sys_p6_sys_subp7   | sys_subp7  |         2
+ par_test | par_test_sys_p6  | par_test_sys_p6_sys_subp8   | sys_subp8  |         2
 (27 rows)
 
 -- drop multi partition
@@ -8293,22 +8293,22 @@ WHERE t.relid=c.oid;
 (14 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |    partparent    |            part             |  partname  | partlevel 
 ----------+------------------+-----------------------------+------------+-----------
  par_test | par_test         | par_test_p1                 | p1         |         1
  par_test | par_test         | par_test_p4                 | p4         |         1
+ par_test | par_test         | par_test_sys_p12            | sys_p12    |         1
+ par_test | par_test         | par_test_sys_p3             | sys_p3     |         1
  par_test | par_test_p1      | par_test_p1_s1              | s1         |         2
  par_test | par_test_p1      | par_test_p1_s2              | s2         |         2
  par_test | par_test_p4      | par_test_p4_s6              | s6         |         2
  par_test | par_test_p4      | par_test_p4_s7              | s7         |         2
  par_test | par_test_p4      | par_test_p4_s8              | s8         |         2
- par_test | par_test         | par_test_sys_p3             | sys_p3     |         1
- par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp4   | sys_subp4  |         2
- par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp5   | sys_subp5  |         2
- par_test | par_test         | par_test_sys_p12            | sys_p12    |         1
  par_test | par_test_sys_p12 | par_test_sys_p12_sys_subp13 | sys_subp13 |         2
  par_test | par_test_sys_p12 | par_test_sys_p12_sys_subp14 | sys_subp14 |         2
+ par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp4   | sys_subp4  |         2
+ par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp5   | sys_subp5  |         2
 (13 rows)
 
 -- values greater 105 also auto partition if partition not exist
@@ -8351,28 +8351,28 @@ WHERE t.relid=c.oid;
 (20 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot |    partparent    |            part             |  partname  | partlevel 
 ----------+------------------+-----------------------------+------------+-----------
  par_test | par_test         | par_test_p1                 | p1         |         1
  par_test | par_test         | par_test_p4                 | p4         |         1
+ par_test | par_test         | par_test_sys_p12            | sys_p12    |         1
+ par_test | par_test         | par_test_sys_p15            | sys_p15    |         1
+ par_test | par_test         | par_test_sys_p18            | sys_p18    |         1
+ par_test | par_test         | par_test_sys_p3             | sys_p3     |         1
  par_test | par_test_p1      | par_test_p1_s1              | s1         |         2
  par_test | par_test_p1      | par_test_p1_s2              | s2         |         2
  par_test | par_test_p4      | par_test_p4_s6              | s6         |         2
  par_test | par_test_p4      | par_test_p4_s7              | s7         |         2
  par_test | par_test_p4      | par_test_p4_s8              | s8         |         2
- par_test | par_test         | par_test_sys_p3             | sys_p3     |         1
- par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp4   | sys_subp4  |         2
- par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp5   | sys_subp5  |         2
- par_test | par_test         | par_test_sys_p12            | sys_p12    |         1
  par_test | par_test_sys_p12 | par_test_sys_p12_sys_subp13 | sys_subp13 |         2
  par_test | par_test_sys_p12 | par_test_sys_p12_sys_subp14 | sys_subp14 |         2
- par_test | par_test         | par_test_sys_p15            | sys_p15    |         1
  par_test | par_test_sys_p15 | par_test_sys_p15_sys_subp16 | sys_subp16 |         2
  par_test | par_test_sys_p15 | par_test_sys_p15_sys_subp17 | sys_subp17 |         2
- par_test | par_test         | par_test_sys_p18            | sys_p18    |         1
  par_test | par_test_sys_p18 | par_test_sys_p18_sys_subp19 | sys_subp19 |         2
  par_test | par_test_sys_p18 | par_test_sys_p18_sys_subp20 | sys_subp20 |         2
+ par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp4   | sys_subp4  |         2
+ par_test | par_test_sys_p3  | par_test_sys_p3_sys_subp5   | sys_subp5  |         2
 (19 rows)
 
 DROP TABLE PAR_TEST;
@@ -8415,7 +8415,7 @@ WHERE t.relid=c.oid;
 (6 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |    part     | partname | partlevel 
 ----------+------------+-------------+----------+-----------
  par_test | par_test   | par_test_p1 | p1       |         1
@@ -8448,7 +8448,7 @@ WHERE t.relid=c.oid;
 (10 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -8492,7 +8492,7 @@ WHERE t.relid=c.oid;
 (5 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1
@@ -8528,7 +8528,7 @@ WHERE t.relid=c.oid;
 (7 rows)
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
  partroot | partparent |      part       | partname | partlevel 
 ----------+------------+-----------------+----------+-----------
  par_test | par_test   | par_test_p1     | p1       |         1

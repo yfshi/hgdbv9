@@ -1161,15 +1161,15 @@ SELECT partrelid::regclass, automatic, composite, seqno, interval_expr, subpart_
  FROM pg_ora_part_tables WHERE partrelid = 'test_compise_no_temp'::regclass;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_range'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_range'::regclass order by partlevel, partname;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_list'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_list'::regclass order by partlevel, partname;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_hash'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_hash'::regclass order by partlevel, partname;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_no_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_no_temp'::regclass order by partlevel, partname;
 
 DROP TABLE TEST_RANGE;
 DROP TABLE TEST_LIST;
@@ -1201,24 +1201,24 @@ SUBPARTITION TEMPLATE
 SELECT partrelid::regclass, automatic, composite, seqno, interval_expr, subpart_template
  FROM pg_ora_part_tables WHERE partrelid = 'test_compise_with_temp'::regclass;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
 
 -- deleting a subpartition
 DROP TABLE test_compise_with_temp_sys_p2_tmp2;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
 
 -- deleting a partition automatically deletes all its subpartitions
 DROP TABLE test_compise_with_temp_sys_p1;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass;
+ FROM pg_ora_tab_partitions WHERE partroot = 'test_compise_with_temp'::regclass order by partlevel, partname;
 
 -- deleteing the partition table, all partitions and subpartitions are automatically deleted
 DROP TABLE test_compise_with_temp;
 SELECT partrelid::regclass, automatic, composite, seqno, interval_expr, subpart_template
  FROM pg_ora_part_tables;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
- FROM pg_ora_tab_partitions;
+ FROM pg_ora_tab_partitions order by partlevel, partname;
 
 --
 -- Oracle AUTOMATIC list partition
@@ -2142,7 +2142,7 @@ WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions
-WHERE partroot = 'par_test'::regclass;
+WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- In situations similar to the one described above, automatic partitioning will also handle it.
@@ -2167,7 +2167,7 @@ WHERE partrelid = 'par_test'::regclass;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions
-WHERE partroot = 'par_test'::regclass;
+WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- sys_subp1 subpartition is already explicitly occupied.
@@ -2187,7 +2187,7 @@ WHERE partrelid = 'par_test'::regclass;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions
-WHERE partroot = 'par_test'::regclass;
+WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- Oracle also reported an error: duplicate subpartition name.
@@ -2291,7 +2291,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST ADD PARTITION VALUES LESS THAN(50), PARTITION VALUES LESS THAN(MAXVALUE), PARTITION VALUES LESS THAN(55);
 ALTER TABLE PAR_TEST ADD PARTITION VALUES LESS THAN(50), PARTITION VALUES LESS THAN(55), PARTITION VALUES LESS THAN(MAXVALUE); --ok
@@ -2331,7 +2331,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- errors
 ALTER TABLE PAR_TEST ADD PARTITION P5 VALUES LESS THAN(10,11,12) (SUBPARTITION S3 VALUES LESS THAN(5), SUBPARTITION S4 VALUES LESS THAN(10));
@@ -2363,7 +2363,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST ADD PARTITION P8 VALUES(20,1); --error
 ALTER TABLE PAR_TEST ADD PARTITION VALUES(123), PARTITION VALUES(default), PARTITION VALUES(456); --error
@@ -2395,7 +2395,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST ADD
 PARTITION P4 VALUES(10,11,12)
@@ -2421,7 +2421,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- LIST-HASH
@@ -2448,7 +2448,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST ADD
 PARTITION P4 VALUES(10,11,12)
@@ -2477,7 +2477,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 --
@@ -2501,7 +2501,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- ORA-02149: Specified partition does not exist
 ALTER TABLE PAR_TEST DROP PARTITION p1,p2,p3,p4;
@@ -2533,7 +2533,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST ADD PARTITION p1 VALUES(13,14);
 ALTER TABLE PAR_TEST ADD PARTITION p2 VALUES(10,24);
@@ -2549,7 +2549,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop DEFAULT partition
 ALTER TABLE PAR_TEST DROP PARTITION p3,p4;
@@ -2563,7 +2563,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- automatic partition
 INSERT INTO PAR_TEST VALUES(666);	-- error
@@ -2579,7 +2579,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop auto create partition sys_p6
 ALTER TABLE PAR_TEST DROP PARTITION sys_p6;
@@ -2593,7 +2593,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- RANGE partition
@@ -2614,7 +2614,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- ORA-02149: Specified partition does not exist
 ALTER TABLE PAR_TEST DROP PARTITION p1,p2,p3,p4;
@@ -2646,7 +2646,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST ADD PARTITION p1 VALUES LESS THAN(20);	-- error
 ALTER TABLE PAR_TEST ADD PARTITION p1 VALUES LESS THAN(40);
@@ -2664,7 +2664,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop maxvalue partition
 ALTER TABLE PAR_TEST DROP PARTITION p5,p4;
@@ -2678,7 +2678,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- if droped partition has highger partition, update higher partition lower bound.
 ALTER TABLE PAR_TEST DROP PARTITION P1;
@@ -2692,7 +2692,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 INSERT INTO PAR_TEST VALUES(39);	-- ok
 DROP TABLE PAR_TEST;
@@ -2747,7 +2747,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 DROP TABLE PAR_TEST;
 
@@ -2775,7 +2775,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop partitions
 DROP TABLE PAR_TEST_P1, PAR_TEST_P2, PAR_TEST_P3;	-- error
@@ -2791,7 +2791,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 DROP TABLE PAR_TEST;
 
@@ -2869,7 +2869,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- list subpartition
@@ -2913,7 +2913,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- hash subpartition
@@ -3036,7 +3036,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- ORA-14764: Partitions cannot be truncated, dropped or merged with mixed syntax
 ALTER TABLE PAR_TEST DROP SUBPARTITION P1_1, for(8,8);
@@ -3057,7 +3057,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 INSERT INTO PAR_TEST VALUES(8, 8);
 SELECT * FROM PAR_TEST;
@@ -3100,7 +3100,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST RENAME PARTITION P1 TO P11;
 
@@ -3113,7 +3113,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- composite partition
@@ -3148,7 +3148,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST RENAME PARTITION P1 TO P11;
 
@@ -3161,7 +3161,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- ORA-14251: Specified subpartition does not exist
 ALTER TABLE PAR_TEST RENAME SUBPARTITION SSS TO P111;
@@ -3197,7 +3197,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 --
@@ -3427,7 +3427,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- Name missing for subpartition in template
 ALTER TABLE PAR_TEST SET SUBPARTITION TEMPLATE
@@ -3463,7 +3463,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST SET SUBPARTITION TEMPLATE();
 
@@ -3698,7 +3698,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- some error attach operator
 CREATE TABLE par_test_1 (
@@ -3812,7 +3812,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- create partition and subpartition relations
 CREATE TABLE par_test_p1 (
@@ -3895,7 +3895,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- syntax error, missing SUBPARTITION BY clause
@@ -3947,7 +3947,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- some error attach operator
 CREATE TABLE par_test_1 (
@@ -4031,7 +4031,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- create partition and subpartition relations
 CREATE TABLE par_test_p1 (
@@ -4119,7 +4119,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- add new partition with subpartiton template
 ALTER TABLE PAR_TEST ADD PARTITION P4 VALUES('X','Y');
@@ -4134,7 +4134,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 
 -- add new subpartition
@@ -4150,7 +4150,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE par_test;
 
 -- simple partition
@@ -4167,7 +4167,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 CREATE TABLE par_test_p1 (
     a integer,
@@ -4352,26 +4352,26 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 SELECT ora_get_subpartkeydef('par_test'::regclass);
 SELECT pg_get_expr(c.subpart_template, c.partrelid) from pg_ora_part_tables c where c.partrelid = 'par_test'::regclass;
 
 ALTER TABLE PAR_TEST ADD PARTITION "Dd" VALUES(10,11);
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST DROP PARTITION "aB";
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST MODIFY PARTITION "ab" ADD SUBPARTITION "NewSubP" VALUES LESS THAN(30,30);
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 ALTER TABLE PAR_TEST DROP SUBPARTITION "Sp";
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 END;
 
@@ -4490,7 +4490,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- INTERVAL (10) BASEVALUE (55)
 SELECT pg_get_partinterval_def('par_test'::regclass);
@@ -4515,7 +4515,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- INTERVAL (10) BASEVALUE (55)
 SELECT pg_get_partinterval_def('par_test'::regclass);
@@ -4599,7 +4599,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- INTERVAL (10) BASEVALUE (55)
 SELECT pg_get_partinterval_def('par_test'::regclass);
@@ -4624,7 +4624,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- INTERVAL (10) BASEVALUE (55)
 SELECT pg_get_partinterval_def('par_test'::regclass);
@@ -4733,7 +4733,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- auto generate partition
 INSERT INTO PAR_TEST VALUES(100,1);
@@ -4746,7 +4746,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop multi partition
 ALTER TABLE PAR_TEST DROP PARTITION P2,P3,P5,sys_p2,sys_p3;
@@ -4763,7 +4763,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- values greater 105 also auto partition if partition not exist
 INSERT INTO PAR_TEST VALUES(100,1);
@@ -4779,7 +4779,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- composite interval partition
@@ -4807,7 +4807,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- auto generate partition
 INSERT INTO PAR_TEST VALUES(100,1);
@@ -4820,7 +4820,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop multi partition
 ALTER TABLE PAR_TEST DROP PARTITION P2,P3,P5,sys_p6,sys_p9;
@@ -4837,7 +4837,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- values greater 105 also auto partition if partition not exist
 INSERT INTO PAR_TEST VALUES(100,1);
@@ -4853,7 +4853,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
 
 -- datetime datatype interval expr
@@ -4879,7 +4879,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- auto generate partition
 INSERT INTO PAR_TEST VALUES(date'2040-1-1',1);
@@ -4892,7 +4892,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- drop multi partition
 ALTER TABLE PAR_TEST DROP PARTITION P2,P3,P5,sys_p2,sys_p3;
@@ -4909,7 +4909,7 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 
 -- values greater 105 also auto partition
 INSERT INTO PAR_TEST VALUES(date'2040-1-1',1);
@@ -4925,5 +4925,5 @@ FROM pg_partition_tree('par_test') t, pg_class c
 WHERE t.relid=c.oid;
 
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
-FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass;
+FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
