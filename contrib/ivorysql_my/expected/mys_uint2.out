@@ -4,15 +4,15 @@ create table t1(c1 smallint UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values('a111') ;
 ERROR:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
@@ -84,9 +84,19 @@ select cast(65535 as uint2);
 (1 row)
 
 select cast(65536 as uint2);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint2 
+-------
+ 65535
+(1 row)
+
 select cast(99999999 as uint2);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint2 
+-------
+ 65535
+(1 row)
+
 select cast(123.456 as uint2);
  uint2 
 -------
@@ -114,7 +124,12 @@ WARNING:  Truncated incorrect DECIMAL value: '-32768.123'
 (1 row)
 
 select cast(-99999999 as uint2);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint2 
+-------
+ 0
+(1 row)
+
 --smallint[(M)]
 create table t1 (a smallint[-1] UNSIGNED); --fail
 ERROR:  syntax error at or near "-"
@@ -256,15 +271,15 @@ create table t1(c1 int2 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from t1;
  c1 
 ----
@@ -379,15 +394,15 @@ create table t1(c1 smallint UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values('a111') ;
 WARNING:  Incorrect integer value: 'a111' for column.
 LINE 1: insert into t1 values('a111') ;
@@ -517,15 +532,15 @@ create table t1(c1 int2 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 select * from t1;
   c1   
 -------
@@ -854,6 +869,46 @@ select a::uint2 + b from tb2;
 
 drop table tb2;
 set SQL_MODE to default;
+--uint2 -> signed/unsigned (int8/uint8)
+select 1000::uint2::int8;
+ int8 
+------
+ 1000
+(1 row)
+
+select 1000::uint2::uint8;
+ uint8 
+-------
+ 1000
+(1 row)
+
+select convert(10000::uint2, signed);
+ int8  
+-------
+ 10000
+(1 row)
+
+select cast(10000::uint2 as unsigned);
+ uint8 
+-------
+ 10000
+(1 row)
+
+create table test1(a smallint unsigned);
+insert into test1 values(5000);
+select convert(a, signed) from test1;
+  a   
+------
+ 5000
+(1 row)
+
+select cast(a as unsigned) from test1;
+  a   
+------
+ 5000
+(1 row)
+
+drop table test1;
 -- oper
 --------------------------------------------------
 CREATE TABLE t2 (a smallint UNSIGNED, b smallint UNSIGNED);

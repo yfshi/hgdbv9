@@ -61,6 +61,32 @@ CREATE CAST (ivymy.mediumint AS pg_catalog.int4)
 WITHOUT FUNCTION
 AS IMPLICIT;
 
+/* Begin - BUG#Z7200 */
+CREATE FUNCTION ivymy.int3_int8(ivymy.mediumint)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','int3_int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mediumint AS pg_catalog.int8)
+WITH FUNCTION ivymy.int3_int8(ivymy.mediumint)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.int3_uint8(ivymy.mediumint, int, bool, int8)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','int3_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mediumint AS ivymy.uint8)
+WITH FUNCTION ivymy.int3_uint8(ivymy.mediumint, int, bool, int8)
+AS ASSIGNMENT;
+/* End - BUG#Z7200 */
+
 CREATE FUNCTION ivymy.int8_int3(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mediumint
 AS 'MODULE_PATHNAME','int8_int3'

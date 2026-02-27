@@ -315,6 +315,19 @@ select a::uint2 + b from tb2;
 drop table tb2;
 
 set SQL_MODE to default;
+
+--uint2 -> signed/unsigned (int8/uint8)
+select 1000::uint2::int8;
+select 1000::uint2::uint8;
+select convert(10000::uint2, signed);
+select cast(10000::uint2 as unsigned);
+
+create table test1(a smallint unsigned);
+insert into test1 values(5000);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 -- oper
 --------------------------------------------------
 CREATE TABLE t2 (a smallint UNSIGNED, b smallint UNSIGNED);

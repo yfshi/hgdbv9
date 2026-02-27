@@ -4,17 +4,17 @@ create table t1(c1 mediumint UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(16777216);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(16777215);
 insert into t1 values(65535);
 insert into t1 values(255);
@@ -207,17 +207,17 @@ create table t1(c1 int3 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(16777216);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(16777215);
 insert into t1 values(65535);
 insert into t1 values(255);
@@ -338,17 +338,17 @@ create table t1(c1 mediumint UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(16777216);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(16777215);
 insert into t1 values(65535);
 insert into t1 values(255);
@@ -485,17 +485,17 @@ create table t1(c1 int3 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(16777216);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(16777215);
 insert into t1 values(65535);
 insert into t1 values(255);
@@ -831,6 +831,46 @@ select a::uint3 + b from tb3;
 
 drop table tb3;
 set SQL_MODE to default;
+--uint3 -> signed/unsigned (int8/uint8)
+select 8000000::int3::int8;
+  int8   
+---------
+ 8000000
+(1 row)
+
+select 8000000::int3::uint8;
+  uint8  
+---------
+ 8000000
+(1 row)
+
+select convert(150000::uint3, signed);
+  int8  
+--------
+ 150000
+(1 row)
+
+select cast(150000::uint3 as unsigned);
+ uint8  
+--------
+ 150000
+(1 row)
+
+create table test1(a mediumint unsigned);
+insert into test1 values(5000000);
+select convert(a, signed) from test1;
+    a    
+---------
+ 5000000
+(1 row)
+
+select cast(a as unsigned) from test1;
+    a    
+---------
+ 5000000
+(1 row)
+
+drop table test1;
 -- oper
 --------------------------------------------------
 CREATE TABLE t2 (a mediumint UNSIGNED, b mediumint UNSIGNED);
@@ -1660,9 +1700,19 @@ select cast(16777215 as uint3);
 (1 row)
 
 select cast(16777216 as uint3);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+  uint3   
+----------
+ 16777215
+(1 row)
+
 select cast(99999999 as uint3);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+  uint3   
+----------
+ 16777215
+(1 row)
+
 select cast(123.456 as uint3);
  uint3 
 -------
@@ -1683,9 +1733,19 @@ WARNING:  Truncated incorrect DECIMAL value: '-7200.145'
 (1 row)
 
 select cast(-8388609 as uint3);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint3 
+-------
+ 0
+(1 row)
+
 select cast(-99999999 as uint3);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint3 
+-------
+ 0
+(1 row)
+
 set sql_mode='';
 select cast(16777216 as uint3);
 WARNING:  integer unsigned out of range

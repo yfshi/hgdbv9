@@ -314,6 +314,19 @@ select a::uint3 + b from tb3;
 drop table tb3;
 
 set SQL_MODE to default;
+
+--uint3 -> signed/unsigned (int8/uint8)
+select 8000000::int3::int8;
+select 8000000::int3::uint8;
+select convert(150000::uint3, signed);
+select cast(150000::uint3 as unsigned);
+
+create table test1(a mediumint unsigned);
+insert into test1 values(5000000);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 -- oper
 --------------------------------------------------
 CREATE TABLE t2 (a mediumint UNSIGNED, b mediumint UNSIGNED);

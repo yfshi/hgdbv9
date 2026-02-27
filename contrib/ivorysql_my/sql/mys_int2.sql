@@ -118,6 +118,20 @@ CREATE TABLE t5(c1 SMALLINT(1) NULL);
 \d t5;
 DROP TABLE t1,t2,t3,t4,t5;
 
+--int2 -> signed/unsigned (int8/uint8)
+select 10::int2::int8;
+select 10::int2::uint8;
+select (-2)::int2::int8;
+select (-2)::int2::uint8;
+select convert((-3)::smallint, signed);
+select cast((-3)::smallint as unsigned);
+
+create table test1(a smallint);
+insert into test1 values(-100);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 --operator
 create table tb_test(id int2);
 insert into tb_test values (123),(-121),(0);

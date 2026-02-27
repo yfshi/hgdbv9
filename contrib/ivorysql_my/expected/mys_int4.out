@@ -352,6 +352,58 @@ CREATE TABLE t5(c1 INT(1) NULL);
  c1     | integer |           |          | 
 
 DROP TABLE t1,t2,t3,t4,t5;
+--int4 -> signed/unsigned (int8/uint8)
+select 500::int4::int8;
+ int8 
+------
+  500
+(1 row)
+
+select 500::int4::uint8;
+ uint8 
+-------
+ 500
+(1 row)
+
+select (-6000)::int4::int8;
+ int8  
+-------
+ -6000
+(1 row)
+
+select (-6000)::int4::uint8;
+        uint8         
+----------------------
+ 18446744073709545616
+(1 row)
+
+select convert((-7000)::int, signed);
+ int8  
+-------
+ -7000
+(1 row)
+
+select cast((-7000)::int as unsigned);
+        uint8         
+----------------------
+ 18446744073709544616
+(1 row)
+
+create table test1(a int);
+insert into test1 values(-5000);
+select convert(a, signed) from test1;
+   a   
+-------
+ -5000
+(1 row)
+
+select cast(a as unsigned) from test1;
+          a           
+----------------------
+ 18446744073709546616
+(1 row)
+
+drop table test1;
 --operator
 create table tb_test(id int);
 insert into tb_test values (2147483647),(-2147483648),(0),(1);

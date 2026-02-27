@@ -93,7 +93,7 @@ SET typmodout=(SELECT oid FROM pg_proc WHERE proname='uint2_typmodout')
 WHERE oid = 9207;
 
 -- Compatible MySQL Cast
-CREATE FUNCTION ivymy.int8_uint2(pg_catalog.int8)
+CREATE FUNCTION ivymy.int8_uint2(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.uint2
 AS 'MODULE_PATHNAME','int8_uint2'
 LANGUAGE C
@@ -102,10 +102,10 @@ STRICT
 IMMUTABLE;
 
 CREATE CAST (pg_catalog.int8 AS ivymy.uint2)
-WITH FUNCTION ivymy.int8_uint2(pg_catalog.int8)
+WITH FUNCTION ivymy.int8_uint2(pg_catalog.int8, int, bool, int8)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.int4_uint2(pg_catalog.int4)
+CREATE FUNCTION ivymy.int4_uint2(pg_catalog.int4, int, bool, int8)
 RETURNS ivymy.uint2
 AS 'MODULE_PATHNAME','int4_uint2'
 LANGUAGE C
@@ -114,10 +114,10 @@ STRICT
 IMMUTABLE;
 
 CREATE CAST (pg_catalog.int4 AS ivymy.uint2)
-WITH FUNCTION ivymy.int4_uint2(pg_catalog.int4)
+WITH FUNCTION ivymy.int4_uint2(pg_catalog.int4, int, bool, int8)
 AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.int2_uint2(pg_catalog.int2)
+CREATE FUNCTION ivymy.int2_uint2(pg_catalog.int2, int, bool, int8)
 RETURNS ivymy.uint2
 AS 'MODULE_PATHNAME','int2_uint2'
 LANGUAGE C
@@ -126,7 +126,7 @@ STRICT
 IMMUTABLE;
 
 CREATE CAST (pg_catalog.int2 AS ivymy.uint2)
-WITH FUNCTION ivymy.int2_uint2(pg_catalog.int2)
+WITH FUNCTION ivymy.int2_uint2(pg_catalog.int2, int, bool, int8)
 AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.numeric AS ivymy.uint2)
@@ -207,6 +207,20 @@ AS ASSIGNMENT;
 -- cast (uint2 as uint8)
 --
 CREATE CAST (ivymy.uint2 AS ivymy.uint8) WITH INOUT AS IMPLICIT;
+
+/* Begin - BUG#Z7200 */
+CREATE FUNCTION ivymy.uint2_int8(ivymy.uint2)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','uint2_int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint2 AS pg_catalog.int8)
+WITH FUNCTION ivymy.uint2_int8(ivymy.uint2)
+AS ASSIGNMENT;
+/* End - BUG#Z7200 */
 
 /* CREATE OPERATOR */
 ----function eq

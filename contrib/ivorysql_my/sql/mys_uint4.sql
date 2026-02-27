@@ -381,6 +381,19 @@ select a::uint4 + b from tb4;
 drop table tb4;
 
 set SQL_MODE to default;
+
+--uint4 -> signed/unsigned (int8/uint8)
+select 4294967295::uint4::int8;
+select 4294967295::uint4::uint8;
+select convert(4294967295::uint4, signed);
+select cast(4294967295::uint4 as unsigned);
+
+create table test1(a uint4);
+insert into test1 values(5000000);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 -- oper
 ---=
 select cast(111 as int UNSIGNED)  = 111;

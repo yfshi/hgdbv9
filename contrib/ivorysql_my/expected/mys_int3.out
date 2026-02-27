@@ -557,6 +557,58 @@ select a::int3 + b from tb3;
 
 drop table tb3;
 set SQL_MODE to default;
+--int3 -> signed/unsigned (int8/uint8)
+select 10::int3::int8;
+ int8 
+------
+   10
+(1 row)
+
+select 10::int3::uint8;
+ uint8 
+-------
+ 10
+(1 row)
+
+select (-100)::int3::int8;
+ int8 
+------
+ -100
+(1 row)
+
+select (-100)::int3::uint8;
+        uint8         
+----------------------
+ 18446744073709551516
+(1 row)
+
+select convert((-1000)::mediumint, signed);
+ int8  
+-------
+ -1000
+(1 row)
+
+select cast((-1000)::mediumint as unsigned);
+        uint8         
+----------------------
+ 18446744073709550616
+(1 row)
+
+create table test1(a mediumint);
+insert into test1 values(-50);
+select convert(a, signed) from test1;
+  a  
+-----
+ -50
+(1 row)
+
+select cast(a as unsigned) from test1;
+          a           
+----------------------
+ 18446744073709551566
+(1 row)
+
+drop table test1;
 --expr
 create table test1(a int3, b int3 default 3);
 insert into test1 values();
