@@ -4345,6 +4345,32 @@ main(int argc, char *argv[])
 		destroyPQExpBuffer(start_db_cmd);
 	}
 
+	/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifndef WIN32
+	{
+		int rc;
+		char my_exec_path[MAXPGPATH];
+		char command[MAXPGPATH];
+		char *lastsep = NULL;
+		if (find_my_exec(argv[0], my_exec_path) < 0)
+		{
+			fprintf(stderr, _("%s: could not find own program executable\n"), progname);
+			exit(1);
+		}
+		lastsep = strrchr(my_exec_path, '/');
+		if (lastsep)
+			*lastsep = '\0';
+		snprintf(command, MAXPGPATH, "bash %s/hg_funcheck.sh --init", my_exec_path);
+		rc = system(command);
+		if (rc != 0)
+		{
+			printf(_("Initialization integrity check failed.\n"));
+			exit(-1);
+		}
+		printf(_("Initialization integrity check successfully.\n"));
+	}
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 
 	success = true;
 	return 0;
