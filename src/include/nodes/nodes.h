@@ -630,8 +630,11 @@ typedef enum NodeTag
 	/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	T_ProtocolPg,
-	T_ProtocolMysql
+	T_ProtocolMysql,
 	/* End - Req: SRS-MYSQL-PROTOCOL */
+	/* Begin - OA-REQ-2132 */
+	T_RatioToReportCall
+	/* End - OA-REQ-2132 */
 } NodeTag;
 
 /*

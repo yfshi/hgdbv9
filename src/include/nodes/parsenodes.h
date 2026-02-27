@@ -4683,6 +4683,16 @@ typedef struct PurgeStmt {
 } PurgeStmt;
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
+/* Begin - OA-REQ-2132 */
+typedef struct RatioToReportCall
+{
+	NodeTag		type;
+	List		*args;			/* the arguments (list of exprs) */
+	struct WindowDef	*over;		/* OVER clause, if any */
+	int		location;		/* token location, or -1 if unknown */
+} RatioToReportCall;
+/* End - OA-REQ-2132 */
+
 /* Begin - ReqID:SRS-MYSQL-SET */
 typedef enum SetKindType
 {

@@ -135,6 +135,187 @@ set_merge_on_attrno(ParseState *pstate, char *colname)
 }
 /* End - Bug#Z167 */
 
+/* Begin - OA-REQ-2132 */
+
+/* OracleSystemTypeName()  -- refer ora_gram.y
+ *  Build a properly-qualified reference to a built-in type with oracle schema.
+ */
+static TypeName *
+OracleSystemTypeName(char *name)
+{
+	return makeTypeNameFromNameList(list_make2(makeString("sys"),
+											   makeString(name)));
+}
+
+/* OracleSystemFuncName() -- refer ora_gram.y */
+static List *
+OracleSystemFuncName(char *name)
+{
+        return list_make2(makeString("sys"), makeString(name));
+}
+
+/*
+ * transformRatioToReportExpr()
+ * rewrite function ratio_ro_report() over () to
+ * a / sum(a) over(?)
+ */
+static Node *
+transformRatioToReportExpr(ParseState *pstate, RatioToReportCall *rtrc)
+{
+	Node		*arg;
+	WindowDef	*wd;
+	FuncCall	*sum_fc;
+	TypeName	*typname;
+	Node	*numerator;
+	Node	*denominator;
+	Node	*transformed_arg;
+	Node	*sum_cast;
+	Node	*result;
+	Node	*node_0;
+	Oid	arg_type;
+	int	location = rtrc->location;
+	Oid	target_oid = NUMBEROID;
+
+	/* ratio_to_report() support one arg */
+	/* oracle error msg 'invalid number of arguments' */
+	if (list_length(rtrc->args) != 1)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("invalid number of arguments"),
+				 parser_errposition(pstate, location)));
+	}
+
+	/* get the arg list */
+	arg = (Node *) linitial(rtrc->args);
+
+	/* 1. get column type of xx in ratio_to_report(xx) */
+	transformed_arg = transformExprRecurse(pstate, copyObject(arg));
+	arg_type = exprType(transformed_arg);
+
+	/* check if expr could cast to number type */
+	if (!can_coerce_type(1, &arg_type, &target_oid, COERCION_IMPLICIT))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("inconsistent datatypes: expected NUMBER got %s", format_type_be(arg_type)),
+				 parser_errposition(pstate, location)));
+	}
+
+	/* 2. handle over() function using WindowDef */
+	if (rtrc->over)
+	{
+		wd = castNode(WindowDef, copyObject(rtrc->over));
+	}
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("missing window specification for this function"),
+				 parser_errposition(pstate, location)));
+	}
+	wd->frameOptions = FRAMEOPTION_DEFAULTS;
+	wd->orderClause = NIL;
+	wd->location = location;
+
+	/* 3. create a new sys.sum(arg) OVER (?) */
+	sum_fc = makeFuncCall(OracleSystemFuncName("sum"),
+				list_make1(copyObject(arg)),
+				COERCE_EXPLICIT_CALL, location);
+	sum_fc->over = wd;
+
+	/* new a '0' */
+	node_0 = (Node *)ivy_makeStringConst("0", location);
+
+	/*
+	 * 4. for different type, using different expr
+	 * if there have mismatch for the precision
+	 * there have an implicit transfer
+	 * so when expalin the SQL, showing more than we rewritted
+	 */
+	switch (arg_type)
+	{
+		/*
+		 * for BINARY_FLOAT:
+		 * 	as sys.sum(binary_float) = sys.sum((bd)::number)
+		 * 	so binary_float / sys.sum(binary_float), result is binary_float
+		 * 	keep the same with select (binary_float)/sys.sum(binary_float) over()
+		 */
+		case BINARY_FLOATOID:
+		{
+			/*
+			 * sum(binary_float) == sum((bd)::number)
+			 */
+			/* b */
+			numerator = copyObject(arg);
+			/* NULLIF(...) */
+			denominator = (Node *)makeA_Expr(AEXPR_NULLIF,
+						list_make1(makeString("=")),
+						(Node *)sum_fc,
+						node_0,
+						location);
+			result = (Node *)makeSimpleA_Expr(AEXPR_OP, "/", numerator, denominator, location);
+
+			break;
+		}
+		/*
+		 * for BINARY_DOUBLE:
+		 * 	as sys.sum(binary_double) --> sys.sum((binary_double)::number)
+		 * 	so binary_double / sum(binary_double), result is binary_double
+		 * 	ratio_to_report(binary_double), result is binary_double
+		 */
+		case BINARY_DOUBLEOID:
+		{
+			/* sum(binary_double) == sum((bd)::double precision) */
+			/* b */
+			numerator = copyObject(arg);
+			/* NULLIF(...) */
+			denominator = (Node *)makeA_Expr(AEXPR_NULLIF,
+						list_make1(makeString("=")),
+						(Node *)sum_fc,
+						node_0,
+						location);
+			result = (Node *)makeSimpleA_Expr(AEXPR_OP, "/", numerator, denominator, location);
+
+			break;
+		}
+		default: /* NUMBER */
+		{
+			/*
+			 * other type: Integer, Numeric, Varchar2, timestamp, interval...
+			 * (a)::number / NULLIF(sum(a) OVER (?)::number, '0')
+			 */
+
+			/* numeric without typmod */
+			typname = OracleSystemTypeName("number");
+			typname->typmods = NIL;
+			typname->typemod = -1;
+			typname->location = location;
+
+			/* (a)::number */
+			numerator = ivy_makeTypeCast(copyObject(arg), typname, location);
+
+			/* sum(a) OVER (?)::numeric */
+			sum_cast = (Node *)ivy_makeTypeCast((Node *)sum_fc, typname, location);
+ 
+			/* NULLIF(sum::numeric, '0') */
+			denominator = (Node *)makeA_Expr(AEXPR_NULLIF,
+							list_make1(makeString("=")),
+							sum_cast,
+							node_0,
+							location);
+
+			result = (Node *)makeSimpleA_Expr(AEXPR_OP, "/", numerator, denominator, location);
+
+			break;
+		}
+	}
+
+	/* 5. A_Expr / */
+	return result;
+}
+/* End - OA-REQ-2132 */
+
 /*
  * transformExpr -
  *	  Analyze and transform expressions. Type checking and type casting is
@@ -305,7 +486,14 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 		case T_FuncCall:
 			result = transformFuncCall(pstate, (FuncCall *) expr);
 			break;
-
+		/* Begin - OA-REQ-2132 */
+		case T_RatioToReportCall:
+		{
+			Node *rewritten = transformRatioToReportExpr(pstate, (RatioToReportCall *)expr);
+			result = transformExprRecurse(pstate, rewritten);
+			break;
+		}
+		/* End - OA-REQ-2132 */
 		/* Begin - ReqID:SRS-SQL-PROC */
 		case T_ColumnRefOrFuncCall:
 			result = transformColumnRefOrFunCall(pstate, ((ColumnRefOrFuncCall *)expr));

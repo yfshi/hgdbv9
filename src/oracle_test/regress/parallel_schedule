@@ -275,3 +275,7 @@ test: ora_insert_all_first_usewith
 #/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
 test: ora_partition
 #/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+#/* Begin - OA-REQ-2132 */
+test: ora_ratio_to_report
+#/* End - OA-REQ-2132 */
