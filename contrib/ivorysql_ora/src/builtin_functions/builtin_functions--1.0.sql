@@ -1570,3 +1570,27 @@ PARALLEL SAFE
 STRICT
 STABLE;
 /* End - ReqID:RSR-SQL-Partition-interval */
+
+/* Begin - OA-REQ-2129 */
+CREATE OR REPLACE FUNCTION sys.ora_wm_concat_transfn(internal, varchar2)
+RETURNS internal
+AS 'MODULE_PATHNAME', 'wm_concat_transfn'
+LANGUAGE c IMMUTABLE PARALLEL SAFE;
+
+CREATE FUNCTION sys.ora_wm_concat_finalfn(internal)
+RETURNS varchar2
+AS 'MODULE_PATHNAME','orafce_listagg_finalfn'
+LANGUAGE C IMMUTABLE;
+
+/*
+ * Undocumented function wm_concat - removed from Oracle 12c
+ */
+CREATE schema wmsys;
+GRANT USAGE ON SCHEMA wmsys to public;
+CREATE AGGREGATE wmsys.wm_concat(varchar2) (
+  SFUNC=sys.ora_wm_concat_transfn,
+  STYPE=internal,
+  FINALFUNC=sys.ora_wm_concat_finalfn,
+  PARALLEL=SAFE
+);
+/* End - OA-REQ-2129 */

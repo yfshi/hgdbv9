@@ -119,7 +119,8 @@ ORA_REGRESS = \
 	ora_dbms_output \
 	ora_collection \
 	ora_buildin_func \
-	ora_bulk_collect
+	ora_bulk_collect \
+	ora_wmsys_wmconcat
 
 #/* Begin - ReqID:SRS-PLSQL-Collection */
 PG_CPPFLAGS = -I$../src/tstl2cl/include -I$../src/tstl2cl -I$(srcdir) -I$../src/include
