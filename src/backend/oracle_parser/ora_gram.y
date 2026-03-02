@@ -815,7 +815,7 @@ static bool isAconstNode(Node *node);
 	FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */ FLOAT_P FOLLOWING FOLLOWS FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
-	GENERATED GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
+	GENERATED GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPING_ID /* OA-REQ-2132 */ GROUPS
 
 	HANDLER HAVING HEADER_P HOLD HOUR_P
 
@@ -19875,6 +19875,15 @@ c_expr:		columnref								{ $$ = $1; }
 				  g->location = @1;
 				  $$ = (Node *)g;
 			  }
+			/* Begin - OA-REQ-2132 */
+			| GROUPING_ID '(' expr_list ')'
+			  {
+				  GroupingFunc *g = makeNode(GroupingFunc);
+				  g->args = $3;
+				  g->location = @1;
+				  $$ = (Node *)g;
+			  }
+			/* End - OA-REQ-2132 */
 			/* Begin - BUG#M0000201: support question marks as binding variables */
 			| QUESTION_MARK
 				{
@@ -22959,6 +22968,7 @@ col_name_keyword:
 			| FLOAT_P
 			| GREATEST
 			| GROUPING
+			| GROUPING_ID	/* OA-REQ-2132 */
 			| INOUT
 			| INT_P
 			| INTEGER
@@ -23353,6 +23363,7 @@ bare_label_keyword:
 			| GRANTED
 			| GREATEST
 			| GROUPING
+			| GROUPING_ID	/* OA-REQ-2132 */
 			| GROUPS
 			| HANDLER
 			| HASH_P	/* ReqID:SRS-SQL-PROC */

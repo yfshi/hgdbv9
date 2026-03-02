@@ -299,3 +299,47 @@ set ivorysql.compatbile_mode = 'pg';
 set ivorysql.compatible_mode = 'oracle';
 --error
 set ivorysql.compatible_mode = 'mysql';
+
+/* Begin - OA-REQ-2133 */
+-- =
+select 1=+1;
+select 1=-1;
+select 1=+-1;
+select 1=-+1;
+
+-- !=
+select 1!=+1;
+select 1!=-1;
+select 1!=+-1;
+select 1!=-+1;
+
+-- operator does not exist
+select 1!-1;
+select 1!==1;
+select 1=!=1;
+/* End - OA-REQ-2133 */
+
+/* Begin - OA-REQ-2132 */
+CREATE TABLE sales_oa_2132(channel_id NUMBER, promo_id NUMBER, amount_sold NUMBER);
+INSERT INTO sales_oa_2132 VALUES(2,200, 111.1);
+INSERT INTO sales_oa_2132 VALUES(2,999, 111.1);
+INSERT INTO sales_oa_2132 VALUES(2,999, 222.2);
+INSERT INTO sales_oa_2132 VALUES(3,300, 111.1);
+INSERT INTO sales_oa_2132 VALUES(3,999, 333.3);
+INSERT INTO sales_oa_2132 VALUES(3,999, 444.4);
+INSERT INTO sales_oa_2132 VALUES(4,400, 111.1);
+INSERT INTO sales_oa_2132 VALUES(4,999, 555.5);
+INSERT INTO sales_oa_2132 VALUES(4,999, 666.6);
+
+SELECT channel_id, promo_id, sum(amount_sold) s_sales,
+       GROUPING(channel_id) gc,
+       GROUPING(promo_id) gp,
+       GROUPING(channel_id, promo_id) gcp,
+       GROUPING(promo_id, channel_id) gpc
+  FROM sales_oa_2132
+  WHERE promo_id > 496
+  GROUP BY CUBE(channel_id, promo_id)
+  ORDER BY channel_id, promo_id, s_sales, gc;
+
+DROP TABLE sales_oa_2132;
+/* End - OA-REQ-2132 */
