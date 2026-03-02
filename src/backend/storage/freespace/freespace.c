@@ -653,6 +653,10 @@ fsm_extend(Relation rel, BlockNumber fsm_nblocks)
 	 */
 	reln = RelationGetSmgr(rel);
 
+	if (save_relation_hook)
+	{
+		save_relation_hook(rel);
+	}
 	/*
 	 * Create the FSM file first if it doesn't exist.  If
 	 * smgr_cached_nblocks[FSM_FORKNUM] is positive then it must exist, no

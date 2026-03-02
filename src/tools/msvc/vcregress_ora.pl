@@ -515,6 +515,7 @@ sub contribcheck
 		next if ($module eq "xml2"       && !defined($config->{xml}));
 		next if ($module eq "sepgsql");
 		next if ($module eq "gb18030_2022");	# BUGM0000294
+		next if ($module eq "diskquota");
 		
 		subdircheck($module);
 		my $status = $? >> 8;

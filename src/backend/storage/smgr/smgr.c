@@ -89,6 +89,17 @@ static const f_smgr smgrsw[] = {
 static const int NSmgr = lengthof(smgrsw);
 
 /*
+ * Hook for plugins to extend smgr functions.
+ * for example, collect statistics from smgr functions
+ * via recording the active relfilenode information.
+ */
+smgrcreate_hook_type smgrcreate_hook = NULL;
+smgrextend_hook_type smgrextend_hook = NULL;
+smgrtruncate_hook_type smgrtruncate_hook = NULL;
+smgrdounlinkall_hook_type smgrdounlinkall_hook = NULL;
+smgr_save_relation_type save_relation_hook = NULL;
+
+/*
  * Each backend has a hashtable that stores all extant SMgrRelation objects.
  * In addition, "unowned" SMgrRelation objects are chained together in a list.
  */
@@ -391,6 +402,11 @@ smgrdounlinkall(SMgrRelation *rels, int nrels, bool isRedo)
 	if (nrels == 0)
 		return;
 
+	if (smgrdounlinkall_hook)
+	{
+		(*smgrdounlinkall_hook)(rels, nrels, isRedo);
+	}
+
 	/*
 	 * Get rid of any remaining buffers for the relations.  bufmgr will just
 	 * drop them without bothering to write the contents.
@@ -463,6 +479,11 @@ void
 smgrextend(SMgrRelation reln, ForkNumber forknum, BlockNumber blocknum,
 		   char *buffer, bool skipFsync)
 {
+	if (smgrextend_hook)
+	{
+		(*smgrextend_hook)(reln, forknum, blocknum, buffer, skipFsync);
+	}
+
 	smgrsw[reln->smgr_which].smgr_extend(reln, forknum, blocknum,
 										 buffer, skipFsync);
 
@@ -622,6 +643,11 @@ smgrtruncate2(SMgrRelation reln, ForkNumber *forknum, int nforks,
 			  BlockNumber *old_nblocks, BlockNumber *nblocks)
 {
 	int			i;
+
+	if (smgrtruncate_hook)
+	{
+		(*smgrtruncate_hook)(reln, *forknum, *nblocks);
+	}
 
 	/*
 	 * Get rid of any buffers for the about-to-be-deleted blocks. bufmgr will

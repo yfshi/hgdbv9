@@ -416,6 +416,8 @@ fill_seq_with_data(Relation rel, HeapTuple tuple)
 	if (rel->rd_rel->relpersistence == RELPERSISTENCE_UNLOGGED)
 	{
 		SMgrRelation srel;
+		if (save_relation_hook)
+			save_relation_hook(rel);
 
 		srel = smgropen(rel->rd_node, InvalidBackendId);
 		smgrcreate(srel, INIT_FORKNUM, false);

@@ -121,4 +121,27 @@ extern void AtEOXact_SMgr(void);
 /* Begin - BUG:M0000325 */
 extern void smgrdounlinkallsetlog(SMgrRelationSetLog *rels, int nrels, bool isRedo);
 /* End - BUG:M0000325 */
+
+/*
+ * Hook for plugins to extend smgr functions.
+ * for example, collect statistics from smgr functions
+ * via recording the active relfilenode information.
+ */
+typedef void (*smgrcreate_hook_type)(SMgrRelation reln, ForkNumber forknum,
+									 bool isRedo);
+extern PGDLLIMPORT smgrcreate_hook_type smgrcreate_hook;
+typedef void (*smgrextend_hook_type)(SMgrRelation reln, ForkNumber forknum,
+									 BlockNumber blocknum,
+									 char *buffer, bool skipFsync);
+extern PGDLLIMPORT smgrextend_hook_type smgrextend_hook;
+typedef void (*smgrtruncate_hook_type)(SMgrRelation reln, ForkNumber forknum,
+									   BlockNumber nblocks);
+extern PGDLLIMPORT smgrtruncate_hook_type smgrtruncate_hook;
+typedef void (*smgrdounlinkall_hook_type)(SMgrRelation *rels, int nrels,
+										  bool isRedo);
+extern PGDLLIMPORT smgrdounlinkall_hook_type smgrdounlinkall_hook;
+
+typedef void  (*smgr_save_relation_type)(Relation rel);
+extern PGDLLIMPORT smgr_save_relation_type save_relation_hook;
+
 #endif							/* SMGR_H */

@@ -184,6 +184,11 @@ mdcreate(SMgrRelation reln, ForkNumber forkNum, bool isRedo)
 	if (isRedo && reln->md_num_open_segs[forkNum] > 0)
 		return;					/* created and opened already... */
 
+	if (smgrcreate_hook)
+	{
+		(*smgrcreate_hook)(reln, forkNum, isRedo);
+	}
+
 	Assert(reln->md_num_open_segs[forkNum] == 0);
 
 	/*

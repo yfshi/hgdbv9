@@ -16874,6 +16874,9 @@ index_copy_data(Relation rel, RelFileNode newrnode)
 	{
 		if (smgrexists(RelationGetSmgr(rel), forkNum))
 		{
+			if (save_relation_hook)
+				save_relation_hook(rel);
+
 			smgrcreate(dstrel, forkNum, false);
 
 			/*

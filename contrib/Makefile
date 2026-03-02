@@ -66,7 +66,8 @@ SUBDIRS = \
 		ora_synonym	\
 		hsh		\
 		hg_redaction	\
-		conn_restrict
+		conn_restrict	\
+		diskquota
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo

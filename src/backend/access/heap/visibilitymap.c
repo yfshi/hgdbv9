@@ -638,6 +638,9 @@ vm_extend(Relation rel, BlockNumber vm_nblocks)
 	 */
 	reln = RelationGetSmgr(rel);
 
+	if (save_relation_hook)
+		save_relation_hook(rel);
+
 	/*
 	 * Create the file first if it doesn't exist.  If smgr_vm_nblocks is
 	 * positive then it must exist, no need for an smgrexists call.

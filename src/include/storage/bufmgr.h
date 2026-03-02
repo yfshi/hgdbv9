@@ -169,6 +169,16 @@ extern PGDLLIMPORT int32 *LocalRefCount;
 #define BufferGetPage(buffer) ((Page)BufferGetBlock(buffer))
 
 /*
+ * Hook for plugins to add external logic when doing a buffer extend.
+ * One example is to check whether there is additional disk quota for
+ * the table to be inserted.
+ */
+typedef bool (*ReadBufferExtended_hook_type) (Relation reln,
+					ForkNumber forkNum, BlockNumber blockNum,
+					ReadBufferMode mode, BufferAccessStrategy strategy);
+extern PGDLLIMPORT ReadBufferExtended_hook_type ReadBufferExtended_hook;
+
+/*
  * prototypes for functions in bufmgr.c
  */
 extern PrefetchBufferResult PrefetchSharedBuffer(struct SMgrRelationData *smgr_reln,

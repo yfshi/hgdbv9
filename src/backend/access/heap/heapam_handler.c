@@ -671,6 +671,9 @@ heapam_relation_set_new_filenode(Relation rel,
 		Assert(rel->rd_rel->relkind == RELKIND_RELATION ||
 			   rel->rd_rel->relkind == RELKIND_MATVIEW ||
 			   rel->rd_rel->relkind == RELKIND_TOASTVALUE);
+		if (save_relation_hook)
+			save_relation_hook(rel);
+
 		smgrcreate(srel, INIT_FORKNUM, false);
 		log_smgrcreate(newrnode, INIT_FORKNUM);
 		smgrimmedsync(srel, INIT_FORKNUM);
@@ -719,6 +722,9 @@ heapam_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 	{
 		if (smgrexists(RelationGetSmgr(rel), forkNum))
 		{
+			if (save_relation_hook)
+				save_relation_hook(rel);
+
 			smgrcreate(dstrel, forkNum, false);
 
 			/*
