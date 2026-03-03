@@ -149,3 +149,28 @@ CREATE CAST (ivymy.uint3 AS boolean)
 WITH FUNCTION ivymy.uint3_boolean(ivymy.uint3)
 AS ASSIGNMENT;
 
+/* Begin - BUG#Z7200 */
+CREATE FUNCTION ivymy.uint3_uint8(ivymy.uint3)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','uint3_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint3 AS ivymy.uint8)
+WITH FUNCTION ivymy.uint3_uint8(ivymy.uint3)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.uint3_int8(ivymy.uint3)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','uint3_int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint3 AS pg_catalog.int8)
+WITH FUNCTION ivymy.uint3_int8(ivymy.uint3)
+AS ASSIGNMENT;
+/* End - BUG#Z7200 */

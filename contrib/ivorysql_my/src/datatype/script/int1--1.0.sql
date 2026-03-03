@@ -69,6 +69,32 @@ CREATE CAST (ivymy.tinyint AS pg_catalog.int2)
 WITH FUNCTION ivymy.int1_int2(ivymy.tinyint)
 AS IMPLICIT;
 
+/* Begin - BUG#Z7200 */
+CREATE FUNCTION ivymy.int1_int8(ivymy.tinyint)
+RETURNS pg_catalog.int8
+AS 'MODULE_PATHNAME','int1_int8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.tinyint AS pg_catalog.int8)
+WITH FUNCTION ivymy.int1_int8(ivymy.tinyint)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.int1_uint8(ivymy.tinyint, int, bool, int8)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','int1_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.tinyint AS ivymy.uint8)
+WITH FUNCTION ivymy.int1_uint8(ivymy.tinyint, int, bool, int8)
+AS ASSIGNMENT;
+/* End - BUG#Z7200 */
+
 CREATE FUNCTION ivymy.int8_int1(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.tinyint
 AS 'MODULE_PATHNAME','int8_int1'

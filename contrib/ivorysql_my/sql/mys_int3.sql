@@ -195,6 +195,21 @@ select a::int3 + b from tb3;
 drop table tb3;
 
 set SQL_MODE to default;
+
+--int3 -> signed/unsigned (int8/uint8)
+select 10::int3::int8;
+select 10::int3::uint8;
+select (-100)::int3::int8;
+select (-100)::int3::uint8;
+select convert((-1000)::mediumint, signed);
+select cast((-1000)::mediumint as unsigned);
+
+create table test1(a mediumint);
+insert into test1 values(-50);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 --expr
 create table test1(a int3, b int3 default 3);
 insert into test1 values();

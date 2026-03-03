@@ -326,12 +326,12 @@ create table t1(c1 integer UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
 insert into t1 values('a111') ;
 ERROR:  Incorrect integer value: 'a111' for column.
@@ -423,7 +423,12 @@ select cast(4294967295 as uint4);
 (1 row)
 
 select cast(9999999999 as uint4);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+   uint4    
+------------
+ 4294967295
+(1 row)
+
 select cast(123.456 as uint4);
  uint4 
 -------
@@ -444,9 +449,19 @@ WARNING:  Truncated incorrect DECIMAL value: '-7200.145'
 (1 row)
 
 select cast(-2147483648 as uint4);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint4 
+-------
+ 0
+(1 row)
+
 select cast(-9999999999 as uint4);
-ERROR:  integer unsigned out of range
+WARNING:  integer unsigned out of range
+ uint4 
+-------
+ 0
+(1 row)
+
 create table t1(c1 integer UNSIGNED);
 insert into t1 values(1.4);
 insert into t1 values(1.5);
@@ -573,12 +588,12 @@ create table t1(c1 int UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -695,12 +710,12 @@ create table t1(c1 int4 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-2147483648);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -818,12 +833,12 @@ create table t1(c1 integer UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -928,12 +943,12 @@ create table t1(c1 int UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -953,12 +968,12 @@ create table t1(c1 int4 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(-2147483648);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(2147483647);
 insert into t1 values(-2147483649);
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 insert into t1 values(4294967295);
 select * from t1;
      c1     
@@ -1203,6 +1218,46 @@ select a::uint4 + b from tb4;
 
 drop table tb4;
 set SQL_MODE to default;
+--uint4 -> signed/unsigned (int8/uint8)
+select 4294967295::uint4::int8;
+    int8    
+------------
+ 4294967295
+(1 row)
+
+select 4294967295::uint4::uint8;
+   uint8    
+------------
+ 4294967295
+(1 row)
+
+select convert(4294967295::uint4, signed);
+    int8    
+------------
+ 4294967295
+(1 row)
+
+select cast(4294967295::uint4 as unsigned);
+   uint8    
+------------
+ 4294967295
+(1 row)
+
+create table test1(a uint4);
+insert into test1 values(5000000);
+select convert(a, signed) from test1;
+    a    
+---------
+ 5000000
+(1 row)
+
+select cast(a as unsigned) from test1;
+    a    
+---------
+ 5000000
+(1 row)
+
+drop table test1;
 -- oper
 ---=
 select cast(111 as int UNSIGNED)  = 111;

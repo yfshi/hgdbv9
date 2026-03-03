@@ -39,6 +39,7 @@ PG_FUNCTION_INFO_V1(int8_uint1);
 PG_FUNCTION_INFO_V1(int4_uint1);
 PG_FUNCTION_INFO_V1(int2_uint1);
 PG_FUNCTION_INFO_V1(boolean_uint1);
+PG_FUNCTION_INFO_V1(uint1_int8);
 
 PG_FUNCTION_INFO_V1(uint1_eq);
 PG_FUNCTION_INFO_V1(uint1_eqint2);
@@ -319,56 +320,108 @@ uint1_scale(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT32(num);
 }
 
+/* Begin - BUG#Z7196 */
 Datum
 int8_uint1(PG_FUNCTION_ARGS)
 {
-	int64		val1 = PG_GETARG_INT64(0);
-	
-	if (val1 < 0 || val1 > PG_UINT8_MAX)
+	int64	val1 = PG_GETARG_INT64(0);
+	uint8	val2 = val1;
+	bool	is_insert = CALL_IN_INSERT();
+
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		val1 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		if (val1 < 0 || val1 > PG_UINT8_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
+			val2 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		}
+	}
+	else
+	{
+		if (val1 < 0 || val1 > PG_UINT8_MAX)
+		{
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
+			val2 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		}
 	}
 
-	PG_RETURN_UINT32(val1);
+	PG_RETURN_UINT8(val2);
 }
 
 Datum
 int4_uint1(PG_FUNCTION_ARGS)
 {
-	int32		val1 = PG_GETARG_INT32(0);
-	
-	if (val1 < 0 || val1 > PG_UINT8_MAX)
+	int32	val1 = PG_GETARG_INT32(0);
+	uint8	val2 = val1;
+	bool	is_insert = CALL_IN_INSERT();
+
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		val1 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		if (val1 < 0 || val1 > PG_UINT8_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
+			val2 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		}
+	}
+	else
+	{
+		if (val1 < 0 || val1 > PG_UINT8_MAX)
+		{
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
+			val2 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		}
 	}
 
-	PG_RETURN_UINT32(val1);
+	PG_RETURN_UINT8(val2);
 }
 
 Datum
 int2_uint1(PG_FUNCTION_ARGS)
 {
-	int16		val1 = PG_GETARG_INT16(0);
-	
-	if (val1 < 0 || val1 > PG_UINT8_MAX)
+	int16	val1 = PG_GETARG_INT16(0);
+	uint8	val2 = val1;
+	bool	is_insert = CALL_IN_INSERT();
+
+	if (is_insert)
 	{
-		int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
-		ereport(EREPORT_LEVEL, (errmsg("integer unsigned out of range")));
-		val1 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		if (val1 < 0 || val1 > PG_UINT8_MAX)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
+			val2 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		}
+	}
+	else
+	{
+		if (val1 < 0 || val1 > PG_UINT8_MAX)
+		{
+			ereport(WARNING, (errmsg("integer unsigned out of range")));
+			val2 = val1 < 0 ? 0 : PG_UINT8_MAX;
+		}
 	}
 
-	PG_RETURN_UINT32(val1);
+	PG_RETURN_UINT8(val2);
 }
+/* End - BUG#Z7196 */
 
 Datum
 boolean_uint1(PG_FUNCTION_ARGS)
 {
 	PG_RETURN_UINT32(PG_GETARG_BOOL(0));
 }
+
+/* Begin - BUG#Z7200 */
+Datum
+uint1_int8(PG_FUNCTION_ARGS)
+{
+	uint8	val1 = PG_GETARG_UINT8(0);
+
+	PG_RETURN_INT64(val1);
+}
+/* Begin - BUG#Z7200 */
+
 /*****************************************************************************
  *	 Operator Function														 *
  *****************************************************************************/

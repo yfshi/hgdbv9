@@ -780,7 +780,7 @@ select last_insert_id();
 
 --error ER_DUP_ENTRY
 insert into t1 set i = null;
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 ERROR:  duplicate key value violates unique constraint "t1_pkey"
 DETAIL:  Key (i)=(255) already exists.
 select last_insert_id();
@@ -800,7 +800,7 @@ select last_insert_id();
 (1 row)
 
 insert into t1 set i = null;
-WARNING:  integer unsigned out of range
+WARNING:  Out of range value for column
 ERROR:  duplicate key value violates unique constraint "t1_pkey"
 DETAIL:  Key (i)=(255) already exists.
 select last_insert_id();
@@ -2502,9 +2502,9 @@ create table auto_inc_uint1 (
 );
 insert into auto_inc_uint1 values(255, 1);
 insert into auto_inc_uint1(col2) values(2);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into auto_inc_uint1(col2) values(3);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from auto_inc_uint1 order by 1,2;
  col1 | col2 
 ------+------
@@ -2513,7 +2513,7 @@ select * from auto_inc_uint1 order by 1,2;
 
 delete from auto_inc_uint1;
 insert into auto_inc_uint1(col2) values(4);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from auto_inc_uint1 order by 1,2;
  col1 | col2 
 ------+------
@@ -2550,9 +2550,9 @@ create table auto_inc_uint2 (
 );
 insert into auto_inc_uint2 values(65535, 1);
 insert into auto_inc_uint2(col2) values(2);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into auto_inc_uint2(col2) values(3);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from auto_inc_uint2 order by 1,2;
  col1  | col2 
 -------+------
@@ -2561,7 +2561,7 @@ select * from auto_inc_uint2 order by 1,2;
 
 delete from auto_inc_uint2;
 insert into auto_inc_uint2(col2) values(4);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from auto_inc_uint2 order by 1,2;
  col1 | col2 
 ------+------
@@ -2598,9 +2598,9 @@ create table auto_inc_uint4 (
 );
 insert into auto_inc_uint4 values(4294967295, 1);
 insert into auto_inc_uint4(col2) values(2);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into auto_inc_uint4(col2) values(3);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from auto_inc_uint4 order by 1,2;
     col1    | col2 
 ------------+------
@@ -2609,7 +2609,7 @@ select * from auto_inc_uint4 order by 1,2;
 
 delete from auto_inc_uint4;
 insert into auto_inc_uint4(col2) values(4);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 select * from auto_inc_uint4 order by 1,2;
  col1 | col2 
 ------+------

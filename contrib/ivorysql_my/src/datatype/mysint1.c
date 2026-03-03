@@ -29,6 +29,8 @@ PG_FUNCTION_INFO_V1(int1_recv);
 PG_FUNCTION_INFO_V1(int1_send);
 PG_FUNCTION_INFO_V1(int1_scale);
 PG_FUNCTION_INFO_V1(int1_int2);
+PG_FUNCTION_INFO_V1(int1_int8);
+PG_FUNCTION_INFO_V1(int1_uint8);
 PG_FUNCTION_INFO_V1(int8_int1);
 PG_FUNCTION_INFO_V1(int4_int1);
 PG_FUNCTION_INFO_V1(int2_int1);
@@ -99,6 +101,36 @@ int1_int2(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT16(val1);
 }
+
+/* Begin - BUG#Z7200 */
+Datum
+int1_int8(PG_FUNCTION_ARGS)
+{
+	int8	val1 = PG_GETARG_INT8(0);
+
+	PG_RETURN_INT64(val1);
+}
+
+Datum
+int1_uint8(PG_FUNCTION_ARGS)
+{
+	int8	val1 = PG_GETARG_INT8(0);
+	uint64	val2 = val1;
+	bool	is_insert = CALL_IN_INSERT();
+	
+	if (is_insert)
+	{
+		if (val1 < 0)
+		{
+			int EREPORT_LEVEL = (!is_strict_mode()) ? WARNING : ERROR;
+			ereport(EREPORT_LEVEL, (errmsg("Out of range value for column")));
+			val2 = 0;
+		}
+	}
+
+	PG_RETURN_UINT64(val2);
+}
+/* End - BUG#Z7200 */
 
 Datum
 int8_int1(PG_FUNCTION_ARGS)

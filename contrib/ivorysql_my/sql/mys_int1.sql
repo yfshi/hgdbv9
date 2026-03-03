@@ -239,6 +239,20 @@ select a::int1 + b from tb1;
 drop table tb1;
 set SQL_MODE to default;
 
+--int1 -> signed/unsigned (int8/uint8)
+select 10::int1::int8;
+select 10::int1::uint8;
+select (-1)::int1::int8;
+select (-1)::int1::uint8;
+select convert((-1)::tinyint, signed);
+select cast((-1)::tinyint as unsigned);
+
+create table test1(a tinyint);
+insert into test1 values(-50);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 --expr
 create table test1(a int1, b int1 default 3);
 insert into test1 values();

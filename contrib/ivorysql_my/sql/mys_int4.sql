@@ -154,6 +154,20 @@ CREATE TABLE t5(c1 INT(1) NULL);
 \d t5;
 DROP TABLE t1,t2,t3,t4,t5;
 
+--int4 -> signed/unsigned (int8/uint8)
+select 500::int4::int8;
+select 500::int4::uint8;
+select (-6000)::int4::int8;
+select (-6000)::int4::uint8;
+select convert((-7000)::int, signed);
+select cast((-7000)::int as unsigned);
+
+create table test1(a int);
+insert into test1 values(-5000);
+select convert(a, signed) from test1;
+select cast(a as unsigned) from test1;
+drop table test1;
+
 --operator
 create table tb_test(id int);
 insert into tb_test values (2147483647),(-2147483648),(0),(1);

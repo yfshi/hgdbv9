@@ -88,11 +88,11 @@ create table t1 (a int1 UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-128);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-129);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(127);
 insert into t1 values(128);
 select * from t1;
@@ -109,11 +109,11 @@ create table t1 (a tinyint UNSIGNED);
 insert into t1 values(0);
 insert into t1 values(1);
 insert into t1 values(-1);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-128);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(-129);
-ERROR:  integer unsigned out of range
+ERROR:  Out of range value for column
 insert into t1 values(127);
 insert into t1 values(128);
 select * from t1;
@@ -674,6 +674,58 @@ select a::int1 + b from tb1;
 
 drop table tb1;
 set SQL_MODE to default;
+--int1 -> signed/unsigned (int8/uint8)
+select 10::int1::int8;
+ int8 
+------
+   10
+(1 row)
+
+select 10::int1::uint8;
+ uint8 
+-------
+ 10
+(1 row)
+
+select (-1)::int1::int8;
+ int8 
+------
+   -1
+(1 row)
+
+select (-1)::int1::uint8;
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+select convert((-1)::tinyint, signed);
+ int8 
+------
+   -1
+(1 row)
+
+select cast((-1)::tinyint as unsigned);
+        uint8         
+----------------------
+ 18446744073709551615
+(1 row)
+
+create table test1(a tinyint);
+insert into test1 values(-50);
+select convert(a, signed) from test1;
+  a  
+-----
+ -50
+(1 row)
+
+select cast(a as unsigned) from test1;
+          a           
+----------------------
+ 18446744073709551566
+(1 row)
+
+drop table test1;
 --expr
 create table test1(a int1, b int1 default 3);
 insert into test1 values();
