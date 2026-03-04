@@ -114,7 +114,7 @@ PG_FUNCTION_INFO_V1(get_format);
 #define TIME_MAX_FRAC 999999
 #define MAX_YEAR_OF_DATE 9999
 #define MIN_YEAR_OF_DATE 0
-#define YEAR2_ADJUST_VALUE_20C_21C(x) ((x) + ((x) >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000))
+#define YEAR2_ADJUST_VALUE_20C_21C(x) ((x) + ((x) >= YY_PART_YEAR ? 1900 : 2000))
 
 #define MAX_VALUE_12_CLOCK (HOURS_PER_DAY / 2)
 #define MIN_VALUE_12_CLOCK 1
@@ -163,12 +163,6 @@ static const int mon_starts[2][MONS_PER_YEAR] =
 {
 	{ 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 },
 	{ 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335 }
-};
-
-static const int mon_lengths[2][MONSPERYEAR] =
-{
-	{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31},
-	{31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31}
 };
 
 static const int year_lengths[2] =
@@ -428,7 +422,7 @@ static bool extract_date_time(Date_time_format *format,
 					tmp = (char*) val + Min(4, val_len);
 					l_time->tm_year = (int) strtoll10_n(val, Min(4, val_len), &tmp);
 					if ((int) (tmp-val) <= 2)
-						l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+						l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YY_PART_YEAR ? 1900 : 2000);
 					val = tmp;
 					break;
 
@@ -436,7 +430,7 @@ static bool extract_date_time(Date_time_format *format,
 					tmp= (char*) val + Min(2, val_len);
 					l_time->tm_year = (int) strtoll10_n(val, Min(2, val_len),&tmp);
 					val = tmp;
-					l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+					l_time->tm_year = l_time->tm_year + (l_time->tm_year >= YY_PART_YEAR ? 1900 : 2000);
 					break;
 
 					/* Month */
@@ -514,9 +508,9 @@ static bool extract_date_time(Date_time_format *format,
 					case 'p':
 						if (val_len < 2 || !usa_time)
 							goto err;
-						if (!strncasecmp(val, "PM", 2))
+						if (!pg_strncasecmp(val, "PM", 2))
 							daypart = 12;
-						else if (strncasecmp(val,"AM", 2))
+						else if (pg_strncasecmp(val,"AM", 2))
 							goto err;
 						val += 2;
 						break;
@@ -831,11 +825,8 @@ str_to_date(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	datetime = datetemp + time;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	PG_RETURN_DATUM(DirectFunctionCall3(numeric_in,
 										CStringGetDatum(buf),
 										ObjectIdGetDatum(InvalidOid),
@@ -1123,7 +1114,7 @@ curtime(PG_FUNCTION_ARGS)
                 (errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
                  errmsg("timestamp out of range")));
 
-    mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[typmod], &warn);
+    time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[typmod], &warn);
 
     fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - typmod];
 
@@ -1145,11 +1136,7 @@ curtime(PG_FUNCTION_ARGS)
         }
     }
 
-#ifdef WIN32
-    snprintf(buf, MAXDATELEN, "%lld.%06d", time, fsec);
-#else
-    snprintf(buf, MAXDATELEN, "%ld.%06d", time, fsec);
-#endif
+    snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
 
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
@@ -1227,12 +1214,9 @@ now(PG_FUNCTION_ARGS)
         datetime = temp + time;
     }
 
-#ifdef WIN32
-    snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
-#else
-    snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
-#endif
-    num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+    snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
+	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
                                               ObjectIdGetDatum(InvalidOid),
                                               Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
@@ -1306,11 +1290,8 @@ sysdate(PG_FUNCTION_ARGS)
         datetime = temp + time;
     }
 
-#ifdef WIN32
-    snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
-#else
-    snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
-#endif
+    snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
                                               ObjectIdGetDatum(InvalidOid),
@@ -1385,7 +1366,7 @@ maketime(PG_FUNCTION_ARGS)
 
     MYS_ZERO_tm(&tt); /* bug#5127 */
 
-    if (!mysnumeric_to_lldiv_t(PG_GETARG_NUMERIC(2), &seconds))
+    if (!numeric_to_lldiv_t(PG_GETARG_NUMERIC(2), &seconds))
     {
         PG_RETURN_NULL();
     }
@@ -1435,7 +1416,7 @@ maketime(PG_FUNCTION_ARGS)
         dec = 0;
     }
 
-    snprintf(buf, MAXDATELEN, "%ld.%06d", time, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
 
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
@@ -1450,7 +1431,7 @@ convert_period_to_month(unsigned long period)
     unsigned long a, b;
     if (period == 0)
         return 0L;
-    if ((a = period / 100) < YEAR2_BOUND_BETWEEN_20C_21C)
+    if ((a = period / 100) < YY_PART_YEAR)
         a += 2000;
     else if (a < 100)
         a += 1900;
@@ -1466,7 +1447,7 @@ convert_month_to_period(unsigned long month)
         return 0L;
     if ((year = month / 12) < 100)
     {
-        year += (year < YEAR2_BOUND_BETWEEN_20C_21C) ? 2000 : 1900;
+        year += (year < YY_PART_YEAR) ? 2000 : 1900;
     }
     return year * 100 + month % 12 + 1;
 }
@@ -1530,7 +1511,7 @@ sec_to_time(PG_FUNCTION_ARGS)
     }
     /* End - bug#5125 */
     
-    if ((!mysnumeric_to_lldiv_t(num, &seconds)) ||
+    if ((!numeric_to_lldiv_t(num, &seconds)) ||
         (seconds.quot > TIME_MAX_VALUE_SECONDS) ||
         (seconds.quot == TIME_MAX_VALUE_SECONDS && seconds.rem != 0))
     {
@@ -1653,16 +1634,10 @@ convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *res
 	Oid typid;
 	mysql_dttype ftype;
 	fsec_t fsec = 0;
-	int flag = TIME_FLAG_INIT;
 	int warn = 0;
 	int nanoseconds = 0;
 	int typmod = 6;
 	int dash_count = 0;
-
-	if (has_sql_mode(MODE_NO_ZERO_DATE))
-		flag |= TIME_NO_ZERO_DATE;
-	if (has_sql_mode(MODE_INVALID_DATES))
-		flag |= TIME_INVALID_DATES;
 
 	start = str;
 
@@ -1687,7 +1662,7 @@ convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *res
 	}
 
 	/* Not a timestamp. Try to convert str to time*/
-    if (mysstr_to_time(start, strlen(start), result_tm, flag, &fsec, &ftype, &warn, &nanoseconds, result_neg) == -1)
+    if (str_to_time(start, strlen(start), result_tm, &fsec, &ftype, &warn, &nanoseconds, result_neg) == -1)
     {
         return InvalidOid; /* bug#z5110 */
     }
@@ -1696,7 +1671,7 @@ convert_cstring_to_datetime_time(char *str, struct pg_tm *result_tm, fsec_t *res
         return InvalidOid;
 
     fsec += (nanoseconds + 500) / 1000;
-	mystime_add_nanoseconds_with_round(result_tm, &fsec, msec_round_add[typmod], &warn);
+	time_add_nanoseconds_with_round(result_tm, &fsec, msec_round_add[typmod], &warn);
 	fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - typmod];
 	*result_fsec = fsec;
 
@@ -1882,6 +1857,29 @@ subtime(PG_FUNCTION_ARGS)
     PG_RETURN_NULL();
 }
 
+/**
+ * Unlike function MysTimestampDifference(), the third
+ * parameter of TimestampDifference() is of type long *, 
+ * which may lead to inconsistent results between the
+ * Windows and Linux.
+ */
+static void
+MysTimestampDifference(TimestampTz start_time, TimestampTz stop_time, int64 *secs, int *microsecs)
+{
+	TimestampTz diff = stop_time - start_time;
+
+	if (diff <= 0)
+	{
+		*secs = 0;
+		*microsecs = 0;
+	}
+	else
+	{
+		*secs = (diff / USECS_PER_SEC);
+		*microsecs = (int) (diff % USECS_PER_SEC);
+	}
+}
+
 Datum 
 timediff(PG_FUNCTION_ARGS)
 {
@@ -2001,7 +1999,7 @@ timediff(PG_FUNCTION_ARGS)
         case MYSDATETIMESOID:
         case MYSDATEOID:
         {
-            long secs = 0;
+            int64 secs = 0;
             int usecs = 0;
             int sign = 1;
             tm2timestamp(tm1, fsec1, NULL, &datetime1);
@@ -2009,13 +2007,13 @@ timediff(PG_FUNCTION_ARGS)
 
             if (datetime1 < datetime2)
             {
-                TimestampDifference(datetime1, datetime2, &secs, &usecs);
+                MysTimestampDifference(datetime1, datetime2, &secs, &usecs);
                 sign = -1;
                 neg = true;
             }
             else
             {
-                TimestampDifference(datetime2, datetime1, &secs, &usecs);
+                MysTimestampDifference(datetime2, datetime1, &secs, &usecs);
             }
             res_time = (secs * USECS_PER_SEC + usecs) * sign;
             break;
@@ -2031,7 +2029,7 @@ timediff(PG_FUNCTION_ARGS)
 
     time2tm(res_time, res_tm, &res_fsec);
 
-    mystime_add_nanoseconds_with_round(res_tm, &res_fsec, msec_round_add[dec], &warn);
+    time_add_nanoseconds_with_round(res_tm, &res_fsec, msec_round_add[dec], &warn);
     res_fsec = res_fsec - res_fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - dec];
 
     result = res_tm->tm_hour * 10000 + res_tm->tm_min * 100 + res_tm->tm_sec;
@@ -2146,7 +2144,7 @@ mystime(PG_FUNCTION_ARGS)
 
     time2tm(result, tm, &fsec);
 
-    mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+    time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 
     fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - dec];
 
@@ -2673,7 +2671,7 @@ timestampadd(PG_FUNCTION_ARGS)
 			 * the day is adjusted to the maximum days in the new month.
 			 * such as timestamp(MONTH, 1, '2019-01-30'), it will get '2019-2-28'.
 			 */
-			days = mon_lengths[isleap(tm->tm_year)][tm->tm_mon - 1];
+			days = day_tab[isleap(tm->tm_year)][tm->tm_mon - 1];
 
 			if (tm->tm_mday > days)
 				tm->tm_mday = days;
@@ -2697,7 +2695,7 @@ timestampadd(PG_FUNCTION_ARGS)
 
     datetime = mys_tm2datetime(tm);
     
-    snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
+    snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
 
     num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
                                               CStringGetDatum(buf),
@@ -2872,7 +2870,7 @@ get_date_from_int(int64 num, struct pg_tm *tm, fsec_t *fsec, int flag)
 	mysql_dttype ftype;
 	int			warn = 0;
 
-	dterr = mysnumber_to_datetime(num, tm, flag, fsec, &ftype, &warn);
+	dterr = number_to_datetime(num, tm, flag, fsec, &ftype, &warn);
 	if (warn || dterr < 0) /* Returns an error result, the value is not 0. */
 	{
 		char   *strtemp = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(num)));
@@ -3013,7 +3011,7 @@ get_date_from_day(int64 val, struct pg_tm *tm)
 				break;
 		}
 		tm->tm_year = year;
-		tm->tm_mday =day_of_year + leap_day;
+		tm->tm_mday = day_of_year + leap_day;
 	}
 }
 
@@ -3032,7 +3030,7 @@ calc_days_in_year(int year)
 static bool
 get_time_from_num(Numeric num, struct pg_tm *tm, fsec_t *fsec, int flag, int *dec)
 {
-	int			dterr;
+	bool		dterr;
 	mysql_dttype ftype;
 	int			warn = 0;
 	int64		timetemp = 0;
@@ -3077,14 +3075,14 @@ get_time_from_num(Numeric num, struct pg_tm *tm, fsec_t *fsec, int flag, int *de
 	/* End - BUG#Z5566 */
 
 	/* First obtain nanosecond accuracy, then obtain dec accuracy */
-	dterr = mysnumber_to_time(timetemp, tm, flag, fsec, &ftype, &warn, &neg);
+	dterr = number_to_time(timetemp, tm, fsec, &ftype, &neg, &warn);
 	*fsec = (nanofsec + 500) / 1000;
-	(void)mystime_add_nanoseconds_with_round(tm, fsec, msec_round_add[(*dec)], &warn);
+	(void)time_add_nanoseconds_with_round(tm, fsec, msec_round_add[(*dec)], &warn);
 	*fsec = *fsec - *fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - (*dec)];
-	if (dterr < 0 || warn)
+	if (dterr || warn)
 	{
 		make_warning(str, ftype);
-		if (dterr < 0)
+		if (dterr)
 			return false;
 	}
 
@@ -3146,7 +3144,7 @@ get_datetime_from_numeric(Numeric numvalue, struct pg_tm *tm, fsec_t *fsec, int 
 	}
 	else
 	{
-		dterr = mysnumber_to_datetime(datetimetemp, tm, flag, fsec, &ftype, &warn);
+		dterr = number_to_datetime(datetimetemp, tm, flag, fsec, &ftype, &warn);
 		if (nanoseconds < 0 || dterr == -1)
 		{
 			MemSet(tm, 0, sizeof( struct pg_tm));
@@ -3298,9 +3296,9 @@ mys_sec_to_time(struct pg_tm *tmp, pg_time_t t, int offset)
 	tmp->tm_year = y;
 
 	tmp->tm_mon= 0;
-	for (int i = 0; i < 12 && days >= mon_lengths[yleap][i]; i++)
+	for (int i = 0; i < 12 && days >= day_tab[yleap][i]; i++)
 	{
-		days = days - mon_lengths[yleap][i];
+		days = days - day_tab[yleap][i];
 		tmp->tm_mon++;
 	}
 	tmp->tm_mon++;
@@ -3884,11 +3882,7 @@ convert_tz(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	result = datetemp + time;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d", result, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d", result, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) result, fsec);
 
 	nic = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 											   CStringGetDatum(buf),

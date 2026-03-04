@@ -255,8 +255,8 @@ typedef struct {
     char        *db;
     char        *catalog;
     char        *def;
-    ulong       length;
-    ulong       max_length;
+    uint32       length;
+    uint32       max_length;
     uint32      name_length;
     uint32      org_name_length;
     uint32      table_length;
@@ -344,7 +344,6 @@ typedef struct {
     Datum *params;
 } HashEntryBlob;
 
-extern char     *default_database;
 extern int		current_packet_type;
 extern mysql_conn_info_t    mysql_conn_info;
 

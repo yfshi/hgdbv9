@@ -12,12 +12,11 @@
 #include "utils/memutils.h"
 #include "utils/varbit.h"
 
-#include "message.h"
-#include "server.h"
-#include "printtup.h"
-#include "mqformat.h"
-
 #include "../include/ivorysql_my.h"
+#include "../include/message.h"
+#include "../include/server.h"
+#include "../include/printtup.h"
+#include "../include/mqformat.h"
 
 static mysql_column_definition_t *
 make_column_definition_with_attr(FormData_pg_attribute *attr, char *tableName)

@@ -64,8 +64,7 @@ extern WaitEventSet *FeBeWaitSet;
 
 extern int	StreamServerPort(int family, const char *hostName,
 							 unsigned short portNumber, const char *unixSocketDir,
-							 pgsocket ListenSocket[], int MaxListen,
-							 ProtocolExtensionConfig *ListenConfig[], ProtocolExtensionConfig *protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+							 pgsocket ListenSocket[], int MaxListen);
 extern int	StreamConnection(pgsocket server_fd, Port *port);
 extern void StreamClose(pgsocket sock);
 extern void TouchSocketFiles(void);

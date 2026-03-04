@@ -6382,7 +6382,7 @@ my_wc_mb_gb2312(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
     if (s >= e)
         return MY_CS_TOOSMALL;
 
-    if ((uint)wc < 0x80)
+    if ((uint32)wc < 0x80)
     {
         s[0] = (uchar)wc;
         return 1;
@@ -6435,7 +6435,7 @@ my_mb_wc_gb2312(const CHARSET_INFO *cs, my_wc_t *pwc, const uchar *s, const ucha
     return 2;
 }
 
-static uint 
+static uint32 
 ismbchar_gb2312(const CHARSET_INFO *cs, const char *p, const char *e)
 {
     return (isgb2312head(*(p)) && (e) - (p) > 1 && isgb2312tail(*((p) + 1)) ? 2

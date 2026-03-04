@@ -327,7 +327,7 @@ int_mysdate_internal(int64 arg, bool is_insert, char *msg)
 			   has_sql_mode(MODE_STRICT_ALL_TABLES))
 				is_strict_mode = true;
 
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -339,11 +339,7 @@ int_mysdate_internal(int64 arg, bool is_insert, char *msg)
 						MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 					   MYSQL_TIME_WARN_ZERO_IN_DATE))
 					   {
-						#ifdef WIN32
-							elog(ERROR, "Incorrect DATE value: '%lld'", arg);
-						#else
-							elog(ERROR, "Incorrect DATE value: '%ld'", arg);
-						#endif
+							elog(ERROR, "Incorrect DATE value: '%lld'", (long long) arg);
 					   }
 				}
 				else /* non-strict mode */
@@ -388,7 +384,7 @@ int_mysdate_internal(int64 arg, bool is_insert, char *msg)
 		else
 		{
 			flag = 9;
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
 				/* Begin - bug#z5068 */
@@ -397,12 +393,9 @@ int_mysdate_internal(int64 arg, bool is_insert, char *msg)
 				/* End - bug#z5068 */
 				else
 				{
-					#ifdef WIN32
-						ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
-					#else
-						ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
-					#endif
+					ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", (long long) arg)));
 				}
+
 				if(dterr < 0)
 					return MYSQL_NULL_DATE;
 			}
@@ -1365,7 +1358,7 @@ numeric_mysdatetime(PG_FUNCTION_ARGS)
 	
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -1448,7 +1441,7 @@ numeric_mysdatetime(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
 				ereport(WARNING, (errmsg("Incorrect DATETIME value: '%ld'", datetimetemp)));
@@ -1501,7 +1494,7 @@ int_mysdatetime(PG_FUNCTION_ARGS)
 
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -1527,13 +1520,8 @@ int_mysdatetime(PG_FUNCTION_ARGS)
 						MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 					   MYSQL_TIME_WARN_ZERO_IN_DATE))
 						{
-						#ifdef WIN32
-							elog(ERROR, "Incorrect DATETIME value: '%lld'", arg);
-						#else
-							elog(ERROR, "Incorrect DATETIME value: '%ld'", arg);
-						#endif
+							elog(ERROR, "Incorrect DATETIME value: '%lld'", (long long) arg);
 						}
-
 				}
 				else /* non-strict mode */
 				{
@@ -1589,14 +1577,11 @@ int_mysdatetime(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
-			#ifdef WIN32
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
-			#else
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
-			#endif
+				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", (long long) arg)));
+			
 				if(dterr < 0)
 					PG_RETURN_NULL();
 			}
@@ -1947,11 +1932,8 @@ Datum mysdatetime_rightmovdatetime(PG_FUNCTION_ARGS)
 		dateVal1 = 0;
 	if(dateVal2 > sizeof(int64)*8)
 	{
-	#ifdef WIN32
-		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value:'%lld'",(int64)dateVal2)));
-	#else
-		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value:'%ld'",(int64)dateVal2)));
-	#endif
+		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value:'%lld'", (long long) dateVal2)));
+	
 		PG_RETURN_INT64(0);
 	}
 
@@ -1970,11 +1952,8 @@ Datum mysdatetime_leftmovdatetime(PG_FUNCTION_ARGS)
 		dateVal1 = 0;
 	if(dateVal2 > sizeof(int64)*8)
 	{
-	#ifdef WIN32
-		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value:'%lld'",(int64)dateVal2)));
-	#else
-		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value:'%ld'",(int64)dateVal2)));
-	#endif
+		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value:'%lld'", (long long) dateVal2)));
+	
 		PG_RETURN_INT64(0);
 	}
 	PG_RETURN_INT64(dateVal1 << dateVal2);
@@ -2435,11 +2414,7 @@ mysdatetimes_in(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	datetime = datetemp + time;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d", datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d", datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 											  CStringGetDatum(buf),
@@ -2650,7 +2625,7 @@ numeric_mysdatetimes(PG_FUNCTION_ARGS)
 
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -2750,7 +2725,7 @@ numeric_mysdatetimes(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(datetimetemp, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
 				ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", tmpstr)));
@@ -2782,11 +2757,8 @@ numeric_mysdatetimes(PG_FUNCTION_ARGS)
 		}
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -2829,7 +2801,7 @@ int_mysdatetimes(PG_FUNCTION_ARGS)
 
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -2851,16 +2823,12 @@ int_mysdatetimes(PG_FUNCTION_ARGS)
 
 				if(is_strict_mode)/* strict mode */
 				{
-					if(warn & (MYSQL_TIME_WARN_TRUNCATED |
-						MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
-						MYSQL_TIME_WARN_ZERO_IN_DATE))
-						{
-						#ifdef WIN32
-							elog(ERROR, "Incorrect datetime value: '%lld'", arg);
-						#else
-							elog(ERROR, "Incorrect datetime value: '%ld'", arg);
-						#endif
-						}
+					if (warn & (MYSQL_TIME_WARN_TRUNCATED |
+								MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
+								MYSQL_TIME_WARN_ZERO_IN_DATE))
+					{
+						elog(ERROR, "Incorrect datetime value: '%lld'", (long long)arg);
+					}
 				}
 				else /* non-strict mode */
 				{
@@ -2910,14 +2878,11 @@ int_mysdatetimes(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
-			#ifdef WIN32
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
-			#else
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
-			#endif
+				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", (long long) arg)));
+
 				if(dterr < 0)
 					PG_RETURN_NULL();
 			}
@@ -2929,11 +2894,8 @@ int_mysdatetimes(PG_FUNCTION_ARGS)
 		}
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -2993,11 +2955,8 @@ Datum pgdate_mysdatetimes(PG_FUNCTION_ARGS)
 		datetime = datetime * 1000000;
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -3059,11 +3018,8 @@ Datum pgtimestamp_mysdatetimes(PG_FUNCTION_ARGS)
 		datetime = temp + time;
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -3124,11 +3080,8 @@ Datum pgtimestamptz_mysdatetimes(PG_FUNCTION_ARGS)
 		datetime = temp + time;
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
@@ -3181,7 +3134,8 @@ Datum pgtime_mysdatetimes(PG_FUNCTION_ARGS)
 	{
 		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	}
-	snprintf(buf, MAXDATELEN, "%ld.%06d",time, fsec);
+	
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
@@ -4267,7 +4221,7 @@ numeric_mystimestamp(PG_FUNCTION_ARGS)
 			
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -4350,7 +4304,7 @@ numeric_mystimestamp(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
 				ereport(WARNING, (errmsg("Incorrect TIMESTAMP value: '%ld'", timestamptemp)));
@@ -4402,7 +4356,7 @@ int_mystimestamp(PG_FUNCTION_ARGS)
 			
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -4428,11 +4382,7 @@ int_mystimestamp(PG_FUNCTION_ARGS)
 						MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 					   MYSQL_TIME_WARN_ZERO_IN_DATE))
 					   	{
-						#ifdef WIN32
-							elog(ERROR, "Incorrect TIMESTAMP value: '%lld'", arg);
-						#else
-							elog(ERROR, "Incorrect TIMESTAMP value: '%ld'", arg);
-						#endif
+							elog(ERROR, "Incorrect TIMESTAMP value: '%lld'", (long long) arg);
 						}
 				}
 				else /* non-strict mode */
@@ -4489,14 +4439,11 @@ int_mystimestamp(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
-			#ifdef WIN32
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
-			#else
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
-			#endif
+				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", (long long) arg)));
+
 				if(dterr < 0)
 					PG_RETURN_NULL();
 			}
@@ -5277,11 +5224,7 @@ mystimestamps_in(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	timestamp = datetemp + time;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d", timestamp, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d", timestamp, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) timestamp, fsec);
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 											  CStringGetDatum(buf),
@@ -5495,7 +5438,7 @@ numeric_mystimestamps(PG_FUNCTION_ARGS)
 			
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -5578,7 +5521,7 @@ numeric_mystimestamps(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(timestamptemp, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
 				ereport(WARNING, (errmsg("Incorrect TIMESTAMP value: '%ld'", timestamptemp)));
@@ -5641,7 +5584,7 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 			
 		if (is_insert)
 		{
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (non_zero_time(tm, fsec))
 				warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -5667,11 +5610,7 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 						MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
 					   MYSQL_TIME_WARN_ZERO_IN_DATE))
 						{
-						#ifdef WIN32
-							elog(ERROR, "Incorrect TIMESTAMP value: '%lld'", arg);
-						#else
-							elog(ERROR, "Incorrect TIMESTAMP value: '%ld'", arg);
-						#endif
+							elog(ERROR, "Incorrect TIMESTAMP value: '%lld'", (long long) arg);
 						}
 				}
 				else /* non-strict mode */
@@ -5728,14 +5667,11 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 		{
 			int64 temp = 0;
 			flag = 9;
-			dterr = mysnumber_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
+			dterr = number_to_datetime(arg, tm, flag, &fsec, &ftype, &warn);
 			if (dterr < 0 || warn)
 			{
-			#ifdef WIN32
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", arg)));
-			#else
-				ereport(WARNING, (errmsg("Incorrect datetime value: '%ld'", arg)));
-			#endif
+				ereport(WARNING, (errmsg("Incorrect datetime value: '%lld'", (long long) arg)));
+
 				if(dterr < 0)
 					PG_RETURN_NULL();
 			}
@@ -5752,11 +5688,7 @@ int_mystimestamps(PG_FUNCTION_ARGS)
 		}
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d", timestamp, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d", timestamp, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) timestamp, fsec);
 
 	res = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 											  CStringGetDatum(buf),
@@ -5820,11 +5752,8 @@ Datum pgdate_mystimestamps(PG_FUNCTION_ARGS)
 		datetime = datetime * 1000000;
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -5892,11 +5821,8 @@ Datum pgtimestamp_mystimestamps(PG_FUNCTION_ARGS)
 	}
 
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -5962,11 +5888,8 @@ Datum pgtimestamptz_mystimestamps(PG_FUNCTION_ARGS)
 		datetime = temp + time;
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -6023,7 +5946,9 @@ Datum pgtime_mystimestamps(PG_FUNCTION_ARGS)
 	{
 		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	}
-	snprintf(buf, MAXDATELEN, "%ld.%06d",time, fsec);
+
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
+
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
@@ -6821,7 +6746,6 @@ mystime_in(PG_FUNCTION_ARGS)
 				*tm = &tt;
 	int			dterr;
 	mysql_dttype ftype;
-	int			flag = TIME_FLAG_INIT;
 	int			warn = 0;
 	int			nanoseconds = 0;
 	bool		nanosec = false;
@@ -6832,13 +6756,8 @@ mystime_in(PG_FUNCTION_ARGS)
 	Oid             typelem = PG_GETARG_OID(1);
 #endif
 
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
-		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode( MODE_INVALID_DATES))
-		flag |= TIME_INVALID_DATES;
-
-	dterr = mysstr_to_time(str, strlen(str), tm, flag, &fsec, &ftype, &warn, &nanoseconds, &neg);
-	nanosec = mystime_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
+	dterr = str_to_time(str, strlen(str), tm, &fsec, &ftype, &warn, &nanoseconds, &neg);
+	nanosec = time_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
 	dterr |= mystime_rounded_seconds(tm, &fsec,&warn, 0);
 	if(dterr || warn || nanosec)
 	{
@@ -6942,275 +6861,6 @@ mystime_send(PG_FUNCTION_ARGS)
 	pq_begintypsend(&buf);
 	pq_sendint64(&buf, time);
 	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
-}
-
-/* int_mystime()
- * Convert integer to mysql time data type.
- */
-Datum
-int_mystime(PG_FUNCTION_ARGS)
-{
-	int64		arg = PG_GETARG_INT64(0);
-	fsec_t		fsec = 0;
-	struct pg_tm tt,
-			   *tm = &tt;
-	int			dterr;
-	mysql_dttype ftype;
-	int 		flag = 0;
-	int			warn = 0;
-	TimeOffset	time = 0;
-	int 		neg = 0;
-
-	if(arg == 0)
-	{
-		time = MYSQL_ZERO_TIME;
-	}
-	else
-	{
-		/* Begin - SRS-MYSQL-HEX-LITERAL */
-		bool		is_insert = CALL_IN_INSERT();
-		/* End - SRS-MYSQL-HEX-LITERAL */
-
-		if (is_insert)
-		{
-			dterr = mysnumber_to_time(arg, tm, flag, &fsec, &ftype, &warn, &neg);
-
-			if(dterr < 0) /* Returns an error result, the value is not 0. */
-			{
-				bool	is_strict_mode = false;
-				flag = 1;
-
-				/* Get the sql_mode parameter */
-				if(has_sql_mode(MODE_NO_ZERO_DATE))
-					flag |= TIME_NO_ZERO_DATE;
-				if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
-					flag |= TIME_NO_ZERO_IN_DATE;
-				if(has_sql_mode(MODE_INVALID_DATES))
-					flag |= TIME_INVALID_DATES;
-				if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-					has_sql_mode(MODE_STRICT_ALL_TABLES))
-					is_strict_mode = true;
-
-				if(is_strict_mode)/* strict mode */
-				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-						elog(ERROR, "Incorrect TIME value: '%ld'", arg);
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE))
-						elog(ERROR, "Incorrect TIME value: '%ld'", arg);
-
-				}
-				else /* non-strict mode */
-				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-					{
-						ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-						time = MYSQL_ZERO_TIME;
-					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-					{
-						ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-						time = MYSQL_ZERO_TIME;
-					}
-				}
-			}
-			else /* Returns the correct result with a value of 0 */
-			{
-				if (warn & MYSQL_TIME_WARN_TRUNCATED)
-					ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-				if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-				{
-					ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-					time = MYSQL_ZERO_TIME;
-				}
-				if ((warn & MYSQL_TIME_NOTE_TRUNCATED) &&
-				   !(warn & MYSQL_TIME_WARN_TRUNCATED))
-				{
-					ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-				}
-
-				time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-			}
-		}
-		else
-		{
-			flag = 9;
-			dterr = mysnumber_to_time(arg, tm, flag, &fsec, &ftype, &warn, &neg);
-			if (dterr < 0 || warn)
-			{
-				#ifdef WIN32
-					ereport(WARNING, (errmsg("Incorrect time value: '%lld'", arg)));
-				#else
-					ereport(WARNING, (errmsg("Incorrect time value: '%ld'", arg)));
-				#endif
-				if(dterr < 0)
-					PG_RETURN_NULL();
-			}
-
-			time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-		}
-	}
-	
-	PG_RETURN_TIMEADT(neg!=1?time:-time);
-}
-
-/* numeric_mystime()
- * Convert numeric to mysql time data type.
- */
-Datum
-numeric_mystime(PG_FUNCTION_ARGS)
-{
-	Numeric		numtemp = PG_GETARG_NUMERIC(0);
-	int64		timetemp = 0;
-	char		*str;
-	char		*strtemp;
-	fsec_t		fsec = 0;
-	fsec_t		nanoseconds = 0;
-	struct pg_tm tt,
-			   *tm = &tt;
-	int			dterr;
-	mysql_dttype ftype;
-	int 		flag = 0;
-	int			warn = 0;
-	TimeADT		time = -2;
-	int			neg = 0;
-	int			len=0;
-
-	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
-	strtemp = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(numtemp)));
-	str = pstrdup(strtemp);
-	while(*strtemp && *strtemp != '.')
-	{
-		if(*strtemp == '-')
-		{
-			neg = 1;
-			strtemp++;
-			continue;
-		}
-		len++;
-		timetemp = timetemp * 10 + *strtemp - '0';
-		strtemp++;
-	}
-
-	/* Calculate the time */
-	strtemp++; /* jump '.' */
-	for(int i=0; i<9; i++)
-	{
-		int numtemp = 0;
-		if(*strtemp != '\0')
-		{
-			numtemp = *strtemp - '0';
-			strtemp++;
-		}
-		nanoseconds = nanoseconds * 10 + numtemp;
-	}
-
-	timetemp = neg==1?-timetemp:timetemp;
-
-	if(timetemp == 0)
-	{
-		time = MYSQL_ZERO_TIME;
-		PG_RETURN_TIMEADT(time);
-	}
-	else
-	{
-		/* Begin - SRS-MYSQL-HEX-LITERAL */
-		bool		is_insert = CALL_IN_INSERT();
-		/* End - SRS-MYSQL-HEX-LITERAL */
-			
-		if (is_insert)
-		{
-			dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-
-			if(dterr < 0) /* Returns an error result, the value is not 0. */
-			{
-				bool	is_strict_mode = false;
-				flag = 1;
-
-				/* Get the sql_mode parameter */
-				if(has_sql_mode(MODE_NO_ZERO_DATE))
-					flag |= TIME_NO_ZERO_DATE;
-				if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
-					flag |= TIME_NO_ZERO_IN_DATE;
-				if(has_sql_mode(MODE_INVALID_DATES))
-					flag |= TIME_INVALID_DATES;
-				if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-					has_sql_mode(MODE_STRICT_ALL_TABLES))
-					is_strict_mode = true;
-
-				if(is_strict_mode)/* strict mode */
-				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-						elog(ERROR, "Incorrect TIME value: '%s'", str);
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE))
-						elog(ERROR, "Incorrect TIME value: '%s'", str);
-
-				}
-				else /* non-strict mode */
-				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-					{
-						ereport(WARNING, (errmsg("Out of range value.")));
-						time = MYSQL_ZERO_TIME;
-					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-					{
-						ereport(WARNING, (errmsg("Data truncated for column.")));
-						time = MYSQL_ZERO_TIME;
-					}
-				}
-			}
-			else /* Returns the correct result with a value of 0 */
-			{
-				if (warn & MYSQL_TIME_WARN_TRUNCATED)
-					ereport(WARNING, (errmsg("Data truncated for column.")));
-				if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-				{
-					ereport(WARNING, (errmsg("Out of range value.")));
-					time = MYSQL_ZERO_TIME;
-				}
-				if ((warn & MYSQL_TIME_NOTE_TRUNCATED) &&
-				   !(warn & MYSQL_TIME_WARN_TRUNCATED))
-				{
-					ereport(WARNING, (errmsg("Incorrect TIME value:'%s'", str)));
-				}
-
-			}
-		}
-		else
-		{
-			flag = 9;
-			dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-			if (dterr < 0 || warn)
-			{
-				ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-				if(dterr < 0)
-					PG_RETURN_NULL();
-			}
-		}
-
-		fsec = nanoseconds / 1000;
-		nanoseconds = nanoseconds%1000;
-		warn = 0;
-		(void)mystime_add_nanoseconds_with_round(tm, &fsec,nanoseconds, &warn);
-		if(warn)
-		{
-			ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-		}
-		mystime_rounded_seconds(tm, &fsec,&warn, 0);
-
-		if(time != MYSQL_ZERO_TIME)
-		{
-			time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-		}
-	}
-
-	PG_RETURN_TIMEADT(time);
 }
 
 Datum mystime_numeric(PG_FUNCTION_ARGS)
@@ -7634,8 +7284,6 @@ PG_FUNCTION_INFO_V1(mystimes_typmodin);
 PG_FUNCTION_INFO_V1(mystimes_typmodout);
 PG_FUNCTION_INFO_V1(mystimes_scale);
 
-PG_FUNCTION_INFO_V1(int_mystimes);
-PG_FUNCTION_INFO_V1(numeric_mystimes);
 
 PG_FUNCTION_INFO_V1(pgdate_mystimes);
 PG_FUNCTION_INFO_V1(pgtimestamp_mystimes);
@@ -7733,32 +7381,47 @@ Datum mystimes_numeric(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(datetimeVal);
 }
-/*****************************************************************************
- *	 Date ADT
- *****************************************************************************/
 
-/* 
- * mystimes_in
- * Given date text string, convert to internal date format.
- */
+static Datum
+pg_tm_to_mys_time(struct pg_tm *tm, fsec_t fsec, bool neg, int dec)
+{
+	Datum 	ret;
+	int64 	time;
+	char	buf[MAXDATELEN + 1];
+
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+
+	time = neg ? -time : time;
+
+	if (dec == 0)
+	{
+		return TimeADTGetDatum(time);
+	}
+
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
+
+	ret = DirectFunctionCall3(numeric_in,
+							  CStringGetDatum(buf),
+							  ObjectIdGetDatum(InvalidOid),
+							  Int32GetDatum((((14 + dec) << 16) | dec) + VARHDRSZ));
+
+	return ret;
+}
+
 Datum
 mystimes_in(PG_FUNCTION_ARGS)
 {
 	char	   *str = PG_GETARG_CSTRING(0);
+	int32		typmod = PG_GETARG_INT32(2);
 	fsec_t		fsec = 0;
 	struct pg_tm tt,
 				*tm = &tt;
 	int 		dterr;
 	mysql_dttype ftype;
-	int 		flag = TIME_FLAG_INIT;
 	int 		warn = 0;
 	int 		nanoseconds = 0;
 	bool		nanosec = false;
-	TimeOffset	time = 0;
 	int 		neg = 0;
-	char		buf[MAXDATELEN + 1] = {0};
-	Numeric		num;
-	int32		typmod = PG_GETARG_INT32(2);
 
 	/**
 	 * Begin - SRS-MYSQL-BUILDINFUNCTION
@@ -7768,50 +7431,34 @@ mystimes_in(PG_FUNCTION_ARGS)
 		typmod = DATETIME_MAX_DECIMALS;
 	/* End - SRS-MYSQL-BUILDINFUNCTION */
 
-	if(has_sql_mode(MODE_NO_ZERO_DATE))
-		flag |= TIME_NO_ZERO_DATE;
-	if(has_sql_mode( MODE_INVALID_DATES))
-		flag |= TIME_INVALID_DATES;
+	memset(tm, 0, sizeof(struct pg_tm));
 
-	dterr = mysstr_to_time(str, strlen(str), tm, flag, &fsec, &ftype, &warn, &nanoseconds, &neg);
-	fsec += (nanoseconds+500) / 1000;
-	nanosec = mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[typmod], &warn);
-	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - typmod];
+	dterr = str_to_time(str, strlen(str), tm, &fsec, &ftype, &warn, &nanoseconds, &neg);
+	fsec += (nanoseconds + 500) / 1000;
+	nanosec = time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[typmod], &warn);
+	fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - typmod];
 
-	if(dterr || warn || nanosec)
+	if (dterr || warn || nanosec)
 	{
-		if((MYSQL_TIME_WARN_TRUNCATED & warn) && !dterr) 
+		if ((MYSQL_TIME_WARN_TRUNCATED & warn) && !dterr)
 			ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", str)));
-		else if((MYSQL_TIME_WARN_OUT_OF_RANGE & warn) && nanosec)
+		else if ((MYSQL_TIME_WARN_OUT_OF_RANGE & warn) && nanosec)
 		{
 			ereport(WARNING, (errmsg("time function: time field overflow")));
 			ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", str)));
 		}
-		else if(MYSQL_TIME_WARN_ZERO_IN_DATE & warn)
+		else if (MYSQL_TIME_WARN_ZERO_IN_DATE & warn)
 			ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", str)));
 		else
 			ereport(WARNING, (errmsg("Incorrect time value: '%s'", str)));
 
-		if(dterr < 0 || nanosec)
+		if (dterr < 0 || nanosec)
 		{
 			PG_RETURN_NULL();
 		}
 	}
 
-	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-
-	if(neg)
-	{
-		time = -time;
-	}
-
-	snprintf(buf, MAXDATELEN, "%ld.%06d",time, fsec);
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-											   CStringGetDatum(buf),
-											   ObjectIdGetDatum(InvalidOid),
-											   Int32GetDatum((((14+typmod) << 16)|typmod) + VARHDRSZ)));
-
-	PG_RETURN_NUMERIC(num);
+	PG_RETURN_DATUM(pg_tm_to_mys_time(tm, fsec, neg, typmod));
 }
 
 /* 
@@ -7822,8 +7469,6 @@ Datum
 mystimes_out(PG_FUNCTION_ARGS)
 {
 	Numeric		num = PG_GETARG_NUMERIC(0);
-	Numeric		tempfsec;
-	int64 		fsec = 0;
 	int64		time = 0;
 	char		*result;
 	struct pg_tm tt,
@@ -7832,7 +7477,10 @@ mystimes_out(PG_FUNCTION_ARGS)
 	char		*str = NULL;
 	bool		neg = false;
 
-	time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
+	time = DatumGetInt64(DirectFunctionCall1(numeric_int8, 
+											 DirectFunctionCall2(numeric_trunc,
+																 NumericGetDatum(num),
+																 Int32GetDatum(0))));
 
 	/* Begin - bug#z5127 */
 	if (numeric_is_neg(num))
@@ -7843,17 +7491,6 @@ mystimes_out(PG_FUNCTION_ARGS)
 	}
 	/* End - bug#z5127 */
 
-	tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(num),
-												   NumericGetDatum(int64_to_numeric(1000000))));
-	tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mod, NumericGetDatum(tempfsec),
-												   NumericGetDatum(int64_to_numeric(1000000))));
-
-	fsec = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(tempfsec)));
-
-	// Process rounding
-	if (fsec >= 500000)
-		time = time - 1;
-
 	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(num)));
 	str = strchr(str, '.');
 	if (str == NULL)
@@ -7862,18 +7499,11 @@ mystimes_out(PG_FUNCTION_ARGS)
 	if (time == MYSQL_NULL_TIME)
 		PG_RETURN_NULL();
 
-	if (time == MYSQL_ZERO_TIME && fsec == 0)
-	{
-		snprintf(buf, MAXDATELEN, "00:00:00%s", str);
-	}
-	else
-	{
-		tm->tm_hour = time / 10000;
-		tm->tm_min = time % 10000 / 100;
-		tm->tm_sec = time % 100;
+	tm->tm_hour = time / 10000;
+	tm->tm_min = time % 10000 / 100;
+	tm->tm_sec = time % 100;
 
-		snprintf(buf, MAXDATELEN, "%s%02d:%02d:%02d%s", neg ? "-" : "", tm->tm_hour, tm->tm_min, tm->tm_sec, str);
-	}
+	snprintf(buf, MAXDATELEN, "%s%02d:%02d:%02d%s", neg ? "-" : "", tm->tm_hour, tm->tm_min, tm->tm_sec, str);
 
 	result = pstrdup(buf);
 	PG_RETURN_CSTRING(result);
@@ -7952,300 +7582,206 @@ mystimes_scale(PG_FUNCTION_ARGS)
 	PG_RETURN_NUMERIC(datetimenum);
 }
 
-
-/* numeric_mystimes()
- * Convert numeric to mysql datetime data type.
- */
-Datum
-numeric_mystimes(PG_FUNCTION_ARGS)
+static inline long
+my_time_fraction_remainder(long nr, int32 decimals)
 {
-	Numeric		numtemp = PG_GETARG_NUMERIC(0);
-	int32		dec = PG_GETARG_INT32(1);
-	int64		timetemp = 0;
-	char		*str;
-	char		*strtemp;
-	fsec_t		fsec = 0;
-	fsec_t		nanoseconds = 0;
-	struct pg_tm tt,
-			   *tm = &tt;
-	int			dterr;
-	mysql_dttype ftype;
-	int 		flag = 0;
-	int			warn = 0;
-	TimeADT		time = -2;
-	int			neg = 0;
-	bool		nanosec = false;
-	char		buf[MAXDATELEN + 1] = {0};
-	Numeric		num;
-	int64		len = 0;
-
-	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
-	strtemp = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(numtemp)));
-	str = pstrdup(strtemp);
-	while(*strtemp && *strtemp != '.')
-	{
-		if(*strtemp == '-')
-		{
-			neg = 1;
-			strtemp++;
-			continue;
-		}
-		len++;
-		timetemp = timetemp * 10 + *strtemp - '0';
-		strtemp++;
-	}
-
-	/* Calculate the time */
-	strtemp++; /* jump '.' */
-	for(int i=0; i<9; i++)
-	{
-		int numtemp = 0;
-		if(*strtemp != '\0')
-		{
-			numtemp = *strtemp - '0';
-			strtemp++;
-		}
-		nanoseconds = nanoseconds * 10 + numtemp;
-	}
-
-	timetemp = neg==1?-timetemp:timetemp;
-
-	if(timetemp == 0)
-	{
-		time = MYSQL_ZERO_TIME;
-	}
-	else
-	{
-		/* Begin - SRS-MYSQL-HEX-LITERAL */
-		bool		is_insert = CALL_IN_INSERT();
-		/* End - SRS-MYSQL-HEX-LITERAL */
-	
-		if (is_insert)
-		{
-			dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-			/*if (non_zero_time(tm, fsec))
-				warn |= MYSQL_TIME_NOTE_TRUNCATED;*/
-
-			if(dterr < 0) /* Returns an error result, the value is not 0. */
-			{
-				bool	is_strict_mode = false;
-				flag = 1;
-
-				/* Get the sql_mode parameter */
-				if(has_sql_mode(MODE_NO_ZERO_DATE))
-					flag |= TIME_NO_ZERO_DATE;
-				if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
-					flag |= TIME_NO_ZERO_IN_DATE;
-				if(has_sql_mode(MODE_INVALID_DATES))
-					flag |= TIME_INVALID_DATES;
-				if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-					has_sql_mode(MODE_STRICT_ALL_TABLES))
-					is_strict_mode = true;
-
-				if(is_strict_mode)/* strict mode */
-				{
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-						elog(ERROR, "Incorrect TIME value: '%s'", str);
-					if(warn & (MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE))
-						elog(ERROR, "Incorrect TIME value: '%s'", str);
-
-				}
-				else /* non-strict mode */
-				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-					{
-						ereport(WARNING, (errmsg("Out of range value.")));
-						time = MYSQL_ZERO_TIME;
-					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-					{
-						ereport(WARNING, (errmsg("Data truncated for column.")));
-						time = MYSQL_ZERO_TIME;
-					}
-				}
-			}
-			else /* Returns the correct result with a value of 0 */
-			{
-				if (warn & MYSQL_TIME_WARN_TRUNCATED)
-					ereport(WARNING, (errmsg("Data truncated for column.")));
-				if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-				{
-					ereport(WARNING, (errmsg("Out of range value.")));
-					time = MYSQL_ZERO_TIME;
-				}
-				if ((warn & MYSQL_TIME_NOTE_TRUNCATED) &&
-				   !(warn & MYSQL_TIME_WARN_TRUNCATED))
-				{
-					ereport(WARNING, (errmsg("Incorrect TIME value:'%s'", str)));
-				}
-			}
-		}
-		else
-		{
-			flag = 9;
-			dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-			if (dterr < 0 || warn)
-			{
-				ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-				if(dterr < 0)
-					PG_RETURN_NULL();
-			}
-		}
-
-		fsec = (nanoseconds+500) / 1000;
-		nanoseconds = nanoseconds%1000;
-		warn = 0;
-		nanosec = mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
-		fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
-		if(nanoseconds && (nanosec || warn))
-		{
-			ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-		}
-
-		if(time != MYSQL_ZERO_TIME)
-		{
-			time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-		}
-	}
-
-	snprintf(buf, MAXDATELEN, "%ld.%06d",neg!=1?time:-time, fsec);
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
-
-
-	PG_RETURN_NUMERIC(num);
+	Assert(decimals <= DATETIME_MAX_DECIMALS);
+	return nr % (long)log_10_int[DATETIME_MAX_DECIMALS - decimals];
 }
 
-
-/* int_mystimes()
- * Convert integer to mysql datetime data type.
- */
-Datum
-int_mystimes(PG_FUNCTION_ARGS)
+static inline void
+my_time_trunc(fsec_t *fsec, int32 decimals)
 {
-	int64		arg = PG_GETARG_INT64(0);
-	int			dec = PG_GETARG_INT32(1);
-	fsec_t		fsec = 0;
-	struct pg_tm tt,
-			   *tm = &tt;
-	int			dterr;
-	mysql_dttype ftype;
-	int 		flag = 0;
-	int			warn = 0;
-	TimeOffset	time = 0;
-	int neg = 0;
-	char		buf[MAXDATELEN + 1] = {0};
-	Numeric		num;
+	*fsec -= my_time_fraction_remainder(*fsec, decimals);
+}
 
-	if(arg == 0)
+static bool
+my_time_round(struct pg_tm *tm, fsec_t *fsec, int dec)
+{
+	int warnings;
+	bool rc;
+
+	rc = time_add_nanoseconds_with_round(tm, fsec, msec_round_add[dec], &warnings);
+
+	my_time_trunc(fsec, dec);
+
+	return rc;
+}
+
+/**
+ * Return TRUE on error, FALSE on success
+ */
+static bool
+lldiv_t_to_time(lldiv_t *lld, struct pg_tm *tm, fsec_t *fsec, int *neg, int *warnings)
+{
+	mysql_dttype ftype;
+	int64 	time = lld->quot;
+	int32 	nanosec = lld->rem > 0 ? lld->rem : -lld->rem;
+
+	if (number_to_time(time, tm, fsec, &ftype, neg, warnings))
+		return true;
+
+	*fsec = nanosec / 1000;
+	return time_add_nanoseconds_with_round(tm, fsec, nanosec % 1000, warnings);
+}
+
+static bool
+convert_number_to_TIME(lldiv_t *lld, struct pg_tm *tm, fsec_t *fsec, int *neg, int *warnings)
+{
+	mysql_dttype ftype;
+	int64 	time = lld->quot;
+	int32 	nanosec = lld->rem > 0 ? lld->rem : -lld->rem;
+
+	if (number_to_time(time, tm, fsec, &ftype, neg, warnings))
+		return true;
+
+	*fsec = 0;
+
+	return !time_add_nanoseconds_with_round(tm, fsec, nanosec, warnings);
+}
+
+Datum
+numeric_mystime(PG_FUNCTION_ARGS)
+{
+	char	*msg;
+	Datum	num = PG_GETARG_DATUM(0);
+	int32	dec = PG_GETARG_INT32(1);
+	bool	explicit = PG_GETARG_BOOL(2);
+	lldiv_t lld;
+	int		neg = 0;
+	int		warn = 0;
+	fsec_t	fsec = 0;
+	struct pg_tm tt, *tm = &tt;
+
+	// Cast numeric to time or time(0)
+	if (dec == -1)
+		dec = 0;
+
+	memset(tm, 0, sizeof(struct pg_tm));
+
+	msg = DatumGetCString(DirectFunctionCall1(numeric_out, num));
+
+	// round to nanosecond (10^9)
+	num = DirectFunctionCall2(numeric, num, Int32GetDatum((((55 + 9) << 16) | 9) + VARHDRSZ));
+
+	if (explicit)
 	{
-		time = MYSQL_ZERO_TIME;
+		/**
+		 * if num is huge or some error occur when
+		 * do lldiv_t_to_time
+		 */
+		if (!numeric_to_lldiv_t(DatumGetNumeric(num), &lld) ||
+			lldiv_t_to_time(&lld, tm, &fsec, &neg, &warn))
+		{
+			ereport(WARNING, 
+					(errmsg("Truncated incorrect time value: '%s'", msg)));
+
+			PG_RETURN_NULL();
+		}
+
+		my_time_round(tm, &fsec, dec);
 	}
 	else
 	{
-		/* Begin - SRS-MYSQL-HEX-LITERAL */
-		bool		is_insert = CALL_IN_INSERT();
-		/* End - SRS-MYSQL-HEX-LITERAL */
-	
-		if (is_insert)
+		// not to produce warnings
+		numeric_to_lldiv_t(DatumGetNumeric(num), &lld);
+
+		if (convert_number_to_TIME(&lld, tm, &fsec, &neg, &warn))
 		{
-			dterr = mysnumber_to_time(arg, tm, flag, &fsec, &ftype, &warn, &neg);
-
-			if(dterr < 0) /* Returns an error result, the value is not 0. */
-			{
-				bool	is_strict_mode = false;
-				flag = 1;
-
-				/* Get the sql_mode parameter */
-				if(has_sql_mode(MODE_NO_ZERO_DATE))
-					flag |= TIME_NO_ZERO_DATE;
-				if(has_sql_mode(MODE_NO_ZERO_IN_DATE))
-					flag |= TIME_NO_ZERO_IN_DATE;
-				if(has_sql_mode(MODE_INVALID_DATES))
-					flag |= TIME_INVALID_DATES;
-				if(has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-					has_sql_mode(MODE_STRICT_ALL_TABLES))
-					is_strict_mode = true;
-
-				if(is_strict_mode)/* strict mode */
-				{
-					if(warn & (MYSQL_TIME_WARN_TRUNCATED | 
-						MYSQL_TIME_WARN_OUT_OF_RANGE | MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE))
-					   {
-						#ifdef WIN32
-							elog(ERROR, "Incorrect TIME value: '%lld'", arg);
-						#else
-							elog(ERROR, "Incorrect TIME value: '%ld'", arg);
-						#endif
-					   }
-				}
-				else /* non-strict mode */
-				{
-					if(warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-					{
-						ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-						time = MYSQL_ZERO_TIME;
-					}
-					if(warn & MYSQL_TIME_WARN_TRUNCATED)
-					{
-						ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-						time = MYSQL_ZERO_TIME;
-					}
-				}
-			}
-			else /* Returns the correct result with a value of 0 */
-			{
-				if (warn & MYSQL_TIME_WARN_TRUNCATED)
-					ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-				if (warn & (MYSQL_TIME_WARN_ZERO_DATE |
-					   MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
-				{
-					ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-					time = MYSQL_ZERO_TIME;
-				}
-				if ((warn & MYSQL_TIME_NOTE_TRUNCATED) &&
-				   !(warn & MYSQL_TIME_WARN_TRUNCATED))
-				{
-					ereport(WARNING, (errmsg("ERROR,You have an error in your SQL syntax.")));
-				}
-
-				time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-			}
+			my_time_round(tm, &fsec, dec);
 		}
-		else
-		{
-			flag = 9;
-			dterr = mysnumber_to_time(arg, tm, flag, &fsec, &ftype, &warn, &neg);
-			if (dterr < 0 || warn)
-			{
-			#ifdef WIN32
-				ereport(WARNING, (errmsg("Incorrect time value: '%lld'", arg)));
-			#else
-				ereport(WARNING, (errmsg("Incorrect time value: '%ld'", arg)));
-			#endif
-				if(dterr < 0)
-					PG_RETURN_NULL();
-			}
 
-			time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+		if (non_zero_date(tm))
+		{
+			warn |= MYSQL_TIME_NOTE_TRUNCATED;
 		}
 	}
 
-	snprintf(buf, MAXDATELEN, "%ld.%06d",neg!=1?time:-time, fsec);
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
+	if (warn)
+	{
+		if (explicit)
+		{
+			ereport(WARNING, (errmsg("Truncated incorrect time value: '%s'", msg)));
+		}
+		else if (is_strict_mode())
+		{
+			int level = ERROR;
 
+			if (warn & MYSQL_TIME_NOTE_TRUNCATED)
+				level = NOTICE;
 
-	PG_RETURN_NUMERIC(num);
+			ereport(level, (errmsg("Incorrect time value: '%s'", msg)));
+		}
+		else if (warn & MYSQL_TIME_NOTE_TRUNCATED)
+		{
+			ereport(NOTICE, (errmsg("Data truncated for column")));
+		}
+		else
+		{
+			ereport(WARNING, (errmsg("Out of range value for column")));
+		}
+	}		
+
+	PG_RETURN_DATUM(pg_tm_to_mys_time(tm, fsec, neg, dec));
+}
+
+Datum
+int_mystime(PG_FUNCTION_ARGS)
+{
+	int64	num = PG_GETARG_INT64(0);
+	int32	dec = PG_GETARG_INT32(1);
+	bool	explicit = PG_GETARG_BOOL(2);
+
+	int		neg = 0;
+	int		warn = 0;
+	fsec_t 	fsec = 0;
+	mysql_dttype ftype;
+	struct pg_tm tt, *tm = &tt;
+	bool	rc;
+
+	rc = number_to_time(num, tm, &fsec, &ftype, &neg, &warn);
+
+	// Cast integer to time or time(0)
+	if (dec == -1)
+		dec = 0;
+
+	if (explicit && rc)
+	{
+		ereport(WARNING, 
+				(errmsg("Truncated incorrect time value: '%lld'", (long long) num)));
+
+		PG_RETURN_NULL();
+	}
+
+	if (!explicit && non_zero_date(tm))
+		warn |= MYSQL_TIME_NOTE_TRUNCATED;
+
+	if (warn)
+	{
+		if (explicit)
+		{
+			ereport(WARNING, (errmsg("Truncated incorrect time value: '%lld'", (long long) num)));
+		}
+		else if (is_strict_mode())
+		{
+			int level = ERROR;
+
+			if (warn & MYSQL_TIME_NOTE_TRUNCATED)
+				level = NOTICE;
+
+			ereport(level, (errmsg("Incorrect time value: '%lld'", (long long) num)));
+		}
+		else if (warn & MYSQL_TIME_NOTE_TRUNCATED)
+		{
+			ereport(NOTICE, (errmsg("Data truncated for column")));
+		}
+		else
+		{
+			ereport(WARNING, (errmsg("Out of range value for column")));
+		}
+	}		
+	
+	PG_RETURN_DATUM(pg_tm_to_mys_time(tm, fsec, neg, dec));
 }
 
 Datum pgdate_mystimes(PG_FUNCTION_ARGS)
@@ -8270,7 +7806,7 @@ Datum pgdate_mystimes(PG_FUNCTION_ARGS)
 	
 	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
 
-	(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+	(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
 	if( !warn)
 	{
@@ -8289,7 +7825,8 @@ Datum pgdate_mystimes(PG_FUNCTION_ARGS)
 		}
 	}
 
-	snprintf(buf, MAXDATELEN, "%ld.%06d", time, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -8321,7 +7858,7 @@ Datum pgtimestamp_mystimes(PG_FUNCTION_ARGS)
 				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
 				errmsg("timestamp out of range")));
 
-	(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+	(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
 	if( !warn)
 	{
@@ -8340,7 +7877,8 @@ Datum pgtimestamp_mystimes(PG_FUNCTION_ARGS)
 		}
 	}
 
-	snprintf(buf, MAXDATELEN, "%ld.%06d",time, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -8374,7 +7912,7 @@ Datum pgtimestamptz_mystimes(PG_FUNCTION_ARGS)
 			(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
 			errmsg("timestamp out of range")));
 
-	(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+	(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
 	if( !warn)
 	{
@@ -8393,7 +7931,8 @@ Datum pgtimestamptz_mystimes(PG_FUNCTION_ARGS)
 		}
 	}
 		
-	snprintf(buf, MAXDATELEN, "%ld.%06d",time, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -8422,7 +7961,7 @@ Datum pgtime_mystimes(PG_FUNCTION_ARGS)
 
 	time2tm(pgtime, tm, &fsec);
 
-	(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+	(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
 	if( !warn)
 	{
@@ -8440,8 +7979,9 @@ Datum pgtime_mystimes(PG_FUNCTION_ARGS)
 			time = MYSQL_ZERO_TIME;
 		}
 	}
-		
-	snprintf(buf, MAXDATELEN, "%ld.%06d",time, fsec);
+
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) time, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9378,11 +8918,8 @@ Datum mysdate_mysdatetimes(PG_FUNCTION_ARGS)
 	TimeADT		datetime;
 
 	datetime = mysdate*1000000;
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9401,11 +8938,8 @@ Datum mysdate_mystimestamps(PG_FUNCTION_ARGS)
 	TimeADT		datetime;
 
 	datetime = mysdate*1000000;
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9439,11 +8973,8 @@ Datum mysdatetime_mysdatetimes(PG_FUNCTION_ARGS)
 	char		buf[MAXDATELEN + 1] = {0};
 	Numeric		num;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",mysdatetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mysdatetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mysdatetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9460,11 +8991,8 @@ Datum mysdatetime_mystimestamps(PG_FUNCTION_ARGS)
 	char		buf[MAXDATELEN + 1] = {0};
 	Numeric		num;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",mysdatetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mysdatetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mysdatetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9482,11 +9010,8 @@ Datum mysdatetime_mystimes(PG_FUNCTION_ARGS)
 	Numeric		num;
 
 	mysdatetime = mysdatetime%1000000;
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",mysdatetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mysdatetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mysdatetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9538,11 +9063,8 @@ Datum mystimestamp_mysdatetimes(PG_FUNCTION_ARGS)
 	Numeric		num;
 	fsec_t		fsec = 0;
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",mysdatetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mysdatetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mysdatetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9558,12 +9080,9 @@ Datum mystimestamp_mystimestamps(PG_FUNCTION_ARGS)
 	char		buf[MAXDATELEN + 1] = {0};
 	Numeric		num;
 	fsec_t		fsec = 0;
+	
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mysdatetime, fsec);
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",mysdatetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mysdatetime, fsec);
-#endif
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9581,11 +9100,8 @@ Datum mystimestamp_mystimes(PG_FUNCTION_ARGS)
 	fsec_t		fsec = 0;
 
 	mysdatetime = mysdatetime%1000000;
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",mysdatetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mysdatetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mysdatetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9643,7 +9159,9 @@ Datum mystime_mysdatetimes(PG_FUNCTION_ARGS)
 	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
 
 	mystime = date*1000000+mystime;
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mystime, fsec);
+	
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mystime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9666,7 +9184,9 @@ Datum mystime_mystimestamps(PG_FUNCTION_ARGS)
 	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
 
 	mystime = date*1000000+mystime;
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mystime, fsec);
+	
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mystime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -9683,7 +9203,8 @@ Datum mystime_mystimes(PG_FUNCTION_ARGS)
 	Numeric		num;
 	fsec_t		fsec = 0;
 
-	snprintf(buf, MAXDATELEN, "%ld.%06d",mystime, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mystime, fsec);
+	
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),

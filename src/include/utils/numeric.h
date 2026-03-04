@@ -83,7 +83,7 @@ Numeric numeric_bitand(Numeric arg1, Numeric arg2);
 /* End - bug0000457 */
 
 /* Begin - SRS-MYSQL-BUILDINFUNCTION */
-extern bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to);
+extern bool numeric_to_lldiv_t(Numeric num, lldiv_t *to);
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - SRS-MYSQL-BUILDINFUNCTION */

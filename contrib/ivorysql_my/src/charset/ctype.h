@@ -82,8 +82,8 @@ typedef struct MY_UNICASE_INFO
 
 struct CHARSET_INFO
 {
-    uint number;
-    uint state;
+    uint32 number;
+    uint32 state;
     const char *csname;
     const char *coll_name;
     int   sort_len;                 // Collect from 'SHOW COLLATION'
@@ -92,10 +92,10 @@ struct CHARSET_INFO
     const unsigned char *to_upper;
     const unsigned char *sort_order;
     const MY_UNICASE_INFO *caseinfo;
-    uint strxfrm_multiply;
-    uint mbminlen;
-    uint mbmaxlen;
-    uint mbmaxlenlen;
+    uint32 strxfrm_multiply;
+    uint32 mbminlen;
+    uint32 mbmaxlen;
+    uint32 mbmaxlenlen;
     unsigned char pad_char;
     MY_CHARSET_HANDLER *cset;
     MY_COLLATION_HANDLER *coll;
@@ -108,8 +108,8 @@ struct MY_COLLATION_HANDLER
     int (*strnncoll)(const CHARSET_INFO *, const unsigned char *, size_t, const unsigned char *, size_t, bool);
     int (*strnncollsp)(const CHARSET_INFO *, const unsigned char *, size_t, const unsigned char *, size_t);
     size_t (*strnxfrm)(const CHARSET_INFO *, unsigned char *dst, size_t dstlen,
-                       uint num_codepoints, const unsigned char *src, size_t srclen,
-                       uint flags);
+                       uint32 num_codepoints, const unsigned char *src, size_t srclen,
+                       uint32 flags);
     size_t (*strnxfrmlen)(const CHARSET_INFO *, size_t num_bytes);
     void (*hash_sort)(const CHARSET_INFO *cs, const unsigned char *key, size_t len,
                       uint64 *nr1, uint64 *nr2);
@@ -117,7 +117,7 @@ struct MY_COLLATION_HANDLER
 
 struct MY_CHARSET_HANDLER
 {
-    uint (*ismbchar)(const CHARSET_INFO *, const char *, const char *);
+    uint32 (*ismbchar)(const CHARSET_INFO *, const char *, const char *);
     my_charset_conv_mb_wc mb_wc;
     my_charset_conv_wc_mb wc_mb;
     void (*fill)(const CHARSET_INFO *, char *to, size_t len, int fill);
@@ -244,25 +244,25 @@ Datum do_mysql_hash(const unsigned char *key, int32_t len, Oid coll);
 void do_import_mysql_collation(void);
 int do_mysql_strcoll(uchar *arg1, int len1, uchar *arg2, int len2, Oid collid, bool trim);
 size_t do_mysql_strnxfrm(unsigned char *dst, size_t dstlen,
-							 uint nweights, const unsigned char *src, size_t srclen,
-							 uint flags, Oid coll);
-size_t do_mysql_strnxfrmlen(size_t srclen, uint nweights, Oid coll);
+							 uint32 nweights, const unsigned char *src, size_t srclen,
+							 uint32 flags, Oid coll);
+size_t do_mysql_strnxfrmlen(size_t srclen, uint32 nweights, Oid coll);
 int my_strnncoll_simple(const CHARSET_INFO *cs, const uchar *s, size_t slen, const uchar *t, size_t tlen, bool t_is_prefix);
 int my_strnncollsp_simple(const CHARSET_INFO *cs, const uchar *a, size_t a_length, const uchar *b, size_t b_length);
 size_t
 my_strnxfrm_mb(const CHARSET_INFO *cs, uchar *dst, size_t dstlen,
-               uint nweights, const uchar *src, size_t srclen, 
-               uint flags);
+               uint32 nweights, const uchar *src, size_t srclen, 
+               uint32 flags);
 size_t
 my_strxfrm_pad_desc_and_reverse(const CHARSET_INFO *cs,
                                 uchar *str, uchar *frmend, uchar *strend,
-                                uint nweights, uint flags, uint level);
+                                uint32 nweights, uint32 flags, uint32 level);
 size_t
 my_strnxfrm_simple(const CHARSET_INFO *cs,
-                   uchar *dst, size_t dstlen, uint nweights,
-                   const uchar *src, size_t srclen, uint flags);
+                   uchar *dst, size_t dstlen, uint32 nweights,
+                   const uchar *src, size_t srclen, uint32 flags);
 
 void my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
-                                 uint flags, uint level);
+                                 uint32 flags, uint32 level);
 
 #endif

@@ -870,7 +870,7 @@ CREATE AGGREGATE ivymy.min(ivymy.mystimes) (
 ---------- Compatible MySQL Cast ----------
 CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int8, integer, bool, int8)
 RETURNS ivymy.mystimes
-AS 'MODULE_PATHNAME','int_mystimes'
+AS 'MODULE_PATHNAME','int_mystime'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -878,7 +878,7 @@ STABLE;
 
 CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int4, integer, bool, int8)
 RETURNS ivymy.mystimes
-AS 'MODULE_PATHNAME','int_mystimes'
+AS 'MODULE_PATHNAME','int_mystime'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -886,7 +886,7 @@ STABLE;
 
 CREATE FUNCTION ivymy.int_mystimes(pg_catalog.int2, integer, bool, int8)
 RETURNS ivymy.mystimes
-AS 'MODULE_PATHNAME','int_mystimes'
+AS 'MODULE_PATHNAME','int_mystime'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -894,7 +894,7 @@ STABLE;
 
 CREATE FUNCTION ivymy.numeric_mystimes(pg_catalog.numeric, integer, bool, int8)
 RETURNS ivymy.mystimes
-AS 'MODULE_PATHNAME','numeric_mystimes'
+AS 'MODULE_PATHNAME','numeric_mystime'
 LANGUAGE C
 PARALLEL SAFE
 STRICT

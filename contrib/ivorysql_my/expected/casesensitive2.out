@@ -8,7 +8,7 @@ set lower_case_table_names = 2;
  */
 create schema TESTSCHEMA2;
 create schema testschema2; --err
-create schema MYSQL;
+create schema MYSQL_TEST;
 --select objname, caseobjname, refclassid, objkind from pg_object;
 alter schema TESTSCHEMA2 rename to newTESTSCHEMA2;
 --select objname, caseobjname, refclassid, objkind from pg_object;
@@ -101,20 +101,20 @@ alter view v_test2 rename to v_test22;
 ERROR:  relation "v_test2" does not exist
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
 --alter view schema
-alter view v_test22 set schema Mysql;
+alter view v_test22 set schema Mysql_Test;
 ERROR:  relation "v_test22" does not exist
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
-select * from MYSQL.v_test22;
-ERROR:  relation "MYSQL.v_test22" does not exist
-LINE 1: select * from MYSQL.v_test22;
+select * from MYSQL_TEST.v_test22;
+ERROR:  relation "MYSQL_TEST.v_test22" does not exist
+LINE 1: select * from MYSQL_TEST.v_test22;
                       ^
 --rename view
-alter view MYSQL.v_test22 rename to v_test2;
-ERROR:  relation "MYSQL.v_test22" does not exist
+alter view MYSQL_TEST.v_test22 rename to v_test2;
+ERROR:  relation "MYSQL_TEST.v_test22" does not exist
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
 --alter view schema
-alter view MYSQL.v_test2 set schema PUBLIC; 
-ERROR:  relation "MYSQL.v_test2" does not exist
+alter view MYSQL_TEST.v_test2 set schema PUBLIC; 
+ERROR:  relation "MYSQL_TEST.v_test2" does not exist
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
 insert into v_test2 values (3, 'yulianzhou');
 ERROR:  relation "v_test2" does not exist
@@ -131,7 +131,7 @@ drop table test2;
 ERROR:  table "test2" does not exist
 drop schema TESTSCHEMA2;
 ERROR:  schema "TESTSCHEMA2" does not exist
-drop schema MYSQL;
+drop schema MYSQL_TEST;
 drop schema testschema2 cascade;
 NOTICE:  drop cascades to table testschema2.test2
 --create table and index

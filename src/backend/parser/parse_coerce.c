@@ -102,9 +102,7 @@ static Datum Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_inser
 /* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 
 /* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-static int64 Num2Mystime(Const *con, Oid inputTypeId, bool is_insert);
 static int64 Str2Mystime(Const *con, Const *newcon, bool is_insert);
-static Datum Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert);
 static Datum Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert);
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
@@ -230,9 +228,7 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 		flag |= TIME_NO_ZERO_IN_DATE;
 	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
+	is_strict_mode = is_strict_mode();
 
 	if (inputTypeId == NUMERICOID)
 	{
@@ -254,7 +250,7 @@ Num2Mysdate(Const *con, Oid inputTypeId)
 		errstr = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
 		n = con->constvalue;
 	}
-	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
+	dterr = number_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
 	if (non_zero_time(tm, fsec))
 		warn |= MYSQL_TIME_NOTE_TRUNCATED;
 
@@ -469,9 +465,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 		flag |= TIME_NO_ZERO_IN_DATE;
 	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
+	is_strict_mode = is_strict_mode();
 
 	if (inputTypeId == NUMERICOID)
 	{
@@ -505,7 +499,7 @@ Num2Mysdatetime(Const *con, Oid inputTypeId)
 		errstr = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
 		n = con->constvalue;
 	}
-	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
+	dterr = number_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
 
 	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
@@ -761,9 +755,7 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		flag |= TIME_NO_ZERO_IN_DATE;
 	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
+	is_strict_mode = is_strict_mode();
 
 	if (inputTypeId == NUMERICOID)
 	{
@@ -795,7 +787,7 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		str = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
 		n = con->constvalue;
 	}
-	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
+	dterr = number_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
 	if (dterr < 0) /* Returns an error result, the value is not 0. */
 	{
 		if (is_strict_mode)/* strict mode */
@@ -864,11 +856,8 @@ Num2Mysdatetimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		}
 	}
 	
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -1028,11 +1017,8 @@ Str2Mysdatetimes(Const *con, Const *newcon, int dec, bool is_insert)
 		datetime = datetemp + time;
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -1069,9 +1055,7 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 		flag |= TIME_NO_ZERO_IN_DATE;
 	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
+	is_strict_mode = is_strict_mode();
 
 	if (inputTypeId == NUMERICOID)
 	{
@@ -1106,7 +1090,7 @@ Num2Mystimestamp(Const *con, Oid inputTypeId)
 		str = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
 		n = con->constvalue;
 	}
-	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
+	dterr = number_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
 	if (datetime_with_no_zero_in_date_to_timeval(tm, fsec, &warn))
 	{
 		datetime = MYSQL_ZERO_TIMESTAMP;
@@ -1377,9 +1361,7 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		flag |= TIME_NO_ZERO_IN_DATE;
 	if (has_sql_mode(MODE_INVALID_DATES))
 		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
+	is_strict_mode = is_strict_mode();
 
 	if (inputTypeId == NUMERICOID)
 	{
@@ -1413,7 +1395,7 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		str = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
 		n = con->constvalue;
 	}
-	dterr = mysnumber_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
+	dterr = number_to_datetime(n, tm, flag, &fsec, &ftype, &warn);
 
 	(void)mysdatetime_add_nanoseconds_with_round(tm, &fsec, &warn, msec_round_add[dec]);
 	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
@@ -1476,11 +1458,8 @@ Num2Mystimestamps(Const *con, Oid inputTypeId, int dec, bool is_insert)
 		}
 	}
 	
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -1658,11 +1637,8 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 		}
 	}
 
-#ifdef WIN32
-	snprintf(buf, MAXDATELEN, "%lld.%06d",datetime, fsec);
-#else
-	snprintf(buf, MAXDATELEN, "%ld.%06d",datetime, fsec);
-#endif
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 												CStringGetDatum(buf),
 												ObjectIdGetDatum(InvalidOid),
@@ -1671,129 +1647,6 @@ Str2Mystimestamps(Const *con, Const *newcon, int dec, bool is_insert)
 	return NumericGetDatum(num);
 }
 /* End - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-
-/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-static int64
-Num2Mystime(Const *con, Oid inputTypeId , bool is_insert)
-{
-	TimeADT		time = -2;
-	fsec_t	  fsec = 0;
-	struct pg_tm tt,
-		*tm = &tt;
-	int		  dterr;
-	mysql_dttype ftype;
-	int		  flag = 1;
-	int		  warn = 0;
-	int64 	  timetemp = 0;
-	bool	is_strict_mode = false;
-	int		is_out_range = 0;
-	int		neg = 0;
-	int64	nanofsec =0;
-	char		 *str;
-
-	MYS_ZERO_tm(tm); /* bug#5127 */
-
-	/* Get the sql_mode parameter value. */
-	if (has_sql_mode(MODE_NO_ZERO_DATE))
-		flag |= TIME_NO_ZERO_DATE;
-	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
-		flag |= TIME_NO_ZERO_IN_DATE;
-	if (has_sql_mode(MODE_INVALID_DATES))
-		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
-
-	if (inputTypeId == NUMERICOID)
-	{
-		int64 	  len = 0;
-		
-		char* strtemp = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(con->constvalue)));
-		str = pstrdup(strtemp);
-
-		while(*strtemp && *strtemp != '.')
-		{
-			if (*strtemp == '-')
-			{
-				neg = 1;
-				strtemp++;
-				continue;
-			}
-			len++;
-			timetemp = timetemp * 10 + *strtemp - '0';
-			strtemp++;
-		}
-		/* Calculate the time */
-		strtemp++; /* jump '.' */
-		for(int i=0; i<9; i++)
-		{
-			int numtemp = 0;
-			if (*strtemp != '\0')
-			{
-				numtemp = *strtemp - '0';
-				strtemp++;
-			}
-			nanofsec = nanofsec * 10 + numtemp;
-		}
-		timetemp = neg==1?-timetemp:timetemp;
-	}
-	else
-	{
-		str = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
-		timetemp = con->constvalue;
-	}
-
-	//First obtain nanosecond accuracy, then obtain dec accuracy
-	dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-	
-	mystime_add_nanoseconds_with_round(tm, &fsec, nanofsec, &warn);
-	mystime_rounded_seconds(tm, &fsec,&warn, 0);
-
-	if (is_insert)
-	{
-		if (non_zero_date(tm))
-		{
-			warn|= MYSQL_TIME_NOTE_TRUNCATED;
-		}
-		//set warnings
-		if (!num_set_mystime_warning(str, "time", dterr, warn, is_strict_mode, &is_out_range))
-		{
-			int daytosec = 0;
-			if (is_insert && !tm->tm_mon)
-			{
-				daytosec = tm->tm_mday * 24;
-			}
-			time = (tm->tm_hour+daytosec) * 10000 + tm->tm_min * 100 + tm->tm_sec;
-		
-			if (!tm->tm_year &&	!tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
-			{
-				time = MYSQL_ZERO_TIME;
-			}
-		}
-		else
-		{
-			if (is_out_range)
-			{
-				time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-			}
-			else
-				time = MYSQL_ZERO_TIME;
-		}
-	}
-	else
-	{
-		if (dterr < 0 || warn)
-		{
-			ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-			if (dterr < 0)
-				return 0;
-		}
-
-		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-	}
-
-	return neg!=1?time:-time;
-}
 
 static int64
 Str2Mystime(Const *con, Const *newcon, bool is_insert)
@@ -1848,12 +1701,12 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 		MYS_ZERO_tm(tm); /* bug#5127 */
 
 		len = strlen(str);
-		dterr = mysstr_to_time(str, len, tm, flag, &fsec, &ftype, &warn, &nanoseconds, &neg);
+		dterr = str_to_time(str, len, tm, &fsec, &ftype, &warn, &nanoseconds, &neg);
 
 		//time'12:13:14'  or select '10:22:33.5' <= ...;
 		if (!is_insert)
 		{
-			(void)mystime_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
+			(void)time_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
 			(void)mystime_rounded_seconds(tm, &fsec,&warn, 0);
 			if (!dterr && ftype == MYSQL_TIMESTAMP_TIME && !warn)
 			{
@@ -1874,7 +1727,7 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 		if (!dterr)
 		{
 			fsec += (nanoseconds+500) / 1000;
-			(void)mystime_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
+			(void)time_add_nanoseconds_with_round(tm, &fsec, nanoseconds, &warn);
 			(void)mystime_rounded_seconds(tm, &fsec,&warn, 0);
 			if (non_zero_date(tm))
 			{
@@ -1904,140 +1757,6 @@ Str2Mystime(Const *con, Const *newcon, bool is_insert)
 	}
 
 	return neg!=1?time:-time;
-}
-
-static Datum
-Num2Mystimes(Const *con, Oid inputTypeId, int dec, bool is_insert)
-{
-	TimeADT		time = -2;
-	fsec_t	  fsec = 0;
-	struct pg_tm tt,
-		*tm = &tt;
-	int		  dterr;
-	mysql_dttype ftype;
-	int		  flag = 1;
-	int		  warn = 0;
-	int64 	  timetemp = 0;
-	bool	is_strict_mode = false;
-	int		is_out_range = 0;
-	int		neg = 0;
-	int64	nanofsec =0;
-	char		buf[MAXDATELEN + 1] = {0};
-	char		 *str;
-	Numeric		num;
-
-	MYS_ZERO_tm(tm); /* bug#5127 */
-
-	/* Get the sql_mode parameter value. */
-	if (has_sql_mode(MODE_NO_ZERO_DATE))
-		flag |= TIME_NO_ZERO_DATE;
-	if (has_sql_mode(MODE_NO_ZERO_IN_DATE))
-		flag |= TIME_NO_ZERO_IN_DATE;
-	if (has_sql_mode(MODE_INVALID_DATES))
-		flag |= TIME_INVALID_DATES;
-	if (has_sql_mode(MODE_STRICT_TRANS_TABLES) ||
-	   has_sql_mode(MODE_STRICT_ALL_TABLES))
-		is_strict_mode = true;
-
-	if (inputTypeId == NUMERICOID)
-	{
-		int64 	  len = 0;
-		
-		char* strtemp = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(con->constvalue)));
-		str = pstrdup(strtemp);
-
-		while(*strtemp && *strtemp != '.')
-		{
-			if (*strtemp == '-')
-			{
-				neg = 1;
-				strtemp++;
-				continue;
-			}
-			len++;
-			timetemp = timetemp * 10 + *strtemp - '0';
-			strtemp++;
-		}
-		/* Calculate the time */
-		strtemp++; /* jump '.' */
-		for(int i=0; i<9; i++)
-		{
-			int numtemp = 0;
-			if (*strtemp != '\0')
-			{
-				numtemp = *strtemp - '0';
-				strtemp++;
-			}
-			nanofsec = nanofsec * 10 + numtemp;
-		}
-		timetemp = neg==1?-timetemp:timetemp;
-
-	}
-	else
-	{
-		str = DatumGetCString(DirectFunctionCall1(int8out, Int64GetDatum(con->constvalue)));
-		timetemp = con->constvalue;
-	}
-
-	//First obtain nanosecond accuracy, then obtain dec accuracy
-	dterr = mysnumber_to_time(timetemp, tm, flag, &fsec, &ftype, &warn, &neg);
-	fsec = (nanofsec+500) / 1000;
-	(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
-	fsec = fsec - fsec % (long) log_10_int[DATETIME_MAX_DECIMALS - dec];
-
-	if (is_insert)
-	{
-		if (non_zero_date(tm))
-		{
-			warn|= MYSQL_TIME_NOTE_TRUNCATED;
-		}
-		//set warnings
-		if (!num_set_mystime_warning(str, "time", dterr, warn, is_strict_mode, &is_out_range))
-		{
-			int daytosec = 0;
-			if (is_insert && !tm->tm_mon)
-			{
-				daytosec = tm->tm_mday * 24;
-			}
-			time = (tm->tm_hour+daytosec) * 10000 + tm->tm_min * 100 + tm->tm_sec;
-		
-			if (!tm->tm_year &&	!tm->tm_mon && !tm->tm_mday && !tm->tm_hour && !tm->tm_min && !tm->tm_sec)
-			{
-				time = MYSQL_ZERO_TIME;
-			}
-		}
-		else
-		{
-			if (is_out_range)
-			{
-				tm->tm_hour = TIME_MAX_HOUR;
-				tm->tm_min = TIME_MAX_MINUTE;
-				tm->tm_sec = TIME_MAX_SECOND;
-				time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-				fsec = 0;
-			}
-			else
-				time = MYSQL_ZERO_TIME;
-		}
-	}
-	else
-	{
-		if (dterr < 0 || warn)
-		{
-			ereport(WARNING, (errmsg("Incorrect TIME value: '%s'", str)));
-			if (dterr < 0)
-				return 0;
-		}
-		time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-	}
-
-	snprintf(buf, MAXDATELEN, "%ld.%06d",neg!=1?time:-time, fsec);
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
-
-	return NumericGetDatum(num);
 }
 
 static Datum
@@ -2094,7 +1813,7 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 		MYS_ZERO_tm(tm); /* bug#5127 */
 
 		len = strlen(str);
-		dterr = mysstr_to_time(str, len, tm, flag, &fsec, &ftype, &warn, &nanoseconds, &neg);
+		dterr = str_to_time(str, len, tm, &fsec, &ftype, &warn, &nanoseconds, &neg);
 		// time'12:13:14'  or select '10:22:33.5' <= ...;
 		if (!is_insert)
 		{
@@ -2104,7 +1823,7 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 				dec = (len - (strchr(str, '.') - str) - 1);
 			dec = dec > 6 ? 6 : dec;
 			fsec += (nanoseconds + 500) / 1000;
-			(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+			(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 			fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - dec];
 			if (!dterr && ftype == MYSQL_TIMESTAMP_TIME && !warn)
 			{
@@ -2114,7 +1833,9 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 				{
 					time = MYSQL_ZERO_TIME;
 				}
-				snprintf(buf, MAXDATELEN, "%ld.%06d", neg != 1 ? time : -time, fsec);
+			
+				snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) (neg != 1 ? time : -time), fsec);
+
 				num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 														  CStringGetDatum(buf),
 														  ObjectIdGetDatum(InvalidOid),
@@ -2131,7 +1852,7 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 		if (!dterr)
 		{
 			fsec += (nanoseconds + 500) / 1000;
-			(void)mystime_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
+			(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
 			fsec = fsec - fsec % (long)log_10_int[DATETIME_MAX_DECIMALS - dec];
 			if (non_zero_date(tm))
 			{
@@ -2160,7 +1881,8 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 		}
 	}
 
-	snprintf(buf, MAXDATELEN, "%ld.%06d", neg != 1 ? time : -time, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) (neg != 1 ? time : -time), fsec);
+
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 											  CStringGetDatum(buf),
 											  ObjectIdGetDatum(InvalidOid),
@@ -2351,14 +2073,6 @@ coerce_type(ParseState *pstate, Node *node,
 				{
 					dateflg = MYS_TIMESTAMPS_FLG;
 				}
-				else if (baseTypeId == MYSTIMEOID)
-				{
-					dateflg = MYS_TIME_FLG;
-				}
-				else if (baseTypeId == MYSTIMESOID)
-				{
-					dateflg = MYS_TIMES_FLG;
-				}
 			}
 
 			if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSDATEOID)
@@ -2371,16 +2085,11 @@ coerce_type(ParseState *pstate, Node *node,
 				dateflg = MYS_TIMESTAMP_FLG;
 			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESTAMPSOID)
 				dateflg = MYS_TIMESTAMPS_FLG;
-			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMEOID)
-				dateflg = MYS_TIME_FLG;
-			else if (COERCION_ASSIGNMENT == ccontext && baseTypeId == MYSTIMESOID)
-				dateflg = MYS_TIMES_FLG;
 
 			if (dateflg)
 			{
 				DateADT		date;
 				TimeADT		datetime;
-				TimeADT		time;
 				Type		baseType;
 				ParseCallbackState pcbstate;
 				Const	   *con = (Const *) node;
@@ -2428,17 +2137,7 @@ coerce_type(ParseState *pstate, Node *node,
 					timestamps = Num2Mystimestamps(con, inputTypeId, targetTypeMod, is_insert);
 					newcon->constvalue = timestamps;
 				}
-				else if (dateflg == MYS_TIME_FLG)
-				{
-					time = Num2Mystime(con, inputTypeId, is_insert);
-					newcon->constvalue = TimeADTGetDatum(time);
-				}
-				else if (dateflg == MYS_TIMES_FLG)
-				{
-					time = Num2Mystimes(con, inputTypeId, targetTypeMod, is_insert);
-					newcon->constvalue = TimeADTGetDatum(time);
-				}
-
+				
 				result = (Node *) newcon;
 				ReleaseSysCache(baseType);
 				cancel_parser_errposition_callback(&pcbstate);

@@ -183,9 +183,9 @@ do_mysql_strcoll(unsigned char *arg1, int len1, unsigned char *arg2, int len2, O
 }
 
 size_t
-do_mysql_strnxfrm(unsigned char *dst, size_t dstlen, uint nweights,
+do_mysql_strnxfrm(unsigned char *dst, size_t dstlen, uint32 nweights,
 						 const unsigned char *src, size_t srclen,
-						 uint flags, Oid coll)
+						 uint32 flags, Oid coll)
 {
 	CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll);
 
@@ -193,7 +193,7 @@ do_mysql_strnxfrm(unsigned char *dst, size_t dstlen, uint nweights,
 }
 
 size_t
-do_mysql_strnxfrmlen(size_t srclen, uint nweights, Oid coll)
+do_mysql_strnxfrmlen(size_t srclen, uint32 nweights, Oid coll)
 {
 	CHARSET_INFO	*cs = search_charset_info_by_coll_id(coll);
 

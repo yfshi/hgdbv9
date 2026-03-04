@@ -80,9 +80,9 @@ my_strnncollsp_binary(const CHARSET_INFO *cs, const uchar *s, size_t slen, const
 
 static size_t 
 my_strnxfrm_8bit_bin_no_pad(const CHARSET_INFO *cs, uchar *dst,
-                            size_t dstlen, uint nweights,
+                            size_t dstlen, uint32 nweights,
                             const uchar *src, size_t srclen,
-                            uint flags)
+                            uint32 flags)
 {
     srclen = Min(srclen, dstlen);
     srclen = Min(srclen, nweights);
@@ -113,7 +113,7 @@ my_hash_sort_bin(const CHARSET_INFO *cs,
 
     for (; pos < key; pos++)
     {
-        tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) * ((uint)*pos)) + (tmp1 << 8);
+        tmp1 ^= (uint64)((((uint32)tmp1 & 63) + tmp2) * ((uint32)*pos)) + (tmp1 << 8);
         tmp2 += 3;
     }
 
@@ -179,15 +179,15 @@ my_strnncollsp_8bit_bin(const CHARSET_INFO *cs,
 
 static size_t
 my_strnxfrm_8bit_bin(const CHARSET_INFO *cs,
-                     uchar *dst, size_t dstlen, uint nweights,
-                     const uchar *src, size_t srclen, uint flags)
+                     uchar *dst, size_t dstlen, uint32 nweights,
+                     const uchar *src, size_t srclen, uint32 flags)
 {
     set_if_smaller(srclen, dstlen);
     set_if_smaller(srclen, nweights);
     if (dst != src)
         memcpy(dst, src, srclen);
     return my_strxfrm_pad_desc_and_reverse(cs, dst, dst + srclen, dst + dstlen,
-                                           (uint)(nweights - srclen), flags, 0);
+                                           (uint32)(nweights - srclen), flags, 0);
 }
 
 static void 
@@ -210,8 +210,8 @@ my_hash_sort_8bit_bin(const CHARSET_INFO *cs,
 
     for (; pos < (uchar *)key; pos++)
     {
-        tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) *
-                        ((uint)*pos)) +
+        tmp1 ^= (uint64)((((uint32)tmp1 & 63) + tmp2) *
+                        ((uint32)*pos)) +
                 (tmp1 << 8);
         tmp2 += 3;
     }

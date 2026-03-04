@@ -359,6 +359,7 @@ SELECT OCTET_LENGTH(cast('10:57:11' as time)); -- 8
 SELECT OCTET_LENGTH(true); -- 1
 SELECT OCTET_LENGTH(false); -- 1
 SELECT OCTET_LENGTH(binary 'Hello'); -- 5
+set escape_string_warning = off;
 SET standard_conforming_strings to OFF;
 SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 12
 SET standard_conforming_strings to ON;

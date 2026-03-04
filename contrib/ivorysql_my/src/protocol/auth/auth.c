@@ -16,10 +16,10 @@
 #include "utils/ora_compatible.h"
 #include "utils/syscache.h"
 
-#include "auth.h"
-#include "server.h"
-#include "message.h"
-#include "mqformat.h"
+#include "../../include/auth.h"
+#include "../../include/server.h"
+#include "../../include/message.h"
+#include "../../include/mqformat.h"
 
 #define MYS_ENCODING_UTF8MB3_GENERAL_CI         0x21
 

@@ -12,10 +12,10 @@
 #include "storage/shmem.h"
 #include "utils/guc.h"
 
-#include "server.h"
-#include "message.h"
-#include "mqformat.h"
-#include "auth.h"
+#include "../../include/auth.h"
+#include "../../include/message.h"
+#include "../../include/mqformat.h"
+#include "../../include/server.h"
 
 #define SHA2_HASH_SIZE                      32
 #define CACHING_SHA2_NPART                  4
@@ -140,7 +140,7 @@ DIGESTDestroy(DIGEST_CTX **ctx)
     }
 }
 
-static uint
+static uint32
 getrounds(const char *s)
 {
     const char *r;

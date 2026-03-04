@@ -31,18 +31,6 @@
 #include "utils/varlena.h"
 #include "utils/guc.h" /* ReqID: SRS-MYSQL-CHARACTERTYPE */
 
-/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE */
-static text *
-mys_dotrim(const char *string, int stringlen,
-	   const char *set, int setlen,
-	   bool doltrim, bool dortrim,
-	   Oid coll);
-Datum mysrtrim(text *string, Oid collid);
-/* End - ReqID: SRS-MYSQL-CHARACTERTYPE */
-/* Begin - BUG#Z00005074 */
-static bool myscharis_space(char a);
-/* End - BUG#Z00005074 */
-
 /* common code for bpchartypmodin and varchartypmodin */
 static int32
 anychar_typmodin(ArrayType *ta, const char *typename)
@@ -248,16 +236,15 @@ bpcharout(PG_FUNCTION_ARGS)
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 	if (compatible_mode == MYS_MODE)
 	{
-		/*
-		 * 1. if sql_mode value have MODE_PAD_CHAR_TO_FULL_LENGTH, the return is full string;
-		 * 2. if sql_mode value not have MODE_PAD_CHAR_TO_FULL_LENGTH, but the guc parameters
-		 *    not_mode_pad_char_to_full == true, the return is trimed string;
-		 * 3. the others cases are full string;
-		 */
 		if (mode_pad_char_to_full())
 			PG_RETURN_CSTRING(TextDatumGetCString(txt));
-		if (not_mode_pad_char_to_full)	/* BUG#M533 */
-			PG_RETURN_CSTRING(TextDatumGetCString(mysrtrim(DatumGetTextPP(txt), PG_GET_COLLATION())));
+
+		/**
+		 * Output of nchar(n) in PG will fill in the blank at the end,
+		 * which is opposite to MySQL.
+		 */
+		if (not_mode_pad_char_to_full)
+			PG_RETURN_CSTRING(TextDatumGetCString(DirectFunctionCall1(rtrim1, txt)));
 	}
 	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 
@@ -350,7 +337,7 @@ bpchar(PG_FUNCTION_ARGS)
 
 		for (i = 0; i < len; i++)
 		{
-			if (!myscharis_space(s[i]))
+			if (!isspace(s[i]))
 			{
 				all_spaces = false;
 				break;
@@ -726,7 +713,7 @@ varchar(PG_FUNCTION_ARGS)
 
 		for (i = 0; i < len; i++)
 		{
-			if (!myscharis_space(s_data[i]))
+			if (!isspace(s_data[i]))
 			{
 				all_spaces = false;
 				break;
@@ -1440,203 +1427,3 @@ btbpchar_pattern_sortsupport(PG_FUNCTION_ARGS)
 
 	PG_RETURN_VOID();
 }
-
-/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)
- * mysrtrim
-	rtrim with set fixed as ' '
- */
-Datum mysrtrim(text *string, Oid collid)
-{
-	text *ret = string;
-
-	if (!OidIsValid(collid))
-		collid = C_COLLATION_OID;
-
-	if (!mode_pad_char_to_full())
-		ret = mys_dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
-					 " ", 1,
-					 false, true,
-					 collid);
-
-	PG_RETURN_TEXT_P(ret) ;
-}
-
-/* dotrim
- * Common implementation for btrim, ltrim, rtrim
- */
-
-static text *
-mys_dotrim(const char *string, int stringlen,
-	   const char *set, int setlen,
-	   bool doltrim, bool dortrim,
-	   Oid coll)
-{
-	int			i;
-
-	/* Nothing to do if either string or set is empty */
-	if (stringlen > 0 && setlen > 0)
-	{
-		if (pg_database_encoding_max_length() > 1)
-		{
-			/*
-			 * In the multibyte-encoding case, build arrays of pointers to
-			 * character starts, so that we can avoid inefficient checks in
-			 * the inner loops.
-			 */
-			const char **stringchars;
-			const char **setchars;
-			int		   *stringmblen;
-			int		   *setmblen;
-			int			stringnchars;
-			int			setnchars;
-			int			resultndx;
-			int			resultnchars;
-			const char *p;
-			int			len;
-			int			mblen;
-			const char *str_pos;
-			int			str_len;
-
-			stringchars = (const char **) palloc(stringlen * sizeof(char *));
-			stringmblen = (int *) palloc(stringlen * sizeof(int));
-			stringnchars = 0;
-			p = string;
-			len = stringlen;
-			while (len > 0)
-			{
-				stringchars[stringnchars] = p;
-				stringmblen[stringnchars] = mblen = pg_mblen(p);
-				stringnchars++;
-				p += mblen;
-				len -= mblen;
-			}
-
-			setchars = (const char **) palloc(setlen * sizeof(char *));
-			setmblen = (int *) palloc(setlen * sizeof(int));
-			setnchars = 0;
-			p = set;
-			len = setlen;
-			while (len > 0)
-			{
-				setchars[setnchars] = p;
-				setmblen[setnchars] = mblen = pg_mblen(p);
-				setnchars++;
-				p += mblen;
-				len -= mblen;
-			}
-
-			resultndx = 0;		/* index in stringchars[] */
-			resultnchars = stringnchars;
-
-			if (doltrim)
-			{
-				while (resultnchars > 0)
-				{
-					str_pos = stringchars[resultndx];
-					str_len = stringmblen[resultndx];
-					for (i = 0; i < setnchars; i++)
-					{
-						if (str_len == setmblen[i] &&
-							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0)
-							break;
-					}
-					if (i >= setnchars)
-						break;	/* no match here */
-					string += str_len;
-					stringlen -= str_len;
-					resultndx++;
-					resultnchars--;
-				}
-			}
-
-			if (dortrim)
-			{
-				while (resultnchars > 0)
-				{
-					str_pos = stringchars[resultndx + resultnchars - 1];
-					str_len = stringmblen[resultndx + resultnchars - 1];
-					for (i = 0; i < setnchars; i++)
-					{
-						if (str_len == setmblen[i] &&
-							varstr_cmp(str_pos, str_len, setchars[i], str_len, coll) == 0)
-							break;
-					}
-					if (i >= setnchars)
-						break;	/* no match here */
-					stringlen -= str_len;
-					resultnchars--;
-				}
-			}
-
-			pfree(stringchars);
-			pfree(stringmblen);
-			pfree(setchars);
-			pfree(setmblen);
-		}
-		else
-		{
-			/*
-			 * In the single-byte-encoding case, we don't need such overhead.
-			 */
-			if (doltrim)
-			{
-				while (stringlen > 0)
-				{
-					char		str_ch = *string;
-
-					for (i = 0; i < setlen; i++)
-					{
-						if (str_ch == set[i])
-							break;
-					}
-					if (i >= setlen)
-						break;	/* no match here */
-					string++;
-					stringlen--;
-				}
-			}
-
-			if (dortrim)
-			{
-				while (stringlen > 0)
-				{
-					char		str_ch = string[stringlen - 1];
-
-					for (i = 0; i < setlen; i++)
-					{
-						if (str_ch == set[i])
-							break;
-					}
-					if (i >= setlen)
-						break;	/* no match here */
-					stringlen--;
-				}
-			}
-		}
-	}
-
-	/* Return selected portion of string */
-	return cstring_to_text_with_len(string, stringlen);
-}
-/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
-
-/* Begin - BUG#Z00005074 */
-/* myscharis_space
- * Is A a space character.
- */
-static bool myscharis_space(char a)
-{
-	switch (a)
-	{
-		case ' ':
-		case '\f':
-		case '\n':
-		case '\r':
-		case '\t':
-		case '\v':
-			return true;
-		default:
-			return false;
-	}
-}
-/* End - BUG#Z00005074 */

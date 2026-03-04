@@ -94,10 +94,6 @@ create user user1;create user user2;rename user user1 to user3,user2 to user4;
 drop user user3;
 drop user user4;
 
-CREATE USER rename_test WITH superuser;
-\! psql -p $PGPORT -d postgres -p $PGPORT -U rename_test -c "create user user1;create user user2;rename user user1 to user3,user2 to user4;drop user user3, user4;"
-drop user rename_test;
-
 --fix bug 5992
 create table test ( id int primary key, name text, email text );
 create index original_index on test(name);

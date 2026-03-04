@@ -332,7 +332,7 @@ do { \
 
 extern const char *const months[];	/* months (3-char abbreviations) */
 extern const char *const days[];	/* days (full names) */
-extern const int day_tab[2][13];
+extern PGDLLIMPORT const int day_tab[2][13];
 
 /*
  * These are the rules for the Gregorian calendar, which was adopted in 1582.
@@ -417,7 +417,7 @@ extern bool AdjustTimestampForTypmodError(Timestamp *time, int32 typmod,
 extern int mystr_to_datetime(const char *str, int length, 
  						   struct pg_tm *tm, int flag, fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int * fsec_len);
 
-extern int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn);
+extern int number_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn);
 
 extern bool non_zero_time(const struct pg_tm *tm, int fsec);
 
@@ -435,14 +435,14 @@ extern bool datetime_with_no_zero_in_date_to_timeval(struct pg_tm *tm, fsec_t fs
 
 /* Begin - ReqID:SRS-MYSQL-TIMETYPE */
 bool set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict);
-bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict, int *is_out_range);
+bool num_set_mystime_warning(char *str, char *datetype, bool is_err, int warn, int is_strict, int *is_out_range);
 
-extern bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec, int nanoseconds, int *warnings);
+extern bool time_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec, int nanoseconds, int *warnings);
 extern bool mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec);
 
-extern int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
+extern int str_to_time(const char *str, size_t length, struct pg_tm *tm,
 					  fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg);
-extern int mysnumber_to_time(int64 nr, struct pg_tm *tm,  int flag, int *fsec, mysql_dttype *ftype, int *warnings, int *neg);
+extern bool number_to_time(int64 nr, struct pg_tm *tm, int *fsec, mysql_dttype *ftype, int *neg, int *warnings);
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 extern bool validate_timestamp_range(struct pg_tm *tm); /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 

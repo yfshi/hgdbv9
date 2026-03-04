@@ -1214,7 +1214,7 @@ int4_to_YearADT(int32 year)
 		if (YEAR_VALID(year))
 		{
 			if (YEAR2_IN_RANGE(year))
-				year = year + (year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+				year = year + (year >= YY_PART_YEAR ? 1900 : 2000);
 			year = year - MIN_YEAR_NUM + 1;
 		}
 		else
@@ -1245,7 +1245,7 @@ bigint_to_YearADT(int64 year)
 		if (YEAR_VALID(year))
 		{
 			if (YEAR2_IN_RANGE(year))
-				year = year + (year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+				year = year + (year >= YY_PART_YEAR ? 1900 : 2000);
 			year = year - MIN_YEAR_NUM + 1;
 		}
 		else if (year <= MIN_YEAR2_NUM || (year >= MAX_YEAR2_NUM && year <= MIN_YEAR_NUM))
@@ -1275,7 +1275,7 @@ int32_to_YearADT(int32 year)
 		if (YEAR_VALID(year))
 		{
 			if (YEAR2_IN_RANGE(year))
-				year = year + (year >= YEAR2_BOUND_BETWEEN_20C_21C ? 1900 : 2000);
+				year = year + (year >= YY_PART_YEAR ? 1900 : 2000);
 			year = year - MIN_YEAR_NUM + 1;
 		}
 		else if (year <= MIN_YEAR2_NUM || (year >= MAX_YEAR2_NUM && year <= MIN_YEAR_NUM))

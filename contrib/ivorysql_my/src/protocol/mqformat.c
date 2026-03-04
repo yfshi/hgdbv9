@@ -1,9 +1,9 @@
 #include "postgres.h"
 
 #include "libpq/libpq.h"
-#include "mqformat.h"
 #include "utils/guc.h"
-#include "server.h"
+#include "../include/server.h"
+#include "../include/mqformat.h"
 
 int next_seqid = 0;
 

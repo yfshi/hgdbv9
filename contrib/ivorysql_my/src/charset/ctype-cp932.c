@@ -150,13 +150,13 @@ static const uchar sort_order_cp932[]=
 #define iscp932tail(c) ((0x40<=(c) && (c)<=0x7e) || \
                        (0x80<=(c) && (c)<=0xfc))
 
-static uint 
+static uint32 
 ismbchar_cp932(const CHARSET_INFO *cs, const char* p, const char *e)
 {
   return (iscp932head((uchar) *p) && (e-p)>1 && iscp932tail((uchar)p[1]) ? 2: 0);
 }
 
-#define cp932code(c,d)	((((uint) (uchar)(c)) << 8) | (uint) (uchar) (d))
+#define cp932code(c,d)	((((uint32) (uchar)(c)) << 8) | (uint32) (uchar) (d))
 
 static const MY_UNICASE_CHARACTER c81[256]=
 {
@@ -34530,8 +34530,8 @@ my_strnncoll_cp932_internal(const CHARSET_INFO *cs,
         if (ismbchar_cp932(cs, (char *)a, (char *)a_end) &&
             ismbchar_cp932(cs, (char *)b, (char *)b_end))
         {
-            uint a_char = cp932code(*a, *(a + 1));
-            uint b_char = cp932code(*b, *(b + 1));
+            uint32 a_char = cp932code(*a, *(a + 1));
+            uint32 b_char = cp932code(*b, *(b + 1));
             if (a_char != b_char)
                 return a_char - b_char;
             a += 2;

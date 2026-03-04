@@ -283,7 +283,6 @@ static TypeName *MystextSystemTypeName(char *name);
 /*Begin - ReqID:  SRS-MYSQL-BUILDINFUNCTION */
 static List *MysqlSystemFuncName(char *name);
 static TypeName *MySQLSystemTypeName(char *name);
-static void CheckIconstType(Node* node);
 /*End - ReqID:  SRS-MYSQL-BUILDINFUNCTION */
 
 static int64 CheckAConstTypeLength(Node* node);
@@ -16624,15 +16623,13 @@ BlobWithoutLength:
  */
 /* ReqID:SRS-MYSQL-DATETYPE */
 Datetime:
-			TIMESTAMP '(' a_expr ')' opt_timezone
+			TIMESTAMP '(' Iconst ')' opt_timezone
 				{
 					
 					/* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL == $5)
 					{
-						CheckIconstType($3);			/* SRS-MYSQL-BUILDINFUNCTION */
-
-						if(0 == $3)
+						if (0 == $3)
 						{
 							$$ = MySQLSystemTypeName("mystimestamp");
 							$$->location = @1;
@@ -16640,7 +16637,7 @@ Datetime:
 						else
 						{
 							$$ = MySQLSystemTypeName("mystimestamps");
-							$$->typmods = list_make1($3);
+							$$->typmods = list_make1(makeIntConst($3, @3));
 							$$->location = @1;
 						}
 					}
@@ -16651,7 +16648,7 @@ Datetime:
 							$$ = SystemTypeName("timestamptz");
 						else
 							$$ = SystemTypeName("timestamp");
-						$$->typmods = list_make1($3);
+						$$->typmods = list_make1(makeIntConst($3, @3));
 						$$->location = @1;
 					}
 				}
@@ -16711,14 +16708,12 @@ Datetime:
 					}
 					/* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 				}
-			| TIME '(' a_expr ')' opt_timezone
+			| TIME '(' Iconst ')' opt_timezone
 				{
 					/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
 					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL == $5)
 					{
-						CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
-
-						if(0 == $3)
+						if (0 == $3)
 						{
 							$$ = MySQLSystemTypeName("mystime");
 							$$->location = @1;
@@ -16726,7 +16721,7 @@ Datetime:
 						else
 						{
 							$$ = MySQLSystemTypeName("mystimes");
-							$$->typmods = list_make1($3);
+							$$->typmods = list_make1(makeIntConst($3, @3));
 							$$->location = @1;
 						}
 					}
@@ -16737,7 +16732,7 @@ Datetime:
 							$$ = SystemTypeName("timetz");
 						else
 							$$ = SystemTypeName("time");
-						$$->typmods = list_make1($3);
+						$$->typmods = list_make1(makeIntConst($3, @3));
 						$$->location = @1;
 					}
 				}
@@ -16796,7 +16791,7 @@ ConstDatetime:
 			TIMESTAMP opt_timezone
 				{
 					/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
-					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL ==$2)
+					if (MYS_MODE == compatible_mode && TIME_ZONE_NULL == $2)
 					{
 						$$ = MySQLSystemTypeName("mystimestamp");
 						$$->location = @1;
@@ -16812,8 +16807,6 @@ ConstDatetime:
 				}
 			| TIMESTAMP '(' a_expr ')' opt_timezone
 				{
-					CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
-
 					/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
 					if (TIME_ZONE_NULL == $5)
 					{
@@ -16872,8 +16865,6 @@ ConstDatetime:
 				}
 			| TIME '(' a_expr ')' opt_timezone
 				{
-					CheckIconstType($3);		/* SRS-MYSQL-BUILDINFUNCTION */
-					
 					/* ReqID:SRS-MYSQL-TIMETYPE */
 					if (TIME_ZONE_NULL == $5)
 					{
@@ -22751,19 +22742,6 @@ MystextSystemTypeName(char *name)
 /* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
-
-/* Begin - ReqID: SRS-MYSQL-BUILDINFUNCTION */
-static void CheckIconstType(Node* node) 
-{
-	// Check whether the input parameter is of type Iconst. If not, report an error.
-	if (!IsA(node, A_Const) || ((A_Const*)node)->val.type != T_Integer) {
-		ereport(ERROR,
-			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-			errmsg("Un-support feature"),
-			errdetail("The parameter type should be an integer constant")));
-	}
-}
-/* End - ReqID: SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - ReqID: SRS-MYSQL-BITTYPE */
 static int64 CheckAConstTypeLength(Node* node) 

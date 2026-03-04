@@ -150,13 +150,13 @@ static const uchar sort_order_sjis[] =
 #define issjistail(c) ((0x40<=(c) && (c)<=0x7e) || \
                        (0x80<=(c) && (c)<=0xfc))
 
-static uint
+static uint32
 ismbchar_sjis(const CHARSET_INFO *cs, const char *p, const char *e)
 {
     return (issjishead((uchar)*p) && (e - p) > 1 && issjistail((uchar)p[1]) ? 2 : 0);
 }
 
-#define sjiscode(c,d)	((((uint) (uchar)(c)) << 8) | (uint) (uchar) (d))
+#define sjiscode(c,d)	((((uint32) (uchar)(c)) << 8) | (uint32) (uchar) (d))
 
 static const MY_UNICASE_CHARACTER c81[256] =
 {
@@ -1047,8 +1047,8 @@ my_strnncoll_sjis_internal(const CHARSET_INFO *cs,
         if (ismbchar_sjis(cs, (char *)a, (char *)a_end) &&
             ismbchar_sjis(cs, (char *)b, (char *)b_end))
         {
-            uint a_char = sjiscode(*a, *(a + 1));
-            uint b_char = sjiscode(*b, *(b + 1));
+            uint32 a_char = sjiscode(*a, *(a + 1));
+            uint32 b_char = sjiscode(*b, *(b + 1));
             if (a_char != b_char)
                 return (int)a_char - (int)b_char;
             a += 2;

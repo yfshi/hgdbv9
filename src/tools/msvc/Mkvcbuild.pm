@@ -698,9 +698,6 @@ sub mkvcbuild
 		push @contrib_excludes, 'sqlite_fdw';
 	}
 
-	# TODO(windows): compile failed
-	push @contrib_excludes, 'ivorysql_my';
-
 	# AddProject() does not recognize the constructs used to populate OBJS in
 	# the pgcrypto Makefile, so it will discover no files.
 	my $pgcrypto =

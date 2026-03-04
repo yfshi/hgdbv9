@@ -229,10 +229,9 @@ cstring_to_unsigned(const char *src, uint64 max_val, bool is_insert)
 		 */
 		else if (negative && ret != 0)
 		{
-			uint64 dcheck;
-			
 			errno = 0;
-			dcheck = strtoull(src, &endptr, 10);
+			
+			strtoull(src, &endptr, 10);
 
 			ereport(is_strict_mode() ? ERROR : WARNING, 
 					(errmsg("Out of range value for column.")));
@@ -244,8 +243,11 @@ cstring_to_unsigned(const char *src, uint64 max_val, bool is_insert)
 			 * If src number is negative and is small than -18446744073709551615, 
 			 * strtoull() will return UINT64_MAX, which can be used to distinguish
 			 * wether src number is small than -18446744073709551615.
+			 *
+			 * However in Windows, if errno set to ERANGE, return value of strtoull
+			 * is meanless.
 			 */
-			if (errno != ERANGE || dcheck != UINT64_MAX)
+			if (errno != ERANGE)
 				ret = 0;
 			else
 				ret = max_val;

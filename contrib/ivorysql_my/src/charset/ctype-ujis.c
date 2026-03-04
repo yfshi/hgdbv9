@@ -150,7 +150,7 @@ static const uchar sort_order_ujis[] =
 #define isujis_ss2(c) (((c)&0xff) == 0x8e)
 #define isujis_ss3(c) (((c)&0xff) == 0x8f)
 
-static uint
+static uint32
 ismbchar_ujis(const CHARSET_INFO *cs, const char *p, const char *e)
 {
     return ((*(uchar *)(p) < 0x80) ? 0 : isujis(*(p)) && (e) - (p) > 1 && isujis(*((p) + 1))                         ? 2

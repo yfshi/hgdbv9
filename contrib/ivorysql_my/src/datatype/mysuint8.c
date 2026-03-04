@@ -1451,21 +1451,6 @@ int8_exact_divuint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(val1 / val2);
 }
 
-// mod
-#define MYS_MOD(V1, V2, R) do { 																	\
-	if (V2 == 0)																					\
-	{																								\
-		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))											\
-			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));			\
-		PG_RETURN_NULL();																			\
-	}																								\
-																									\
-	R = V1 > 0 ? 1 : -1;																			\
-	V1 = V1 > 0 ? V1 : -V1; 																		\
-	V2 = V2 > 0 ? V2 : -V2; 																		\
-	R *= (V1 % V2); 																				\
-} while(0);
-
 Datum
 uint8_moduint8(PG_FUNCTION_ARGS)
 {
@@ -1473,7 +1458,14 @@ uint8_moduint8(PG_FUNCTION_ARGS)
 	uint64		val2 = PG_GETARG_INT64(1);
 	uint64 		ret = 0;
 	
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+	
+	ret = val1 % val2;
 	
 	PG_RETURN_UINT64(ret);
 }
@@ -1485,7 +1477,17 @@ uint8_modint2(PG_FUNCTION_ARGS)
 	int16		val2 = PG_GETARG_INT16(1);
 	uint64 		ret = 0;
 
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	if (val2 < 0)
+		val2 *= -1;
+
+	ret = val1 % val2;
 
 	PG_RETURN_UINT64(ret);
 }
@@ -1497,7 +1499,17 @@ uint8_modint4(PG_FUNCTION_ARGS)
 	int32		val2 = PG_GETARG_INT32(1);
 	uint64 		ret = 0;
 
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	if (val2 < 0)
+		val2 *= -1;
+
+	ret = val1 % val2;
 
 	PG_RETURN_UINT64(ret);
 }
@@ -1509,7 +1521,17 @@ uint8_modint8(PG_FUNCTION_ARGS)
 	int64		val2 = PG_GETARG_INT64(1);
 	uint64 		ret = 0;
 
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	if (val2 < 0)
+		val2 *= -1;
+
+	ret = val1 % val2;
 
 	PG_RETURN_UINT64(ret);
 }
@@ -1519,9 +1541,22 @@ int2_moduint8(PG_FUNCTION_ARGS)
 {
 	int16		val1 = PG_GETARG_INT16(0);
 	uint64		val2 = PG_GETARG_INT64(1);
-	int64 		ret = 0;
+	int64 		ret = 1;
 
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	if (val1 < 0)
+	{
+		ret = -1;
+		val1 *= -1;
+	}
+
+	ret *= (val1 % val2);
 
 	PG_RETURN_INT64(ret);
 }
@@ -1531,9 +1566,22 @@ int4_moduint8(PG_FUNCTION_ARGS)
 {
 	int32		val1 = PG_GETARG_INT32(0);
 	uint64		val2 = PG_GETARG_INT64(1);
-	int64 		ret = 0;
+	int64 		ret = 1;
 
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	if (val1 < 0)
+	{
+		ret = -1;
+		val1 *= -1;
+	}
+
+	ret *= (val1 % val2);
 
 	PG_RETURN_INT64(ret);
 }
@@ -1543,9 +1591,22 @@ int8_moduint8(PG_FUNCTION_ARGS)
 {
 	int64		val1 = PG_GETARG_INT64(0);
 	uint64		val2 = PG_GETARG_INT64(1);
-	int64 		ret = 0;
+	int64 		ret = 1;
 
-	MYS_MOD(val1, val2, ret);
+	if (val2 == 0)
+	{
+		if (has_sql_mode(MODE_ERROR_FOR_DIVISION_BY_ZERO))
+			ereport(WARNING, (errcode(ERRCODE_DIVISION_BY_ZERO), errmsg("Division by 0")));
+		PG_RETURN_NULL();
+	}
+
+	if (val1 < 0)
+	{
+		ret = -1;
+		val1 *= -1;
+	}
+
+	ret *= (val1 % val2);
 
 	PG_RETURN_INT64(ret);
 }

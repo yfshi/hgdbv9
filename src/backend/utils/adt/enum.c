@@ -1121,17 +1121,17 @@ ENUM_INSERT_CHECK(Oid enumelenmentoid)
 }
 
 static bool 
-number_2_enum_interel(Oid enumtypeoid, uint64 num, Oid* penumelenmentoid)
+number_2_enum_interel(Oid enumtypeoid, uint64 num, Oid *penumelenmentoid)
 {
-	int32 tempvalue = (int32)num;
+	int32 tempvalue = (int32) num;
 	if (tempvalue <= 0)
 	{
 		int err_flag = is_strict_mode() ? ERROR : WARNING;
 		ereport(err_flag,
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input value for enum %s: \"%lu\"",
+				 errmsg("invalid input value for enum %s: \"%llu\"",
 						format_type_be(enumtypeoid),
-						num)));
+						(long long unsigned) num)));
 		
 		return false;
 	}
@@ -1276,9 +1276,9 @@ int8_to_enum(PG_FUNCTION_ARGS)
 	{
 		ereport(is_strict_mode() ? ERROR : WARNING, 
 				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-				 errmsg("invalid input value for enum %s: \"%ld\"", 
+				 errmsg("invalid input value for enum %s: \"%lld\"", 
 						format_type_be(enumtypeoid), 
-						num)));
+						(long long) num)));
 		
 		PG_RETURN_NULL();
 	}
@@ -1655,7 +1655,7 @@ text_to_enum(PG_FUNCTION_ARGS)
 		{
 			ereport(is_strict_mode() ? ERROR : WARNING, 
 					(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-					 errmsg("invalid input value for enum %s: \"%u\"", 
+					 errmsg("invalid input value for enum %s: \"%d\"", 
 							format_type_be(enumtypeoid), 
 							idx)));
 
