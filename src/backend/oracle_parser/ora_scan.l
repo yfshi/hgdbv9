@@ -1116,15 +1116,25 @@ other			.
 						 yytext[nchars - 1] == '-'))
 					{
 						int			ic;
+						/* Begin - OA-REQ-2133 */
+						char		pre_c = '\0';
+						bool		flag = false;
+						/* End - OA-REQ-2133 */
 
 						for (ic = nchars - 2; ic >= 0; ic--)
 						{
 							char c = yytext[ic];
-							if (c == '~' || c == '!' || c == '@' ||
+							/* Begin - OA-REQ-2133 */
+							if (ic > 1 && c != '+' && c != '-')
+								flag = true;
+							/* End - OA-REQ-2133 */
+
+							if (c == '~' || c == '%' || c == '@' ||
 								c == '#' || c == '^' || c == '&' ||
 								c == '|' || c == '`' || c == '?' ||
-								c == '%')
+								(c == '!' && (ic != 0 || pre_c != '=' || flag)) /* OA-REQ-2133 */)
 								break;
+							pre_c = c;	/* OA-REQ-2133 */
 						}
 						if (ic < 0)
 						{

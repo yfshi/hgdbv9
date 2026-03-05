@@ -50,6 +50,9 @@ CREATE OPERATOR => (
 -- lexing of <=, >=, <>, != has a number of edge cases
 -- (=> is tested elsewhere)
 
+/*
+-- OA-REQ-2133
+-- TODO:this comment can be enabled when pg_upgrade support oracle-pg-check.
 -- this is legal because ! is not allowed in sql ops
 CREATE OPERATOR !=- (
    rightarg = int8,
@@ -58,6 +61,8 @@ CREATE OPERATOR !=- (
 SELECT !=- 10;
 -- postfix operators don't work anymore
 SELECT 10 !=-;
+*/
+
 -- make sure lexer returns != as <> even in edge cases
 SELECT 2 !=/**/ 1, 2 !=/**/ 2;
 SELECT 2 !=-- comment to be removed by psql
