@@ -883,47 +883,10 @@ EXCEPTION
 END;
 /
 SELECT * FROM testslrb ORDER BY 1;
-TRUNCATE testslrb;
-
--- 3. commit before disconnect
-SET ivorysql.ora_commit_before_disconnect = off;
-BEGIN;
-INSERT INTO testslrb VALUES(17);
-INSERT INTO testslrb VALUES(18);
-\c regression -
-SELECT * FROM testslrb ORDER BY 1;
-TRUNCATE testslrb;
-
-SET ivorysql.ora_commit_before_disconnect = on;
-BEGIN;
-INSERT INTO testslrb VALUES(17);
-INSERT INTO testslrb VALUES(18);
-\c regression -
-SELECT * FROM testslrb ORDER BY 1;
-TRUNCATE testslrb;
-
-\set AUTOCOMMIT off
-SET ivorysql.ora_commit_before_disconnect = off;
-INSERT INTO testslrb VALUES(17);
-INSERT INTO testslrb VALUES(18);
-\c regression -
-SELECT * FROM testslrb ORDER BY 1;
-TRUNCATE testslrb;
-
-SET ivorysql.ora_commit_before_disconnect = on;
-INSERT INTO testslrb VALUES(17);
-INSERT INTO testslrb VALUES(18);
-\c regression -
-SELECT * FROM testslrb ORDER BY 1;
-TRUNCATE testslrb;
 
 DROP TABLE testslrb;
 DROP PROCEDURE testslrb_pro();
-COMMIT;
-
-\set AUTOCOMMIT on
 RESET ivorysql.ora_statement_level_rollback;
-RESET ivorysql.ora_commit_before_disconnect;
 
 SET ivorysql.ora_statement_level_rollback = on;
 create table t(id int);

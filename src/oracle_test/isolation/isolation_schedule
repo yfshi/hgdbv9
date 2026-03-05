@@ -105,3 +105,6 @@ test: for-update-column
 ## Begin - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
 test: plisql-autonx-deadlock
 ## End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
+# Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK
+test: session-exit-commit 
+# End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK

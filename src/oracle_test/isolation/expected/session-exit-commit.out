@@ -1,0 +1,39 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s2_advisory s1_insert s1_exit s2_verify
+step s2_advisory: 
+    SELECT pg_advisory_lock('session_exit_test'::regclass::int8);
+
+pg_advisory_lock
+----------------
+                
+(1 row)
+
+step s1_insert: 
+    INSERT INTO session_exit_test (data) VALUES ('test data 1');
+    INSERT INTO session_exit_test (data) VALUES ('test data 2');
+
+step s1_exit: 
+    SELECT pg_terminate_backend(pg_backend_pid());
+
+FATAL:  terminating connection due to administrator command
+FATAL:  terminating connection due to administrator command
+server closed the connection unexpectedly
+	This probably means the server terminated abnormally
+	before or while processing the request.
+
+step s2_verify: 
+    SELECT COUNT(*) FROM session_exit_test;
+    SELECT * FROM session_exit_test ORDER BY id;
+
+count
+-----
+    2
+(1 row)
+
+id|data       
+--+-----------
+ 1|test data 1
+ 2|test data 2
+(2 rows)
+
