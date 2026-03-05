@@ -38,7 +38,9 @@ PG_FUNCTION_INFO_V1(orafce_listagg2_transfn);
 PG_FUNCTION_INFO_V1(orafce_listagg_finalfn);
 /* End - BUG#M0000457 */
 PG_FUNCTION_INFO_V1(pg_get_partinterval_def);	/* ReqID:RSR-SQL-Partition-interval */
-
+/* Begin - OA-REQ-2129 */
+PG_FUNCTION_INFO_V1(wm_concat_transfn);
+/* End - OA-REQ-2129 */
 
 /* Begin - bug0000459 */
 Datum
@@ -145,3 +147,30 @@ pg_get_partinterval_def(PG_FUNCTION_ARGS)
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(res));
 }
+
+/* Begin - OA-REQ-2129 */
+Datum
+wm_concat_transfn(PG_FUNCTION_ARGS)
+{
+	StringInfo	state;
+
+	state = PG_ARGISNULL(0) ? NULL : (StringInfo) PG_GETARG_POINTER(0);
+
+	/* Append the value unless null. */
+	if (!PG_ARGISNULL(1))
+	{
+		if (state == NULL)
+			state = makeStringAggState(fcinfo);
+		else
+			appendStringInfoText(state, cstring_to_text(","));	/* delimiter */
+
+		appendStringInfoText(state, PG_GETARG_TEXT_PP(1));	/* value */
+	}
+
+	/*
+	 * The transition type for string_agg() is declared to be "internal",
+	 * which is a pass-by-value type the same size as a pointer.
+	 */
+	PG_RETURN_POINTER(state);
+}
+/* End - OA-REQ-2129 */
