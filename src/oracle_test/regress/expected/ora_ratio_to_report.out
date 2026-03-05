@@ -1,0 +1,441 @@
+-- oracle offical test case
+create table employees(last_name varchar2(10), salary number, job_id varchar(10));
+insert into employees values('Colmenares', 2500, 'PU_CLERK');
+insert into employees values('Baida', 2900, 'PU_CLERK');
+insert into employees values('Himuro', 2600, 'PU_CLERK');
+insert into employees values('Tobias', 2800, 'PU_CLERK');
+insert into employees values('Khoo', 3100, 'PU_CLERK');
+insert into employees values('Zoom', 2800, 'PU_PUBLIC');
+show numw
+NUMWIDTH -1
+select last_name, salary, RATIO_TO_REPORT(salary) OVER() AS rr
+	FROM employees
+	WHERE job_id = 'PU_CLERK'
+	ORDER BY last_name,salary,rr;
+ last_name  | salary |           rr           
+------------+--------+------------------------
+ Baida      | 2900   | 0.20863309352517985612
+ Colmenares | 2500   | 0.17985611510791366906
+ Himuro     | 2600   | 0.18705035971223021583
+ Khoo       | 3100   | 0.22302158273381294964
+ Tobias     | 2800   | 0.20143884892086330935
+(5 rows)
+
+-- if need show the same scale, using set numw to set
+-- after set numw, the result is the same with offical test case
+set numw 10
+select last_name, salary, RATIO_TO_REPORT(salary) OVER() AS rr
+        FROM employees
+        WHERE job_id = 'PU_CLERK'
+        ORDER BY last_name,salary,rr;
+ last_name  | salary |     rr     
+------------+--------+------------
+ Baida      | 2900   | .208633094
+ Colmenares | 2500   | .179856115
+ Himuro     | 2600   | .187050360
+ Khoo       | 3100   | .223021583
+ Tobias     | 2800   | .201438849
+(5 rows)
+
+-- reset numw
+set numw -1
+show numw
+NUMWIDTH -1
+drop table employees;
+--
+-- more test cases
+--
+create table rtr_test(a int, b float(5), c number, d varchar2(20));
+insert into rtr_test values(10, 10, 10.1, '10.1');
+insert into rtr_test values(11, 11, 11.1, '11.1');
+insert into rtr_test values(12, 11, 12.1, '12.1');
+-- using in oracle parser, will fail in pg parser
+\parser
+Oracle parser.
+set ivorysql.compatible_mode = 'pg';
+\parser
+PG parser.
+select ratio_to_report(a) from rtr_test;
+ERROR:  function ratio_to_report(integer) does not exist
+LINE 1: select ratio_to_report(a) from rtr_test;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+reset ivorysql.compatible_mode;
+\parser
+Oracle parser.
+-- fail, ratio_to_report() need over()
+select ratio_to_report(a) from rtr_test;
+ERROR:  missing window specification for this function
+LINE 1: select ratio_to_report(a) from rtr_test;
+               ^
+-- fail, ratio_to_report() need one args
+select ratio_to_report() over() from rtr_test;
+ERROR:  invalid number of arguments
+LINE 1: select ratio_to_report() over() from rtr_test;
+               ^
+select ratio_to_report(a,b) over() from rtr_test;
+ERROR:  invalid number of arguments
+LINE 1: select ratio_to_report(a,b) over() from rtr_test;
+               ^
+-- fail, ratio_to_report need ()
+-- V9 report an 'syntax error'
+-- oracel report 'FROM keyword not found where expected'
+select ratio_to_report over() from rtr_test;
+ERROR:  syntax error at or near "over"
+LINE 1: select ratio_to_report over() from rtr_test;
+                               ^
+-- over() just support partition by or NULL
+-- success
+select ratio_to_report(d) over() from rtr_test;
+        ?column?        
+------------------------
+ 0.30330330330330330330
+ 0.33333333333333333333
+ 0.36336336336336336336
+(3 rows)
+
+select d,ratio_to_report(d) over() AS ratio from rtr_test order by d;
+  d   |         ratio          
+------+------------------------
+ 10.1 | 0.30330330330330330330
+ 11.1 | 0.33333333333333333333
+ 12.1 | 0.36336336336336336336
+(3 rows)
+
+select b,d,ratio_to_report(d) over(partition by b) AS ratio from rtr_test order by b,d;
+ b  |  d   |         ratio          
+----+------+------------------------
+ 10 | 10.1 | 1.00000000000000000000
+ 11 | 11.1 | 0.47844827586206896552
+ 11 | 12.1 | 0.52155172413793103448
+(3 rows)
+
+-- fail as syntax error
+select ratio_to_report(d) over(partition by b order by c) from rtr_test;
+ERROR:  syntax error at or near "order"
+LINE 1: select ratio_to_report(d) over(partition by b order by c) fr...
+                                                      ^
+select ratio_to_report(d) over(order by c) from rtr_test;
+ERROR:  syntax error at or near "order"
+LINE 1: select ratio_to_report(d) over(order by c) from rtr_test;
+                                       ^
+select ratio_to_report(d) over(group by c) from rtr_test;
+ERROR:  syntax error at or near "group"
+LINE 1: select ratio_to_report(d) over(group by c) from rtr_test;
+                                       ^
+-- explain
+explain(verbose, costs off) select ratio_to_report(a) over() from rtr_test;
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ WindowAgg
+   Output: ((a)::number / NULLIF(sum((a)::number) OVER (?), '0'::number))
+   ->  Seq Scan on public.rtr_test
+         Output: a
+(4 rows)
+
+explain(verbose, costs off) select ratio_to_report(b) over() from rtr_test;
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ WindowAgg
+   Output: ((b)::number / NULLIF(sum((b)::number) OVER (?), '0'::number))
+   ->  Seq Scan on public.rtr_test
+         Output: b
+(4 rows)
+
+explain(verbose, costs off) select ratio_to_report(c) over() from rtr_test;
+                      QUERY PLAN                      
+------------------------------------------------------
+ WindowAgg
+   Output: (c / NULLIF(sum(c) OVER (?), '0'::number))
+   ->  Seq Scan on public.rtr_test
+         Output: c
+(4 rows)
+
+explain(verbose, costs off) select ratio_to_report(d) over() from rtr_test;
+                                QUERY PLAN                                
+--------------------------------------------------------------------------
+ WindowAgg
+   Output: ((d)::number / NULLIF(sum((d)::number) OVER (?), '0'::number))
+   ->  Seq Scan on public.rtr_test
+         Output: d
+(4 rows)
+
+-- drop table
+drop table rtr_test;
+-- oracle number
+create table rtr_test(n number, f float, bf binary_float, bd binary_double);
+insert into rtr_test values(10.101, 11.1111, 12.1212, 12.1212);
+insert into rtr_test values(20.202, 21.2121, 22.2222, 22.2222);
+insert into rtr_test values(30.303, 31.3131, 33.3333, 33.3333);
+-- number
+select ratio_to_report(n) over() from rtr_test;
+        ?column?        
+------------------------
+ 0.16666666666666666667
+ 0.33333333333333333333
+ 0.50000000000000000000
+(3 rows)
+
+-- float
+select f,ratio_to_report(f) over() AS ratio from rtr_test;
+    f    |         ratio          
+---------+------------------------
+ 11.1111 | 0.17460317460317460317
+ 21.2121 | 0.33333333333333333333
+ 31.3131 | 0.49206349206349206349
+(3 rows)
+
+-- binary_float
+-- sum(binary_float) output binary_float
+explain(verbose, costs off) select sys.sum(bf) over() from rtr_test order by bf;
+                   QUERY PLAN                   
+------------------------------------------------
+ Sort
+   Output: (sum((bf)::number) OVER (?)), bf
+   Sort Key: rtr_test.bf
+   ->  WindowAgg
+         Output: sum((bf)::number) OVER (?), bf
+         ->  Seq Scan on public.rtr_test
+               Output: bf
+(7 rows)
+
+-- ratio_to_report() outoput binary_float
+select bf,ratio_to_report(bf) over() from rtr_test order by bf;
+      bf      |    ?column?    
+--------------+----------------
+ 1.21212E+001 | 1.7910448E-001
+ 2.22222E+001 | 3.2835823E-001
+ 3.33333E+001 | 4.9253735E-001
+(3 rows)
+
+explain(verbose, costs off) select bf,ratio_to_report(bf) over() from rtr_test order by bf;
+                                         QUERY PLAN                                         
+--------------------------------------------------------------------------------------------
+ Sort
+   Output: bf, ((bf / (NULLIF(sum((bf)::number) OVER (?), '0'::number))::binary_float))
+   Sort Key: rtr_test.bf
+   ->  WindowAgg
+         Output: bf, (bf / (NULLIF(sum((bf)::number) OVER (?), '0'::number))::binary_float)
+         ->  Seq Scan on public.rtr_test
+               Output: bf
+(7 rows)
+
+-- binary_double
+-- sum(binary_double) output binary_double
+explain(verbose, costs off) select sys.sum(bd) over() from rtr_test;
+              QUERY PLAN              
+--------------------------------------
+ WindowAgg
+   Output: sum((bd)::number) OVER (?)
+   ->  Seq Scan on public.rtr_test
+         Output: bd
+(4 rows)
+
+select (bd / sys.sum(bd) over()) from rtr_test;
+        ?column?         
+-------------------------
+ 1.7910447761194032E-001
+ 3.283582089552239E-001
+ 4.9253731343283585E-001
+(3 rows)
+
+explain(verbose, costs off) select (bd / sys.sum(bd) over()) from rtr_test;
+                          QUERY PLAN                          
+--------------------------------------------------------------
+ WindowAgg
+   Output: (bd / (sum((bd)::number) OVER (?))::binary_double)
+   ->  Seq Scan on public.rtr_test
+         Output: bd
+(4 rows)
+
+-- ratio_to_report() output binary_double
+select bd,ratio_to_report(bd) over() AS bd_ratio from rtr_test order by bd;
+      bd      |        bd_ratio         
+--------------+-------------------------
+ 1.21212E+001 | 1.7910447761194032E-001
+ 2.22222E+001 | 3.283582089552239E-001
+ 3.33333E+001 | 4.9253731343283585E-001
+(3 rows)
+
+explain(verbose, costs off) select bd,ratio_to_report(bd) over() AS bd_ratio from rtr_test;
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ WindowAgg
+   Output: bd, (bd / (NULLIF(sum((bd)::number) OVER (?), '0'::number))::binary_double)
+   ->  Seq Scan on public.rtr_test
+         Output: bd
+(4 rows)
+
+-- number + binary_double
+select n,bd,ratio_to_report(n+bd) over() AS bd_ratio from rtr_test order by bd;
+   n    |      bd      |        bd_ratio         
+--------+--------------+-------------------------
+ 10.101 | 1.21212E+001 | 1.732283464566929E-001
+ 20.202 | 2.22222E+001 | 3.307086614173228E-001
+ 30.303 | 3.33333E+001 | 4.9606299212598426E-001
+(3 rows)
+
+explain(verbose, costs off) select bd,ratio_to_report(bd) over() AS bd_ratio from rtr_test;
+                                      QUERY PLAN                                       
+---------------------------------------------------------------------------------------
+ WindowAgg
+   Output: bd, (bd / (NULLIF(sum((bd)::number) OVER (?), '0'::number))::binary_double)
+   ->  Seq Scan on public.rtr_test
+         Output: bd
+(4 rows)
+
+-- expr
+select f+2,ratio_to_report(f+2) over() from rtr_test order by f;
+ ?column? |        ?column?        
+----------+------------------------
+  13.1111 | 0.18827967597359423174
+  23.2121 | 0.33333333333333333333
+  33.3131 | 0.47838699069307243492
+(3 rows)
+
+select bd*2,ratio_to_report(bd*2) over() AS "BD*2" from rtr_test order by bd;
+   ?column?   |          BD*2           
+--------------+-------------------------
+ 2.42424E+001 | 1.7910447761194032E-001
+ 4.44444E+001 | 3.283582089552239E-001
+ 6.66666E+001 | 4.9253731343283585E-001
+(3 rows)
+
+select ratio_to_report(min(bd)) over() AS ratio from rtr_test;
+         ratio          
+------------------------
+ 1.00000000000000000000
+(1 row)
+
+select ratio_to_report(to_char(bf)) over() AS "TO_CHAR" from rtr_test;
+        TO_CHAR         
+------------------------
+ 0.17910447761194029851
+ 0.32835820895522388060
+ 0.49253731343283582090
+(3 rows)
+
+-- partition by
+insert into rtr_test values(40.404, 21.2121, 44.4444, 44.444444);
+insert into rtr_test values(50.505, 31.3131, 55.5555, 55.555555);
+select f,n,ratio_to_report(n) over(partition by f) AS PYF from rtr_test order by f,n;
+    f    |   n    |          pyf           
+---------+--------+------------------------
+ 11.1111 | 10.101 | 1.00000000000000000000
+ 21.2121 | 20.202 | 0.33333333333333333333
+ 21.2121 | 40.404 | 0.66666666666666666667
+ 31.3131 | 30.303 | 0.37500000000000000000
+ 31.3131 | 50.505 | 0.62500000000000000000
+(5 rows)
+
+select f,bf,ratio_to_report(bf) over(partition by f) AS PYF from rtr_test order by f,bf;
+    f    |      bf      |      pyf      
+---------+--------------+---------------
+ 11.1111 | 1.21212E+001 | 1.0E+000
+ 21.2121 | 2.22222E+001 | 3.333333E-001
+ 21.2121 | 4.44444E+001 | 6.666666E-001
+ 31.3131 | 3.33333E+001 | 3.75E-001
+ 31.3131 | 5.55555E+001 | 6.25E-001
+(5 rows)
+
+-- drop table
+drop table rtr_test;
+-- oracle character
+create table rtr_test(i int, vc varchar2(20), pt varchar2(20));
+insert into rtr_test values(10, '10.111111', 'aaaa');
+insert into rtr_test values(20, '20.222222', 'aaaa');
+insert into rtr_test values(20, '0', 'aaaa');
+insert into rtr_test values(30, 'dfg', 'bbbb');
+insert into rtr_test values(40, '-10', 'bbbb');
+insert into rtr_test values(40, '10', 'bbbb');
+insert into rtr_test values(50, '50.55555', 'bbbb');
+-- varchar2
+select ratio_to_report(vc) over() from rtr_test where i<=20;
+        ?column?        
+------------------------
+ 0.33333333333333333333
+ 0.66666666666666666667
+ 0.00000000000000000000
+(3 rows)
+
+-- fail as 'dfg' could not cast to number
+select ratio_to_report(vc) over() from rtr_test where i<=30;
+ERROR:  invalid input syntax for type numeric: "dfg"
+-- denominator is zero ( 10 + (-10) = 0 )
+select ratio_to_report(vc) over() AS denominator_is_zero from rtr_test where i=40;
+ denominator_is_zero 
+---------------------
+ 
+ 
+(2 rows)
+
+-- expr
+select vc+1,ratio_to_report(vc+1) over() AS "VC+1" from rtr_test where i<=20 order by vc;
+ ?column?  |          VC+1          
+-----------+------------------------
+ 1         | 0.03000000030000000300
+ 11.111111 | 0.33333333333333333333
+ 21.222222 | 0.63666666636666666367
+(3 rows)
+
+select vc*2,ratio_to_report(vc*2) over() AS "VC*2" from rtr_test where i<=20 order by vc;
+ ?column?  |          VC*2          
+-----------+------------------------
+ 0         | 0.00000000000000000000
+ 20.222222 | 0.33333333333333333333
+ 40.444444 | 0.66666666666666666667
+(3 rows)
+
+select ratio_to_report(max(vc)) over() AS "MAX(VC)" from rtr_test where i<=20;
+        MAX(VC)         
+------------------------
+ 1.00000000000000000000
+(1 row)
+
+select ratio_to_report(to_char(vc)) over() AS "TO_CHAR" from rtr_test where i<=20;
+ERROR:  inconsistent datatypes: expected NUMBER got text
+LINE 1: select ratio_to_report(to_char(vc)) over() AS "TO_CHAR" from...
+               ^
+-- partition by
+select pt,i,ratio_to_report(i) over(partition by pt) from rtr_test order by pt,i;
+  pt  | i  |        ?column?        
+------+----+------------------------
+ aaaa | 10 | 0.20000000000000000000
+ aaaa | 20 | 0.40000000000000000000
+ aaaa | 20 | 0.40000000000000000000
+ bbbb | 30 | 0.18750000000000000000
+ bbbb | 40 | 0.25000000000000000000
+ bbbb | 40 | 0.25000000000000000000
+ bbbb | 50 | 0.31250000000000000000
+(7 rows)
+
+select i,ratio_to_report(i) over(partition by i) from rtr_test rtr_test order by i;
+ i  |        ?column?        
+----+------------------------
+ 10 | 1.00000000000000000000
+ 20 | 0.50000000000000000000
+ 20 | 0.50000000000000000000
+ 30 | 1.00000000000000000000
+ 40 | 0.50000000000000000000
+ 40 | 0.50000000000000000000
+ 50 | 1.00000000000000000000
+(7 rows)
+
+-- drop table
+drop table rtr_test;
+-- oracle datetime datatype
+create table rtr_test(i int, ts timestamp with time zone, idts interval day to second);
+insert into rtr_test values(10,'2026-02-25 10:10:10', INTERVAL '1 03:04:05' DAY TO SECOND);
+insert into rtr_test values(20,'2026-02-25 20:20:20', INTERVAL '2 03:04:05' DAY TO SECOND);
+-- timestamp, fail
+select ratio_to_report(ts) over() from rtr_test;
+ERROR:  inconsistent datatypes: expected NUMBER got timestamp with time zone
+LINE 1: select ratio_to_report(ts) over() from rtr_test;
+               ^
+-- interval, fail
+select ratio_to_report(idts) over() from rtr_test;
+ERROR:  inconsistent datatypes: expected NUMBER got interval day to second
+LINE 1: select ratio_to_report(idts) over() from rtr_test;
+               ^
+-- drop table
+drop table rtr_test;

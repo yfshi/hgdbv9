@@ -662,6 +662,7 @@ static bool isAconstNode(Node *node);
 %type <list>	window_clause window_definition_list opt_partition_clause
 %type <windef>	window_definition over_clause window_specification
 				opt_frame_clause frame_extent frame_bound
+%type <windef>	over_clause_partition window_specification_partition	/* OA-REQ-2132 */
 %type <ival>	opt_window_exclusion_clause opt_virtual_or_stored	/* ReqID:SRS-SQL-VIRTUALCOL */
 %type <str>		opt_existing_window_name
 %type <boolean> opt_if_not_exists
@@ -768,7 +769,6 @@ static bool isAconstNode(Node *node);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 %token			PUBLIC_SYNO	/* ReqID:SRS-SQL-SYNONYM */
 
-
 /*
  * If you want to make any keyword changes, update the keyword table in
  * src/include/parser/kwlist.h and add new keywords to the appropriate one
@@ -854,7 +854,7 @@ static bool isAconstNode(Node *node);
 
 	QUOTE QUOTES /* BUG#M0000414 */
 
-	RANGE READ REAL REASSIGN RECHECK RECURSIVE RECYCLEBIN /* ReqID:SRS-RECOVERY-FLASHBACK */
+	RANGE RATIO_TO_REPORT /* OA-REQ-2132 */ READ REAL REASSIGN RECHECK RECURSIVE RECYCLEBIN /* ReqID:SRS-RECOVERY-FLASHBACK */
 	REF_P REFERENCES REFERENCING
 	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVOKE REVERSE RIGHT ROLE ROLLBACK ROLLUP
@@ -19904,6 +19904,25 @@ c_expr:		columnref								{ $$ = $1; }
 					$$ = (Node *) p;
 				}
 			/* End - BUG#M0000201: support question marks as binding variables */
+			/* Begin - OA-REQ-2132 */
+			| RATIO_TO_REPORT '(' func_arg_list_opt ')' over_clause_partition
+				{
+					RatioToReportCall *n = makeNode(RatioToReportCall);
+					n->args = $3;
+					n->over = $5;
+					if (n->over == NULL)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("missing window specification for this function"),
+								 parser_errposition(@1)));
+
+					}
+					n->location = @1;
+
+					$$ = (Node *)n;
+				}
+			/* End - OA-REQ-2132 */
 		;
 
 func_application: func_name '(' ')'
@@ -20839,6 +20858,27 @@ window_specification: '(' opt_existing_window_name opt_partition_clause
 					$$ = n;
 				}
 		;
+
+/* Begin - OA-REQ-2132 */
+/*
+ * ratio_to_report() over():
+ * over() just support partition by or NULL
+ */
+over_clause_partition: OVER window_specification_partition
+				{ $$ = $2; }
+			| /*EMPTY*/
+				{ $$ = NULL; }
+		;
+window_specification_partition: '(' opt_partition_clause ')'
+		{
+			WindowDef *n = makeNode(WindowDef);
+			n->name = NULL;
+			n->partitionClause = $2;
+			n->location = @1;
+			$$ = n;
+		}
+;
+/* End - OA-REQ-2132 */
 
 /*
  * If we see PARTITION, RANGE, ROWS or GROUPS as the first token after the '('
@@ -23133,6 +23173,7 @@ reserved_keyword:
 			| PLACING
 			| PRIMARY
 			| PRIOR /* ReqID:SRS-SQL-HierarchicalQueries */
+			| RATIO_TO_REPORT /* OA-REQ-2132 */
 			| REFERENCES
 			| RETURNING
 			| ROWNUM	/* ReqID:SRS-SQL-ROWNUM */
@@ -23544,6 +23585,7 @@ bare_label_keyword:
 			| QUOTE
 			| QUOTES	/* BUG#M0000414 */
 			| RANGE
+			| RATIO_TO_REPORT	/* OA-REQ-2132 */
 			| RAW_P		/*BUGID:0000649*/
 			| READ
 			| REAL
