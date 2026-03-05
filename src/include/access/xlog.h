@@ -114,7 +114,7 @@ extern int	max_slot_wal_keep_size_mb;
 extern int	XLOGbuffers;
 extern int	XLogArchiveTimeout;
 extern int	wal_retrieve_retry_interval;
-extern char *XLogArchiveCommand;
+extern PGDLLIMPORT char *XLogArchiveCommand;
 extern bool EnableHotStandby;
 extern bool fullPageWrites;
 extern bool wal_log_hints;
@@ -159,7 +159,7 @@ typedef enum ArchiveMode
 	ARCHIVE_MODE_ON,			/* enabled while server is running normally */
 	ARCHIVE_MODE_ALWAYS			/* enabled always (even during recovery) */
 } ArchiveMode;
-extern int	XLogArchiveMode;
+extern PGDLLIMPORT int	XLogArchiveMode;
 
 /* WAL levels */
 typedef enum WalLevel

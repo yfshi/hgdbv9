@@ -33,4 +33,9 @@ extern void PgArchiverMain(void) pg_attribute_noreturn();
 extern void PgArchWakeup(void);
 extern void PgArchForceDirScan(void);
 
+/* Begin - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+typedef bool (*WalFileUpdatemd5_type)(char * filename, char *archive_command);
+extern PGDLLIMPORT WalFileUpdatemd5_type WalFileUpdatemd5;
+/* END - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+
 #endif							/* _PGARCH_H */

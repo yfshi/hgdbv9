@@ -1449,7 +1449,7 @@ setup_config(void)
 		appendStringInfo(&replacement, "shared_preload_libraries = '");
 
 		/* common */
-		appendStringInfo(&replacement, "gb18030_2022, restricted_dba, pg_audit, credcheck, hg_sysmac, hg_antitamper, hg_rolstatus");
+		appendStringInfo(&replacement, "gb18030_2022, restricted_dba, pg_audit, credcheck, hg_sysmac, hg_antitamper, hg_rolstatus, hg_integrity_check");
 #ifdef USE_SQLITE
 		appendStringInfo(&replacement, ", sqlite_fdw");
 #endif
@@ -2460,6 +2460,17 @@ load_hg_rolstatus(FILE *cmdfd)
 	PG_CMD_PUTS("CREATE EXTENSION hg_rolstatus WITH SCHEMA hg_security;\n\n");
 }
 /* End - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+
+/* Begin - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+/*
+ * load hg_integrity_check
+ */
+static void
+load_hg_integrity_check(FILE *cmdfd)
+{
+	PG_CMD_PUTS("CREATE EXTENSION hg_integrity_check WITH SCHEMA hg_security;\n\n");
+}
+/* End - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
 
 /*
  * clean everything up in template1
@@ -3750,6 +3761,7 @@ initialize_data_directory(void)
 
 	load_hg_antitamper(cmdfd);/* ReqID: SRS-SECURITY-ANTITAMPERING */
 	load_hg_rolstatus(cmdfd); /* ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+	load_hg_integrity_check(cmdfd); /* ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
 
 	vacuum_db(cmdfd);
 

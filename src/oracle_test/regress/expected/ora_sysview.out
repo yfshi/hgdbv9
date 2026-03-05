@@ -1566,26 +1566,27 @@ select * from session_privs where upper(privilege) = 'CREATE TABLE';
 (1 row)
 
 select comp_id, comp_name, version, version_full, status, modified, namespace, schema, procedure, startup, parent_id, other_schemas from dba_registry;
-      comp_id      |     comp_name     | version | version_full | status | modified |  namespace  |   schema    | procedure | startup | parent_id | other_schemas 
--------------------+-------------------+---------+--------------+--------+----------+-------------+-------------+-----------+---------+-----------+---------------
- gb18030_2022      | gb18030_2022      | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
- plpgsql           | plpgsql           | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
- pg_object         | pg_object         | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
- uuid-ossp         | uuid-ossp         | 1.1     | 1.1          | VALID  |          | sys         | sys         |           |         |           | 
- plisql            | plisql            | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
- pgagent           | pgagent           | 4.2     | 4.2          | VALID  |          | pgagent     | pgagent     |           |         |           | 
- ora_synonym       | ora_synonym       | 1.0     | 1.0          | VALID  |          | sys         | sys         |           |         |           | 
- ivorysql_ora      | ivorysql_ora      | 1.0     | 1.0          | VALID  |          | sys         | sys         |           |         |           | 
- postgres_fdw      | postgres_fdw      | 1.1     | 1.1          | VALID  |          | public      | public      |           |         |           | 
- pg_track_settings | pg_track_settings | 2.1.2   | 2.1.2        | VALID  |          | public      | public      |           |         |           | 
- sqlite_fdw        | sqlite_fdw        | 1.1     | 1.1          | VALID  |          | public      | public      |           |         |           | 
- pg_audit          | pg_audit          | 1.1     | 1.1          | VALID  |          | hg_security | hg_security |           |         |           | 
- restricted_dba    | restricted_dba    | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
- credcheck         | credcheck         | 2.8.0   | 2.8.0        | VALID  |          | hg_security | hg_security |           |         |           | 
- hg_sysmac         | hg_sysmac         | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
- hg_antitamper     | hg_antitamper     | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
- hg_rolstatus      | hg_rolstatus      | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
-(17 rows)
+      comp_id       |     comp_name      | version | version_full | status | modified |  namespace  |   schema    | procedure | startup | parent_id | other_schemas 
+--------------------+--------------------+---------+--------------+--------+----------+-------------+-------------+-----------+---------+-----------+---------------
+ gb18030_2022       | gb18030_2022       | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
+ plpgsql            | plpgsql            | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
+ pg_object          | pg_object          | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
+ uuid-ossp          | uuid-ossp          | 1.1     | 1.1          | VALID  |          | sys         | sys         |           |         |           | 
+ plisql             | plisql             | 1.0     | 1.0          | VALID  |          | pg_catalog  | pg_catalog  |           |         |           | 
+ pgagent            | pgagent            | 4.2     | 4.2          | VALID  |          | pgagent     | pgagent     |           |         |           | 
+ ora_synonym        | ora_synonym        | 1.0     | 1.0          | VALID  |          | sys         | sys         |           |         |           | 
+ ivorysql_ora       | ivorysql_ora       | 1.0     | 1.0          | VALID  |          | sys         | sys         |           |         |           | 
+ postgres_fdw       | postgres_fdw       | 1.1     | 1.1          | VALID  |          | public      | public      |           |         |           | 
+ pg_track_settings  | pg_track_settings  | 2.1.2   | 2.1.2        | VALID  |          | public      | public      |           |         |           | 
+ sqlite_fdw         | sqlite_fdw         | 1.1     | 1.1          | VALID  |          | public      | public      |           |         |           | 
+ pg_audit           | pg_audit           | 1.1     | 1.1          | VALID  |          | hg_security | hg_security |           |         |           | 
+ restricted_dba     | restricted_dba     | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
+ credcheck          | credcheck          | 2.8.0   | 2.8.0        | VALID  |          | hg_security | hg_security |           |         |           | 
+ hg_sysmac          | hg_sysmac          | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
+ hg_antitamper      | hg_antitamper      | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
+ hg_rolstatus       | hg_rolstatus       | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
+ hg_integrity_check | hg_integrity_check | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
+(18 rows)
 
 \c - enrol22
 select * from session_privs;
