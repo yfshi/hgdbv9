@@ -83,6 +83,11 @@ typedef enum
 
 #define WAITS_PER_SEC	10		/* should divide USEC_PER_SEC evenly */
 
+/* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#define MD_CHECK_SUCCESS	1
+#define	MD_CHECK_FILS		2
+/* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+
 static bool do_wait = true;
 static int	wait_seconds = DEFAULT_WAIT;
 static bool wait_seconds_arg = false;
@@ -116,7 +121,9 @@ static char promote_file[MAXPGPATH];
 static char logrotate_file[MAXPGPATH];
 
 static volatile pgpid_t postmasterPID = -1;
-
+/* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+static bool is_consistency_check = false;
+/* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 #ifdef WIN32
 static DWORD pgctl_start_type = SERVICE_AUTO_START;
 static SERVICE_STATUS status;
@@ -2181,6 +2188,7 @@ do_help(void)
 #else
 	printf(_("  -c, --core-files       not applicable on this platform\n"));
 #endif
+	printf(_("  -C, --consistency-check     consistency check\n"));
 	printf(_("  -l, --log=FILENAME     write (or append) server log to FILENAME\n"));
 	printf(_("  -o, --options=OPTIONS  command line options to pass to postgres\n"
 			 "                         (PostgreSQL server executable) or initdb\n"));
@@ -2390,6 +2398,7 @@ main(int argc, char **argv)
 		{"core-files", no_argument, NULL, 'c'},
 		{"wait", no_argument, NULL, 'w'},
 		{"no-wait", no_argument, NULL, 'W'},
+		{"consistency-check", no_argument, NULL, 'C'}, // ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK
 		{NULL, 0, NULL, 0}
 	};
 
@@ -2473,7 +2482,7 @@ main(int argc, char **argv)
 	/* process command-line options */
 	while (optind < argc)
 	{
-		while ((c = getopt_long(argc, argv, "cD:e:l:m:N:o:p:P:RsS:t:U:wW",
+		while ((c = getopt_long(argc, argv, "cCD:e:l:m:N:o:p:P:RsS:t:U:wW", // ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK
 								long_options, &option_index)) != -1)
 		{
 			switch (c)
@@ -2562,6 +2571,11 @@ main(int argc, char **argv)
 				case 'c':
 					allow_core_files = true;
 					break;
+				/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+				case 'C':
+					is_consistency_check = true;
+					break;
+				/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 				default:
 					/* getopt_long already issued a suitable error message */
 					do_advice();
@@ -2689,6 +2703,32 @@ main(int argc, char **argv)
 			break;
 		case START_COMMAND:
 			do_start();
+			/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifndef WIN32
+			if (is_consistency_check)
+			{
+				int return_sys;
+				char 	*lastsep = NULL;
+
+				char my_exec_path[MAXPGPATH];
+				char command[MAXPGPATH];
+				if (find_my_exec(argv[0], my_exec_path) < 0)
+				{
+					fprintf(stderr, _("%s: could not find own program executable\n"), progname);
+					exit(1);
+				}
+				lastsep = strrchr(my_exec_path, '/');
+				if (lastsep)
+					*lastsep = '\0';
+				snprintf(command, MAXPGPATH, "bash %s/hg_funcheck.sh -c", my_exec_path);
+				return_sys = system(command);
+				if (return_sys == MD_CHECK_FILS)
+				{
+					exit(1);
+				}
+			}
+#endif
+			/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 			break;
 		case STOP_COMMAND:
 			do_stop();
