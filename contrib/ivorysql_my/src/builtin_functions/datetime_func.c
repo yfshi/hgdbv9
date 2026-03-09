@@ -3456,7 +3456,9 @@ unix_timestamp(PG_FUNCTION_ARGS)
 	}
 
 	epoch = SetEpochTimestamp();
-	result = input - epoch - tmx->tm_gmtoff * USECS_PER_SEC;;
+	result = input - epoch
+			- tmx->tm_gmtoff * USECS_PER_SEC /* Subtract timezone offset */
+			+ tmx->tm_isdst * SECS_PER_HOUR * USECS_PER_SEC; /* Add back DST hour if active */
 	PG_RETURN_NUMERIC(DirectFunctionCall2(numeric_trunc,
 										DirectFunctionCall2(numeric_div,
 															DirectFunctionCall1(int8_numeric, result),

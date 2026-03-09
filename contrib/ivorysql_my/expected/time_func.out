@@ -5652,4 +5652,136 @@ SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07');
      2147483647
 (1 row)
 
+SELECT UNIX_TIMESTAMP('2023-01-01 12:30:45');
+ UNIX_TIMESTAMP 
+----------------
+     1672576245
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2023-01-01');
+ UNIX_TIMESTAMP 
+----------------
+     1672531200
+(1 row)
+
+SELECT UNIX_TIMESTAMP('1970-01-01 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+     2147483647
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119031407);
+ UNIX_TIMESTAMP 
+----------------
+     2147483647
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119);
+ UNIX_TIMESTAMP 
+----------------
+     2147472000
+(1 row)
+
+SELECT UNIX_TIMESTAMP('20250119031407'::DECIMAL(20,6));
+ UNIX_TIMESTAMP 
+----------------
+     1737256447
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07'::datetime);
+ UNIX_TIMESTAMP 
+----------------
+     2147483647
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07'::date);
+ UNIX_TIMESTAMP 
+----------------
+     2147472000
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-00-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('0000-1-0 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
 set TIMEZONE='Asia/Shanghai';
+SELECT UNIX_TIMESTAMP('2023-01-01 12:30:45');
+ UNIX_TIMESTAMP 
+----------------
+     1672547445
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2023-01-01');
+ UNIX_TIMESTAMP 
+----------------
+     1672502400
+(1 row)
+
+SELECT UNIX_TIMESTAMP('1970-01-01 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+         -28800
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+     2147454847
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119031407);
+ UNIX_TIMESTAMP 
+----------------
+     2147454847
+(1 row)
+
+SELECT UNIX_TIMESTAMP(20380119);
+ UNIX_TIMESTAMP 
+----------------
+     2147443200
+(1 row)
+
+SELECT UNIX_TIMESTAMP('20250119031407'::DECIMAL(20,6));
+ UNIX_TIMESTAMP 
+----------------
+     1737227647
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07'::datetime);
+ UNIX_TIMESTAMP 
+----------------
+     2147454847
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07'::date);
+ UNIX_TIMESTAMP 
+----------------
+     2147443200
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-00-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('0000-1-0 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
