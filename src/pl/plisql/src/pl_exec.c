@@ -11842,10 +11842,132 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 		 */
 		prm->pflags = PARAM_FLAG_CONST;
 
-		prm->value = exec_eval_expr(estate, param,
-									&prm->isnull,
-									&prm->ptype,
-									&ppdtypmod);
+		/* Begin - BUG#Z7311 */
+		if (param->info == PROARGMODE_OUT &&
+			param->datum_dno > -1 &&
+			param->datum_dno < estate->ndatums)
+		{
+
+			PLiSQL_datum *datum = (PLiSQL_datum*)estate->datums[param->datum_dno];
+
+			/*
+			 * If it's USING OUT a collection element or RETURNING INTO a collection element,
+			 * and the collection element has no data, exec_eval_expr will
+			 * raise an ERRCODE_NO_DATA_FOUND error, in this situation,
+			 * don't call exec_eval_expr.
+			 */
+			if (datum->dtype == PLISQL_DTYPE_VAR &&
+				((PLiSQL_var *)datum)->datatype != NULL &&
+				((PLiSQL_var *)datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+			{
+				prm->value = ((PLiSQL_var *)datum)->value;
+				prm->isnull = ((PLiSQL_var *)datum)->isnull;
+				prm->pdatatype = ((PLiSQL_var *)datum)->datatype;
+				prm->ptype = prm->pdatatype->typoid;
+			}
+			else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+				((PLiSQL_pkg_datum *)datum)->pkgvar->dtype == PLISQL_DTYPE_VAR &&
+				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype != NULL &&
+				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+			{
+				prm->value = ((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->value;
+				prm->isnull = ((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->isnull;
+				prm->pdatatype = ((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype;
+				prm->ptype = prm->pdatatype->typoid;
+			}
+			else if (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM ||
+				(datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
+				((PLiSQL_pkg_datum*)datum)->pkgvar->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM))
+			{
+				PLiSQL_arrayelem	*arrayelem;
+				int 		nsubscripts;
+				List		*fieldnames[MAXDIM];
+				PLiSQL_type *collect_type;
+				PLiSQL_type *val_type;
+				int			j;
+
+				oldcontext = MemoryContextSwitchTo(stmt_mcontext);
+				if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+				{
+					/* reference a package collection element */
+					PLiSQL_pkg_datum 	*pkg_datum = (PLiSQL_pkg_datum *)datum;
+
+					datum = pkg_datum->pkgvar;
+				}
+
+				nsubscripts = 0;
+				do
+				{
+					arrayelem = (PLiSQL_arrayelem *) datum;
+					if (nsubscripts >= MAXDIM)
+						ereport(ERROR,
+								(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+								 errmsg("number of collection dimensions (%d) exceeds the maximum allowed (%d)",
+										nsubscripts + 1, MAXDIM)));
+
+					fieldnames[nsubscripts] = arrayelem->indirection;
+					nsubscripts++;
+					datum = estate->datums[arrayelem->arrayparentno];
+				} while (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM);
+
+				collect_type = ((PLiSQL_var *)datum)->datatype;
+
+				/* get the collection element datatype */
+				for (j = 0; j < nsubscripts; j++)
+				{
+					if (collect_type->ttype != PLISQL_TTYPE_COLLECT_TYPE)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("must be a collection type")));
+
+					val_type = ((PLiSQL_ora_collection_type*)collect_type)->typdatatype;
+
+					if (fieldnames[nsubscripts - 1 - j] == NIL)
+						collect_type = val_type;
+					else
+					{
+						ListCell	*l;
+						char		*field;
+
+						foreach(l, fieldnames[nsubscripts - 1 - j])
+						{
+							/* get the field name */
+							field = (char *)lfirst(l);
+							if (val_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+							{
+								val_type = get_record_field_type(val_type, field);
+								collect_type = val_type;
+							}
+							else if (val_type->ttype == PLISQL_TTYPE_REC ||
+								val_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
+							{
+								val_type = get_row_field_type(val_type, field);
+								collect_type = val_type;
+							}
+						}
+					}
+				}
+				prm->value = (Datum) 0;
+				prm->isnull = true;
+				prm->pdatatype = collect_type;
+				prm->ptype = prm->pdatatype->typoid;
+				i++;
+				MemoryContextSwitchTo(oldcontext);
+				exec_eval_cleanup(estate);
+				continue;
+			}
+			else
+				prm->value = exec_eval_expr(estate, param,
+											&prm->isnull,
+											&prm->ptype,
+											&ppdtypmod);
+		}
+		else
+		/* End - BUG#Z7311 */
+			prm->value = exec_eval_expr(estate, param,
+										&prm->isnull,
+										&prm->ptype,
+										&ppdtypmod);
 
 		oldcontext = MemoryContextSwitchTo(stmt_mcontext);
 
@@ -11878,7 +12000,7 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 		}
 
 		/* Begin - ReqID:SRS-PLSQL-DSQL */
-		/* Store the original datatype used for new ora record variable or collection variable. */
+		/* Store the original datatype used for new ora record variable */
 		if (param->datum_dno > -1 && param->datum_dno < estate->ndatums)
 		{
 			PLiSQL_datum *datum = (PLiSQL_datum*)estate->datums[param->datum_dno];
@@ -11886,7 +12008,7 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 
 			if (datum->dtype == PLISQL_DTYPE_ORA_RECORD)
 				row = (PLiSQL_row*)datum;
-			else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM && 
+			else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
 					 ((PLiSQL_pkg_datum*)datum)->pkgvar->dtype == PLISQL_DTYPE_ORA_RECORD)
 				row = (PLiSQL_row*)((PLiSQL_pkg_datum*)datum)->pkgvar;
 			else
@@ -11894,93 +12016,6 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 
 			if (row != NULL)
 				prm->pdatatype = row->datatype;
-			/* Begin - ReqID:SRS-PLSQL-Collection */
-			else if ((datum->dtype == PLISQL_DTYPE_VAR &&
-				((PLiSQL_var *)datum)->datatype != NULL &&
-				((PLiSQL_var *)datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE) ||
-				(datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
-				((PLiSQL_pkg_datum *)datum)->pkgvar->dtype == PLISQL_DTYPE_VAR &&
-				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype != NULL &&
-				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE))
-				prm->pdatatype = ((PLiSQL_var *)datum)->datatype;
-			else if ((datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM ||
-				(datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM &&
-				((PLiSQL_pkg_datum*)datum)->pkgvar->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)) &&
-				(prm->ptype == ORARECORDOID ||
-				prm->ptype == RECORDOID ||
-				IS_COLLECTOID(prm->ptype)))
-			{
-				PLiSQL_arrayelem	*arrayelem;
-				int 		nsubscripts;
-				//PLiSQL_expr *subscripts[MAXDIM];
-				List		*fieldnames[MAXDIM];
-				PLiSQL_type *collect_type;
-				PLiSQL_type *val_type;
-
-				if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
-				{
-					/* reference a package collection element */
-					PLiSQL_pkg_datum 	*pkg_datum = (PLiSQL_pkg_datum *)datum;
-
-					datum = pkg_datum->pkgvar;
-				}
-
-				nsubscripts = 0;
-				do
-				{
-					arrayelem = (PLiSQL_arrayelem *) datum;
-					if (nsubscripts >= MAXDIM)
-						ereport(ERROR,
-								(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
-								 errmsg("number of collection dimensions (%d) exceeds the maximum allowed (%d)",
-										nsubscripts + 1, MAXDIM)));
-					//subscripts[nsubscripts] = arrayelem->subscript;
-					fieldnames[nsubscripts] = arrayelem->indirection;
-
-					nsubscripts++;
-					datum = estate->datums[arrayelem->arrayparentno];
-				} while (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM);
-
-				collect_type = ((PLiSQL_var *)datum)->datatype;
-
-				/* get the collection element datatype */
-				for (i = 0; i < nsubscripts; i++)
-				{
-					if (collect_type->ttype != PLISQL_TTYPE_COLLECT_TYPE)
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								errmsg("must be a collection type")));
-
-					val_type = ((PLiSQL_ora_collection_type*)collect_type)->typdatatype;
-
-					if (fieldnames[nsubscripts - 1 - i] == NIL)
-						collect_type = val_type;
-					else
-					{
-						ListCell	*l;
-						char		*field;
-
-						foreach(l, fieldnames[nsubscripts - 1 - i])
-						{
-							/* get the filed name */
-							field = (char *)lfirst(l);
-							if (val_type->ttype == PLISQL_TTYPE_ORARECORD_TYPE)
-							{
-								val_type = get_record_field_type(val_type, field);
-								collect_type = val_type;
-							}
-							else if (val_type->ttype == PLISQL_TTYPE_REC ||
-								val_type->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
-							{
-								val_type = get_row_field_type(val_type, field);
-								collect_type = val_type;
-							}
-						}
-					}
-				}
-				prm->pdatatype = collect_type;
-			}
-			/* End - ReqID:SRS-PLSQL-Collection */
 		}
 		/* End - ReqID:SRS-PLSQL-DSQL */
 

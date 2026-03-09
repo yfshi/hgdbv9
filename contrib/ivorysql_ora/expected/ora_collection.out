@@ -7052,5 +7052,76 @@ END;
 /
 NOTICE:  a(1).id = 100, a(1).name = new
 DROP TYPE rec_type;
+/* Begin - BUG#Z7311 */
+create table tb_dsql(empno number, ename varchar2(30), empsal number);
+insert into tb_dsql values(1,'wang',100);
+CREATE OR REPLACE PACKAGE pkg_dsql AS
+   PROCEDURE proc_with_params(id number, name OUT varchar2);
+END pkg_dsql;
+ /
+ CREATE OR REPLACE PACKAGE BODY pkg_dsql AS
+   PROCEDURE proc_with_params(id number, name OUT varchar2) IS
+   BEGIN
+    DELETE FROM tb_dsql WHERE empno = id RETURNING ename INTO name;
+   END;
+END pkg_dsql;
+ /
+DECLARE
+  dyn_stmt VARCHAR2(100);
+  v_name VARCHAR2(100);
+BEGIN
+   dyn_stmt := 'BEGIN pkg_dsql.proc_with_params(:x,:y); END;';
+   EXECUTE IMMEDIATE dyn_stmt USING 1 RETURNING INTO v_name;
+   raise notice 'v_name=%', v_name;
+END;
+ /
+NOTICE:  v_name=wang
+insert into tb_dsql values(1,'wang',100);
+DECLARE
+  dyn_stmt VARCHAR2(100);
+  TYPE mytype1 IS TABLE OF VARCHAR2(100)  INDEX BY INT;
+  v_name mytype1;
+BEGIN
+   dyn_stmt := 'BEGIN pkg_dsql.proc_with_params(:x,:y); END;';
+   EXECUTE IMMEDIATE dyn_stmt USING 1 RETURNING INTO v_name(1);
+   raise notice 'v_name=%', v_name(1);
+END;
+ /
+NOTICE:  v_name=wang
+insert into tb_dsql values(1, 'tom', 100);
+DECLARE
+  TYPE mytype IS TABLE OF INT;
+  a mytype := mytype(2,3);
+  var_departid int;
+  var_locid int;
+BEGIN
+  EXECUTE IMMEDIATE 'update  tb_dsql  set  empsal = 220
+  returning empno,  empsal into :x,:y'
+	return into a(1), a(2);
+  raise notice '%', a(1); --1
+  raise notice '%', a(2); --220
+END;
+/
+NOTICE:  1
+NOTICE:  220
+DECLARE
+  TYPE mytype IS TABLE OF INT;
+  a mytype := mytype();
+  var_departid int;
+  var_locid int;
+BEGIN
+  a.extend(2);
+  EXECUTE IMMEDIATE 'update  tb_dsql  set  empsal = 230
+  returning empno,  empsal into :x,:y'
+	return into a(1), a(2);
+  raise notice '%', a(1); --1
+  raise notice '%', a(2); --230
+END;
+/
+NOTICE:  1
+NOTICE:  230
+DROP PACKAGE pkg_dsql;
+DROP TABLE tb_dsql;
+/* End - BUG#Z7311 */
 DROP TABLE t1;
 DROP TABLE t2;
