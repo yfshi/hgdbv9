@@ -312,8 +312,7 @@ socket_close(int code, Datum arg)
 int
 StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 				 const char *unixSocketDir,
-				 pgsocket ListenSocket[], int MaxListen,
-				 ProtocolExtensionConfig *ListenConfig[], ProtocolExtensionConfig *protocol_config /* Req: SRS-MYSQL-PROTOCOL */)
+				 pgsocket ListenSocket[], int MaxListen)
 {
 	pgsocket	fd;
 	int			err;
@@ -581,7 +580,6 @@ StreamServerPort(int family, const char *hostName, unsigned short portNumber,
 							familyDesc, addrDesc, (int) portNumber)));
 
 		ListenSocket[listen_index] = fd;
-		ListenConfig[listen_index] = protocol_config;
 		added++;
 	}
 

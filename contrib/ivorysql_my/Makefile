@@ -105,7 +105,8 @@ cleansql:
 
 # REGRESS_OPTS mainly used for installcheck or debug.
 #REGRESS_OPTS = --port=3306
-MYS_REGRESS = cast_to_number \
+MYS_REGRESS = numeric_to_times \
+			  cast_to_number \
 			  create_table \
 			  mys_information_schema \
 			  hex_literal \

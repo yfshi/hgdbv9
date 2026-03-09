@@ -9,7 +9,7 @@ set lower_case_table_names = 2;
  */
 create schema TESTSCHEMA2;
 create schema testschema2; --err
-create schema MYSQL;
+create schema MYSQL_TEST;
 
 --select objname, caseobjname, refclassid, objkind from pg_object;
 alter schema TESTSCHEMA2 rename to newTESTSCHEMA2;
@@ -70,14 +70,14 @@ create view v_TEST2 as select * from teST2; --err
 alter view v_test2 rename to v_test22;
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
 --alter view schema
-alter view v_test22 set schema Mysql;
+alter view v_test22 set schema Mysql_Test;
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
-select * from MYSQL.v_test22;
+select * from MYSQL_TEST.v_test22;
 --rename view
-alter view MYSQL.v_test22 rename to v_test2;
+alter view MYSQL_TEST.v_test22 rename to v_test2;
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
 --alter view schema
-alter view MYSQL.v_test2 set schema PUBLIC; 
+alter view MYSQL_TEST.v_test2 set schema PUBLIC; 
 
 --select objname, caseobjname, refclassid, objkind from pg_myobject;
 insert into v_test2 values (3, 'yulianzhou');
@@ -87,7 +87,7 @@ select * from test2;
 drop view v_test2;
 drop table test2;
 drop schema TESTSCHEMA2;
-drop schema MYSQL;
+drop schema MYSQL_TEST;
 drop schema testschema2 cascade;
 
 --create table and index

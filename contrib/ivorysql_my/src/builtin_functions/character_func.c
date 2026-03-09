@@ -1,4 +1,4 @@
-/*-------------------------------------------------------------------------------
+﻿/*-------------------------------------------------------------------------------
  *
  * File: character_func.c
  *
@@ -16,6 +16,11 @@
  *
  *-------------------------------------------------------------------------------
  */
+
+#ifdef WIN32
+#pragma execution_character_set("utf-8")
+#endif
+ 
 #include "postgres.h"
 #include "fmgr.h"
 
@@ -650,7 +655,7 @@ hex_num(PG_FUNCTION_ARGS)
 	text	*ret;
 	char	 buf[64];
 	
-	snprintf(buf, sizeof(buf), "%lX", PG_GETARG_UINT64(0));
+	snprintf(buf, sizeof(buf), "%llX", (long long unsigned int) PG_GETARG_UINT64(0));
 
 	ret = cstring_to_text(buf);
 
@@ -865,7 +870,7 @@ _soundex_valstr(const char *input, size_t input_len, size_t *out_len)
 	int			rc;
 	my_wc_t		wc;
 	char		last_ch = 0, ch = 0;
-	uint		nchars = 0;
+	uint32		nchars = 0;
 	size_t		alloc_len = 0;
 	size_t		result_len = 0;
 	char		*buf = NULL;
@@ -980,7 +985,7 @@ _soundex_valstr(const char *input, size_t input_len, size_t *out_len)
 	/* --- Pad with '0' if less than 4 characters --- */
 	if (nchars < 4)
 	{
-		uint need = 4 - nchars;
+		uint32 need = 4 - nchars;
 		memset(to, '0', need);  /* always ASCII '0' */
 		to += need;
 	}
@@ -1515,7 +1520,7 @@ weight_string(PG_FUNCTION_ARGS)
 
 		if (input_len > nweights)
 			ereport(WARNING,
-					errmsg("Truncated incorrect BINARY(%lu) value: '%s'", nweights, input_str));
+					errmsg("Truncated incorrect BINARY(%lu) value: '%.*s'", nweights, (int32) input_len, input_str));
 
 		result = (bytea *)palloc0(VARHDRSZ + nweights + SINGLE_BYTE_LENGTH);
 		memcpy((char *)VARDATA(result), input_str, input_len);

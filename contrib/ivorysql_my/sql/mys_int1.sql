@@ -373,12 +373,12 @@ create index idx10 on index_conversion using btree (bigint_unsigned_col);
 insert into index_conversion values (10, 3000, 8388600, 2147483647, 1000000000000, 252, 65530, 16777210, 4294967290, 2000000000000);
 vacuum full analyze index_conversion;
 
-explain select * from index_conversion where tinyint_col = 10;
-explain select * from index_conversion where tinyint_col = 1000;
-explain select * from index_conversion where tinyint_col = CAST(10 AS UNSIGNED);
-explain select * from index_conversion where tinyint_col > 1000000000000;
-explain select * from index_conversion where tinyint_col < -5000;
-explain select * from index_conversion where tinyint_col <= CAST(65530 AS UNSIGNED);
+explain (COSTS OFF) select * from index_conversion where tinyint_col = 10;
+explain (COSTS OFF) select * from index_conversion where tinyint_col = 1000;
+explain (COSTS OFF) select * from index_conversion where tinyint_col = CAST(10 AS UNSIGNED);
+explain (COSTS OFF) select * from index_conversion where tinyint_col > 1000000000000;
+explain (COSTS OFF) select * from index_conversion where tinyint_col < -5000;
+explain (COSTS OFF) select * from index_conversion where tinyint_col <= CAST(65530 AS UNSIGNED);
 
 reset enable_seqscan;
 reset enable_bitmapscan;

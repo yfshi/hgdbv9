@@ -17,21 +17,20 @@
  */
 #include "postgres.h"
 
-#include "auth.h"
 #include "charset/ctype.h"
 #include "commands/collationcmds.h"
+#include "common/connect.h"
 #include "common/int.h"
 #include "include/casesensitive.h"
+#include "include/auth.h"
+#include "include/message.h"
 #include "include/set.h"
 #include "include/server.h"
+#include "mysql_parser/mys_set_hook.h"
+#include "parser/parse_coerce.h"
+#include "utils/float.h"
 #include "utils/guc.h"
 #include "utils/varlena.h"
-#include "mysql_parser/mys_set_hook.h"
-#include "utils/float.h"
-#include "parser/parse_coerce.h"
-#include "common/connect.h"
-#include "message.h"
-
 
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;

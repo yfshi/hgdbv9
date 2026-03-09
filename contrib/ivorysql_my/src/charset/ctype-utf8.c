@@ -1774,7 +1774,7 @@ bincmp(const uchar *s, const uchar *se, const uchar *t,
 
 static inline void
 my_tosort_unicode(const MY_UNICASE_INFO *uni_plane,
-                  my_wc_t *wc, uint flags)
+                  my_wc_t *wc, uint32 flags)
 {
     if (*wc <= uni_plane->maxchar)
     {
@@ -1997,8 +1997,8 @@ my_strnncollsp_utf8mb4(const CHARSET_INFO *cs, const uchar *s,
 
 static size_t
 my_strnxfrm_unicode_full_bin(const CHARSET_INFO *cs,
-                             uchar *dst, size_t dstlen, uint nweights,
-                             const uchar *src, size_t srclen, uint flags)
+                             uchar *dst, size_t dstlen, uint32 nweights,
+                             const uchar *src, size_t srclen, uint32 flags)
 {
     my_wc_t wc = 0;
     uchar *const dst0 = dst;
@@ -2133,8 +2133,8 @@ my_strxfrm_pad_unicode(uchar *str, const uchar *const strend)
 
 static size_t
 my_strnxfrm_unicode(const CHARSET_INFO *cs,
-                    uchar *dst, size_t dstlen, uint nweights,
-                    const uchar *src, size_t srclen, uint flags)
+                    uchar *dst, size_t dstlen, uint32 nweights,
+                    const uchar *src, size_t srclen, uint32 flags)
 {
     my_wc_t wc = 0;
     int res;
@@ -2194,14 +2194,14 @@ static inline int my_valid_mbcharlen_utf8mb4(const uchar *s, const uchar *e)
     return my_mb_wc_utf8_prototype(true, true, &wc, s, e);
 }
 
-static uint
+static uint32
 my_ismbchar_utf8mb3(const CHARSET_INFO *cs, const char *b, const char *e)
 {
     int res = my_valid_mbcharlen_utf8mb3((const uchar *)b, (const uchar *)e);
     return (res > 1) ? res : 0;
 }
 
-static uint 
+static uint32 
 my_ismbchar_utf8mb4(const CHARSET_INFO *cs, const char *b, const char *e)
 {
     int res = my_valid_mbcharlen_utf8mb4((const uchar *)b, (const uchar *)e);
@@ -2449,7 +2449,7 @@ my_hash_sort_utf8mb4(const CHARSET_INFO *cs, const uchar *s, size_t slen, uint64
     const MY_UNICASE_INFO *uni_plane = cs->caseinfo;
     uint64 tmp1;
     uint64 tmp2;
-    uint ch;
+    uint32 ch;
 
     /*
       Remove end space. We do this to be able to compare

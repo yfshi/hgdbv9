@@ -3,10 +3,10 @@
 #include "common/cryptohash.h"
 #include "common/sha1.h"
 
-#include "server.h"
-#include "message.h"
-#include "mqformat.h"
-#include "auth.h"
+#include "../../include/auth.h"
+#include "../../include/message.h"
+#include "../../include/mqformat.h"
+#include "../../include/server.h"
 
 #define NATIVE_PASSWORD_NPART       1
 #define NATIVE_DIGEST_INDEX         0
@@ -39,7 +39,7 @@ compute_sha1_hash_multi(uint8 *dest, size_t dest_size, const uint8 *buf1, int le
 }
 
 static void
-my_xor(uint8 *to, const uint8 *s1, const uint8 *s2, uint len)
+my_xor(uint8 *to, const uint8 *s1, const uint8 *s2, uint32 len)
 {
     const uint8 *s1_end = s1 + len;
     while (s1 < s1_end) 

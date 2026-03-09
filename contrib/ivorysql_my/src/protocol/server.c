@@ -3,10 +3,12 @@
 #include "catalog/catalog.h"
 #include "catalog/namespace.h"
 #include "catalog/pg_type.h"
+#include "common/ip.h"
 #include "common/hashfn.h"
 #include "commands/user.h"
 #include "miscadmin.h"
 #include "parser/parser.h"
+#include "utils/builtins.h"
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -14,15 +16,12 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
-#include "message.h"
-#include "auth.h"
-#include "printtup.h"
-#include "server.h"
+#include "../include/message.h"
+#include "../include/auth.h"
+#include "../include/printtup.h"
+#include "../include/server.h"
 
 /* Begin - Req: SRS-MYSQL-PROTOCOL */
-#define PARAM_TYPE_PER_SESSION 		16 /* initial table size */
-#define BLOB_PARAM_PER_SESSION 		16 /* initial table size */
-
 #define COLLATE_BINARY         		63
 #define MAX_TYPE_NAME_LEN      		64
 
@@ -30,6 +29,7 @@ int					current_packet_type;
 mysql_conn_info_t 	mysql_conn_info;
 
 static create_server_listen_hook_type pre_server_listen_hook = NULL;
+static get_protocol_config_hook_type pre_get_protocol_config_hook = NULL; /* bug#6805 */
 
 static void mysql_session_init(ProtocolExtensionConfig *);
 
@@ -205,11 +205,7 @@ create_mysql_server_listen(void)
 	bool	listen_addr_saved = false;
 	char 	*address = mys_listen_address;
 	int 	port = mys_port;
-	ProtocolExtensionConfig *handler = &mysql_pg_protocol_config;
-
-	if (mys_protocol_type == PROTOCOL_MYSQL)
-		handler = &mysql_protocol_config;
-
+	
 	if (address)
 	{
 		char	   *rawstring;
@@ -237,14 +233,12 @@ create_mysql_server_listen(void)
 				status = StreamServerPort(AF_UNSPEC, NULL,
 										  (unsigned short)port,
 										  NULL,
-										  ListenSocket, MAXLISTEN,
-										  ListenConfig, handler /* Req: SRS-MYSQL-PROTOCOL */);
+										  ListenSocket, MAXLISTEN);
 			else
 				status = StreamServerPort(AF_UNSPEC, curhost,
 										  (unsigned short)port,
 										  NULL,
-										  ListenSocket, MAXLISTEN,
-										  ListenConfig, handler /* Req: SRS-MYSQL-PROTOCOL */);
+										  ListenSocket, MAXLISTEN);
 
 			if (status == STATUS_OK)
 			{
@@ -301,8 +295,7 @@ create_mysql_server_listen(void)
 			status = StreamServerPort(AF_UNIX, NULL,
 									  (unsigned short)port,
 									  socketdir,
-									  ListenSocket, MAXLISTEN,
-									  ListenConfig, handler /* Req: SRS-MYSQL-PROTOCOL */);
+									  ListenSocket, MAXLISTEN);
 
 			if (status == STATUS_OK)
 			{
@@ -458,16 +451,86 @@ type_is_blob(Oid oid)
 	return (item->flags & BLOB_FLAG) | (item->flags & BINARY_FLAG);
 }
 
+/* Begin - bug#6805 */
+static ProtocolExtensionConfig *
+mys_get_protocol_config(int family, char *local_port)
+{
+	// Check unix domain socket
+	if (IS_AF_UNIX(family))
+	{
+		char 		*rawstring;
+		List	  	*elemlist;
+		ListCell	*l;
+		char		unixSocketPath[MAXPGPATH];
+
+		rawstring = pstrdup(Unix_socket_directories);
+
+		if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"unix_socket_directories")));
+		}
+
+		foreach(l, elemlist)
+		{
+			char	   *socketdir = (char *) lfirst(l);
+
+			UNIXSOCK_PATH(unixSocketPath, mys_port, socketdir);
+
+			if (!strcmp(local_port, unixSocketPath))
+			{
+				if (mys_protocol_type == PROTOCOL_PG)
+					return &mysql_pg_protocol_config;
+
+				if (mys_protocol_type == PROTOCOL_MYSQL)
+					return &mysql_protocol_config;
+			}
+		}
+	}
+	else
+	{
+		int port = pg_atoi(local_port, sizeof(int32), ' ');
+
+		if (port == mys_port)
+		{
+			if (mys_protocol_type == PROTOCOL_PG)
+				return &mysql_pg_protocol_config;
+
+			if (mys_protocol_type == PROTOCOL_MYSQL)
+				return &mysql_protocol_config;
+		}
+	}
+
+	// Check other extension
+	if (pre_get_protocol_config_hook)
+		return pre_get_protocol_config_hook(family, local_port);
+
+	return NULL;
+}
+/* End - bug#6805 */
+
 void
 register_mysql_listener()
 {
 	pre_server_listen_hook = server_listen_hook;
 	server_listen_hook = create_mysql_server_listen;
+
+	/* Begin - bug#6805 */
+	pre_get_protocol_config_hook = get_protocol_config_hook;
+	get_protocol_config_hook = mys_get_protocol_config;
+	/* End - bug#6805 */
 }
 
 void
 unregister_mysql_listener(void)
 {
 	server_listen_hook = pre_server_listen_hook;
+
+	/* Begin - bug#6805 */
+	get_protocol_config_hook = pre_get_protocol_config_hook;
+	/* End - bug#6805 */
 }
 /* End - Req: SRS-MYSQL-PROTOCOL */

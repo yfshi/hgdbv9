@@ -493,13 +493,17 @@ select
 from
   my_binary_t1;
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
+WARNING:  Truncated incorrect INTEGER value: 123
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
+WARNING:  Truncated incorrect INTEGER value: 123
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
+WARNING:  Truncated incorrect INTEGER value: 1234
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
 WARNING:  Truncated incorrect INTEGER value: abcd
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
 WARNING:  Truncated incorrect INTEGER value: ABCD
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
+WARNING:  Truncated incorrect INTEGER value: 
 WARNING:  Bitwise operations on BINARY will change behavior in a future version, check the 'Bit functions' section in the manual.
 WARNING:  Truncated incorrect INTEGER value:  
  bit_count | bit_count | bit_count | bit_count | bit_count | bit_count | bit_count | bit_count 

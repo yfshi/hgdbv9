@@ -854,18 +854,10 @@ rtrim1(PG_FUNCTION_ARGS)
 		coll = C_COLLATION_OID;
 	/* End - BUG#Z1467 */
 
-	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)
-	 * Handing char(n) space padding issues based on
-	 * sql_mode value MODE_PAD_CHAR_TO_FULL_LENGTH.
-	 */
-	if (compatible_mode == MYS_MODE && mode_pad_char_to_full())
-		ret = string;
-	else
-		ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
-					 " ", 1,
-					 false, true,
-					 coll);
-	/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n)  */
+	ret = dotrim(VARDATA_ANY(string), VARSIZE_ANY_EXHDR(string),
+				 " ", 1,
+				 false, true,
+				 coll);
 
 	PG_RETURN_TEXT_P(ret);
 }
@@ -1241,4 +1233,20 @@ repeat(PG_FUNCTION_ARGS)
 	}
 
 	PG_RETURN_TEXT_P(result);
+}
+
+/**
+ * Detach the cast function from rtrim1 and add PAD_CHAR_TO_FULL_LENGTH
+ * for MySQL 'INSERT INTO SELECT' expression, which insert bpchar data to
+ * text column.
+ */
+Datum
+bpchar_text(PG_FUNCTION_ARGS)
+{
+	Datum datum = PG_GETARG_DATUM(0);
+
+	if (compatible_mode == MYS_MODE && mode_pad_char_to_full())
+		PG_RETURN_DATUM(datum);
+
+	PG_RETURN_DATUM(DirectFunctionCall1(rtrim1, datum));
 }

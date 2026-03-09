@@ -29,7 +29,7 @@
 #include "utils/fmgrprotos.h"
 #include "utils/float.h"
 
-#include "ivorysql_my.h"
+#include "../include/ivorysql_my.h"
 
 #define BINARY_MAX_LENGTH       255
 #define VARBINARY_MAX_LENGTH    65532
@@ -360,6 +360,7 @@ mys_bytea2float8(bytea *arg)
 Datum
 anybinary_div(PG_FUNCTION_ARGS)
 {
+	char	*src1, *src2;
 	int		len1, len2;
 	char	*end1, *end2;
 	double 	arg1_val = 0;
@@ -373,21 +374,30 @@ anybinary_div(PG_FUNCTION_ARGS)
 	arg1 = PG_GETARG_BYTEA_PP(0);
 	arg2 = PG_GETARG_BYTEA_PP(1);
 
+	src1 = VARDATA_ANY(arg1);
+	src2 = VARDATA_ANY(arg2);
+
 	len1 = VARSIZE_ANY_EXHDR(arg1);
 	len2 = VARSIZE_ANY_EXHDR(arg2);
 
-	end1 = VARDATA_ANY(arg1) + len1;
-	end2 = VARDATA_ANY(arg2) + len2;
+	src1 = pnstrdup(src1, len1);
+	src2 = pnstrdup(src2, len2);
 
-	arg1_val = (double) strtod(VARDATA_ANY(arg1), &end1);
-	arg2_val = (double) strtod(VARDATA_ANY(arg2), &end2);
+	arg1_val = (double) strtod(src1, &end1);
+	arg2_val = (double) strtod(src2, &end2);
 
 	if (arg2_val == 0)
 	{
+		pfree(src1);
+		pfree(src2);
+
 		PG_RETURN_NULL();
 	}
 
 	result = arg1_val / arg2_val;
+
+	pfree(src1);
+	pfree(src2);
 
 	if (isinf(result))
 	{

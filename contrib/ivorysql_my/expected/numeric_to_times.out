@@ -1,0 +1,168 @@
+select cast(1 as time(0));
+ mystime  
+----------
+ 00:00:01
+(1 row)
+
+select cast(20121212 as datetime(0));
+     mysdatetime     
+---------------------
+ 2012-12-12 00:00:00
+(1 row)
+
+select cast(8385959.9999994 as time(5));    -- 838:59:59.00000
+    mystimes     
+-----------------
+ 838:59:59.00000
+(1 row)
+
+select cast(8385959.9999995 as time(5));    -- 838:59:59.00000, warning
+WARNING:  Truncated incorrect time value: '8385959.9999995'
+    mystimes     
+-----------------
+ 838:59:59.00000
+(1 row)
+
+select cast(8385959.999999 as time(6));     -- 838:59:59.999999
+     mystimes     
+------------------
+ 838:59:59.999999
+(1 row)
+
+select cast(8385959.9999994 as time(6));    -- 838:59:59.999999
+     mystimes     
+------------------
+ 838:59:59.999999
+(1 row)
+
+select cast(8385959.9999995 as time(6));    -- 838:59:59.000000, warning
+WARNING:  Truncated incorrect time value: '8385959.9999995'
+     mystimes     
+------------------
+ 838:59:59.000000
+(1 row)
+
+select cast(8385959.1 as time(5));          -- 838:59:59.00000
+    mystimes     
+-----------------
+ 838:59:59.00000
+(1 row)
+
+select cast(8385959.1 as time(6));          -- 838:59:59.100000
+     mystimes     
+------------------
+ 838:59:59.100000
+(1 row)
+
+select cast(11111111235959.999999 as time(5)); -- 24:00:00.00000
+    mystimes    
+----------------
+ 24:00:00.00000
+(1 row)
+
+select cast(11111111235959.999999 as time(6)); -- 23:59:59.999999
+    mystimes     
+-----------------
+ 23:59:59.999999
+(1 row)
+
+select cast(-8385959.9999994 as time(5));    -- 838:59:59.00000
+     mystimes     
+------------------
+ -838:59:59.00000
+(1 row)
+
+select cast(-8385959.9999995 as time(5));    -- -838:59:59.00000, warning
+WARNING:  Truncated incorrect time value: '-8385959.9999995'
+     mystimes     
+------------------
+ -838:59:59.00000
+(1 row)
+
+select cast(-8385959.999999 as time(6));     -- -838:59:59.999999
+     mystimes      
+-------------------
+ -838:59:59.999999
+(1 row)
+
+select cast(-8385959.9999994 as time(6));    -- -838:59:59.999999
+     mystimes      
+-------------------
+ -838:59:59.999999
+(1 row)
+
+select cast(-8385959.9999995 as time(6));    -- -838:59:59.000000, warning
+WARNING:  Truncated incorrect time value: '-8385959.9999995'
+     mystimes      
+-------------------
+ -838:59:59.000000
+(1 row)
+
+select cast(-8385959.1 as time(5));          -- -838:59:59.00000
+     mystimes     
+------------------
+ -838:59:59.00000
+(1 row)
+
+select cast(-8385959.1 as time(6));          -- -838:59:59.100000
+     mystimes      
+-------------------
+ -838:59:59.100000
+(1 row)
+
+set sql_mode = default;
+create table nt6(a time(6));
+insert into nt6 values (8385959.999999);        -- error
+ERROR:  Incorrect time value: '8385959.999999'
+insert into nt6 values (8385959.9999994);       -- error
+ERROR:  Incorrect time value: '8385959.9999994'
+insert into nt6 values (8385959.9999995);       -- error
+ERROR:  Incorrect time value: '8385959.9999995'
+insert into nt6 values (8385959.1);             -- error
+ERROR:  Incorrect time value: '8385959.1'
+insert into nt6 values (11111111235959.999999); -- notice
+NOTICE:  Incorrect time value: '11111111235959.999999'
+insert into nt6 values (-8385959.999999);       -- error
+ERROR:  Incorrect time value: '-8385959.999999'
+insert into nt6 values (-8385959.9999994);      -- error
+ERROR:  Incorrect time value: '-8385959.9999994'
+insert into nt6 values (-8385959.9999995);      -- error
+ERROR:  Incorrect time value: '-8385959.9999995'
+insert into nt6 values (-8385959.1);            -- error
+ERROR:  Incorrect time value: '-8385959.1'
+truncate nt6;
+set sql_mode = '';
+insert into nt6 values (8385959.999999);        -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (8385959.9999994);       -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (8385959.9999995);       -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (8385959.1);             -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (11111111235959.999999); -- notice
+NOTICE:  Data truncated for column
+insert into nt6 values (-8385959.999999);       -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (-8385959.9999994);      -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (-8385959.9999995);      -- warning
+WARNING:  Out of range value for column
+insert into nt6 values (-8385959.1);            -- warning
+WARNING:  Out of range value for column
+select * from nt6 order by a;
+         a         
+-------------------
+ 838:59:59.000000
+ 838:59:59.000000
+ 838:59:59.000000
+ 838:59:59.000000
+ 23:59:59.999999
+ -838:59:59.000000
+ -838:59:59.000000
+ -838:59:59.000000
+ -838:59:59.000000
+(9 rows)
+
+set sql_mode = default;
+drop table nt6;

@@ -1699,12 +1699,9 @@ SELECT OCTET_LENGTH(binary 'Hello'); -- 5
             5
 (1 row)
 
+set escape_string_warning = off;
 SET standard_conforming_strings to OFF;
 SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 12
-WARNING:  nonstandard use of escape in a string literal
-LINE 1: SELECT OCTET_LENGTH('Hello\tWorld\n');
-                            ^
-HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
  OCTET_LENGTH 
 --------------
            12

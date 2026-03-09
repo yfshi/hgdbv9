@@ -22,7 +22,6 @@
 #include "postgres.h"
 #include "fmgr.h"
 #include "c.h"
-#include "server.h"
 #include "nodes/nodeFuncs.h"
 #include "../include/ivorysql_my.h"
 /* Begin - OA#2098  Not Full Group */
@@ -32,6 +31,7 @@
 #include "utils/datum.h"
 /* End - OA#2908  Not Full Group */
 
+#include "../include/server.h"
 
 /*
   Rules for merging different types of fields in UNION

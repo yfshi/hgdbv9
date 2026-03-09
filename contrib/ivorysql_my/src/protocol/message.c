@@ -23,9 +23,9 @@
 #include "utils/syscache.h"
 #include "utils/timestamp.h"
 
-#include "server.h"
-#include "message.h"
-#include "mqformat.h"
+#include "../include/server.h"
+#include "../include/message.h"
+#include "../include/mqformat.h"
 
 #define ERR_PACKET_SQLSTATE_LEN             5
 #define MAX_ERRMSG_LEN                      512

@@ -12507,7 +12507,8 @@ invalid_syntax:
 #define LLDIV_MIN -1000000000000000000LL
 #define LLDIV_MAX 1000000000000000000LL
 
-bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
+bool
+numeric_to_lldiv_t(Numeric num, lldiv_t *to)
 {
 	NumericVar tmp;
 	int int_end_pos;
@@ -12530,13 +12531,18 @@ bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
 		return true;
 	}
 
-	/*example num = 1234.5,digits[] = {0,1234,5600},weight = 1 means values of digits[1] = digits[1]*10^0
-		so num = digits[0]*10^1 + digits[1]*10^0 + digits[3]*10^-1*/
+	/**
+	 * example num = 1234.5,
+	 * digits[] = {0, 1234, 5600}, 
+	 * weight = 1 means values of digits[1] = digits[1] * 10 ^ 0,
+	 * so num = digits[0] * 10 ^ 1 + digits[1] * 10 ^ 0 + digits[2] * 10 ^ -1
+	 */
 	to->quot = to->rem = 0;
 
-	/*weight less than 0  means that the numeric is a fractional*/
+	/* weight less than 0 means that the numeric is a fractional */
 	int_end_pos = (tmp.weight < 0 ? -1 : tmp.weight);
 	frac_start_pos = int_end_pos + 1;
+	
 	/* Avoid to overflow. */
 	if (int_end_pos > DEC_DIGITS ||
 		(tmp.weight == DEC_DIGITS && tmp.digits[0] >= (int64)(LLDIV_MAX / pow_of_10[tmp.weight * DEC_DIGITS])))
@@ -12551,10 +12557,14 @@ bool mysnumeric_to_lldiv_t(Numeric num, lldiv_t *to)
 		to->quot += tmp.digits[j] * pow_of_10[i * DEC_DIGITS];
 	}
 
-	/*Fractional part is equal to the total number of groups sub the frac_start group*/
+	/* Fractional part is equal to the total number of groups sub the frac_start group */
 	frac_group = tmp.ndigits - frac_start_pos;
 
-	/*The range of decimal places is 0~(1 - 10^-8),tmp.weight == -2 means that the numeric is a fractional and in rang of 10^-4 to 10^-8*/
+	/**
+	 * The range of decimal places is 0 ~ (1 - 10 ^ -8),
+	 * tmp.weight == -2 means that the numeric is a fractional
+	 * and in rang of 10 ^ -4 to 10 ^ -8
+	 */
 	if (tmp.dscale > 0 && tmp.weight >= -2)
 	{
 		/* Begin - bug#z5590 */

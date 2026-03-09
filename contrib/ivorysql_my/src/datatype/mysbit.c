@@ -60,14 +60,14 @@
 #define MYSBIT_MAX_VALUE(typmod) \
 		(typmod == 64 ? ULLONG_MAX : (1ULL << typmod) - 1)
 
-#define mi_int4store(T,A) { ulong def_temp = (ulong) (A);\
+#define mi_int4store(T,A) { uint32 def_temp = (uint32) (A);\
 		((uchar*) (T))[3]= (uchar) (def_temp);\
 		((uchar*) (T))[2]= (uchar) (def_temp >> 8);\
 		((uchar*) (T))[1]= (uchar) (def_temp >> 16);\
 		((uchar*) (T))[0]= (uchar) (def_temp >> 24); }
 
-#define mi_int8store(T,A) { ulong def_temp3 = (ulong) (A),\
-		def_temp4 = (ulong) ((A) >> 32);\
+#define mi_int8store(T,A) { uint32 def_temp3 = (uint32) (A),\
+		def_temp4 = (uint32) ((A) >> 32);\
 		mi_int4store((uchar*) (T) + 0, def_temp4);\
 		mi_int4store((uchar*) (T) + 4, def_temp3); }
 

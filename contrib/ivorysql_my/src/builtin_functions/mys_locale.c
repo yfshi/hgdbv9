@@ -1,4 +1,4 @@
-/*-------------------------------------------------------------------------------
+﻿/*-------------------------------------------------------------------------------
  * 
  * File: mys_locale.c
  *
@@ -15,6 +15,10 @@
  *
  *-------------------------------------------------------------------------------
  */
+#ifdef WIN32
+#pragma execution_character_set("utf-8")
+#endif
+
 #include "../include/mys_locale.h"
 
 /***** LOCALE BEGIN ar_AE: Arabic - United Arab Emirates *****/
@@ -312,8 +316,8 @@ static char *ab_day_names_gl_ES[] = {
 
 /***** LOCALE BEGIN gu_IN: Gujarati - India *****/
 static char *month_names_gu_IN[] = {
-	"જાન્યુઆરી", "ફેબ્રુઆરી", "માર્ચ",   "એપ્રિલ", "મે",		"જુન", "જુલાઇ",
-	"ઓગસ્ટ",	  "સેપ્ટેમ્બર", "ઓક્ટોબર", "નવેમ્બર", "ડિસેમ્બર"};
+	"જાન્યુઆરી", "ફેબ્રુઆરી", "માર્ચ", "એપ્રિલ", "મે", "જુન", "જુલાઇ",
+	"ઓગસ્ટ", "સેપ્ટેમ્બર", "ઓક્ટોબર", "નવેમ્બર", "ડિસેમ્બર"};
 static char *ab_month_names_gu_IN[] = {
 	"જાન", "ફેબ",  "માર", "એપ્ર", "મે",	"જુન", "જુલ",
 	"ઓગ",  "સેપ્ટ", "ઓક્ટ", "નોવ", "ડિસ"};
@@ -811,16 +815,13 @@ static char *ab_day_names_vi_VN[] = {
 
 /***** LOCALE BEGIN zh_CN: Chinese - Peoples Republic of China *****/
 static char *month_names_zh_CN[] = {
-	"一月", "二月", "三月", "四月",   "五月",   "六月", "七月",
+	"一月", "二月", "三月", "四月",   "五月", "六月", "七月",
 	"八月", "九月", "十月", "十一月", "十二月"};
 static char *ab_month_names_zh_CN[] = {
 	" 1月", " 2月", " 3月", " 4月", " 5月", " 6月", " 7月",
 	" 8月", " 9月", "10月", "11月", "12月"};
-static char *day_names_zh_CN[] = {"星期一", "星期二", "星期三",
-												   "星期四", "星期五", "星期六",
-												   "星期日"};
-static char *ab_day_names_zh_CN[] = {"一", "二", "三", "四",
-													  "五", "六", "日"};
+static char *day_names_zh_CN[] = {"星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"};
+static char *ab_day_names_zh_CN[] = {"一", "二", "三", "四", "五", "六", "日"};
 /***** LOCALE END zh_CN *****/
 
 /***** LOCALE BEGIN zh_TW: Chinese - Taiwan *****/
@@ -830,10 +831,8 @@ static char *month_names_zh_TW[] = {
 static char *ab_month_names_zh_TW[] = {
 	" 1月", " 2月", " 3月", " 4月", " 5月", " 6月", " 7月",
 	" 8月", " 9月", "10月", "11月", "12月"};
-static char *day_names_zh_TW[] = {
-	"週一", "週二", "週三", "週四", "週五", "週六", "週日"};
-static char *ab_day_names_zh_TW[] = {"一", "二", "三", "四",
-													  "五", "六", "日"};
+static char *day_names_zh_TW[] = {"週一", "週二", "週三", "週四", "週五", "週六", "週日"};
+static char *ab_day_names_zh_TW[] = {"一", "二", "三", "四", "五", "六", "日"};
 /***** LOCALE END zh_TW *****/
 
 /***** LOCALE BEGIN el_GR: Greek - Greece *****/

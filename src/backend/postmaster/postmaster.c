@@ -263,7 +263,6 @@ int			ReservedBackends;
 
 /* The socket(s) we're listening to. */
 pgsocket ListenSocket[MAXLISTEN];
-ProtocolExtensionConfig *ListenConfig[MAXLISTEN]; /* Req: SRS-MYSQL-PROTOCOL */
 
 /*
  * These globals control the behavior of the postmaster in case some
@@ -445,7 +444,7 @@ static void CloseServerPorts(int status, Datum arg);
 static void unlink_external_pid_file(int status, Datum arg);
 static void getInstallationPaths(const char *argv0);
 static void checkControlFile(void);
-static Port *ConnCreate(int serverFd, int idx);
+static Port *ConnCreate(int serverFd);
 static void ConnFree(Port *port);
 static void reset_shared(void);
 static void SIGHUP_handler(SIGNAL_ARGS);
@@ -507,6 +506,7 @@ static int GetCaseSwitchModeFromControl(char* path);
 static void pg_session_init(ProtocolExtensionConfig *);
 
 create_server_listen_hook_type server_listen_hook = NULL;
+get_protocol_config_hook_type get_protocol_config_hook = NULL; /* bug#6805 */
 
 static ProtocolExtensionConfig default_protocol_config = {
 	T_ProtocolPg,
@@ -1300,14 +1300,12 @@ PostmasterMain(int argc, char *argv[])
 				status = StreamServerPort(AF_UNSPEC, NULL,
 										  (unsigned short) PostPortNumber,
 										  NULL,
-										  ListenSocket, MAXLISTEN,
-										  ListenConfig, &default_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+										  ListenSocket, MAXLISTEN);
 			else
 				status = StreamServerPort(AF_UNSPEC, curhost,
 										  (unsigned short) PostPortNumber,
 										  NULL,
-										  ListenSocket, MAXLISTEN,
-										  ListenConfig, &default_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+										  ListenSocket, MAXLISTEN);
 
 			if (status == STATUS_OK)
 			{
@@ -1412,8 +1410,7 @@ PostmasterMain(int argc, char *argv[])
 			status = StreamServerPort(AF_UNIX, NULL,
 									  (unsigned short) PostPortNumber,
 									  socketdir,
-									  ListenSocket, MAXLISTEN,
-									  ListenConfig, &default_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+									  ListenSocket, MAXLISTEN);
 
 			if (status == STATUS_OK)
 			{
@@ -1916,7 +1913,7 @@ ServerLoop(void)
 				{
 					Port	   *port;
 
-					port = ConnCreate(ListenSocket[i], i);
+					port = ConnCreate(ListenSocket[i]);
 					if (port)
 					{
 						BackendStartup(port);
@@ -2888,7 +2885,7 @@ canAcceptConnections(int backend_type)
  * Returns NULL on failure, other than out-of-memory which is fatal.
  */
 static Port *
-ConnCreate(int serverFd, int idx)
+ConnCreate(int serverFd)
 {
 	Port	   *port;
 
@@ -2899,8 +2896,6 @@ ConnCreate(int serverFd, int idx)
 				 errmsg("out of memory")));
 		ExitPostmaster(1);
 	}
-
-	port->protocol_config = ListenConfig[idx]; /* Req: SRS-MYSQL-PROTOCOL */
 
 	if (StreamConnection(serverFd, port) != STATUS_OK)
 	{
@@ -4753,6 +4748,73 @@ report_fork_failure_to_client(Port *port, int errnum)
 	} while (rc < 0 && errno == EINTR);
 }
 
+/* Begin - bug#6805 */
+static ProtocolExtensionConfig *
+get_protocol_config(Port *port)
+{
+	int			ret;
+	char		local_host[MAXPGPATH];
+	char		local_port[MAXPGPATH];
+	int			family;
+
+	if (port == NULL)
+		return NULL;
+
+	ret = pg_getnameinfo_all(&port->laddr.addr, port->laddr.salen,
+							 local_host, sizeof(local_host),
+							 local_port, sizeof(local_port),
+							 NI_NUMERICHOST | NI_NUMERICSERV);
+		
+	if (ret != 0)
+		return NULL;
+
+	family = port->laddr.addr.ss_family;
+
+	// Check unix domain socket
+	if (IS_AF_UNIX(family))
+	{
+		char 		*rawstring;
+		List	  	*elemlist;
+		ListCell	*l;
+		char		unixSocketPath[MAXPGPATH];
+
+		rawstring = pstrdup(Unix_socket_directories);
+
+		if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"unix_socket_directories")));
+		}
+
+		foreach(l, elemlist)
+		{
+			char	   *socketdir = (char *) lfirst(l);
+
+			UNIXSOCK_PATH(unixSocketPath, PostPortNumber, socketdir);
+
+			if (!strcmp(local_port, unixSocketPath))
+				return &default_protocol_config;
+		}
+	}
+	else
+	{
+		int server_port = pg_atoi(local_port, sizeof(int32), ' ');
+		
+		// Check pg native port
+		if (server_port == PostPortNumber)
+			return &default_protocol_config;
+	}
+
+	// Check extension
+	if (get_protocol_config_hook)
+		return get_protocol_config_hook(family, local_port);
+
+	return NULL;
+}
+/* End - bug#6805 */
 
 /*
  * BackendInitialize -- initialize an interactive (postmaster-child)
@@ -4798,10 +4860,7 @@ BackendInitialize(Port *port)
 	port->remote_host = "";
 	port->remote_port = "";
 
-	/* TODO(windows): set protocol_config */
-#ifdef WIN32
-	port->protocol_config = &default_protocol_config;
-#endif
+	port->protocol_config = get_protocol_config(port); /* bug#6805 */
 
 	/*
 	 * Initialize libpq and enable reporting of ereport errors to the client.
@@ -4845,43 +4904,6 @@ BackendInitialize(Port *port)
 	 */
 	port->remote_host = strdup(remote_host);
 	port->remote_port = strdup(remote_port);
-	
-	/* TODO(windows): set protocol_config */
-#ifdef WIN32
-{
-	int			localport;
-	char		service[NI_MAXHOST];
-
-	service[0] = '\0';
-	if ((ret = pg_getnameinfo_all(&port->laddr.addr, port->laddr.salen,
-								  NULL, 0,
-								  service, sizeof(service),
-								  NI_NUMERICSERV)) != 0)
-		ereport(WARNING,
-				(errmsg_internal("pg_getnameinfo_all() failed: %s",
-								 gai_strerror(ret))));
-
-	localport = atoi(service);
-	if (localport == 0)
-	{
-		char	OraPortNumberStr[32];
-		
-		snprintf(OraPortNumberStr, sizeof(OraPortNumberStr), "%d", OraPortNumber);
-
-		if (strstr(service, OraPortNumberStr) != NULL)
-		{
-			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
-		}
-	}
-	else
-	{
-		if (localport == OraPortNumber)
-		{
-			SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
-		}
-	}
-}
-#endif
 
 	/* And now we can issue the Log_connections message, if wanted */
 	if (Log_connections)

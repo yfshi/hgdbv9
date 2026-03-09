@@ -31,7 +31,7 @@
 
 #define YEAR4_LEN                       4
 #define YEAR2_LEN                       2
-#define YEAR2_BOUND_BETWEEN_20C_21C     70
+#define YY_PART_YEAR     				70
 #define YEAR2_IN_RANGE(x)               ((x) >= 0 && (x) <= 99)
 
 #define YearADTGetDatum(X)      		Int16GetDatum(X)

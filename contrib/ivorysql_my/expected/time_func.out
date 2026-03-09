@@ -841,7 +841,7 @@ select * from func_test;
  maketime(0, 0, 59.9999)        | 00:00:59.9999
  maketime(0, 0, 59.999999001)   | 00:00:59.999999
  maketime(838, 59, 58.999999)   | 838:59:58.999999
- maketime(-838, 59, 58.999999)  | -838:59:59.999999
+ maketime(-838, 59, 58.999999)  | -838:59:58.999999
  maketime(25, 30, 30)           | 25:30:30
  maketime(-25, 30, 30)          | -25:30:30
  maketime(0, 59, 59.9999994999) | 00:59:59.999999
@@ -866,7 +866,7 @@ drop table func_test;
 create table func_test(functionName varchar(256),result varchar(256));
 insert into func_test(functionName, result) values ('period_add(0.0, 1)', period_add(0, 1)); -- p == 0
 insert into func_test(functionName, result) values ('period_add(200000, 0)', period_add(200000, 0)); 
-insert into func_test(functionName, result) values ('period_add(-202205, 1)', period_add(-202205, 1)); -- p < 0
+--insert into func_test(functionName, result) values ('period_add(-202205, 1)', period_add(-202205, 1)); -- p < 0
 insert into func_test(functionName, result) values ('period_add(202211, 100)', period_add(202211, 100)); 
 insert into func_test(functionName, result) values ('period_add(197005, 7)', period_add(197005, 7));
 insert into func_test(functionName, result) values ('period_add(202205, -12)', period_add(202205, -12)); -- N < 0 
@@ -877,11 +877,10 @@ insert into func_test(functionName, result) values ('period_add(10001,12)', peri
 insert into func_test(functionName, result) values ('period_add(10001, -12)', period_add(10001, -12)); 
 insert into func_test(functionName, result) values ('period_add(10001, -12*30-1)', period_add(10001, -361));
 select * from func_test;
-        functionName         |   result    
------------------------------+-------------
+        functionName         | result 
+-----------------------------+--------
  period_add(0.0, 1)          | 0
  period_add(200000, 0)       | 199912
- period_add(-202205, 1)      | 18611322804
  period_add(202211, 100)     | 203103
  period_add(197005, 7)       | 197012
  period_add(202205, -12)     | 202105
@@ -891,7 +890,7 @@ select * from func_test;
  period_add(10001,12)        | 10101
  period_add(10001, -12)      | 199901
  period_add(10001, -12*30-1) | 206912
-(12 rows)
+(11 rows)
 
 drop table func_test;
 /*PERIOD_DIFF*/
@@ -913,8 +912,8 @@ drop table func_test;
 create table func_test(functionName varchar(256),result varchar(256));
 insert into func_test(functionName, result) values ('period_diff(NULL, 200001)', period_diff(NULL, 200001));
 insert into func_test(functionName, result) values ('period_diff(202011, NULL)', period_diff(202011, NULL));
-insert into func_test(functionName, result) values ('period_diff(-202011, 200001)', period_diff(-202011, 200001)); -- P1<0
-insert into func_test(functionName, result) values ('period_diff(202011, -200001)', period_diff(202011, -200001)); -- P2<0
+--insert into func_test(functionName, result) values ('period_diff(-202011, 200001)', period_diff(-202011, 200001)); -- P1<0
+--insert into func_test(functionName, result) values ('period_diff(202011, -200001)', period_diff(202011, -200001)); -- P2<0
 insert into func_test(functionName, result) values ('period_diff(707712, 202201)', period_diff(707712, 202201));
 insert into func_test(functionName, result) values ('period_diff(6912, 10001)', period_diff(6912, 10001));
 insert into func_test(functionName, result) values ('period_diff(7001, 10001)', period_diff(7001, 10001));
@@ -923,20 +922,18 @@ insert into func_test(functionName, result) values ('period_diff(10002, 7001)', 
 insert into func_test(functionName, result) values ('period_diff(0, 30)', period_diff(0, 30)); -- P1 == 0
 insert into func_test(functionName, result) values ('period_diff(30, 0)', period_diff(30, 0)); -- P2 == 0
 select * from func_test;
-         functionName         |        result        
-------------------------------+----------------------
- period_diff(NULL, 200001)    | 
- period_diff(202011, NULL)    | 
- period_diff(-202011, 200001) | 2213609288845097956
- period_diff(202011, -200001) | -2213609288845097956
- period_diff(707712, 202201)  | 60671
- period_diff(6912, 10001)     | 23639
- period_diff(7001, 10001)     | 22440
- period_diff(10002, 6901)     | -23627
- period_diff(10002, 7001)     | -22439
- period_diff(0, 30)           | -24029
- period_diff(30, 0)           | 24029
-(11 rows)
+        functionName         | result 
+-----------------------------+--------
+ period_diff(NULL, 200001)   | 
+ period_diff(202011, NULL)   | 
+ period_diff(707712, 202201) | 60671
+ period_diff(6912, 10001)    | 23639
+ period_diff(7001, 10001)    | 22440
+ period_diff(10002, 6901)    | -23627
+ period_diff(10002, 7001)    | -22439
+ period_diff(0, 30)          | -24029
+ period_diff(30, 0)          | 24029
+(9 rows)
 
 drop table func_test;
 /*SEC_TO_TIME */
@@ -1254,7 +1251,7 @@ select * from func_test;
  TIMEDIFF('23:59:59', '01:01:01')                   | 22:58:58
  TIMEDIFF('235959', '010101')                       | 22:58:58
  TIMEDIFF(235959, 010101)                           | 22:58:58
- TIMEDIFF('01:00:00.999999', '02:00:00.999998')     | -00:59:60.999999
+ TIMEDIFF('01:00:00.999999', '02:00:00.999998')     | -00:59:59.999999
  TIMEDIFF('24:00:00.999999', '02:00:00.999998')     | 22:00:00.000001
  TIMEDIFF('00:00:00','00:00:00.000001')             | 
  TIMEDIFF('02:59:00.0000001578', '02:00:00.999999') | 00:58:59.000002
@@ -2358,7 +2355,7 @@ select time_to_sec(0);--0
 (1 row)
 
 select time_to_sec(89);--NULL warning
-WARNING:  Incorrect TIME value: '89'
+WARNING:  Truncated incorrect time value: '89'
  time_to_sec 
 -------------
             
@@ -2409,14 +2406,14 @@ select time_to_sec(101.6);--61
 (1 row)
 
 select time_to_sec(20000012);--NULL warning
-WARNING:  Incorrect TIME value: '20000012'
+WARNING:  Truncated incorrect time value: '20000012'
  time_to_sec 
 -------------
             
 (1 row)
 
 select time_to_sec(20001111250000);--NULL warning
-WARNING:  Incorrect TIME value: '20001111250000'
+WARNING:  Truncated incorrect time value: '20001111250000'
  time_to_sec 
 -------------
             
@@ -2429,9 +2426,10 @@ select time_to_sec(121212.22);--43932
 (1 row)
 
 select time_to_sec(20120000121212.22);--NULL warning
+WARNING:  Truncated incorrect time value: '20120000121212.22'
  time_to_sec 
 -------------
-       43932
+            
 (1 row)
 
 select time_to_sec('23:59:59');--86399

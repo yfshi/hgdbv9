@@ -59,8 +59,10 @@
 #include "include/orarefcursor.h"
 
 /* Begin - Req: SRS-MYSQL-PROTOCOL */
+#include "common/ip.h"
 #include "parser/parser.h"
 #include "postmaster/postmaster.h"
+#include "utils/builtins.h"
 #include "utils/pidfile.h"
 #include "utils/varlena.h"
 /* End - Req: SRS-MYSQL-PROTOCOL */
@@ -86,6 +88,7 @@ static ora_updatexml_hook_type pre_ora_updatexml_hook = NULL;
 
 /* Begin - Req: SRS-MYSQL-PROTOCOL */
 static create_server_listen_hook_type pre_server_listen_hook = NULL;
+static get_protocol_config_hook_type  pre_get_protocol_config_hook = NULL; /* bug#6805 */
 static void ora_session_init(ProtocolExtensionConfig *);
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
@@ -165,14 +168,12 @@ create_oracle_server_listen()
 				status = StreamServerPort(AF_UNSPEC, NULL,
 										  (unsigned short) OraPortNumber,
 										  NULL,
-										  ListenSocket, MAXLISTEN,
-										  ListenConfig, &ora_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+										  ListenSocket, MAXLISTEN);
 			else
 				status = StreamServerPort(AF_UNSPEC, curhost,
 										  (unsigned short) OraPortNumber,
 										  NULL,
-										  ListenSocket, MAXLISTEN,
-										  ListenConfig, &ora_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+										  ListenSocket, MAXLISTEN);
 
 			if (status == STATUS_OK)
 			{
@@ -226,8 +227,7 @@ create_oracle_server_listen()
 			status = StreamServerPort(AF_UNIX, NULL,
 									  (unsigned short) OraPortNumber,
 									  socketdir,
-									  ListenSocket, MAXLISTEN,
-									  ListenConfig, &ora_protocol_config /* Req: SRS-MYSQL-PROTOCOL */);
+									  ListenSocket, MAXLISTEN);
 
 			if (status == STATUS_OK)
 			{
@@ -255,6 +255,55 @@ create_oracle_server_listen()
 	if (pre_server_listen_hook)
 		pre_server_listen_hook();
 }
+
+/* Begin - bug#6805 */
+static ProtocolExtensionConfig *
+ora_get_protocol_config(int family, char *local_port)
+{
+	// Check unix domain socket
+	if (IS_AF_UNIX(family))
+	{
+		char 		*rawstring;
+		List	  	*elemlist;
+		ListCell	*l;
+		char		unixSocketPath[MAXPGPATH];
+
+		rawstring = pstrdup(Unix_socket_directories);
+
+		if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+		{
+			/* syntax error in list */
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"%s\"",
+							"unix_socket_directories")));
+		}
+
+		foreach(l, elemlist)
+		{
+			char	   *socketdir = (char *) lfirst(l);
+
+			UNIXSOCK_PATH(unixSocketPath, OraPortNumber, socketdir);
+
+			if (!strcmp(local_port, unixSocketPath))
+				return &ora_protocol_config;
+		}
+	}
+	else
+	{
+		int port = pg_atoi(local_port, sizeof(int32), ' ');
+
+		if (port == OraPortNumber)
+			return &ora_protocol_config;
+	}
+
+	// Check other extension
+	if (pre_get_protocol_config_hook)
+		return pre_get_protocol_config_hook(family, local_port);
+
+	return NULL;
+}
+/* End - bug#6805 */
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
 /*
@@ -306,6 +355,11 @@ _PG_init(void)
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	pre_server_listen_hook = server_listen_hook;
 	server_listen_hook = create_oracle_server_listen;
+
+	/* Begin - bug#6805 */
+	pre_get_protocol_config_hook = get_protocol_config_hook;
+	get_protocol_config_hook = ora_get_protocol_config;
+	/* End - bug#6805 */
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 
 	/* Begin - ReqID:SRS-PLSQL-Collection */
@@ -349,6 +403,7 @@ _PG_fini(void)
 
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	server_listen_hook = pre_server_listen_hook;
+	get_protocol_config_hook = pre_get_protocol_config_hook; /* bug#6805 */
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	/* Begin - ReqID:SRS-PLSQL-Collection */
 	collection_funcs.loadstate = UNLOADED;

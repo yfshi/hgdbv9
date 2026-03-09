@@ -69,11 +69,6 @@ static void get_datetime_from_num(int64 num, struct pg_tm *tm);
 bool check_datetime_range(struct pg_tm *tm, int fsec, int ftype);
 /* End - ReqID:SRS-MYSQL-DATETYPE */
 
-/* Begin - ReqID:SRS-MYSQL-TIMETYPE */
-
-
-/* End - ReqID:SRS-MYSQL-TIMETYPE */
-
 const int	day_tab[2][13] =
 {
 	{31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31, 0},
@@ -3469,9 +3464,9 @@ non_zero_date(const struct pg_tm *tm)
 }
 
 /* Convert datetime value specified as number to broken-down TIME
-* representation and form value of DATETIME type .
-*/
-int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn)
+ * representation and form value of DATETIME type .
+ */
+int number_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysql_dttype *ftype, int *warn)
 {
 	*warn = 0;
 	*ftype = MYSQL_TIMESTAMP_DATE;
@@ -3487,6 +3482,7 @@ int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysq
 		}
 		goto isdatetime;
 	}
+
 	if (num < 101)
 		goto err;
 
@@ -3496,6 +3492,7 @@ int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysq
 		num = (num + 20000000) * 1000000;
 		goto isdatetime;
 	}
+
 	if (num < (YY_PART_YEAR) * 10000 + 101)
 		goto err;
 
@@ -3505,6 +3502,7 @@ int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysq
 		num = (num + 19000000) * 1000000;
 		goto isdatetime;
 	}
+
 	/*
 	 * Though officially we support DATE values from 1000-01-01 only, one can
 	 * easily insert a value like 1-1-1. So, for consistency reasons such dates
@@ -3515,6 +3513,7 @@ int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysq
 		num = num * 1000000;
 		goto isdatetime;
 	}
+
 	if (num < 101000000)
 		goto err;
 
@@ -3526,8 +3525,10 @@ int mysnumber_to_datetime(int64 num, struct pg_tm *tm, int flag, int *fsec, mysq
 		num = num + 20000000000000;
 		goto isdatetime;
 	}
+
 	if (num < YY_PART_YEAR * 10000000000 + 101000000)
 		goto err;
+		
 	if (num <= 991231235959)
 		num = num + 19000000000000; /* YYMMDDHHMMSS, 1970-1999 */
 
@@ -3879,14 +3880,15 @@ bool set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is
 	return false;
 }
 
-bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, int is_strict, int *is_out_range)
+bool
+num_set_mystime_warning(char *str, char *datetype, bool is_err, int warn, int is_strict, int *is_out_range)
 {
-	if(!is_err && !warn)
+	if (!is_err && !warn)
 	{
 		return false;
 	}
 
-	if(is_err < 0) /* Returns an error result, the value is not 0. */
+	if (is_err) /* Returns an error result, the value is not 0. */
 	{
 		if(is_strict)/* strict mode */
 		{
@@ -3932,13 +3934,23 @@ bool num_set_mystime_warning(char *str, char *datetype, int is_err, int warn, in
 	return false;
 }
 
-static void 
-adjust_time_range(struct pg_tm *tm, fsec_t *fsec, fsec_t fsec_raw, int *warning) 
+static bool
+check_time_range_quick(struct pg_tm *tm, fsec_t fsec)
 {
-	int64 hour = (int64)tm->tm_hour + 24LL * tm->tm_mday;
+	long long hour = (long long)tm->tm_hour + 24LL * tm->tm_mday;
 
-	if (hour > TIME_MAX_HOUR || 
-		(hour == TIME_MAX_HOUR && tm->tm_min == TIME_MAX_MINUTE && tm->tm_sec == TIME_MAX_SECOND && fsec_raw > 0))
+	if (hour <= TIME_MAX_HOUR &&
+		(hour != TIME_MAX_HOUR || tm->tm_min != TIME_MAX_MINUTE ||
+		 tm->tm_sec != TIME_MAX_SECOND || !fsec))
+		return false;
+
+	return true;
+}
+
+static void 
+adjust_time_range(struct pg_tm *tm, fsec_t *fsec, int *warning) 
+{
+	if (check_time_range_quick(tm, *fsec))
 	{
 		tm->tm_mday = *fsec = 0;
 		tm->tm_hour = TIME_MAX_HOUR;
@@ -3949,11 +3961,9 @@ adjust_time_range(struct pg_tm *tm, fsec_t *fsec, fsec_t fsec_raw, int *warning)
 	}
 }
 
-bool mystime_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec,
-										int nanoseconds, int *warnings)
+bool
+time_add_nanoseconds_with_round(struct pg_tm *tm, fsec_t *fsec, int nanoseconds, int *warnings)
 {
-	fsec_t fsec_raw = *fsec;
-
 	if (nanoseconds < 500)
 		return false;
 
@@ -3984,7 +3994,7 @@ ret:
 	 * Checking only "hour > 838" is not enough.
 	 * Do full adjust_time_range().
 	 */
-	adjust_time_range(tm, fsec, fsec_raw, warnings);
+	adjust_time_range(tm, fsec, warnings);
 	return false;
 }
 
@@ -4047,14 +4057,17 @@ mystime_rounded_seconds(struct pg_tm *tm, int *fsec, int *warn, int dec)
      1  error
 */
 
-int mysstr_to_time(const char *str, size_t length, struct pg_tm *tm, int flag,
-				   fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg)
+int
+str_to_time(const char *str, size_t length, struct pg_tm *tm,
+			fsec_t *fsec, mysql_dttype *ftype, int *warn, int *nanoseconds, int *neg)
 {
 	int64 date[5]; /* BUG#Z5567 */
 	int64 value;
 	const char *end = str + length, *end_of_days;
 	bool found_days, found_hours;
 	uint32 state;
+
+	memset(date, 0, sizeof(date));
 
 	*neg = 0;
 
@@ -4244,7 +4257,7 @@ fractional:
 	}
 
 	/* Adjust the value into supported MYSQL_TIME range */
-	adjust_time_range(tm, fsec, *fsec, warn);
+	adjust_time_range(tm, fsec, warn);
 
 	/* Check if there is garbage at end of the MYSQL_TIME specification */
 	if (str != end)
@@ -4271,59 +4284,70 @@ fractional:
   @retval false OK
   @retval true No. is out of range
 */
-int
-mysnumber_to_time(int64 nr, struct pg_tm *tm,  int flag, int *fsec, mysql_dttype *ftype, int *warnings, int *neg)
+bool
+number_to_time(int64 nr, struct pg_tm *tm, int *fsec, mysql_dttype *ftype, int *neg, int *warnings)
 {
 	if (nr > TIME_MAX_VALUE)
 	{
 		/* For huge numbers try full DATETIME, like str_to_time does. */
 		if (nr >= 10000000000LL) /* '0001-00-00 00-00-00' */
 		{
-			int warnings_backup= *warnings;
-			if (mysnumber_to_datetime(nr, tm, flag, fsec, ftype, warnings) != -1LL)
-				return 0;
-			*warnings= warnings_backup;
+			int warnings_backup = *warnings;
+			if (number_to_datetime(nr, tm, 0, fsec, ftype, warnings) != -1LL)
+				return false;
+			*warnings = warnings_backup;
 		}
+
 		memset(tm, 0, sizeof(*tm));
-		*ftype = MYSQL_TIMESTAMP_TIME;
+	
 		tm->tm_hour = TIME_MAX_HOUR;
 		tm->tm_min = TIME_MAX_MINUTE;
 		tm->tm_sec = TIME_MAX_SECOND;
-		*neg = 0;
 
-		*warnings|= MYSQL_TIME_WARN_OUT_OF_RANGE;
-		return -1;
+		*neg = 0;
+		*ftype = MYSQL_TIMESTAMP_TIME;
+		*warnings |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+
+		return true;
 	}
-	else if (nr < -TIME_MAX_VALUE)
+	
+	if (nr < -TIME_MAX_VALUE)
 	{
 		memset(tm, 0, sizeof(*tm));
-		*ftype = MYSQL_TIMESTAMP_TIME;
+
 		tm->tm_hour = TIME_MAX_HOUR;
 		tm->tm_min = TIME_MAX_MINUTE;
 		tm->tm_sec = TIME_MAX_SECOND;
-		*neg = 1;
 
-		*warnings|= MYSQL_TIME_WARN_OUT_OF_RANGE;
-		return -1;
+		*neg = 1;
+		*ftype = MYSQL_TIMESTAMP_TIME;
+
+		*warnings |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+
+		return true;
 	}
+
 	if ((*neg = (nr < 0)))
-		nr= -nr;
+		nr = -nr;
+
 	if (nr % 100 >= 60 || nr / 100 % 100 >= 60) /* Check hours and minutes */
 	{
 		memset(tm, 0, sizeof(*tm));
 		*ftype = MYSQL_TIMESTAMP_TIME;
-		*warnings|= MYSQL_TIME_WARN_OUT_OF_RANGE;
-		return -1;
+		*warnings |= MYSQL_TIME_WARN_OUT_OF_RANGE;
+		return true;
 	}
 
-	*ftype= MYSQL_TIMESTAMP_TIME;
-	tm->tm_year= tm->tm_mon= tm->tm_mday= 0;
+	*ftype = MYSQL_TIMESTAMP_TIME;
+	tm->tm_year = tm->tm_mon = tm->tm_mday = 0;
 
-	tm->tm_sec=  (int) (nr % 100);
-	tm->tm_min=  (int) (nr / 100) % 100;
-	tm->tm_hour= (int) (nr / 10000);
-	*fsec= 0;
-	return 0;
+	tm->tm_sec = (int)(nr % 100);
+	tm->tm_min = (int)(nr / 100) % 100;
+	tm->tm_hour = (int)(nr / 10000);
+	
+	*fsec = 0;
+	
+	return false;
 }
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 

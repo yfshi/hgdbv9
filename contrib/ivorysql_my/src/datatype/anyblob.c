@@ -436,20 +436,20 @@ my_count_bits(uint64 v)
 #if SIZEOF_LONG_LONG > 4
 	/* The following code is a bit faster on 16 bit machines than if we would
 			only shift v */
-	ulong v2=(ulong) (v >> 32);
+	uint32 v2 = (uint32) (v >> 32);
 	return (uint32) (uint8) (_my_bits_nbits[(uint8)  v] +
-													_my_bits_nbits[(uint8) (v >> 8)] +
-													_my_bits_nbits[(uint8) (v >> 16)] +
-													_my_bits_nbits[(uint8) (v >> 24)] +
-													_my_bits_nbits[(uint8) (v2)] +
-													_my_bits_nbits[(uint8) (v2 >> 8)] +
-													_my_bits_nbits[(uint8) (v2 >> 16)] +
-													_my_bits_nbits[(uint8) (v2 >> 24)]);
+							 _my_bits_nbits[(uint8) (v >> 8)] +
+							 _my_bits_nbits[(uint8) (v >> 16)] +
+							 _my_bits_nbits[(uint8) (v >> 24)] +
+							 _my_bits_nbits[(uint8) (v2)] +
+							 _my_bits_nbits[(uint8) (v2 >> 8)] +
+							 _my_bits_nbits[(uint8) (v2 >> 16)] +
+							 _my_bits_nbits[(uint8) (v2 >> 24)]);
 #else
 	return (uint32) (uint8) (_my_bits_nbits[(uint8)  v] +
-													_my_bits_nbits[(uint8) (v >> 8)] +
-													_my_bits_nbits[(uint8) (v >> 16)] +
-													_my_bits_nbits[(uint8) (v >> 24)]);
+							 _my_bits_nbits[(uint8) (v >> 8)] +
+							 _my_bits_nbits[(uint8) (v >> 16)] +
+							 _my_bits_nbits[(uint8) (v >> 24)]);
 #endif
 }
 
@@ -465,13 +465,13 @@ mys_bit_count(FunctionCallInfo fcinfo, bool is_binary)
 
 	ereport(WARNING,
 			(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-				errmsg("Bitwise operations on BINARY will change behavior in a future version, "
+			 errmsg("Bitwise operations on BINARY will change behavior in a future version, "
 					"check the 'Bit functions' section in the manual.")));
 
 	if (is_binary)
 	{
 		bool show_warning = false;
-		for (int32 offset = 0; offset < strlen(src_ptr); ++offset)
+		for (int32 offset = 0; offset < src_len; ++offset)
 		{
 			char *tmp_ptr = src_ptr + offset;
 			if (!isdigit((unsigned char)*tmp_ptr))
@@ -482,16 +482,17 @@ mys_bit_count(FunctionCallInfo fcinfo, bool is_binary)
 		}
 		if (show_warning)
 		{
-			for (int32 offset = 0; offset < strlen(src_ptr); ++offset)
+			for (int32 offset = 0; offset < src_len; ++offset)
 			{
 				char *tmp_ptr = src_ptr + offset;
 				if (tmp_ptr[0] == 0x7F || tmp_ptr[0] < 0x20)
 				{
 					if (offset > src_len)
 						offset = src_len;
+
 					ereport(WARNING,
 							(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-								errmsg("Truncated incorrect INTEGER value: %.*s",
+							 errmsg("Truncated incorrect INTEGER value: %.*s",
 									offset, src_ptr)));
 					goto gt;
 				}
@@ -499,8 +500,7 @@ mys_bit_count(FunctionCallInfo fcinfo, bool is_binary)
 
 			ereport(WARNING,
 					(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-						errmsg("Truncated incorrect INTEGER value: %s",
-							src_ptr)));
+					 errmsg("Truncated incorrect INTEGER value: %.*s", src_len, src_ptr)));
 		}
 	}
 

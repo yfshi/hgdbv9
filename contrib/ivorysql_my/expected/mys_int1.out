@@ -1172,45 +1172,45 @@ create index idx9 on index_conversion using btree (int_unsigned_col);
 create index idx10 on index_conversion using btree (bigint_unsigned_col);
 insert into index_conversion values (10, 3000, 8388600, 2147483647, 1000000000000, 252, 65530, 16777210, 4294967290, 2000000000000);
 vacuum full analyze index_conversion;
-explain select * from index_conversion where tinyint_col = 10;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Index Scan using idx1 on index_conversion  (cost=0.12..8.14 rows=1 width=38)
+explain (COSTS OFF) select * from index_conversion where tinyint_col = 10;
+                QUERY PLAN                 
+-------------------------------------------
+ Index Scan using idx1 on index_conversion
    Index Cond: (tinyint_col = 10)
 (2 rows)
 
-explain select * from index_conversion where tinyint_col = 1000;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Index Scan using idx1 on index_conversion  (cost=0.12..8.14 rows=1 width=38)
+explain (COSTS OFF) select * from index_conversion where tinyint_col = 1000;
+                QUERY PLAN                 
+-------------------------------------------
+ Index Scan using idx1 on index_conversion
    Index Cond: (tinyint_col = 1000)
 (2 rows)
 
-explain select * from index_conversion where tinyint_col = CAST(10 AS UNSIGNED);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Index Scan using idx1 on index_conversion  (cost=0.12..8.14 rows=1 width=38)
+explain (COSTS OFF) select * from index_conversion where tinyint_col = CAST(10 AS UNSIGNED);
+                QUERY PLAN                 
+-------------------------------------------
+ Index Scan using idx1 on index_conversion
    Index Cond: (tinyint_col = '10'::uint8)
 (2 rows)
 
-explain select * from index_conversion where tinyint_col > 1000000000000;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Index Scan using idx1 on index_conversion  (cost=0.12..8.14 rows=1 width=38)
+explain (COSTS OFF) select * from index_conversion where tinyint_col > 1000000000000;
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Index Scan using idx1 on index_conversion
    Index Cond: (tinyint_col > '1000000000000'::bigint)
 (2 rows)
 
-explain select * from index_conversion where tinyint_col < -5000;
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Index Scan using idx1 on index_conversion  (cost=0.12..8.14 rows=1 width=38)
+explain (COSTS OFF) select * from index_conversion where tinyint_col < -5000;
+                   QUERY PLAN                   
+------------------------------------------------
+ Index Scan using idx1 on index_conversion
    Index Cond: (tinyint_col < '-5000'::integer)
 (2 rows)
 
-explain select * from index_conversion where tinyint_col <= CAST(65530 AS UNSIGNED);
-                                  QUERY PLAN                                  
-------------------------------------------------------------------------------
- Index Scan using idx1 on index_conversion  (cost=0.12..8.14 rows=1 width=38)
+explain (COSTS OFF) select * from index_conversion where tinyint_col <= CAST(65530 AS UNSIGNED);
+                  QUERY PLAN                   
+-----------------------------------------------
+ Index Scan using idx1 on index_conversion
    Index Cond: (tinyint_col <= '65530'::uint8)
 (2 rows)
 

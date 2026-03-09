@@ -96,14 +96,15 @@ extern void ShmemBackendArrayAllocation(void);
 
 typedef void (*create_server_listen_hook_type) ();
 typedef void (*create_mysql_auth_cache_hook_type) ();
+typedef ProtocolExtensionConfig *(*get_protocol_config_hook_type) (int family, char *local_port); /* bug#6805 */
 
 extern int StartupPacketInitialize(Port *port);
 extern void send_cancel_key(int32 pid, int32 key);
 extern void libpq_report_param_status(const char *name, char *val);
 
 extern PGDLLIMPORT pgsocket ListenSocket[MAXLISTEN];
-extern PGDLLIMPORT ProtocolExtensionConfig *ListenConfig[MAXLISTEN]; 
 extern PGDLLIMPORT create_server_listen_hook_type server_listen_hook;
+extern PGDLLIMPORT get_protocol_config_hook_type get_protocol_config_hook; /* bug#6805 */
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
 #endif							/* _POSTMASTER_H */

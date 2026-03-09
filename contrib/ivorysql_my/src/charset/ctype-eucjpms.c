@@ -232,7 +232,7 @@ static const uchar sort_order_eucjpms[] = {
 #define iseucjpms_ss2(c) (((c)&0xff) == 0x8e)
 #define iseucjpms_ss3(c) (((c)&0xff) == 0x8f)
 
-static uint 
+static uint32 
 ismbchar_eucjpms(const CHARSET_INFO *cs, const char *p, const char *e)
 {
     return (((uchar)(*p) < 0x80)

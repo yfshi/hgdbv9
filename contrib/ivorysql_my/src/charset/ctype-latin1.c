@@ -514,8 +514,8 @@ my_strnncollsp_latin1_de(const CHARSET_INFO *cs,
 
 static size_t
 my_strnxfrm_latin1_de(const CHARSET_INFO *cs,
-                      uchar *dst, size_t dstlen, uint nweights,
-                      const uchar *src, size_t srclen, uint flags)
+                      uchar *dst, size_t dstlen, uint32 nweights,
+                      const uchar *src, size_t srclen, uint32 flags)
 {
     uchar *de = dst + dstlen;
     const uchar *se = src + srclen;
@@ -549,12 +549,12 @@ my_hash_sort_latin1_de(const CHARSET_INFO *cs,
 
     for (; key < end; key++)
     {
-        uint X = (uint)combo1map[(uint)*key];
-        tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
+        uint32 X = (uint32)combo1map[(uint32)*key];
+        tmp1 ^= (uint64)((((uint32)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
         tmp2 += 3;
         if ((X = combo2map[*key]))
         {
-            tmp1 ^= (uint64)((((uint)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
+            tmp1 ^= (uint64)((((uint32)tmp1 & 63) + tmp2) * X) + (tmp1 << 8);
             tmp2 += 3;
         }
     }

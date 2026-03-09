@@ -221,7 +221,7 @@ bool		mysql_local_infile = true;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 	{
 		{"mysql.mode_pad_char_to_full", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
-			gettext_noop("mode_pad_char_to_full_length control char(n) output."),
+			gettext_noop("control char(n) output style."),
 			NULL,
 			GUC_NOT_IN_SAMPLE
 		},
@@ -1101,6 +1101,12 @@ assign_regress_test_default_value(bool newval, void *extra)
 	{
 		SetConfigOption("mysql.cast_to_char", "off", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.mode_pad_char_to_full", "off", PGC_USERSET, PGC_S_OVERRIDE);
+		/**
+		 * bug#6805
+		 * The Default value of lower_case_table_names is different between
+		 * linux and windows, which will affect a large number of regress case.
+		 */
+		SetConfigOption("lower_case_table_names", "0", PGC_USERSET, PGC_S_OVERRIDE);
 	}
 }
 

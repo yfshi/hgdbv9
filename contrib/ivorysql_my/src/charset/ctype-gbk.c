@@ -7,7 +7,7 @@
      (0x80 <= (uchar)(c) && (uchar)(c) <= 0xfe))
 
 #define isgbkcode(c, d) (isgbkhead(c) && isgbktail(d))
-#define gbkcode(c, d)   ((((uint)(uchar)(c)) << 8) | (uchar)(d))
+#define gbkcode(c, d)   ((((uint32)(uchar)(c)) << 8) | (uchar)(d))
 #define gbkhead(e)      ((uchar)(e >> 8))
 #define gbktail(e)      ((uchar)(e & 0xff))
 
@@ -3463,7 +3463,7 @@ static const uint16 gbk_order[] = {
 static uint16 
 gbksortorder(uint16 i)
 {
-    uint idx = gbktail(i);
+    uint32 idx = gbktail(i);
     if (idx > 0x7f)
         idx -= 0x41;
     else
@@ -3476,7 +3476,7 @@ static int
 my_strnncoll_gbk_internal(const uchar **a_res, const uchar **b_res, size_t length)
 {
     const uchar *a = *a_res, *b = *b_res;
-    uint a_char, b_char;
+    uint32 a_char, b_char;
 
     while (length--)
     {
@@ -3554,8 +3554,8 @@ my_strnncollsp_gbk(const CHARSET_INFO *cs,
 
 static size_t 
 my_strnxfrm_gbk(const CHARSET_INFO *cs, uchar *dst, size_t dstlen,
-                uint nweights, const uchar *src, size_t srclen,
-                uint flags)
+                uint32 nweights, const uchar *src, size_t srclen,
+                uint32 flags)
 {
     uchar *d0 = dst;
     uchar *de = dst + dstlen;
@@ -3589,7 +3589,7 @@ my_strnxfrmlen_gbk(const CHARSET_INFO *cs, size_t len)
     return len;
 }
 
-static uint 
+static uint32 
 ismbchar_gbk(const CHARSET_INFO *cs, const char *p, const char *e)
 {
     return (isgbkhead(*(p)) && (e) - (p) > 1 && isgbktail(*((p) + 1)) ? 2 : 0);
@@ -9949,7 +9949,7 @@ my_wc_mb_gbk(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
     if (s >= e)
         return MY_CS_TOOSMALL;
 
-    if ((uint)wc < 0x80)
+    if ((uint32)wc < 0x80)
     {
         s[0] = (uchar)wc;
         return 1;

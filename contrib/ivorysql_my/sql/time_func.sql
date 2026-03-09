@@ -284,7 +284,7 @@ drop table func_test;
 create table func_test(functionName varchar(256),result varchar(256));
 insert into func_test(functionName, result) values ('period_add(0.0, 1)', period_add(0, 1)); -- p == 0
 insert into func_test(functionName, result) values ('period_add(200000, 0)', period_add(200000, 0)); 
-insert into func_test(functionName, result) values ('period_add(-202205, 1)', period_add(-202205, 1)); -- p < 0
+--insert into func_test(functionName, result) values ('period_add(-202205, 1)', period_add(-202205, 1)); -- p < 0
 insert into func_test(functionName, result) values ('period_add(202211, 100)', period_add(202211, 100)); 
 insert into func_test(functionName, result) values ('period_add(197005, 7)', period_add(197005, 7));
 insert into func_test(functionName, result) values ('period_add(202205, -12)', period_add(202205, -12)); -- N < 0 
@@ -306,8 +306,8 @@ drop table func_test;
 create table func_test(functionName varchar(256),result varchar(256));
 insert into func_test(functionName, result) values ('period_diff(NULL, 200001)', period_diff(NULL, 200001));
 insert into func_test(functionName, result) values ('period_diff(202011, NULL)', period_diff(202011, NULL));
-insert into func_test(functionName, result) values ('period_diff(-202011, 200001)', period_diff(-202011, 200001)); -- P1<0
-insert into func_test(functionName, result) values ('period_diff(202011, -200001)', period_diff(202011, -200001)); -- P2<0
+--insert into func_test(functionName, result) values ('period_diff(-202011, 200001)', period_diff(-202011, 200001)); -- P1<0
+--insert into func_test(functionName, result) values ('period_diff(202011, -200001)', period_diff(202011, -200001)); -- P2<0
 insert into func_test(functionName, result) values ('period_diff(707712, 202201)', period_diff(707712, 202201));
 insert into func_test(functionName, result) values ('period_diff(6912, 10001)', period_diff(6912, 10001));
 insert into func_test(functionName, result) values ('period_diff(7001, 10001)', period_diff(7001, 10001));

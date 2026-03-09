@@ -1148,7 +1148,7 @@
 
 { oid => '401', descr => 'convert char(n) to text',
   proname => 'text', prorettype => 'text', proargtypes => 'bpchar',
-  prosrc => 'rtrim1' },
+  prosrc => 'bpchar_text' },
 { oid => '406', descr => 'convert name to text',
   proname => 'text', proleakproof => 't', prorettype => 'text',
   proargtypes => 'name', prosrc => 'name_text' },

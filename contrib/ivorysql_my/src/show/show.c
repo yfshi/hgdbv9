@@ -1,4 +1,4 @@
-/*-------------------------------------------------------------------------
+﻿/*-------------------------------------------------------------------------
  *
  * mysshow.c
  *	  Implenmentation of the MySQL SHOW functionality
@@ -13,7 +13,11 @@
  *
  *-------------------------------------------------------------------------
  */
-#include "c.h"
+#ifdef WIN32
+#pragma execution_character_set("utf-8")
+#endif
+ 
+ #include "c.h"
 #include "postgres.h"
 #include "fmgr.h"
 #include "miscadmin.h"

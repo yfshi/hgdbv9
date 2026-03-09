@@ -25,7 +25,7 @@ void my_hash_sort_simple(const CHARSET_INFO *cs, const uchar *key, size_t len,
     for (; key < end; key++)
     {
         tmp1 ^=
-            (uint64)((((uint)tmp1 & 63) + tmp2) * ((uint)sort_order[(uint)*key])) +
+            (uint64)((((uint32)tmp1 & 63) + tmp2) * ((uint32)sort_order[(uint32)*key])) +
             (tmp1 << 8);
         tmp2 += 3;
     }
@@ -99,7 +99,7 @@ int my_strnncollsp_simple(const CHARSET_INFO *cs, const uchar *a, size_t a_lengt
 
 void
 my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
-                            uint flags, uint level)
+                            uint32 flags, uint32 level)
 {
     if (flags & (MY_STRXFRM_DESC_LEVEL1 << level))
     {
@@ -132,11 +132,11 @@ my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
 size_t
 my_strxfrm_pad_desc_and_reverse(const CHARSET_INFO *cs,
                                 uchar *str, uchar *frmend, uchar *strend,
-                                uint nweights, uint flags, uint level)
+                                uint32 nweights, uint32 flags, uint32 level)
 {
     if (nweights && frmend < strend && (flags & MY_STRXFRM_PAD_WITH_SPACE))
     {
-        uint fill_length = Min((uint)(strend - frmend), nweights * cs->mbminlen);
+        uint32 fill_length = Min((uint32)(strend - frmend), nweights * cs->mbminlen);
         cs->cset->fill(cs, (char *)frmend, fill_length, cs->pad_char);
         frmend += fill_length;
     }
@@ -152,8 +152,8 @@ my_strxfrm_pad_desc_and_reverse(const CHARSET_INFO *cs,
 
 size_t
 my_strnxfrm_simple(const CHARSET_INFO *cs,
-                   uchar *dst, size_t dstlen, uint nweights,
-                   const uchar *src, size_t srclen, uint flags)
+                   uchar *dst, size_t dstlen, uint32 nweights,
+                   const uchar *src, size_t srclen, uint32 flags)
 {
     const uchar *map = cs->sort_order;
     uchar *d0 = dst;
@@ -182,7 +182,7 @@ my_strnxfrm_simple(const CHARSET_INFO *cs,
         *dst++ = map[*src++];
     }
     return my_strxfrm_pad_desc_and_reverse(cs, d0, dst, d0 + dstlen,
-                                           (uint)(nweights - frmlen), flags, 0);
+                                           (uint32)(nweights - frmlen), flags, 0);
 }
 
 MY_COLLATION_HANDLER my_collation_8bit_simple_ci_handler = {

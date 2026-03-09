@@ -2106,7 +2106,7 @@ select cast(113111 as time);--11:31:11
 (1 row)
 
 select cast(112160 as time);--NULL warning
-WARNING:  Incorrect time value: '112160'
+WARNING:  Truncated incorrect time value: '112160'
  mystime 
 ---------
  
@@ -2125,77 +2125,77 @@ select cast(1111111.34 as time);--111:11:11
 (1 row)
 
 select cast(1111161 as time);--NULL warning
-WARNING:  Incorrect time value: '1111161'
+WARNING:  Truncated incorrect time value: '1111161'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11111111 as time);--NULL warning
-WARNING:  Incorrect time value: '11111111'
+WARNING:  Truncated incorrect time value: '11111111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11111111.56 as time);--NULL warning
-WARNING:  Incorrect TIME value: '11111111.56'
+WARNING:  Truncated incorrect time value: '11111111.56'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11113111 as time);--NULL warning
-WARNING:  Incorrect time value: '11113111'
+WARNING:  Truncated incorrect time value: '11113111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11112160 as time);--NULL warning
-WARNING:  Incorrect time value: '11112160'
+WARNING:  Truncated incorrect time value: '11112160'
  mystime 
 ---------
  
 (1 row)
 
 select cast(111111111 as time);--NULL warning
-WARNING:  Incorrect time value: '111111111'
+WARNING:  Truncated incorrect time value: '111111111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(111111111.99 as time);--NULL warning
-WARNING:  Incorrect TIME value: '111111111.99'
+WARNING:  Truncated incorrect time value: '111111111.99'
  mystime 
 ---------
  
 (1 row)
 
 select cast(111351111 as time);--NULL warning
-WARNING:  Incorrect time value: '111351111'
+WARNING:  Truncated incorrect time value: '111351111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(1111111111 as time);--NULL warning
-WARNING:  Incorrect time value: '1111111111'
+WARNING:  Truncated incorrect time value: '1111111111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(1111111171 as time);--NULL warning
-WARNING:  Incorrect time value: '1111111171'
+WARNING:  Truncated incorrect time value: '1111111171'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11111116059 as time);--NULL warning
-WARNING:  Incorrect time value: '11111116059'
+WARNING:  Truncated incorrect time value: '11111116059'
  mystime 
 ---------
  
@@ -2226,7 +2226,7 @@ select cast(111111111111.45 as time);--11:11:11
 (1 row)
 
 select cast(111111241156 as time);--NULL warning
-WARNING:  Incorrect time value: '111111241156'
+WARNING:  Truncated incorrect time value: '111111241156'
  mystime 
 ---------
  
@@ -2239,7 +2239,7 @@ select cast(1111111111111 as time);--11:11:11
 (1 row)
 
 select cast(1111111311105 as time);--NULL warning
-WARNING:  Incorrect time value: '1111111311105'
+WARNING:  Truncated incorrect time value: '1111111311105'
  mystime 
 ---------
  
@@ -2258,112 +2258,112 @@ select cast(11111111111111.23 as time);--11:11:11
 (1 row)
 
 select cast(11111111119905 as time);--NULL warning
-WARNING:  Incorrect time value: '11111111119905'
+WARNING:  Truncated incorrect time value: '11111111119905'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11111111111165 as time);--NULL warning
-WARNING:  Incorrect time value: '11111111111165'
+WARNING:  Truncated incorrect time value: '11111111111165'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11111111251105 as time);--NULL warning
-WARNING:  Incorrect time value: '11111111251105'
+WARNING:  Truncated incorrect time value: '11111111251105'
  mystime 
 ---------
  
 (1 row)
 
 select cast(111111111111111 as time);--NULL warning
-WARNING:  Incorrect time value: '111111111111111'
+WARNING:  Truncated incorrect time value: '111111111111111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(1111111111111111 as time);--NULL warning
-WARNING:  Incorrect time value: '1111111111111111'
+WARNING:  Truncated incorrect time value: '1111111111111111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(1111111111111111.44 as time);--NULL warning
-WARNING:  Incorrect TIME value: '1111111111111111.44'
+WARNING:  Truncated incorrect time value: '1111111111111111.44'
  mystime 
 ---------
  
 (1 row)
 
 select cast(11111111111233444 as time);--NULL warning
-WARNING:  Incorrect time value: '11111111111233444'
+WARNING:  Truncated incorrect time value: '11111111111233444'
  mystime 
 ---------
  
 (1 row)
 
 select cast(111111111111111111111 as time);--NULL warning
-WARNING:  Incorrect TIME value: '111111111111111111111'
+WARNING:  Truncated incorrect time value: '111111111111111111111'
  mystime 
 ---------
  
 (1 row)
 
 select cast(19830905 as time);--NULL warning
-WARNING:  Incorrect time value: '19830905'
+WARNING:  Truncated incorrect time value: '19830905'
  mystime 
 ---------
  
 (1 row)
 
 select cast(119830905 as time);--NULL warning
-WARNING:  Incorrect time value: '119830905'
+WARNING:  Truncated incorrect time value: '119830905'
  mystime 
 ---------
  
 (1 row)
 
 select cast(198309051 as time);--NULL warning
-WARNING:  Incorrect time value: '198309051'
+WARNING:  Truncated incorrect time value: '198309051'
  mystime 
 ---------
  
 (1 row)
 
 select cast(198205051 as time);--NULL warning
-WARNING:  Incorrect time value: '198205051'
+WARNING:  Truncated incorrect time value: '198205051'
  mystime 
 ---------
  
 (1 row)
 
 select cast(128205051 as time);--NULL warning
-WARNING:  Incorrect time value: '128205051'
+WARNING:  Truncated incorrect time value: '128205051'
  mystime 
 ---------
  
 (1 row)
 
 select cast(6995 as time);--NULL warning
-WARNING:  Incorrect time value: '6995'
+WARNING:  Truncated incorrect time value: '6995'
  mystime 
 ---------
  
 (1 row)
 
 select cast(2007-05-23 as time);--NULL warning
-WARNING:  Incorrect time value: '1979'
+WARNING:  Truncated incorrect time value: '1979'
  mystime 
 ---------
  
 (1 row)
 
 select cast(2007-05*23 as time);--NULL warning
-WARNING:  Incorrect time value: '1892'
+WARNING:  Truncated incorrect time value: '1892'
  mystime 
 ---------
  
@@ -2376,7 +2376,7 @@ select cast(830905 as time);--83:09:05
 (1 row)
 
 select cast(9830905 as time);--NULL warning
-WARNING:  Incorrect time value: '9830905'
+WARNING:  Truncated incorrect time value: '9830905'
  mystime 
 ---------
  
@@ -2455,7 +2455,7 @@ select cast(300/03 as time);--00:01:00
 (1 row)
 
 select cast(30000000/3 as time); --NULL warning
-WARNING:  Incorrect TIME value: '10000000.0000'
+WARNING:  Truncated incorrect time value: '10000000.0000'
  mystime 
 ---------
  
@@ -2534,7 +2534,7 @@ select cast(8385959.555555 as time);--838:59:59
 (1 row)
 
 select cast(8385959.555555555 as time);--838:59:59 warning
-WARNING:  Incorrect TIME value: '8385959.555555555'
+WARNING:  Truncated incorrect time value: '8385959.555555555'
   mystime  
 -----------
  838:59:59
@@ -2553,7 +2553,7 @@ select cast(8385959.555555 as time(3));--838:59:59.000
 (1 row)
 
 select cast(8385959.555555555 as time(3));--838:59:59 warning
-WARNING:  Incorrect TIME value: '8385959.555555555'
+WARNING:  Truncated incorrect time value: '8385959.555555555'
    mystimes    
 ---------------
  838:59:59.000
@@ -2696,7 +2696,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -2772,7 +2772,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -2848,7 +2848,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -2923,7 +2923,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -2999,7 +2999,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -3074,7 +3074,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -3150,7 +3150,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -3217,7 +3217,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time);
 (1 row)
 
 select cast(20100231121314 as time);--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystime 
 ---------
  
@@ -3285,62 +3285,34 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select * from test;
     dt    
 ----------
@@ -3372,62 +3344,34 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -3465,62 +3409,34 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -3558,63 +3474,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select * from test;
     dt    
 ----------
@@ -3647,63 +3535,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -3742,63 +3602,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select *  from test;
     dt    
 ----------
@@ -3831,63 +3663,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -3926,63 +3730,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select * from test;
     dt    
 ----------
@@ -4016,63 +3792,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -4111,63 +3859,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -4206,63 +3926,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -4301,63 +3993,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
     dt     
 -----------
@@ -8557,7 +8221,7 @@ select cast(113111 as time(5));--11:31:11.00000
 (1 row)
 
 select cast(112160 as time(5));--NULL warning
-WARNING:  Incorrect time value: '112160'
+WARNING:  Truncated incorrect time value: '112160'
  mystimes 
 ----------
  
@@ -8576,77 +8240,77 @@ select cast(1111111.34 as time(5));--111:11:11.34000
 (1 row)
 
 select cast(1111161 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1111161'
+WARNING:  Truncated incorrect time value: '1111161'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11111111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11111111'
+WARNING:  Truncated incorrect time value: '11111111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11111111.56 as time(5));--NULL warning
-WARNING:  Incorrect TIME value: '11111111.56'
+WARNING:  Truncated incorrect time value: '11111111.56'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11113111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11113111'
+WARNING:  Truncated incorrect time value: '11113111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11112160 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11112160'
+WARNING:  Truncated incorrect time value: '11112160'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(111111111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '111111111'
+WARNING:  Truncated incorrect time value: '111111111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(111111111.99 as time(5));--NULL warning
-WARNING:  Incorrect TIME value: '111111111.99'
+WARNING:  Truncated incorrect time value: '111111111.99'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(111351111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '111351111'
+WARNING:  Truncated incorrect time value: '111351111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(1111111111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1111111111'
+WARNING:  Truncated incorrect time value: '1111111111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(1111111171 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1111111171'
+WARNING:  Truncated incorrect time value: '1111111171'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11111116059 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11111116059'
+WARNING:  Truncated incorrect time value: '11111116059'
  mystimes 
 ----------
  
@@ -8677,7 +8341,7 @@ select cast(111111111111.45 as time(5));--11:11:11.45000
 (1 row)
 
 select cast(111111241156 as time(5));--NULL warning
-WARNING:  Incorrect time value: '111111241156'
+WARNING:  Truncated incorrect time value: '111111241156'
  mystimes 
 ----------
  
@@ -8690,7 +8354,7 @@ select cast(1111111111111 as time(5));--11:11:11.00000
 (1 row)
 
 select cast(1111111311105 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1111111311105'
+WARNING:  Truncated incorrect time value: '1111111311105'
  mystimes 
 ----------
  
@@ -8709,112 +8373,112 @@ select cast(11111111111111.23 as time(5));--11:11:11.23000
 (1 row)
 
 select cast(11111111119905 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11111111119905'
+WARNING:  Truncated incorrect time value: '11111111119905'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11111111111165 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11111111111165'
+WARNING:  Truncated incorrect time value: '11111111111165'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11111111251105 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11111111251105'
+WARNING:  Truncated incorrect time value: '11111111251105'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(111111111111111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '111111111111111'
+WARNING:  Truncated incorrect time value: '111111111111111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(1111111111111111 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1111111111111111'
+WARNING:  Truncated incorrect time value: '1111111111111111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(1111111111111111.44 as time(5));--NULL warning
-WARNING:  Incorrect TIME value: '1111111111111111.44'
+WARNING:  Truncated incorrect time value: '1111111111111111.44'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(11111111111233444 as time(5));--NULL warning
-WARNING:  Incorrect time value: '11111111111233444'
+WARNING:  Truncated incorrect time value: '11111111111233444'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(111111111111111111111 as time(5));--NULL warning
-WARNING:  Incorrect TIME value: '111111111111111111111'
+WARNING:  Truncated incorrect time value: '111111111111111111111'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(19830905 as time(5));--NULL warning
-WARNING:  Incorrect time value: '19830905'
+WARNING:  Truncated incorrect time value: '19830905'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(119830905 as time(5));--NULL warning
-WARNING:  Incorrect time value: '119830905'
+WARNING:  Truncated incorrect time value: '119830905'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(198309051 as time(5));--NULL warning
-WARNING:  Incorrect time value: '198309051'
+WARNING:  Truncated incorrect time value: '198309051'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(198205051 as time(5));--NULL warning
-WARNING:  Incorrect time value: '198205051'
+WARNING:  Truncated incorrect time value: '198205051'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(128205051 as time(5));--NULL warning
-WARNING:  Incorrect time value: '128205051'
+WARNING:  Truncated incorrect time value: '128205051'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(6995 as time(5));--NULL warning
-WARNING:  Incorrect time value: '6995'
+WARNING:  Truncated incorrect time value: '6995'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(2007-05-23 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1979'
+WARNING:  Truncated incorrect time value: '1979'
  mystimes 
 ----------
  
 (1 row)
 
 select cast(2007-05*23 as time(5));--NULL warning
-WARNING:  Incorrect time value: '1892'
+WARNING:  Truncated incorrect time value: '1892'
  mystimes 
 ----------
  
@@ -8827,7 +8491,7 @@ select cast(830905 as time(5));--83:09:05.00000
 (1 row)
 
 select cast(9830905 as time(5));--NULL warning
-WARNING:  Incorrect time value: '9830905'
+WARNING:  Truncated incorrect time value: '9830905'
  mystimes 
 ----------
  
@@ -8906,7 +8570,7 @@ select cast(300/03 as time(5));--00:01:00.00000
 (1 row)
 
 select cast(30000000/3 as time(5)); --NULL warning
-WARNING:  Incorrect TIME value: '10000000.0000'
+WARNING:  Truncated incorrect time value: '10000000.0000'
  mystimes 
 ----------
  
@@ -9023,7 +8687,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9099,7 +8763,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9175,7 +8839,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9250,7 +8914,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9326,7 +8990,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9401,7 +9065,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9477,7 +9141,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9544,7 +9208,7 @@ LINE 1: select cast('2010-02-31 00:00:00' as time(5));
 (1 row)
 
 select cast(20100231121314 as time(5));--NULL warning
-WARNING:  Incorrect time value: '20100231121314'
+WARNING:  Truncated incorrect time value: '20100231121314'
  mystimes 
 ----------
  
@@ -9612,62 +9276,34 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select * from test;
        dt       
 ----------------
@@ -9699,71 +9335,34 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -9801,71 +9400,34 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -9903,63 +9465,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select * from test;
        dt       
 ----------------
@@ -9992,72 +9526,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -10096,63 +9593,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select *  from test;
        dt       
 ----------------
@@ -10185,72 +9654,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -10289,63 +9721,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--ERROR
-ERROR:  Incorrect TIME value: '20200933'
-LINE 1: insert into test values(20200933);
-                                ^
+ERROR:  Incorrect time value: '20200933'
 insert into test values(2020091423);--ERROR
-ERROR:  Incorrect TIME value: '2020091423'
-LINE 1: insert into test values(2020091423);
-                                ^
+ERROR:  Incorrect time value: '2020091423'
 insert into test values(202009142311);--ERROR
-ERROR:  Incorrect TIME value: '202009142311'
-LINE 1: insert into test values(202009142311);
-                                ^
+ERROR:  Incorrect time value: '202009142311'
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817'
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.66'
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '20200914231817.49999'
 insert into test values(20200934231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '20200934231817.49999'
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+ERROR:  Incorrect time value: '20200934231817.49999'
 insert into test values(0914231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '914231817.49999'
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+ERROR:  Incorrect time value: '914231817.49999'
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '190914231817.49999'
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Incorrect time value: '790914231817.49999'
 insert into test values(14231817.49999);--ERROR
-ERROR:  Incorrect TIME value: '14231817.49999'
-LINE 1: insert into test values(14231817.49999);
-                                ^
+ERROR:  Incorrect time value: '14231817.49999'
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959'
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.44'
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Incorrect time value: '99991231235959.99'
 select * from test;
        dt       
 ----------------
@@ -10379,72 +9783,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -10483,72 +9850,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -10587,72 +9917,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -10691,72 +9984,35 @@ insert into test values(2221);
 insert into test values(22211);
 insert into test values(21211);
 insert into test values(20200933);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200933);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(2020091423);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(2020091423);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(202009142311);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(202009142311);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(20200914231817);--warning
-WARNING:  Incorrect TIME value:'20200914231817'
-LINE 1: insert into test values(20200914231817);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.66);--warning
-WARNING:  Incorrect TIME value:'20200914231817.66'
-LINE 1: insert into test values(20200914231817.66);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200914231817.49999);--warning
-WARNING:  Incorrect TIME value:'20200914231817.49999'
-LINE 1: insert into test values(20200914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(20200934231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(20200934231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(0914231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(0914231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(190914231817.49999);--warning
-WARNING:  Incorrect TIME value:'190914231817.49999'
-LINE 1: insert into test values(190914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(790914231817.49999);--warning
-WARNING:  Incorrect TIME value:'790914231817.49999'
-LINE 1: insert into test values(790914231817.49999);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(14231817.49999);--warning
-WARNING:  Out of range value.
-LINE 1: insert into test values(14231817.49999);
-                                ^
-WARNING:  Data truncated for column.
-LINE 1: insert into test values(14231817.49999);
-                                ^
+WARNING:  Out of range value for column
 insert into test values(231817.49999);
 insert into test values(230017);
 insert into test values(99991231235959);--warning
-WARNING:  Incorrect TIME value:'99991231235959'
-LINE 1: insert into test values(99991231235959);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.44);--warning
-WARNING:  Incorrect TIME value:'99991231235959.44'
-LINE 1: insert into test values(99991231235959.44);
-                                ^
+NOTICE:  Data truncated for column
 insert into test values(99991231235959.99);--warning
-WARNING:  Incorrect TIME value:'99991231235959.99'
-LINE 1: insert into test values(99991231235959.99);
-                                ^
+NOTICE:  Data truncated for column
 select * from test;
        dt        
 -----------------
@@ -13173,18 +12429,12 @@ insert into t1 values("10.22.22"),(1234567),(123456789),(123456789.10),("10 22:2
 WARNING:  Data truncated for column.
 LINE 1: insert into t1 values("10.22.22"),(1234567),(123456789),(123...
                               ^
-WARNING:  Out of range value.
-LINE 1: insert into t1 values("10.22.22"),(1234567),(123456789),(123...
-                                           ^
-WARNING:  Out of range value.
-LINE 1: insert into t1 values("10.22.22"),(1234567),(123456789),(123...
-                                                     ^
-WARNING:  Out of range value.
-LINE 1: ...into t1 values("10.22.22"),(1234567),(123456789),(123456789....
-                                                             ^
 WARNING:  Data truncated for column.
 LINE 1: ...1234567),(123456789),(123456789.10),("10 22:22"),("12.45a");
                                                              ^
+WARNING:  Out of range value for column
+WARNING:  Out of range value for column
+WARNING:  Out of range value for column
 select * from t1;
      t      
 ------------
@@ -13407,12 +12657,8 @@ LINE 1: INSERT INTO t1 VALUES ('-10:60:59'), ('-10:59:60'), (-106059...
 WARNING:  Out of range value.
 LINE 1: INSERT INTO t1 VALUES ('-10:60:59'), ('-10:59:60'), (-106059...
                                               ^
-WARNING:  Out of range value.
-LINE 1: ...ERT INTO t1 VALUES ('-10:60:59'), ('-10:59:60'), (-106059), ...
-                                                             ^
-WARNING:  Out of range value.
-LINE 1: ...1 VALUES ('-10:60:59'), ('-10:59:60'), (-106059), (-105960);
-                                                              ^
+WARNING:  Out of range value for column
+WARNING:  Out of range value for column
 SELECT * FROM t1;
     a     
 ----------
@@ -13426,8 +12672,8 @@ DROP TABLE t1;
 CREATE TABLE t1 (a INT);
 INSERT INTO t1 VALUES (-106059), (-105960);
 SELECT CAST(a AS TIME) FROM t1;
-WARNING:  Incorrect time value: '-106059'
-WARNING:  Incorrect time value: '-105960'
+WARNING:  Truncated incorrect time value: '-106059'
+WARNING:  Truncated incorrect time value: '-105960'
  a 
 ---
  

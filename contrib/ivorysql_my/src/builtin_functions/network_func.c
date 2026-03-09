@@ -433,7 +433,7 @@ inetaton(PG_FUNCTION_ARGS)
 	char c;
 	Oid argtypeid;
 	char *tmpcp, *cp = NULL;
-	uint *parts, *pp;
+	uint32 *parts, *pp;
 
 	if (PG_ARGISNULL(0))
 		PG_RETURN_NULL();
@@ -460,7 +460,7 @@ inetaton(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 	}
 
-	parts = (uint *)palloc0(INADDRSZ * sizeof(uint));
+	parts = (uint32 *)palloc0(INADDRSZ * sizeof(uint32));
 	pp = parts;
 
 	for (;;)
@@ -687,10 +687,10 @@ inetntop(PG_FUNCTION_ARGS)
 
 		if (num < 0)
 			ereport(WARNING,
-					(errmsg("Incorrect string value: '-(%ld)' for function inet6_ntoa", -num)));
+					(errmsg("Incorrect string value: '-(%lld)' for function inet6_ntoa", (long long) -num)));
 		else
 			ereport(WARNING,
-					(errmsg("Incorrect string value: '%ld' for function inet6_ntoa", num)));
+					(errmsg("Incorrect string value: '%lld' for function inet6_ntoa", (long long) num)));
 		PG_RETURN_NULL();
 	}
 	else if (argtypeid == NUMERICOID)

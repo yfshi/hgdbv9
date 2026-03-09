@@ -65,16 +65,6 @@ fprintf_to_ereport(const char *fmt, const char *msg)
 }
 
 /*
- * GUC variables.  This is a DIRECT violation of the warning given at the
- * head of gram.y, ie flex/bison code must not depend on any GUC variables;
- * as such, changing their values can induce very unintuitive behavior.
- * But we shall have to live with it until we can remove these variables.
- */
-int			backslash_quote = BACKSLASH_QUOTE_SAFE_ENCODING;
-bool		escape_string_warning = true;
-bool		standard_conforming_strings = true;
-
-/*
  * Constant data exported from this file.  This array maps from the
  * zero-based keyword numbers returned by ScanKeywordLookup to the
  * Bison token numbers needed by gram.y.  This is exported because

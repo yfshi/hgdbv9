@@ -19043,8 +19043,8 @@ static const uint16 gb18030_4_weight_py_p2[] = {
                       space in dst
                       0 otherwise
 */
-static uint
-diff_to_gb18030_4(uchar *dst, uint dstlen, uint diff)
+static uint32
+diff_to_gb18030_4(uchar *dst, uint32 dstlen, uint32 diff)
 {
     assert(dstlen >= 4);
 
@@ -19061,7 +19061,7 @@ diff_to_gb18030_4(uchar *dst, uint dstlen, uint diff)
     return 4;
 }
 
-static uint 
+static uint32 
 my_ismbchar_gb18030(const CHARSET_INFO *cs, const char *p, const char *e)
 {
     assert(e > p);
@@ -19079,7 +19079,7 @@ my_ismbchar_gb18030(const CHARSET_INFO *cs, const char *p, const char *e)
 }
 
 static inline 
-uint gb18030_4_chs_to_diff(const uchar *src)
+uint32 gb18030_4_chs_to_diff(const uchar *src)
 {
     return (src[0] - MIN_MB_ODD_BYTE) * 12600 +
            (src[1] - MIN_MB_EVEN_BYTE_4) * 1260 +
@@ -19090,8 +19090,8 @@ static int
 my_mb_wc_gb18030(const CHARSET_INFO *cs,
                  my_wc_t *pwc, const uchar *s, const uchar *e)
 {
-    uint idx = 0;
-    uint cp = 0;
+    uint32 idx = 0;
+    uint32 cp = 0;
 
     if (s >= e)
         return MY_CS_TOOSMALL;
@@ -19177,10 +19177,10 @@ my_mb_wc_gb18030(const CHARSET_INFO *cs,
 static int 
 my_wc_mb_gb18030_chs(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
 {
-    uint idx = 0;
-    uint len;
+    uint32 idx = 0;
+    uint32 len;
     uint16 cp = 0;
-    uint err;
+    uint32 err;
 
     if (s >= e)
         return MY_CS_TOOSMALL;
@@ -19197,7 +19197,7 @@ my_wc_mb_gb18030_chs(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
     {
         /* [0x80, 0x9FA6) */
         cp = tab_uni_gb18030_p1[wc - 0x80];
-        if ((uint)((cp >> 8) & 0xFF) < MIN_MB_ODD_BYTE)
+        if ((uint32)((cp >> 8) & 0xFF) < MIN_MB_ODD_BYTE)
         {
             idx = cp;
             len = 4;
@@ -19218,7 +19218,7 @@ my_wc_mb_gb18030_chs(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
     {
         /* [0xE000, 0xE865) */
         cp = tab_uni_gb18030_p2[wc - 0xE000];
-        if ((uint)((cp >> 8) & 0xFF) < MIN_MB_ODD_BYTE)
+        if ((uint32)((cp >> 8) & 0xFF) < MIN_MB_ODD_BYTE)
         {
             idx = cp + UNI2_TO_GB4_DIFF;
             len = 4;
@@ -19234,7 +19234,7 @@ my_wc_mb_gb18030_chs(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
     {
         /* (0xF92B, 0xFFFF] */
         cp = tab_uni_gb18030_p2[wc - 0xE000 - 4295];
-        if ((uint)((cp >> 8) & 0xFF) < MIN_MB_ODD_BYTE)
+        if ((uint32)((cp >> 8) & 0xFF) < MIN_MB_ODD_BYTE)
         {
             idx = cp + UNI2_TO_GB4_DIFF;
             len = 4;
@@ -19276,10 +19276,10 @@ my_wc_mb_gb18030_chs(const CHARSET_INFO *cs, my_wc_t wc, uchar *s, uchar *e)
     return MY_CS_ILUNI;
 }
 
-static inline uint 
+static inline uint32 
 gb18030_chs_to_code(const uchar *src, size_t srclen)
 {
-    uint r = 0;
+    uint32 r = 0;
 
     assert(srclen == 1 || srclen == 2 || srclen == 4);
 
@@ -19301,10 +19301,10 @@ gb18030_chs_to_code(const uchar *src, size_t srclen)
     return r;
 }
 
-static uint 
-gb18030_4_code_to_diff(uint code)
+static uint32 
+gb18030_4_code_to_diff(uint32 code)
 {
-    uint diff = 0;
+    uint32 diff = 0;
 
     assert(is_mb_odd((code >> 24) & 0xFF));
     diff += ((code >> 24) & 0xFF) - MIN_MB_ODD_BYTE;
@@ -19321,12 +19321,12 @@ gb18030_4_code_to_diff(uint code)
     return diff;
 }
 
-static uint 
-get_weight_if_chinese_character(uint code)
+static uint32 
+get_weight_if_chinese_character(uint32 code)
 {
     if (code >= PINYIN_2_BYTE_START && code <= PINYIN_2_BYTE_END)
     {
-        uint idx = (((code >> 8) & 0xFF) - MIN_MB_ODD_BYTE) * 0xBE + (code & 0xFF) -
+        uint32 idx = (((code >> 8) & 0xFF) - MIN_MB_ODD_BYTE) * 0xBE + (code & 0xFF) -
                    MIN_MB_EVEN_BYTE_2;
         if ((code & 0xFF) > 0x7F)
             idx -= 0x01;
@@ -19335,12 +19335,12 @@ get_weight_if_chinese_character(uint code)
     }
     else if (code >= PINYIN_4_BYTE_1_START && code <= PINYIN_4_BYTE_1_END)
     {
-        uint idx = gb18030_4_code_to_diff(code) - PINYIN_4_1_DIFF;
+        uint32 idx = gb18030_4_code_to_diff(code) - PINYIN_4_1_DIFF;
         return PINYIN_WEIGHT_BASE + gb18030_4_weight_py_p1[idx];
     }
     else if (code >= PINYIN_4_BYTE_2_START && code <= PINYIN_4_BYTE_2_END)
     {
-        uint idx = gb18030_4_code_to_diff(code) - PINYIN_4_2_DIFF;
+        uint32 idx = gb18030_4_code_to_diff(code) - PINYIN_4_2_DIFF;
         return PINYIN_WEIGHT_BASE + gb18030_4_weight_py_p2[idx];
     }
 
@@ -19353,7 +19353,7 @@ get_case_info(const CHARSET_INFO *cs,
               size_t srclen)
 {
     const MY_UNICASE_CHARACTER *p = NULL;
-    uint diff, code;
+    uint32 diff, code;
 
     assert(cs != NULL);
 
@@ -19387,15 +19387,15 @@ get_case_info(const CHARSET_INFO *cs,
     return NULL;
 }
 
-static uint
-case_info_code_to_gb18030(uint code)
+static uint32
+case_info_code_to_gb18030(uint32 code)
 {
     if ((code >= MIN_2_BYTE_UNICASE && code <= MAX_2_BYTE_UNICASE) ||
         code < UNICASE_4_BYTE_OFFSET)
         return code;
     else
     {
-        uint r;
+        uint32 r;
         uchar gbchs[4];
 
         if (code >= UNICASE_4_BYTE_OFFSET && code < MIN_2_BYTE_UNICASE)
@@ -19413,7 +19413,7 @@ case_info_code_to_gb18030(uint code)
     }
 }
 
-static uint 
+static uint32 
 get_casefolded_code(const CHARSET_INFO *cs, const uchar *src, size_t srclen, size_t is_upper)
 {
     const MY_UNICASE_CHARACTER *ch = get_case_info(cs, src, srclen);
@@ -19424,10 +19424,10 @@ get_casefolded_code(const CHARSET_INFO *cs, const uchar *src, size_t srclen, siz
               : 0;
 }
 
-static uint 
+static uint32 
 get_weight_for_mbchar(const CHARSET_INFO *cs, const uchar *src, size_t mblen)
 {
-    uint weight, caseup_code, code = gb18030_chs_to_code(src, mblen);
+    uint32 weight, caseup_code, code = gb18030_chs_to_code(src, mblen);
 
     assert(mblen == 2 || mblen == 4);
 
@@ -19464,13 +19464,13 @@ my_strnncoll_gb18030_internal(const CHARSET_INFO *cs,
 
     while (s < se && t < te)
     {
-        uint mblen_s = my_ismbchar_gb18030(cs, (char *)s, (char *)se);
-        uint mblen_t = my_ismbchar_gb18030(cs, (char *)t, (char *)te);
+        uint32 mblen_s = my_ismbchar_gb18030(cs, (char *)s, (char *)se);
+        uint32 mblen_t = my_ismbchar_gb18030(cs, (char *)t, (char *)te);
 
         if (mblen_s > 0 && mblen_t > 0)
         {
-            uint code_s = get_weight_for_mbchar(cs, s, mblen_s);
-            uint code_t = get_weight_for_mbchar(cs, t, mblen_t);
+            uint32 code_s = get_weight_for_mbchar(cs, s, mblen_s);
+            uint32 code_t = get_weight_for_mbchar(cs, t, mblen_t);
 
             if (code_s != code_t)
                 return code_s > code_t ? 1 : -1;
@@ -19540,7 +19540,7 @@ my_strnncollsp_gb18030(const CHARSET_INFO *cs, const uchar *s,
 }
 
 static size_t 
-code_to_gb18030_chs(uchar *dst, size_t dstlen, uint code)
+code_to_gb18030_chs(uchar *dst, size_t dstlen, uint32 code)
 {
     size_t i, len = 0;
     uchar *dst_end = dst + dstlen;
@@ -19557,8 +19557,8 @@ code_to_gb18030_chs(uchar *dst, size_t dstlen, uint code)
 
 static size_t
 my_strnxfrm_gb18030(const CHARSET_INFO *cs, uchar *dst,
-                    size_t dstlen, uint nweights,
-                    const uchar *src, size_t srclen, uint flags)
+                    size_t dstlen, uint32 nweights,
+                    const uchar *src, size_t srclen, uint32 flags)
 {
     uchar *ds = dst;
     uchar *de = dst + dstlen;
@@ -19570,11 +19570,11 @@ my_strnxfrm_gb18030(const CHARSET_INFO *cs, uchar *dst,
 
     for (; dst < de && src < se && nweights; nweights--)
     {
-        uint mblen = cs->cset->ismbchar(cs, (const char *)src, (const char *)se);
+        uint32 mblen = cs->cset->ismbchar(cs, (const char *)src, (const char *)se);
 
         if (mblen > 0)
         {
-            uint weight = get_weight_for_mbchar(cs, src, mblen);
+            uint32 weight = get_weight_for_mbchar(cs, src, mblen);
             dst += code_to_gb18030_chs(dst, de - dst, weight);
             src += mblen;
         }
@@ -19610,7 +19610,7 @@ get_code_and_length(const CHARSET_INFO *cs, const char *s, const char *e, size_t
     return len;
 }
 
-static uint
+static uint32
 get_weight_for_gb18030_chs(const CHARSET_INFO *cs, const char *s, size_t s_len)
 {
     assert(s_len == 1 || s_len == 2 || s_len == 4);
@@ -19631,7 +19631,7 @@ my_hash_sort_gb18030(const CHARSET_INFO *cs, const uchar *s, size_t slen, uint64
     uint64 tmp1, tmp2;
     size_t len;
     size_t s_gb;
-    uint ch;
+    uint32 ch;
 
     /* Skip trailing spaces */
     while (e > s && e[-1] == 0x20)

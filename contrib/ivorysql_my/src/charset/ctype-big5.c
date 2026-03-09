@@ -6312,7 +6312,7 @@ my_strnncoll_big5_internal(const uchar **a_res, const uchar **b_res, size_t leng
     return 0;
 }
 
-static uint
+static uint32
 ismbchar_big5(const CHARSET_INFO *cs,
               const char *p, const char *e)
 {
@@ -6413,8 +6413,8 @@ my_strnncollsp_big5(const CHARSET_INFO *cs,
 
 static size_t 
 my_strnxfrm_big5(const CHARSET_INFO *cs, uchar *dst,
-                 size_t dstlen, uint nweights, const uchar *src,
-                 size_t srclen, uint flags)
+                 size_t dstlen, uint32 nweights, const uchar *src,
+                 size_t srclen, uint32 flags)
 {
     uchar *d0 = dst;
     uchar *de = dst + dstlen;

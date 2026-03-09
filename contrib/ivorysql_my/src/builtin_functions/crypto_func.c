@@ -92,7 +92,7 @@ static bool kdf_function_derive_key(char *kdf_name,
 static bool create_kdf_key(const unsigned char *key, const unsigned int key_length,
 						  unsigned char *rkey, unsigned int rkey_size,
 						  KDF_Option *kdf_options);
-static void aes_create_key(const unsigned char *key, uint key_length, uint8 *rkey, int mys_block_encryption_mode);
+static void aes_create_key(const unsigned char *key, uint32 key_length, uint8 *rkey, int mys_block_encryption_mode);
 static bool create_key(unsigned char *rkey, const unsigned char *key, uint32 key_length,
 					   int mys_block_encryption_mode, KDF_Option *kdf_options);
 static int aes_encrypt(const unsigned char *source, uint32 source_length,
@@ -359,6 +359,11 @@ kdf_function_derive_key(char *kdf_name,
 	{
 		ereport(ERROR, (errmsg("kdf name error")));
 	}
+
+	/*
+	 * never reached, but keep compiler quiet
+	 */
+	return true;
 }
 
 static bool 
@@ -418,9 +423,9 @@ create_kdf_key(const unsigned char *key, const unsigned int key_length,
 }
 
 static void 
-aes_create_key(const unsigned char *key, uint key_length, uint8 *rkey, int mys_block_encryption_mode)
+aes_create_key(const unsigned char *key, uint32 key_length, uint8 *rkey, int mys_block_encryption_mode)
 {
-	const uint key_size = aes_opmode_key_sizes[mys_block_encryption_mode] / 8;
+	const uint32 key_size = aes_opmode_key_sizes[mys_block_encryption_mode] / 8;
 	uint8 *rkey_end;							  /* Real key boundary */
 	uint8 *ptr;									  /* Start of the real key*/
 	uint8 *sptr;								  /* Start of the working key */
@@ -446,7 +451,7 @@ create_key(unsigned char *rkey, const unsigned char *key,
 {
 	if (size_of_kdf_option(kdf_options))
 	{
-		const uint key_size = aes_opmode_key_sizes[mys_block_encryption_mode] / 8;
+		const uint32 key_size = aes_opmode_key_sizes[mys_block_encryption_mode] / 8;
 		return create_kdf_key(key, key_length, rkey, key_size, kdf_options);
 	}
 
