@@ -1323,6 +1323,88 @@ NOTICE:  2 Jone
 NOTICE:  2 Lily
 NOTICE:  2 Leo
 NOTICE:  2 Emily
+--/* Begin - BUG#Z7305 */
+SET SERVEROUTPUT ON
+DECLARE
+  TYPE empnos_t IS TABLE OF NUMBER;
+  v_empnos empnos_t;
+BEGIN
+  SELECT empno
+  BULK COLLECT INTO v_empnos
+  FROM employee order by empno ;
+  FOR i IN 1..v_empnos.COUNT LOOP
+    DBMS_OUTPUT.PUT_LINE('  ID: ' || v_empnos(i));
+  END LOOP;
+END;
+/
+  ID: 1
+  ID: 2
+  ID: 3
+  ID: 4
+  ID: 5
+  ID: 6
+DECLARE
+  TYPE type1 IS TABLE OF VARCHAR2(20) INDEX BY INT;
+  TYPE type2 IS TABLE OF type1 INDEX BY INT;
+  TYPE type3 IS TABLE OF type2 INDEX BY INT;
+  a type1;
+  b type2;
+  c type3;
+BEGIN
+  SELECT ename BULK COLLECT INTO c(1)(1) FROM employee order by empno;
+  FOR i IN 1 .. c(1)(1).count LOOP
+     DBMS_OUTPUT.PUT_LINE (c(1)(1)(i));
+  END LOOP;
+END;
+/
+kim
+Joe
+Jone
+Lily
+Leo
+Emily
+DECLARE
+  TYPE type1 IS TABLE OF INT;
+  TYPE record1 IS RECORD(id1 type1);
+  TYPE type2 IS TABLE OF record1;
+  TYPE nest_type1 IS TABLE OF VARCHAR(10);
+  TYPE nest_type2 IS TABLE OF nest_type1;
+  edno   type1;
+  r1 record1;
+  edno2  type2;
+  ename1  nest_type1;
+  ename2  nest_type2 := nest_type2(ename1);
+BEGIN
+  r1.id1 := edno;
+  edno2 := type2(r1);
+  SELECT empno, ename BULK  COLLECT INTO edno2(1).id1, ename2(1) FROM employee order by empno;
+  FOR i IN edno2(1).id1.FIRST .. edno2(1).id1.LAST
+  LOOP
+   DBMS_OUTPUT.PUT_LINE (' Employee #' || edno2(1).id1(i) || ' name is ' || ename2(1)(i));
+  END LOOP;
+  SELECT empno BULK COLLECT INTO r1.id1 FROM employee order by empno;
+  DBMS_OUTPUT.PUT_LINE ('r1.id1 count is ' || r1.id1.count);
+  FOR i IN r1.id1.FIRST .. r1.id1.LAST
+  LOOP
+   DBMS_OUTPUT.PUT_LINE ('Employee #' || r1.id1(i));
+  END LOOP;
+END;
+/
+ Employee #1 name is kim
+ Employee #2 name is Joe
+ Employee #3 name is Jone
+ Employee #4 name is Lily
+ Employee #5 name is Leo
+ Employee #6 name is Emily
+r1.id1 count is 6
+Employee #1
+Employee #2
+Employee #3
+Employee #4
+Employee #5
+Employee #6
+SET SERVEROUTPUT OFF
+--/* End - BUG#Z7305 */
 --clean
 DROP TABLE tmp;
 DROP TABLE tmp2;

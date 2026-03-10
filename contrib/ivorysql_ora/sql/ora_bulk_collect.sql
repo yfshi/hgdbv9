@@ -1137,6 +1137,69 @@ EXECUTE IMMEDIATE 'update tmp set empno = 2 returning empno, ename  into :1 '  r
 end;
 /
 
+--/* Begin - BUG#Z7305 */
+SET SERVEROUTPUT ON
+
+DECLARE
+  TYPE empnos_t IS TABLE OF NUMBER;
+  v_empnos empnos_t;
+BEGIN
+  SELECT empno
+  BULK COLLECT INTO v_empnos
+  FROM employee order by empno ;
+
+  FOR i IN 1..v_empnos.COUNT LOOP
+    DBMS_OUTPUT.PUT_LINE('  ID: ' || v_empnos(i));
+  END LOOP;
+END;
+/
+
+DECLARE
+  TYPE type1 IS TABLE OF VARCHAR2(20) INDEX BY INT;
+  TYPE type2 IS TABLE OF type1 INDEX BY INT;
+  TYPE type3 IS TABLE OF type2 INDEX BY INT;
+  a type1;
+  b type2;
+  c type3;
+BEGIN
+  SELECT ename BULK COLLECT INTO c(1)(1) FROM employee order by empno;
+  FOR i IN 1 .. c(1)(1).count LOOP
+     DBMS_OUTPUT.PUT_LINE (c(1)(1)(i));
+  END LOOP;
+END;
+/
+
+DECLARE
+  TYPE type1 IS TABLE OF INT;
+  TYPE record1 IS RECORD(id1 type1);
+  TYPE type2 IS TABLE OF record1;
+  TYPE nest_type1 IS TABLE OF VARCHAR(10);
+  TYPE nest_type2 IS TABLE OF nest_type1;
+  edno   type1;
+  r1 record1;
+  edno2  type2;
+  ename1  nest_type1;
+  ename2  nest_type2 := nest_type2(ename1);
+BEGIN
+  r1.id1 := edno;
+  edno2 := type2(r1);
+  SELECT empno, ename BULK  COLLECT INTO edno2(1).id1, ename2(1) FROM employee order by empno;
+  FOR i IN edno2(1).id1.FIRST .. edno2(1).id1.LAST
+  LOOP
+   DBMS_OUTPUT.PUT_LINE (' Employee #' || edno2(1).id1(i) || ' name is ' || ename2(1)(i));
+  END LOOP;
+
+  SELECT empno BULK COLLECT INTO r1.id1 FROM employee order by empno;
+  DBMS_OUTPUT.PUT_LINE ('r1.id1 count is ' || r1.id1.count);
+  FOR i IN r1.id1.FIRST .. r1.id1.LAST
+  LOOP
+   DBMS_OUTPUT.PUT_LINE ('Employee #' || r1.id1(i));
+  END LOOP;
+END;
+/
+SET SERVEROUTPUT OFF
+--/* End - BUG#Z7305 */
+
 --clean
 DROP TABLE tmp;
 DROP TABLE tmp2;
