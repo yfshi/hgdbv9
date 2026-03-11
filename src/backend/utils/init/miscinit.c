@@ -63,7 +63,11 @@
 #include "utils/ora_compatible.h"
 #include "access/xact.h"
 
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+#define CONFIG_CHECK_FILENAME ".hg_config_checksum"
+/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 #define DIRECTORY_LOCK_FILE		"postmaster.pid"
 
 ProcessingMode Mode = InitProcessing;
@@ -434,6 +438,55 @@ ChangeToDataDir(void)
 						DataDir)));
 }
 
+#ifdef ENABLE_DKY_BETA_FEATURE
+/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+void
+checkOnlineFile(void)
+{
+	char checkfilepath[MAXPGPATH];
+	const char *getval;
+	ConfigVariable *head = NULL;
+	ConfigVariable *tail = NULL;
+	ConfigVariable *item = NULL;
+	/* open old file PG_AUTOCONF_FILENAME */
+	FILE	   *infile;
+
+	snprintf(checkfilepath, MAXPGPATH, "%s/%s", DataDir, CONFIG_CHECK_FILENAME);
+
+	infile = AllocateFile(checkfilepath, "r");
+	if (infile == NULL)
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				errmsg("could not open file \"%s\": %m",
+						checkfilepath)));
+
+	/* parse it */
+	if (!ParseConfigFp(infile, checkfilepath, 0, LOG, &head, &tail))
+		ereport(ERROR,
+				(errcode(ERRCODE_CONFIG_FILE_ERROR),
+				errmsg("could not parse contents of file \"%s\"",
+						checkfilepath)));
+
+	FreeFile(infile);
+
+	for (item = head; item; item = item->next)
+	{
+		if (item->ignore)
+			continue;
+		getval = GetConfigOption(item->name, false, false);
+
+		if (pg_strncasecmp(getval, item->value, strlen(item->value)) == 0)
+			ereport(LOG,
+					(errmsg("\"%s\" is \"%s\" ---- check ok",
+							item->name, item->value)));
+		else
+			ereport(WARNING,
+					(errmsg("\"%s\" is \"%s\" , system set is \"%s\" ---- check warrning",
+							item->name, item->value, getval)));
+	}
+}
+/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 
 /* ----------------------------------------------------------------
  *	User ID state

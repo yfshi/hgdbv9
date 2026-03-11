@@ -192,6 +192,13 @@ static char *bki_file;
 static char *hba_file;
 static char *ident_file;
 static char *conf_file;
+#ifdef ENABLE_DKY_BETA_FEATURE
+/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+#define CONFIG_CHECK_FILENAME ".hg_config_checksum"
+#define CONFIG_CHECK_NUM      16
+#define CONFIG_CHECK_COMMAND_LEN 1024
+/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 static char *dictionary_file;
 static char *info_schema_file;
 static char *features_file;
@@ -1034,6 +1041,24 @@ set_null_conf(void)
 		exit(1);
 	}
 	free(path);
+
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	path = psprintf("%s/%s", pg_data, CONFIG_CHECK_FILENAME);
+	conf_file = fopen(path, PG_BINARY_W);
+	if (conf_file == NULL)
+	{
+		pg_log_error("could not open file \"%s\" for writing: %m", path);
+		exit(1);
+	}
+	if (fclose(conf_file))
+	{
+		pg_log_error("could not write file \"%s\": %m", path);
+		exit(1);
+	}
+	free(path);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 }
 
 /*
@@ -1232,7 +1257,19 @@ setup_config(void)
 	char		repltok[MAXPGPATH];
 	char		path[MAXPGPATH];
 	char	   *autoconflines[3];
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	char **checklines;
+	int checknum = 0;
 
+	checklines = (char **) pg_malloc((CONFIG_CHECK_NUM+1) * sizeof(char *));
+	for (int i=0; i<CONFIG_CHECK_NUM; i++)
+	{
+		checklines[i] = pg_malloc(CONFIG_CHECK_COMMAND_LEN);
+	}
+	checklines[CONFIG_CHECK_NUM] = NULL;
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	fputs(_("creating configuration files ... "), stdout);
 	fflush(stdout);
 
@@ -1241,8 +1278,11 @@ setup_config(void)
 
 	snprintf(repltok, sizeof(repltok), "max_connections = %d", n_connections);
 	conflines = replace_token(conflines, "#max_connections = 100", repltok);
-
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */	
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	if ((n_buffers * (BLCKSZ / 1024)) % 1024 == 0)
 		snprintf(repltok, sizeof(repltok), "shared_buffers = %dMB",
 				 (n_buffers * (BLCKSZ / 1024)) / 1024);
@@ -1250,7 +1290,11 @@ setup_config(void)
 		snprintf(repltok, sizeof(repltok), "shared_buffers = %dkB",
 				 n_buffers * (BLCKSZ / 1024));
 	conflines = replace_token(conflines, "#shared_buffers = 32MB", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "shared_buffers = %d\n", n_buffers);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 #ifdef HAVE_UNIX_SOCKETS
 	snprintf(repltok, sizeof(repltok), "#unix_socket_directories = '%s'",
 			 DEFAULT_PGSOCKET_DIR);
@@ -1272,6 +1316,11 @@ setup_config(void)
 		snprintf(repltok, sizeof(repltok), "port = %d", atoi(hg_database_port));
 		conflines = replace_token(conflines, "#port = 5432", repltok);
 	}
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	if (!hg_database_name) 
 	{
 		// get database name from license file
@@ -1283,10 +1332,32 @@ setup_config(void)
 		snprintf(repltok, sizeof(repltok), "databasename = '%s'", hg_database_name);
 		conflines = replace_token(conflines, "#databasename = 'postgres'", repltok);
 	}
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 #else
 #if DEF_PGPORT != 5432
 	snprintf(repltok, sizeof(repltok), "#port = %d", DEF_PGPORT);
 	conflines = replace_token(conflines, "#port = 5432", repltok);
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
+#else
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "port = 5432\n");
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
+#endif
+
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "databasename = 'postgres'\n");
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
 #endif
 #endif
 /* End - ReqID:SRS-MISC-LICENSE */
@@ -1295,27 +1366,51 @@ setup_config(void)
 	snprintf(repltok, sizeof(repltok), "min_wal_size = %s",
 			 pretty_wal_size(DEFAULT_MIN_WAL_SEGS));
 	conflines = replace_token(conflines, "#min_wal_size = 80MB", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "min_wal_size = %d\n", DEFAULT_MIN_WAL_SEGS * 16);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	snprintf(repltok, sizeof(repltok), "max_wal_size = %s",
 			 pretty_wal_size(DEFAULT_MAX_WAL_SEGS));
 	conflines = replace_token(conflines, "#max_wal_size = 1GB", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "max_wal_size = %d\n", DEFAULT_MAX_WAL_SEGS * 16);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	snprintf(repltok, sizeof(repltok), "lc_messages = '%s'",
 			 escape_quotes(lc_messages));
 	conflines = replace_token(conflines, "#lc_messages = 'C'", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	snprintf(repltok, sizeof(repltok), "lc_monetary = '%s'",
 			 escape_quotes(lc_monetary));
 	conflines = replace_token(conflines, "#lc_monetary = 'C'", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	snprintf(repltok, sizeof(repltok), "lc_numeric = '%s'",
 			 escape_quotes(lc_numeric));
 	conflines = replace_token(conflines, "#lc_numeric = 'C'", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	snprintf(repltok, sizeof(repltok), "lc_time = '%s'",
 			 escape_quotes(lc_time));
 	conflines = replace_token(conflines, "#lc_time = 'C'", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	switch (locale_date_order(lc_time))
 	{
 		case DATEORDER_YMD:
@@ -1330,29 +1425,51 @@ setup_config(void)
 			break;
 	}
 	conflines = replace_token(conflines, "#datestyle = 'iso, mdy'", repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	snprintf(repltok, sizeof(repltok),
 			 "default_text_search_config = 'pg_catalog.%s'",
 			 escape_quotes(default_text_search_config));
 	conflines = replace_token(conflines,
 							  "#default_text_search_config = 'pg_catalog.simple'",
 							  repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	if (default_timezone)
 	{
 		snprintf(repltok, sizeof(repltok), "timezone = '%s'",
 				 escape_quotes(default_timezone));
 		conflines = replace_token(conflines, "#timezone = 'GMT'", repltok);
+#ifdef ENABLE_DKY_BETA_FEATURE
+		/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+		snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+		/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 		snprintf(repltok, sizeof(repltok), "log_timezone = '%s'",
 				 escape_quotes(default_timezone));
 		conflines = replace_token(conflines, "#log_timezone = 'GMT'", repltok);
+#ifdef ENABLE_DKY_BETA_FEATURE
+		/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+		snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+		/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	}
 
 	snprintf(repltok, sizeof(repltok), "dynamic_shared_memory_type = %s",
 			 dynamic_shared_memory_type);
 	conflines = replace_token(conflines, "#dynamic_shared_memory_type = posix",
 							  repltok);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", repltok);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 #if DEFAULT_BACKEND_FLUSH_AFTER > 0
 	snprintf(repltok, sizeof(repltok), "#backend_flush_after = %dkB",
 			 DEFAULT_BACKEND_FLUSH_AFTER * (BLCKSZ / 1024));
@@ -1469,6 +1586,11 @@ setup_config(void)
 		appendStringInfo(&replacement, "'");
 
 		conflines = replace_token(conflines,token, replacement.data);
+#ifdef ENABLE_DKY_BETA_FEATURE
+		/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+		snprintf(checklines[checknum++], CONFIG_CHECK_COMMAND_LEN, "%s\n", replacement.data);
+		/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 		pfree(replacement.data);
 	}
 	/* End - BUG#6225 */
@@ -1636,6 +1758,20 @@ setup_config(void)
 
 	free(conflines);
 
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	snprintf(path, sizeof(path), "%s/%s", pg_data, CONFIG_CHECK_FILENAME);
+
+	writefile(path, checklines);
+	if (chmod(path, pg_file_create_mode) != 0)
+	{
+		pg_log_error("could not change permissions of \"%s\": %m", path);
+		exit(1);
+	}
+
+	free(checklines);
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	check_ok();
 }
 

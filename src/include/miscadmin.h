@@ -369,7 +369,11 @@ extern void SetDatabasePath(const char *path);
 extern void checkDataDir(void);
 extern void SetDataDir(const char *dir);
 extern void ChangeToDataDir(void);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+extern void checkOnlineFile(void);
+/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 extern char *GetUserNameFromId(Oid roleid, bool noerr);
 extern Oid	GetUserId(void);
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
