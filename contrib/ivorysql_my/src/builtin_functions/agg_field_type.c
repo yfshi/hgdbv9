@@ -23,14 +23,14 @@
 #include "fmgr.h"
 #include "c.h"
 #include "nodes/nodeFuncs.h"
-#include "../include/ivorysql_my.h"
-/* Begin - OA#2098  Not Full Group */
 #include "nodes/primnodes.h"
+#include "utils/builtins.h"
+#include "utils/datum.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
-#include "utils/datum.h"
-/* End - OA#2908  Not Full Group */
+#include "utils/varlena.h"
 
+#include "../include/ivorysql_my.h"
 #include "../include/server.h"
 
 /*
@@ -49,6 +49,10 @@ PG_FUNCTION_INFO_V1(any_value_transfn);
 PG_FUNCTION_INFO_V1(any_value_finalfn);
 /* End - OA#2908  Not Full Group */
 
+/* Begin - bug#7234 */
+PG_FUNCTION_INFO_V1(group_concat_transfn);
+PG_FUNCTION_INFO_V1(group_concat_finalfn);
+/* End - bug#7234 */
 
 static enum_field_types field_types_merge_rules [FIELDTYPE_NUM][FIELDTYPE_NUM]=
 {
@@ -1304,3 +1308,98 @@ any_value_finalfn(PG_FUNCTION_ARGS)
 
 /* End - OA#2908  Not Full Group */
 
+/* Begin - bug#7234 */
+static StringInfo
+makeStringAggState(FunctionCallInfo fcinfo)
+{
+	StringInfo	state;
+	MemoryContext aggcontext;
+	MemoryContext oldcontext;
+
+	if (!AggCheckCallContext(fcinfo, &aggcontext))
+	{
+		/* cannot be called directly because of internal-type argument */
+		elog(ERROR, "called in non-aggregate context");
+	}
+
+	/*
+	 * Create state in aggregate context.  It'll stay there across subsequent
+	 * calls.
+	 */
+	oldcontext = MemoryContextSwitchTo(aggcontext);
+	state = makeStringInfo();
+	MemoryContextSwitchTo(oldcontext);
+
+	return state;
+}
+
+static void
+appendStringInfoText(StringInfo str, const text *t)
+{
+	appendBinaryStringInfo(str, VARDATA_ANY(t), VARSIZE_ANY_EXHDR(t));
+}
+
+Datum
+group_concat_transfn(PG_FUNCTION_ARGS)
+{
+	StringInfo	state = PG_ARGISNULL(0) ? NULL : (StringInfo) PG_GETARG_POINTER(0);
+	text 		*result;
+
+	for (int i = 2; i < PG_NARGS(); i++)
+	{
+		if (PG_ARGISNULL(i))
+		{
+			fcinfo->isnull = PG_ARGISNULL(0);
+			PG_RETURN_POINTER(state);
+		}
+	}
+
+	if (state && state->len == group_concat_max_len)
+	{
+		PG_RETURN_POINTER(state);
+	}
+
+	result = concat_internal("", 2, fcinfo);
+
+	/* Append the value unless null. */
+	if (result)
+	{
+		/* On the first time through, we ignore the delimiter. */
+		if (state == NULL)
+			state = makeStringAggState(fcinfo);
+		else if (!PG_ARGISNULL(1))
+			appendStringInfoText(state, PG_GETARG_TEXT_PP(1));	/* delimiter */
+
+		appendStringInfoText(state, result);
+
+		if (state->len > group_concat_max_len)
+		{
+			state->len = group_concat_max_len;
+
+			ereport(WARNING, (errmsg("Row was cut by GROUP_CONCAT()")));
+		}
+	}
+	else
+	{
+		fcinfo->isnull = PG_ARGISNULL(0);
+	}
+
+	PG_RETURN_POINTER(state);
+}
+
+Datum
+group_concat_finalfn(PG_FUNCTION_ARGS)
+{
+	StringInfo	state;
+
+	/* cannot be called directly because of internal-type argument */
+	Assert(AggCheckCallContext(fcinfo, NULL));
+
+	state = PG_ARGISNULL(0) ? NULL : (StringInfo) PG_GETARG_POINTER(0);
+
+	if (state != NULL)
+		PG_RETURN_TEXT_P(cstring_to_text_with_len(state->data, state->len));
+	else
+		PG_RETURN_NULL();
+}
+/* End - bug#7234 */

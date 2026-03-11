@@ -6306,7 +6306,7 @@ build_concat_foutcache(FunctionCallInfo fcinfo, int argidx)
  *
  * Returns NULL if result should be NULL, else text value.
  */
-static text *
+text *
 concat_internal(const char *sepstr, int argidx,
 				FunctionCallInfo fcinfo)
 {

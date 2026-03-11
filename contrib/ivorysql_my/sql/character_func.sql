@@ -823,4 +823,28 @@ select group_concat(a, b order by a, b) from gct;	-- 0a,0a,1b,1b,1c,1c,2d,2d,2f,
 select group_concat(a, b order by b) from gct;		-- 0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
 select group_concat(distinct a) from gct;			-- 0,1,2
 select group_concat(distinct a, b) from gct;		-- 0a,1b,1c,2d,2f,2g
+
+-- begin - bug#7233
+SELECT GROUP_CONCAT(col) FROM (SELECT 'a' col UNION ALL SELECT NULL UNION ALL SELECT 'b' UNION ALL SELECT '') t; -- a,b,
+SELECT GROUP_CONCAT(col1, col2) FROM (SELECT 'a' col1, 'b' col2 UNION ALL SELECT NULL, 'c' UNION ALL SELECT 'd', NULL UNION ALL SELECT '', '') t; -- ab,
+SELECT GROUP_CONCAT(col1, col2) FROM (SELECT NULL col1, 'b' col2 UNION ALL SELECT 'a', 'c' UNION ALL SELECT 'd', NULL UNION ALL SELECT '', '') t; -- ac,
+SELECT GROUP_CONCAT(col) FROM (SELECT NULL col UNION ALL SELECT NULL) t; -- NULL
+SELECT GROUP_CONCAT(col) FROM (SELECT '' col UNION ALL SELECT 'a' UNION ALL SELECT '') t; -- ,a,
+SELECT GROUP_CONCAT(col) FROM (SELECT 'a' col UNION ALL SELECT 'b') t; -- a,b
+WITH test_data AS (SELECT unnest (array [1,1,1,2,2,2,1]) AS grp,unnest (array ['Apple','Banana',null,'Cherry','Date',null,'Elderberry']) AS item) SELECT grp, GROUP_CONCAT(item) FROM test_data GROUP BY grp;
+-- End - bug#7233
+
+-- begin - bug#7234
+SELECT GROUP_CONCAT(DISTINCT col ORDER BY col ASC SEPARATOR '-') FROM (SELECT 'b' col UNION ALL SELECT 'a' UNION ALL SELECT 'b' UNION ALL SELECT 'c') t; -- a-b-c
+WITH test_data AS (SELECT unnest (array [1,1,1,2,2,2,1]) AS grp,unnest (array ['Apple','Banana',null,'Cherry','Date',null,'Elderberry']) AS item) SELECT grp, GROUP_CONCAT(DISTINCT item ORDER BY item SEPARATOR ' | ') AS full_features FROM test_data GROUP BY grp ORDER BY grp;
+-- End - bug#7234
+
+-- begin - bug#7234
+SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',200)) t; 	-- 602
+SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',1000)) t;	-- 1024, warning
+
+SET SESSION group_concat_max_len = 10000;
+SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',1000)) t;	-- 1402
+-- End - bug#7234
+
 drop table gct;

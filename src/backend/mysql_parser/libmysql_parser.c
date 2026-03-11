@@ -316,6 +316,20 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			break;
 		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 
+		/* Begin - bug#6888
+		 * Such as 1::"text",
+		 * this is PG style syntax, which should not be affected
+		 * by sql_mode ANSI_QUOTES, so we regard double quotes as
+		 * IDENT identifier always.
+		 * 
+		 * Other cases, IDENT_SCONST is equivalent to SCONST.
+		 */
+		case TYPECAST:
+			cur_token_length = 2;
+			break;
+		case IDENT_SCONST:
+			return SCONST;
+		/* End - bug#6888 */
 		default:
 			return cur_token;
 	}
@@ -537,6 +551,16 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			}
 			break;
 		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
+
+		/**
+		 * Begin - bug#6888
+		 * we regard double quotes as IDENT identifier always.
+		 */
+		case TYPECAST:
+			if (next_token == IDENT_SCONST)
+				yyextra->lookahead_token = IDENT;
+			break;
+		/* End - bug#6888 */
 	}
 
 	return cur_token;
