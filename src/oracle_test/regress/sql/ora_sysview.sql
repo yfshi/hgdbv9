@@ -997,6 +997,20 @@ drop table tab_privs_tb;
 drop PACKAGE BODY tab_privs_pkg;
 drop PACKAGE tab_privs_pkg;
 
+/* Begin - OA-REQ-2126 */
+\c - system
+select * from session_privs;
+select * from session_privs where upper(privilege) = 'CREATE TABLE';
+
+select comp_id, comp_name, version, version_full, status, modified, namespace, schema, procedure, startup, parent_id, other_schemas from dba_registry;
+
+\c - enrol22
+select * from session_privs;
+select * from session_privs where upper(privilege) = 'CREATE TABLE';
+
+select comp_id, comp_name, version, version_full, status, modified, namespace, schema, procedure, startup, parent_id, other_schemas from user_registry;
+/* End - OA-REQ-2126 */
+
 set ivorysql.identifier_case_switch to normal;
 
 \c - system

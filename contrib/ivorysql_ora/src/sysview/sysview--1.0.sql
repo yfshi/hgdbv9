@@ -11847,3 +11847,185 @@ CREATE OR REPLACE VIEW SYS.USER_TAB_PARTITIONS AS
         partition_position;
 GRANT SELECT ON SYS.USER_TAB_PARTITIONS TO PUBLIC;
 /* End - ReqID: RQ-SQL-SYSVIEW */
+
+/* Begin - OA-REQ-2126 */
+--
+-- SESSION_PRIVS
+--
+CREATE OR REPLACE VIEW sys.session_privs AS
+WITH RECURSIVE role_tree AS (
+    SELECT oid
+    FROM pg_roles
+    WHERE rolname = current_user
+    UNION
+    SELECT m.roleid
+    FROM pg_auth_members m
+    JOIN role_tree r
+      ON r.oid = m.member
+),
+effective_roles AS (
+    SELECT *
+    FROM pg_roles
+    WHERE oid IN (SELECT oid FROM role_tree)
+),
+is_super AS (
+    SELECT EXISTS (
+        SELECT 1 FROM effective_roles WHERE rolsuper
+    ) AS v
+),
+can_createrole AS (
+    SELECT EXISTS (
+        SELECT 1 FROM effective_roles
+        WHERE rolcreaterole OR rolsuper
+    ) AS v
+),
+has_schema_create AS (
+    SELECT EXISTS (
+		SELECT 1
+		FROM pg_catalog.pg_namespace n
+		WHERE n.nspname = current_schema()
+		AND has_schema_privilege(n.oid, 'CREATE')
+    ) AS v
+)
+SELECT SYS.ORA_CASE_TRANS(privilege::varchar2)::varchar2(40) AS privilege
+FROM (
+    /* ===================== SESSION / ROLE ===================== */
+    SELECT 'CREATE USER' AS privilege
+    WHERE (SELECT v FROM can_createrole)
+
+    UNION ALL
+    SELECT 'CREATE ROLE'
+    WHERE (SELECT v FROM can_createrole)
+    /* ===================== CREATE Object ===================== */
+
+    UNION ALL
+    SELECT 'CREATE TABLE'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE SEQUENCE'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE PROCEDURE'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE TRIGGER'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE TYPE'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE OPERATOR'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE VIEW'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE MATERIALIZED VIEW'
+    WHERE (SELECT v FROM has_schema_create)
+
+    UNION ALL
+    SELECT 'CREATE SYNONYM'
+    WHERE (SELECT v FROM has_schema_create)
+
+    /* ===================== ANY TABLE ===================== */
+    UNION ALL SELECT 'CREATE ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'BACKUP ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'LOCK ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'COMMENT ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'SELECT ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'INSERT ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'UPDATE ANY TABLE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DELETE ANY TABLE' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ANY INDEX ===================== */
+    UNION ALL SELECT 'CREATE ANY INDEX' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER ANY INDEX' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY INDEX' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ANY SYNONYM ===================== */
+    UNION ALL SELECT 'CREATE ANY SYNONYM' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY SYNONYM' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ANY VIEW ===================== */
+    UNION ALL SELECT 'CREATE ANY VIEW' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY VIEW' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ANY SEQUENCE ===================== */
+    UNION ALL SELECT 'CREATE ANY SEQUENCE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER ANY SEQUENCE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY SEQUENCE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'SELECT ANY SEQUENCE' WHERE (SELECT v FROM is_super)
+
+    /* ===================== DATABASE LINK ===================== */
+    UNION ALL SELECT 'CREATE DATABASE LINK' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'CREATE PUBLIC DATABASE LINK' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP PUBLIC DATABASE LINK' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ROLE ===================== */
+    UNION ALL SELECT 'DROP ANY ROLE' WHERE (SELECT v FROM can_createrole)
+    UNION ALL SELECT 'GRANT ANY ROLE' WHERE (SELECT v FROM can_createrole)
+    UNION ALL SELECT 'ALTER ANY ROLE' WHERE (SELECT v FROM can_createrole)
+
+    /* ===================== ANY PROCEDURE ===================== */
+    UNION ALL SELECT 'CREATE ANY PROCEDURE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER ANY PROCEDURE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY PROCEDURE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'EXECUTE ANY PROCEDURE' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ANY TRIGGER ===================== */
+    UNION ALL SELECT 'CREATE ANY TRIGGER' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER ANY TRIGGER' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY TRIGGER' WHERE (SELECT v FROM is_super)
+
+    /* ===================== ANY MATERIALIZED VIEW ===================== */
+    UNION ALL SELECT 'CREATE ANY MATERIALIZED VIEW' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER ANY MATERIALIZED VIEW' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP ANY MATERIALIZED VIEW' WHERE (SELECT v FROM is_super)
+
+    /* ===================== TABLESPACE ===================== */
+    UNION ALL SELECT 'CREATE TABLESPACE' WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'ALTER TABLESPACE'  WHERE (SELECT v FROM is_super)
+    UNION ALL SELECT 'DROP TABLESPACE'   WHERE (SELECT v FROM is_super)
+) s
+ORDER BY privilege;
+GRANT SELECT ON sys.session_privs TO PUBLIC;
+
+--
+-- DBA_REGISTRY
+--
+CREATE OR REPLACE VIEW sys.dba_registry AS
+SELECT
+    SYS.ORA_CASE_TRANS(e.extname::varchar2)::varchar2(30)    AS comp_id,
+    e.extname::varchar2(255)                 AS comp_name,
+    e.extversion::varchar2(30)               AS version,
+    e.extversion::varchar2(30)               AS version_full,
+    SYS.ORA_CASE_TRANS('VALID'::varchar2)::varchar2(11)    AS status,
+    NULL::varchar2(20)                       AS modified,
+    SYS.ORA_CASE_TRANS(n.nspname::varchar2)::varchar2(30)    AS namespace,
+    SYS.ORA_CASE_TRANS(pg_get_userbyid(e.extowner)::varchar2)::varchar2(128) AS control,
+    SYS.ORA_CASE_TRANS(n.nspname::varchar2)::varchar2(128)    AS schema,
+    NULL::varchar2(61)                       AS procedure,
+    NULL::varchar2(8)                     AS startup,
+    NULL::varchar2(30)                       AS parent_id,
+    NULL::varchar2(4000)                     AS other_schemas
+FROM pg_catalog.pg_extension e
+JOIN pg_catalog.pg_namespace n
+    ON n.oid = e.extnamespace;
+GRANT SELECT ON sys.dba_registry TO PUBLIC;
+
+--
+-- USER_REGISTRY
+--
+CREATE OR REPLACE VIEW sys.user_registry AS
+SELECT * FROM sys.dba_registry WHERE control = CURRENT_USER;
+GRANT SELECT ON sys.user_registry TO PUBLIC;
+/* End - OA-REQ-2126 */
