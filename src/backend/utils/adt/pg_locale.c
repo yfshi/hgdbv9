@@ -66,6 +66,7 @@
 #include "utils/memutils.h"
 #include "utils/ora_compatible.h"
 #include "utils/pg_locale.h"
+#include "utils/relcache.h"
 #include "utils/syscache.h"
 
 #ifdef USE_ICU
@@ -1263,6 +1264,8 @@ lookup_collation_cache(Oid collation, bool set_flags)
 
 	Assert(OidIsValid(collation));
 	Assert(collation != DEFAULT_COLLATION_OID);
+
+	AssertCouldGetRelation();
 
 	if (collation_cache == NULL)
 	{

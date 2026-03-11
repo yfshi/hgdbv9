@@ -52,5 +52,7 @@ extern void HandleNotifyInterrupt(void);
 extern void ProcessNotifyInterrupt(bool flush);
 extern void HandleGetData(void); /* ReqID: SRS-SESSION-VIEWS */
 
+/* freeze old transaction IDs in notify queue (called by VACUUM) */
+extern void AsyncNotifyFreezeXids(TransactionId newFrozenXid);
 
 #endif							/* ASYNC_H */
