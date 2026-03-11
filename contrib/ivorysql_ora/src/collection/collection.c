@@ -3285,7 +3285,7 @@ get_collect_value2(Datum datum,
 			Datum		cur_val;
 			int			j;
 			int			len;
-			Oid 		fieldOid;
+			Oid 		fieldOid = InvalidOid;
 
 			cur_val = elem_val->value;
 			len = list_length(names);

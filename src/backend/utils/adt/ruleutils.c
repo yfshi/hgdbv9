@@ -121,6 +121,11 @@
 #define PRETTYFLAG_INDENT		0x0002
 #define PRETTYFLAG_SCHEMA		0x0004
 
+/* Standard conversion of a "bool pretty" option to detailed flags */
+#define GET_PRETTY_FLAGS(pretty) \
+	((pretty) ? (PRETTYFLAG_PAREN | PRETTYFLAG_INDENT | PRETTYFLAG_SCHEMA) \
+	 : PRETTYFLAG_INDENT)
+
 /* Default line length for pretty-print wrapping: 0 means wrap always */
 #define WRAP_COLUMN_DEFAULT		0
 
@@ -1911,6 +1916,31 @@ pg_get_indexdef_worker(Oid indexrelid, int colno,
 	ReleaseSysCache(ht_idx);
 	ReleaseSysCache(ht_idxrel);
 	ReleaseSysCache(ht_am);
+
+	return buf.data;
+}
+
+/* ----------
+ * pg_get_querydef
+ *
+ * Public entry point to deparse one query parsetree.
+ * The pretty flags are determined by GET_PRETTY_FLAGS(pretty).
+ *
+ * The result is a palloc'd C string.
+ * ----------
+ */
+char *
+pg_get_querydef(Query *query, bool pretty)
+{
+	StringInfoData buf;
+	int			prettyFlags;
+
+	prettyFlags = GET_PRETTY_FLAGS(pretty);
+
+	initStringInfo(&buf);
+
+	get_query_def(query, &buf, NIL, NULL, true,
+				  prettyFlags, WRAP_COLUMN_DEFAULT, 0);
 
 	return buf.data;
 }
