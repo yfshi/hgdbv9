@@ -1241,6 +1241,12 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 				| function_heading function_properties ora_function_is_as
 					{
 						int found_varno = plisql_curr_compile->found_varno;
+						/* Begin - ReqID: OA-2124 */
+						PLiSQL_plsql_varno	plsql_varno;
+						plsql_varno.plsql_unit_varno = plisql_curr_compile->plsql_unit_varno;
+						plsql_varno.plsql_unit_type_varno = plisql_curr_compile->plsql_unit_type_varno;
+						plsql_varno.plsql_line_varno = plisql_curr_compile->plsql_line_varno;
+						/* End - ReqID: OA-2124 */
 
 						plisql_check_subprocfunc_properties($1,$2, false);
 						if ($2 != NIL)
@@ -1259,7 +1265,9 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						/* End - BUG#M0000168 */
 						plisql_start_subproc_func();
 						plisql_curr_compile = $1->function;
-						plisql_build_variable_from_funcargs($1, true, NULL, found_varno);
+						/* Begin - ReqID: OA-2124 */
+						plisql_build_variable_from_funcargs($1, true, NULL, found_varno, &plsql_varno);
+						/* End - ReqID: OA-2124 */
 						plisql_add_initdatums(NULL);
 					}
 				ora_outermost_pl_block ';'
@@ -1293,6 +1301,12 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 				| procedure_heading procedure_properties ora_function_is_as
 					{
 						int found_varno = plisql_curr_compile->found_varno;
+						/* Begin - ReqID: OA-2124 */
+						PLiSQL_plsql_varno	plsql_varno;
+						plsql_varno.plsql_unit_varno = plisql_curr_compile->plsql_unit_varno;
+						plsql_varno.plsql_unit_type_varno = plisql_curr_compile->plsql_unit_type_varno;
+						plsql_varno.plsql_line_varno = plisql_curr_compile->plsql_line_varno;
+						/* End - ReqID: OA-2124 */
 
 						plisql_check_subprocfunc_properties($1,$2, false);
 						if ($2 != NIL)
@@ -1311,7 +1325,9 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 						/* End - BUG#M0000168 */
 						plisql_start_subproc_func();
 						plisql_curr_compile = $1->function;
-						plisql_build_variable_from_funcargs($1, true, NULL, found_varno);
+						/* Begin - ReqID: OA-2124 */
+						plisql_build_variable_from_funcargs($1, true, NULL, found_varno, &plsql_varno);
+						/* End - ReqID: OA-2124 */
 						plisql_add_initdatums(NULL);
 					}
 				ora_outermost_pl_block ';'

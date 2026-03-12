@@ -1320,6 +1320,32 @@ do_compile(FunctionCallInfo fcinfo,
 	function->sql_varno = var->dno;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
+	/* Begin - ReaID: OA-2124 */
+	var = plisql_build_variable("$$plsql_unit", 0,
+								plisql_build_datatype(ORAVARCHARCHAROID,
+														-1,
+														InvalidOid,
+														NULL),
+								true);
+	function->plsql_unit_varno = var->dno;
+
+	var = plisql_build_variable("$$plsql_unit_type", 0,
+								plisql_build_datatype(ORAVARCHARCHAROID,
+														-1,
+														InvalidOid,
+														NULL),
+								true);
+	function->plsql_unit_type_varno = var->dno;
+
+	var = plisql_build_variable("$$plsql_line", 0,
+								plisql_build_datatype(INT4OID,
+														-1,
+														InvalidOid,
+														NULL),
+								true);
+	function->plsql_line_varno = var->dno;
+	/* End - ReaID: OA-2124 */
+
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	PG_TRY();
 	{
@@ -1875,6 +1901,32 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 								true);
 	function->sql_varno = var->dno;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+
+	/* Begin - ReaID: OA-2124 */
+	var = plisql_build_variable("$$plsql_unit", 0,
+								plisql_build_datatype(ORAVARCHARCHAROID,
+														-1,
+														InvalidOid,
+														NULL),
+								true);
+	function->plsql_unit_varno = var->dno;
+
+	var = plisql_build_variable("$$plsql_unit_type", 0,
+								plisql_build_datatype(ORAVARCHARCHAROID,
+														-1,
+														InvalidOid,
+														NULL),
+								true);
+	function->plsql_unit_type_varno = var->dno;
+
+	var = plisql_build_variable("$$plsql_line", 0,
+								plisql_build_datatype(INT4OID,
+														-1,
+														InvalidOid,
+														NULL),
+								true);
+	function->plsql_line_varno = var->dno;
+	/* End - ReaID: OA-2124 */
 
 	/*
 	 * Now parse the function's text

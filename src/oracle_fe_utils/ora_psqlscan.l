@@ -244,6 +244,9 @@ dolq_cont		[A-Za-z\200-\377_0-9]
 dolqdelim		\$({dolq_start}{dolq_cont}*)?\$
 dolqfailed		\${dolq_start}{dolq_cont}*
 dolqinside		[^$]+
+/* Begin - ReqID: OA-2124 */
+plsql_unit		\$\${dolq_start}{dolq_cont}*
+/* End - ReqID: OA-2124 */
 
 /* Begin - ReqID:SRS-SQL-ESCAPECHAR */
 /* q escape */
@@ -651,6 +654,25 @@ other			.
 				}
 	/* End - ReqID:SRS-SQL-ESCAPECHAR */
 
+	/* Begin - ReqID: OA-2124 */
+{plsql_unit}	{
+					/* If we match $$PLSQL_UNIT, output it exactly as is */
+					char *txt = pstrdup(yytext);
+					if ((pg_strcasecmp(txt + 2, "PLSQL_UNIT_TYPE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_LINE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_UNIT") == 0))
+					{
+						ECHO;
+					}
+					else	/* Follow the original behaivor of $$ and wait for the closing $$ */
+					{
+						cur_state->dolqstart = pg_strdup("$$");
+						BEGIN(xdolq);
+						ECHO;
+					}
+				}
+	/* End - ReqID: OA-2124 */
+
 {dolqdelim}		{
 					cur_state->dolqstart = pg_strdup(yytext);
 					BEGIN(xdolq);
@@ -661,6 +683,39 @@ other			.
 					yyless(1);
 					ECHO;
 				}
+
+	/* Begin - ReqID: OA-2124 */
+<xdolq>{plsql_unit}	{
+					/* If we match $$PLSQL_UNIT, output it exactly as is */
+					char *txt = pstrdup(yytext);
+					if ((pg_strcasecmp(txt + 2, "PLSQL_UNIT_TYPE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_LINE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_UNIT") == 0))
+					{
+						ECHO;
+					}
+					else		/* same as <xdolq>{dolqdelim} */
+					{
+						if (strncmp(txt, cur_state->dolqstart, 2) == 0)
+						{
+							free(cur_state->dolqstart);
+							cur_state->dolqstart = NULL;
+							BEGIN(INITIAL);
+						}
+						else
+						{
+							/*
+							 * handle the following scenario:
+							 *    $outer$CREATE FUNCTION iamalongfunction() RETURNS TEXT IMMUTABLE LANGUAGE SQL AS $f$SELECT text %L$f$$outer$
+							 * $f$$outer$ must be paesed as $f$ $outer$
+							 */
+							yyless(1);
+						}
+						ECHO;
+					}
+				}
+	/* End - ReqID: OA-2124 */
+
 <xdolq>{dolqdelim} {
 					if (strcmp(yytext, cur_state->dolqstart) == 0)
 					{
