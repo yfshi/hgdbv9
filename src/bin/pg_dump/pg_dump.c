@@ -262,6 +262,9 @@ static char *downMoptionString(char *options);
 static bool Moption(const char *options, const char **moptions, int length);
 static void DatabaseCheckMoption(const char *options);
 /* END - ReqID:SRS-MYSQL-PGDUMP */
+/* Begin - ReqID: SRS-SECURITY-LMAC */
+static void CheckSecurityUser(Archive *fout, const char *username, bool dump_sysmac_label);
+/* End - ReqID: SRS-SECURITY-LMAC */
 
 int
 main(int argc, char **argv)
@@ -324,6 +327,7 @@ main(int argc, char **argv)
 		{"no-acl", no_argument, NULL, 'x'},
 		{"compress", required_argument, NULL, 'Z'},
 		{"encoding", required_argument, NULL, 'E'},
+		{"dump-sysmac-label", no_argument, NULL, 'L'}, /* ReqID: SRS-SECURITY-LMAC */
 		{"help", no_argument, NULL, '?'},
 		{"version", no_argument, NULL, 'V'},
 		{"exclude-extension", required_argument, NULL, 'X'},	/*  BUG #Z7100 */
@@ -406,7 +410,7 @@ main(int argc, char **argv)
 
 	InitDumpOptions(&dopt);
 
-	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:M:n:N:Op:RsS:t:T:U:vwWxZ:X:",	/* ReqID:SRS-CMD-PGDUMP */
+	while ((c = getopt_long(argc, argv, "abBcCd:e:E:f:F:h:j:LM:n:N:Op:RsS:t:T:U:vwWxZ:X:",	/* ReqID:SRS-CMD-PGDUMP */
 							long_options, &optindex)) != -1)
 	{
 		switch (c)
@@ -459,6 +463,12 @@ main(int argc, char **argv)
 			case 'j':			/* number of dump jobs */
 				numWorkers = atoi(optarg);
 				break;
+
+			/* Begin - ReqID: SRS-SECURITY-LMAC */
+			case 'L':
+				dopt.dump_sysmac_label = true;
+				break;
+			/* End - ReqID: SRS-SECURITY-LMAC */
 
 			/* BEGIN - ReqID:SRS-CMD-PGDUMP */
 			case 'M':
@@ -856,6 +866,10 @@ main(int argc, char **argv)
 	}
 	/* END - BUGZ1295 */
 
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	CheckSecurityUser(fout, dopt.cparams.username, dopt.dump_sysmac_label);
+	/* End - ReqID: SRS-SECURITY-LMAC */
+
 	pg_log_info("last built-in OID is %u", g_last_builtin_oid);
 
 	/* Expand schema selection patterns into OID lists */
@@ -1124,6 +1138,7 @@ help(const char *progname)
 	printf(_("  -e, --extension=PATTERN      dump the specified extension(s) only\n"));
 	printf(_("  -X, --exclude-extension      do not dump extension\n"));	/* BUG #Z7100 */
 	printf(_("  -E, --encoding=ENCODING      dump the data in encoding ENCODING\n"));
+	printf(_("  -L, --dump-sysmac-label      dump the security label columns of the table (hg_sysmac)\n")); /* ReqID: SRS-SECURITY-LMAC */
 	printf(_("  -M                           dump the specified compatible_mode data only(pg, oracle, mysql)\n"));	/* BUGZ1299 */
 	printf(_("  -n, --schema=PATTERN         dump the specified schema(s) only\n"));
 	printf(_("  -N, --exclude-schema=PATTERN do NOT dump the specified schema(s)\n"));
@@ -1399,3 +1414,46 @@ static void DatabaseCheckMoption(const char *options)
 		fatal("Except for Oracle and MySQL database modes, other database modes do not support -M");	/* BUGZ1346 */
 }
 /* END - ReqID:SRS-MYSQL-PGDUMP */
+
+/* Begin - ReqID: SRS-SECURITY-LMAC */
+/*
+ * Find the OIDs of all tables matching the given list of patterns,
+ * and append them to the given OID list. See also expand_dbname_patterns()
+ * in pg_dumpall.c
+ */
+static void
+CheckSecurityUser(Archive *fout, const char *username, bool dump_sysmac_label)
+{
+	PQExpBuffer query;
+	PGresult   *res;
+	int			ntups;
+
+	if (dump_sysmac_label == false || !username)
+		return;					/* nothing to do */
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "SELECT hg_security.is_sysdba('%s'::regrole) AS has_privilege\n", username);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	ntups = PQntuples(res);
+	if (ntups != 1)
+	{
+		PQclear(res);
+		destroyPQExpBuffer(query);
+		pg_log_error("the query results does not contain exactly one row");
+		fatal("query was: %s", query->data);
+	}
+
+	if (PQgetvalue(res, 0, PQfnumber(res, "has_privilege"))[0] != 't')
+	{
+		PQclear(res);
+		destroyPQExpBuffer(query);
+		fatal("option -L/--dump-sysmac-label can only be used by a superuser or a sysdba.");
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+}
+/* End - ReqID: SRS-SECURITY-LMAC */
