@@ -84,8 +84,10 @@ typedef enum
 #define WAITS_PER_SEC	10		/* should divide USEC_PER_SEC evenly */
 
 /* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
 #define MD_CHECK_SUCCESS	1
 #define	MD_CHECK_FILS		2
+#endif
 /* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 
 static bool do_wait = true;
@@ -122,7 +124,9 @@ static char logrotate_file[MAXPGPATH];
 
 static volatile pgpid_t postmasterPID = -1;
 /* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
 static bool is_consistency_check = false;
+#endif
 /* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 #ifdef WIN32
 static DWORD pgctl_start_type = SERVICE_AUTO_START;
@@ -2148,11 +2152,28 @@ do_help(void)
 	printf(_("%s is a utility to initialize, start, stop, or control a PostgreSQL server.\n\n"), progname);
 	printf(_("Usage:\n"));
 	printf(_("  %s init[db]   [-D DATADIR] [-s] [-o OPTIONS]\n"), progname);
+
+/* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	printf(_("  %s start      [-D DATADIR] [-C] [-l FILENAME] [-W] [-t SECS] [-s]\n"
+			 "                    [-o OPTIONS] [-p PATH] [-c]\n"), progname);
+#else
 	printf(_("  %s start      [-D DATADIR] [-l FILENAME] [-W] [-t SECS] [-s]\n"
 			 "                    [-o OPTIONS] [-p PATH] [-c]\n"), progname);
+#endif
+/* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+
 	printf(_("  %s stop       [-D DATADIR] [-m SHUTDOWN-MODE] [-W] [-t SECS] [-s]\n"), progname);
+
+/* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	printf(_("  %s restart    [-D DATADIR] [-C] [-m SHUTDOWN-MODE] [-W] [-t SECS] [-s]\n"
+			 "                    [-o OPTIONS] [-c]\n"), progname);
+#else
 	printf(_("  %s restart    [-D DATADIR] [-m SHUTDOWN-MODE] [-W] [-t SECS] [-s]\n"
 			 "                    [-o OPTIONS] [-c]\n"), progname);
+#endif
+/* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 	printf(_("  %s reload     [-D DATADIR] [-s]\n"), progname);
 	printf(_("  %s status     [-D DATADIR]\n"), progname);
 	printf(_("  %s promote    [-D DATADIR] [-W] [-t SECS] [-s]\n"), progname);
@@ -2188,7 +2209,11 @@ do_help(void)
 #else
 	printf(_("  -c, --core-files       not applicable on this platform\n"));
 #endif
-	printf(_("  -C, --consistency-check     consistency check\n"));
+/* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	printf(_("  -C, --consistency-check executable file consistency check\n"));
+#endif
+/* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 	printf(_("  -l, --log=FILENAME     write (or append) server log to FILENAME\n"));
 	printf(_("  -o, --options=OPTIONS  command line options to pass to postgres\n"
 			 "                         (PostgreSQL server executable) or initdb\n"));
@@ -2379,6 +2404,35 @@ get_control_dbstate(void)
 	return ret;
 }
 
+/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+static void
+bin_consistency_check(const char *argv0)
+{
+#ifndef WIN32
+	int return_sys;
+	char *lastsep = NULL;
+
+	char my_exec_path[MAXPGPATH];
+	char command[MAXPGPATH];
+	if (find_my_exec(argv0, my_exec_path) < 0)
+	{
+		fprintf(stderr, _("%s: could not find own program executable\n"), progname);
+		exit(1);
+	}
+	lastsep = strrchr(my_exec_path, '/');
+	if (lastsep)
+		*lastsep = '\0';
+	snprintf(command, MAXPGPATH, "bash %s/hg_funcheck.sh -c", my_exec_path);
+	return_sys = system(command);
+	if (return_sys == MD_CHECK_FILS)
+	{
+		exit(1);
+	}
+#endif
+}
+#endif
+/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 
 int
 main(int argc, char **argv)
@@ -2398,7 +2452,11 @@ main(int argc, char **argv)
 		{"core-files", no_argument, NULL, 'c'},
 		{"wait", no_argument, NULL, 'w'},
 		{"no-wait", no_argument, NULL, 'W'},
+/* Begin ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
 		{"consistency-check", no_argument, NULL, 'C'}, // ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK
+#endif
+/* End ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 		{NULL, 0, NULL, 0}
 	};
 
@@ -2482,8 +2540,13 @@ main(int argc, char **argv)
 	/* process command-line options */
 	while (optind < argc)
 	{
+#ifdef ENABLE_DKY_BETA_FEATURE
 		while ((c = getopt_long(argc, argv, "cCD:e:l:m:N:o:p:P:RsS:t:U:wW", // ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK
 								long_options, &option_index)) != -1)
+#else
+		while ((c = getopt_long(argc, argv, "cD:e:l:m:N:o:p:P:RsS:t:U:wW",
+								long_options, &option_index)) != -1)
+#endif
 		{
 			switch (c)
 			{
@@ -2572,9 +2635,11 @@ main(int argc, char **argv)
 					allow_core_files = true;
 					break;
 				/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
 				case 'C':
 					is_consistency_check = true;
 					break;
+#endif
 				/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 				default:
 					/* getopt_long already issued a suitable error message */
@@ -2704,29 +2769,13 @@ main(int argc, char **argv)
 		case START_COMMAND:
 			do_start();
 			/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
 #ifndef WIN32
 			if (is_consistency_check)
 			{
-				int return_sys;
-				char 	*lastsep = NULL;
-
-				char my_exec_path[MAXPGPATH];
-				char command[MAXPGPATH];
-				if (find_my_exec(argv[0], my_exec_path) < 0)
-				{
-					fprintf(stderr, _("%s: could not find own program executable\n"), progname);
-					exit(1);
-				}
-				lastsep = strrchr(my_exec_path, '/');
-				if (lastsep)
-					*lastsep = '\0';
-				snprintf(command, MAXPGPATH, "bash %s/hg_funcheck.sh -c", my_exec_path);
-				return_sys = system(command);
-				if (return_sys == MD_CHECK_FILS)
-				{
-					exit(1);
-				}
+				bin_consistency_check(argv[0]);
 			}
+#endif
 #endif
 			/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 			break;
@@ -2735,6 +2784,16 @@ main(int argc, char **argv)
 			break;
 		case RESTART_COMMAND:
 			do_restart();
+			/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+#ifndef WIN32
+			if (is_consistency_check)
+			{
+				bin_consistency_check(argv[0]);
+			}
+#endif
+#endif
+			/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 			break;
 		case RELOAD_COMMAND:
 			do_reload();
