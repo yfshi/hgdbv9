@@ -1778,7 +1778,7 @@ mys_set_insertval(PG_FUNCTION_ARGS)
 											  NumericGetDatum(uint64_to_numeric(PG_INT64_MAX)))))
 	{
 		ereport(WARNING, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("auto_increment max is 9223372036854775807")));
-		value = 9223372036854775807;
+		value = PG_INT64_MAX;
 	}
 	else
 	{
@@ -3641,3 +3641,55 @@ get_sessionid(void)
 	PG_RETURN_INT64(result);
 }
 /* End - ReqID:SRS-SQL-SEQ */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+/*
+ * used to update the seq value
+ * refer mys_set_insertval()
+ */
+void
+mys_modify_set_auto_increment(Oid seq_relid, Datum valuenum)
+{
+	SeqTable elm;
+	Relation seqrel;
+	uint64 value = 0;
+	bool need_update = true;
+
+	if (DatumGetBool(DirectFunctionCall2(numeric_gt, valuenum,
+										 NumericGetDatum(uint64_to_numeric(PG_UINT64_MAX)))))
+	{
+		ereport(ERROR, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("Failed to read auto-increment value from storage engine")));
+	}
+	else if (DatumGetBool(DirectFunctionCall2(numeric_gt, valuenum,
+											  NumericGetDatum(uint64_to_numeric(PG_INT64_MAX)))))
+	{
+		ereport(WARNING, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("auto_increment max is 9223372036854775807")));
+		value = PG_INT64_MAX;
+	}
+	else
+	{
+		value = DatumGetInt64(DirectFunctionCall1(numeric_int8, valuenum));
+		if ((int64)value < 0)
+		{
+			/*
+			 * if the value is less than 0
+			 * did not update the seq
+			 */
+			need_update = false;
+		}
+	}
+
+	if (need_update)
+	{
+		/* open and lock sequence */
+		init_sequence(seq_relid, &elm, &seqrel);
+		set_auto_increment(elm, seqrel, true, value, false);
+		relation_close(seqrel, NoLock);
+		last_used_seq = elm;
+	}
+	else
+	{
+		/* do nothing */
+	}
+}
+/* End - ReqID:SRS-MYSQL-SQL-Alter */

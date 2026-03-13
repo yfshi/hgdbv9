@@ -878,7 +878,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	BACKWARD BEFORE BEGIN_P BETWEEN BIGINT BINARY BIT BLOB_P
 	BOOLEAN_P BOTH BREADTH BY
 
-	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHAR_P
+	CACHE CALL CALLED CASCADE CASCADED CASE CAST CATALOG_P CHAIN CHANGE /* ReqID:SRS-MYSQL-SQL-Alter */ CHAR_P
 	CHARACTER CHARACTERISTICS CHARSET CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
 	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
@@ -923,7 +923,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LONGBLOB LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
-	MICROSECOND_P MINUTE_P MINVALUE MOD MODE MONTH_P MOVE
+	MICROSECOND_P MINUTE_P MINVALUE MOD MODE MODIFY /* ReqID:SRS-MYSQL-SQL-Alter */ MONTH_P MOVE
 
 	NAME_CONST NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
@@ -2997,9 +2997,17 @@ index_partition_cmd:
 				}
 		;
 
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+after_col:
+		/* empty */
+		| FIRST_P
+		| AFTER ColId
+        ;
+/* End - ReqID:SRS-MYSQL-SQL-Alter */
+
 alter_table_cmd:
 			/* ALTER TABLE <name> ADD <coldef> */
-			ADD_P columnDef
+			ADD_P columnDef after_col /* ReqID:SRS-MYSQL-SQL-Alter */
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
@@ -3017,7 +3025,7 @@ alter_table_cmd:
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> ADD COLUMN <coldef> */
-			| ADD_P COLUMN columnDef
+			| ADD_P COLUMN columnDef after_col /* ReqID:SRS-MYSQL-SQL-Alter */
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_AddColumn;
@@ -3529,6 +3537,28 @@ alter_table_cmd:
 					$$ = (Node *)n;	
 				}
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			/* Begin - SRS-MYSQL-SQL-Alter */
+			| MODIFY opt_column columnDef after_col
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					ColumnDef *def = (ColumnDef *) $3;
+
+					n->subtype = AT_ModifyColumn;
+					n->name	= pstrdup(def->colname);
+					n->def = $3;
+
+					$$ = (Node *)n;
+				}
+			| CHANGE opt_column ColId columnDef after_col
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_ChangeColumn;
+					n->name = $3;
+					n->def = $4;
+
+					$$ = (Node *)n;
+				}
+			/* End - SRS-MYSQL-SQL-Alter */
 		;
 
 auto_increment_value:
@@ -20209,6 +20239,7 @@ unreserved_keyword:
 			| CASCADED
 			| CATALOG_P
 			| CHAIN
+			| CHANGE	/* ReqID:SRS-MYSQL-SQL-Alter */
 			| CHARACTERISTICS
 			| CHECKPOINT
 			| CLASS
@@ -20340,6 +20371,7 @@ unreserved_keyword:
 			| MINVALUE
 			| MOD
 			| MODE
+			| MODIFY	/* ReqID:SRS-MYSQL-SQL-Alter */
 			| MONTH_P
 			| MOVE
 			| NAME_P
@@ -20851,6 +20883,7 @@ bare_label_keyword:
 			| CAST
 			| CATALOG_P
 			| CHAIN
+			| CHANGE	/* ReqID:SRS-MYSQL-SQL-Alter */
 			| CHARACTERISTICS
 			| CHECK
 			| CHECKPOINT
@@ -21055,6 +21088,7 @@ bare_label_keyword:
 			| MINVALUE
 			| MOD
 			| MODE
+			| MODIFY	/* ReqID:SRS-MYSQL-SQL-Alter */
 			| MOVE
 			| NAME_P
 			| NAMES

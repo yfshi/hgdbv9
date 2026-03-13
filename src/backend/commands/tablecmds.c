@@ -58,6 +58,7 @@
 #include "catalog/storage_xlog.h"
 #include "catalog/toasting.h"
 #include "catalog/storage_gtt.h"
+#include "commands/alter.h"	/* ReqID:SRS-MYSQL-SQL-Alter */
 #include "commands/cluster.h"
 #include "commands/comment.h"
 #include "commands/defrem.h"
@@ -714,6 +715,30 @@ static void ATExecSetPartitioning(Relation rel, bool newval);
 static void ATExecSetSubPartitionTemplate(Relation rootrel, OraSubPartitionTemplateSpec *subptemp);
 static void ATExecRenamePartitionOrSubPartition(Relation rootrel, Oid partid, char *new_pname, bool is_partition);
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+static void ATPrepModifyChangeColumn(List **wqueue,
+									 AlteredTableInfo *tab, Relation rel,
+									 bool recurse, bool recursing,
+									 AlterTableCmd *cmd, LOCKMODE lockmode,
+									 AlterTableUtilityContext *context);
+static void ATExecModifyChangeColumn(AlteredTableInfo *tab, Relation rel,
+									 AlterTableCmd *cmd, LOCKMODE lockmode);
+static void RenameColumnName(AlteredTableInfo *tab, Relation rel,
+							 AlterTableCmd *cmd, LOCKMODE lockmode);
+static ObjectAddress ATExecHandleColumnDefault(AlteredTableInfo *tab, Relation rel,
+											   AlterTableCmd *cmd, LOCKMODE lockmode);
+static void ATExecUpdateIdentityAndGeneratedAttr(AlteredTableInfo *tab, Relation rel,
+												 AlterTableCmd *cmd, LOCKMODE lockmode);
+static bool CheckColumnIsAutoincrement(Oid relid, const char *attname);
+static Datum StoreOldValue(NewColumnValue *ex, TupleDesc TupDesc,
+						   TupleTableSlot *newslot, ExprContext *econtext,
+						   bool *update);
+static bool IsAllowedFKTypeChange(Oid old_type, int32 old_typmod,
+									  Oid new_type, int32 new_typmod);
+static bool columnIsPartofForeignKey(Oid relid, AttrNumber attnum);
+static bool CheckColumnIsPrimary(Relation rel, char *colname);
+/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 /* ----------------------------------------------------------------
  *		DefineRelation
@@ -5327,6 +5352,8 @@ AlterTableGetLockLevel(List *cmds)
 			case AT_SetTableSpace:	/* must rewrite heap */
 			case AT_AlterColumnType:	/* must rewrite heap */
 			case AT_AddRowids: /* ReqID:SRS-SQL-ROWID */
+			case AT_ModifyColumn:	/* ReqID:SRS-MYSQL-SQL-Alter */
+			case AT_ChangeColumn:	/* ReqID:SRS-MYSQL-SQL-Alter */
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 
@@ -5902,6 +5929,22 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 								  lockmode, context);
 			pass = AT_PASS_ALTER_TYPE;
 			break;
+		/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+		case AT_ModifyColumn:
+			ATSimplePermissions(rel, ATT_TABLE);
+			cmd = ATParseTransformCmd(wqueue, tab, rel, cmd, recurse, lockmode, AT_PASS_UNSET, context);
+			Assert(cmd != NULL);
+			ATPrepModifyChangeColumn(wqueue, tab, rel, recurse, recursing, cmd, lockmode, context);
+			pass = AT_PASS_ALTER_TYPE;
+			break;
+		case AT_ChangeColumn:
+			ATSimplePermissions(rel, ATT_TABLE);
+			cmd = ATParseTransformCmd(wqueue, tab, rel, cmd, recurse, lockmode, AT_PASS_UNSET, context);
+			Assert(cmd != NULL);
+			ATPrepModifyChangeColumn(wqueue, tab, rel, recurse, recursing, cmd, lockmode, context);
+			pass = AT_PASS_ALTER_TYPE;
+			break;
+		/* End - ReqID:SRS-MYSQL-SQL-Alter */
 		case AT_AlterColumnGenericOptions:
 			ATSimplePermissions(rel, ATT_FOREIGN_TABLE);
 			/* This command never recurses */
@@ -6644,6 +6687,14 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			ATExecRenamePartitionOrSubPartition(rel, cmd->part_oid, cmd->name, false);
 			break;
 		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+		case AT_ModifyColumn:
+			ATExecModifyChangeColumn(tab, rel, cmd, lockmode);
+			break;
+		case AT_ChangeColumn:
+			ATExecModifyChangeColumn(tab, rel, cmd, lockmode);
+			break;
+		/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
@@ -7159,6 +7210,10 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 	int			ti_options;
 	ExprState  *partqualstate = NULL;
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	Oid	auto_seq_id = InvalidOid;
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
+
 	/*
 	 * Open the relation(s).  We have surely already locked the existing
 	 * table.
@@ -7357,6 +7412,10 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 		while (table_scan_getnextslot(scan, ForwardScanDirection, oldslot))
 		{
 			TupleTableSlot *insertslot;
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			Datum numericDatum = (Datum)0;;
+			bool need_update_auto_value = false;
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 			if (tab->rewrite > 0)
 			{
@@ -7397,10 +7456,50 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 					if (ex->is_generated)
 						continue;
 
-					newslot->tts_values[ex->attnum - 1]
-						= ExecEvalExpr(ex->exprstate,
-									   econtext,
-									   &newslot->tts_isnull[ex->attnum - 1]);
+					/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+					/*
+					 * for alter table add column id int auto_increment
+					 * 	id is a new column
+					 * 	for this column there just one expr NextValueExpr
+					 * for alter table modify id int auto_inrement
+					 *    if datatype did not changed, Var epxr + NextValueExpr expr for this column
+					 *    if datatype changed, Funcall expr(varchar --> int) + NextValueExpr expr for this column
+					 * after calling datatype change function call
+					 *    newslot->tts_values[ex->attnum - 1] is the target value
+					 *    so just handle the NextValueExpr
+					 */
+					/*
+					 * Three different handles for NULL, 0, value
+					 * For NULL:
+					 * 	no mater sql_mode set NO_AUTO_VALUE_ON_ZERO, should be filled by the next value
+					 * For 0:
+					 * 	sql_mode not set NO_AUTO_VALUE_ON_ZERO(default), should be filled by the next value
+					 * 	sql_mode set NO_AUTO_VALUE_ON_ZERO, 0 is just 0
+					 * For value:
+					 * 	positive: update seq if it bigger than last
+					 * 	negative: did not update seq
+					 */
+					if (compatible_mode == MYS_MODE && IsA(ex->expr, NextValueExpr) &&
+					    ex->attnum <= oldTupDesc->natts && !newslot->tts_isnull[ex->attnum - 1])
+					{
+						NextValueExpr *nve = (NextValueExpr *) ex->expr;
+						if (nve->auto_increment)
+						{
+							numericDatum = StoreOldValue(ex, newTupDesc, newslot, econtext, &need_update_auto_value );
+							/*
+							 * the seq did not owned by table, so can not find by
+							 * auto_seq_id = getIdentityAutoIncrement(OIDNewHeap, ex->attnum, false);
+							 */
+							auto_seq_id = nve->seqid;
+						}
+					}
+					else
+					{
+						newslot->tts_values[ex->attnum - 1]
+						    = ExecEvalExpr(ex->exprstate,
+								   econtext,
+								   &newslot->tts_isnull[ex->attnum - 1]);
+					}
 				}
 
 				ExecStoreVirtualTuple(newslot);
@@ -7499,8 +7598,18 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 
 			/* Write the tuple out to the new relation */
 			if (newrel)
+			{
 				table_tuple_insert(newrel, insertslot, mycid,
 								   ti_options, bistate);
+
+				/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+				if (compatible_mode == MYS_MODE && need_update_auto_value)
+				{
+					/* update the seq next value */
+					mys_modify_set_auto_increment(auto_seq_id, numericDatum);
+				}
+				/* End - ReqID:SRS-MYSQL-SQL-Alter */
+			}
 
 			ResetExprContext(econtext);
 
@@ -13945,7 +14054,8 @@ ATPrepAlterColumnType(List **wqueue,
 	 * alter enum column type, create new enum type.
 	 */
 	if (compatible_mode == MYS_MODE &&
-		typename_is_enum(typeName))
+		typename_is_enum(typeName) &&
+		(cmd->subtype != AT_ModifyColumn || cmd->subtype != AT_ChangeColumn))	/* ReqID:SRS-MYSQL-SQL-Alter */
 	{
 		CreateEnumTypeForAlterTable(attTup, RelationGetRelationName(rel), colName, typeName);
 	}
@@ -14398,6 +14508,18 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	/* Begin - ReqID:SRS-PLSQL-TYPE */
 	ObjectFunOrPkgSets *depTypeObjects = NULL;	/* BUG#Z1670 */
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	Oid	myrelid = RelationGetRelid(rel);
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	/*
+	 * check if there has auto already
+	 */
+	if (def->is_auto_increment && CheckColumnIsAutoincrement(myrelid, colName))
+	{
+		elog(ERROR, "there can be only one auto column and it must be defined as a key");
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 	/*
 	 * Clear all the missing values if we're rewriting the table, since this
@@ -22934,3 +23056,928 @@ ATExecRenamePartitionOrSubPartition(Relation rootrel, Oid partid, char *new_pnam
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+/*
+ * IsAllowedFKTypeChange
+ *     check if allowed change the foregin key data type
+ *
+ * args
+ *     Oid old_type
+ *     int32 old_typmod
+ *     Oid new_type
+ *     int32 new_typmod
+ *
+ * detail desc:
+ * for foregin key
+ * 	allow same type changing
+ * 	did not allow diff type changing
+ * allow:
+ * 	varchar(20) --> varchar(30)
+ * not allow:
+ * 	varchar(20) --> varchar(30)
+ * 	int --> varchar(20)
+ * 	varchar(20) --> int
+ * 	int --> float
+ * 	varchar(20) --> text
+ */
+static bool
+IsAllowedFKTypeChange(Oid old_type, int32 old_typmod, Oid new_type, int32 new_typmod)
+{
+	if (old_type != new_type)
+	{
+		return false;
+	}
+
+	if (old_type == VARCHAROID)
+	{
+		if (new_typmod == -1)
+			return true;
+		if (old_typmod == -1 && new_typmod != -1)
+			return false;
+
+		return (new_typmod >= old_typmod);
+	}
+	return true;
+}
+
+/*
+ * is_attnum_in_constraint_array
+ *     check if target col_id is part of int2 arrary
+ * args
+ *     Datum array_datum
+ *     AttrNumber target_att
+ *
+ * The returned is true or false
+ */
+static bool
+is_attnum_in_constraint_array(Datum array_datum, AttrNumber target_att)
+{
+	ArrayType	*arr = DatumGetArrayTypeP(array_datum);
+	int16	*ptr = (int16 *) ARR_DATA_PTR(arr);
+	int	n = ARR_DIMS(arr)[0];
+
+	for (int i = 0; i < n; i++)
+	{
+		if (ptr[i] == (int16) target_att)
+			return true;
+	}
+	return false;
+}
+
+/*
+ * columnIsPartofForeignKey
+ *     check if col is part of the foregin keys
+ * args
+ *     Oid relid
+ *     AttrNumber attnum
+ *
+ * The returned is true or false
+ */
+static bool
+columnIsPartofForeignKey(Oid relid, AttrNumber attnum)
+{
+	Relation	conRel;
+	ScanKeyData	key;
+	SysScanDesc	scan;
+	HeapTuple	tup;
+	bool		found = false;
+
+	conRel = table_open(ConstraintRelationId, AccessShareLock);
+
+	ScanKeyInit(&key,
+				Anum_pg_constraint_conrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+
+	/*
+ 	 * scan used ConstraintRelidTypidNameIndexId
+ 	 * if rel is child table, its faster
+ 	 * Anum_pg_constraint_conkey (not Anum_pg_constraint_confkey)
+ 	 *    mark the col if refer to another parent's col
+ 	 */
+	scan = systable_beginscan(conRel, ConstraintRelidTypidNameIndexId, false, NULL, 1, &key);
+
+	while (!found && HeapTupleIsValid(tup = systable_getnext(scan)))
+	{
+		Datum	adatum;
+		bool	isNull;
+		Form_pg_constraint con = (Form_pg_constraint) GETSTRUCT(tup);
+		/* filter CONSTRAINT_FOREIGN */
+		if (con->contype != CONSTRAINT_FOREIGN)
+			continue;
+
+		adatum = heap_getattr(tup, Anum_pg_constraint_conkey,
+							  RelationGetDescr(conRel), &isNull);
+		if (!isNull && is_attnum_in_constraint_array(adatum, attnum))
+		{
+			found = true;
+			break;
+		}
+	}
+	systable_endscan(scan);
+
+	/*
+	 * full table scan as idex scan fail
+	 * if rel is parent table
+	 * Anum_pg_constraint_confkey
+	 *    mark the col is refered by child's col
+	 */
+	if (!found)
+	{
+		ScanKeyData	key2;
+		ScanKeyInit(&key2,
+					Anum_pg_constraint_confrelid,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(relid));
+
+		scan = systable_beginscan(conRel, InvalidOid, true, NULL, 1, &key2);
+
+		while (!found && HeapTupleIsValid(tup = systable_getnext(scan)))
+		{
+			Datum	adatum;
+			bool	isNull;
+			Form_pg_constraint con = (Form_pg_constraint) GETSTRUCT(tup);
+			/* filter CONSTRAINT_FOREIGN */
+			if (con->contype != CONSTRAINT_FOREIGN)
+				continue;
+			if (con->confrelid != relid)
+				continue;
+
+			adatum = heap_getattr(tup, Anum_pg_constraint_confkey,
+								  RelationGetDescr(conRel), &isNull);
+			if (!isNull && is_attnum_in_constraint_array(adatum, attnum))
+			{
+				found = true;
+				break;
+			}
+		}
+		systable_endscan(scan);
+	}
+
+	table_close(conRel, AccessShareLock);
+	return found;
+}
+
+/*
+ * CheckColumnIsPrimary
+ *     check if this column is primary key or in an index used as a replica identity
+ * args
+ *     Relation rel
+ *     char *colname
+ *
+ * The returned is true or false
+ */
+static bool
+CheckColumnIsPrimary(Relation rel, char *colname)
+{
+	HeapTuple tuple;
+	Form_pg_attribute attTup;
+	AttrNumber attnum;
+	List *indexoidlist;
+	ListCell *indexoidscan;
+	bool isPartOfPrimary = false;
+
+	tuple = SearchSysCacheCopyAttName(RelationGetRelid(rel), colname);
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" does not exist",
+						colname, RelationGetRelationName(rel))));
+	attTup = (Form_pg_attribute) GETSTRUCT(tuple);
+	attnum = attTup->attnum;
+
+	/* Prevent them from altering a system attribute */
+	if (attnum <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot alter system column \"%s\"",
+						colname)));
+
+	/*
+	 * Check that the attribute is not in a primary key or in an index used as
+	 * a replica identity.
+	 *
+	 * Note: we'll throw error even if the pkey index is not valid.
+	 */
+
+	/* Loop over all indexes on the relation */
+	indexoidlist = RelationGetIndexList(rel);
+
+	foreach(indexoidscan, indexoidlist)
+	{
+		Oid		indexoid = lfirst_oid(indexoidscan);
+		HeapTuple	indexTuple;
+		Form_pg_index	indexStruct;
+		int		i;
+
+		indexTuple = SearchSysCache1(INDEXRELID, ObjectIdGetDatum(indexoid));
+		if (!HeapTupleIsValid(indexTuple))
+			elog(ERROR, "cache lookup failed for index %u", indexoid);
+		indexStruct = (Form_pg_index) GETSTRUCT(indexTuple);
+
+		/*
+		 * If the index is not a primary key or an index used as replica
+		 * identity, skip the check.
+		 */
+		if (indexStruct->indisprimary || indexStruct->indisreplident)
+		{
+			/*
+			 * Loop over each attribute in the primary key or the index used
+			 * as replica identity and see if it matches the to-be-altered
+			 * attribute.
+			 */
+			for (i = 0; i < indexStruct->indnkeyatts; i++)
+			{
+				if (indexStruct->indkey.values[i] == attnum)
+				{
+					isPartOfPrimary = true;
+					break;
+				}
+			}
+		}
+
+		ReleaseSysCache(indexTuple);
+	}
+
+	list_free(indexoidlist);
+	heap_freetuple(tuple);
+
+	return isPartOfPrimary;
+}
+
+/*
+ * CheckColumnIsAutoincrement
+ *     check if col is auto increment already
+ * args
+ *     Oid relid
+ *     const char *attname
+ *
+ * The returned is true or false
+ */
+static bool
+CheckColumnIsAutoincrement(Oid relid, const char *attname)
+{
+	Relation	attrel;
+	SysScanDesc	scan;
+	ScanKeyData	key[1];
+	HeapTuple	atttup;
+	bool		result = false;
+
+	/* Grab an appropriate lock on the pg_attribute relation */
+	attrel = table_open(AttributeRelationId, AccessShareLock);
+
+	/* Use the index to scan only attributes of the target relation */
+	ScanKeyInit(&key[0],
+				Anum_pg_attribute_attrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+
+	scan = systable_beginscan(attrel, AttributeRelidNumIndexId, true,
+							  NULL, 1, key);
+
+	/* check all the matching tuples */
+	while ((atttup = systable_getnext(scan)) != NULL)
+	{
+		Form_pg_attribute attForm;
+
+		if (!HeapTupleIsValid(atttup))
+		{
+			elog(ERROR, "could not find tuple for column  of relation %u", relid);
+		}
+
+		attForm = (Form_pg_attribute) GETSTRUCT(atttup);
+		if (attForm->attnum <= 0)
+		{
+			continue;
+		}
+
+		if (ATTRIBUTE_IDENTITY_AUTO_INCREMENT == attForm->attidentity)
+		{
+			result = true;
+			break;
+		}
+	}
+
+	/* Clean up after the scan */
+	systable_endscan(scan);
+	table_close(attrel, AccessShareLock);
+
+	return result;
+}
+
+/*
+ * ATExecHandleColumnDefault
+ *     if there have an default, add it
+ * args
+ *     AlteredTableInfo *tab
+ *     Relation rel
+ *     AlterTableCmd *cmd
+ *     LOCKMODE lockmode
+ *
+ */
+static ObjectAddress
+ATExecHandleColumnDefault(AlteredTableInfo *tab, Relation rel, AlterTableCmd *cmd, LOCKMODE lockmode)
+{
+
+	AttrNumber	attnum;
+	ObjectAddress	address;
+	HeapTuple	heapTup;
+	HeapTuple	typeTuple;
+	char		*colName = cmd->name;
+	ColumnDef	*def = (ColumnDef *) cmd->def;
+	Node		*newDefault = def->raw_default;
+	Form_pg_type	tform;
+	Oid	typeOid;
+	int32	typmod;
+	Expr	*defval;
+	Form_pg_attribute attTup;
+
+	heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), cmd->name);
+	if (!HeapTupleIsValid(heapTup)) /* shouldn't happen */
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" does not exist",
+				 colName, RelationGetRelationName(rel))));
+	}
+
+	attTup = (Form_pg_attribute) GETSTRUCT(heapTup);
+	attnum = attTup->attnum;
+
+	/*
+	 * get the number of the attribute
+	 */
+	if (attnum == InvalidAttrNumber)
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" does not exist",
+				 colName, RelationGetRelationName(rel))));
+
+	/* Prevent them from altering a system attribute */
+	if (attnum <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot alter system column \"%s\"",
+				 colName)));
+
+	/*
+	 * Remove any old default for the column.  We use RESTRICT here for
+	 * safety, but at present we do not expect anything to depend on the
+	 * default.
+	 *
+	 * We treat removing the existing default as an internal operation when it
+	 * is preparatory to adding a new default, but as a user-initiated
+	 * operation when the user asked for a drop.
+	 */
+	RemoveAttrDefault(RelationGetRelid(rel), attnum, DROP_RESTRICT, false,
+					  newDefault == NULL ? false : true);
+
+	if (newDefault)
+	{
+		/* SET DEFAULT */
+		RawColumnDefault *rawEnt;
+
+		rawEnt = (RawColumnDefault *) palloc(sizeof(RawColumnDefault));
+		rawEnt->attnum = attnum;
+		rawEnt->raw_default = newDefault;
+		rawEnt->missingMode = false;
+		rawEnt->generated = '\0';
+
+		/*
+		 * This function is intended for CREATE TABLE, so it processes a
+		 * _list_ of defaults, but we just do one.
+		 */
+		AddRelationNewConstraints(rel, list_make1(rawEnt), NIL,
+								  false, true, false, NULL);
+	}
+
+	typeTuple = typenameType(NULL, def->typeName, &typmod);
+	tform = (Form_pg_type) GETSTRUCT(typeTuple);
+	typeOid = tform->oid;
+
+	if (RELKIND_HAS_STORAGE(tab->relkind) && attTup->attnum > 0)
+	{
+		bool		has_domain_constraints;
+		bool		has_missing = false;
+
+		/*
+		 * For an identity column, we can't use build_column_default(),
+		 * because the sequence ownership isn't set yet.  So do it manually.
+		 */
+		if (def->identity)
+		{
+			NextValueExpr *nve = makeNode(NextValueExpr);
+
+			nve->seqid = RangeVarGetRelid(def->identitySequence, NoLock, false);
+			nve->typeId = typeOid;
+			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+			nve->auto_increment = false;
+			if (def->identity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+			{
+				nve->auto_increment = true;
+			}
+			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
+			defval = (Expr *) nve;
+		}
+		else
+			defval = (Expr *) build_column_default(rel, attTup->attnum);
+
+		/* Build CoerceToDomain(NULL) expression if needed */
+		has_domain_constraints = DomainHasConstraints(typeOid);
+		if (!defval && has_domain_constraints)
+		{
+			Oid			baseTypeId;
+			int32		baseTypeMod;
+			Oid			baseTypeColl;
+
+			baseTypeMod = typmod;
+			baseTypeId = getBaseTypeAndTypmod(typeOid, &baseTypeMod);
+			baseTypeColl = get_typcollation(baseTypeId);
+			defval = (Expr *) makeNullConst(baseTypeId, baseTypeMod, baseTypeColl);
+			defval = (Expr *) coerce_to_target_type(NULL,
+													(Node *) defval,
+													baseTypeId,
+													typeOid,
+													typmod,
+													COERCION_ASSIGNMENT,
+													COERCE_IMPLICIT_CAST,
+													-1);
+			if (defval == NULL) /* should not happen */
+				elog(ERROR, "failed to coerce base type to domain");
+		}
+
+		if (defval)
+		{
+			NewColumnValue *newval;
+
+			/* Prepare defval for execution, either here or in Phase 3 */
+			defval = expression_planner(defval);
+
+			/* Add the new default to the newvals list */
+			newval = (NewColumnValue *) palloc0(sizeof(NewColumnValue));
+			newval->attnum = attTup->attnum;
+			newval->expr = defval;
+			newval->is_generated = (def->generated != '\0');
+
+			tab->newvals = lappend(tab->newvals, newval);
+
+			/*
+			 * Attempt to skip a complete table rewrite by storing the
+			 * specified DEFAULT value outside of the heap.  This is only
+			 * allowed for plain relations and non-generated columns, and the
+			 * default expression can't be volatile (stable is OK).  Note that
+			 * contain_volatile_functions deems CoerceToDomain immutable, but
+			 * here we consider that coercion to a domain with constraints is
+			 * volatile; else it might fail even when the table is empty.
+ 			 */
+			if (rel->rd_rel->relkind == RELKIND_RELATION &&
+				!def->generated &&
+				!has_domain_constraints &&
+				!contain_volatile_functions((Node *) defval))
+			{
+				EState	   *estate;
+				ExprState  *exprState;
+				Datum		missingval;
+				bool		missingIsNull;
+
+				/* Evaluate the default expression */
+				estate = CreateExecutorState();
+				exprState = ExecPrepareExpr(defval, estate);
+				missingval = ExecEvalExpr(exprState,
+										  GetPerTupleExprContext(estate),
+										  &missingIsNull);
+				/* If it turns out NULL, nothing to do; else store it */
+				if (!missingIsNull)
+				{
+					StoreAttrMissingVal(rel, attTup->attnum, missingval);
+					/* Make the additional catalog change visible */
+					CommandCounterIncrement();
+					has_missing = true;
+				}
+				FreeExecutorState(estate);
+			}
+			else
+			{
+				/*
+				 * Failed to use missing mode.  We have to do a table rewrite
+				 * to install the value.
+ 				 */
+				tab->rewrite |= AT_REWRITE_DEFAULT_VAL;
+			}
+		}
+
+		if (!has_missing)
+		{
+			/*
+			 * If the new column is NOT NULL, and there is no missing value,
+			 * tell Phase 3 it needs to check for NULLs.
+			 */
+			tab->verify_new_notnull |= def->is_not_null;
+		}
+	}
+
+
+	/* clean up */
+	heap_freetuple(heapTup);
+	ReleaseSysCache(typeTuple);
+
+	ObjectAddressSubSet(address, RelationRelationId, RelationGetRelid(rel), attnum);
+
+	return address;
+}
+
+/*
+ * RenameColumnName
+ *     rename col name
+ * args
+ *     AlteredTableInfo *tab
+ *     Relation rel
+ *     AlterTableCmd *cmd
+ *     LOCKMODE lockmode
+ *
+ * comments
+ *     update the catalog for new column name
+ */
+static void
+RenameColumnName(AlteredTableInfo *tab, Relation rel, AlterTableCmd *cmd, LOCKMODE lockmode)
+{
+	char		*colName = cmd->name;
+	ColumnDef	*def = (ColumnDef *)(cmd->def);
+	char		*newcolName = def->colname;
+	Form_pg_attribute	attTup;
+	HeapTuple		heapTup;
+	Relation		attrelation;
+
+	/* Look up the target column */
+	heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), colName);
+	if (!HeapTupleIsValid(heapTup)) /* shouldn't happen */
+	{
+		ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("column \"%s\" of relation \"%s\" does not exist",
+							 colName, RelationGetRelationName(rel))));
+    	}
+
+	attTup = (Form_pg_attribute) GETSTRUCT(heapTup);
+
+	/* new name should not already exist */
+	(void) check_for_column_name_collision(rel, newcolName, false);
+	namestrcpy(&(attTup->attname), newcolName);
+	attrelation = table_open(AttributeRelationId, RowExclusiveLock);
+	CatalogTupleUpdate(attrelation, &heapTup->t_self, heapTup);
+
+	/* clean up */
+	heap_freetuple(heapTup);
+	table_close(attrelation, RowExclusiveLock);
+}
+
+/*
+ * ATPrepModifyChangeColumn
+ *     Prep modify/change column
+ *
+ * comments
+ *     1. call ATPrepAlterColumnType()
+ *     2. handle other attr
+ *     3. check other restrict
+ */
+static void
+ATPrepModifyChangeColumn(List **wqueue,
+						 AlteredTableInfo *tab, Relation rel,
+						 bool recurse, bool recursing,
+						 AlterTableCmd *cmd, LOCKMODE lockmode,
+						 AlterTableUtilityContext *context)
+{
+
+	char		*colName = cmd->name;
+	ColumnDef	*def = (ColumnDef *) cmd->def;
+	TypeName	*typeName = def->typeName;
+	HeapTuple	tuple;
+	Form_pg_attribute attTup;
+	AttrNumber	attnum;
+	Oid		targettype;
+	int32		targettypmod;
+
+	/* perform Column type */
+	ATPrepAlterColumnType(wqueue, tab, rel, recurse, recursing, cmd, lockmode, context);
+
+	/* perform other check ot settings */
+	/* lookup the attribute so we can check inheritance status */
+	tuple = SearchSysCacheAttName(RelationGetRelid(rel), colName);
+	if (!HeapTupleIsValid(tuple))
+	{
+		ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_COLUMN),
+						 errmsg("column \"%s\" of relation \"%s\" does not exist",
+						 colName, RelationGetRelationName(rel))));
+	}
+	attTup = (Form_pg_attribute) GETSTRUCT(tuple);
+	attnum = attTup->attnum;
+
+	/* Can't alter a system attribute */
+	if (attnum <= 0)
+	{
+		ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot alter system column \"%s\"",
+						 colName)));
+	}
+
+	/*
+	 * if this column is already priamry key
+	 * set is not null
+	 */
+	if (CheckColumnIsPrimary(rel, colName))
+	{
+		def->is_not_null = true;
+	}
+
+	/*
+	 * for foreign key
+	 * just allow varchar(20) ---> varchar(30)
+	 */
+	if (columnIsPartofForeignKey(RelationGetRelid(rel), attnum))
+	{
+		/* Look up the target type */
+		typenameTypeIdAndMod(NULL, typeName, &targettype, &targettypmod);
+
+		if (!IsAllowedFKTypeChange(attTup->atttypid,
+					       attTup->atttypmod,
+					       targettype,
+					       targettypmod))
+		{
+			ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Cannot change column \'%s\': used in a foreign key constraint", colName)));
+		}
+
+		/* not allow to modify to auto_increment */
+		if (def->identity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		{
+			ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("Cannot change column \'%s\': used in a foreign key constraint", colName)));
+		}
+ 	}
+
+	/*
+	 * if column def is auto increment
+	 * mark we need rewrite the table
+	 */
+	if (tab->relkind == RELKIND_RELATION || tab->relkind == RELKIND_PARTITIONED_TABLE)
+	{
+
+		/*
+		 * if add auto_increment
+ 		 * need table rewrite
+		 */
+		if (def->is_auto_increment)
+		{
+			tab->rewrite |= AT_REWRITE_COLUMN_REWRITE;
+		}
+	}
+	else
+	{
+		ereport(ERROR,
+						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						 errmsg("\"%s\" is not a table", RelationGetRelationName(rel))));
+	}
+
+	/* clean up */
+	ReleaseSysCache(tuple);
+}
+
+/*
+ * ATExecModifyChangeColumn
+ *     Exec modify/change column
+ *
+ * comments
+ *     1. alter table modify table_name data_type NULL/NOT NULL DEFAULT AUTO_INCREMENT COLLATE
+ *     2. comment handle by alist
+ *     3. index, primary key, unique key handle by index wqueue
+ *     4. reuse exist ATExecXXX function
+ *
+ */
+static void
+ATExecModifyChangeColumn(AlteredTableInfo *tab,
+						 Relation rel,
+						 AlterTableCmd *cmd,
+						 LOCKMODE lockmode)
+{
+	char		*colName = cmd->name;
+	ColumnDef	*def = (ColumnDef *) cmd->def;
+	Oid		myrelid = RelationGetRelid(rel);
+
+	/*
+	 * check if there has auto already
+	 */
+	if (def->is_auto_increment && CheckColumnIsAutoincrement(myrelid, colName))
+ 	{
+		elog(ERROR, "there can be only one auto column and it must be defined as a key");
+ 	}
+
+	/*
+	 * rename if needed
+	 * need rename before ATExecAlterColumnType()
+	 * as ATExecAlterColumnType() will remember index, const, as so on
+	 * they need using the new name, not the old
+	 * why not using ExecRenamestmt()?
+	 * for partition table
+	 * ExecRenamestmt() will rename parent table col name and child table col name
+	 * but for child table's change, there have independent alter cmd to running
+	 */
+	if (strcmp(colName, def->colname) != 0)
+	{
+		RenameColumnName(tab, rel, cmd, lockmode);
+		CommandCounterIncrement();
+
+		cmd->name = def->colname;
+	}
+
+	/*
+	 * modify the datatype
+	 * call ATExecAlterColumnType()
+	 * it handle datatype change and COLLATE
+	 */
+	ATExecAlterColumnType(tab, rel, cmd, lockmode);
+	CommandCounterIncrement();
+
+	/*
+	 * After calling ATExecAlterColumnType()
+	 * just update the type related catalog
+	 * the other attr keeped
+	 * need handle  NULL/NOT NULL
+ 	 *              DEFAULT / AUTO_INCREMENT
+	 */
+
+	/*
+	 * update identity or generated attr
+	 * the above step did not update them
+	 */
+	ATExecUpdateIdentityAndGeneratedAttr(tab, rel, cmd, lockmode);
+	CommandCounterIncrement();
+
+	/*
+	 * handle default
+	 * why did not calling ATExecColumnDefault()
+	 * becasue ATExecColumnDefault() not satisfied this scenario
+	 * new function ATExecHandleColumnDefault()
+	 */
+	ATExecHandleColumnDefault(tab, rel, cmd, lockmode);
+	CommandCounterIncrement();
+
+	/*
+	 * set NULL or NOT NULL
+	 * checking call set not null or drop not null
+	 * then calling ATExecSetNotNull() or ATExecDropNotNull()
+ 	 */
+	if (def->is_not_null)
+	{
+		ATExecSetNotNull(tab, rel, cmd->name, lockmode);
+		CommandCounterIncrement();
+	}
+	else
+	{
+		ATExecDropNotNull(rel, cmd->name, lockmode);
+ 		CommandCounterIncrement();
+	}
+	CommandCounterIncrement();
+
+}
+
+/*
+ * IsNumericDatumZero
+ *     Check if the numeric datum is zero value
+ */
+static bool
+IsNumericDatumZero(Datum numeric_datum)
+{
+	Datum	zero_datum;
+	int	cmp;
+	zero_datum = DirectFunctionCall1(int4_numeric, Int32GetDatum(0));
+	cmp = DatumGetInt32(DirectFunctionCall2(numeric_cmp, numeric_datum, zero_datum));
+	return (cmp == 0);
+}
+
+/*
+ * StoreOldValue
+ *     Store values for auto increment if the column has data already
+ *
+ * comments
+ *     1. get the old value
+ *     2. change to numeric
+ *     3. check if value is 0
+ *        NO_AUTO_VALUE_ON_ZERO need handle zero value
+ *     4. return numeric Datum
+ */
+static Datum
+StoreOldValue(NewColumnValue *ex, TupleDesc TupDesc,
+			  TupleTableSlot *newslot, ExprContext *econtext,
+			  bool *update)
+{
+	Datum	numericDatum = (Datum)0;
+	Oid	typid;
+	Datum	auto_datum;
+	bool	isNull;
+	Form_pg_attribute attr;
+
+	auto_datum = newslot->tts_values[ex->attnum - 1];
+	isNull = newslot->tts_isnull[ex->attnum - 1];
+
+	if (isNull)
+	{
+		ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("NULL value for this scenario is not supported")));
+	}
+
+	attr = TupleDescAttr(TupDesc, ex->attnum - 1);
+	typid = attr->atttypid;
+	if (typid == NUMERICOID)
+	{
+		numericDatum = auto_datum;
+	}
+	else
+	{
+		Oid	castFuncOid;
+		CoercionPathType ret;
+		ret = find_coercion_pathway(NUMERICOID, typid,
+					    COERCION_EXPLICIT, &castFuncOid);
+
+		if (ret == COERCION_PATH_FUNC && OidIsValid(castFuncOid))
+		{
+			numericDatum = OidFunctionCall1(castFuncOid, auto_datum);
+		}
+		else if (ret == COERCION_PATH_RELABELTYPE)
+		{
+			numericDatum = auto_datum;
+		}
+		else
+		{
+			elog(ERROR, "could not find cast from %u to %u", typid, NUMERICOID);
+		}
+	}
+
+	/*
+	 * check the data if 0
+	 * if 0, when sql_mode not set NO_AUTO_VALUE_ON_ZERO
+	 *       0 will be auto fill in by next value
+	 * if 0, when sql_mode set NO_AUTO_VALUE_ON_ZERO
+	 *      0 is just 0
+	 */
+	if (IsNumericDatumZero(numericDatum))
+	{
+		if (!has_sql_mode(MODE_NO_AUTO_VALUE_ON_ZERO))
+		{
+			newslot->tts_values[ex->attnum - 1]
+					= ExecEvalExpr(ex->exprstate,
+									econtext,
+									&newslot->tts_isnull[ex->attnum - 1]);
+		}
+		else
+		{
+			/* no need to update seq */
+		}
+		*update = false;
+	}
+	else
+	{
+		*update = true;
+	}
+
+	return numericDatum;
+}
+
+/*
+ * ATExecUpdateIdentityAndGeneratedAttr
+ *     Update identity and generate catalog
+ */
+static void
+ATExecUpdateIdentityAndGeneratedAttr(AlteredTableInfo *tab, Relation rel,
+									 AlterTableCmd *cmd, LOCKMODE lockmode)
+{
+	HeapTuple	heapTup;
+	Relation	attrelation;
+	Form_pg_attribute	attTup;
+	char		*colName = cmd->name;
+	ColumnDef	*def = (ColumnDef *) cmd->def;
+
+
+	heapTup = SearchSysCacheCopyAttName(RelationGetRelid(rel), cmd->name);
+	if (!HeapTupleIsValid(heapTup)) /* shouldn't happen */
+	{
+		ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_COLUMN),
+							 errmsg("column \"%s\" of relation \"%s\" does not exist",
+							 colName, RelationGetRelationName(rel))));
+	}
+	attTup = (Form_pg_attribute) GETSTRUCT(heapTup);
+
+	attrelation = table_open(AttributeRelationId, RowExclusiveLock);
+	attTup->attidentity = def->identity;
+	attTup->attgenerated = def->generated;
+	CatalogTupleUpdate(attrelation, &heapTup->t_self, heapTup);
+	table_close(attrelation, RowExclusiveLock);
+	heap_freetuple(heapTup);
+}
+/* End - ReqID:SRS-MYSQL-SQL-Alter */

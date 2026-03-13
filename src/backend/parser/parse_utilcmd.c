@@ -115,6 +115,11 @@ typedef struct
 	Oid			collOid;		/* ReqID:SRS-SQL-NLSSORT, record table's collation */
 	bool		is_auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	Node	   *autoIncStart;      /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	bool	modify_column;
+	char	*old_col_name;
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 } CreateStmtContext;
 
 /* State shared by transformCreateSchemaStmtElements and its subroutines */
@@ -396,6 +401,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	cxt.is_auto_increment = false;
 	cxt.autoIncStart = stmt->autoIncStart;
 	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	cxt.modify_column = false; /* ReqID:SRS-MYSQL-SQL-Alter */
 
 	Assert(!stmt->ofTypename || !stmt->inhRelations);	/* grammar enforces */
 
@@ -978,6 +984,145 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 		*sname_p = sname;
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+static void
+transformDropCommentForModify(CreateStmtContext *cxt, char *colname)
+{
+	CommentStmt *colComment;
+	char *relNamespace = get_namespace_name(get_rel_namespace(cxt->rel->rd_id));
+	char *relName = get_rel_name(cxt->rel->rd_id);
+
+	colComment = makeNode(CommentStmt);
+	colComment->object = (Node *)list_make3(makeString(relNamespace), makeString(relName), makeString(pstrdup(colname)));
+	colComment->objtype = OBJECT_COLUMN;
+	colComment->comment = NULL;
+
+	cxt->blist = lappend(cxt->blist, colComment);
+}
+
+/*
+ * find the existing auto increment
+ */
+static AttrNumber
+find_rel_autoincrement(Oid relid)
+{
+	Relation attrel;
+	SysScanDesc scan;
+	ScanKeyData key[1];
+	HeapTuple atttup;
+	AttrNumber attnum = InvalidAttrNumber;
+
+	/* Grab an appropriate lock on the pg_attribute relation */
+	attrel = table_open(AttributeRelationId, AccessShareLock);
+
+	/* Use the index to scan only attributes of the target relation */
+	ScanKeyInit(&key[0],
+				Anum_pg_attribute_attrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+
+	scan = systable_beginscan(attrel, AttributeRelidNumIndexId, true,
+							  NULL, 1, key);
+
+	/* check all the matching tuples */
+	while ((atttup = systable_getnext(scan)) != NULL)
+	{
+		Form_pg_attribute attForm;
+
+		if (!HeapTupleIsValid(atttup))
+		{
+			elog(ERROR, "could not find tuple for column  of relation %u", relid);
+		}
+
+		attForm = (Form_pg_attribute) GETSTRUCT(atttup);
+		if (ATTRIBUTE_IDENTITY_AUTO_INCREMENT == attForm->attidentity)
+		{
+			attnum = attForm->attnum;
+			/* Clean up after the scan */
+			systable_endscan(scan);
+			table_close(attrel, AccessShareLock);
+			return attnum;
+		}
+	}
+
+	/* Clean up after the scan */
+	systable_endscan(scan);
+	table_close(attrel, AccessShareLock);
+
+	return -1;
+}
+
+/*
+ * delete the comment for the old column
+ */
+static void
+remove_auto_seq(CreateStmtContext *cxt)
+{
+	Oid	reloid = InvalidOid;
+	AttrNumber attnum = InvalidAttrNumber;
+	AttrNumber attnum_rel = InvalidAttrNumber;
+
+	reloid = RangeVarGetRelid(cxt->relation, NoLock, false);
+	attnum = get_attnum(reloid, cxt->old_col_name);
+	attnum_rel = find_rel_autoincrement(reloid);
+
+	if (attnum == InvalidAttrNumber)
+	{
+		/* there is no this column */
+		elog(ERROR, "column \"%s\" of relation \"%s\" does not exist", cxt->old_col_name, RelationGetRelationName(cxt->rel));
+	}
+
+	if (cxt->is_auto_increment)
+	{
+		if (attnum_rel > 0 && attnum_rel != attnum )
+		{
+			elog(ERROR, "there can be only one auto column and it must be defined as a key");
+		}
+		else if (attnum_rel > 0)
+		{
+			Oid seqoid;
+			seqoid = getIdentityAutoIncrement(reloid, attnum, true);
+			if (OidIsValid(seqoid))
+			{
+				DropStmt *dropSeq;
+
+				dropSeq = makeNode(DropStmt);
+				dropSeq->removeType = OBJECT_SEQUENCE;
+				dropSeq->missing_ok = false;
+				dropSeq->objects = list_make1(list_make2(makeString(get_namespace_name(get_rel_namespace(seqoid))), makeString(get_rel_name(seqoid))));
+				dropSeq->behavior = DROP_RESTRICT;
+				dropSeq->concurrent = false;
+
+				cxt->alist = lappend(cxt->alist, dropSeq);
+			}
+		}
+	}
+	/*
+	 * if the col def is not a auto_increment
+	 * delete the seq if it is auto before modify / change
+	 */
+	else
+	{
+		if (attnum > 0 && attnum_rel == attnum)
+		{
+			Oid seqoid;
+			seqoid = getIdentityAutoIncrement(reloid, attnum, true);
+			if (OidIsValid(seqoid))
+			{
+				DropStmt *dropSeq;
+				dropSeq = makeNode(DropStmt);
+				dropSeq->removeType = OBJECT_SEQUENCE;
+				dropSeq->missing_ok = false;
+				dropSeq->objects = list_make1(list_make2(makeString(get_namespace_name(get_rel_namespace(seqoid))), makeString(get_rel_name(seqoid))));
+				dropSeq->behavior = DROP_RESTRICT;
+				dropSeq->concurrent = false;
+				cxt->alist = lappend(cxt->alist, dropSeq);
+			}
+		}
+	}
+}
+/* End - ReqID:SRS-MYSQL-SQL-Alter */
+
 /*
  * transformColumnDefinition -
  *		transform a single ColumnDef within CREATE TABLE
@@ -1483,19 +1628,52 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		cxt->alist = lappend(cxt->alist, stmt);
 	}
 
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	/*
+	 * before modify / change, there has an auto
+	 * the col def is auto_increment
+	 * 	if the same col, delete the seq as there build a new one in generateSerialExtraStmts() above
+	 * 	if not the same col, report an error
+	 * the col def is not auto_increment
+	 * 	if the same col, delete the seq
+	 * before modify / change, there has no auto
+	 * 	do nothing
+	 */
+	if (cxt->modify_column && compatible_mode == MYS_MODE)
+	{
+		remove_auto_seq(cxt);
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
+
 	/* Begin - SRS-MYSQL-CREATE-TABLE */
 	/* when there are column comments,
 	 * add the create column comment node to alist
 	 */
-	if (column->colcomment != NULL)
+	/* Begin - ReqId:SRS-MYSQL-SQL-Alter */
+	/* delete old one and new one*/
+	if (column->colcomment != NULL && cxt->modify_column)
 	{
 		CommentStmt * ct = (CommentStmt *)column->colcomment;
+		transformDropCommentForModify(cxt, cxt->old_col_name);
 
 		ct->object = (Node*) list_make3(makeString(cxt->relation->schemaname),
 										makeString(cxt->relation->relname),
 										makeString(column->colname));
 		cxt->alist = lappend(cxt->alist, ct);
 	}
+	else if (column->colcomment != NULL)
+	{
+		CommentStmt * ct = (CommentStmt *)column->colcomment;
+		ct->object = (Node*) list_make3(makeString(cxt->relation->schemaname),
+										makeString(cxt->relation->relname),
+										makeString(column->colname));
+		cxt->alist = lappend(cxt->alist, ct);
+	}
+	else if (cxt->modify_column)
+	{
+		transformDropCommentForModify(cxt, cxt->old_col_name);
+	}
+	/* End - ReqId:SRS-MYSQL-SQL-Alter */
 	/* End - SRS-MYSQL-CREATE-TABLE */
 }
 
@@ -2751,7 +2929,21 @@ transformIndexConstraints(CreateStmtContext *cxt)
 		ColumnDef  *column = castNode(ColumnDef, lfirst(lc));
 		if (column->is_auto_increment && !column->is_pri_or_unique)
 		{
-			elog(ERROR, "there can be only one auto increment column and it must be defined as a key");
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			if (cxt->modify_column && cxt->rel)
+			{
+				/*
+				 * did not have enough info to check column is already unique or pri
+				 * check it later
+				 * if it already is
+				 * alter table xxx modify xxx auto_increment should success
+				 */
+			}
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
+			else
+			{
+				elog(ERROR, "there can be only one auto increment column and it must be defined as a key");
+			}
 		}
 	}
 	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
@@ -3993,7 +4185,7 @@ transformRuleStmt(RuleStmt *stmt, const char *queryString,
  * add node to alist, drop the enum type when drop the table
  */
 static void
-DropTypeOwnedByTable(CreateStmtContext *cxt, char *colname)
+transformDropTypeOwnedByTable(CreateStmtContext *cxt, char *colname)
 {
 	Oid atttypid = 0;
 	char *typname = NULL;
@@ -4103,6 +4295,10 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 	/* the table only a auto_increment col */
 	cxt.is_auto_increment = false; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	cxt.autoIncStart = NULL;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	cxt.modify_column = false;
+	cxt.old_col_name = NULL;
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 	/*
 	 * Transform ALTER subcommands that need it (most don't).  These largely
 	 * re-use code from CREATE TABLE.
@@ -4235,7 +4431,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					if (compatible_mode == MYS_MODE)
 					{
 						/* if the dropped column type is an enum, should drop it after */
-						DropTypeOwnedByTable(&cxt, cmd->name);
+						transformDropTypeOwnedByTable(&cxt, cmd->name);
 					}
 					newcmds = lappend(newcmds, cmd);
 					break;
@@ -4253,7 +4449,7 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 						 * When alter column's type, if target type is enum, 
 						 * then drop then enum type
 						 */
-						DropTypeOwnedByTable(&cxt, cmd->name);
+						transformDropTypeOwnedByTable(&cxt, cmd->name);
 					}
 					/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
@@ -4311,7 +4507,36 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					newcmds = lappend(newcmds, cmd);
 					break;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			case AT_ModifyColumn:
+			case AT_ChangeColumn:
+				{
+					ColumnDef  *def = castNode(ColumnDef, cmd->def);
+					cxt.modify_column = true;
+					cxt.old_col_name = cmd->name;
+					/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
+					if (compatible_mode == MYS_MODE)
+					{
+						/*
+						 * When alter column's type, if target type is enum,
+						 * then drop then enum type
+						 */
+						transformDropTypeOwnedByTable(&cxt, cmd->name);
+					}
+					/* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
+					/*
+					 * for transform the col def
+					 * reuse this function
+					 * as for some case, we need care about the old attr for this coulmn
+					 * so adding some logical inside this function
+					 */
+					transformColumnDefinition(&cxt, def);
+					newcmds = lappend(newcmds, cmd);
+
+					break;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 			case AT_AddIdentity:
 				{
 					Constraint *def = castNode(Constraint, cmd->def);

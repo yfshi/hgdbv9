@@ -1,0 +1,3225 @@
+------------- alter table modify
+-------- test case: table or col did not exist
+ALTER TABLE tttt MODIFY aaa int;
+ERROR:  relation "tttt" does not exist
+CREATE TABLE tttt(id int);
+ALTER TABLE tttt MODIFY idd varchar(20);
+ERROR:  column "idd" of relation "tttt" does not exist
+-------- test case: modify data type
+-- varchar  --> varchar
+-- there is no data in the table
+CREATE TABLE test_dt(id varchar(20));
+SHOW CREATE TABLE test_dt;
+  Table  |          Create Table          
+---------+--------------------------------
+ test_dt | CREATE TABLE "test_dt" (      +
+         |     "id" character varying(20)+
+         | )
+(1 row)
+
+-- success
+ALTER TABLE test_dt MODIFY id varchar(30); 
+SHOW CREATE TABLE test_dt;
+  Table  |          Create Table          
+---------+--------------------------------
+ test_dt | CREATE TABLE "test_dt" (      +
+         |     "id" character varying(30)+
+         | )
+(1 row)
+
+-- insert some values
+-- fail as 'asd' could not change to int
+insert into test_dt values('123'),('asd');
+select * from test_dt;
+ id  
+-----
+ 123
+ asd
+(2 rows)
+
+alter table test_dt modify id int;
+ERROR:  Incorrect integer value: 'asd' for column.
+drop table test_dt;
+-- int --> varchar
+CREATE TABLE test_dt(id int);
+insert into test_dt values(123),(345);
+alter table test_dt modify id varchar(20);
+show create table test_dt;
+  Table  |          Create Table          
+---------+--------------------------------
+ test_dt | CREATE TABLE "test_dt" (      +
+         |     "id" character varying(20)+
+         | )
+(1 row)
+
+select * from test_dt;
+ id  
+-----
+ 123
+ 345
+(2 rows)
+
+drop table test_dt;
+-- float --> int
+CREATE TABLE test_dt(id int, age float);
+insert into test_dt values(11,11.11),(22,22.22);
+alter table test_dt modify column age int;
+select * from test_dt;
+ id | age 
+----+-----
+ 11 |  11
+ 22 |  22
+(2 rows)
+
+\d+ test_dt;
+                                  Table "public.test_dt"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ age    | integer |           |          |         | plain   |              | 
+
+drop table test_dt;
+-------- test case: NULL|NOT NULL
+-- null --> not null  --> null
+create table test_null(id int, name varchar(20));
+show create table test_null;
+   Table   |           Create Table           
+-----------+----------------------------------
+ test_null | CREATE TABLE "test_null" (      +
+           |     "id" integer,               +
+           |     "name" character varying(20)+
+           | )
+(1 row)
+
+insert into test_null values(10,'asd');
+insert into test_null(name) values('fgh');
+select * from test_null;
+ id | name 
+----+------
+ 10 | asd
+    | fgh
+(2 rows)
+
+alter table test_null modify id int not null;
+ERROR:  column "id" of relation "test_null" contains null values
+delete from test_null where name = 'fgh';
+alter table test_null modify id int not null;
+insert into test_null(name) values('fgh');
+ERROR:  null value in column "id" of relation "test_null" violates not-null constraint
+DETAIL:  Failing row contains (null, fgh).
+alter table test_null modify id int null;
+insert into test_null(name) values('fgh');
+show create table test_null;
+   Table   |           Create Table           
+-----------+----------------------------------
+ test_null | CREATE TABLE "test_null" (      +
+           |     "id" integer,               +
+           |     "name" character varying(20)+
+           | )
+(1 row)
+
+select * from test_null;
+ id | name 
+----+------
+ 10 | asd
+    | fgh
+(2 rows)
+
+drop table test_null;
+-- not null --> null --> not null
+create table test_null(id int, name varchar(20) not null);
+insert into test_null values(10,'asd');
+insert into test_null(id) values(20);
+ERROR:  null value in column "name" of relation "test_null" violates not-null constraint
+DETAIL:  Failing row contains (20, null).
+alter table test_null modify name varchar(20) null;
+show create table test_null;
+   Table   |           Create Table           
+-----------+----------------------------------
+ test_null | CREATE TABLE "test_null" (      +
+           |     "id" integer,               +
+           |     "name" character varying(20)+
+           | )
+(1 row)
+
+insert into test_null(id) values(20);
+select * from test_null;
+ id | name 
+----+------
+ 10 | asd
+ 20 | 
+(2 rows)
+
+alter table test_null modify name varchar(20) not null;
+ERROR:  column "name" of relation "test_null" contains null values
+show create table test_null;
+   Table   |           Create Table           
+-----------+----------------------------------
+ test_null | CREATE TABLE "test_null" (      +
+           |     "id" integer,               +
+           |     "name" character varying(20)+
+           | )
+(1 row)
+
+insert into test_null(id) values(20);
+drop table test_null;
+-------- test case: DEFAULT
+-- success: add default
+create table test_def(id int, age int, name varchar(20));
+insert into test_def values(100,100,'ssss');
+alter table test_def modify id default 10;
+ERROR:  syntax error at or near "default"
+LINE 1: alter table test_def modify id default 10;
+                                       ^
+alter table test_def modify id int default 10;
+alter table test_def modify name varchar(20) default 'highgo';
+show create table test_def;
+  Table   |                             Create Table                             
+----------+----------------------------------------------------------------------
+ test_def | CREATE TABLE "test_def" (                                           +
+          |     "id" integer DEFAULT 10,                                        +
+          |     "age" integer,                                                  +
+          |     "name" character varying(20) DEFAULT 'highgo'::character varying+
+          | )
+(1 row)
+
+insert into test_def values();
+select * from test_def;
+ id  | age |  name  
+-----+-----+--------
+ 100 | 100 | ssss
+  10 |     | highgo
+(2 rows)
+
+-- fail: default could not refer the other col in thes same table
+alter table test_def modify age int default id*2;
+ERROR:  cannot use column reference in DEFAULT expression
+-- success: remove default
+alter table test_def modify name varchar(20);
+show create table test_def;
+  Table   |           Create Table           
+----------+----------------------------------
+ test_def | CREATE TABLE "test_def" (       +
+          |     "id" integer DEFAULT 10,    +
+          |     "age" integer,              +
+          |     "name" character varying(20)+
+          | )
+(1 row)
+
+insert into test_def(id) values(200);
+select * from test_def;
+ id  | age |  name  
+-----+-----+--------
+ 100 | 100 | ssss
+  10 |     | highgo
+ 200 |     | 
+(3 rows)
+
+-------- test case: UNIQUE
+-- modify to two unique keys for one column, success
+create table test_uk(id int, name varchar(20));
+alter table test_uk modify id int unique;
+show create table test_uk;
+  Table  |                Create Table                 
+---------+---------------------------------------------
+ test_uk | CREATE TABLE "test_uk" (                   +
+         |     "id" integer,                          +
+         |     "name" character varying(20),          +
+         |     CONSTRAINT "test_uk_id_key" UNIQUE (id)+
+         | )
+(1 row)
+
+alter table test_uk modify id int unique key;
+show create table test_uk;
+  Table  |                 Create Table                 
+---------+----------------------------------------------
+ test_uk | CREATE TABLE "test_uk" (                    +
+         |     "id" integer,                           +
+         |     "name" character varying(20),           +
+         |     CONSTRAINT "test_uk_id_key" UNIQUE (id),+
+         |     CONSTRAINT "test_uk_id_key1" UNIQUE (id)+
+         | )
+(1 row)
+
+-- modify to primary key for the column which has unique
+alter table test_uk modify id int primary key;
+show create table test_uk;
+  Table  |                  Create Table                  
+---------+------------------------------------------------
+ test_uk | CREATE TABLE "test_uk" (                      +
+         |     "id" integer NOT NULL,                    +
+         |     "name" character varying(20),             +
+         |     CONSTRAINT "test_uk_id_key" UNIQUE (id),  +
+         |     CONSTRAINT "test_uk_id_key1" UNIQUE (id), +
+         |     CONSTRAINT "test_uk_pkey" PRIMARY KEY (id)+
+         | )
+(1 row)
+
+-- unique and primary key could not remove by modify command, the same with mysql
+--     as id is primary key
+--     so when modify id int to null, will keep not null
+alter table test_uk modify id int;
+show create table test_uk;
+  Table  |                  Create Table                  
+---------+------------------------------------------------
+ test_uk | CREATE TABLE "test_uk" (                      +
+         |     "id" integer NOT NULL,                    +
+         |     "name" character varying(20),             +
+         |     CONSTRAINT "test_uk_id_key" UNIQUE (id),  +
+         |     CONSTRAINT "test_uk_id_key1" UNIQUE (id), +
+         |     CONSTRAINT "test_uk_pkey" PRIMARY KEY (id)+
+         | )
+(1 row)
+
+drop table test_uk;
+-- unique key unique key, add a new one, not two, the same with mysql
+create table test_uk(id int unique key, name varchar(20));
+show create table test_uk;
+  Table  |                Create Table                 
+---------+---------------------------------------------
+ test_uk | CREATE TABLE "test_uk" (                   +
+         |     "id" integer,                          +
+         |     "name" character varying(20),          +
+         |     CONSTRAINT "test_uk_id_key" UNIQUE (id)+
+         | )
+(1 row)
+
+alter table test_uk modify id int unique key unique key;
+show create table test_uk;
+  Table  |                 Create Table                 
+---------+----------------------------------------------
+ test_uk | CREATE TABLE "test_uk" (                    +
+         |     "id" integer,                           +
+         |     "name" character varying(20),           +
+         |     CONSTRAINT "test_uk_id_key" UNIQUE (id),+
+         |     CONSTRAINT "test_uk_id_key1" UNIQUE (id)+
+         | )
+(1 row)
+
+drop table test_uk;
+-- check the unique rebuild when datatype changed
+-- constraint and index oid are diff between before and after modify datatype
+create table test_un_reb(id int, name varchar(20));
+insert into test_un_reb values(11,'11'),(21,'21'),(31,'31');
+alter table test_un_reb modify name varchar(20) unique key;
+show create table test_un_reb;
+    Table    |                    Create Table                     
+-------------+-----------------------------------------------------
+ test_un_reb | CREATE TABLE "test_un_reb" (                       +
+             |     "id" integer,                                  +
+             |     "name" character varying(20),                  +
+             |     CONSTRAINT "test_un_reb_name_key" UNIQUE (name)+
+             | )
+(1 row)
+
+create table tmp_oid as select conrelid, oid as constraint_oid, conindid as index_oid from pg_constraint where contype='u' and conrelid = 'test_un_reb'::regclass;
+alter table test_un_reb modify name int;
+select (old.conrelid = new.conrelid) AS rel_oid, (old.constraint_oid = new.constraint_oid) AS constraint_name, (old.index_oid = new.index_oid) AS index_name FROM tmp_oid old JOIN (select conrelid, oid AS constraint_oid, conindid AS index_oid FROM pg_constraint WHERE contype = 'u' AND conrelid = 'test_un_reb'::regclass) new ON true;
+ rel_oid | constraint_name | index_name 
+---------+-----------------+------------
+ t       | f               | f
+(1 row)
+
+-- select data from index hardly by using enable_seqscan = off
+set enable_seqscan = off;
+explain (COSTS OFF) select * from test_un_reb where name = 21;
+                      QUERY PLAN                      
+------------------------------------------------------
+ Index Scan using test_un_reb_name_key on test_un_reb
+   Index Cond: (name = 21)
+(2 rows)
+
+select * from test_un_reb where name = 21;
+ id | name 
+----+------
+ 21 |   21
+(1 row)
+
+drop table test_un_reb;
+drop table tmp_oid;
+-------- test case: primary key
+create table test_pk(id int, name varchar(20));
+alter table test_pk modify id int key;
+show create table test_pk;
+  Table  |                  Create Table                  
+---------+------------------------------------------------
+ test_pk | CREATE TABLE "test_pk" (                      +
+         |     "id" integer NOT NULL,                    +
+         |     "name" character varying(20),             +
+         |     CONSTRAINT "test_pk_pkey" PRIMARY KEY (id)+
+         | )
+(1 row)
+
+-- primary key(id), modify id as priamry key
+-- report an error
+--	mysql report: Multiple primary key defined
+--	V9 report: multiple primary keys for table xxxx are not allowed
+alter table test_pk modify id int primary key;
+ERROR:  multiple primary keys for table "test_pk" are not allowed
+alter table test_pk modify id varchar(20) not null primary key;
+ERROR:  multiple primary keys for table "test_pk" are not allowed
+drop table test_pk;
+-- primary key(id,age), modify id as priamry key
+-- report an error
+--	mysql report: Multiple primary key defined
+--	V9 report: multiple primary keys for table xxxx are not allowed
+create table test_pk (id int, name varchar(20), age int, primary key(id,name));
+alter table test_pk modify id int primary key;
+ERROR:  multiple primary keys for table "test_pk" are not allowed
+alter table test_pk modify age int primary key;
+ERROR:  multiple primary keys for table "test_pk" are not allowed
+drop table test_pk;
+-------- test case: fk check
+create table parent(id int unique key, name varchar(20));
+create table child (id int, parent_id int, name varchar(20), constraint fk_parent foreign key(parent_id) references parent(id));
+-- mysql error: Cannot change column 'id': used in a foregin key constraint 'fk_parent' of table 'mysql.child'
+-- v9 error: Cannot change column 'id': used in a foregin key constraint
+alter table parent modify id bigint;
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table parent modify id float;
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table parent modify id varchar(20);
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table parent modify id enum('1','2','3');
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table child modify parent_id bigint;
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+alter table child modify parent_id float;
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+alter table child modify parent_id varchar(20);
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+alter table child modify parent_id enum('1','2','3');
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+-- mysql error: add auto_increment
+alter table parent modify id int auto_increment;
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table child modify parent_id int auto_increment;
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+-- mysql success: use the same datatype to modify
+alter table parent modify id int;
+alter table child modify parent_id int;
+-- mysql success: add/remove comment
+alter table parent modify id int comment 'test_parent';
+alter table child modify parent_id int comment 'test_child';
+show create table parent;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ parent | CREATE TABLE "parent" (                   +
+        |     "id" integer COMMENT 'test_parent',   +
+        |     "name" character varying(20),         +
+        |     CONSTRAINT "parent_id_key" UNIQUE (id)+
+        | )
+(1 row)
+
+show create table child;
+ Table |                               Create Table                               
+-------+--------------------------------------------------------------------------
+ child | CREATE TABLE "child" (                                                  +
+       |     "id" integer,                                                       +
+       |     "parent_id" integer COMMENT 'test_child',                           +
+       |     "name" character varying(20),                                       +
+       |     CONSTRAINT "fk_parent" FOREIGN KEY (parent_id) REFERENCES parent(id)+
+       | )
+(1 row)
+
+alter table parent modify id int;
+alter table child modify parent_id int;
+show create table parent;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ parent | CREATE TABLE "parent" (                   +
+        |     "id" integer,                         +
+        |     "name" character varying(20),         +
+        |     CONSTRAINT "parent_id_key" UNIQUE (id)+
+        | )
+(1 row)
+
+show create table child;
+ Table |                               Create Table                               
+-------+--------------------------------------------------------------------------
+ child | CREATE TABLE "child" (                                                  +
+       |     "id" integer,                                                       +
+       |     "parent_id" integer,                                                +
+       |     "name" character varying(20),                                       +
+       |     CONSTRAINT "fk_parent" FOREIGN KEY (parent_id) REFERENCES parent(id)+
+       | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'parent'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'parent'::regclass and attname = 'id');
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from pg_description where objoid = 'child'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'child'::regclass and attname = 'parent_id');
+ count 
+-------
+     0
+(1 row)
+
+drop table child, parent;
+-------- test case: auto_increment
+-- modify is the same with create table
+create table test_auto(id int auto_increment unique key, name varchar(20));
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     "name" character varying(20),            +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | )
+(1 row)
+
+drop table test_auto;
+create table test_auto(id int, name varchar(20));
+alter table test_auto modify id int auto_increment unique key;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     "name" character varying(20),            +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | )
+(1 row)
+
+drop table test_auto;
+-- insert some values,check the next value is right
+create table test_auto(id int, name varchar(20));
+insert into test_auto values(10,'asd'),(20,'fgh');
+select * from test_auto;
+ id | name 
+----+------
+ 10 | asd
+ 20 | fgh
+(2 rows)
+
+alter table test_auto modify id int auto_increment unique key;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     "name" character varying(20),            +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=21
+(1 row)
+
+insert into test_auto(name) values('highgo');
+select * from test_auto;
+ id |  name  
+----+--------
+ 10 | asd
+ 20 | fgh
+ 21 | highgo
+(3 rows)
+
+-- remove the auto_increment
+alter table test_auto modify id int;
+insert into test_auto values(100,'go');
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer,                            +
+           |     "name" character varying(20),            +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | )
+(1 row)
+
+-- check the seq oid removed
+select pg_get_serial_sequence('public.test_auto', 'id')::regclass::oid;
+ pg_get_serial_sequence 
+------------------------
+                       
+(1 row)
+
+drop table test_auto;
+-- if there is no auto, modify one
+create table test_auto(a int, b int, c varchar(20));
+alter table test_auto modify c int auto_increment unique key;
+\d+ test_auto;
+                                                   Table "public.test_auto"
+ Column |  Type   | Collation | Nullable |                   Default                    | Storage | Stats target | Description 
+--------+---------+-----------+----------+----------------------------------------------+---------+--------------+-------------
+ a      | integer |           |          |                                              | plain   |              | 
+ b      | integer |           |          |                                              | plain   |              | 
+ c      | integer |           | not null | autoinc_nextval('test_auto_c_seq'::regclass) | plain   |              | 
+Indexes:
+    "test_auto_c_key" UNIQUE CONSTRAINT, btree (c)
+
+show create table test_auto;
+   Table   |                Create Table                 
+-----------+---------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                 +
+           |     "a" integer,                           +
+           |     "b" integer,                           +
+           |     "c" integer NOT NULL AUTO_INCREMENT,   +
+           |     CONSTRAINT "test_auto_c_key" UNIQUE (c)+
+           | )
+(1 row)
+
+drop table test_auto;
+-- if there has one, modify the same one
+-- refer alter_table_modify_multi
+-- alter modify diff col auto_increment as there already has one
+create table test_auto(a int,b int,c int, idd int auto_increment primary key);
+alter table test_auto modify c int auto_increment unique key;
+ERROR:  there can be only one auto column and it must be defined as a key
+drop table test_auto;
+-- modify to unique key or primary key, then modify to auto_increment
+create table test_auto(id int unique key, name varchar(20));
+alter table test_auto modify id int auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     "name" character varying(20),            +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | )
+(1 row)
+
+drop table test_auto;
+-- success
+create table test_auto(id int, name varchar(20));
+alter table test_auto modify id int primary key;
+alter table test_auto modify id int auto_increment;
+show create table test_auto;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(20),               +
+           |     CONSTRAINT "test_auto_pkey" PRIMARY KEY (id)+
+           | )
+(1 row)
+
+drop table test_auto;
+-- success
+create table test_auto(id int, name varchar(20));
+alter table test_auto modify id int primary key, modify id int auto_increment;
+show create table test_auto;
+   Table   |                   Create Table                   
+-----------+--------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                      +
+           |     "id" integer NOT NULL AUTO_INCREMENT,       +
+           |     "name" character varying(20),               +
+           |     CONSTRAINT "test_auto_pkey" PRIMARY KEY (id)+
+           | )
+(1 row)
+
+drop table test_auto;
+-- varchar(20)  --> smallint auto
+-- smallint max is 32767, report error with alter type
+create table test_auto(id varchar(20));
+insert into test_auto values('32768');
+alter table test_auto modify id smallint unique key;
+ERROR:  Out of range value for column.
+drop table test_auto;
+create table test_auto(id varchar(20));
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+alter table test_auto modify id smallint unique key auto_increment;
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+(6 rows)
+
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" smallint NOT NULL AUTO_INCREMENT,   +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+ 35
+(7 rows)
+
+drop table test_auto;
+-- varchar(20) --> int auto
+create table test_auto(id varchar(20));
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id varchar(20) primary key;
+ERROR:  column "id" of relation "test_auto" contains null values
+alter table test_auto modify id varchar(20) unique key;
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 21.49
+ 31.51
+ 
+ 
+ 
+(6 rows)
+
+alter table test_auto modify id int auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+ 35
+(7 rows)
+
+drop table test_auto;
+-- varchar(20) --> bigint auto
+create table test_auto(id varchar(20));
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id bigint unique key auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" bigint NOT NULL AUTO_INCREMENT,     +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+ 35
+(7 rows)
+
+drop table test_auto;
+-- varchar(20) --> float auto
+-- pg could not alter varchar to float, need using USING
+--     add a pg_cast to convert from varchar to float
+create table test_auto(id varchar(20));
+alter table test_auto alter column id TYPE float;
+show create table test_auto;
+   Table   |        Create Table        
+-----------+----------------------------
+ test_auto | CREATE TABLE "test_auto" (+
+           |     "id" float4           +
+           | )
+(1 row)
+
+drop table test_auto;
+create table test_auto(id varchar(20));
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id float unique key auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" float4 NOT NULL AUTO_INCREMENT,     +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+    12
+ 21.49
+ 31.51
+    33
+    34
+    35
+(7 rows)
+
+drop table test_auto;
+-- varchar(20) --> float8 auto
+create table test_auto(id varchar(20));
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id float8 unique key auto_increment;
+show create table test_auto;
+   Table   |                    Create Table                    
+-----------+----------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                        +
+           |     "id" double precision NOT NULL AUTO_INCREMENT,+
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)     +
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+    12
+ 21.49
+ 31.51
+    33
+    34
+    35
+(7 rows)
+
+drop table test_auto;
+-- text --> smallint auto
+create table test_auto(id text);
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+alter table test_auto modify id smallint unique key auto_increment;
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+(6 rows)
+
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" smallint NOT NULL AUTO_INCREMENT,   +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+ 35
+(7 rows)
+
+drop table test_auto;
+-- text --> int auto
+create table test_auto(id text);
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id int unique key auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+ 35
+(7 rows)
+
+drop table test_auto;
+-- text --> bigint auto
+create table test_auto(id text);
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id bigint unique key auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" bigint NOT NULL AUTO_INCREMENT,     +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+ id 
+----
+ 11
+ 12
+ 21
+ 32
+ 33
+ 34
+ 35
+(7 rows)
+
+drop table test_auto;
+-- text --> float auto
+create table test_auto(id text);
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id float unique key auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" float4 NOT NULL AUTO_INCREMENT,     +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+    12
+ 21.49
+ 31.51
+    33
+    34
+    35
+(7 rows)
+
+drop table test_auto;
+-- text --> float8 auto
+create table test_auto(id text);
+insert into test_auto values('11.21');
+insert into test_auto values();
+insert into test_auto values('31.51');
+insert into test_auto values();
+insert into test_auto values('21.49');
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+ 
+ 31.51
+ 
+ 21.49
+ 
+(6 rows)
+
+alter table test_auto modify id float8 unique key auto_increment;
+show create table test_auto;
+   Table   |                    Create Table                    
+-----------+----------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                        +
+           |     "id" double precision NOT NULL AUTO_INCREMENT,+
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)     +
+           | ) AUTO_INCREMENT=35
+(1 row)
+
+insert into test_auto values();
+select * from test_auto;
+  id   
+-------
+ 11.21
+    12
+ 21.49
+ 31.51
+    33
+    34
+    35
+(7 rows)
+
+drop table test_auto;
+-- enum --> int auto
+create table test_auto(a int, color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
+-- error, the same with mysql
+alter table test_auto modify color enum primary key;
+ERROR:  syntax error at or near "primary"
+LINE 1: alter table test_auto modify color enum primary key;
+                                                ^
+--succ, there is no data
+alter table test_auto modify color enum('q','w','e','r','t') primary key;
+drop table test_auto;
+create table test_auto(a int, color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
+insert into test_auto values(11,'bbb'),(21,4);
+-- fail, auto_increment must be smallint, int, bigint, float4, float8
+alter table test_auto modify color enum('ddd','q','w','e','r','t') primary key auto_increment;
+ERROR:  sequence type must be smallint, integer, bigint, float4, or float8
+alter table test_auto modify color int primary key auto_increment;
+show create table test_auto;
+   Table   |                    Create Table                     
+-----------+-----------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                         +
+           |     "a" integer,                                   +
+           |     "color" integer NOT NULL AUTO_INCREMENT,       +
+           |     CONSTRAINT "test_auto_pkey" PRIMARY KEY (color)+
+           | ) AUTO_INCREMENT=5
+(1 row)
+
+select * from test_auto;
+ a  | color 
+----+-------
+ 11 |     2
+ 21 |     4
+(2 rows)
+
+drop table test_auto;
+-- enum --> float auto
+create table test_auto(a int, color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
+insert into test_auto values(11,'bbb'),(21,4);
+alter table test_auto modify color float unique key auto_increment;
+show create table test_auto;
+   Table   |                    Create Table                     
+-----------+-----------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                         +
+           |     "a" integer,                                   +
+           |     "color" float4 NOT NULL AUTO_INCREMENT,        +
+           |     CONSTRAINT "test_auto_color_key" UNIQUE (color)+
+           | ) AUTO_INCREMENT=5
+(1 row)
+
+select * from test_auto;
+ a  | color 
+----+-------
+ 11 |     2
+ 21 |     4
+(2 rows)
+
+drop table test_auto;
+-- float --> auto_increment
+create table test_auto (name varchar(20),id float unique key);
+insert into test_auto values('aaa',11.23),('bbb',21.51);
+alter table test_auto modify column id float auto_increment;
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "name" character varying(20),            +
+           |     "id" float4 NOT NULL AUTO_INCREMENT,     +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=23
+(1 row)
+
+insert into test_auto(name) values('ccc');
+select * from test_auto;
+ name |  id   
+------+-------
+ aaa  | 11.23
+ bbb  | 21.51
+ ccc  |    23
+(3 rows)
+
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "name" character varying(20),            +
+           |     "id" float4 NOT NULL AUTO_INCREMENT,     +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=24
+(1 row)
+
+drop table test_auto;
+-------- test case: auto_increment must be a pri key, uni key or composite key
+-- mysql: for InnoDB engine, if auto column is a composite key, it should be leftmost of the index
+-- V9: if it is a composite key, did not should be leftmost of the index, the same with create table
+create table test_auto(id1 int, id2 int, id3 int, id4 int, id5 int auto_increment, unique key(id2,id3),unique key(id4,id5));
+show create table test_auto;
+   Table   |                       Create Table                        
+-----------+-----------------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                               +
+           |     "id1" integer,                                       +
+           |     "id2" integer,                                       +
+           |     "id3" integer,                                       +
+           |     "id4" integer,                                       +
+           |     "id5" integer NOT NULL AUTO_INCREMENT,               +
+           |     CONSTRAINT "test_auto_id2_id3_key" UNIQUE (id2, id3),+
+           |     CONSTRAINT "test_auto_id4_id5_key" UNIQUE (id4, id5) +
+           | )
+(1 row)
+
+drop table test_auto;
+create table test_auto(id1 int, id2 int, id3 int, id4 int, id5 int, unique key(id2,id3),unique key(id4,id5));
+alter table test_auto modify id5 int auto_increment;
+show create table test_auto;
+   Table   |                       Create Table                        
+-----------+-----------------------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                               +
+           |     "id1" integer,                                       +
+           |     "id2" integer,                                       +
+           |     "id3" integer,                                       +
+           |     "id4" integer,                                       +
+           |     "id5" integer NOT NULL AUTO_INCREMENT,               +
+           |     CONSTRAINT "test_auto_id2_id3_key" UNIQUE (id2, id3),+
+           |     CONSTRAINT "test_auto_id4_id5_key" UNIQUE (id4, id5) +
+           | )
+(1 row)
+
+drop table test_auto;
+-------- test case: auto_increment, sql_mode NO_AUTO_VALUE_ON_ZERO
+-- mysql: if sql_mode not set NO_AUTO_VALUE_ON_ZERO (default), 0 need fill by next value
+--        if set NO_AUTO_VALUE_ON_ZERO, 0 is 0
+-- not set NO_AUTO_VALUE_ON_ZERO
+create table test_auto(id varchar(20),age int);
+insert into test_auto(age) values(101);
+insert into test_auto value('102',102);
+insert into test_auto values('0',103);
+insert into test_auto(age) values(104);
+select * from test_auto;
+ id  | age 
+-----+-----
+     | 101
+ 102 | 102
+ 0   | 103
+     | 104
+(4 rows)
+
+alter table test_auto modify id int unique key auto_increment;
+select * from test_auto;
+ id  | age 
+-----+-----
+   1 | 101
+ 102 | 102
+ 103 | 103
+ 104 | 104
+(4 rows)
+
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     "age" integer,                           +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=105
+(1 row)
+
+drop table test_auto;
+-- set NO_AUTO_VALUE_ON_ZERO
+set sql_mode='ANSI_QUOTES,NO_AUTO_VALUE_ON_ZERO';
+create table test_auto(id varchar(20), age int);
+insert into test_auto(age) values(101);
+insert into test_auto value('102',102);
+insert into test_auto values('0',103);
+insert into test_auto(age) values(104);
+select * from test_auto;
+ id  | age 
+-----+-----
+     | 101
+ 102 | 102
+ 0   | 103
+     | 104
+(4 rows)
+
+alter table test_auto modify id int unique key auto_increment;
+select * from test_auto;
+ id  | age 
+-----+-----
+   1 | 101
+ 102 | 102
+   0 | 103
+ 103 | 104
+(4 rows)
+
+show create table test_auto;
+   Table   |                 Create Table                  
+-----------+-----------------------------------------------
+ test_auto | CREATE TABLE "test_auto" (                   +
+           |     "id" integer NOT NULL AUTO_INCREMENT,    +
+           |     "age" integer,                           +
+           |     CONSTRAINT "test_auto_id_key" UNIQUE (id)+
+           | ) AUTO_INCREMENT=104
+(1 row)
+
+reset sql_mode;
+drop table test_auto;
+-------- test case: auto_increment, refer create_table sql
+-- auto_increment, LAST_INSERT_ID()
+CREATE TABLE test_t (
+    id INT,
+    name VARCHAR(50),
+    value INT
+);
+INSERT INTO test_t (name, value) VALUES ('A', 1), ('B', 2), ('C', 3), ('D', 4);
+select last_insert_id();
+ last_insert_id 
+----------------
+ 103
+(1 row)
+
+alter table test_t modify id int auto_increment unique key;
+select last_insert_id();
+ last_insert_id 
+----------------
+ 4
+(1 row)
+
+INSERT INTO test_t (name, value) VALUES ('E', 5);
+select last_insert_id();
+ last_insert_id 
+----------------
+ 5
+(1 row)
+
+select * from test_t;
+ id | name | value 
+----+------+-------
+  1 | A    |     1
+  2 | B    |     2
+  3 | C    |     3
+  4 | D    |     4
+  5 | E    |     5
+(5 rows)
+
+drop table test_t;
+-- auto_increment, GUC: AUTO_INCREMENT_INCREMENT  AUTO_INCREMENT_OFFSET
+-- mysql return:4,14,24,34,44,54,60,61,62
+CREATE TABLE test_t (
+    id INT,
+    name VARCHAR(50),
+    value INT
+);
+INSERT INTO test_t (name, value) VALUES ('A', 1), ('B', 2), ('C', 3);
+SELECT * FROM test_t;
+ id | name | value 
+----+------+-------
+    | A    |     1
+    | B    |     2
+    | C    |     3
+(3 rows)
+
+SET AUTO_INCREMENT_INCREMENT = 10;
+SET AUTO_INCREMENT_OFFSET = 100;
+alter table test_t modify id int auto_increment unique key;
+select * from test_t;
+ id | name | value 
+----+------+-------
+  4 | A    |     1
+ 14 | B    |     2
+ 24 | C    |     3
+(3 rows)
+
+show create table test_t;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ test_t | CREATE TABLE "test_t" (                   +
+        |     "id" integer NOT NULL AUTO_INCREMENT, +
+        |     "name" character varying(50),         +
+        |     "value" integer,                      +
+        |     CONSTRAINT "test_t_id_key" UNIQUE (id)+
+        | ) AUTO_INCREMENT=30
+(1 row)
+
+INSERT INTO test_t (name, value) VALUES ('D', 4);
+SELECT * FROM test_t;
+ id | name | value 
+----+------+-------
+  4 | A    |     1
+ 14 | B    |     2
+ 24 | C    |     3
+ 34 | D    |     4
+(4 rows)
+
+show create table test_t;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ test_t | CREATE TABLE "test_t" (                   +
+        |     "id" integer NOT NULL AUTO_INCREMENT, +
+        |     "name" character varying(50),         +
+        |     "value" integer,                      +
+        |     CONSTRAINT "test_t_id_key" UNIQUE (id)+
+        | ) AUTO_INCREMENT=40
+(1 row)
+
+INSERT INTO test_t (name, value) VALUES ('D', 4);
+SELECT * FROM test_t;
+ id | name | value 
+----+------+-------
+  4 | A    |     1
+ 14 | B    |     2
+ 24 | C    |     3
+ 34 | D    |     4
+ 44 | D    |     4
+(5 rows)
+
+INSERT INTO test_t (name, value) VALUES ('D', 4);
+SELECT * FROM test_t;
+ id | name | value 
+----+------+-------
+  4 | A    |     1
+ 14 | B    |     2
+ 24 | C    |     3
+ 34 | D    |     4
+ 44 | D    |     4
+ 54 | D    |     4
+(6 rows)
+
+SET AUTO_INCREMENT_INCREMENT = 1;
+SET AUTO_INCREMENT_OFFSET = 1;
+INSERT INTO test_t (name, value) VALUES ('D', 4);
+SELECT * FROM test_t;
+ id | name | value 
+----+------+-------
+  4 | A    |     1
+ 14 | B    |     2
+ 24 | C    |     3
+ 34 | D    |     4
+ 44 | D    |     4
+ 54 | D    |     4
+ 60 | D    |     4
+(7 rows)
+
+INSERT INTO test_t (name, value) VALUES ('D', 4);
+INSERT INTO test_t (name, value) VALUES ('D', 4);
+SELECT * FROM test_t;
+ id | name | value 
+----+------+-------
+  4 | A    |     1
+ 14 | B    |     2
+ 24 | C    |     3
+ 34 | D    |     4
+ 44 | D    |     4
+ 54 | D    |     4
+ 60 | D    |     4
+ 61 | D    |     4
+ 62 | D    |     4
+(9 rows)
+
+drop table test_t;
+-- modify then update set
+create table t1 (a int not null primary key);
+insert into t1 values (10);
+alter table t1 modify a int auto_increment;
+show create table t1;
+ Table |               Create Table               
+-------+------------------------------------------
+ t1    | CREATE TABLE "t1" (                     +
+       |     "a" integer NOT NULL AUTO_INCREMENT,+
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (a)+
+       | ) AUTO_INCREMENT=11
+(1 row)
+
+update t1 set a = 5 where a = 10;
+select * from t1 order by a;
+ a 
+---
+ 5
+(1 row)
+
+show create table t1;
+ Table |               Create Table               
+-------+------------------------------------------
+ t1    | CREATE TABLE "t1" (                     +
+       |     "a" integer NOT NULL AUTO_INCREMENT,+
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (a)+
+       | ) AUTO_INCREMENT=11
+(1 row)
+
+insert into t1 values();
+select * from t1 order by a;
+ a  
+----
+  5
+ 11
+(2 rows)
+
+update t1 set a = 20;
+ERROR:  duplicate key value violates unique constraint "t1_pkey"
+DETAIL:  Key (a)=(20) already exists.
+update t1 set a = 20 where a = 5;
+select * from t1 order by a;
+ a  
+----
+ 11
+ 20
+(2 rows)
+
+drop table t1;
+create table t1 (a int not null primary key);
+insert into t1 values (10);
+alter table t1 modify a int auto_increment;
+show create table t1;
+ Table |               Create Table               
+-------+------------------------------------------
+ t1    | CREATE TABLE "t1" (                     +
+       |     "a" integer NOT NULL AUTO_INCREMENT,+
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (a)+
+       | ) AUTO_INCREMENT=11
+(1 row)
+
+update t1 set a = 15;
+select * from t1 order by a;
+ a  
+----
+ 15
+(1 row)
+
+show create table t1;
+ Table |               Create Table               
+-------+------------------------------------------
+ t1    | CREATE TABLE "t1" (                     +
+       |     "a" integer NOT NULL AUTO_INCREMENT,+
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (a)+
+       | ) AUTO_INCREMENT=11
+(1 row)
+
+insert into t1 values();
+select * from t1 order by a;
+ a  
+----
+ 11
+ 15
+(2 rows)
+
+update t1 set a = 20;
+ERROR:  duplicate key value violates unique constraint "t1_pkey"
+DETAIL:  Key (a)=(20) already exists.
+update t1 set a = 20 where a = 5;
+select * from t1 order by a;
+ a  
+----
+ 11
+ 15
+(2 rows)
+
+drop table t1;
+-------- test case: comment
+-- success: add comment
+create table test_comm(id int, name varchar(20));
+alter table test_comm modify name int not null comment 'not_null';
+show create table test_comm;
+   Table   |                  Create Table                  
+-----------+------------------------------------------------
+ test_comm | CREATE TABLE "test_comm" (                    +
+           |     "id" integer,                             +
+           |     "name" integer NOT NULL COMMENT 'not_null'+
+           | )
+(1 row)
+
+-- success: change comment
+alter table test_comm modify name int not null comment 'changecomment';
+show create table test_comm;
+   Table   |                    Create Table                     
+-----------+-----------------------------------------------------
+ test_comm | CREATE TABLE "test_comm" (                         +
+           |     "id" integer,                                  +
+           |     "name" integer NOT NULL COMMENT 'changecomment'+
+           | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_comm'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_comm'::regclass and attname = 'name');
+ count 
+-------
+     1
+(1 row)
+
+-- success: remove comment
+alter table test_comm modify name varchar(20);
+show create table test_comm;
+   Table   |           Create Table           
+-----------+----------------------------------
+ test_comm | CREATE TABLE "test_comm" (      +
+           |     "id" integer,               +
+           |     "name" character varying(20)+
+           | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_comm'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_comm'::regclass and attname = 'name');
+ count 
+-------
+     0
+(1 row)
+
+drop table test_comm;
+-- mysql col comment less then 1024, but v9 no this check
+-- this comment is 1026
+create table t1 (
+    c1 VARCHAR(10) NOT NULL COMMENT 'c1 comment',
+    c2 INTEGER,
+    c3 INTEGER,
+    c4 INTEGER);
+alter table t1 modify c3 int COMMENT 'abcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcdefghijabcde';
+drop table t1;
+-------- test case: collate
+-- create fail: Incorrect integer value: 'a' for column
+create table test_coll(id int CHARACTER SET utf8 NOT NULL DEFAULT 'a');
+ERROR:  Incorrect integer value: 'a' for column.
+LINE 1: ...e test_coll(id int CHARACTER SET utf8 NOT NULL DEFAULT 'a');
+                                                                  ^
+-- the same fail: Incorrect integer value: 'a' for column
+create table test_coll(id int, name varchar(20), address varchar(20));
+alter table test_coll modify id int CHARACTER SET utf8 NOT NULL DEFAULT 'a';
+ERROR:  Incorrect integer value: 'a' for column.
+-- add new collate
+alter table test_coll modify name VARCHAR(255) CHARACTER SET utf8 NOT NULL DEFAULT 'name';
+alter table test_coll modify address VARCHAR(255) COLLATE utf8_unicode_ci NULL DEFAULT 'address';
+\d+ test_coll;
+                                                       Table "public.test_coll"
+ Column  |          Type          |    Collation    | Nullable |           Default            | Storage  | Stats target | Description 
+---------+------------------------+-----------------+----------+------------------------------+----------+--------------+-------------
+ id      | integer                |                 |          |                              | plain    |              | 
+ name    | character varying(255) |                 | not null | 'name'::character varying    | extended |              | 
+ address | character varying(255) | utf8_unicode_ci |          | 'address'::character varying | extended |              | 
+
+-- change collate
+alter table test_coll modify address text COLLATE "utf8mb3_unicode_ci";
+\d+ test_coll;
+                                                       Table "public.test_coll"
+ Column  |          Type          |     Collation      | Nullable |          Default          | Storage  | Stats target | Description 
+---------+------------------------+--------------------+----------+---------------------------+----------+--------------+-------------
+ id      | integer                |                    |          |                           | plain    |              | 
+ name    | character varying(255) |                    | not null | 'name'::character varying | extended |              | 
+ address | text                   | utf8mb3_unicode_ci |          |                           | extended |              | 
+
+-- support collate default
+alter table test_coll modify address text COLLATE "default"
+\d+ test_coll;
+                                                       Table "public.test_coll"
+ Column  |          Type          |     Collation      | Nullable |          Default          | Storage  | Stats target | Description 
+---------+------------------------+--------------------+----------+---------------------------+----------+--------------+-------------
+ id      | integer                |                    |          |                           | plain    |              | 
+ name    | character varying(255) |                    | not null | 'name'::character varying | extended |              | 
+ address | text                   | utf8mb3_unicode_ci |          |                           | extended |              | 
+
+-- remove  collate
+alter table test_coll modify address text;
+ERROR:  syntax error at or near "alter"
+LINE 3: alter table test_coll modify address text;
+        ^
+\d+ test_coll;
+                                                       Table "public.test_coll"
+ Column  |          Type          |     Collation      | Nullable |          Default          | Storage  | Stats target | Description 
+---------+------------------------+--------------------+----------+---------------------------+----------+--------------+-------------
+ id      | integer                |                    |          |                           | plain    |              | 
+ name    | character varying(255) |                    | not null | 'name'::character varying | extended |              | 
+ address | text                   | utf8mb3_unicode_ci |          |                           | extended |              | 
+
+drop table test_coll;
+-------- test case: modify view
+create table test_view(id int, name varchar(20));
+create view test_view_m AS select * from test_view;
+-- fail: could not modify view
+alter table test_view_m modify id varchar(20);
+ERROR:  "test_view_m" is not a table
+drop view test_view_m;
+drop table test_view;
+-------- test case: temp table
+create temp table test_tmp(a int, id int, name varchar(20));
+alter table test_tmp modify id varchar(20);
+show create table test_tmp;
+  Table   |            Create Table             
+----------+-------------------------------------
+ test_tmp | CREATE TEMPORARY TABLE "test_tmp" (+
+          |     "a" integer,                   +
+          |     "id" character varying(20),    +
+          |     "name" character varying(20)   +
+          | )
+(1 row)
+
+insert into test_tmp(id) values(21),(21),(31);
+-- fail as duplicated
+alter table test_tmp modify id int primary key;
+ERROR:  could not create unique index "test_tmp_pkey"
+DETAIL:  Key (id)=(21) is duplicated.
+delete from test_tmp;
+-- success
+insert into test_tmp(id) values(21),(31);
+alter table test_tmp modify id varchar(20) primary key;
+alter table test_tmp modify id int auto_increment;
+ALTER TABLE test_tmp AUTO_INCREMENT = 1000;
+insert into test_tmp values();
+show create table test_tmp;
+  Table   |                  Create Table                   
+----------+-------------------------------------------------
+ test_tmp | CREATE TEMPORARY TABLE "test_tmp" (            +
+          |     "a" integer,                               +
+          |     "id" integer NOT NULL AUTO_INCREMENT,      +
+          |     "name" character varying(20),              +
+          |     CONSTRAINT "test_tmp_pkey" PRIMARY KEY (id)+
+          | ) AUTO_INCREMENT=1001
+(1 row)
+
+select * from test_tmp;
+ a |  id  | name 
+---+------+------
+   |   21 | 
+   |   31 | 
+   | 1000 | 
+(3 rows)
+
+drop table test_tmp;
+-------- test case: partition table
+-- using pg syntax to create partition table
+create table test_par(id int, name varchar(20)) partition by range(id);
+create table test_par_1 partition of test_par for values from(0) to (100);
+create table test_par_2 partition of test_par for values from(100) to (200);
+create table test_par_3 partition of test_par for values from(200) to (MAXVALUE);
+alter table test_par modify id varchar(20);
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+alter table test_par modify name float default 222;
+show create table test_par;
+  Table   |         Create Table          
+----------+-------------------------------
+ test_par | CREATE TABLE "test_par" (    +
+          |     "id" integer,            +
+          |     "name" float4 DEFAULT 222+
+          | )                            +
+          | PARTITION BY RANGE (id)
+(1 row)
+
+\d+ test_par;
+                           Partitioned table "public.test_par"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ name   | float4  |           |          | 222     | plain   |              | 
+Partition key: RANGE (id)
+Partitions: test_par_1 FOR VALUES FROM (0) TO (100),
+            test_par_2 FOR VALUES FROM (100) TO (200),
+            test_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ test_par_1;
+                                Table "public.test_par_1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ name   | float4  |           |          | 222     | plain   |              | 
+Partition of: test_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+insert into test_par(id) values(101);
+select * from test_par;
+ id  | name 
+-----+------
+ 101 |  222
+(1 row)
+
+alter table test_par modify name float default 333 comment 'chil_new';
+\d+ test_par;
+                           Partitioned table "public.test_par"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ name   | float4  |           |          | 333     | plain   |              | chil_new
+Partition key: RANGE (id)
+Partitions: test_par_1 FOR VALUES FROM (0) TO (100),
+            test_par_2 FOR VALUES FROM (100) TO (200),
+            test_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ test_par_1;
+                                Table "public.test_par_1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ name   | float4  |           |          | 333     | plain   |              | chil_new
+Partition of: test_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+-- mysql success, the same datatype or add auto_increment
+-- dolphin fail, v9 fail
+alter table test_par modify id int;
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+alter table test_par modify id int auto_increment;
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+alter table test_par modify id int primary key;
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+drop table test_par;
+-------- test case: inherited table
+-- mysql did not support inherited table, so did not test
+-------- test case: modify index
+create table test_i(id int, name varchar(20));
+create index test_i_index on test_i(id);
+alter table test_i_index modify id int;
+ERROR:  "test_i_index" is not a table
+drop index test_i_index;
+drop table test_i;
+-------- test case: generated always as
+-- mysql: no stored, it means virtual, but v9 did not support no stored
+create table test_gen(a int, b int, c int generated always as (a+b));
+ERROR:  syntax error at or near ")"
+LINE 1: ...ble test_gen(a int, b int, c int generated always as (a+b));
+                                                                     ^
+-- show create table generate, compare with modify generate
+create table test_create_gen(a int, b int, c int generated always as (a+b) STORED);
+\d+ test_create_gen;
+                                            Table "public.test_create_gen"
+ Column |  Type   | Collation | Nullable |               Default                | Storage | Stats target | Description 
+--------+---------+-----------+----------+--------------------------------------+---------+--------------+-------------
+ a      | integer |           |          |                                      | plain   |              | 
+ b      | integer |           |          |                                      | plain   |              | 
+ c      | integer |           |          | generated always as ((a + b)) stored | plain   |              | 
+
+create table test_gen(a int, b int, c int);
+alter table test_gen modify c int generated always as (a+b) STORED;
+\d+ test_gen;
+                                                Table "public.test_gen"
+ Column |  Type   | Collation | Nullable |               Default                | Storage | Stats target | Description 
+--------+---------+-----------+----------+--------------------------------------+---------+--------------+-------------
+ a      | integer |           |          |                                      | plain   |              | 
+ b      | integer |           |          |                                      | plain   |              | 
+ c      | integer |           |          | generated always as ((a + b)) stored | plain   |              | 
+
+drop table test_gen;
+-- if there have value, then modify
+-- success, the generate worked for the new insert data
+create table test_gen(a int, b int, c int);
+insert into test_gen values(1,1,1),(2,2,2);
+alter table test_gen modify c int generated always as (a+b) STORED;
+select * from test_gen;
+ a | b | c 
+---+---+---
+ 1 | 1 | 1
+ 2 | 2 | 2
+(2 rows)
+
+insert into test_gen values(3,3,3);
+ERROR:  cannot insert a non-DEFAULT value into column "c"
+DETAIL:  Column "c" is a generated column.
+insert into test_gen values(3,3);
+select * from test_gen;
+ a | b | c 
+---+---+---
+ 1 | 1 | 1
+ 2 | 2 | 2
+ 3 | 3 | 6
+(3 rows)
+
+drop table test_gen;
+-- remove the generate
+create table test_gen(a int, b int, c int generated always as (a+b+10) STORED);
+insert into test_gen values(1,1),(2,2);
+-- fail: a+b+10 --> varchar(20)
+-- 	mysql success
+--	v9 report error, this error is the same with generated.out
+alter table test_gen modify c varchar(20);
+ERROR:  found unexpected dependency for column: operator +(integer,integer)
+-- fail with the same error: alter table xxx alter column c TYPE float;
+alter table test_gen modify c float;
+ERROR:  found unexpected dependency for column: operator +(integer,integer)
+-- fail with the same error: alter table xxx alter column c TYPE int;
+alter table test_gen modify c int;
+ERROR:  found unexpected dependency for column: operator +(integer,integer)
+drop table test_gen;
+-------- test case: enum type
+create table test_enum(a int, color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
+show create table test_enum;
+   Table   |                Create Table                
+-----------+--------------------------------------------
+ test_enum | CREATE TABLE "test_enum" (                +
+           |     "a" integer,                          +
+           |     "color" test_enum_color_anonymous_enum+
+           | )
+(1 row)
+
+insert into test_enum values(10,2),(11,3);
+select * from test_enum;
+ a  | color 
+----+-------
+ 10 | bbb
+ 11 | ccc
+(2 rows)
+
+-- fail
+--	v9 report: Incorrect integer value
+-- 	mysql report: ERROR 1265 (01000): Data truncated for column xxx
+alter table test_enum modify color enum('111', '222', '333', '444');
+ERROR:  Data truncated for column
+-- succ
+alter table test_enum modify color enum('111', 'bbb', '333', 'ccc', '444');
+ERROR:  Data truncated for column
+select * from test_enum;
+ a  | color 
+----+-------
+ 10 | bbb
+ 11 | ccc
+(2 rows)
+
+-- enum --> int
+alter table test_enum modify color int;
+select * from test_enum;
+ a  | color 
+----+-------
+ 10 |     2
+ 11 |     3
+(2 rows)
+
+drop table test_enum;
+-- enum --> varchar
+create table test_enum(a int, color enum('aaa', 'bbb', 'ccc', 'ddd', 'eee'));
+insert into test_enum values(10,2),(11,3);
+select * from test_enum;
+ a  | color 
+----+-------
+ 10 | bbb
+ 11 | ccc
+(2 rows)
+
+alter table test_enum modify color varchar(20);
+select * from test_enum;
+ a  | color 
+----+-------
+ 10 | bbb
+ 11 | ccc
+(2 rows)
+
+-------- test case: trigger
+-- v9 trigger syntax is not the same with mysql
+-- mysql trigger: just fired for DDL(INSERT/UPDATE/DELETE)
+-- V9 trigger: the same with mysql, so modify did not fired the trigger
+-- after change the data type, the next insert will fail, need clean the cache plan or using a new session
+create table t1(id serial, age text);
+create table t1_log(log_id serial primary key, action text, old_age text, new_age bigint);
+CREATE OR REPLACE FUNCTION trg_fn_insert()
+RETURNS trigger AS $$
+BEGIN
+INSERT INTO t1_log(action, old_age, new_age) values('insert', NULL, NEW.age);
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+create trigger trg_t1_after_insert
+after insert on t1
+for each row
+execute function trg_fn_insert();
+insert into t1(age) values('22');
+select * from t1_log;
+ log_id | action | old_age | new_age 
+--------+--------+---------+---------
+      1 | insert |         |      22
+(1 row)
+
+alter table t1 modify age bigint unique key auto_increment;
+show create table t1;
+ Table |                           Create Table                            
+-------+-------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                              +
+       |     "id" integer NOT NULL DEFAULT nextval('t1_id_seq'::regclass),+
+       |     "age" bigint NOT NULL AUTO_INCREMENT,                        +
+       |     CONSTRAINT "t1_age_key" UNIQUE (age)                         +
+       | ) AUTO_INCREMENT=23
+(1 row)
+
+select * from t1_log;
+ log_id | action | old_age | new_age 
+--------+--------+---------+---------
+      1 | insert |         |      22
+(1 row)
+
+drop table t1;
+drop function trg_fn_insert();
+drop table t1_log;
+-------- test case: column auto_increment and  table option auto_increment
+-- alter table AUTO_INCREMENT
+create table test_tab_op(id int, name varchar(20));
+insert into test_tab_op values(10,'ssss'),(20,'dddd');
+alter table test_tab_op modify id int unique key;
+alter table test_tab_op modify id int auto_increment;
+alter table test_tab_op AUTO_INCREMENT = 10;
+show create table test_tab_op;
+    Table    |                  Create Table                   
+-------------+-------------------------------------------------
+ test_tab_op | CREATE TABLE "test_tab_op" (                   +
+             |     "id" integer NOT NULL AUTO_INCREMENT,      +
+             |     "name" character varying(20),              +
+             |     CONSTRAINT "test_tab_op_id_key" UNIQUE (id)+
+             | ) AUTO_INCREMENT=21
+(1 row)
+
+alter table test_tab_op AUTO_INCREMENT = 30;
+show create table test_tab_op;
+    Table    |                  Create Table                   
+-------------+-------------------------------------------------
+ test_tab_op | CREATE TABLE "test_tab_op" (                   +
+             |     "id" integer NOT NULL AUTO_INCREMENT,      +
+             |     "name" character varying(20),              +
+             |     CONSTRAINT "test_tab_op_id_key" UNIQUE (id)+
+             | ) AUTO_INCREMENT=30
+(1 row)
+
+select * from test_tab_op;
+ id | name 
+----+------
+ 10 | ssss
+ 20 | dddd
+(2 rows)
+
+drop table test_tab_op;
+create table test_tab_op(id int, name varchar(20));
+insert into test_tab_op values(10,'ssss'),(20,'dddd');
+-- AUTO_INCREMENT = 30, mysql success
+-- v9 fail as "no owned sequence found", expected
+alter table test_tab_op modify id int unique key auto_increment, AUTO_INCREMENT = 30;
+ERROR:  no owned sequence found
+drop table test_tab_op;
+-------- test case: reference did not support
+create table test_1(a int, b int, c int);
+create table test_2(id_1 int, id_2 int, id_3 int);
+insert into test_1 values(11,11,11),(22,22,22),(33,33,33);
+insert into test_2 values(1,1,1),(2,2,2),(3,3,3);
+alter table test_2 modify id_2 varchar(20) reference test_1(b);
+ERROR:  syntax error at or near "reference"
+LINE 1: alter table test_2 modify id_2 varchar(20) reference test_1(...
+                                                   ^
+drop table test_1, test_2;
+------- test case: all option
+create table test_all(a int, b int, c int);
+alter table test_all modify b float not null auto_increment unique comment 'modify_1' collate utf8_general_ci;
+ERROR:  collations are not supported by type float4
+LINE 1: ...not null auto_increment unique comment 'modify_1' collate ut...
+                                                             ^
+alter table test_all modify b text not null auto_increment unique comment 'modify_1' collate utf8_general_ci;
+ERROR:  sequence type must be smallint, integer, bigint, float4, or float8
+alter table test_all modify b float null auto_increment key comment 'modify_1';
+\d+ test_all;
+                                                   Table "public.test_all"
+ Column |  Type   | Collation | Nullable |                   Default                   | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------------------------------------------+---------+--------------+-------------
+ a      | integer |           |          |                                             | plain   |              | 
+ b      | float4  |           | not null | autoinc_nextval('test_all_b_seq'::regclass) | plain   |              | modify_1
+ c      | integer |           |          |                                             | plain   |              | 
+Indexes:
+    "test_all_pkey" PRIMARY KEY, btree (b)
+
+alter table test_all modify b varchar(20);
+\d+ test_all;
+                                         Table "public.test_all"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | character varying(20) |           | not null |         | extended |              | 
+ c      | integer               |           |          |         | plain    |              | 
+Indexes:
+    "test_all_pkey" PRIMARY KEY, btree (b)
+
+alter table test_all modify c varchar(20) default 'aaaa' unique comment 'modify_c' collate C;
+\d+ test_all;
+                                                  Table "public.test_all"
+ Column |         Type          | Collation | Nullable |          Default          | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------------------------+----------+--------------+-------------
+ a      | integer               |           |          |                           | plain    |              | 
+ b      | character varying(20) |           | not null |                           | extended |              | 
+ c      | character varying(20) | C         |          | 'aaaa'::character varying | extended |              | modify_c
+Indexes:
+    "test_all_pkey" PRIMARY KEY, btree (b)
+    "test_all_c_key" UNIQUE CONSTRAINT, btree (c)
+
+alter table test_all modify c varchar(20) default 'aaaa' comment 'modify_c';
+\d+ test_all;
+                                                  Table "public.test_all"
+ Column |         Type          | Collation | Nullable |          Default          | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------------------------+----------+--------------+-------------
+ a      | integer               |           |          |                           | plain    |              | 
+ b      | character varying(20) |           | not null |                           | extended |              | 
+ c      | character varying(20) |           |          | 'aaaa'::character varying | extended |              | modify_c
+Indexes:
+    "test_all_pkey" PRIMARY KEY, btree (b)
+    "test_all_c_key" UNIQUE CONSTRAINT, btree (c)
+
+alter table test_all modify c varchar(20) default 'aaaa';
+\d+ test_all;
+                                                  Table "public.test_all"
+ Column |         Type          | Collation | Nullable |          Default          | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------------------------+----------+--------------+-------------
+ a      | integer               |           |          |                           | plain    |              | 
+ b      | character varying(20) |           | not null |                           | extended |              | 
+ c      | character varying(20) |           |          | 'aaaa'::character varying | extended |              | 
+Indexes:
+    "test_all_pkey" PRIMARY KEY, btree (b)
+    "test_all_c_key" UNIQUE CONSTRAINT, btree (c)
+
+alter table test_all modify c float;
+\d+ test_all;
+                                         Table "public.test_all"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | character varying(20) |           | not null |         | extended |              | 
+ c      | float4                |           |          |         | plain    |              | 
+Indexes:
+    "test_all_pkey" PRIMARY KEY, btree (b)
+    "test_all_c_key" UNIQUE CONSTRAINT, btree (c)
+
+drop table test_all;
+------------- alter table change
+-------- test case: table or col did not exist
+alter table test_name change id idddd int;
+ERROR:  relation "test_name" does not exist
+create table test_name(id int, name varchar(20));
+alter table test_name change idd idddd int;
+ERROR:  column "idd" of relation "test_name" does not exist
+alter table test_name change id int;
+ERROR:  syntax error at or near ";"
+LINE 1: alter table test_name change id int;
+                                           ^
+drop table test_name;
+-------- test case:  column name
+-- new col name = old col name
+create table test_no(id int, name varchar(20));
+alter table test_no change name name varchar(20);
+\d+ test_no;
+                                         Table "public.test_no"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+
+drop table test_no;
+-- change col name
+create table test_name(id int, name varchar(20));
+insert into test_name values(1, 'aaa'),(2, 'bbb');
+alter table test_name change id iddd int;
+\d+ test_name;
+                                        Table "public.test_name"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ iddd   | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+
+select * from test_name;
+ iddd | name 
+------+------
+    1 | aaa
+    2 | bbb
+(2 rows)
+
+drop table test_name;
+-- change col name, primary key, unique key, index for diff column
+create table test_name(id int, name varchar(20), age float,
+			primary key(id),
+			unique key(name),
+			index(age));
+\d+ test_name;
+                                        Table "public.test_name"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+ age    | float4                |           |          |         | plain    |              | 
+Indexes:
+    "test_name_pkey" PRIMARY KEY, btree (id)
+    "test_name_age_idx" btree (age)
+    "test_name_name_key" UNIQUE CONSTRAINT, btree (name)
+
+insert into test_name values(1, 'aaa', 11.11),(2, 'bbb', 22.22);
+alter table test_name change id id2 int;
+alter table test_name change name name2 varchar(20);
+alter table test_name change age age2 float;
+\d+ test_name;
+                                        Table "public.test_name"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id2    | integer               |           | not null |         | plain    |              | 
+ name2  | character varying(20) |           |          |         | extended |              | 
+ age2   | float4                |           |          |         | plain    |              | 
+Indexes:
+    "test_name_pkey" PRIMARY KEY, btree (id2)
+    "test_name_age_idx" btree (age2)
+    "test_name_name_key" UNIQUE CONSTRAINT, btree (name2)
+
+select indexname, indexdef from pg_indexes where tablename = 'test_name';
+     indexname      |                                    indexdef                                    
+--------------------+--------------------------------------------------------------------------------
+ test_name_pkey     | CREATE UNIQUE INDEX test_name_pkey ON public.test_name USING btree (id2)
+ test_name_name_key | CREATE UNIQUE INDEX test_name_name_key ON public.test_name USING btree (name2)
+ test_name_age_idx  | CREATE INDEX test_name_age_idx ON public.test_name USING btree (age2)
+(3 rows)
+
+select * from test_name;
+ id2 | name2 | age2  
+-----+-------+-------
+   1 | aaa   | 11.11
+   2 | bbb   | 22.22
+(2 rows)
+
+drop table test_name;
+-- test case: change col name, primary key, unique key, index for the same column
+-- then change data type, keep the name
+create table test_name(id int, name varchar(20), age float,
+			primary key(age),
+			unique key(age),
+			index(age));
+insert into test_name values(10,'highgo',12.34),(20,'go',45.67);
+alter table test_name change age age2 float;
+\d+ test_name;
+                                        Table "public.test_name"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+ age2   | float4                |           | not null |         | plain    |              | 
+Indexes:
+    "test_name_pkey" PRIMARY KEY, btree (age2)
+    "test_name_age_idx" btree (age2)
+
+alter table test_name change age2 age2 int;
+\d+ test_name;
+                                        Table "public.test_name"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+ age2   | integer               |           | not null |         | plain    |              | 
+Indexes:
+    "test_name_pkey" PRIMARY KEY, btree (age2)
+    "test_name_age_idx" btree (age2)
+
+select * from test_name;
+ id |  name  | age2 
+----+--------+------
+ 10 | highgo |   12
+ 20 | go     |   46
+(2 rows)
+
+drop table test_name;
+-------- test case: comment
+create table test_co (a int, b int, c int);
+alter table test_co change b b_new int comment 'b_new';
+show create table test_co;
+  Table  |             Create Table             
+---------+--------------------------------------
+ test_co | CREATE TABLE "test_co" (            +
+         |     "a" integer,                    +
+         |     "b_new" integer COMMENT 'b_new',+
+         |     "c" integer                     +
+         | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_co'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_co'::regclass and attname = 'b');
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_co'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_co'::regclass and attname = 'b_new');
+ count 
+-------
+     1
+(1 row)
+
+alter table test_co change b_new b_new int comment 'b_new_new';
+show create table test_co;
+  Table  |               Create Table               
+---------+------------------------------------------
+ test_co | CREATE TABLE "test_co" (                +
+         |     "a" integer,                        +
+         |     "b_new" integer COMMENT 'b_new_new',+
+         |     "c" integer                         +
+         | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_co'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_co'::regclass and attname = 'b_new');
+ count 
+-------
+     1
+(1 row)
+
+alter table test_co change b_new b int;
+show create table test_co;
+  Table  |       Create Table       
+---------+--------------------------
+ test_co | CREATE TABLE "test_co" (+
+         |     "a" integer,        +
+         |     "b" integer,        +
+         |     "c" integer         +
+         | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_co'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_co'::regclass and attname = 'b_new');
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from pg_description where objoid = 'test_co'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'test_co'::regclass and attname = 'b');
+ count 
+-------
+     0
+(1 row)
+
+drop table test_co;
+-------- test case: NULL/NOT NULL
+create table test_cn (a int, b int, c int);
+alter table test_cn change b b_new int comment 'b_new' NOT NULL;
+show create table test_cn;
+  Table  |                 Create Table                  
+---------+-----------------------------------------------
+ test_cn | CREATE TABLE "test_cn" (                     +
+         |     "a" integer,                             +
+         |     "b_new" integer NOT NULL COMMENT 'b_new',+
+         |     "c" integer                              +
+         | )
+(1 row)
+
+alter table test_cn change b_new b_new int comment 'b_new';
+alter table test_cn change b_new b_new int;
+alter table test_cn change b_new b;
+ERROR:  syntax error at or near ";"
+LINE 1: alter table test_cn change b_new b;
+                                          ^
+alter table test_cn change b_new float comment 'b_new' NOT NULL;
+ERROR:  syntax error at or near "'b_new'"
+LINE 1: alter table test_cn change b_new float comment 'b_new' NOT N...
+                                                       ^
+alter table test_cn change b_new b float comment 'b_new' NOT NULL;
+show create table test_cn;
+  Table  |               Create Table               
+---------+------------------------------------------
+ test_cn | CREATE TABLE "test_cn" (                +
+         |     "a" integer,                        +
+         |     "b" float4 NOT NULL COMMENT 'b_new',+
+         |     "c" integer                         +
+         | )
+(1 row)
+
+drop table test_cn;
+-------- test case: enum
+-- change enum name
+create table test_name(id int, color enum('aaa', 'bbb', 'ccc', 'ddd'));
+insert into test_name values(10,2),(11,3);
+\d+ test_name;
+                                            Table "public.test_name"
+ Column |              Type              | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+--------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer                        |           |          |         | plain   |              | 
+ color  | test_name_color_anonymous_enum |           |          |         | plain   |              | 
+
+alter table test_name change color color enum('aaa', 'bbb', 'ccc', 'ddd');
+\d+ test_name;
+                                             Table "public.test_name"
+ Column |              Type               | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer                         |           |          |         | plain   |              | 
+ color  | test_name_color_anonymous_enum1 |           |          |         | plain   |              | 
+
+alter table test_name change color color_new enum('aaa', 'bbb', 'ccc', 'ddd');
+\d+ test_name;
+                                                Table "public.test_name"
+  Column   |                Type                | Collation | Nullable | Default | Storage | Stats target | Description 
+-----------+------------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id        | integer                            |           |          |         | plain   |              | 
+ color_new | test_name_color_new_anonymous_enum |           |          |         | plain   |              | 
+
+alter table test_name change color_new color_new enum('111','bbb','ccc','444','555');
+\d+ test_name;
+                                                Table "public.test_name"
+  Column   |                Type                 | Collation | Nullable | Default | Storage | Stats target | Description 
+-----------+-------------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id        | integer                             |           |          |         | plain   |              | 
+ color_new | test_name_color_new_anonymous_enum1 |           |          |         | plain   |              | 
+
+alter table test_name change color_new color enum('123','bbb','456','ccc');
+ERROR:  Data truncated for column
+drop table test_name;
+-- change enum name, but enum value not match
+-- fail
+--      v9 report: Incorrect integer value
+--      mysql report: ERROR 1265 (01000): Data truncated for column xxx
+create table test_name(id int, color enum('aaa', 'bbb', 'ccc', 'ddd'));
+insert into test_name values(10,2),(11,3);
+alter table test_name change color color_new enum('aaa', 'bbb', 'ddd');
+ERROR:  Data truncated for column
+\d+ test_name;
+                                            Table "public.test_name"
+ Column |              Type              | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+--------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer                        |           |          |         | plain   |              | 
+ color  | test_name_color_anonymous_enum |           |          |         | plain   |              | 
+
+select * from test_name;
+ id | color 
+----+-------
+ 10 | bbb
+ 11 | ccc
+(2 rows)
+
+drop table test_name;
+-- change enum --> int
+create table test_name(id int, color enum('aaa', 'bbb', 'ccc', 'ddd'));
+insert into test_name values(10,2),(11,3);
+alter table test_name change color color_new int;
+show create table test_name;
+   Table   |        Create Table        
+-----------+----------------------------
+ test_name | CREATE TABLE "test_name" (+
+           |     "id" integer,         +
+           |     "color_new" integer   +
+           | )
+(1 row)
+
+select * from test_name;
+ id | color_new 
+----+-----------
+ 10 |         2
+ 11 |         3
+(2 rows)
+
+drop table test_name;
+-- change enum --> varchar
+create table test_name(id int, color enum('aaa', 'bbb', 'ccc', 'ddd'));
+insert into test_name values(10,2),(11,3);
+alter table test_name change color color_new varchar(20);
+show create table test_name;
+   Table   |             Create Table              
+-----------+---------------------------------------
+ test_name | CREATE TABLE "test_name" (           +
+           |     "id" integer,                    +
+           |     "color_new" character varying(20)+
+           | )
+(1 row)
+
+select * from test_name;
+ id | color_new 
+----+-----------
+ 10 | bbb
+ 11 | ccc
+(2 rows)
+
+drop table test_name;
+-------- test case: change view
+create table test_view(id int, name varchar(20));
+create view test_view_m AS select * from test_view;
+-- fail: could not modify view
+alter table test_view_m change id iddd varchar(20);
+ERROR:  "test_view_m" is not a table
+drop view test_view_m;
+drop table test_view;
+------ test case: change a auto
+create table test_c2(a int, id int, name varchar(20));
+alter table test_c2 change id idd int auto_increment unique key;
+alter table test_c2 change idd idd int auto_increment unique key;
+ERROR:  there can be only one auto column and it must be defined as a key
+show create table test_c2;
+  Table  |                 Create Table                  
+---------+-----------------------------------------------
+ test_c2 | CREATE TABLE "test_c2" (                     +
+         |     "a" integer,                             +
+         |     "idd" integer NOT NULL AUTO_INCREMENT,   +
+         |     "name" character varying(20),            +
+         |     CONSTRAINT "test_c2_idd_key" UNIQUE (idd)+
+         | )
+(1 row)
+
+drop table test_c2;
+-------- test case: temp table
+create temp table test_tmp(a int, id int, name varchar(20));
+alter table test_tmp change id id varchar(20);
+show create table test_tmp;
+  Table   |            Create Table             
+----------+-------------------------------------
+ test_tmp | CREATE TEMPORARY TABLE "test_tmp" (+
+          |     "a" integer,                   +
+          |     "id" character varying(20),    +
+          |     "name" character varying(20)   +
+          | )
+(1 row)
+
+insert into test_tmp(id) values(21),(21),(31);
+-- fail as duplicated
+alter table test_tmp change id id_1 int primary key;
+ERROR:  could not create unique index "test_tmp_pkey"
+DETAIL:  Key (id_1)=(21) is duplicated.
+delete from test_tmp;
+-- success
+insert into test_tmp(id) values(21),(31);
+alter table test_tmp change id id_2 varchar(20) primary key;
+alter table test_tmp change id_2 id_2 int auto_increment;
+ALTER TABLE test_tmp AUTO_INCREMENT = 1000;
+insert into test_tmp values();
+show create table test_tmp;
+  Table   |                   Create Table                    
+----------+---------------------------------------------------
+ test_tmp | CREATE TEMPORARY TABLE "test_tmp" (              +
+          |     "a" integer,                                 +
+          |     "id_2" integer NOT NULL AUTO_INCREMENT,      +
+          |     "name" character varying(20),                +
+          |     CONSTRAINT "test_tmp_pkey" PRIMARY KEY (id_2)+
+          | ) AUTO_INCREMENT=1001
+(1 row)
+
+select * from test_tmp;
+ a | id_2 | name 
+---+------+------
+   |   21 | 
+   |   31 | 
+   | 1000 | 
+(3 rows)
+
+drop table test_tmp;
+-------- test case: partition table
+-- using pg syntax to create partition table
+create table test_par(id int, name varchar(20)) partition by range(id);
+create table test_par_1 partition of test_par for values from(0) to (100);
+create table test_par_2 partition of test_par for values from(100) to (200);
+create table test_par_3 partition of test_par for values from(200) to (MAXVALUE);
+alter table test_par change id id_1 varchar(20);
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+alter table test_par change name name_2 varchar(20) default 'sdf';
+\d+ test_par;
+                                           Partitioned table "public.test_par"
+ Column |         Type          | Collation | Nullable |         Default          | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+--------------------------+----------+--------------+-------------
+ id     | integer               |           |          |                          | plain    |              | 
+ name_2 | character varying(20) |           |          | 'sdf'::character varying | extended |              | 
+Partition key: RANGE (id)
+Partitions: test_par_1 FOR VALUES FROM (0) TO (100),
+            test_par_2 FOR VALUES FROM (100) TO (200),
+            test_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ test_par_1;
+                                                Table "public.test_par_1"
+ Column |         Type          | Collation | Nullable |         Default          | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+--------------------------+----------+--------------+-------------
+ id     | integer               |           |          |                          | plain    |              | 
+ name_2 | character varying(20) |           |          | 'sdf'::character varying | extended |              | 
+Partition of: test_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+show create table test_par;
+  Table   |                            Create Table                             
+----------+---------------------------------------------------------------------
+ test_par | CREATE TABLE "test_par" (                                          +
+          |     "id" integer,                                                  +
+          |     "name_2" character varying(20) DEFAULT 'sdf'::character varying+
+          | )                                                                  +
+          | PARTITION BY RANGE (id)
+(1 row)
+
+show create table test_par_1;
+   Table    |                            Create Table                             
+------------+---------------------------------------------------------------------
+ test_par_1 | CREATE TABLE "test_par_1" (                                        +
+            |     "id" integer,                                                  +
+            |     "name_2" character varying(20) DEFAULT 'sdf'::character varying+
+            | )
+(1 row)
+
+insert into test_par(id) values(101);
+select * from test_par;
+ id  | name_2 
+-----+--------
+ 101 | sdf
+(1 row)
+
+-- mysql success, the same datatype or add auto_increment
+-- dolphin fail, v9 fail
+alter table test_par change id id int;
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+alter table test_par change id id_1 int auto_increment;
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+alter table test_par change id id_1 int primary key;
+ERROR:  cannot alter column "id" because it is part of the partition key of relation "test_par"
+drop table test_par;
+-------- test case: inherited table
+-- mysql did not support inherited table, so did not test
+-------- test case: trigger
+-- v9 trigger syntax is not the same with mysql
+-- mysql trigger: just fired for DDL(INSERT/UPDATE/DELETE)
+-- V9 trigger: the same with mysql, so modify did not fired the trigger
+-- after change the data type, the next insert will fail, need clean the cache plan or using a new session
+create table t1(id serial, age text);
+create table t1_log(log_id serial primary key, action text, old_age text, new_age bigint);
+CREATE OR REPLACE FUNCTION trg_fn_insert()
+RETURNS trigger AS $$
+BEGIN
+INSERT INTO t1_log(action, old_age, new_age) values('insert', NULL, NEW.age);
+RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+create trigger trg_t1_after_insert
+after insert on t1
+for each row
+execute function trg_fn_insert();
+insert into t1(age) values('22');
+select * from t1_log;
+ log_id | action | old_age | new_age 
+--------+--------+---------+---------
+      1 | insert |         |      22
+(1 row)
+
+alter table t1 change age age bigint unique key auto_increment;
+\d+ t1;
+                                                    Table "public.t1"
+ Column |  Type   | Collation | Nullable |                 Default                 | Storage | Stats target | Description 
+--------+---------+-----------+----------+-----------------------------------------+---------+--------------+-------------
+ id     | integer |           | not null | nextval('t1_id_seq'::regclass)          | plain   |              | 
+ age    | bigint  |           | not null | autoinc_nextval('t1_age_seq'::regclass) | plain   |              | 
+Indexes:
+    "t1_age_key" UNIQUE CONSTRAINT, btree (age)
+Triggers:
+    trg_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW EXECUTE FUNCTION trg_fn_insert()
+
+show create table t1;
+ Table |                           Create Table                            
+-------+-------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                              +
+       |     "id" integer NOT NULL DEFAULT nextval('t1_id_seq'::regclass),+
+       |     "age" bigint NOT NULL AUTO_INCREMENT,                        +
+       |     CONSTRAINT "t1_age_key" UNIQUE (age)                         +
+       | ) AUTO_INCREMENT=23
+(1 row)
+
+alter table t1 change age age_new bigint unique key;
+\d+ t1;
+                                                Table "public.t1"
+ Column  |  Type   | Collation | Nullable |            Default             | Storage | Stats target | Description 
+---------+---------+-----------+----------+--------------------------------+---------+--------------+-------------
+ id      | integer |           | not null | nextval('t1_id_seq'::regclass) | plain   |              | 
+ age_new | bigint  |           |          |                                | plain   |              | 
+Indexes:
+    "t1_age_key" UNIQUE CONSTRAINT, btree (age_new)
+    "t1_age_new_key" UNIQUE CONSTRAINT, btree (age_new)
+Triggers:
+    trg_t1_after_insert AFTER INSERT ON t1 FOR EACH ROW EXECUTE FUNCTION trg_fn_insert()
+
+show create table t1;
+ Table |                           Create Table                            
+-------+-------------------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                              +
+       |     "id" integer NOT NULL DEFAULT nextval('t1_id_seq'::regclass),+
+       |     "age_new" bigint,                                            +
+       |     CONSTRAINT "t1_age_key" UNIQUE (age_new),                    +
+       |     CONSTRAINT "t1_age_new_key" UNIQUE (age_new)                 +
+       | )
+(1 row)
+
+select * from t1_log;
+ log_id | action | old_age | new_age 
+--------+--------+---------+---------
+      1 | insert |         |      22
+(1 row)
+
+drop table t1;
+drop function trg_fn_insert();
+drop table t1_log;
+-------- test case: fk check
+create table parent(id int unique key, name varchar(20));
+create table child (id int, parent_id int, name varchar(20), constraint fk_parent foreign key(parent_id) references parent(id));
+-- mysql error: Cannot change column 'id': used in a foregin key constraint 'fk_parent' of table 'mysql.child'
+-- v9 error: Cannot change column 'id': used in a foregin key constraint
+alter table parent change id id_new bigint;
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table parent change id id varchar(20);
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table child change parent_id parent_id bigint;
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+alter table child change parent_id parent_id varchar(20);
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+-- mysql error: add auto_increment
+alter table parent change id id_new int auto_increment;
+ERROR:  Cannot change column 'id': used in a foreign key constraint
+alter table child change parent_id  parent_id_new int auto_increment;
+ERROR:  Cannot change column 'parent_id': used in a foreign key constraint
+-- mysql success: use the same datatype to modify
+alter table parent change id id_new int;
+alter table child change parent_id parent_id_new int;
+show create table parent;
+ Table  |                  Create Table                  
+--------+------------------------------------------------
+ parent | CREATE TABLE "parent" (                       +
+        |     "id_new" integer,                         +
+        |     "name" character varying(20),             +
+        |     CONSTRAINT "parent_id_key" UNIQUE (id_new)+
+        | )
+(1 row)
+
+show create table child;
+ Table |                                   Create Table                                   
+-------+----------------------------------------------------------------------------------
+ child | CREATE TABLE "child" (                                                          +
+       |     "id" integer,                                                               +
+       |     "parent_id_new" integer,                                                    +
+       |     "name" character varying(20),                                               +
+       |     CONSTRAINT "fk_parent" FOREIGN KEY (parent_id_new) REFERENCES parent(id_new)+
+       | )
+(1 row)
+
+\d+ parent;
+                                          Table "public.parent"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id_new | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "parent_id_key" UNIQUE CONSTRAINT, btree (id_new)
+Referenced by:
+    TABLE "child" CONSTRAINT "fk_parent" FOREIGN KEY (parent_id_new) REFERENCES parent(id_new)
+
+\d+ child;
+                                              Table "public.child"
+    Column     |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+---------------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id            | integer               |           |          |         | plain    |              | 
+ parent_id_new | integer               |           |          |         | plain    |              | 
+ name          | character varying(20) |           |          |         | extended |              | 
+Foreign-key constraints:
+    "fk_parent" FOREIGN KEY (parent_id_new) REFERENCES parent(id_new)
+
+-- mysql success: add/remove comment
+alter table parent change id_new id int comment 'test_parent';
+alter table child change parent_id_new parent_id int comment 'test_child';
+show create table parent;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ parent | CREATE TABLE "parent" (                   +
+        |     "id" integer COMMENT 'test_parent',   +
+        |     "name" character varying(20),         +
+        |     CONSTRAINT "parent_id_key" UNIQUE (id)+
+        | )
+(1 row)
+
+show create table child;
+ Table |                               Create Table                               
+-------+--------------------------------------------------------------------------
+ child | CREATE TABLE "child" (                                                  +
+       |     "id" integer,                                                       +
+       |     "parent_id" integer COMMENT 'test_child',                           +
+       |     "name" character varying(20),                                       +
+       |     CONSTRAINT "fk_parent" FOREIGN KEY (parent_id) REFERENCES parent(id)+
+       | )
+(1 row)
+
+alter table parent change id id int;
+alter table child change parent_id parent_id int;
+show create table parent;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ parent | CREATE TABLE "parent" (                   +
+        |     "id" integer,                         +
+        |     "name" character varying(20),         +
+        |     CONSTRAINT "parent_id_key" UNIQUE (id)+
+        | )
+(1 row)
+
+show create table child;
+ Table |                               Create Table                               
+-------+--------------------------------------------------------------------------
+ child | CREATE TABLE "child" (                                                  +
+       |     "id" integer,                                                       +
+       |     "parent_id" integer,                                                +
+       |     "name" character varying(20),                                       +
+       |     CONSTRAINT "fk_parent" FOREIGN KEY (parent_id) REFERENCES parent(id)+
+       | )
+(1 row)
+
+select count(*) from pg_description where objoid = 'parent'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'parent'::regclass and attname = 'id');
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from pg_description where objoid = 'child'::regclass and objsubid = (select attnum from pg_attribute where attrelid = 'child'::regclass and attname = 'parent_id');
+ count 
+-------
+     0
+(1 row)
+
+drop table child, parent;
+-------- test case: column auto_increment and  table option auto_increment
+-- alter table AUTO_INCREMENT
+create table test_tab_op(id int, name varchar(20));
+insert into test_tab_op values(10,'ssss'),(20,'dddd');
+alter table test_tab_op change id id int unique key;
+alter table test_tab_op change id id_1 int auto_increment;
+alter table test_tab_op AUTO_INCREMENT = 10;
+show create table test_tab_op;
+    Table    |                   Create Table                    
+-------------+---------------------------------------------------
+ test_tab_op | CREATE TABLE "test_tab_op" (                     +
+             |     "id_1" integer NOT NULL AUTO_INCREMENT,      +
+             |     "name" character varying(20),                +
+             |     CONSTRAINT "test_tab_op_id_key" UNIQUE (id_1)+
+             | ) AUTO_INCREMENT=21
+(1 row)
+
+alter table test_tab_op AUTO_INCREMENT = 30;
+show create table test_tab_op;
+    Table    |                   Create Table                    
+-------------+---------------------------------------------------
+ test_tab_op | CREATE TABLE "test_tab_op" (                     +
+             |     "id_1" integer NOT NULL AUTO_INCREMENT,      +
+             |     "name" character varying(20),                +
+             |     CONSTRAINT "test_tab_op_id_key" UNIQUE (id_1)+
+             | ) AUTO_INCREMENT=30
+(1 row)
+
+select * from test_tab_op;
+ id_1 | name 
+------+------
+   10 | ssss
+   20 | dddd
+(2 rows)
+
+drop table test_tab_op;
+create table test_tab_op(id int, name varchar(20));
+insert into test_tab_op values(10,'ssss'),(20,'dddd');
+-- AUTO_INCREMENT = 30, mysql success
+-- v9 fail as "no owned sequence found", expected
+alter table test_tab_op change id id_new int unique key auto_increment, AUTO_INCREMENT = 30;
+ERROR:  no owned sequence found
+drop table test_tab_op;
+------------- alter table FIRST | AFTER col_name
+------ test case: alter table add
+create table test_add(id int);
+alter table test_add add name varchar(20) FIRST;
+alter table test_add add ts timestamp AFTER id;
+\d+ test_add;
+                                         Table "public.test_add"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+ ts     | timestamp             |           |          |         | plain    |              | 
+
+-- fail: FIRST AFTER could not use together
+alter table test_add add address varchar(20) FIRST AFTER id;
+ERROR:  syntax error at or near "AFTER"
+LINE 1: alter table test_add add address varchar(20) FIRST AFTER id;
+                                                           ^
+-- fail: must in the end
+alter table test_add add ts_2 FIRST int;
+ERROR:  syntax error at or near "int"
+LINE 1: alter table test_add add ts_2 FIRST int;
+                                            ^
+alter table test_add add ts_3 AFTER name int;
+ERROR:  syntax error at or near "name"
+LINE 1: alter table test_add add ts_3 AFTER name int;
+                                            ^
+drop table test_add;
+------ test case: alter table modify
+create table test_m(id int, name varchar(20), age int);
+\d+ test_m;
+                                          Table "public.test_m"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+ age    | integer               |           |          |         | plain    |              | 
+
+alter table test_m modify name varchar(20) FIRST;
+alter table test_m modify id int AFTER nametest_m;
+\d+ test_m;
+                                          Table "public.test_m"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+ age    | integer               |           |          |         | plain    |              | 
+
+alter table test_m modify id int AFTER name FIRST;
+ERROR:  syntax error at or near "FIRST"
+LINE 1: alter table test_m modify id int AFTER name FIRST;
+                                                    ^
+alter table test_m modify age FIRST int
+alter table test_m modify age AFTER id int;
+ERROR:  syntax error at or near "int"
+LINE 1: alter table test_m modify age FIRST int
+                                            ^
+drop table test_m;
+------ test case: alter table change
+create table test_ch (id int, name varchar(20), age int);
+show create table test_ch;
+  Table  |           Create Table            
+---------+-----------------------------------
+ test_ch | CREATE TABLE "test_ch" (         +
+         |     "id" integer,                +
+         |     "name" character varying(20),+
+         |     "age" integer                +
+         | )
+(1 row)
+
+alter table test_ch change name name varchar(20) FIRST;
+alter table test_ch change id idd int AFTER name;
+show create table test_ch;
+  Table  |           Create Table            
+---------+-----------------------------------
+ test_ch | CREATE TABLE "test_ch" (         +
+         |     "idd" integer,               +
+         |     "name" character varying(20),+
+         |     "age" integer                +
+         | )
+(1 row)
+
+alter table test_ch change age age_new idd int AFTER name FIRST;
+ERROR:  syntax error at or near "int"
+LINE 1: alter table test_ch change age age_new idd int AFTER name FI...
+                                                   ^
+alter table test_ch change age age_new FIRST int;
+ERROR:  syntax error at or near "int"
+LINE 1: alter table test_ch change age age_new FIRST int;
+                                                     ^
+alter table test_ch change age age_new AFTER name int;
+ERROR:  syntax error at or near "name"
+LINE 1: alter table test_ch change age age_new AFTER name int;
+                                                     ^
+drop table test_ch;
+------ test case from mysql
+---- multi command
+create table t1 (
+col1 int not null auto_increment primary key,
+col2 varchar(30) not null,
+col3 varchar (20) not null,
+col4 varchar(4) not null,
+col5 enum('PENDING', 'ACTIVE', 'DISABLED') not null,
+col6 int not null,
+to_be_deleted int);
+insert into t1 values (2,4,3,5,'PENDING',1,7);
+alter table t1
+drop column to_be_deleted,
+change column col2 fourth varchar(30) not null after col3,
+modify column col6 int not null first;
+show create table t1;
+ Table |                 Create Table                 
+-------+----------------------------------------------
+ t1    | CREATE TABLE "t1" (                         +
+       |     "col1" integer NOT NULL AUTO_INCREMENT, +
+       |     "fourth" character varying(30) NOT NULL,+
+       |     "col3" character varying(20) NOT NULL,  +
+       |     "col4" character varying(4) NOT NULL,   +
+       |     "col5" t1_col5_anonymous_enum NOT NULL, +
+       |     "col6" integer NOT NULL,                +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (col1) +
+       | ) AUTO_INCREMENT=3
+(1 row)
+
+select * from t1;
+ col1 | fourth | col3 | col4 |  col5   | col6 
+------+--------+------+------+---------+------
+    2 | 4      | 3    | 5    | PENDING |    1
+(1 row)
+
+drop table t1;
+-- #
+-- # BUG#6236 - ALTER TABLE MODIFY should set implicit NOT NULL on PK columns
+-- #
+create table t1 ( a varchar(10) not null primary key ) engine=myisam;
+alter table t1 modify a varchar(10);
+show create table t1;
+ Table |               Create Table               
+-------+------------------------------------------
+ t1    | CREATE TABLE "t1" (                     +
+       |     "a" character varying(10) NOT NULL, +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (a)+
+       | )
+(1 row)
+
+alter table t1 modify a varchar(10) not null;
+show create table t1;
+ Table |               Create Table               
+-------+------------------------------------------
+ t1    | CREATE TABLE "t1" (                     +
+       |     "a" character varying(10) NOT NULL, +
+       |     CONSTRAINT "t1_pkey" PRIMARY KEY (a)+
+       | )
+(1 row)
+
+drop table if exists t1;
+-- #
+-- # Bug#33873: Fast ALTER TABLE doesn't work with multibyte character sets
+-- #
+CREATE TABLE t1 (id int, c int) character set latin1;
+INSERT INTO t1 VALUES (1,1);
+--enable_info
+ALTER TABLE t1 CHANGE c d int;
+ALTER TABLE t1 CHANGE d c int;
+ALTER TABLE t1 MODIFY c VARCHAR(10);
+ALTER TABLE t1 CHANGE c d varchar(10);
+ALTER TABLE t1 CHANGE d c varchar(10);
+select * from t1;
+ id | c 
+----+---
+  1 | 1
+(1 row)
+
+DROP TABLE t1;
+CREATE TABLE t1 (id int, c int) character set utf8;
+INSERT INTO t1 VALUES (1,1);
+--enable_info
+ALTER TABLE t1 CHANGE c d int;
+ALTER TABLE t1 CHANGE d c int;
+ALTER TABLE t1 MODIFY c VARCHAR(10);
+ALTER TABLE t1 CHANGE c d varchar(10);
+ALTER TABLE t1 CHANGE d c varchar(10);
+select * from t1;
+ id | c 
+----+---
+  1 | 1
+(1 row)
+
+DROP TABLE t1;
+-- #
+-- # Bug #23113: Different behavior on altering ENUM fields between 5.0 and 5.1
+-- #
+CREATE TABLE t1(a INT AUTO_INCREMENT PRIMARY KEY, 
+  b ENUM('a', 'b', 'c') NOT NULL);
+INSERT INTO t1 (b) VALUES ('a'), ('c'), ('b'), ('b'), ('a');
+ALTER TABLE t1 MODIFY b ENUM('a', 'z', 'b', 'c') NOT NULL;
+ERROR:  Data truncated for column
+SELECT * FROM t1;
+ a | b 
+---+---
+ 1 | a
+ 2 | c
+ 3 | b
+ 4 | b
+ 5 | a
+(5 rows)
+
+DROP TABLE t1;
+CREATE TABLE t1 (a ENUM('a1','a2'));
+INSERT INTO t1 VALUES ('a1'),('a2');
+ALTER TABLE t1 MODIFY COLUMN a ENUM('a1','a2');
+ALTER TABLE t1 MODIFY COLUMN a ENUM('a1','a2','a3');
+ALTER TABLE t1 MODIFY COLUMN a ENUM('a1','a2','xx','a5');
+ALTER TABLE t1 MODIFY COLUMN a ENUM('a1','a2','xx');
+ALTER TABLE t1 MODIFY COLUMN a ENUM('a1','a2','a0','xx');
+ALTER TABLE t1 MODIFY COLUMN a ENUM('a1','a2','a0','xx','a5','a6');
+select * from t1;
+ a  
+----
+ a1
+ a2
+(2 rows)
+
+DROP TABLE t1;
+--
+-- modify, drop, add
+-- 
+create table t1 (i int, j int) engine=myisam;
+insert into t1 value (1, 2);
+select * from t1;
+ i | j 
+---+---
+ 1 | 2
+(1 row)
+
+alter table t1 modify column j int first;
+select * from t1;
+ i | j 
+---+---
+ 1 | 2
+(1 row)
+
+alter table t1 drop column i, add column k int default 0;
+select * from t1;
+ j | k 
+---+---
+ 2 | 0
+(1 row)
+
+drop table t1;
+--
+-- default ''
+-- 
+CREATE TABLE t1 (c1 int unsigned , c2 char(100) not null default '');
+ALTER TABLE t1 ADD c3 char(16) NOT NULL DEFAULT '' AFTER c2,
+               MODIFY c2 char(100) NOT NULL DEFAULT '' AFTER c1;
+SHOW CREATE TABLE t1;
+ Table |                     Create Table                     
+-------+------------------------------------------------------
+ t1    | CREATE TABLE "t1" (                                 +
+       |     "c1" uint4,                                     +
+       |     "c2" character(100) NOT NULL DEFAULT ''::bpchar,+
+       |     "c3" character(16) NOT NULL DEFAULT ''::bpchar  +
+       | )
+(1 row)
+
+DROP TABLE t1;
+--------------------- file: alter_table.test
+-- #
+-- # Bug#18038  MySQL server corrupts binary columns data
+-- #
+CREATE TABLE t1 (s CHAR(8) BINARY);
+ERROR:  syntax error at or near "BINARY"
+LINE 1: CREATE TABLE t1 (s CHAR(8) BINARY);
+                                   ^
+INSERT INTO t1 VALUES ('test');
+ERROR:  relation "t1" does not exist
+LINE 1: INSERT INTO t1 VALUES ('test');
+                    ^
+SELECT LENGTH(s) FROM t1;
+ERROR:  relation "t1" does not exist
+LINE 1: SELECT LENGTH(s) FROM t1;
+                              ^
+ALTER TABLE t1 MODIFY s CHAR(10) BINARY;
+ERROR:  syntax error at or near "BINARY"
+LINE 1: ALTER TABLE t1 MODIFY s CHAR(10) BINARY;
+                                         ^
+SELECT LENGTH(s) FROM t1;
+ERROR:  relation "t1" does not exist
+LINE 1: SELECT LENGTH(s) FROM t1;
+                              ^
+DROP TABLE t1;
+ERROR:  table "t1" does not exist
+CREATE TABLE t1 (s BINARY(8));
+INSERT INTO t1 VALUES ('test');
+SELECT LENGTH(s) FROM t1;
+ LENGTH 
+--------
+      8
+(1 row)
+
+SELECT HEX(s) FROM t1;
+       HEX        
+------------------
+ 7465737400000000
+(1 row)
+
+ALTER TABLE t1 MODIFY s BINARY(10);
+SELECT HEX(s) FROM t1;
+         HEX          
+----------------------
+ 74657374000000000000
+(1 row)
+
+SELECT LENGTH(s) FROM t1;
+ LENGTH 
+--------
+     10
+(1 row)
+
+DROP TABLE t1;
+-- #
+-- # BUG#29957 - alter_table.test fails
+-- #
+create table t1 (c char(10) default 'Two');
+lock table t1 write;
+ERROR:  syntax error at or near "write"
+LINE 1: lock table t1 write;
+                      ^
+insert into t1 values ();
+alter table t1 modify c char(10) default 'Three';
+unlock tables;
+ERROR:  syntax error at or near "unlock"
+LINE 1: unlock tables;
+        ^
+select * from t1;
+     c      
+------------
+ Two       
+(1 row)
+
+check table t1;
+ERROR:  syntax error at or near "check"
+LINE 1: check table t1;
+        ^
+drop table t1;
+--------------------- auto_increment
+-- file: auto_increment.test
+-- #
+-- # Test of behavior of ALTER TABLE when coulmn containing NULL or zeroes is
+-- # converted to AUTO_INCREMENT column
+-- #
+create table t1 (a bigint);
+insert into t1 values (1), (2), (3), (NULL), (NULL);
+alter table t1 modify a bigint not null auto_increment primary key; 
+select * from t1;
+ a 
+---
+ 1
+ 2
+ 3
+ 4
+ 5
+(5 rows)
+
+drop table t1;
+create table t1 (a bigint);
+insert into t1 values (1), (2), (3), (0), (0);
+alter table t1 modify a bigint not null auto_increment primary key; 
+select * from t1;
+ a 
+---
+ 1
+ 2
+ 3
+ 4
+ 5
+(5 rows)
+
+drop table t1;
+-- # We still should be able to preserve zero in NO_AUTO_VALUE_ON_ZERO mode
+create table t1 (a bigint);
+insert into t1 values (0), (1), (2), (3);
+set sql_mode=NO_AUTO_VALUE_ON_ZERO;
+alter table t1 modify a bigint not null auto_increment primary key; 
+set sql_mode= '';
+select * from t1;
+ a 
+---
+ 0
+ 1
+ 2
+ 3
+(4 rows)
+
+drop table t1;
+-- # It also sensible to preserve zeroes if we are converting auto_increment
+-- # column to auto_increment column (or not touching it at all, which is more
+-- # common case probably)
+create table t1 (a int auto_increment primary key , b int null);
+set sql_mode=NO_AUTO_VALUE_ON_ZERO;
+insert into t1 values (0,1),(1,2),(2,3);
+select * from t1;
+ a | b 
+---+---
+ 0 | 1
+ 1 | 2
+ 2 | 3
+(3 rows)
+
+set sql_mode= '';
+alter table t1 modify b varchar(255);
+insert into t1 values (0,4);
+select * from t1;
+ a | b 
+---+---
+ 0 | 1
+ 1 | 2
+ 2 | 3
+ 3 | 4
+(4 rows)
+
+drop table t1;

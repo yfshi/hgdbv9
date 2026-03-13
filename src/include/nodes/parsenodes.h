@@ -2498,8 +2498,12 @@ typedef enum AlterTableType
 	AT_TruncateSubPartition,
 	AT_MovePartition,
 	AT_MoveSubPartition,
-	AT_SetPartitionStoreIn
+	AT_SetPartitionStoreIn,
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	AT_ModifyColumn,
+	AT_ChangeColumn
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
