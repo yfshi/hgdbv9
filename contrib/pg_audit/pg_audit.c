@@ -360,7 +360,7 @@ static void audit_commited(void);
 static void audit_write_record_list(void);
 static void audit_secmon_threshold_check(void);
 static void audit_write_record_system(AuditEvent *event);
-static char *audit_get_privilege(char *type);
+static char *audit_get_privilege_from_type(char *type);
 static char *get_auth_method(UserAuth method);
 static char *get_remote_mac(Port *port_m);
 static AuditEvent *generateSystemEvent(AuditSystemEvent event, AuditResult result);
@@ -445,7 +445,9 @@ static void audit_WriteThrHistory(void);
 /* Begin BUG#z6137 */
 static void check_base_line(const char *basename, const char *basevalue);
 /* End BUG#z6137 */
-
+/* Begin BUG#z7309 */
+static char *audit_get_privilege_from_enum(AuditPrivilege	privilege);
+/* End BUG#z7309 */
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -1134,6 +1136,9 @@ stack_push(void)
 	MemoryContextSwitchTo(itemcontext);
 	stackItem->auditEvent = palloc0(sizeof(AuditEvent));
 	stackItem->auditEvent->auditContext = itemcontext;
+	/* Begin BUG#z7309 */
+	stackItem->auditEvent->privilege = AUDIT_PRIVILEGE_INVALID;
+	/* End BUG#z7309 */
 
 	/* This is the method of inserting the header of the chain, 
 	 * concatenating the AuditEvent corresponding to each SQL statement
@@ -1194,14 +1199,14 @@ audit_get_actionname_DML(CmdType operation)
 }
 
 /*
- * Function: audit_get_privilege
+ * Function: audit_get_privilege_from_type
  * Description: Obtain permission levels for audit statement types
  * Input: Audit statement type
  * Return: Permission level for audit statement types
  *
  */
 static char *
-audit_get_privilege(char *type)
+audit_get_privilege_from_type(char *type)
 {
 	char *pri = malloc(100);
 
@@ -1278,9 +1283,11 @@ audit_get_privilege(char *type)
 		pg_strcasecmp(type, LOCK_S) == 0 ||
 		pg_strcasecmp(type, CALL_S) == 0 ||
 		/* Begin - BUG#Z5807 */
-		pg_strcasecmp(type, CREATE_SYNONYM_S) ||
-		pg_strcasecmp(type, ALTER_SYNONYM_S) ||
-		pg_strcasecmp(type, DROP_SYNONYM_S))
+		/* Begin BUG#z7309 */
+		pg_strcasecmp(type, CREATE_SYNONYM_S) == 0 ||
+		pg_strcasecmp(type, ALTER_SYNONYM_S) == 0 ||
+		pg_strcasecmp(type, DROP_SYNONYM_S) == 0)
+		/* End BUG#z7309 */
 		/* End - BUG#Z5807 */
 		strcpy(pri, AUDIT_PRIVILEGE_SCHEMAOBJECT_S);
 	else if (pg_strcasecmp(type, START_S) == 0 ||
@@ -1601,7 +1608,17 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		values[25] = (Datum)0;
 		nulls[25] = true;
 	}
-	values[26] = PointerGetDatum(cstring_to_text(audit_get_privilege(event->actionname)));
+
+	/* Begin BUG#z7309 */
+	if (event->privilege != AUDIT_PRIVILEGE_INVALID)
+	{
+		values[26] = PointerGetDatum(cstring_to_text(audit_get_privilege_from_enum(event->privilege)));
+	}
+	else
+	/* End BUG#z7309 */
+	{
+		values[26] = PointerGetDatum(cstring_to_text(audit_get_privilege_from_type(event->actionname)));
+	}
 
 	tuple = heap_form_tuple(RelationGetDescr(log), values, nulls);
 
@@ -13670,3 +13687,31 @@ find_is_exist_create_table_proc(Oid dbid)
 }
 /* End - BUG#Z6360 */
 #endif
+
+/* Begin BUG#z7309 */
+static char *audit_get_privilege_from_enum(AuditPrivilege	privilege)
+{
+	char *pri = NULL;
+
+	switch(privilege)
+	{
+		case AUDIT_PRIVILEGE_SYSTEM:
+			pri = AUDIT_PRIVILEGE_SYSTEM_S;
+			break;
+		case AUDIT_PRIVILEGE_DATABASE:
+			pri = AUDIT_PRIVILEGE_DATABASE_S;
+			break;
+		case AUDIT_PRIVILEGE_SCHEMAOBJECT:
+			pri = AUDIT_PRIVILEGE_SCHEMAOBJECT_S;
+			break;
+		case AUDIT_PRIVILEGE_INSTACE:
+			pri = AUDIT_PRIVILEGE_INSTANCE_S;
+			break;
+		default:
+			pri = AUDIT_PRIVILEGE_SCHEMAOBJECT_S;
+			break;
+	}
+
+	return pri;
+}
+/* End BUG#z7309 */
