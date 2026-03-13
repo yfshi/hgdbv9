@@ -7333,12 +7333,13 @@ build_call_expr(int firsttoken,const char *str, int location)
 	bool				have_strict = false;
 	int					into_start_loc = -1;
 	int					into_end_loc = -1;
-	/* Begin - BUG#Z375 */
-	bool				insert_targetalias_without_as = false;
-	int					prev_prev_tok = 0;
-	int					as_start_loc = -1;
-	/* End - BUG#Z375 */
-
+	/* Begin - BUG#Z7305 */
+	bool				have_collect = false;
+	int					collect_start_loc = -1;
+	int					collect_end_loc = -1;
+	StringInfoData		ds_collect;
+	Oid					pkgoid;
+	/* End - BUG#Z7305 */
 	int					parenlevel = 0;
 	PLiSQL_CALL				call_process = PLISQL_IS_INVALID;
 	bool is_process = false;
@@ -7346,10 +7347,18 @@ build_call_expr(int firsttoken,const char *str, int location)
 	bool get_first_tok = true;
 
 	initStringInfo(&ds);
+	initStringInfo(&ds_collect); /* BUG#Z7305 */
 
 	/* special lookup mode for identifiers within the SQL text */
 	save_IdentifierLookup = plisql_IdentifierLookup;
-	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
+	/* Begin - BUG#Z7305 */
+	/*
+	 * because need to parse the the collection variable,
+	 * so change the plisql_IdentifierLookup from IDENTIFIER_LOOKUP_EXPR
+	 * to IDENTIFIER_LOOKUP_NORMAL.
+	 */
+	plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
+	/* End - BUG#Z7305 */
 
 	/*
 	 * Scan to the end of the SQL command.  Identify any INTO-variables
@@ -7382,9 +7391,6 @@ build_call_expr(int firsttoken,const char *str, int location)
 	tok = firsttoken;
 	for (;;)
 	{
-		/* Begin - BUG#Z375 */
-		prev_prev_tok = prev_tok;
-		/* End - BUG#Z375 */
 		prev_tok = tok;
 		tok = yylex();
 
@@ -7447,11 +7453,6 @@ build_call_expr(int firsttoken,const char *str, int location)
 		if (tok == 0)
 			yyerror("unexpected end of function definition");
 
-		/* Begin - BUG#Z375 */
-		if (prev_tok == K_INSERT && tok == K_INTO)
-			as_start_loc = yylloc;
-		/* End - BUG#Z375 */
-
 		if (tok == K_INTO)
 		{
 			if (prev_tok == K_INSERT)
@@ -7462,17 +7463,46 @@ build_call_expr(int firsttoken,const char *str, int location)
 				yyerror("INTO specified more than once");
 			have_into = true;
 			into_start_loc = yylloc;
-			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
 			read_into_target(&target, &have_strict);
-			plisql_IdentifierLookup = IDENTIFIER_LOOKUP_EXPR;
 		}
-		/* Begin - BUG#Z375 */
-		else if (tok == K_VALUES && firsttoken == K_INSERT)
+
+		/* Begin - BUG#Z7305 */
+		if (tok == T_DATUM || tok == T_CWORD)
 		{
-			if (prev_tok != ')' && prev_prev_tok != K_INTO && prev_prev_tok != K_AS)
-				insert_targetalias_without_as = true;
+			if (!have_collect && collect_end_loc == -1)
+			{
+				int	current_loc = yylloc;
+
+				collect_start_loc = yylloc;
+				collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_collect, &pkgoid, NULL);
+				if (collect_end_loc > current_loc)
+					have_collect = true;
+				else
+				{
+					collect_start_loc = -1;
+					collect_end_loc = -1;
+				}
+			}
+			else
+			{
+				int		current_loc = yylloc;
+				int		tmp_loc = -1;
+				StringInfoData		ds_tmp;
+
+				initStringInfo(&ds_tmp);
+				tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL);
+				if (tmp_loc > current_loc)
+				{
+					appendStringInfoSpaces(&ds_collect, 1);
+					plisql_append_source_text(&ds_collect, collect_end_loc, current_loc);
+
+					appendBinaryStringInfo(&ds_collect, ds_tmp.data, ds_tmp.len);
+					collect_end_loc = tmp_loc;
+				}
+				pfree(ds_tmp.data);
+			}
 		}
-		/* End - BUG#Z375 */
+		/* End - BUG#Z7305 */
 	}
 
 	plisql_IdentifierLookup = save_IdentifierLookup;
@@ -7484,41 +7514,84 @@ build_call_expr(int firsttoken,const char *str, int location)
 		 * INTO text, so that locations within the redacted SQL statement
 		 * still line up with those in the original source text.
 		 */
-		plisql_append_source_text(&ds, location, into_start_loc);
-		appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
-		plisql_append_source_text(&ds, into_end_loc, yylloc);
-	}
-	/* Begin - BUG#Z375 */
-	else
-	{
-		if (insert_targetalias_without_as && as_start_loc != -1)
+		/* Begin - BUG#Z7305 */
+		if (have_collect)
 		{
-			plisql_append_source_text(&ds, location + ds.len, location + ds.len + as_start_loc);
-			appendStringInfoString(&ds, " AS");
-			plisql_append_source_text(&ds, location + ds.len - strlen(" AS"), yylloc);
-		}
-		else if (call_process == PLISQL_IS_PROCESS || call_process == PLISQL_IS_MABY_PROCESS
-				|| call_process == PLISQL_IS_NO_BRACKETS_PROCESS)
-		{
+			if (into_start_loc < collect_start_loc)
 			{
-				appendBinaryStringInfo(&ds, "CALL ", strlen("CALL "));
-				plisql_append_source_text(&ds, location, yylloc);
+				plisql_append_source_text(&ds, location, into_start_loc);
+				appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
 
-				/* trim any trailing whitespace, for neatness */
-				while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
-					ds.data[--ds.len] = '\0';
-
-				if (call_process == PLISQL_IS_NO_BRACKETS_PROCESS)
-					appendBinaryStringInfo(&ds, "()", strlen("()"));
-				is_process = true;
+				plisql_append_source_text(&ds, into_end_loc, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				if (collect_end_loc != yylloc)
+				{
+					appendStringInfoSpaces(&ds, 1);
+					plisql_append_source_text(&ds, collect_end_loc, yylloc);
+				}
+			}
+			else
+			{
+				plisql_append_source_text(&ds, location, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				appendStringInfoSpaces(&ds, 1);
+				plisql_append_source_text(&ds, collect_end_loc, into_start_loc);
+				appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
 			}
 		}
 		else
-	/* End - BUG#Z375 */
-			plisql_append_source_text(&ds, location, yylloc);
-	/* Begin - BUG#Z375 */
+		{
+		/* End - BUG#Z7305 */
+			plisql_append_source_text(&ds, location, into_start_loc);
+			appendStringInfoSpaces(&ds, into_end_loc - into_start_loc);
+			plisql_append_source_text(&ds, into_end_loc, yylloc);
+		}
 	}
-	/* End - BUG#Z375 */
+	else
+	{
+		if (call_process == PLISQL_IS_PROCESS || call_process == PLISQL_IS_MABY_PROCESS
+				|| call_process == PLISQL_IS_NO_BRACKETS_PROCESS)
+		{
+			appendBinaryStringInfo(&ds, "CALL ", strlen("CALL "));
+
+			/* Begin - BUG#Z7305 */
+			if (have_collect)
+			{
+				plisql_append_source_text(&ds, location, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				if (collect_end_loc != yylloc)
+					plisql_append_source_text(&ds, collect_end_loc, yylloc);
+			}
+			else
+			/* End - BUG#Z7305 */
+				plisql_append_source_text(&ds, location, yylloc);
+
+			/* trim any trailing whitespace, for neatness */
+			while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
+				ds.data[--ds.len] = '\0';
+
+			if (call_process == PLISQL_IS_NO_BRACKETS_PROCESS)
+				appendBinaryStringInfo(&ds, "()", strlen("()"));
+			is_process = true;
+		}
+		else
+		{
+			/* Begin - BUG#Z7305 */
+			if (have_collect)
+			{
+				plisql_append_source_text(&ds, location, collect_start_loc);
+				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+				if (collect_end_loc != yylloc)
+				{
+					appendStringInfoSpaces(&ds, 1);
+					plisql_append_source_text(&ds, collect_end_loc, yylloc);
+				}
+			}
+			else
+			/* End - BUG#Z7305 */
+				plisql_append_source_text(&ds, location, yylloc);
+		}
+	}
 
 	/* trim any trailing whitespace, for neatness */
 	while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
