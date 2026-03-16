@@ -94,8 +94,11 @@ $primary->safe_psql(
 	SELECT pg_reload_conf();
 });
 
+# BUG#z7375
+# As development progressed, the number of WAL files generated after initdb
+# in Oracle mode increased, it may be unpredictable.
 $primary->poll_query_until('postgres',
-	q{SELECT archived_count FROM pg_stat_archiver}, '1')
+	q{SELECT archived_count >= 1 FROM pg_stat_archiver})
   or die "Timed out while waiting for archiving to finish";
 
 ok(!-f "$primary_data/$segment_path_1_ready",
@@ -104,9 +107,9 @@ ok(!-f "$primary_data/$segment_path_1_ready",
 ok(-f "$primary_data/$segment_path_1_done",
 	".done file for archived WAL segment $segment_name_1 exists");
 
-is( $primary->safe_psql(
-		'postgres', q{ SELECT last_archived_wal FROM pg_stat_archiver }),
-	$segment_name_1,
+# BUG#z7375
+ok( $primary->safe_psql(
+		'postgres', q{ SELECT last_archived_wal FROM pg_stat_archiver }) ge $segment_name_1,
 	"archive success reported in pg_stat_archiver for WAL segment $segment_name_1"
 );
 
@@ -220,9 +223,10 @@ $standby2->poll_query_until('postgres',
 	$segment_name_2)
   or die "Timed out while waiting for archiving to finish";
 
+# BUG#z7375
 is( $standby2->safe_psql(
-		'postgres', q{SELECT archived_count FROM pg_stat_archiver}),
-	'2',
+		'postgres', q{SELECT archived_count >= 2 FROM pg_stat_archiver}),
+	't',
 	"correct number of WAL segments archived from standby");
 
 ok( !-f "$standby2_data/$segment_path_1_ready"
