@@ -160,6 +160,7 @@ MYS_REGRESS = numeric_to_times \
 			  mys-char-varchar \
 			  character_func \
 			  time_func	\
+			  period \
 			  flow_control \
 			  network_func \
 			  weight_string \

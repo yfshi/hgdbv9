@@ -849,93 +849,6 @@ select * from func_test;
 (8 rows)
 
 drop table func_test;
-/*PERIOD_ADD*/
-create table func_test(functionName varchar(256),result varchar(256));
-insert into func_test(functionName, result) values ('period_add(''202101'', ''10'')', period_add('202101', '10'));
-insert into func_test(functionName, result) values ('period_add(''202101.4'', ''10.5'')', period_add('202101.4', '10.5'));
-insert into func_test(functionName, result) values ('period_add(202101.4, 10.5)', period_add(202101.4, 10.5));
-select * from func_test;
-          functionName          | result 
---------------------------------+--------
- period_add('202101', '10')     | 202111
- period_add('202101.4', '10.5') | 202112
- period_add(202101.4, 10.5)     | 202112
-(3 rows)
-
-drop table func_test;
-create table func_test(functionName varchar(256),result varchar(256));
-insert into func_test(functionName, result) values ('period_add(0.0, 1)', period_add(0, 1)); -- p == 0
-insert into func_test(functionName, result) values ('period_add(200000, 0)', period_add(200000, 0)); 
---insert into func_test(functionName, result) values ('period_add(-202205, 1)', period_add(-202205, 1)); -- p < 0
-insert into func_test(functionName, result) values ('period_add(202211, 100)', period_add(202211, 100)); 
-insert into func_test(functionName, result) values ('period_add(197005, 7)', period_add(197005, 7));
-insert into func_test(functionName, result) values ('period_add(202205, -12)', period_add(202205, -12)); -- N < 0 
-insert into func_test(functionName, result) values ('period_add(1,12)', period_add(1,12)); 
-insert into func_test(functionName, result) values ('period_add(6901,12)', period_add(6901,12));
-insert into func_test(functionName, result) values ('period_add(7001,12)', period_add(7001,12)); 
-insert into func_test(functionName, result) values ('period_add(10001,12)', period_add(10001,12)); 
-insert into func_test(functionName, result) values ('period_add(10001, -12)', period_add(10001, -12)); 
-insert into func_test(functionName, result) values ('period_add(10001, -12*30-1)', period_add(10001, -361));
-select * from func_test;
-        functionName         | result 
------------------------------+--------
- period_add(0.0, 1)          | 0
- period_add(200000, 0)       | 199912
- period_add(202211, 100)     | 203103
- period_add(197005, 7)       | 197012
- period_add(202205, -12)     | 202105
- period_add(1,12)            | 200101
- period_add(6901,12)         | 207001
- period_add(7001,12)         | 197101
- period_add(10001,12)        | 10101
- period_add(10001, -12)      | 199901
- period_add(10001, -12*30-1) | 206912
-(11 rows)
-
-drop table func_test;
-/*PERIOD_DIFF*/
-create table func_test(functionName varchar(256),result varchar(256));
-insert into func_test(functionName, result) values ('period_diff(''202101'', ''202102'')', period_diff('202101', '202102')); 
-insert into func_test(functionName, result) values ('period_diff(''202101.4'', ''202102.5'')', period_diff('202101.4', '202102.5')); 
-WARNING:  Truncated incorrect INTEGER value: '202101.4'
-WARNING:  Truncated incorrect INTEGER value: '202102.5'
-insert into func_test(functionName, result) values ('period_diff(202101.4, 202102.5)', period_diff(202101.4, 202102.5)); 
-select * from func_test;
-            functionName             | result 
--------------------------------------+--------
- period_diff('202101', '202102')     | -1
- period_diff('202101.4', '202102.5') | -1
- period_diff(202101.4, 202102.5)     | -2
-(3 rows)
-
-drop table func_test;
-create table func_test(functionName varchar(256),result varchar(256));
-insert into func_test(functionName, result) values ('period_diff(NULL, 200001)', period_diff(NULL, 200001));
-insert into func_test(functionName, result) values ('period_diff(202011, NULL)', period_diff(202011, NULL));
---insert into func_test(functionName, result) values ('period_diff(-202011, 200001)', period_diff(-202011, 200001)); -- P1<0
---insert into func_test(functionName, result) values ('period_diff(202011, -200001)', period_diff(202011, -200001)); -- P2<0
-insert into func_test(functionName, result) values ('period_diff(707712, 202201)', period_diff(707712, 202201));
-insert into func_test(functionName, result) values ('period_diff(6912, 10001)', period_diff(6912, 10001));
-insert into func_test(functionName, result) values ('period_diff(7001, 10001)', period_diff(7001, 10001));
-insert into func_test(functionName, result) values ('period_diff(10002, 6901)', period_diff(10002, 6901));
-insert into func_test(functionName, result) values ('period_diff(10002, 7001)', period_diff(10002, 7001));
-insert into func_test(functionName, result) values ('period_diff(0, 30)', period_diff(0, 30)); -- P1 == 0
-insert into func_test(functionName, result) values ('period_diff(30, 0)', period_diff(30, 0)); -- P2 == 0
-select * from func_test;
-        functionName         | result 
------------------------------+--------
- period_diff(NULL, 200001)   | 
- period_diff(202011, NULL)   | 
- period_diff(707712, 202201) | 60671
- period_diff(6912, 10001)    | 23639
- period_diff(7001, 10001)    | 22440
- period_diff(10002, 6901)    | -23627
- period_diff(10002, 7001)    | -22439
- period_diff(0, 30)          | -24029
- period_diff(30, 0)          | 24029
-(9 rows)
-
-drop table func_test;
 /*SEC_TO_TIME */
 create table func_test(functionName varchar(256),result varchar(256));
 insert into func_test(functionName, result) values ('sec_to_time(''1000'')', sec_to_time('1000'));
@@ -4795,14 +4708,6 @@ SELECT CONVERT_TZ(2.0230101120000E13, '+00:00', '+08:00');
 (1 row)
 
 /* End - BUG#Z5610 */
-select period_diff('!@#', '!@#');   /* bug#z5589 */
-WARNING:  Truncated incorrect INTEGER value: '!@#'
-WARNING:  Truncated incorrect INTEGER value: '!@#'
- period_diff 
--------------
-           0
-(1 row)
-
 /* Begin - bug#z5590 */
 select sec_to_time('!@#');      -- 00:00:00.000000
 WARNING:  Truncated incorrect DECIMAL value: '!@#'
