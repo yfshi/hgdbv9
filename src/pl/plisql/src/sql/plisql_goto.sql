@@ -1697,3 +1697,158 @@ begin
   sub;
 end;
 /
+
+
+--
+-- Begin - BUG#7364
+--
+
+-- anonymous: don't check the "END" label
+<<aaa>>
+begin
+  NULL;
+end xxx;
+/
+
+begin
+  <<aaa>>
+  begin
+    NULL;
+  end xxx;
+end;
+/
+
+-- subproc: check the "END" label
+declare
+  procedure subproc as
+  begin
+    NULL;
+  end yyy;  -- mismatch
+begin
+  NULL;
+end;
+/
+
+-- proc: check the "END" label
+create or replace procedure goto_ppp as
+begin
+  NULL;
+end xxx;  -- mismatch
+/
+
+create or replace procedure goto_ppp as
+  i int := 10;
+begin
+  raise notice '%', goto_ppp.i;
+end goto_ppp;
+/
+
+call goto_ppp();
+drop procedure goto_ppp;
+
+-- loop: don't check the "END" label
+begin
+  <<label_loop>>
+  for i in 1..10 loop
+    NULL;
+  end loop xxx;
+
+  <<label_while>>
+  while true loop
+    NULL;
+    exit;
+  end loop xxx;
+end;
+/
+
+-- package: check the "END" label
+create or replace package goto_pkg as
+end xxx;  -- mismatch
+/
+
+create or replace package goto_pkg as
+end;
+/
+
+create or replace package body goto_pkg as
+end xxx;  -- mismatch
+/
+
+drop package goto_pkg;
+
+-- lable define
+declare
+  procedure subproc as
+  <<aaa>> -- illegal
+  begin
+    NULL;
+  end subproc;
+begin
+  NULL;
+end;
+/
+
+create or replace procedure goto_ppp as
+<<aaa>> -- illegal
+begin
+  NULL;
+end;
+/
+drop procedure goto_ppp;
+
+create or replace package goto_pkg as
+  <<aaa>> -- illegal
+  procedure pkgproc;
+end;
+/
+
+create or replace package goto_pkg as
+  procedure pkgproc;
+end;
+/
+
+create or replace package body goto_pkg as
+  <<aaa>> -- illegal
+  procedure pkgproc as
+  begin
+    NULL;
+  end;
+begin
+  NULL;
+end;
+/
+
+create or replace package body goto_pkg as
+  procedure pkgproc as
+  <<aaa>> -- illegal
+  begin
+    NULL;
+  end;
+begin
+  NULL;
+end;
+/
+
+create or replace package body goto_pkg as
+  procedure pkgproc as
+  begin
+    <<aaa>>
+    begin
+      NULL;
+    end;
+    NULL;
+  end;
+begin
+  <<bbb>>
+  begin
+    NULL;
+  end;
+  NULL;
+end;
+/
+
+drop package goto_pkg;
+
+--
+-- End - BUG#7364
+--

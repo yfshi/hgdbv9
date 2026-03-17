@@ -235,7 +235,6 @@ select exit_block1();
 
 -- verbose end block and end loop
 create function end_label1() returns void as $$
-<<blbl>>
 begin
   <<flbl1>>
   for i in 1 .. 10 loop
@@ -247,13 +246,13 @@ begin
     raise notice 'j = %', j;
     exit flbl2;
   end loop;
-end blbl;
+end;
 $$ language plisql;
 /
 
 select end_label1();
 
--- should fail: undefined end label
+-- should success: don't check end label
 create function end_label2() returns void as $$
 begin
   for _i in 1 .. 10 loop
@@ -263,9 +262,8 @@ end;
 $$ language plisql;
 /
 
--- should fail: end label does not match start label
+-- should success: don't check end label
 create function end_label3() returns void as $$
-<<outer_label>>
 begin
   <<inner_label>>
   for _i in 1 .. 10 loop
@@ -275,9 +273,8 @@ end;
 $$ language plisql;
 /
 
--- should fail: end label on a block without a start label
+-- should success: don't check end label
 create function end_label4() returns void as $$
-<<outer_label>>
 begin
   for _i in 1 .. 10 loop
     exit;
@@ -409,7 +406,7 @@ select return_from_while();
 
 -- using list of scalars in fori and fore stmts
 create function for_vect() returns void as $proc$
-<<lbl>>declare a integer; b varchar; c varchar; r record;
+declare a integer; b varchar; c varchar; r record;
 begin
   -- fori
   for i in 1 .. 3 loop
@@ -428,7 +425,7 @@ begin
     raise notice '% % %', a, b, c;
   end loop;
   -- using qualified names in fors, fore is enabled, disabled only for fori
-  for lbl.a, lbl.b, lbl.c in execute $$select gs, 'bb','cc' from generate_series(1,4) gs$$ loop
+  for a, b, c in execute $$select gs, 'bb','cc' from generate_series(1,4) gs$$ loop
     raise notice '% % %', a, b, c;
   end loop;
 end;

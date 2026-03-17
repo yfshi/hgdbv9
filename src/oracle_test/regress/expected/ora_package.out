@@ -2242,7 +2242,7 @@ create or replace package pkg_no1 as
  function test(id integer,name varchar) return integer;
 end pkg;
 /
-ERROR:  end label "pkg" differs from block's label "pkg_no1"
+ERROR:  end identifier 'pkg' must match 'pkg_no1'
 LINE 5: end pkg
             ^
 QUERY:   gvar mds%rowtype;
@@ -2282,7 +2282,7 @@ create or replace package body pkg_no1 as
  end;
  end pkg;
  /
-ERROR:  end label "pkg" differs from block's label "pkg_no1"
+ERROR:  end identifier 'pkg' must match 'pkg_no1'
 LINE 21:  end pkg
               ^
 QUERY:   function test(id integer) return integer is
@@ -4709,7 +4709,7 @@ END pkg_ca_purp_card_jl;
 CREATE OR REPLACE PACKAGE BODY pkg_ca_purp_card_jl IS
 END pkg_ca_purp_card_j2;
 /
-ERROR:  end label "pkg_ca_purp_card_j2" differs from block's label "pkg_ca_purp_card_jl"
+ERROR:  end identifier 'pkg_ca_purp_card_j2' must match 'pkg_ca_purp_card_jl'
 LINE 1: END pkg_ca_purp_card_j2
             ^
 QUERY:  END pkg_ca_purp_card_j2
