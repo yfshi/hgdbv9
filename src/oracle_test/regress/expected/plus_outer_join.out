@@ -4326,3 +4326,221 @@ drop table t_a;
 drop table t_b;
 drop table t_c;
 drop table t_d;
+--OA#2199
+create table test_t1(county_id integer,ne_model integer,b_mis_pro_no integer);
+create table test_t2(int_id integer,  name varchar2(256));
+create table test_t3(int_id integer, name varchar2(256));
+create table test_t4(int_id integer);
+insert into test_t1 values(1,1,1);
+insert into test_t1 values(2,2,2);
+insert into test_t1 values(3,3,3);
+insert into test_t2 values(1,'one');
+insert into test_t2 values(2,'two');
+insert into test_t3 values(1,'one');
+insert into test_t3 values(3,'three');
+insert into test_t4 values(1);
+insert into test_t4 values(2);
+insert into test_t4 values(3);
+insert into test_t4 values(5);
+--4 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d where a.county_id = b.int_id(+) and
+ a.ne_model = c.int_id(+) and  d.int_id = a.b_mis_pro_no(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------
+         1 |        1 |            1 |      1 | one  |      1 | one   |      1
+         2 |        2 |            2 |      2 | two  |        |       |      2
+         3 |        3 |            3 |        |      |      3 | three |      3
+           |          |              |        |      |        |       |      5
+(4 rows)
+
+--12 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d where a.county_id = b.int_id(+) and
+ a.ne_model = c.int_id(+) order by a.county_id,c.name,d.int_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------
+         1 |        1 |            1 |      1 | one  |      1 | one   |      1
+         1 |        1 |            1 |      1 | one  |      1 | one   |      2
+         1 |        1 |            1 |      1 | one  |      1 | one   |      3
+         1 |        1 |            1 |      1 | one  |      1 | one   |      5
+         2 |        2 |            2 |      2 | two  |        |       |      1
+         2 |        2 |            2 |      2 | two  |        |       |      2
+         2 |        2 |            2 |      2 | two  |        |       |      3
+         2 |        2 |            2 |      2 | two  |        |       |      5
+         3 |        3 |            3 |        |      |      3 | three |      1
+         3 |        3 |            3 |        |      |      3 | three |      2
+         3 |        3 |            3 |        |      |      3 | three |      3
+         3 |        3 |            3 |        |      |      3 | three |      5
+(12 rows)
+
+--3 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d where a.ne_model = c.int_id(+) and
+ c.int_id = d.int_id(+) and d.int_id = b.int_id(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------
+         1 |        1 |            1 |      1 | one  |      1 | one   |      1
+         2 |        2 |            2 |        |      |        |       |       
+         3 |        3 |            3 |        |      |      3 | three |      3
+(3 rows)
+
+--3 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d where a.ne_model = c.int_id(+) and
+ c.int_id = b.int_id(+) and b.int_id = d.int_id(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------
+         1 |        1 |            1 |      1 | one  |      1 | one   |      1
+         2 |        2 |            2 |        |      |        |       |       
+         3 |        3 |            3 |        |      |      3 | three |       
+(3 rows)
+
+--4 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d where a.county_id + c.int_id = b.int_id(+) and
+ a.ne_model = c.int_id(+) and  d.int_id = a.b_mis_pro_no(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------
+         1 |        1 |            1 |      2 | two  |      1 | one   |      1
+         2 |        2 |            2 |        |      |        |       |      2
+         3 |        3 |            3 |        |      |      3 | three |      3
+           |          |              |        |      |        |       |      5
+(4 rows)
+
+create table test_t5 as select  *from test_t4 with no data;
+insert into test_t5 values(1);
+insert into test_t5 values(2);
+insert into test_t5 values(3);
+insert into test_t5 values(4);
+--4 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d,test_t5 e where a.county_id + e.int_id = b.int_id(+) and
+ a.ne_model = c.int_id(+) and  d.int_id = a.b_mis_pro_no(+) and d.int_id = e.int_id(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------+--------
+         1 |        1 |            1 |      2 | two  |      1 | one   |      1 |      1
+         2 |        2 |            2 |        |      |        |       |      2 |      2
+         3 |        3 |            3 |        |      |      3 | three |      3 |      3
+           |          |              |        |      |        |       |      5 |       
+(4 rows)
+
+--4 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d,test_t5 e where a.county_id + e.int_id = b.int_id(+) and
+ a.ne_model = c.int_id(+) and  d.int_id = a.b_mis_pro_no(+) and d.int_id = e.int_id(+) and c.int_id = e.int_id(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------+--------
+         1 |        1 |            1 |      2 | two  |      1 | one   |      1 |      1
+         2 |        2 |            2 |        |      |        |       |      2 |       
+         3 |        3 |            3 |        |      |      3 | three |      3 |      3
+           |          |              |        |      |        |       |      5 |       
+(4 rows)
+
+--8 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d,test_t5 e where a.county_id + e.int_id = b.int_id(+) and a.county_id = b.int_id(+) and
+  d.int_id = a.b_mis_pro_no(+) and  c.int_id = e.int_id(+) order by a.county_id,e.int_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------+--------
+         1 |        1 |            1 |        |      |      1 | one   |      1 |      1
+         1 |        1 |            1 |        |      |      3 | three |      1 |      3
+         2 |        2 |            2 |        |      |      1 | one   |      2 |      1
+         2 |        2 |            2 |        |      |      3 | three |      2 |      3
+         3 |        3 |            3 |        |      |      1 | one   |      3 |      1
+         3 |        3 |            3 |        |      |      3 | three |      3 |      3
+           |          |              |        |      |      1 | one   |      5 |      1
+           |          |              |        |      |      3 | three |      5 |      3
+(8 rows)
+
+--4 rows
+select * from test_t1 a,test_t2 b, test_t3 c,test_t4 d ,test_t5 e where a.county_id = b.int_id(+) and
+ a.ne_model = c.int_id(+) and d.int_id = e.int_id(+)  and d.int_id = a.b_mis_pro_no(+) order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------+--------
+         1 |        1 |            1 |      1 | one  |      1 | one   |      1 |      1
+         2 |        2 |            2 |      2 | two  |        |       |      2 |      2
+         3 |        3 |            3 |        |      |      3 | three |      3 |      3
+           |          |              |        |      |        |       |      5 |       
+(4 rows)
+
+--6 rows
+select * from test_t1 a,test_t2 b,test_t3 c where a.county_id + b.int_id = c.int_id(+)
+ and b.int_id = c.int_id(+) order by a.county_id,b.name;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name 
+-----------+----------+--------------+--------+------+--------+------
+         1 |        1 |            1 |      1 | one  |        | 
+         1 |        1 |            1 |      2 | two  |        | 
+         2 |        2 |            2 |      1 | one  |        | 
+         2 |        2 |            2 |      2 | two  |        | 
+         3 |        3 |            3 |      1 | one  |        | 
+         3 |        3 |            3 |      2 | two  |        | 
+(6 rows)
+
+--6 rows
+select * from test_t1 a,test_t2 b,test_t3 c where
+ b.int_id = c.int_id(+) and a.county_id + b.int_id = c.int_id(+) order by a.county_id,b.name;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name 
+-----------+----------+--------------+--------+------+--------+------
+         1 |        1 |            1 |      1 | one  |        | 
+         1 |        1 |            1 |      2 | two  |        | 
+         2 |        2 |            2 |      1 | one  |        | 
+         2 |        2 |            2 |      2 | two  |        | 
+         3 |        3 |            3 |      1 | one  |        | 
+         3 |        3 |            3 |      2 | two  |        | 
+(6 rows)
+
+--6 rows
+select * from test_t1 a,test_t2 b,test_t3 c where a.county_id + b.int_id = c.int_id(+) order by a.county_id,b.name;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  
+-----------+----------+--------------+--------+------+--------+-------
+         1 |        1 |            1 |      1 | one  |        | 
+         1 |        1 |            1 |      2 | two  |      3 | three
+         2 |        2 |            2 |      1 | one  |      3 | three
+         2 |        2 |            2 |      2 | two  |        | 
+         3 |        3 |            3 |      1 | one  |        | 
+         3 |        3 |            3 |      2 | two  |        | 
+(6 rows)
+
+--6 rows
+select * from test_t1 a,test_t2 b,test_t3 c where a.county_id = c.int_id(+) and b.int_id = c.int_id(+) order by a.county_id,b.name;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name 
+-----------+----------+--------------+--------+------+--------+------
+         1 |        1 |            1 |      1 | one  |      1 | one
+         1 |        1 |            1 |      2 | two  |        | 
+         2 |        2 |            2 |      1 | one  |        | 
+         2 |        2 |            2 |      2 | two  |        | 
+         3 |        3 |            3 |      1 | one  |        | 
+         3 |        3 |            3 |      2 | two  |        | 
+(6 rows)
+
+--2 rows
+select * from test_t1 a,test_t2 b,test_t3 c where a.county_id = c.int_id(+) and b.int_id = c.int_id(+)
+ and a.county_id = b.int_id + 1 order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name 
+-----------+----------+--------------+--------+------+--------+------
+         2 |        2 |            2 |      1 | one  |        | 
+         3 |        3 |            3 |      2 | two  |        | 
+(2 rows)
+
+--3 rows
+select * from test_t1 a,test_t2 b,test_t3 c where a.county_id = c.int_id(+) and b.int_id = c.int_id(+) and
+ a.county_id = b.int_id(+) + 1 order by a.county_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name 
+-----------+----------+--------------+--------+------+--------+------
+         1 |        1 |            1 |        |      |        | 
+         2 |        2 |            2 |      1 | one  |        | 
+         3 |        3 |            3 |      2 | two  |        | 
+(3 rows)
+
+--6 rows
+select * from test_t1 a,test_t2 b,test_t3 c,test_t4 d where a.county_id = b.int_id(+)
+ and c.int_id = d.int_id(+) order by a.county_id,d.int_id;
+ county_id | ne_model | b_mis_pro_no | int_id | name | int_id | name  | int_id 
+-----------+----------+--------------+--------+------+--------+-------+--------
+         1 |        1 |            1 |      1 | one  |      1 | one   |      1
+         1 |        1 |            1 |      1 | one  |      3 | three |      3
+         2 |        2 |            2 |      2 | two  |      1 | one   |      1
+         2 |        2 |            2 |      2 | two  |      3 | three |      3
+         3 |        3 |            3 |        |      |      1 | one   |      1
+         3 |        3 |            3 |        |      |      3 | three |      3
+(6 rows)
+
+ --cllean data
+drop table test_t1;
+drop table test_t2;
+drop table test_t3;
+drop table test_t4;
+drop table test_t5;

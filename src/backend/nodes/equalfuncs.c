@@ -3709,17 +3709,6 @@ _equalOraParamRef(const OraParamRef *a, const OraParamRef *b)
 }
 /* End - ReqID:SRS-SQL-ANONYOUT */
 
-/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
-static bool
-_equal_Outer_join_vars(const Outer_join_vars *a, const Outer_join_vars *b)
-{
-	COMPARE_NODE_FIELD(plus_var);
-	COMPARE_NODE_FIELD(rmvar);
-	COMPARE_NODE_FIELD(var_list);
-	COMPARE_NODE_FIELD(qual);
-	return true;
-}
-/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 static bool
@@ -4743,11 +4732,6 @@ equal(const void *a, const void *b)
 			retval = _equalOraParamRef(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-ANONYOUT */
-		/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
-		case T_Outer_join_vars:
-			retval = _equal_Outer_join_vars(a, b);
-			break;
-		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 		/* Begin - ReqID:SRS-MYSQL-UPDATE */
 		case T_IndexHintDefinition:
 			retval = _equalIndexHintDefinition(a, b);
