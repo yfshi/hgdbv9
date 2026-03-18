@@ -1,0 +1,48 @@
+-- string as column alias
+select 1 as 'string_alias';
+ string_alias 
+--------------
+            1
+(1 row)
+
+-- TypeCast(::) will ignore ANSI_QUOTES and identify double quotes as IDENT flag always
+set sql_mode = 'ANSI_QUOTES';
+select 1::text, "this is a string", 1::"text", 1::text;
+ERROR:  column "this is a string" does not exist
+LINE 1: select 1::text, "this is a string", 1::"text", 1::text;
+                        ^
+set sql_mode = '';
+select 1::text, "this is a string", 1::"text", 1::text;
+ text |     ?column?     | text | text 
+------+------------------+------+------
+ 1    | this is a string | 1    | 1
+(1 row)
+
+\gdesc
+  Column  | Type 
+----------+------
+ text     | text
+ ?column? | text
+ text     | text
+ text     | text
+(4 rows)
+
+-- Begin - bug#6888
+CREATE TABLE test_real1(col REAL);
+DESC test_real1;
+ Field |       Type       | Null | Key | Default | Extra 
+-------+------------------+------+-----+---------+-------
+ col   | double precision | null | key | default | 
+(1 row)
+
+SET sql_mode = 'REAL_AS_FLOAT';
+CREATE TEMPORARY TABLE test_real2(col REAL);
+DESC test_real2;
+ Field |  Type  | Null | Key | Default | Extra 
+-------+--------+------+-----+---------+-------
+ col   | float4 | null | key | default | 
+(1 row)
+
+drop table test_real1, test_real2;
+-- End - bug#6888
+set sql_mode = default;

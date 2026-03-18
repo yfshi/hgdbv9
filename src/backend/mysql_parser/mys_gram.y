@@ -861,6 +861,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
 %token <str>	HCONST /* Begin BUG#5048 5070 */
 %token <str>    USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
+%token <str> 	IDENT_SCONST /* bug#6888 */
 
 /*
  * If you want to make any keyword changes, update the keyword table in
@@ -18621,13 +18622,8 @@ func_expr_common_subexpr:
 			| GROUP_CONCAT '(' opt_distinct expr_list opt_sort_clause opt_separator ')'
 				{
 					FuncCall *n = makeNode(FuncCall);
-					FuncCall *cat = makeFuncCall(SystemFuncName("concat"),
-												 $4,
-												 COERCE_EXPLICIT_CALL,
-												 @4);
-
-					n->funcname = SystemFuncName("string_agg");
-					n->args = list_make2(cat, makeStringConst($6, @6));
+					n->funcname = MysqlSystemFuncName("group_concat");
+					n->args = lcons(makeStringConst($6, @6), $4);
 					n->agg_order = $5;
 					n->agg_star = false;
 					n->agg_distinct = $3;
@@ -19563,6 +19559,16 @@ target_el:	a_expr AS ColLabel
 					$$->val = (Node *)$1;
 					$$->location = @1;
 				}
+			/* Begin - bug#6888 */
+			| a_expr AS SCONST
+				{
+					$$ = makeNode(ResTarget);
+					$$->name = $3;
+					$$->indirection = NIL;
+					$$->val = (Node *)$1;
+					$$->location = @1;
+				}
+			/* End - bug#6888 */
 			| a_expr BareColLabel
 				{
 					$$ = makeNode(ResTarget);

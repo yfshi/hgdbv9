@@ -3409,57 +3409,139 @@ create table gct(a int, b varchar(100));
 insert into gct values (0, 'a'), (1, 'b'), (1, 'c'), (2, 'd'), (2, 'f'), (2, 'g');
 insert into gct values (0, 'a'), (1, 'c'), (1, 'b'), (2, 'g'), (2, 'f'), (2, 'd');
 select group_concat(a) from gct;					-- 0,1,1,2,2,2,0,1,1,2,2,2
-       string_agg        
+      group_concat       
 -------------------------
  0,1,1,2,2,2,0,1,1,2,2,2
 (1 row)
 
 select group_concat(a, b) from gct;					-- 0a,1b,1c,2d,2f,2g,0a,1c,1b,2g,2f,2d
-             string_agg              
+            group_concat             
 -------------------------------------
  0a,1b,1c,2d,2f,2g,0a,1c,1b,2g,2f,2d
 (1 row)
 
 select group_concat(a, b separator '/') from gct;	-- 0a/1b/1c/2d/2f/2g/0a/1c/1b/2g/2f/2d
-             string_agg              
+            group_concat             
 -------------------------------------
  0a/1b/1c/2d/2f/2g/0a/1c/1b/2g/2f/2d
 (1 row)
 
 select group_concat(a order by a) from gct;			-- 0,0,1,1,1,1,2,2,2,2,2,2
-       string_agg        
+      group_concat       
 -------------------------
  0,0,1,1,1,1,2,2,2,2,2,2
 (1 row)
 
 select group_concat(b order by b) from gct;			-- a,a,b,b,c,c,d,d,f,f,g,g
-       string_agg        
+      group_concat       
 -------------------------
  a,a,b,b,c,c,d,d,f,f,g,g
 (1 row)
 
 select group_concat(a, b order by a, b) from gct;	-- 0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
-             string_agg              
+            group_concat             
 -------------------------------------
  0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
 (1 row)
 
 select group_concat(a, b order by b) from gct;		-- 0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
-             string_agg              
+            group_concat             
 -------------------------------------
  0a,0a,1b,1b,1c,1c,2d,2d,2f,2f,2g,2g
 (1 row)
 
 select group_concat(distinct a) from gct;			-- 0,1,2
- string_agg 
-------------
+ group_concat 
+--------------
  0,1,2
 (1 row)
 
 select group_concat(distinct a, b) from gct;		-- 0a,1b,1c,2d,2f,2g
-    string_agg     
+   group_concat    
 -------------------
  0a,1b,1c,2d,2f,2g
 (1 row)
 
+-- begin - bug#7233
+SELECT GROUP_CONCAT(col) FROM (SELECT 'a' col UNION ALL SELECT NULL UNION ALL SELECT 'b' UNION ALL SELECT '') t; -- a,b,
+ group_concat 
+--------------
+ a,b,
+(1 row)
+
+SELECT GROUP_CONCAT(col1, col2) FROM (SELECT 'a' col1, 'b' col2 UNION ALL SELECT NULL, 'c' UNION ALL SELECT 'd', NULL UNION ALL SELECT '', '') t; -- ab,
+ group_concat 
+--------------
+ ab,
+(1 row)
+
+SELECT GROUP_CONCAT(col1, col2) FROM (SELECT NULL col1, 'b' col2 UNION ALL SELECT 'a', 'c' UNION ALL SELECT 'd', NULL UNION ALL SELECT '', '') t; -- ac,
+ group_concat 
+--------------
+ ac,
+(1 row)
+
+SELECT GROUP_CONCAT(col) FROM (SELECT NULL col UNION ALL SELECT NULL) t; -- NULL
+ group_concat 
+--------------
+ 
+(1 row)
+
+SELECT GROUP_CONCAT(col) FROM (SELECT '' col UNION ALL SELECT 'a' UNION ALL SELECT '') t; -- ,a,
+ group_concat 
+--------------
+ ,a,
+(1 row)
+
+SELECT GROUP_CONCAT(col) FROM (SELECT 'a' col UNION ALL SELECT 'b') t; -- a,b
+ group_concat 
+--------------
+ a,b
+(1 row)
+
+WITH test_data AS (SELECT unnest (array [1,1,1,2,2,2,1]) AS grp,unnest (array ['Apple','Banana',null,'Cherry','Date',null,'Elderberry']) AS item) SELECT grp, GROUP_CONCAT(item) FROM test_data GROUP BY grp;
+ grp |      group_concat       
+-----+-------------------------
+   1 | Apple,Banana,Elderberry
+   2 | Cherry,Date
+(2 rows)
+
+-- End - bug#7233
+-- begin - bug#7234
+SELECT GROUP_CONCAT(DISTINCT col ORDER BY col ASC SEPARATOR '-') FROM (SELECT 'b' col UNION ALL SELECT 'a' UNION ALL SELECT 'b' UNION ALL SELECT 'c') t; -- a-b-c
+ group_concat 
+--------------
+ a-b-c
+(1 row)
+
+WITH test_data AS (SELECT unnest (array [1,1,1,2,2,2,1]) AS grp,unnest (array ['Apple','Banana',null,'Cherry','Date',null,'Elderberry']) AS item) SELECT grp, GROUP_CONCAT(DISTINCT item ORDER BY item SEPARATOR ' | ') AS full_features FROM test_data GROUP BY grp ORDER BY grp;
+ grp |        full_features        
+-----+-----------------------------
+   1 | Apple | Banana | Elderberry
+   2 | Cherry | Date
+(2 rows)
+
+-- End - bug#7234
+-- begin - bug#7234
+SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',200)) t; 	-- 602
+ length 
+--------
+    602
+(1 row)
+
+SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',1000)) t;	-- 1024, warning
+WARNING:  Row was cut by GROUP_CONCAT()
+ length 
+--------
+   1024
+(1 row)
+
+SET SESSION group_concat_max_len = 10000;
+SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',1000)) t;	-- 1402
+ length 
+--------
+   1402
+(1 row)
+
+-- End - bug#7234
 drop table gct;

@@ -179,7 +179,8 @@ MYS_REGRESS = numeric_to_times \
 			  prepare \
 			  select_into \
 			  load_data \
-			  not_full_group
+			  not_full_group \
+			  ansi_quotes
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28

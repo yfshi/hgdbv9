@@ -4036,3 +4036,22 @@ CREATE AGGREGATE ivymy.any_value(anyelement) (
   FINALFUNC = ivymy.any_value_finalfn
 );
 /* End - OA#2908  Not Full Group */
+
+/* Begin - bug#7234 */
+CREATE FUNCTION ivymy.group_concat_transfn(internal, text, VARIADIC "any")
+RETURNS internal
+AS 'MODULE_PATHNAME','group_concat_transfn'
+LANGUAGE C;
+
+CREATE FUNCTION ivymy.group_concat_finalfn(internal, text, VARIADIC "any")
+RETURNS text
+AS 'MODULE_PATHNAME','group_concat_finalfn'
+LANGUAGE C;
+
+CREATE AGGREGATE ivymy.group_concat(text, VARIADIC "any") (
+  SFUNC = ivymy.group_concat_transfn,
+  STYPE = internal,
+  FINALFUNC_EXTRA,
+  FINALFUNC = ivymy.group_concat_finalfn
+);
+/* End - bug#7234 */

@@ -148,6 +148,8 @@ bool		use_mysql_bit_literal = false;	/* SRS-MYSQL-HEX-LITERAL */
 bool 		qm_as_param = false; /* SRS-MYSQL-SQL-PREPARE */
 bool		mysql_local_infile = true;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 
+int 		group_concat_max_len;	/* bug#7234 */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -525,6 +527,21 @@ bool		mysql_local_infile = true;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-PROTOCOL */
+	/* Begin - bug#7234 */
+	{
+		{
+			"group_concat_max_len", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The maximum permitted length result length in bytes for GROUP_CONCAT() function."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&group_concat_max_len,
+		1024,
+		4,
+		INT_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - bug#7234 */
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS

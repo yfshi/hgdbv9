@@ -893,9 +893,9 @@ other			.
 					yylval->str = ident;
 
 					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-					if(has_sql_mode(MODE_ANSI_QUOTES))
+					if (has_sql_mode(MODE_ANSI_QUOTES))
 						return IDENT;
-					return SCONST;
+					return IDENT_SCONST; /* bug#6888 */
 					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 				}
 <xbatq>{xbatqqstop}	{

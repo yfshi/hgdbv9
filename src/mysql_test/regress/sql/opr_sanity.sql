@@ -1143,7 +1143,7 @@ WHERE prokind = 'a' AND proargdefaults IS NOT NULL;
 -- that variadic ordered-set aggregates are OK (since they have special syntax
 -- that is not subject to the misplaced ORDER BY issue).
 
-SELECT p.oid, proname
+SELECT p.oid::regprocedure, proname
 FROM pg_proc AS p JOIN pg_aggregate AS a ON a.aggfnoid = p.oid
 WHERE prokind = 'a' AND provariadic != 0 AND a.aggkind = 'n';
 

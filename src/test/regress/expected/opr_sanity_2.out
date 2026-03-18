@@ -1876,12 +1876,13 @@ WHERE prokind = 'a' AND proargdefaults IS NOT NULL;
 -- For the same reason, we avoid creating built-in variadic aggregates, except
 -- that variadic ordered-set aggregates are OK (since they have special syntax
 -- that is not subject to the misplaced ORDER BY issue).
-SELECT p.oid, proname
+SELECT p.oid::regprocedure, proname
 FROM pg_proc AS p JOIN pg_aggregate AS a ON a.aggfnoid = p.oid
 WHERE prokind = 'a' AND provariadic != 0 AND a.aggkind = 'n';
- oid | proname 
------+---------
-(0 rows)
+              oid               |   proname    
+--------------------------------+--------------
+ ivymy.group_concat(text,"any") | group_concat
+(1 row)
 
 -- **************** pg_opfamily ****************
 -- Look for illegal values in pg_opfamily fields

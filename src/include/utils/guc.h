@@ -894,4 +894,6 @@ extern char    *tlcp_pass_file;
 #endif
 /* End - ReqID:SRS-SECURITY-TLCP */
 
+extern PGDLLIMPORT int group_concat_max_len; /* bug#7234 */
+
 #endif							/* GUC_H */
