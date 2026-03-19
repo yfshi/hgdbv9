@@ -1070,6 +1070,9 @@ static bool isAconstNode(Node *node);
 
 /* Begin - BUG#M0000307 */
 %nonassoc	DAY_P YEAR_P DEFAULT    /* see param_name */ /* ReqID:SRS-SQL-PARTITION-TABLE */
+/* Begin - BUG#00007405 */
+%nonassoc HOUR_P MINUTE_P MONTH_P SECOND_P	/* these keywords can be alias without as like DAY_P and YEAR_P */
+/* End - BUG#00007405 */
 /* End - BUG#M0000307 */
 /* Begin - SRS-SQL-MULTITABLEINSERT */
 %nonassoc  INTO
@@ -18833,7 +18836,7 @@ opt_interval:
 				}
 			/* End - ReqID:SRS-GKC-DATATYPE_001 */
 			/* Begin - BUG#M0000475 */
-			| /*EMPTY*/
+			| /*EMPTY*/	%prec SET /* BUG#00007405 */
 				{ $$ = NIL; }
 			/* End - BUG#M0000475 */
 		;
@@ -19005,7 +19008,7 @@ opt_interval_type:
 								 errmsg("This is used for compatible oracle and Postgresql not support.")));
 					}
 				}
-			| /* empty */
+			| /* empty */	%prec SET /* BUG#00007405 */
 				{ $$ = NIL; }
 		;
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
@@ -23331,6 +23334,7 @@ bare_label_keyword:
 			| DATA_P
 			| DATABASE
 			| DATE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
+			| DAY_P	 /* BUG#00007405 */
 			| DEALLOCATE
 			| DEBUG_P /* ReqID:SRS-SQL-PROC */
 			| DEC
@@ -23410,6 +23414,7 @@ bare_label_keyword:
 			| HASH_P	/* ReqID:SRS-SQL-PROC */
 			| HEADER_P
 			| HOLD
+			| HOUR_P	 /* BUG#00007405 */
 			| IDENTIFIED	/* ReqID:SRS-SQL-DBLINK */
 			| IDENTITY_P
 			| IF_P
@@ -23483,9 +23488,11 @@ bare_label_keyword:
 			| MERGE /* ReqID:SRS-SQL-MERGE */
 			| METADATA /* ReqID:SRS-SQL-PROC */
 			| METHOD
+			| MINUTE_P	 /* BUG#00007405 */
 			| MINVALUE
 			| MODE
 			| MODIFY		/* ReqID:SRS-SQL-IDENTCOL */
+			| MONTH_P	 /* BUG#00007405 */
 			| MOVE
 			| NAME_P
 			| NAMES
@@ -23633,6 +23640,7 @@ bare_label_keyword:
 			| SCHEMAS
 			| SCROLL
 			| SEARCH
+			| SECOND_P	/* BUG#00007405 */
 			| SECURITY
 			| SELECT
 			| SEQUENCE
@@ -23759,6 +23767,7 @@ bare_label_keyword:
 			| XMLROOT
 			| XMLSERIALIZE
 			| XMLTABLE
+			| YEAR_P	 /* BUG#00007405 */
 			| YES_P
 			| ZONE
 		;
