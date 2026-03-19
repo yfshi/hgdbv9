@@ -32,6 +32,7 @@
 #include "portability/instr_time.h"
 #include "psqlplus.h"	/* ReqID:SRS-CMD-PSQL */
 #include "settings.h"
+#include "common/string.h"
 
 static bool DescribeQuery(const char *query, double *elapsed_msec);
 static bool ExecQueryUsingCursor(const char *query, double *elapsed_msec);
@@ -40,6 +41,10 @@ static bool is_select_command(const char *query);
 /* Begin - ReqID:SRS-CMD-PSQL */
 static Ivyresult *psql_exec_pbe(const char *sql, HostVariable *hv, struct _variable **bindvar);
 /* End - ReqID:SRS-CMD-PSQL */
+
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static void confirm_pass_and_connect(void);
+#endif
 
 /*
  * openQueryOutputFile --- attempt to open a query output file
@@ -462,6 +467,28 @@ ConnectionUp(void)
 	return PQstatus(pset.db) != CONNECTION_BAD;
 }
 
+/* Begin - BUG#Z4804 */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+
+static char *
+prompt_for_password(const char *username)
+{
+	char	   *result;
+
+	if (username == NULL || username[0] == '\0')
+		result = simple_prompt("Password: ", false);
+	else
+	{
+		char	   *prompt_text;
+
+		prompt_text = psprintf(_("Password for user %s: "), username);
+		result = simple_prompt(prompt_text, false);
+		free(prompt_text);
+	}
+	return result;
+}
+#endif
+/* End - BUG#Z4804 */
 
 
 /* CheckConnection
@@ -488,8 +515,16 @@ CheckConnection(void)
 			exit(EXIT_BADCONN);
 		}
 
+		/* Begin - BUG#Z4804 */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+		confirm_pass_and_connect();
+#else
+		/* End - BUG#Z4804 */
+
 		fprintf(stderr, _("The connection to the server was lost. Attempting reset: "));
 		PQreset(pset.db);
+#endif  // BUG#Z4804
+
 		OK = ConnectionUp();
 		if (!OK)
 		{
@@ -3321,3 +3356,47 @@ getExpirationAlarm(PGconn *conn, const char *user_name)
 		PQclear(res);
 }
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+/* Begin - BUG#Z4804 */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static void confirm_pass_and_connect(void)
+{
+	char		*username = NULL;
+	char		*password = NULL;
+	char		*inputpasswd = NULL;
+
+	username = PQuser(pset.db);
+	password = PQpass(pset.db);
+	if (password != NULL && strlen(password) > 0)
+	{
+		inputpasswd = prompt_for_password(username);
+		if(strcmp(password, inputpasswd))
+		{
+			if (!PQSetPass(pset.db, inputpasswd))
+			{
+				fprintf(stderr, _("The connection to the server was lost.\n"));
+				PQfinish(pset.db);
+				pset.db = NULL;
+				ResetCancelConn();
+				UnsyncVariables();
+				exit(EXIT_FAILURE);
+			}
+
+			password = PQpass(pset.db);
+			fprintf(stderr, _("The connection to the server was lost. Attempting reset: "));
+			PQreset(pset.db);
+		}
+		else
+		{
+			fprintf(stderr, _("The connection to the server was lost. Attempting reset: "));
+			PQreset(pset.db);
+		}
+	}
+	else
+	{
+		fprintf(stderr, _("The connection to the server was lost. Attempting reset: "));
+		PQreset(pset.db);
+	}
+}
+#endif
+/* End - BUG#Z4804 */

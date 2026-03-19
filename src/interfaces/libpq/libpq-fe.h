@@ -373,6 +373,7 @@ extern int	PQrequestCancel(PGconn *conn);
 extern char *PQdb(const PGconn *conn);
 extern char *PQuser(const PGconn *conn);
 extern char *PQpass(const PGconn *conn);
+extern bool PQSetPass(PGconn *conn, const char *new_pass);  // BUG#Z4804
 extern char *PQhost(const PGconn *conn);
 extern char *PQhostaddr(const PGconn *conn);
 extern char *PQport(const PGconn *conn);

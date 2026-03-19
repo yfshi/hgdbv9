@@ -7468,3 +7468,33 @@ PQregisterThreadLock(pgthreadlock_t newhandler)
 
 	return prev;
 }
+
+/* Begin - BUG#Z4804 */
+bool
+PQSetPass(PGconn *conn, const char *new_pass)
+{
+#if defined(ENABLE_DKY_BETA_FEATURE)
+
+	char	   *password = NULL;
+
+	if (!conn || !new_pass)
+		return false;
+
+	if (conn->connhost != NULL)
+		password = conn->connhost[conn->whichhost].password;
+
+	if (password == NULL)
+	{
+		free(conn->pgpass);
+		conn->pgpass = strdup(new_pass);
+	}
+	else
+	{
+		free(conn->connhost[conn->whichhost].password);
+		conn->connhost[conn->whichhost].password = strdup(new_pass);
+	}
+#endif
+
+	return true;
+}
+/* End - BUG#Z4804 */

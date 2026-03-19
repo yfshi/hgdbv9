@@ -217,3 +217,4 @@ PQtlcpStruct               214
 PQtlcpAttributeNames       215
 PQtlcpAttribute            216
 PQtlcpInUse                 217
+PQSetPass                  218
