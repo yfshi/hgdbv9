@@ -261,6 +261,7 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	AlterSeqStmt *altseqstmt;
 	List	   *relnamelist;
 	/* End - ReqID:SRS-SQL-ROWID */
+	bool enableantitamper = false;
 
 	bool		is_oracle_partition = stmt->ora_partspec != NULL;
 
@@ -297,9 +298,21 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	/*
 	 * Check whether relation is in antitamper schema or antitamper table. If it is, we add hash column.
 	 */
-	if (interpretAntiTamperOption(stmt->options))
+	if (interpretAntiTamperOption(stmt->options, &enableantitamper))
 	{
-		stmt->isantitamper = true;
+		if (enableantitamper)
+		{
+			stmt->isantitamper = true;
+		}
+		else
+		{
+			if (IsAntiTamperNameSpace(namespaceid))
+			{
+				ereport(ERROR,
+					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),
+					 errmsg("cannot create not antitamper table in antitamper schema")));
+			}
+		}
 	}
 	else
 	{

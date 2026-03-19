@@ -26,7 +26,7 @@ select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -38,7 +38,7 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 select hg_security.antitamper_gchain_repair('ddd','t1');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -83,7 +83,7 @@ select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -95,7 +95,7 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 select hg_security.antitamper_gchain_repair('ddd','t1');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -142,7 +142,7 @@ select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -154,7 +154,7 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 select hg_security.antitamper_gchain_repair('ddd','t1');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -202,7 +202,7 @@ select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -214,7 +214,7 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 select hg_security.antitamper_gchain_repair('ddd','t1');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -241,7 +241,7 @@ NOTICE:  (4,,1491091122)
 select hg_security.antitamper_gchain_archive('ddd','t1');
  antitamper_gchain_archive 
 ---------------------------
-                1232070655
+ t
 (1 row)
 
 select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
@@ -272,16 +272,16 @@ drop table ddd.t1;
 \d+ hg_security.ddd_t1_hist
 select hg_security.antitamper_hist_check('ddd','t1');
 ERROR:   ddd.t1 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 26 at RAISE
 select hg_security.antitamper_hist_repair('ddd','t1');
 ERROR:   ddd.t1 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 28 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 34 at RAISE
 select hg_security.antitamper_gchain_check('ddd','t1');
 ERROR:   ddd.t1 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 20 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 25 at RAISE
 select hg_security.antitamper_gchain_repair('ddd','t1');
 ERROR:   ddd.t1 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 27 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 31 at RAISE
 drop schema ddd ;
 --==============================================================================================--
 -- test table antitamper
@@ -311,7 +311,7 @@ select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -323,7 +323,7 @@ select hg_security.antitamper_gchain_check('public', 't2');
 select hg_security.antitamper_gchain_repair('public', 't2');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -369,7 +369,7 @@ select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -381,7 +381,7 @@ select hg_security.antitamper_gchain_check('public', 't2');
 select hg_security.antitamper_gchain_repair('public', 't2');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -429,7 +429,7 @@ select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -441,7 +441,7 @@ select hg_security.antitamper_gchain_check('public', 't2');
 select hg_security.antitamper_gchain_repair('public', 't2');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -490,7 +490,7 @@ select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -502,7 +502,7 @@ select hg_security.antitamper_gchain_check('public', 't2');
 select hg_security.antitamper_gchain_repair('public', 't2');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -529,7 +529,7 @@ NOTICE:  (4,,910421701)
 select hg_security.antitamper_gchain_archive('public','t2');
  antitamper_gchain_archive 
 ---------------------------
-                2308286483
+ t
 (1 row)
 
 select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
@@ -564,16 +564,16 @@ drop table t2;
 \d+ hg_security.public_t2_hist
 select hg_security.antitamper_hist_check('public','t2');
 ERROR:   public.t2 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 26 at RAISE
 select hg_security.antitamper_hist_repair('public','t2');
 ERROR:   public.t2 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 28 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 34 at RAISE
 select hg_security.antitamper_gchain_check('public','t2');
 ERROR:   public.t2 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 20 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 25 at RAISE
 select hg_security.antitamper_gchain_repair('public','t2');
 ERROR:   public.t2 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 27 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 31 at RAISE
 --==============================================================================================--
 -- test table partition
 --==============================================================================================--
@@ -767,7 +767,7 @@ select hg_security.antitamper_hist_check('nsp2', 't3');
 select hg_security.antitamper_hist_repair('nsp2', 't3');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('nsp2', 't3');
@@ -779,7 +779,7 @@ select hg_security.antitamper_gchain_check('nsp2', 't3');
 select hg_security.antitamper_gchain_repair('nsp2', 't3');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -869,7 +869,7 @@ NOTICE:  (3,3822073143,)
 select hg_security.antitamper_gchain_archive('nsp2','t3');
  antitamper_gchain_archive 
 ---------------------------
-               11920843319
+ t
 (1 row)
 
 select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
@@ -1102,7 +1102,7 @@ select hg_security.antitamper_hist_check('nsp2', 't3');
 select hg_security.antitamper_hist_repair('nsp2', 't3');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('nsp2', 't3');
@@ -1114,7 +1114,7 @@ select hg_security.antitamper_gchain_check('nsp2', 't3');
 select hg_security.antitamper_gchain_repair('nsp2', 't3');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -1211,6 +1211,7 @@ ERROR:  Unsupport to ALTER the structure of antitamper related table [t3].
 drop table nsp2.t3;
 \d+ nsp2.t3;
 \d+ hg_security.nsp2_t3_hist
+drop schema nsp2;
 -------------------------------------------------------------------------------------------------------
 create table t4 (a int, b int, primary key (a)) partition by range (a) WITH(antitamper=true);
 create table t4part2 partition of t4 for values from (0) to (1000);
@@ -1304,7 +1305,7 @@ select hg_security.antitamper_hist_check('public', 't4');
 select hg_security.antitamper_hist_repair('public', 't4');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('public', 't4');
@@ -1316,7 +1317,7 @@ select hg_security.antitamper_gchain_check('public', 't4');
 select hg_security.antitamper_gchain_repair('public', 't4');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -1471,7 +1472,7 @@ select hg_security.antitamper_hist_check('public', 't4');
 select hg_security.antitamper_hist_repair('public', 't4');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('public', 't4');
@@ -1483,7 +1484,7 @@ select hg_security.antitamper_gchain_check('public', 't4');
 select hg_security.antitamper_gchain_repair('public', 't4');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 do $$
@@ -1552,7 +1553,7 @@ Options: antitamper=true
 
 create schema ddd2;
 alter table ddd.t1 set schema ddd2;
-ERROR:  Unsupport to alter schema of a table between ledger schema and normal schema.
+ERROR:  Unsupport to alter schema of a table between antitamper schema and normal schema.
 do $$
 DECLARE
 	tableoid oid;
@@ -1785,7 +1786,7 @@ select hg_security.antitamper_hist_check('a123456789b123456789c123456789d1','a12
 select hg_security.antitamper_hist_repair('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
@@ -1797,13 +1798,13 @@ select hg_security.antitamper_gchain_check('a123456789b123456789c123456789d1','a
 select hg_security.antitamper_gchain_repair('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_archive('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
  antitamper_gchain_archive 
 ---------------------------
-                1232070655
+ t
 (1 row)
 
 select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
@@ -1914,7 +1915,7 @@ select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
  antitamper_hist_repair 
 ------------------------
-                      0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -1926,13 +1927,13 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 select hg_security.antitamper_gchain_repair('ddd','t1');
  antitamper_gchain_repair 
 --------------------------
-                        0
+ t
 (1 row)
 
 select hg_security.antitamper_gchain_archive('ddd','t1');
  antitamper_gchain_archive 
 ---------------------------
-                1232070655
+ t
 (1 row)
 
 do $$
@@ -1964,8 +1965,8 @@ select hg_security.antitamper_hist_check('ddd','t1');
 (1 row)
 
 select hg_security.antitamper_hist_repair('ddd','t1');
-ERROR:  user user1s not repair permissions, need syssso user or superuser!
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 17 at RAISE
+ERROR:  permission denied for function antitamper_hist_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 18 at RAISE
 select hg_security.antitamper_gchain_check('ddd','t1');
  antitamper_gchain_check 
 -------------------------
@@ -1973,10 +1974,10 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 (1 row)
 
 select hg_security.antitamper_gchain_repair('ddd','t1');
-ERROR:  user user1s not repair permissions, need syssso user or superuser!
+ERROR:  permission denied for function antitamper_gchain_repair
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 16 at RAISE
 select hg_security.antitamper_gchain_archive('ddd','t1');
-ERROR:  user user1s not repair permissions, need syssso user or superuser!
+ERROR:  permission denied for function antitamper_gchain_archive
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 16 at RAISE
 reset role;
 drop table ddd.t1;
@@ -2059,3 +2060,222 @@ ERROR:  record "r" has no field "aaabbb"
 CONTEXT:  PL/pgSQL assignment "r.aaabbb = 1"
 PL/pgSQL function inline_code_block line 5 at assignment
 drop table t;
+--==============================================================================================--
+-- bug test
+--==============================================================================================--
+create table public.normal_test (id int, name text);
+select hg_security.antitamper_hist_check('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 35 at RAISE
+select hg_security.antitamper_hist_repair('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 43 at RAISE
+select hg_security.antitamper_gchain_check('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 34 at RAISE
+select hg_security.antitamper_gchain_repair('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 40 at RAISE
+select hg_security.antitamper_gchain_archive('public','normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 41 at RAISE
+insert into public.normal_test values(1, 'test');
+select hg_security.antitamper_hist_check('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 35 at RAISE
+select hg_security.antitamper_hist_repair('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 43 at RAISE
+select hg_security.antitamper_gchain_check('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 34 at RAISE
+select hg_security.antitamper_gchain_repair('public', 'normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 40 at RAISE
+select hg_security.antitamper_gchain_archive('public','normal_test');
+ERROR:   public.normal_test is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 41 at RAISE
+drop table public.normal_test;
+create unlogged table test (id int, name text) with (antitamper=on);
+ERROR:  Only regular table support antitamper option
+create temp table test (id int,name text) with (antitamper=on);
+ERROR:  Only regular table support antitamper option
+create unlogged table test (id int, name text) with (antitamper=off);
+ERROR:  Only regular table support antitamper option
+create temp table test (id int,name text) with (antitamper=off);
+ERROR:  Only regular table support antitamper option
+create schema secure_schema with antitamper;
+create table secure_schema.test(id int,name text) with (antitamper=off);
+ERROR:  cannot create not antitamper table in antitamper schema
+create table secure_schema.test(id int,name text) with (antitamper=on , antitamper=on);
+ERROR:  parameter "antitamper" specified more than once
+create table secure_schema.test(id int,name text) with (antitamper=on , antitamper=off);
+ERROR:  parameter "antitamper" specified more than once
+create table secure_schema.test(id int,name text) with (antitamper=on);
+drop table secure_schema.test;
+drop schema secure_schema;
+select hg_security.antitamper_hist_check();
+ERROR:  function hg_security.antitamper_hist_check() does not exist
+LINE 1: select hg_security.antitamper_hist_check();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_hist_check('', '');
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 16 at RAISE
+select hg_security.antitamper_hist_check(null,null);
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 16 at RAISE
+select hg_security.antitamper_hist_check('secure_schema');
+ERROR:  function hg_security.antitamper_hist_check(unknown) does not exist
+LINE 1: select hg_security.antitamper_hist_check('secure_schema');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_hist_repair();
+ERROR:  function hg_security.antitamper_hist_repair() does not exist
+LINE 1: select hg_security.antitamper_hist_repair();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_hist_repair('', '');
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 23 at RAISE
+select hg_security.antitamper_hist_repair(null,null);
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 23 at RAISE
+select hg_security.antitamper_hist_repair('secure_schema');
+ERROR:  function hg_security.antitamper_hist_repair(unknown) does not exist
+LINE 1: select hg_security.antitamper_hist_repair('secure_schema');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_archive();
+ERROR:  function hg_security.antitamper_gchain_archive() does not exist
+LINE 1: select hg_security.antitamper_gchain_archive();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_archive('', '');
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+select hg_security.antitamper_gchain_archive(null,null);
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+select hg_security.antitamper_gchain_archive('secure_schema');
+ERROR:  function hg_security.antitamper_gchain_archive(unknown) does not exist
+LINE 1: select hg_security.antitamper_gchain_archive('secure_schema'...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_check();
+ERROR:  function hg_security.antitamper_gchain_check() does not exist
+LINE 1: select hg_security.antitamper_gchain_check();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_check('', '');
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 14 at RAISE
+select hg_security.antitamper_gchain_check(null,null);
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 14 at RAISE
+select hg_security.antitamper_gchain_check('secure_schema');
+ERROR:  function hg_security.antitamper_gchain_check(unknown) does not exist
+LINE 1: select hg_security.antitamper_gchain_check('secure_schema');
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_repair();
+ERROR:  function hg_security.antitamper_gchain_repair() does not exist
+LINE 1: select hg_security.antitamper_gchain_repair();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_repair('', '');
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 21 at RAISE
+select hg_security.antitamper_gchain_repair(null,null);
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 21 at RAISE
+select hg_security.antitamper_gchain_repair('secure_schema');
+ERROR:  function hg_security.antitamper_gchain_repair(unknown) does not exist
+LINE 1: select hg_security.antitamper_gchain_repair('secure_schema')...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_archive();
+ERROR:  function hg_security.antitamper_gchain_archive() does not exist
+LINE 1: select hg_security.antitamper_gchain_archive();
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+select hg_security.antitamper_gchain_archive('', '');
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+select hg_security.antitamper_gchain_archive(null,null);
+ERROR:  Parameter schema_name and table_name cannot be NULL
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+select hg_security.antitamper_gchain_archive('secure_schema');
+ERROR:  function hg_security.antitamper_gchain_archive(unknown) does not exist
+LINE 1: select hg_security.antitamper_gchain_archive('secure_schema'...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+create schema secure_schema1 with antitamper;
+create schema secure_schema2 with antitamper;
+create schema secure_schema3;
+create table test(id int, name text);
+alter table test set schema secure_schema1;
+ERROR:  Unsupport to alter schema of a table between antitamper schema and normal schema.
+alter table test set schema secure_schema2;
+ERROR:  Unsupport to alter schema of a table between antitamper schema and normal schema.
+alter table test set schema secure_schema3;
+drop table secure_schema3.test;
+create table secure_schema1.test2(id int, name text);
+alter table secure_schema1.test2 set schema secure_schema2;
+alter table secure_schema2.test2 set schema secure_schema3;
+ERROR:  Unsupport to alter schema of a table between antitamper schema and normal schema.
+drop table secure_schema2.test2;
+drop schema secure_schema1,secure_schema2,secure_schema3;
+create schema secure_schema1 with antitamper;
+create schema secure_schema2 with antitamper;
+create schema secure_schema3;
+create table secure_schema1.test1(id int, name text);
+create table secure_schema2.test2(id int, name text);
+create table secure_schema3.test3(id int, name text);
+create table secure_schema1.test4 (a int, b int, primary key (a)) partition by range (a);
+create table secure_schema1.test4part2 partition of secure_schema1.test4 for values from (0) to (1000) ;
+create table secure_schema1.test4part3 partition of secure_schema1.test4 for values from (1000) to (2000);
+create table secure_schema1.test4part4 partition of secure_schema1.test4 for values from (2000) to (3000);
+CREATE TABLE test5 (a int, b int, primary key (a)) partition by range (a) WITH(antitamper=true) ;
+CREATE TABLE test5part2 (a int, b int, primary key (a)) WITH(antitamper=true) ;
+ALTER TABLE test5 ATTACH PARTITION test5part2 FOR VALUES FROM (1) TO (1000);
+create table test6 (a int, b int, primary key (a)) partition by range (a) WITH(antitamper=true) ;
+create table test6part2 partition of test6 for values from (0) to (1000) ;
+create table test6part3 partition of test6 for values from (1000) to (2000);
+create table test6part4 partition of test6 for values from (2000) to (3000);
+select relname from hg_security.antitamper_class order by relname;
+  relname   
+------------
+ test1
+ test2
+ test4
+ test4part2
+ test4part3
+ test4part4
+ test5
+ test5part2
+ test6
+(9 rows)
+
+select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;
+    nspname     | isantitamper 
+----------------+--------------
+ secure_schema1 | t
+ secure_schema2 | t
+ secure_schema3 | f
+(3 rows)
+
+drop table secure_schema1.test1, secure_schema2.test2, secure_schema3.test3;
+drop table secure_schema1.test4;
+drop table test5,test6;
+drop schema secure_schema1,secure_schema2,secure_schema3;
+select relname from hg_security.antitamper_class order by relname;
+ relname 
+---------
+(0 rows)
+
+select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;
+ nspname | isantitamper 
+---------+--------------
+(0 rows)
+

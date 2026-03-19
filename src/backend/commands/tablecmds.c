@@ -988,6 +988,18 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	else if (oncommit_action != ONCOMMIT_NOOP)
 		elog(ERROR, "The parameter on_commit_delete_rows is exclusive to the global temporary table, which cannot be specified by a regular table");
 
+	/* Begin - Bug#7356 */
+	if ((stmt->type == T_CreateForeignTableStmt) ||
+		((stmt->relation->relpersistence != RELPERSISTENCE_PERMANENT) &&
+			(relkind == RELKIND_RELATION || relkind == RELKIND_PARTITIONED_TABLE)))
+	{
+		if (interpretAntiTamperOption(stmt->options, NULL))
+		{
+			elog(ERROR, "Only regular table support antitamper option");
+		}
+	}
+	/* End - Bug#7356 */
+
 	reloptions = transformRelOptions((Datum) 0, stmt->options, NULL, validnsps,
 									 true, false);
 
@@ -1782,11 +1794,20 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		stmt->relation->relpersistence == RELPERSISTENCE_PERMANENT)  ||
 		isparentantitamper)
 	{
+		bool enableantitamper = false;
 		/* check is antitamper option */
-		if (!interpretAntiTamperOption(stmt->options))
+		if (interpretAntiTamperOption(stmt->options, &enableantitamper))
+		{
+			if (!enableantitamper)
+			{
+				elog(ERROR, "the antitamper partition table, can not set not antitamper child table");
+			}
+		}
+		else
 		{
 			stmt->options = lcons(makeDefElem("antitamper", (Node *)makeString("true"), -1), stmt->options);
 		}
+
 		createAntitamperHistRelation(rel, reloptions);
 		if (stmt->partspec == NULL)
 		{
@@ -18618,12 +18639,12 @@ AlterTableNamespace(AlterObjectSchemaStmt *stmt, Oid *oldschema)
 	CheckSetNamespace(oldNspOid, nspOid);
 
 	/* If table has history table, we need rename corresponding history table */
-	if (rel->rd_isantitamper)
+	if (IsAntiTamperNameSpace(oldNspOid) || IsAntiTamperNameSpace(nspOid))
 	{
 		if (IsAntiTamperNameSpace(oldNspOid) != IsAntiTamperNameSpace(nspOid))
 		{
 			ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-							errmsg("Unsupport to alter schema of a table between ledger schema and normal schema.")));
+							errmsg("Unsupport to alter schema of a table between antitamper schema and normal schema.")));
 		}
 	}
 
