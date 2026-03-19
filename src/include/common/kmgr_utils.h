@@ -192,14 +192,15 @@ extern bool HSM_Decrypt(void* *phSessionHandle, void* *phKeyHandle,
 extern void HSM_Generate_Random(void* *phSessionHandle, unsigned int len, unsigned char *pucRandom);
 extern void HSM_Hash(void* *phSessionHandle, unsigned int AlgId,
 					 unsigned char *indata, unsigned int inlen,
-					 unsigned char *outdata, unsigned int *outlen);
+					 unsigned char *outdata, unsigned int *outlen,
+					 void *pubKey);
 extern void HSM_Generate_Key_Pair(void* *phSessionHandle, unsigned int uiKeyBits,
 								  unsigned int uiAlgID, void *pubKey, void *priKey);
 extern void HSM_Pub_Encrypt(void* *phSessionHandle, unsigned int AlgId, 
 							unsigned int keyIndex, void *key, 
 							unsigned char *indata, unsigned int inlen,
 							unsigned char *outdata, unsigned int *outlen);
-extern void HSM_Pub_Decrypt(void* *phSessionHandle, unsigned int AlgId, 
+extern void HSM_Pri_Decrypt(void* *phSessionHandle, unsigned int AlgId, 
 							unsigned int keyIndex, void *key, 
 							unsigned char *indata, unsigned int inlen,
 							unsigned char *outdata, unsigned int *outlen,
@@ -208,7 +209,7 @@ extern void HSM_Sign(void* *phSessionHandle, unsigned int AlgId,
 					 unsigned int keyIndex, void *key, unsigned int keylen,
 					 unsigned char *indata, unsigned int inlen,
 					 unsigned char *signature, unsigned int *siglen,
-					 unsigned char *passwd);
+					 unsigned char *passwd, void *pubKey);
 extern void HSM_Verify(void* *phSessionHandle, unsigned int AlgId, 
 					   unsigned int keyIndex, void *key, unsigned int keylen,
 					   unsigned char *indata, unsigned int inlen,

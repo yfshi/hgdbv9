@@ -39,6 +39,13 @@ const char *hsm_key_name_mode[NUM_HSM_KEY_MODE] = {
 #define HSM_KEY_MODE_SUPPORT_ENC(id) (id == 0 || id == 1)
 #define HSM_KEY_MODE_SUPPORT_SIGN(id) (id == 0 || id == 2)
 
+#define RSA_PKCS1v15_PENDING_LENGTH 11
+/* 
+ * ECCCipher = C1 || C3 || C2 
+ * L(cipher) = N(C2) + 96(C1 + C3)
+ */
+#define SM2_PENDING_LENGTH 96
+
 typedef struct hsm_session_keys_entry {
 	unsigned int        id;
     unsigned int        kAlgId;
@@ -50,12 +57,12 @@ typedef struct hsm_session_keys_entry {
 	        SGD_HANDLE          hKeyHandle;
         } rkey;
         struct {
-            RSArefPublicKey     stPublicKey;
-            RSArefPrivateKey    stPrivateKey;
+            RSArefPublicKey    *stPublicKey;
+            RSArefPrivateKey   *stPrivateKey;
         } rsaKeypair;
         struct {
-            ECCrefPublicKey     pucPublicKey;
-            ECCrefPrivateKey    pucPrivateKey;
+            ECCrefPublicKey    *pucPublicKey;
+            ECCrefPrivateKey   *pucPrivateKey;
         } sm2Keypair;
     } keyCxt;
 } hsm_session_keys_entry;
@@ -68,7 +75,6 @@ typedef struct hsm_session_keys_entry {
 PG_FUNCTION_INFO_V1(hsm_generate_key);
 PG_FUNCTION_INFO_V1(hsm_import_key);
 PG_FUNCTION_INFO_V1(hsm_generate_key_pair);
-PG_FUNCTION_INFO_V1(hsm_import_key_pair);
 PG_FUNCTION_INFO_V1(hsm_destroy_key);
 PG_FUNCTION_INFO_V1(hsm_show_keys);
 PG_FUNCTION_INFO_V1(hsm_encrypt);
@@ -76,7 +82,7 @@ PG_FUNCTION_INFO_V1(hsm_decrypt);
 PG_FUNCTION_INFO_V1(hsm_gen_random_bytes);
 PG_FUNCTION_INFO_V1(hsm_hash);
 PG_FUNCTION_INFO_V1(hsm_pub_encrypt);
-PG_FUNCTION_INFO_V1(hsm_pub_decrypt);
+PG_FUNCTION_INFO_V1(hsm_pri_decrypt);
 PG_FUNCTION_INFO_V1(hsm_sign);
 PG_FUNCTION_INFO_V1(hsm_verify);
 
@@ -203,109 +209,23 @@ hsm_import_key(PG_FUNCTION_ARGS)
 #endif
 }
 
-/* SQL function: hsm_generate_key_pair(algname cstring, lenbit int) returns keypair tuple */
+/* SQL function: 
+ *  hsm_generate_key_pair(algname cstring, lenbit int,
+ *                        mode cstring default 'all') returns id int
+ */
 Datum
 hsm_generate_key_pair(PG_FUNCTION_ARGS)
 {
 #ifdef USE_SWSDS
-    FuncCallContext *funcctx;
-    int             call_cntr;
     const char     *algName = PG_GETARG_CSTRING(0);
     unsigned int    lenBit = PG_GETARG_INT32(1);
-    unsigned int    algId = HSM_AlgName2Id(algName);
-    unsigned int    pukLen, prkLen;
-    void           *pubKey, *priKey;
-    bytea          *keyPair[2];
-
-    if (!HSM_IS_PUB_ALG(algId))
-        elog(ERROR, "invalid usage for algorithm: %s", algName);
-
-    if (SRF_IS_FIRSTCALL())
-    {
-        funcctx = SRF_FIRSTCALL_INIT();
-        funcctx->max_calls = 2;
-    }
-
-    funcctx = SRF_PERCALL_SETUP();
-    call_cntr = funcctx->call_cntr;
-
-    if (call_cntr >= 2)
-        SRF_RETURN_DONE(funcctx);
-
-    /* Alloc memory for key pair */
-    if (algId == SGD_RSA)
-    {
-        if (lenBit < 1024 || lenBit > 4096)
-            elog(ERROR, "The key length of rsa support 1024 ~ 4096 bits");
-
-        pubKey = palloc(sizeof(RSArefPublicKey));
-        priKey = palloc(sizeof(RSArefPrivateKey));
-        pukLen = sizeof(RSArefPublicKey);
-        prkLen = sizeof(RSArefPrivateKey);
-    }
-    else if (algId == SGD_SM2 || algId == SGD_SM2_1 || algId == SGD_SM2_3)
-    {
-        if (lenBit != 256)
-            elog(ERROR, "The key length of sm2 only support 256 bits");
-
-        pubKey = palloc(sizeof(ECCrefPublicKey));
-        priKey = palloc(sizeof(ECCrefPrivateKey));
-        pukLen = sizeof(ECCrefPublicKey);
-        prkLen = sizeof(ECCrefPrivateKey);
-    }
-
-    /* Generate key pair */
-    HSM_Generate_Key_Pair(&hSessionHandle, lenBit, algId, pubKey, priKey);
-
-    /* Reset key length */
-    if (algId == SGD_RSA)
-    {
-        if (((RSArefPrivateKey*)priKey)->bits > 2048)
-        {
-            pukLen = sizeof(RSArefPublicKeyEx);
-            prkLen = sizeof(RSArefPrivateKeyEx);
-        }
-        else
-        {
-            pukLen = sizeof(RSArefPublicKeyLite);
-			prkLen = sizeof(RSArefPrivateKeyLite);
-        }
-    }
-
-    /* Construct result */
-    keyPair[0] = palloc(VARHDRSZ + pukLen);
-    SET_VARSIZE(keyPair[0], VARHDRSZ + pukLen);
-    keyPair[1] = palloc(VARHDRSZ + prkLen);
-    SET_VARSIZE(keyPair[1], VARHDRSZ + prkLen);
-    memcpy(VARDATA(keyPair[0]), pubKey, pukLen);
-    memcpy(VARDATA(keyPair[1]), priKey, prkLen);
-
-    /* Return result */
-    SRF_RETURN_NEXT(funcctx, PointerGetDatum(keyPair[call_cntr]));
-#else
-	swsds_failure();
-    PG_RETURN_NULL();
-#endif
-}
-
-/* 
- * SQL function: hsm_import_key_pair(algname cstring, pubkey bytea, prikey bytea, 
- *                                   mode cstring default 'all') returns id int 
- */
-Datum
-hsm_import_key_pair(PG_FUNCTION_ARGS)
-{
-#ifdef USE_SWSDS
-    const char     *algName = PG_GETARG_CSTRING(0);
-    bytea          *pukBytea = PG_GETARG_BYTEA_P(1);
-    bytea          *prkBytea = PG_GETARG_BYTEA_P(2);
-    const char     *keymode = PG_GETARG_CSTRING(3);
-    unsigned int    pukLen = VARSIZE_ANY_EXHDR(pukBytea);
-    unsigned int    prkLen = VARSIZE_ANY_EXHDR(prkBytea);
+    const char     *keymode = PG_GETARG_CSTRING(2);
     unsigned int    algId = HSM_AlgName2Id(algName);
     unsigned int    id = 0;
     bool            found = false;
     hsm_session_keys_entry *hash_entry;
+    void           *pubKey, *priKey;
+    MemoryContext   oldctx;
 
     if (!HSM_IS_PUB_ALG(algId))
         elog(ERROR, "invalid usage for algorithm: %s", algName);
@@ -326,27 +246,47 @@ hsm_import_key_pair(PG_FUNCTION_ARGS)
             break;
     }
 
-    /* Insert a new entry in hash table */
-    if (!found)
-    {
-        hash_entry = hash_search(HSM_session_keys_hash, &id, HASH_ENTER, &found);
-        hash_entry->kAlgId = algId;
-        hash_entry->keymode = HSM_key_get_mode_by_name(keymode);
-        if (algId == SGD_RSA)
-        {
-            memcpy(&hash_entry->keyCxt.rsaKeypair.stPublicKey, VARDATA_ANY(pukBytea), pukLen);
-            memcpy(&hash_entry->keyCxt.rsaKeypair.stPrivateKey, VARDATA_ANY(prkBytea), prkLen);
-        }
-        else if (algId == SGD_SM2 || algId == SGD_SM2_1 || algId == SGD_SM2_3)
-        {
-            memcpy(&hash_entry->keyCxt.sm2Keypair.pucPublicKey, VARDATA_ANY(pukBytea), pukLen);
-            memcpy(&hash_entry->keyCxt.sm2Keypair.pucPrivateKey, VARDATA_ANY(prkBytea), prkLen);
-        }
-    }
-    else
-    {
+    if (found)
         elog(ERROR, "The hash table of HSM session keys is full");
+
+    /* Alloc memory for key pair */
+    oldctx = MemoryContextSwitchTo(TopMemoryContext);
+    if (algId == SGD_RSA)
+    {
+        if (lenBit < 1024 || lenBit > 4096)
+            elog(ERROR, "The key length of rsa support 1024 ~ 4096 bits");
+
+        pubKey = palloc0(sizeof(RSArefPublicKey));
+        priKey = palloc0(sizeof(RSArefPrivateKey));
     }
+    else if (algId == SGD_SM2 || algId == SGD_SM2_1 || algId == SGD_SM2_3)
+    {
+        if (lenBit != 256)
+            elog(ERROR, "The key length of sm2 only support 256 bits");
+
+        pubKey = palloc0(sizeof(ECCrefPublicKey));
+        priKey = palloc0(sizeof(ECCrefPrivateKey));
+    }
+
+    /* Generate key pair */
+    HSM_Generate_Key_Pair(&hSessionHandle, lenBit, algId, pubKey, priKey);
+
+    /* Insert a new entry in hash table */
+    hash_entry = hash_search(HSM_session_keys_hash, &id, HASH_ENTER, &found);
+    hash_entry->kAlgId = algId;
+    hash_entry->keymode = HSM_key_get_mode_by_name(keymode);
+    if (algId == SGD_RSA)
+    {
+        hash_entry->keyCxt.rsaKeypair.stPublicKey = pubKey;
+        hash_entry->keyCxt.rsaKeypair.stPrivateKey = priKey;
+    }
+    else if (algId == SGD_SM2 || algId == SGD_SM2_1 || algId == SGD_SM2_3)
+    {
+        hash_entry->keyCxt.sm2Keypair.pucPublicKey = pubKey;
+        hash_entry->keyCxt.sm2Keypair.pucPrivateKey = priKey;
+    }
+
+    MemoryContextSwitchTo(oldctx);
 
     PG_RETURN_INT32(hash_entry->id);
 #else
@@ -451,9 +391,9 @@ hsm_show_keys(PG_FUNCTION_ARGS)
             else if (HSM_IS_PUB_ALG(hash_entry->kAlgId))
             {
                 if (hash_entry->kAlgId == SGD_RSA)
-                    keylen = hash_entry->keyCxt.rsaKeypair.stPublicKey.bits;
+                    keylen = hash_entry->keyCxt.rsaKeypair.stPublicKey->bits;
                 else if (hash_entry->kAlgId == SGD_SM2 || hash_entry->kAlgId == SGD_SM2_1 || hash_entry->kAlgId == SGD_SM2_3)
-                    keylen = hash_entry->keyCxt.sm2Keypair.pucPublicKey.bits;
+                    keylen = hash_entry->keyCxt.sm2Keypair.pucPublicKey->bits;
             }
 
             memset(result, 0, NUM_HSM_SHOW_KEYS_ATTS * sizeof(Datum));
@@ -664,7 +604,7 @@ hsm_hash(PG_FUNCTION_ARGS)
     if (!HSM_IS_HASH_ALG(algId))
         elog(ERROR, "invalid usage for algorithm: %s", algName);
 
-    HSM_Hash(&hSessionHandle, algId, datatext, in_len, (unsigned char *)&hashval, &hash_len);
+    HSM_Hash(&hSessionHandle, algId, datatext, in_len, (unsigned char *)&hashval, &hash_len, NULL);
 
     res = palloc(VARHDRSZ + hash_len);
 	SET_VARSIZE(res, VARHDRSZ + hash_len);
@@ -724,20 +664,18 @@ hsm_pub_encrypt(PG_FUNCTION_ARGS)
 
         if (algId == SGD_RSA)
         {
-            unsigned int key_len = hash_entry->keyCxt.rsaKeypair.stPublicKey.bits / 8;
+            unsigned int key_len = hash_entry->keyCxt.rsaKeypair.stPublicKey->bits / 8;
 
-            key = (void*)&hash_entry->keyCxt.rsaKeypair.stPublicKey;
-            if (in_len != key_len)
-                elog(ERROR, "the key len is %u bytes, but the plaintext len is %u", key_len, in_len);
+            key = (void*)hash_entry->keyCxt.rsaKeypair.stPublicKey;
+            if (in_len > (key_len - RSA_PKCS1v15_PENDING_LENGTH))
+                elog(ERROR, "the plaintext len %u is more than key len", in_len);
             out_len = key_len;
         }   
         else if (algId == SGD_SM2 || algId == SGD_SM2_3)
         {
             algId = SGD_SM2_3;
-            key = (void*)&hash_entry->keyCxt.sm2Keypair.pucPublicKey;
-            if (in_len != 32)
-                elog(ERROR, "sm2 only support encrypt 32 bytes len");
-            out_len = 64;
+            key = (void*)hash_entry->keyCxt.sm2Keypair.pucPublicKey;
+            out_len = in_len + SM2_PENDING_LENGTH;
         }
     }
     else
@@ -747,16 +685,14 @@ hsm_pub_encrypt(PG_FUNCTION_ARGS)
 
         if (algId == SGD_RSA)
         {
-            if (in_len != innerkeylen)
-                elog(ERROR, "the key len is %u bytes, but the plaintext len is %u", innerkeylen, in_len);
+            if (in_len > (innerkeylen - RSA_PKCS1v15_PENDING_LENGTH))
+                elog(ERROR, "the plaintext len %u is more than key len", in_len);
             out_len = innerkeylen;
         }
         else if (algId == SGD_SM2 || algId == SGD_SM2_3)
         {
             algId = SGD_SM2_3;
-            if (in_len != 32)
-                elog(ERROR, "sm2 only support encrypt 32 bytes len");
-            out_len = 64;
+            out_len = in_len + SM2_PENDING_LENGTH;
         }            
     }
 
@@ -778,12 +714,12 @@ hsm_pub_encrypt(PG_FUNCTION_ARGS)
 }
 
 /*
- * SQL function: hsm_pub_decrypt(algname cstring, id int, ciphertext bytea, 
+ * SQL function: hsm_pri_decrypt(algname cstring, id int, ciphertext bytea, 
  *                               passwd cstring default '', keylenbits int default 0)
  * returns plaintext bytea
  */
 Datum
-hsm_pub_decrypt(PG_FUNCTION_ARGS)
+hsm_pri_decrypt(PG_FUNCTION_ARGS)
 {
 #ifdef USE_SWSDS
     const char     *algName = PG_GETARG_CSTRING(0);
@@ -828,19 +764,18 @@ hsm_pub_decrypt(PG_FUNCTION_ARGS)
 
         if (algId == SGD_RSA)
         {
-            unsigned int key_len = hash_entry->keyCxt.rsaKeypair.stPrivateKey.bits / 8;
+            unsigned int key_len = hash_entry->keyCxt.rsaKeypair.stPrivateKey->bits / 8;
 
-            key = (void*)&hash_entry->keyCxt.rsaKeypair.stPrivateKey;
+            key = (void*)hash_entry->keyCxt.rsaKeypair.stPrivateKey;
             if (in_len != key_len)
                 elog(ERROR, "the key len is %u bytes, but the ciphertext len is %u", key_len, in_len);
             out_len = key_len;
         }   
         else if (algId == SGD_SM2 || algId == SGD_SM2_1)
         {
-            key = (void*)&hash_entry->keyCxt.sm2Keypair.pucPrivateKey;
-            if (in_len != 32)
-                elog(ERROR, "sm2 only support encrypt 32 bytes len");
-            out_len = 64;
+            algId = SGD_SM2_3;
+            key = (void*)hash_entry->keyCxt.sm2Keypair.pucPrivateKey;
+            out_len = in_len - SM2_PENDING_LENGTH;
         }
     }
     else
@@ -857,16 +792,14 @@ hsm_pub_decrypt(PG_FUNCTION_ARGS)
         else if (algId == SGD_SM2 || algId == SGD_SM2_3)
         {
             algId = SGD_SM2_3;
-            if (in_len != 32)
-                elog(ERROR, "sm2 only support encrypt 32 bytes len");
-            out_len = 64;
+            out_len = in_len - SM2_PENDING_LENGTH;
         }        
     }
 
     plaintext = palloc(out_len);
 
     /* Do decrypt */
-	HSM_Pub_Decrypt(&hSessionHandle, algId, innerKeyId, key, ciphertext, in_len, 
+	HSM_Pri_Decrypt(&hSessionHandle, algId, innerKeyId, key, ciphertext, in_len, 
                     plaintext, &out_len, (unsigned char *)passwd);
 
     plainbytea = palloc(VARHDRSZ + out_len);
@@ -906,6 +839,7 @@ hsm_sign(PG_FUNCTION_ARGS)
     unsigned char  *signtext;
     unsigned int    out_len;
     hsm_session_keys_entry *hash_entry;
+    void           *pubKey = NULL;
 
     if (!HSM_IS_PUB_ALG(algId))
         elog(ERROR, "invalid usage for algorithm: %s", algName);
@@ -932,14 +866,16 @@ hsm_sign(PG_FUNCTION_ARGS)
 
         if (algId == SGD_RSA)
         {
-            unsigned int key_len = hash_entry->keyCxt.rsaKeypair.stPrivateKey.bits / 8;
-            key = (void*)&hash_entry->keyCxt.rsaKeypair.stPrivateKey;
+            unsigned int key_len = hash_entry->keyCxt.rsaKeypair.stPrivateKey->bits / 8;
+            key = (void*)hash_entry->keyCxt.rsaKeypair.stPrivateKey;
             out_len = key_len;
         }   
         else if (algId == SGD_SM2 || algId == SGD_SM2_1)
         {
-            key = (void*)&hash_entry->keyCxt.sm2Keypair.pucPrivateKey;
-            out_len = 64;
+            algId = SGD_SM2_1;
+            key = (void*)hash_entry->keyCxt.sm2Keypair.pucPrivateKey;
+            pubKey = (void*)hash_entry->keyCxt.sm2Keypair.pucPublicKey;
+            out_len = sizeof(ECCSignature);
         }
     }
     else
@@ -954,7 +890,7 @@ hsm_sign(PG_FUNCTION_ARGS)
         else if (algId == SGD_SM2 || algId == SGD_SM2_1)
         {
             algId = SGD_SM2_1;
-            out_len = 64;
+            out_len = sizeof(ECCSignature);
         }        
     }
 
@@ -962,7 +898,7 @@ hsm_sign(PG_FUNCTION_ARGS)
 
     /* Do sign */
 	HSM_Sign(&hSessionHandle, algId, innerKeyId, key, innerkeylen,
-             datatext, in_len, signtext, &out_len, (unsigned char *)passwd);
+             datatext, in_len, signtext, &out_len, (unsigned char *)passwd, pubKey);
 
     signbytea = palloc(VARHDRSZ + out_len);
 	SET_VARSIZE(signbytea, VARHDRSZ + out_len);
@@ -1023,12 +959,13 @@ hsm_verify(PG_FUNCTION_ARGS)
 
         if (algId == SGD_RSA)
         {
-            key = (void*)&hash_entry->keyCxt.rsaKeypair.stPublicKey;
+            innerkeylen = hash_entry->keyCxt.rsaKeypair.stPublicKey->bits / 8;
+            key = (void*)hash_entry->keyCxt.rsaKeypair.stPublicKey;
         }   
-        else if (algId == SGD_SM2 || algId == SGD_SM2_3)
+        else if (algId == SGD_SM2 || algId == SGD_SM2_1)
         {
-            algId = SGD_SM2_3;
-            key = (void*)&hash_entry->keyCxt.sm2Keypair.pucPublicKey;
+            algId = SGD_SM2_1;
+            key = (void*)hash_entry->keyCxt.sm2Keypair.pucPublicKey;
         }
     }
     else
@@ -1036,9 +973,9 @@ hsm_verify(PG_FUNCTION_ARGS)
         if (innerkeylenbits <= 0)
             elog(ERROR, "need to specify the keylen bits when use the inner key");
 
-        if (algId == SGD_SM2 || algId == SGD_SM2_3)
+        if (algId == SGD_SM2 || algId == SGD_SM2_1)
         {
-            algId = SGD_SM2_3;
+            algId = SGD_SM2_1;
         }            
     }
 
@@ -1046,9 +983,9 @@ hsm_verify(PG_FUNCTION_ARGS)
 	HSM_Verify(&hSessionHandle, algId, innerKeyId, key, innerkeylen,
                datatext, in_len, signtext, sign_len);
 
-    PG_RETURN_VOID();
+    PG_RETURN_CSTRING("HSM verify ok");
 #else
 	swsds_failure();
-    PG_RETURN_VOID();
+    PG_RETURN_NULL();
 #endif
 }
