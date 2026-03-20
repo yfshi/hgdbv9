@@ -1,0 +1,4 @@
+comment = 'hg_flashback_tx - flashback transaction query for PostgreSQL'
+default_version = '1.0'
+module_pathname = '$libdir/hg_flashback_tx'
+relocatable = false
