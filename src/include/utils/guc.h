@@ -408,7 +408,6 @@ enum
 
 extern PGDLLIMPORT bool enable_ora_default_collation;
 extern PGDLLIMPORT bool subquery_with_raw_collation;
-extern PGDLLIMPORT bool default_collation_is_c;
 extern PGDLLIMPORT int	max_string_size;
 extern PGDLLIMPORT int	nls_comp_option;
 extern PGDLLIMPORT char	*nls_sort_str;
