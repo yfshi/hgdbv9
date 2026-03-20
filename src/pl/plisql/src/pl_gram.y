@@ -3770,8 +3770,22 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 								if (tok == K_INTO)
 								{
 									/* Begin - ReqID:SRS-PLSQL-Collection */
-									new->into = true;
-									read_into_target(&new->target, &new->strict);
+									/* Begin - BUG#Z7311 */
+									do
+									{
+										/* Check for array overflow */
+										if (num_out_param >= 1024)
+											ereport(ERROR,
+													(errcode(ERRCODE_PROGRAM_LIMIT_EXCEEDED),
+													 errmsg("too many INTO parameters specified"),
+													 parser_errposition(yylloc)));
+
+										endtoken = read_out_scalar(&fieldnames[num_out_param],
+															&varnos[num_out_param], PROARGMODE_OUT, &expr);
+										num_out_param += 1;
+										new->params = lappend(new->params, expr);
+									} while (endtoken == ',');
+									/* End - BUG#Z7311 */
 								}
 								/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
 								else if (tok == K_BULK)
@@ -3786,6 +3800,7 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 												yyerror("syntax error");
 											new->bulk_collect_into = true;
 											read_bulk_collect_into_target(&new->target);
+											endtoken = yylex();
 										}
 										else
 											yyerror("syntax error");
@@ -3794,7 +3809,6 @@ stmt_dynexecute : opt_stmt_label K_EXECUTE
 										yyerror("syntax error");
 								}
 								/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
-								endtoken = yylex();
 								/* End - ReqID:SRS-PLSQL-Collection */
 							}
 							/* End - ReqID:SRS-PLSQL-DSQL */
