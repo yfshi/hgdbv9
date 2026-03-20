@@ -4346,6 +4346,7 @@ main(int argc, char *argv[])
 	}
 
 	/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
 #ifndef WIN32
 	{
 		int rc;
@@ -4369,6 +4370,7 @@ main(int argc, char *argv[])
 		}
 		printf(_("Initialization integrity check successfully.\n"));
 	}
+#endif
 #endif
 	/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 

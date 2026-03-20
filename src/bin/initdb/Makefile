@@ -53,7 +53,9 @@ localtime.c: % : $(top_srcdir)/src/timezone/%
 
 install: all installdirs
 	$(INSTALL_PROGRAM) initdb$(X) '$(DESTDIR)$(bindir)/initdb$(X)'
+ifeq ($(enable_dky_beta_feature), yes)
 	$(INSTALL_PROGRAM) hg_funcheck.sh$(X) '$(DESTDIR)$(bindir)/hg_funcheck.sh$(X)'
+endif
 
 installdirs:
 	$(MKDIR_P) '$(DESTDIR)$(bindir)'
