@@ -105,6 +105,8 @@ person|f
 persons|f
 persons2|t
 persons3|t
+pg_access_history|t
+pg_access_history_last|t
 pg_aggregate|t
 pg_am|t
 pg_amop|t

@@ -524,6 +524,13 @@ extern PGDLLIMPORT audit_backend_normal audit_normal_process_hook;
 typedef bool (*is_audit_enable_hook)(void);
 extern PGDLLIMPORT is_audit_enable_hook is_audit_enable;
 
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+typedef void  (*user_login_history_info_hook)(void);
+extern PGDLLIMPORT user_login_history_info_hook user_login_history_info;
+#endif
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+
 extern void deal_with_system_event_temp(AuditSystemEvent event,AuditResult result);
 
 #endif

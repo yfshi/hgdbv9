@@ -250,6 +250,12 @@ audit_privi_model audit_privi_mode_hook = NULL;
 is_audit_enable_hook is_audit_enable = NULL;
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+user_login_history_info_hook user_login_history_info = NULL;
+#endif
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+
 /* Begin ReqID: SESSION-VIEWS */
 unsigned long g_busy_secs = 0;
 unsigned long g_busy_microsecs = 0;
@@ -4902,6 +4908,15 @@ PostgresMain(int argc, char *argv[],
 	}
 	/* End ReqID: SRS-CLIENT-AUTH */
 
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY
+	 * print login information and storage history info to system table.
+	 */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	if (user_login_history_info)
+		user_login_history_info();
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+
 	/*
 	 * POSTGRES main processing loop begins here
 	 *
@@ -5315,7 +5330,7 @@ PostgresMain(int argc, char *argv[],
 		 */
 		if (ignore_till_sync && firstchar != EOF)
 			continue;
-			
+
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 		if (audit_CommandStart_hook)
 			(*audit_CommandStart_hook)();
