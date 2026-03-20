@@ -449,6 +449,14 @@ static void check_base_line(const char *basename, const char *basevalue);
 static char *audit_get_privilege_from_enum(AuditPrivilege	privilege);
 /* End BUG#z7309 */
 
+/* Begin - BUG#Z7404 */
+static void audit_pgagent_job(char *user);
+#ifndef _WIN32
+static bool is_pgagent_live(char *cmd);
+static int check_process(pid_t pid, char *cmd);
+#endif
+/* End - BUG#Z7404 */
+
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
 PG_FUNCTION_INFO_V1(pg_audit_file_archive);
@@ -5908,6 +5916,124 @@ audit_postmaster_sighup_guc(char *context)
 	internalStatement = false;
 }
 
+/* Begin - BUG#Z7404 */
+static void
+audit_pgagent_job(char *user)
+{
+	char ch = '%';
+	int ret = 0;
+	uint64 processed;
+	StringInfoData buf;
+	/* Begin - BUG#00004708 */
+	char		cur_user[MAXPGPATH] = {0};
+	/* End - BUG#00004708 */
+
+	bool OldInternalStatement = internalStatement;
+	internalStatement = true;
+
+	if (!(audit_GUC.audit_enable == AUDIT_ON &&
+			((audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) > 0) ||
+			(audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0))))
+		return;
+
+	StartTransactionCommand();
+
+	/* Begin - BUG#00004708 */
+	if (user == NULL)
+	{
+		char *username = GetUserNameFromId(10, false);
+		/* the memory requested by username may be flushed out when it is used ageain later */
+		sprintf(cur_user, "%s", username);
+	}
+	else
+	{
+		sprintf(cur_user, "%s", user);
+	}
+	/* End - BUG#00004708 */
+	initStringInfo(&buf);
+
+	SPI_connect();
+	PushActiveSnapshot(GetTransactionSnapshot());
+	pgstat_report_activity(STATE_RUNNING, buf.data);
+
+	appendStringInfo(&buf, "select jstdbname from pgagent.pga_jobstep where jstname = 'Audit automatic archiving' "
+							"and jstcode like '%c%s%c'", ch, audit_GUC.audit_archdir, ch);
+	ret = SPI_execute(buf.data, true, 0);
+
+	if (ret != SPI_OK_SELECT)
+	{
+		internalStatement = false;
+
+		SPI_finish();
+		PopActiveSnapshot();
+		CommitTransactionCommand();
+
+		elog(WARNING, "cannot select from pgagent.pga_jobstep: error code %d", ret);
+		return;
+	}
+
+	processed = SPI_processed;
+
+	if (processed > 0)
+	{
+		SPITupleTable *spi_tuptable = SPI_tuptable;
+		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
+		uint64		i;
+		int 		rc;
+
+		for (i = 0; i < processed; i++)
+		{
+			HeapTuple	spi_tuple;
+			char	   *dbname;
+			char		cmd[MAXPGPATH];
+
+			spi_tuple = spi_tuptable->vals[i];
+			dbname = SPI_getvalue(spi_tuple, spi_tupdesc, 1);
+
+			memset(cmd, 0, MAXPGPATH);
+
+#ifndef _WIN32
+			/* Begin - BUG#00004708 */
+			sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, cur_user);
+			/* End - BUG#00004708 */
+
+			if (is_pgagent_live(cmd))
+				continue;
+#else
+			/* Begin - BUG#00004708 */
+			sprintf(cmd, "pgagent.exe host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, cur_user);
+			/* End - BUG#00004708 */
+
+			/* TODO: check the pgagent is live */
+#endif
+
+			rc = system(cmd);
+
+			if (rc != 0)
+			{
+#ifdef USE_SQLITE
+				if (sqlite_open_db_for_audit_hook)
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_FAIL, NULL, NULL);
+#endif
+				elog(WARNING, "cannot start pgagent service");
+				continue;
+			}
+#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
+#endif
+		}
+	}
+
+	SPI_finish();
+	PopActiveSnapshot();
+	CommitTransactionCommand();
+	internalStatement = OldInternalStatement;
+
+	return;
+}
+/* End - BUG#Z7404 */
+
 /* When configuring the archive path, after restarting,
  * it is necessary to enable pagent scheduled tasks to
  * archive audit logs to the archive path on the hour
@@ -5925,7 +6051,6 @@ audit_arch_job(void)
 	int			elemno;
 	int			noids = 0;
 	Oid 	   *oids;
-	char		ch = '%';
 
 	if (RecoveryInProgress())
 		return;
@@ -5934,10 +6059,10 @@ audit_arch_job(void)
 	
 	SetCurrentStatementStartTimestamp();
 	StartTransactionCommand();
-	
+
 	SPI_connect();
 	PushActiveSnapshot(GetTransactionSnapshot());
-	
+
 	initStringInfo(&buf);
 	pgstat_report_activity(STATE_RUNNING, buf.data);
 	appendStringInfo(&buf, "delete from pgagent.pga_job where jobname = 'Audit automatic archiving'");
@@ -6129,71 +6254,8 @@ audit_arch_job(void)
 
 	CommitTransactionCommand();
 
-	StartTransactionCommand();
+	audit_pgagent_job(user);
 
-	initStringInfo(&buf);
-
-	SPI_connect();
-	PushActiveSnapshot(GetTransactionSnapshot());
-	pgstat_report_activity(STATE_RUNNING, buf.data);
-
-	appendStringInfo(&buf, "select jstdbname from pgagent.pga_jobstep where jstname = 'Audit automatic archiving' "
-							"and jstcode like '%c%s%c'", ch, audit_GUC.audit_archdir, ch);
-	ret = SPI_execute(buf.data, true, 0);
-
-	if (ret != SPI_OK_SELECT)
-	{
-		internalStatement = false;
-		elog(WARNING, "cannot select from pgagent.pga_jobstep: error code %d", ret);
-		return;
-	}
-
-	proc = SPI_processed;
-
-	if (proc > 0)
-	{
-		SPITupleTable *spi_tuptable = SPI_tuptable;
-		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
-		uint64		i;
-		int			rc;
-
-		for (i = 0; i < proc; i++)
-		{
-			HeapTuple	spi_tuple;
-			char	   *dbname;
-			char		cmd[MAXPGPATH];
-
-			spi_tuple = spi_tuptable->vals[i];
-			
-			dbname = SPI_getvalue(spi_tuple, spi_tupdesc, 1);
-
-			memset(cmd, 0, MAXPGPATH);
-
-			/* Begin - BUG#00004708 */
-			sprintf(cmd, "pgagent host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, user);
-			/* End - BUG#00004708 */
-			
-			rc = system(cmd);
-
-			if (rc != 0)
-			{
-#ifdef USE_SQLITE
-				if (sqlite_open_db_for_audit_hook)
-					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_FAIL, NULL, NULL);
-#endif
-				elog(WARNING, "cannot start pgagent service");
-				continue;
-			}
-#ifdef USE_SQLITE
-			if (sqlite_open_db_for_audit_hook)
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
-#endif
-		}
-	}
-	
-	SPI_finish();
-	PopActiveSnapshot();
-	CommitTransactionCommand();
 	pgstat_report_stat(false);
 	pgstat_report_activity(STATE_IDLE, NULL);
 	internalStatement = false;
@@ -6308,23 +6370,29 @@ static void audit_delete_log(TimestampTz del_time)
 	initStringInfo(&query);
 	appendStringInfo(&query, "delete from hg_security.pg_audit_log where audittime <\' %s\'", time);
 
-	syssao_oid = get_role_oid("syssao", false);
-	GetUserIdAndSecContext(&save_userid, &save_sec_context);
+	if (se_feature_mode)
+	{
+		syssao_oid = get_role_oid("syssao", false);
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
 
-	SetUserIdAndSecContext(syssao_oid,
-						save_sec_context | SECURITY_RESTRICTED_OPERATION);
+		SetUserIdAndSecContext(syssao_oid,
+							save_sec_context | SECURITY_RESTRICTED_OPERATION);
+	}
 
 	if (SPI_execute(query.data, false, 0) != SPI_OK_DELETE)
 	{
 		/* Restore userid and security context */
-		SetUserIdAndSecContext(save_userid, save_sec_context);
+		if (se_feature_mode)
+			SetUserIdAndSecContext(save_userid, save_sec_context);
+
 		ereport(ERROR,
 				(errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("invalid query")));
 	}
 
 	/* Restore userid and security context */
-	SetUserIdAndSecContext(save_userid, save_sec_context);
+	if (se_feature_mode)
+		SetUserIdAndSecContext(save_userid, save_sec_context);
 
 	if (SPI_finish() != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed");
@@ -6937,19 +7005,65 @@ audit_show_diskinfo(PG_FUNCTION_ARGS)
 void
 pg_audit_launch(void)
 {
+	sigjmp_buf local_sigjmp_buf;  // Begin - BUG#Z7404
+
 	/* Establish signal handlers before unblocking signals. */
 	pqsignal(SIGHUP, pg_audit_sighup);//wakeup latch
 	pqsignal(SIGTERM, pg_audit_sigterm);//backend
 	pqsignal(SIGUSR1, procsignal_sigusr1_handler);
 	pqsignal(SIGUSR2, pg_audit_wakeup);
 
+	/* Connect to our database */
+	BackgroundWorkerInitializeConnection(DatabaseName, NULL, 0);
+
+	/* Begin - BUG#Z7404 */
+	if (sigsetjmp(local_sigjmp_buf, 1) != 0)
+	{
+		/* since not using PG_TRY, must reset error stack by hand */
+		error_context_stack = NULL;
+
+		/* Prevents interrupts while cleaning up */
+		HOLD_INTERRUPTS();
+
+
+		/* Report the error to the server log */
+		EmitErrorReport();
+
+		/* Abort the current transaction in order to recover */
+		AbortCurrentTransaction();
+
+		/*
+		 * Release any other resources, for the case where we were not in a
+		 * transaction.
+		 */
+		LWLockReleaseAll();
+
+
+		FlushErrorState();
+
+		/* Flush any leaked data in the top-level context */
+		MemoryContextDelete(pgAuditLocalContext);
+		pgAuditLocalContext = NULL;
+
+		/* Now we can allow interrupts again */
+		RESUME_INTERRUPTS();
+
+		/*
+		 * Sleep at least 1 second after any error.  We don't want to be
+		 * filling the error logs as fast as we can.
+		 */
+		pg_usleep(1000000L);
+
+	}
+
+	/* We can now handle ereport(ERROR) */
+	PG_exception_stack = &local_sigjmp_buf;
+	/* End - BUG#Z7404 */
+
 	/* We're now ready to receive signals */
 	BackgroundWorkerUnblockSignals();
 	pgaudit_setup_memcxt();
 	old_context = MemoryContextSwitchTo(pgAuditLocalContext);
-
-	/* Connect to our database */
-	BackgroundWorkerInitializeConnection(DatabaseName, NULL, 0);
 
 #if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
 
@@ -6978,6 +7092,7 @@ pg_audit_launch(void)
 	{
 		audit_arch_job();
 	}
+
 #ifdef USE_SQLITE
 	/* If the path of sqlite is modified, the path also
 	 * needs to be modified in pg_foreign_server
@@ -7025,6 +7140,12 @@ pg_audit_launch(void)
 					audit_postmaster_sighup_guc("sighup");
 				}
 			}
+
+/* Begin - BUG#Z7404 */
+#ifndef _WIN32
+			audit_pgagent_job(NULL);
+#endif
+/* End - BUG#Z7404 */
 
 			/*
 			 * Background workers mustn't call usleep() or any direct equivalent:
@@ -13715,3 +13836,109 @@ static char *audit_get_privilege_from_enum(AuditPrivilege	privilege)
 	return pri;
 }
 /* End BUG#z7309 */
+
+/* Begin - BUG#Z7404 */
+#ifndef _WIN32
+static int
+check_process(pid_t pid, char *cmd)
+{
+	char path[256];
+	char exe_path[512];
+	ssize_t len = 0;
+	char *base = NULL;
+	FILE *fp = NULL;
+	char cmdline[4096];
+	size_t n = 0;
+	int argc = 0;
+	char *p = NULL;
+	bool flag = false;
+	StringInfoData buf;
+
+#define TARGET_PROCESS_NAME "pgagent"
+
+	// read executable file path
+	snprintf(path, sizeof(path), "/proc/%d/exe", pid);
+	len = readlink(path, exe_path, sizeof(exe_path) - 1);
+	if (len == -1) {
+		return flag;  // unable to access
+	}
+	exe_path[len] = '\0';
+
+	// get file name
+	base = basename(exe_path);
+	if (strcmp(base, TARGET_PROCESS_NAME) != 0)
+	{
+		return flag;
+	}
+
+	// read cmd line
+	snprintf(path, sizeof(path), "/proc/%d/cmdline", pid);
+	fp = fopen(path, "rb");
+	if (!fp)
+	{
+		return flag;
+	}
+
+	n = fread(cmdline, 1, sizeof(cmdline) - 1, fp);
+	fclose(fp);
+	if (n == 0)
+	{
+		return flag;
+	}
+	cmdline[n] = '\0';
+
+	initStringInfo(&buf);
+
+	p = cmdline;
+	while (p < cmdline + n && argc < 256)
+	{
+		appendStringInfo(&buf, "%s ", p);
+		p += strlen(p) + 1;
+		argc++;
+	}
+
+	if (strcmp(buf.data, cmd) == 0)
+		flag = true;
+
+	pfree(buf.data);
+
+	return flag;
+}
+
+static bool
+is_pgagent_live(char *cmd)
+{
+	DIR *dir = NULL;
+	bool flag = false;
+	struct dirent *entry;
+
+	if (cmd == NULL)
+		return false;
+
+	dir = opendir("/proc");
+	if (!dir)
+		return false;
+
+	while ((entry = readdir(dir)) != NULL)
+	{
+		if (entry->d_type == DT_DIR)
+		{
+			char *endptr = NULL;
+			long pid = strtol(entry->d_name, &endptr, 10);
+
+			if (*endptr == '\0')
+			{
+				if (check_process((pid_t)pid, cmd))
+				{
+					flag = true;
+					break;
+				}
+			}
+		}
+	}
+	closedir(dir);
+
+	return flag;
+}
+#endif
+/* End - BUG#Z7404 */
