@@ -1460,9 +1460,10 @@ Datum
 period_add(PG_FUNCTION_ARGS)
 {
     unsigned long period = (unsigned long)PG_GETARG_INT64(0);
+    /* Refer to MySQL source code */
     int months = (int)PG_GETARG_INT64(1);
     if (period == 0)
-        PG_RETURN_INT32(0);
+        PG_RETURN_INT64(0);
     PG_RETURN_INT64((int64)convert_month_to_period((unsigned int)((int)convert_period_to_month(period) + months)));
 }
 
@@ -1473,10 +1474,10 @@ period_add(PG_FUNCTION_ARGS)
 Datum 
 period_diff(PG_FUNCTION_ARGS)
 {
-    uint64 input1 = (uint64)PG_GETARG_INT64(0);
-    uint64 input2 = (uint64)PG_GETARG_INT64(1);
+    uint64 period1 = (uint64)PG_GETARG_INT64(0);
+    uint64 period2 = (uint64)PG_GETARG_INT64(1);
 
-    int64 ret = (int64)((int64)convert_period_to_month(input1) - (int64)convert_period_to_month(input2));
+    int64 ret = (int64)((int64)convert_period_to_month(period1) - (int64)convert_period_to_month(period2));
     PG_RETURN_INT64(ret);
 }
 
