@@ -219,6 +219,7 @@ system("initdb.exe -D $installdir/data -m mysql --encoding=UTF-8");
 open(my $conf_file, '>>', "$installdir/data/postgresql.conf") or error_exit("can not append postgresql.conf");
 print $conf_file "\n# Configuration added by pg_regress\n\n";
 print $conf_file "audit.track_settings = off\n";
+print $conf_file "port = $pg_port\n";
 print $conf_file "mysql.port = $my_port\n"; 	# bug#6805
 print $conf_file "mysql.protocol_type = pg\n";	# bug#6805
 close($conf_file);
