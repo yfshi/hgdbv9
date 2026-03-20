@@ -12,6 +12,32 @@
 	5、新增表空间加密功能；
 	6、新增兼容PLSQL COLLECTION相关语法；
 	7、M兼容重构了UINT3数据类型；
+	8、MySQL兼容：UINT3/INT3/INT1重构；
+	9、Oracle兼容：新增insert all/first功能；
+	10、支持TLCP加密通信；
+	11、新增安全特性防篡改功能；
+	12、MYSQL兼容：Load data 和 select into file；
+	13、MySQL兼容：支持函数aes_decrypt/aes_encrypt/rand/std/format/oct；
+	14、MySQL兼容：增加group_concat聚合函数支持；
+	15、新增sql资源限制；
+	16、新增安全特性用户启用禁用功能；
+	17、MySQL兼容：any_value 函数以及not full group 功能，OA-REQ-2098；
+	18、新增磁盘限额功能；
+	19、MySQL兼容：支持create table like功能；
+	20、Oracle兼容：BULK COLLECT功能；
+	21、MySQL兼容：支持prepare预备语句功能；
+	22、新增资源限制中内存限制功能；
+	23、Oracle兼容：分区表基础语法；
+	24、Oracle兼容：日期时间类型的NLS参数支持标点符号，OA-REQ-2030；
+	25、Oracle兼容：ratio_to_report 函数，OA-REQ-2132；
+	26、Oracle兼容：wmsys.wm_concat聚合函数支持，OA-REQ-2129；
+	27、Oracle兼容：分析函数GROUPING_ID和不等于操作符支持与正负号连写!=-3，OA-REQ-2132/2133；
+	28、新增安全特性完整性检查：可执行文件检查部分；
+	29、Oracle兼容：中泰需求视图支持，OA-REQ-2126；
+	30、适配documentdb：OA-REQ-2182；
+	31、PG内核升级：14.20-14.22；
+	32、新增undo_sql功能插件；
+
 2、修复问题	
 	1、会话管理补充了bug#6866遗漏的问题修复；
 	2、TDE修复了无符号整型指针被用在带符号整型在aarch平台coredump的问题；
@@ -30,3 +56,24 @@
 	15、M兼容增加了create table(UNIQUE INDEX)并可忽略索引名的语法，OA-REQ-2052;
 	16、O兼容修改了varchar2类型的默认长度，避免typmod不同引起同类型不可重建的问题，bug#7004；
 	17、修复了windows下回归时端口冲突的问题；
+	18、修复带after trigger的interval分区表自动创建分区失败问题：bug#7040；
+	19、M兼容修复MySQL协议Python驱动支持问题，bug#7013；
+	20、修复Windows编译回归问题，bug#6991/6998/7002；
+	21、新增同义词的审计和windows审计日志归档报错的问题：bug#5807/6995；
+	22、修复审计日志在windows环境下有缺失的问题，bug#6995；
+	23、修复资源限制帮助信息错误的问题，bug#4232；
+	24、兼容Oracle系统函数功能补全；
+	25、修复HSH windows 上报告乱码问题，bug#6989；
+	26、修复触发器多个event时触发器函数构造返回值错误导致DML无效，bug#7179；
+	27、修复pg2highgo在hgdb中安装插件时报错的BUG，相关工具添加-X参数：bug#7100；
+	28、M兼容修复严格模式与非严格模式在非插入场景下结果不一致的问题，bug#7196/7200;
+	29、修复了开启三权删除函数指定if exists报错的问题，bug#7176；
+	30、修改GUC参数，审计记录privlevel记录错误，bug#7309；
+	31、M兼容修复关闭ANSI_QUOTES导致双引号解析报错问题，bug#6888；
+	32、Oracle兼容修复了DBMS_OUTPUT.PUT_LINE函数中使用集合元素时报错问题，bug#7305；
+	33、M兼容修复group_concat()不支持DISTINCT问题，bug#7232；
+	34、O兼容修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
+	35、Oracle兼容修复了动态SQL中RETURNING INTO报错问题，bug#7311；
+	36、修复了审计进程启动pgagent出错的问题，bug#7398/7404；
+	37、M兼容修复了period_add函数结果不正确的问题，bug#7183
+
