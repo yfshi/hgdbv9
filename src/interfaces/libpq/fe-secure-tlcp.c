@@ -104,6 +104,28 @@ get_tlcp_key_pass(PGconn *conn)
 }
 
 bool
+check_TLCP_is_required(PGconn *conn)
+{
+	if (conn->ssltlcp)
+	{
+		if (!(((conn->ssltlcp[0] == '1' || conn->ssltlcp[0] == '0') && conn->ssltlcp[1] == '\0')||
+						conn->ssltlcp[0] == '\0' ||
+						(pg_strcasecmp(conn->ssltlcp, "true") == 0) ||
+						(pg_strcasecmp(conn->ssltlcp, "false") == 0) ||
+						(pg_strcasecmp(conn->ssltlcp, "") == 0)))
+		{
+			conn->status = CONNECTION_BAD;
+
+			appendPQExpBufferStr(&conn->errorMessage,
+								 libpq_gettext("Paramter: ssltlcp only support 0, 1, true or false\n"));
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool
 hg_is_TLCP(PGconn *conn)
 {
 	bool		istlcp;
@@ -111,7 +133,8 @@ hg_is_TLCP(PGconn *conn)
 	if (!conn)
 		return false;
 
-	if (conn->ssltlcp && conn->ssltlcp[0] == '1' && conn->ssltlcp[1] == '\0')
+	if (conn->ssltlcp && ((conn->ssltlcp[0] == '1' && conn->ssltlcp[1] == '\0')||
+						(pg_strcasecmp(conn->ssltlcp, "true") == 0)))
 	{
 		istlcp = true;
 	}

@@ -320,7 +320,7 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 	{"tlcppassfile", "PGTLCPPASSFILE", NULL, NULL,
 		"TLCP-Pass-File", "", 1,
 	offsetof(struct pg_conn, tlcppassfile)},
-	{"ssltlcp", "PGSSLTLCP", "1", NULL,
+	{"ssltlcp", "PGSSLTLCP", "", NULL,
 			"SSL-TLCP", "", 1,
 	offsetof(struct pg_conn, ssltlcp)},
 #endif
@@ -866,6 +866,14 @@ PQconnectStartParams(const char *const *keywords,
 		PQconninfoFree(connOptions);
 		return conn;
 	}
+
+#ifdef USE_GMSSL
+	if (!check_TLCP_is_required(conn))
+	{
+		PQconninfoFree(connOptions);
+		return conn;
+	}
+#endif
 
 	/*
 	 * Free the option info - all is in conn now

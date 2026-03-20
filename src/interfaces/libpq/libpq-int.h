@@ -933,6 +933,7 @@ extern void pgtlcp_close(PGconn *conn);
 extern ssize_t pgtlcp_read(PGconn *conn, void *ptr, size_t len);
 extern ssize_t pgtlcp_write(PGconn *conn, const void *ptr, size_t len);
 extern char *pgtlcp_get_peer_certificate_hash(PGconn *conn, size_t *len);
+extern bool check_TLCP_is_required(PGconn *conn);
 #endif
 /* End - ReqID:SRS-SECURITY-TLCP */
 
