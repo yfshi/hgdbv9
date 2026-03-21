@@ -1048,7 +1048,7 @@ ivy_extractvalue(PG_FUNCTION_ARGS)
 
 	/* Begin - Bug#Z203, Bug#Z214 */
 	if (res->nodesetval && res->nodesetval->nodeTab &&
-		res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+		res->nodesetval->nodeTab[0]->parent == NULL)	/* BUG#Z7411, BUG#Z7412 */
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
@@ -1123,7 +1123,7 @@ ivy_extractvalue2(PG_FUNCTION_ARGS)
 
 	/* Begin - Bug#Z203, Bug#Z214 */
 	if (res->nodesetval && res->nodesetval->nodeTab &&
-		res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+		res->nodesetval->nodeTab[0]->parent == NULL)	/* BUG#Z7411, BUG#Z7412 */
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
@@ -1272,6 +1272,7 @@ ivy_deletexml(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/*  BUG#Z7412 */
 	xmltype    *ret = NULL;
 	xpath_ws	ws;
 	xmlXPathObjectPtr res;
@@ -1284,7 +1285,16 @@ ivy_deletexml(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/*  BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, NULL);
 	if (res->nodesetval && res->nodesetval->nodeTab != NULL)
@@ -1315,6 +1325,7 @@ ivy_deletexml2(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/*  BUG#Z7412 */
 	text	   *ns = NULL;
 	xmltype    *ret = NULL;
 	char	   *cns= NULL;
@@ -1329,7 +1340,16 @@ ivy_deletexml2(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/*  BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1369,6 +1389,7 @@ ivy_appendchildxml(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	xmltype    *var = NULL;
 	xmltype    *ret = NULL;
 	char	   *cnodestr = NULL;
@@ -1386,7 +1407,16 @@ ivy_appendchildxml(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1433,6 +1463,7 @@ ivy_appendchildxml2(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	xmltype    *var = NULL;
 	text	   *ns = NULL;
 	xmltype    *ret = NULL;
@@ -1452,7 +1483,16 @@ ivy_appendchildxml2(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1508,6 +1548,7 @@ ivy_insertxmlbefore(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	xmltype    *var = NULL;
 	xmltype    *ret;
 	char	   *cnodestr = NULL;
@@ -1524,7 +1565,16 @@ ivy_insertxmlbefore(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1565,6 +1615,7 @@ ivy_insertxmlbefore2(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	xmltype    *var = NULL;
 	text	   *ns = NULL;
 	xmltype    *ret;
@@ -1583,7 +1634,16 @@ ivy_insertxmlbefore2(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1633,6 +1693,7 @@ ivy_insertxmlafter(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data= NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	xmltype    *var = NULL;
 	xmltype    *ret;
 	char	   *cnodestr = NULL;
@@ -1649,7 +1710,16 @@ ivy_insertxmlafter(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1682,6 +1752,7 @@ ivy_insertxmlafter2(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	xmltype    *var = NULL;
 	text	   *ns = NULL;
 	xmltype    *ret = NULL;
@@ -1700,7 +1771,16 @@ ivy_insertxmlafter2(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1742,6 +1822,7 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	text	   *n_name = NULL;
 	xmltype    *var = NULL;
 	xmltype    *ret = NULL;
@@ -1761,7 +1842,16 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
@@ -1826,6 +1916,7 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 #ifdef USE_LIBXML
 	xmltype    *data = NULL;
 	text	   *xpath_expr_text = NULL;
+	char	   *xpsth_csting = NULL;	/* BUG#Z7412 */
 	text	   *n_name = NULL;
 	xmltype    *var = NULL;
 	text	   *ns = NULL;
@@ -1849,7 +1940,16 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	if (fcinfo->args[1].isnull)
 		PG_RETURN_NULL();
 	else
+	{
 		xpath_expr_text = PG_GETARG_TEXT_PP(1);
+		xpsth_csting = ivy_trim(text_to_cstring(xpath_expr_text));	/* BUG#Z7412 */
+	}
+
+	/* Begin - BUG#Z7412 */
+	if (strcmp(xpsth_csting, "/") == 0)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("Invalid XPATH expression")));
+	/* End - BUG#Z7412 */
 
 	if (!fcinfo->args[2].isnull)
 	{
