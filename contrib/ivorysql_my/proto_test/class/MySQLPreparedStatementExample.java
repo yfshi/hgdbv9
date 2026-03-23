@@ -109,7 +109,7 @@ public class MySQLPreparedStatementExample {
      * Insert long text data - uses COM_STMT_SEND_LONG_DATA
      */
     private static void insertLongTextData(Connection conn) throws SQLException, IOException {
-        String insertSQL = "INSERT INTO long_data_test (file_name, large_text, description) VALUES ($1, $2, $3)";
+        String insertSQL = "INSERT INTO long_data_test (file_name, large_text, description) VALUES (?, ?, ?)";
         
         try (PreparedStatement pstmt = conn.prepareStatement(insertSQL)) {
             pstmt.setString(1, "large_text_file.txt");
@@ -135,7 +135,7 @@ public class MySQLPreparedStatementExample {
      * Insert long binary data - uses COM_STMT_SEND_LONG_DATA
      */
     private static void insertLongBinaryData(Connection conn) throws SQLException, IOException {
-        String insertSQL = "INSERT INTO long_data_test (file_name, binary_data, description) VALUES ($1, $2, $3)";
+        String insertSQL = "INSERT INTO long_data_test (file_name, binary_data, description) VALUES (?, ?, ?)";
         
         try (PreparedStatement pstmt = conn.prepareStatement(insertSQL)) {
             pstmt.setString(1, "large_binary_file.dat");
@@ -157,7 +157,7 @@ public class MySQLPreparedStatementExample {
      * Demonstrate COM_STMT_RESET - Reset prepared statement parameters
      */
     private static void demonstrateStmtReset(Connection conn) throws SQLException, IOException {
-        String insertSQL = "INSERT INTO long_data_test (file_name, binary_data, description) VALUES ($1, $2, $3)";
+        String insertSQL = "INSERT INTO long_data_test (file_name, binary_data, description) VALUES (?, ?, ?)";
         
         try (PreparedStatement pstmt = conn.prepareStatement(insertSQL)) {
             
@@ -198,7 +198,7 @@ public class MySQLPreparedStatementExample {
      * Demonstrate batch operations that use COM_STMT_RESET
      */
     private static void demonstrateBatchWithReset(Connection conn) throws SQLException, IOException {
-        String insertSQL = "INSERT INTO long_data_test (file_name, description, large_text) VALUES ($1, $2, $3)";
+        String insertSQL = "INSERT INTO long_data_test (file_name, description, large_text) VALUES (?, ?, ?)";
         
         try (PreparedStatement pstmt = conn.prepareStatement(insertSQL)) {
             System.out.println("\n=== Demonstrating COM_STMT_RESET with Batch ===");
@@ -235,7 +235,7 @@ public class MySQLPreparedStatementExample {
         // Method 1: Explicit close in try-with-resources (triggers COM_STMT_CLOSE)
         System.out.println("Method 1: Using try-with-resources for automatic COM_STMT_CLOSE");
         for (int i = 0; i < 3; i++) {
-            String sql = "SELECT id, file_name FROM long_data_test WHERE id < $1 order by id";
+            String sql = "SELECT id, file_name FROM long_data_test WHERE id < ? order by id";
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setInt(1, (i + 1) * 10);
                 try (ResultSet rs = pstmt.executeQuery()) {
@@ -261,7 +261,7 @@ public class MySQLPreparedStatementExample {
                 }
             }
             
-            pstmt2 = conn.prepareStatement("SELECT file_name FROM long_data_test WHERE description LIKE $1 order by 1");
+            pstmt2 = conn.prepareStatement("SELECT file_name FROM long_data_test WHERE description LIKE ? order by 1");
             pstmt2.setString(1, "%COM_STMT%");
             try (ResultSet rs = pstmt2.executeQuery()) {
                 int count = 0;

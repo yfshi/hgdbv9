@@ -694,7 +694,7 @@ caching_sha2_full_authenticate(Port *port)
 
     send_full_authenticate_packet();
 
-    if (mq_getmessage(buf, 0) != STATUS_OK)
+    if (mq_getmessage(buf) != STATUS_OK)
         goto fail;
 
     if (!channel_is_secure(port))
@@ -723,7 +723,7 @@ caching_sha2_full_authenticate(Port *port)
         pq_flush();
         
         // recv encrypted password
-        if (mq_getmessage(buf, 0) != STATUS_OK)
+        if (mq_getmessage(buf) != STATUS_OK)
             goto fail;
 
         // all data in buffer is encrypted password

@@ -118,9 +118,9 @@ typedef struct ProtocolExtensionConfig {
 	void    (*fn_send_cancel_key)(int32 pid, int32 key);
 	void    (*fn_comm_reset)(void);
 	void    (*fn_send_ready_for_query)(CommandDest dest);
-	int	(*fn_read_command)(StringInfo inBuf);
+	int		(*fn_read_command)(StringInfo inBuf);
 	void    (*fn_end_command)(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_output);
-	DestReceiver *  (*fn_printtup_create_DR)(CommandDest dest);
+	DestReceiver * (*fn_printtup_create_DR)(CommandDest dest);
 	int     (*fn_process_command)(StringInfo inBuf);
 	void    (*fn_report_param_status)(const char *name, char *val);
 	/* Begin - ReqID:SRS-MYSQL-SQL-LOADATA */

@@ -8,6 +8,8 @@
 #define CLIENT_PASSWORD_SHA256_TOKEN_LEN        32
 #define AUTH_PLUGIN_DATA_LEN                    20
 
+#define COLLATE_UTF8MB4_GENERAL_CI	            45
+
 enum SERVER_STATUS_flags_enum {
     /**
      * Is raised when a multi-statement transaction
@@ -255,8 +257,8 @@ typedef struct {
     char        *db;
     char        *catalog;
     char        *def;
-    uint32       length;
-    uint32       max_length;
+    uint32      length;
+    uint32      max_length;
     uint32      name_length;
     uint32      org_name_length;
     uint32      table_length;
@@ -309,7 +311,7 @@ typedef enum enum_field_types {
     MYSQL_TYPE_VAR_STRING = 253,
     MYSQL_TYPE_STRING = 254,
     MYSQL_TYPE_GEOMETRY = 255
-}enum_field_types;
+} enum_field_types;
 
 enum enum_cursor_type {
     CURSOR_TYPE_NO_CURSOR = 0,
@@ -317,9 +319,9 @@ enum enum_cursor_type {
     CURSOR_TYPE_FOR_UPDATE = 2,
     CURSOR_TYPE_SCROLLABLE = 4,
     /**
-    On when the client will send the parameter count
-    even for 0 parameters.
-    */
+     * On when the client will send the parameter count
+     * even for 0 parameters.
+     */
     PARAMETER_COUNT_AVAILABLE = 8
 };
 
@@ -330,19 +332,21 @@ enum enum_resultset_metadata {
 
 typedef struct {
     uint32  statement_id;
-    char    *stmt_name;
-    uint8   open_cursor;
+    uint8   flags;
     uint32  iteration_count;        // Number of times to execute the statement. Currently always 1.
     uint32  param_count;
     char    *null_bitmap;
     uint8   new_params_bind_flag;
     ParamListInfo paramLI;
-} com_stmt_exec_request_t;
+    /**
+     * 0 for CURSOR OPEN REQUEST COM_STMT_EXECUTE.
+     * FETCH_ALL for normal COM_STMT_EXECUTE.
+     * Other values for COM_STMT_FETCH.
+     */
+    int64   num_rows;
+} com_stmt_exec_t;
 
-typedef struct {
-    uint32 stmt_name;
-    Datum *params;
-} HashEntryBlob;
+#define IS_CURSOR_OPEN_REQUEST(R) ((R->flags & (CURSOR_TYPE_READ_ONLY | CURSOR_TYPE_FOR_UPDATE | CURSOR_TYPE_SCROLLABLE)))
 
 extern int		current_packet_type;
 extern mysql_conn_info_t    mysql_conn_info;

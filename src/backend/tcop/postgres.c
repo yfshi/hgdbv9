@@ -2587,7 +2587,7 @@ exec_execute_message(const char *portal_name, long max_rows)
 			pgstat_report_query_id(stmt->queryId, false);
 
 			/* SRS-MISC-HSH */
-                        pgstat_report_query_type(stmt->commandType, false);
+            pgstat_report_query_type(stmt->commandType, false);
 
 			break;
 		}
@@ -2666,7 +2666,14 @@ exec_execute_message(const char *portal_name, long max_rows)
 	params_errcxt.arg = (void *) &params_data;
 	error_context_stack = &params_errcxt;
 
-	if (max_rows <= 0)
+	/**
+	 * SRS-MYSQL-PROTOCOL
+	 * In MySQL, we keep 0 for COM_STMT_EXECUTE message to 
+	 * open cursor.
+	 * Only respond to table description message to client,
+	 * no need to respond to row data.
+	 */
+	if (max_rows < 0)
 		max_rows = FETCH_ALL;
 
 	completed = PortalRun(portal,
@@ -2735,7 +2742,8 @@ exec_execute_message(const char *portal_name, long max_rows)
 	else
 	{
 		/* Portal run not complete, so send PortalSuspended */
-		if (whereToSendOutput == DestRemote)
+		if (whereToSendOutput == DestRemote && 
+			nodeTag(MyProcPort->protocol_config) == T_ProtocolPg /* SRS-MYSQL-PROTOCOL */)
 			pq_putemptymessage('s');
 
 		/*
@@ -5484,6 +5492,20 @@ PostgresMain(int argc, char *argv[],
 
 					/* ReqID:SRS-MISC-HSH */
 					pgstat_report_query_phase(QUERY_PHASE_EXEC);
+
+					/**
+					 * Begin - SRS-MYSQL-PROTOCOL
+					 * In native pg, max_rows <= 0 means fetch all.
+					 * In MySQL, we keep 0 for COM_STMT_EXECUTE message to 
+					 * open cursor and response table description message to
+					 * client.
+					 * 
+					 * Setting max_rows to FETCH_ALL directly will result in
+					 * a warning on Linux platform.
+					 */
+					if (max_rows == 0)
+						max_rows = -1;
+					/* End - SRS-MYSQL-PROTOCOL */
 
 					exec_execute_message(portal_name, max_rows);
 

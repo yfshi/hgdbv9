@@ -20,16 +20,14 @@
 #define BYTE_4_LEN              4
 #define BYTE_8_LEN              8
 
-#define PROTO_PAYLOAD_LEN       3
+#define PROTO_HEADER_LEN       4
 
 #define SHIFT_BYTE_STEP         8
 #define MAX_LEFT_SHIFT_BIT      32
 #define MAX_LEFT_SHIFT_INT      4
 
-extern int mq_putmessage(const char * packet, size_t len);
-extern int mq_getmessage(StringInfo s, uint32 maxlen);
-
-extern int next_seqid;
+extern void mq_putmessage(const char * packet, size_t len);
+extern int mq_getmessage(StringInfo s);
 
 static inline void
 mq_append_int_len(StringInfo buf, uint64 num, int len)
@@ -188,12 +186,6 @@ mq_get_int_len(StringInfo buf, void *num, int len)
     }
 
     buf->cursor += len;
-}
-
-static inline void
-mq_get_payload_len(StringInfo buf, uint32 *len)
-{
-    mq_get_int_len(buf, (void *)len, PROTO_PAYLOAD_LEN);
 }
 
 static inline void

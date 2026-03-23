@@ -19,7 +19,7 @@
 #include "../include/mqformat.h"
 
 static mysql_column_definition_t *
-make_column_definition_with_attr(FormData_pg_attribute *attr, char *tableName)
+make_column_definition_with_attr(FormData_pg_attribute *attr)
 {
     // FIELD packet
     mysql_column_definition_t *field = (mysql_column_definition_t *) palloc0(sizeof(mysql_column_definition_t));
@@ -96,8 +96,10 @@ text_row_description_message(TupleDesc typeinfo, List *targetlist)
     {
         for (int i = 0; i < natts; ++i)
         {
+            FormData_pg_attribute *attr = &attrs[i];
+            
             // FIELD packet
-            mysql_column_definition_t *field = make_column_definition_with_attr(&attrs[i], NULL);
+            mysql_column_definition_t *field = make_column_definition_with_attr(attr);
 
             fill_field_flag(typeinfo, i, field);
 
@@ -137,7 +139,7 @@ binary_row_description_message(TupleDesc typeinfo, List *targetlist)
 
     for (int i = 0; i < natts; ++i)
     {
-        mysql_column_definition_t *field = make_column_definition_with_attr(&attrs[i], NULL);
+        mysql_column_definition_t *field = make_column_definition_with_attr(&attrs[i]);
 
         fill_field_flag(typeinfo, i, field);
 
@@ -562,7 +564,8 @@ my_printtup(TupleTableSlot *slot, DestReceiver *self)
 
     oldcontext = MemoryContextSwitchTo(myState->tmpcontext);
 
-    if (current_packet_type == COM_STMT_EXECUTE)
+    if (current_packet_type == COM_STMT_EXECUTE ||
+        current_packet_type == COM_STMT_FETCH)
         send_binaryproto(slot, myState, natts, buf);
     else
         send_textproto(slot, myState, natts, buf);
@@ -586,6 +589,13 @@ my_printtup_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
     myState->tmpcontext = AllocSetContextCreate(CurrentMemoryContext,
 												"mysql printtup",
 												ALLOCSET_DEFAULT_SIZES);
+
+    /**
+     * Row description message will be sent in COM_STMT_EXECUTE's
+     * reponse when open the cursor.
+     */
+    if (current_packet_type == COM_STMT_FETCH)
+        return;
 
     /*
      * If we are supposed to emit row descriptions, then send the tuple

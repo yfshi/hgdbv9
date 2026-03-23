@@ -126,7 +126,7 @@ native_password_check(Port *port)
 
     pq_flush();
 
-    if (mq_getmessage(buf, 0) != STATUS_OK)
+    if (mq_getmessage(buf) != STATUS_OK)
         goto fail;
 
     auth_response = (uint8 *) read_switch_response(buf);
