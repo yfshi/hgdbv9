@@ -402,3 +402,32 @@ select INSERTCHILDXML(warehouse_spec, 'Envelope/Body/AAA/BBB/DDD/DDDs', 'TTT', x
  from warehouse_2 where warehouse_id = 1;
 
 drop table warehouse_2;
+
+/* Begin - BUG#Z7411, BUG#Z7412 */
+SELECT extract(XMLType('<AA><ID>1</ID></AA>'), '/') from dual;
+
+select extractvalue('<root>TEST</root>', '/');
+
+select extractvalue(XMLTYPE('<root>TEST</root>'), '/') from dual;
+
+select extractvalue(XMLTYPE('<root>TEST</root>'), '/root') AS result from dual;
+
+SELECT existsnode(XMLType('<a><b>d</b></a>'), '/') from dual;
+
+SELECT deletexml(XMLType('<a><b></b><b></b></a>'), '/') from dual;
+
+SELECT appendchildxml(XMLType('<a><b></b></a>'), '/', XMLtype('<name>1000</name>')) from dual;
+
+SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '/', '1000') FROM dual;
+
+SELECT insertxmlbefore(XMLType('<a><b></b></a>'),'/', XMLType('<c></c>')) from dual;
+
+SELECT insertxmlafter(XMLType('<a>200<b>100</b><b>300</b></a>'),'/',XMLType('<c>88</c>')) from dual;
+
+SELECT insertchildxml(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'c', XMLType('<c>88</c>')) from dual;
+
+SELECT insertchildxmlbefore(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'b[1]', XMLType('<c>88</c>')) from dual;
+
+SELECT insertchildxmlafter(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'b[1]', XMLType('<c>88</c>')) from dual;
+
+/* End - BUG#Z7411, BUG#Z7412 */

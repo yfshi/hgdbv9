@@ -100,7 +100,7 @@ SELECT extractvalue(XMLType('<a><b>100</b></a>'),'/a/b') from dual;
 (1 row)
 
 SELECT extractvalue(XMLType('<a><b>100</b></a>'),'/a') from dual;
-ERROR:  EXTRACTVALUE can only retrieve value of leaf node
+ERROR:  EXTRACTVALUE returns value of only one node
 SELECT extractvalue(b, '/a/b') from inaf where a = 2;
  extractvalue 
 --------------
@@ -1053,3 +1053,62 @@ select INSERTCHILDXML(warehouse_spec, 'Envelope/Body/AAA/BBB/DDD/DDDs', 'TTT', x
  from warehouse_2 where warehouse_id = 1;
 ERROR:  The document being inserted does not conform to specified child name
 drop table warehouse_2;
+/* Begin - BUG#Z7411, BUG#Z7412 */
+SELECT extract(XMLType('<AA><ID>1</ID></AA>'), '/') from dual;
+   extract    
+--------------
+ <AA>        +
+   <ID>1</ID>+
+ </AA>       +
+ 
+(1 row)
+
+select extractvalue('<root>TEST</root>', '/');
+ERROR:  EXTRACTVALUE can only retrieve value of leaf node
+select extractvalue(XMLTYPE('<root>TEST</root>'), '/') from dual;
+ERROR:  EXTRACTVALUE can only retrieve value of leaf node
+select extractvalue(XMLTYPE('<root>TEST</root>'), '/root') AS result from dual;
+ result 
+--------
+ TEST
+(1 row)
+
+SELECT existsnode(XMLType('<a><b>d</b></a>'), '/') from dual;
+ existsnode 
+------------
+          1
+(1 row)
+
+SELECT deletexml(XMLType('<a><b></b><b></b></a>'), '/') from dual;
+ERROR:  Invalid XPATH expression
+SELECT appendchildxml(XMLType('<a><b></b></a>'), '/', XMLtype('<name>1000</name>')) from dual;
+ERROR:  Invalid XPATH expression
+SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '/', '1000') FROM dual;
+ERROR:  could not parse XML new node
+SELECT insertxmlbefore(XMLType('<a><b></b></a>'),'/', XMLType('<c></c>')) from dual;
+ERROR:  Invalid XPATH expression
+SELECT insertxmlafter(XMLType('<a>200<b>100</b><b>300</b></a>'),'/',XMLType('<c>88</c>')) from dual;
+ERROR:  Invalid XPATH expression
+SELECT insertchildxml(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'c', XMLType('<c>88</c>')) from dual;
+ERROR:  Invalid XPATH expression
+SELECT insertchildxmlbefore(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'b[1]', XMLType('<c>88</c>')) from dual;
+ insertchildxmlbefore 
+----------------------
+ <a>                 +
+   <c>88</c>         +
+   <b>100</b>        +
+   <b>200</b>        +
+ </a>
+(1 row)
+
+SELECT insertchildxmlafter(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'b[1]', XMLType('<c>88</c>')) from dual;
+ insertchildxmlafter 
+---------------------
+ <a>                +
+   <b>100</b>       +
+   <c>88</c>        +
+   <b>200</b>       +
+ </a>
+(1 row)
+
+/* End - BUG#Z7411, BUG#Z7412 */
