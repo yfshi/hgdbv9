@@ -300,6 +300,9 @@ dolq_cont		[A-Za-z\200-\377_0-9]
 dolqdelim		\$({dolq_start}{dolq_cont}*)?\$
 dolqfailed		\${dolq_start}{dolq_cont}*
 dolqinside		[^$]+
+/* Begin - ReqID: OA-2124 */
+plsql_unit		\$\${dolq_start}{dolq_cont}*
+/* End - ReqID: OA-2124 */
 
 /* Begin - ReqID:SRS-SQL-ESCAPECHAR */
 /* q escape */
@@ -871,6 +874,41 @@ other			.
 <xdq><<EOF>>	{ yyerror("unterminated q-quoted string"); }
 	/* End - ReqID:SRS-SQL-ESCAPECHAR */
 
+	/* Begin - ReqID: OA-2124 */
+{plsql_unit}	{
+					/* If we match $$PLSQL_UNIT, output it exactly as is */
+					char *txt = pstrdup(yytext);
+					if ((pg_strcasecmp(txt + 2, "PLSQL_UNIT_TYPE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_LINE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_UNIT") == 0))
+					{
+						int kwnum;
+						char *ident;
+
+						SET_YYLLOC();
+
+						kwnum = ScanKeywordLookup(txt, yyextra->keywordlist);
+						if (kwnum >= 0)
+						{
+							yylval->keyword = GetScanKeyword(kwnum, yyextra->keywordlist);
+							return yyextra->keyword_tokens[kwnum];
+						}
+
+						ident = downcase_truncate_identifier(txt, yyleng, true);
+						yylval->str = ident;
+						return IDENT;
+					}
+					else	/* same as {dolqdelim}, but reprocess the string followed by $$ */
+					{
+						SET_YYLLOC();
+						yyextra->dolqstart = pstrdup("$$");
+						BEGIN(xdolq);
+						startlit();
+						yyless(2);
+					}
+				}
+	/* End - ReqID: OA-2124 */
+
 {dolqdelim}		{
 					SET_YYLLOC();
 					yyextra->dolqstart = pstrdup(yytext);
@@ -884,6 +922,41 @@ other			.
 					/* and treat it as {other} */
 					return yytext[0];
 				}
+
+	/* Begin - ReqID: OA-2124 */
+<xdolq>{plsql_unit}	{
+					/* If we match $$PLSQL_UNIT, output it exactly as is */
+					char *txt = pstrdup(yytext);
+					if ((pg_strcasecmp(txt + 2, "PLSQL_UNIT_TYPE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_LINE") == 0) ||
+						(pg_strcasecmp(txt + 2, "PLSQL_UNIT") == 0))
+					{
+						addlit(txt, yyleng, yyscanner);
+					}
+					else	/* same as <xdolq>{dolqdelim}, but reprocess the string followed by $$ */
+					{
+						if (strncmp(yytext, yyextra->dolqstart, 2) == 0)
+						{
+							pfree(yyextra->dolqstart);
+							yyextra->dolqstart = NULL;
+							BEGIN(INITIAL);
+							yylval->str = litbufdup(yyscanner);
+							yyless(2);
+							return SCONST;
+						}
+						else
+						{
+							/*
+							 * handle the following scenario:
+							 *    $outer$CREATE FUNCTION iamalongfunction() RETURNS TEXT IMMUTABLE LANGUAGE SQL AS $f$SELECT text %L$f$$outer$
+							 * $f$$outer$ must be paesed as $f$ $outer$
+							 */
+							addlit(yytext, 1, yyscanner);
+							yyless(1);
+						}
+					}
+				}
+	/* End - ReqID: OA-2124 */
 <xdolq>{dolqdelim} {
 					if (strcmp(yytext, yyextra->dolqstart) == 0)
 					{

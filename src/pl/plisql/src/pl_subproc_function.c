@@ -382,7 +382,7 @@ plisql_pop_subproc_info(void)
  */
 void
 plisql_build_variable_from_funcargs(PLiSQL_subproc_function *subprocfunc, bool forValidator,
-												FunctionCallInfo fcinfo, int found_varno)
+												FunctionCallInfo fcinfo, int found_varno, PLiSQL_plsql_varno *plsql_varno)
 {
 	PLiSQL_function_argitem *argitem;
 	ListCell *cell;
@@ -872,6 +872,12 @@ no_argument:
 	/* Remember if function is STABLE/IMMUTABLE */
 	function->fn_readonly = false;
 	function->found_varno = found_varno;
+
+	/* Begin - ReqID: OA-2124 */
+	function->plsql_unit_varno = plsql_varno->plsql_unit_varno;
+	function->plsql_unit_type_varno = plsql_varno->plsql_unit_type_varno;
+	function->plsql_line_varno = plsql_varno->plsql_line_varno;
+	/* End - ReqID: OA-2124 */
 
 	/* there, we insert function to hashtab */
 	if (subprocfunc->has_poly_argument)
@@ -3506,6 +3512,12 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	int 		save_sec_context;
 	Oid			current_user = GetUserId();
 	/* End - BUG#M0000227 */
+	/* Begin - ReqID: OA-2124 */
+	PLiSQL_plsql_varno	plsql_varno;
+	plsql_varno.plsql_unit_varno = subprocfunc->function->plsql_unit_varno;
+	plsql_varno.plsql_unit_type_varno = subprocfunc->function->plsql_unit_type_varno;
+	plsql_varno.plsql_line_varno = subprocfunc->function->plsql_line_varno;
+	/* End - ReqID: OA-2124 */
 
 	plisql_scanner_init(subprocfunc->src);
 
@@ -3617,8 +3629,10 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	plisql_ns_push(subprocfunc->func_name, PLISQL_LABEL_BLOCK);
 	plisql_start_label_compile(subprocfunc->func_name);	/* ReqID:SRS-PLSQL-GOTO */
 
+	/* Begin - ReqID: OA-2124 */
 	plisql_build_variable_from_funcargs(subprocfunc, forValidator,
-								fcinfo, found_varno);
+								fcinfo, found_varno, &plsql_varno);
+	/* End - ReqID: OA-2124 */
 
 	/*
 	 * Now parse the function's text

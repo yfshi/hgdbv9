@@ -548,6 +548,10 @@ static PLiSQL_type *get_collect_elem_type(PLiSQL_execstate *estate,
 static Datum plisql_init_bulk_collect_params(PLiSQL_execstate *estate, PLiSQL_row *row);
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
+/* Begin - ReqID: OA-2124 */
+static void exec_set_plsql_var(PLiSQL_execstate *estate);
+/* End - ReqID: OA-2124 */
+
 /* ----------
  * plisql_exec_function	Called by the call handler for
  *				function execution.
@@ -821,6 +825,13 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 		function_from != FUNC_FROM_PACKAGE) /* ReqID:SRS-SQL-PACKAGE */
 		exec_set_found(&estate, false);
 	/* End - SRS-PLSQL-SUBPROC */
+
+	/* Begin - ReqID: OA-2124 */
+	if (function_from != FUNC_FROM_SUBPROCFUNC)
+	{
+		exec_set_plsql_var(&estate);
+	}
+	/* End - ReqID: OA-2124 */
 
 	/*
 	 * Let the instrumentation plugin peek at this function
@@ -1384,6 +1395,10 @@ plisql_exec_trigger(PLiSQL_function *func,
 	 * Set the magic variable FOUND to false
 	 */
 	exec_set_found(&estate, false);
+
+	/* Begin - ReqID: OA-2124 */
+	exec_set_plsql_var(&estate);
+	/* End - ReqID: OA-2124 */
 
 	/*
 	 * Let the instrumentation plugin peek at this function
@@ -2658,6 +2673,7 @@ exec_stmts_ext(PLiSQL_execstate *estate, List *stmts, bool in_exception, bool is
 		/* Get statement by index */
 		PLiSQL_stmt *stmt = (PLiSQL_stmt *) list_nth(stmts, stmtidx);
 		int			rc;
+		PLiSQL_var *line_var;		// OA-2124
 
 		estate->err_stmt = stmt;
 
@@ -2666,7 +2682,18 @@ exec_stmts_ext(PLiSQL_execstate *estate, List *stmts, bool in_exception, bool is
 			((*plisql_plugin_ptr)->stmt_beg) (estate, stmt);
 
 		CHECK_FOR_INTERRUPTS();
-
+		/* Begin - ReqID: OA-2124 */
+		if (estate->func->item != NULL)
+		{
+			PLiSQL_package *pkg = (PLiSQL_package*)estate->func->item->source;
+			line_var = (PLiSQL_var *) get_package_datum_bydno(estate, pkg->source.fn_oid, pkg->source.plsql_line_varno);
+		}
+		else
+		{
+			line_var = (PLiSQL_var *)(estate->datums[estate->plsql_line_varno]);
+		}
+		assign_simple_var(estate, line_var, Int32GetDatum(stmt->lineno), false, false);
+		/* End - ReqID: OA-2124 */
 		switch (stmt->cmd_type)
 		{
 			case PLISQL_STMT_BLOCK:
@@ -5000,6 +5027,11 @@ plisql_estate_setup(PLiSQL_execstate *estate,
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
 	estate->sql_varno = func->sql_varno;
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+	/* Begin - ReqID: OA_2124 */
+	estate->plsql_unit_varno = func->plsql_unit_varno;
+	estate->plsql_unit_type_varno = func->plsql_unit_type_varno;
+	estate->plsql_line_varno = func->plsql_line_varno;
+	/* End - ReqID: OA-2124 */
 	estate->ndatums = func->ndatums;
 	estate->datums = NULL;
 	/* the datums array will be filled by copy_plisql_datums() */
@@ -13566,3 +13598,40 @@ plisql_init_bulk_collect_params(PLiSQL_execstate *estate, PLiSQL_row *row)
 	return bulk_params;
 }
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+
+/* Begin - ReqID: OA-2124 */
+static void
+exec_set_plsql_var(PLiSQL_execstate *estate)
+{
+	PLiSQL_var *unit_var;
+	PLiSQL_var *unit_type_var;
+	char *plsql_unit;
+	char *plsql_unit_type;
+	if (estate->trigdata != NULL)		// function in trigger, return trigger name
+	{
+		plsql_unit = pstrdup(estate->trigdata->tg_trigger->tgname);
+		plsql_unit_type = pstrdup("TRIGGER");
+		unit_var = (PLiSQL_var *)(estate->datums[estate->plsql_unit_varno]);
+		unit_type_var = (PLiSQL_var *)(estate->datums[estate->plsql_unit_type_varno]);
+	}
+	else if (estate->func->item != NULL)		// function in package, return package name
+	{
+		PLiSQL_package *pkg = (PLiSQL_package*)estate->func->item->source;
+		plsql_unit = pstrdup(pkg->source.fn_signature);
+		plsql_unit_type = pstrdup("PACKAGE");
+		unit_var = (PLiSQL_var *) get_package_datum_bydno(estate, pkg->source.fn_oid, pkg->source.plsql_unit_varno);
+		unit_type_var = (PLiSQL_var *) get_package_datum_bydno(estate, pkg->source.fn_oid, pkg->source.plsql_unit_type_varno);
+	}
+	else
+	{
+		plsql_unit = pstrdup(estate->func->namelabel != NULL ? estate->func->namelabel : "");
+		plsql_unit_type = estate->func->namelabel != NULL ? (estate->func->fn_prokind == 'f' ? pstrdup("FUNCTION") : pstrdup("PROCEDURE"))
+														  : pstrdup("ANINYMOUS BLOCK");
+		unit_var = (PLiSQL_var *)(estate->datums[estate->plsql_unit_varno]);
+		unit_type_var = (PLiSQL_var *)(estate->datums[estate->plsql_unit_type_varno]);
+	}
+
+	assign_simple_var(estate, unit_var, CStringGetTextDatum(plsql_unit), false, false);
+	assign_simple_var(estate, unit_type_var, CStringGetTextDatum(plsql_unit_type), false, false);
+}
+/* End - ReqID: OA-2124 */

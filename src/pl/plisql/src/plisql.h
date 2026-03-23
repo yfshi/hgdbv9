@@ -1246,6 +1246,12 @@ typedef struct PLiSQL_function
 	/* End - ReqID:SRS-PLSQL-DSQL */
 
 	bool		autonomous;		/* ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
+
+	/* Begin - ReqID: OA-2124 */
+	int			plsql_unit_varno;
+	int			plsql_unit_type_varno;
+	int			plsql_line_varno;
+	/* End - ReqID: OA-2124 */
 } PLiSQL_function;
 
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -1354,6 +1360,12 @@ typedef struct PLiSQL_execstate
 	int			goto_target_exptidx;	/* target index in exception list */
 	int			goto_target_stmtidx;	/* target index in block */
 	/* End - ReqID:SRS-PLSQL-GOTO */
+
+	/* Begin - ReqID: OA-2124 */
+	int			plsql_unit_varno;
+	int			plsql_unit_type_varno;
+	int			plsql_line_varno;
+	/* End - ReqID: OA-2124 */
 } PLiSQL_execstate;
 
 /*
@@ -1427,6 +1439,15 @@ typedef struct PLwdatum
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	PLiSQL_type *collectype;	/* ReqID:SRS-PLSQL-Collection, referenced collection type */
 } PLwdatum;
+
+/* Begin - ReqID: OA-2124 */
+typedef struct PLiSQL_plsql_varno
+{
+	int	plsql_unit_varno;
+	int plsql_unit_type_varno;
+	int plsql_line_varno;
+} PLiSQL_plsql_varno;
+/* End - ReqID: OA-2124 */
 
 /**********************************************************************
  * Global variable declarations
