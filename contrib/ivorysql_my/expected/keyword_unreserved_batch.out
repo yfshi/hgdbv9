@@ -1,0 +1,83 @@
+-- Begin - #Z7348
+-- Verify these tokens can be UNRESERVED in mysql parser without regressions:
+-- columns, curtime, fields, ifnull, plugins, quick, tables, triggers,
+-- warnings, variables
+CREATE TABLE kw_unreserved_batch (
+	columns int,
+	curtime int,
+	fields int,
+	ifnull int,
+	plugins int,
+	quick int,
+	tables int,
+	triggers int,
+	warnings int
+);
+INSERT INTO kw_unreserved_batch VALUES (1,2,3,4,5,6,7,8,9);
+-- All moved keywords should be usable as plain identifiers.
+SELECT columns, curtime, fields, ifnull, plugins, quick, tables, triggers, warnings
+FROM kw_unreserved_batch;
+ columns | curtime | fields | ifnull | plugins | quick | tables | triggers | warnings 
+---------+---------+--------+--------+---------+-------+--------+----------+----------
+       1 |       2 |      3 |      4 |       5 |     6 |      7 |        8 |        9
+(1 row)
+
+-- Keep function semantics available.
+SELECT CURTIME() IS NOT NULL AS curtime_ok, CURTIME(3) IS NOT NULL AS curtime_p_ok;
+ curtime_ok | curtime_p_ok 
+------------+--------------
+ t          | t
+(1 row)
+
+SELECT IFNULL(NULL, 42) AS ifnull_default, IFNULL(11, 42) AS ifnull_keep;
+ ifnull_default | ifnull_keep 
+----------------+-------------
+             42 |          11
+(1 row)
+
+-- Keep SHOW statement paths valid while avoiding unstable result sets.
+DO $$
+DECLARE
+	r record;
+BEGIN
+	FOR r IN EXECUTE 'SHOW COLUMNS FROM kw_unreserved_batch' LOOP
+		EXIT;
+	END LOOP;
+	FOR r IN EXECUTE 'SHOW FIELDS FROM kw_unreserved_batch' LOOP
+		EXIT;
+	END LOOP;
+	BEGIN
+		FOR r IN EXECUTE 'SHOW TABLES FROM public LIKE ''kw_unreserved_batch''' LOOP
+			EXIT;
+		END LOOP;
+		FOR r IN EXECUTE 'SHOW FULL TABLES FROM public LIKE ''kw_unreserved_batch''' LOOP
+			EXIT;
+		END LOOP;
+	EXCEPTION
+		WHEN OTHERS THEN
+			NULL;
+	END;
+	FOR r IN EXECUTE 'SHOW TRIGGERS' LOOP
+		EXIT;
+	END LOOP;
+	FOR r IN EXECUTE 'SHOW WARNINGS' LOOP
+		EXIT;
+	END LOOP;
+	FOR r IN EXECUTE 'SHOW VARIABLES LIKE ''version%''' LOOP
+		EXIT;
+	END LOOP;
+	FOR r IN EXECUTE 'SHOW PLUGINS' LOOP
+		EXIT;
+	END LOOP;
+END
+$$ LANGUAGE plpgsql;
+-- QUICK still works in DELETE modifier position.
+DELETE QUICK FROM kw_unreserved_batch WHERE columns = 1;
+SELECT count(*) AS rows_left FROM kw_unreserved_batch;
+ rows_left 
+-----------
+         0
+(1 row)
+
+DROP TABLE kw_unreserved_batch;
+-- End - #Z7389
