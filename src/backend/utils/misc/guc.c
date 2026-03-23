@@ -765,6 +765,11 @@ int			num_temp_buffers = 1024;
 
 char	   *cluster_name = "";
 char	   *ConfigFileName;
+#ifdef ENABLE_DKY_BETA_FEATURE
+/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+bool	   ConfigFileCheckEnable = false;
+/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 char	   *HbaFileName;
 char	   *IdentFileName;
 char	   *external_pid_file;
@@ -2444,6 +2449,20 @@ static struct config_bool ConfigureNamesBool[] =
 	},
 	/* End - ReqID:SRS-SECURITY-POWERS */
 
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	{
+		{"online_check.enable", PGC_POSTMASTER, DEVELOPER_OPTIONS,
+			gettext_noop("Turn on/off  online config check"),
+			NULL,
+			GUC_NO_RESET_ALL
+		},
+		&ConfigFileCheckEnable,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_BOOL_PARAMS
 	#include "ivy_oracle_guc.c"

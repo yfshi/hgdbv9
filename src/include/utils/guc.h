@@ -272,6 +272,11 @@ extern char *HbaFileName;
 extern char *IdentFileName;
 extern char *external_pid_file;
 
+#ifdef ENABLE_DKY_BETA_FEATURE
+/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+extern PGDLLIMPORT bool ConfigFileCheckEnable;
+/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 extern PGDLLIMPORT char *application_name;
 extern PGDLLIMPORT char *osname; /* ReqID: SRS-SESSION-VIEWS */
 
