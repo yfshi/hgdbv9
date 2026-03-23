@@ -244,6 +244,11 @@ static struct RELCACHECALLBACK
 
 static int	relcache_callback_count = 0;
 
+/* Begin - BUG#00007430 */
+static void PostBackupAutonxIsonVars_Inval(void);
+/* End - BUG#00007430 */
+
+
 /* ----------------------------------------------------------------
  *				Invalidation list support functions
  *
@@ -1721,6 +1726,19 @@ LogLogicalInvalidations()
 }
 
 
+/* Begin - BUG#00007430 */
+/*
+ * set global transInvalInfo to NULL
+ */
+static void
+PostBackupAutonxIsonVars_Inval(void)
+{
+	transInvalInfo = NULL;
+}
+/* End - BUG#00007430 */
+
+
+
 /*
  * ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION
  *
@@ -1730,5 +1748,7 @@ LogLogicalInvalidations()
 void
 RegisterAutonxIsoVars_Inval(void)
 {
-	RegisterAutonxIsoVar("transInvalInfo", &transInvalInfo, sizeof(transInvalInfo), NULL, NULL);
+	RegisterAutonxIsoVar("transInvalInfo", &transInvalInfo, sizeof(transInvalInfo),
+					PostBackupAutonxIsonVars_Inval, /* BUG#00007430 */
+					NULL);
 }
