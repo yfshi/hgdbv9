@@ -161,7 +161,6 @@ typedef enum NodeTag
 	T_TableFunc,
 	T_Expr,
 	T_Var,
-	T_Outer_join_vars,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	T_Const,
 	T_Param,
 	T_Aggref,

@@ -15,15 +15,7 @@
 #define PARSE_CLAUSE_H
 
 #include "parser/parse_node.h"
-/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
-typedef struct outer_join_vars{
-	 Node	 type;
-	 Var	 *plus_var;
-	 List	 *rmvar;
-	 List	 *var_list;
-	 Node	 *qual;
- }Outer_join_vars;
- /* End - ReqID:SRS-SQL-OUTERJOIN(+) */
+
 extern void transformFromClause(ParseState *pstate, List *frmList);
 extern int	setTargetTable(ParseState *pstate, RangeVar *relation,
 						   bool inh, bool alsoSource, AclMode requiredPerms);
