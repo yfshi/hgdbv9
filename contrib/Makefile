@@ -23,6 +23,7 @@ SUBDIRS = \
 		hg_sysmac       \
 		hg_antitamper   \
 		hg_rolstatus	\
+		hg_integrity_check	\
 		hstore		\
 		intagg		\
 		intarray	\

@@ -516,6 +516,7 @@ sub contribcheck
 		next if ($module eq "sepgsql");
 		next if ($module eq "gb18030_2022");	# BUGM0000294
 		next if ($module eq "diskquota");
+		next if ($module eq "hg_integrity_check");
 		
 		subdircheck($module);
 		my $status = $? >> 8;

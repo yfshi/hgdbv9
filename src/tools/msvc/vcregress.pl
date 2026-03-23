@@ -556,6 +556,7 @@ sub contribcheck
 		# Native PostgreSQL does not perform the test of ora_synonym.
 		next if ($module eq "ora_synonym");
 		next if ($module eq "diskquota");
+		next if ($module eq "hg_integrity_check");
 
 		subdircheck($module);
 		my $status = $? >> 8;
