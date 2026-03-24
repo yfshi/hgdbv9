@@ -1338,3 +1338,54 @@ alter table test set schema sch1;
 create extension hg_redaction;
 drop table sch1.test;
 drop schema sch1;
+
+
+-- fix bug #Z7006
+show search_path ;
+alter system set search_path to "$user", public;
+select pg_reload_conf();
+select pg_sleep(1);
+show search_path ;
+
+create table tb1(col1 bool,col2 time,col3 timetz,col4 interval,col5 timestamp,
+        col6 timestamptz,col7 text,col8 bpchar,col9 varchar,col10 money,col11 name,col12 int8,col13 int4,col14 int2,col15 numeric,col16 float4,col17 float8);
+insert into tb1 values('true','08:00:00','08:00:00+08','+3','2003-01-01 08:00:00',
+        '2004-01-01 08:00:00+08','hgdb','highgo','瀚高','12.34','股份',8,4,2,1.1,4.2,8.42);
+grant all on table tb1 to u1;
+set hg_redaction.enable to on;
+create redaction policy tb1_polx on tb1 add column col1, col2, col3, col4, col5, col6, col7,  col8, col9, col10, col11, col12, col13, col14,col15, col16, col17 using hg_security.redact_all;
+
+\c - u1
+set hg_redaction.enable to on;
+select * from tb1;
+
+\c - super1
+drop table tb1;
+
+
+--seclabel
+show search_path ;
+create table test(id int,name hg_security.seclabel);
+insert into test(id) values(1);
+grant all on table test to u1;
+
+alter system set hg_sysmac.global_on=on;
+alter system set hg_sysmac.global_row_level=on;
+select pg_reload_conf();
+
+select hg_security.apply_row_policy('test'::regclass,'apply');
+select hg_security.apply_row_policy('test'::regclass,'enable');
+
+select hg_security.set_user_seclabel('u1'::regrole,'s10:c0.c20');
+select hg_security.set_table_seclabel('test'::regclass,'s10:c0.c20');
+
+set hg_redaction.enable to on;
+create redaction policy pol1 on test add column name using hg_security.redact_all;
+create redaction policy pol2 on test add column __hg_seclabel__ using hg_security.redact_all;
+
+\c - u1
+set hg_redaction.enable to on;
+select __hg_seclabel__, * from test;
+
+\c - super1
+drop table test;
