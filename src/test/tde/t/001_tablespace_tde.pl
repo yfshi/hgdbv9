@@ -10,7 +10,7 @@ use strict;
 use warnings;
 use PostgresNode;
 use TestLib;
-use Test::More tests => 21;
+use Test::More tests => 22;
 
 # Initialize primary node
 my $node = get_new_node('primary');
@@ -75,6 +75,8 @@ $node->safe_psql('postgres',
 		qq[INSERT INTO regress_tblspace_test_tbl (num1, num2, t) SELECT round(random()*100), random(), 'text' FROM generate_series(1, 10) s(i);]);
 $node->safe_psql('postgres',
 		qq[CREATE INDEX regress_tblspace_test_tbl_idx ON regress_tblspace_test_tbl (num1) TABLESPACE regress_tblspace;]);
+$node->safe_psql('postgres',
+		qq[CREATE MATERIALIZED VIEW regress_tblspace_test_tbl_mview TABLESPACE regress_tblspace AS SELECT * FROM regress_tblspace_test_tbl;]);
 
 $result = $node->safe_psql('postgres',
 		qq[SELECT reloptions from pg_class where relname = 'regress_tblspace_test_tbl';]);
@@ -82,6 +84,9 @@ like($result, qr/encrypt=on/, 'Check the encryption properties of a table');
 $result = $node->safe_psql('postgres',
 		qq[SELECT reloptions from pg_class where relname = 'regress_tblspace_test_tbl_idx';]);
 like($result, qr/encrypt=on/, 'Check the encryption properties of an index');
+$result = $node->safe_psql('postgres',
+		qq[SELECT reloptions from pg_class where relname = 'regress_tblspace_test_tbl_mview';]);
+like($result, qr/encrypt=on/, 'Check the encryption properties of an materialized view');
 
 ($result, $stdout, $stderr) = $node->psql('postgres',
 	qq[CREATE TABLE regress_tblspace_test_tb2 (num1 bigint, num2 double precision, t text) WITH (encrypt = off) TABLESPACE regress_tblspace;]
@@ -152,9 +157,10 @@ like($stderr, qr/database located in non-encrypted tablespace cannot be moved to
         "Moving a database from Non-encrypted tablespace to an encrypted one is not allowed.");
 
 # Move database from encrypted to non-encrypted tablespace
-$result = $node->safe_psql('postgres',
+($result, $stdout, $stderr) = $node->psql('postgres',
 	qq[ALTER DATABASE regress_db SET TABLESPACE pg_default;]);
-is($result, '', 'Moving a database from Non-encrypted tablespace to an encrypted one is allowed.');
+like($stderr, qr/remains encrypted after being removed from its encrypted tablespace./,
+		'Moving a database from encrypted tablespace to an Non-encrypted one is allowed.');
 
 # Done with the node
 $node->stop;

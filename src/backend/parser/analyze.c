@@ -59,6 +59,7 @@
 #include "parser/parse_relation.h"
 #include "parser/parse_target.h"
 #include "parser/parse_type.h"
+#include "parser/parse_utilcmd.h" /* BUG#Z7282 */
 #include "parser/parsetree.h"
 #include "parser/pg_object_hook.h"
 #include "rewrite/rewriteManip.h"
@@ -5342,6 +5343,11 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 		 * conveniently get it from.
 		 */
 		stmt->into->viewQuery = (Node *) copyObject(query);
+
+		/* Begin - ReqID:SRS-SECURITY-TABLESPACE BUG#Z7282 */
+		/* Objects stored in an encrypted tablespace must use encryption. */
+		stmt->into->options = InheritEncryptFromTablespace(stmt->into->options, stmt->into->tableSpaceName);
+		/* End - ReqID:SRS-SECURITY-TABLESPACE BUG#Z7282 */
 	}
 
 	/* represent the command as a utility Query */
