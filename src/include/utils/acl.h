@@ -226,6 +226,8 @@ extern void check_rolespec_name(const RoleSpec *role, const char *detail_msg);
 extern HeapTuple get_rolespec_tuple(const RoleSpec *role);
 extern char *get_rolespec_name(const RoleSpec *role);
 
+extern bool	get_role_canlogin_byoid(Oid roleid); /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
+
 extern void select_best_grantor(Oid roleId, AclMode privileges,
 								const Acl *acl, Oid ownerId,
 								Oid *grantorId, AclMode *grantOptions);

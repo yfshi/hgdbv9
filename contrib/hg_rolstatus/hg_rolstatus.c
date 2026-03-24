@@ -29,21 +29,175 @@
 #include "utils/lsyscache.h"
 #include "miscadmin.h"
 #include "se_features_interface.h"
-
+#include "catalog/pg_role_status.h"
+#include "utils/syscache.h"
+#include "utils/builtins.h"
 PG_MODULE_MAGIC;
 
 void		_PG_init(void);
 void		_PG_fini(void);
 
-#define HG_SYS_ROLE_STATUS "roles_status"
-#define Natts_roles_status (2)
-#define Anum_roles_oid_col (1)
-#define Anum_roles_status_col (2)
-
 static bool set_role_switch = false;
+static bool role_get_status(uint32 roleoid);
+
+Datum set_role_status(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(set_role_status);
+Datum get_role_status(PG_FUNCTION_ARGS);
+PG_FUNCTION_INFO_V1(get_role_status);
+
+/* set_role_status:
+ *    set role status to pg_role_status table 
+ */
+Datum
+set_role_status(PG_FUNCTION_ARGS)
+{
+	Relation rel;
+	HeapTuple tuple;
+	Oid roleoid;
+	char *rolename;
+	text *rolename_text;
+	bool rolestatus;
+
+	if (se_feature_mode)
+	{
+		if (!IS_SYSSSO(GetUserId()))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied")));
+		}
+	}
+	else
+	{
+		if (!superuser())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied")));
+		}
+	}
+
+	if (!set_role_switch)
+	{
+		ereport(ERROR,
+				errmsg("hg_rolstatus.enable is OFF"),
+				errdetail_internal("Please enable hg_rolstatus.enable."));
+	}
+
+	rolename_text = PG_GETARG_TEXT_PP(0);
+	rolename = text_to_cstring(rolename_text);
+	rolestatus = PG_GETARG_BOOL(1);
+
+	roleoid = get_role_oid(rolename, false);
+	if (InvalidOid == roleoid)
+	{
+		ereport(ERROR,
+				errmsg("role %s does not exist.", rolename));
+	}
+
+	if (get_role_canlogin_byoid(roleoid))
+	{
+		ereport(ERROR,
+				errmsg("Only roles can be set, users cannot!"));
+	}
+
+	if (IS_SYSSAO(roleoid) || IS_SYSSSO(roleoid) || IS_SYSDBA(roleoid))
+	{
+		ereport(ERROR,
+				errmsg("Can not enable/disable sysdba_role syssso_role and syssao_role!"));
+	}
+
+	rel = table_open(RoleStatusId, RowExclusiveLock);
+	tuple = SearchSysCache1(ROLESTATUSID, ObjectIdGetDatum(roleoid));
+	if (HeapTupleIsValid(tuple))
+	{
+		Form_pg_role_status role_status_form;
+
+		role_status_form = (Form_pg_role_status)GETSTRUCT(tuple);
+		if (role_status_form->rolstatus == rolestatus)
+		{
+			ereport(WARNING, (errmsg("role %s already %s", rolename, rolestatus ? "true" : "false")));
+		}
+		role_status_form->rolstatus = rolestatus;
+		CatalogTupleUpdate(rel, &tuple->t_self, tuple);
+		ReleaseSysCache(tuple);
+	}
+	else
+	{
+		Datum values[Natts_pg_role_status];
+		bool nulls[Natts_pg_role_status];
+
+		MemSet(nulls, false, sizeof(nulls));
+		values[Anum_pg_role_status_roleid - 1] = ObjectIdGetDatum(roleoid);
+		values[Anum_pg_role_status_rolname - 1] = CStringGetDatum(rolename);
+		values[Anum_pg_role_status_rolstatus - 1] = BoolGetDatum(rolestatus);
+
+		tuple = heap_form_tuple(RelationGetDescr(rel), values, nulls);
+		CatalogTupleInsert(rel, tuple);
+		heap_freetuple(tuple);
+	}
+	table_close(rel, RowExclusiveLock);
+
+	PG_RETURN_BOOL(true);
+}
+
+/* get_role_status:
+ *    get role status by role_get_status function 
+ */
+Datum
+get_role_status(PG_FUNCTION_ARGS)
+{
+	Oid roleoid;
+	char *rolename;
+	text *rolename_text;
+
+	if (se_feature_mode)
+	{
+		if (!IS_SYSSSO(GetUserId()))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied")));
+		}
+	}
+	else
+	{
+		if (!superuser())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied")));
+		}
+	}
+
+	if (!set_role_switch)
+	{
+		ereport(ERROR,
+				errmsg("hg_rolstatus.enable is OFF"),
+				errdetail_internal("Please enable hg_rolstatus.enable."));
+	}
+
+	rolename_text = PG_GETARG_TEXT_PP(0);
+	rolename = text_to_cstring(rolename_text);
+
+	roleoid = get_role_oid(rolename, false);
+	if (InvalidOid == roleoid)
+	{
+		ereport(ERROR,
+				errmsg("role %s does not exist.", rolename));
+	}
+
+	if (get_role_canlogin_byoid(roleoid))
+	{
+		ereport(ERROR,
+				errmsg("Only roles can be get, users cannot!"));
+	}
+
+	PG_RETURN_BOOL(role_get_status(roleoid));
+}
 
 /* role_get_status:
- *    get role status from roles_status relation 
+ *    get role status from pg_role_status relation 
  */
 static bool
 role_get_status(uint32 roleoid)
@@ -55,20 +209,14 @@ role_get_status(uint32 roleoid)
 	bool isRoleStatus = true;
 	Datum isRoleStatusDatum;
 	bool isNull;
-	Oid rolesStatusOid = InvalidOid;
 
 	if (!set_role_switch)
 	{
 		return true;
 	}
 
-	rolesStatusOid = get_relname_relid(HG_SYS_ROLE_STATUS, SECURITY_SCHEMA_NAMESPACE);
-	if (!OidIsValid(rolesStatusOid) || !OidIsValid(roleoid))
-	{
-		return isRoleStatus;
-	}
-	/* open table roles_status */
-	rel = table_open(rolesStatusOid, AccessShareLock);
+	/* open table pg_role_status */
+	rel = table_open(RoleStatusId, AccessShareLock);
 
 	/* Through the user oid,look up records in the table. */
 	ScanKeyInit(&scanKey[0],
@@ -81,7 +229,7 @@ role_get_status(uint32 roleoid)
 	tup = heap_getnext(scandesc, ForwardScanDirection);
 	if (HeapTupleIsValid(tup))
 	{
-		isRoleStatusDatum = heap_getattr(tup, Anum_roles_status_col, RelationGetDescr(rel), &isNull);
+		isRoleStatusDatum = heap_getattr(tup, Anum_pg_role_status_rolstatus, RelationGetDescr(rel), &isNull);
 		isRoleStatus = DatumGetBool(isRoleStatusDatum);
 	}
 
@@ -92,7 +240,7 @@ role_get_status(uint32 roleoid)
 }
 
 /* drop_role_status:
- *    delete roles_status reltation data when drop role. 
+ *    delete pg_role_status reltation data when drop role. 
  */
 static bool 
 drop_role_status(uint32 roleoid)
@@ -102,15 +250,9 @@ drop_role_status(uint32 roleoid)
 	ScanKeyData scanKey[1];
 	TableScanDesc scandesc;
 	bool result = false;
-	Oid rolesStatusOid = InvalidOid;
 
-	rolesStatusOid = get_relname_relid(HG_SYS_ROLE_STATUS, SECURITY_SCHEMA_NAMESPACE);
-	if (!OidIsValid(rolesStatusOid) || !OidIsValid(roleoid))
-	{
-		return result;
-	}
-	/* open table roles_status */
-	rel = table_open(rolesStatusOid, RowExclusiveLock);
+	/* open table pg_role_status */
+	rel = table_open(RoleStatusId, RowExclusiveLock);
 
 	/* Through the user oid,look up records in the table. */
 	ScanKeyInit(&scanKey[0],
@@ -154,13 +296,13 @@ set_rolestatus_check(bool *newval, void **extra, GucSource source)
 void
 _PG_init(void)
 {
-	/* role_status switch */
+	/* rolstatus switch */
 	DefineCustomBoolVariable("hg_rolstatus.enable",
 							 "turn on or off set role status.",
 							 NULL,
 							 &set_role_switch,
 							 false,
-							 PGC_USERSET,
+							 PGC_SIGHUP,
 							 0,
 							 set_rolestatus_check,
 							 NULL,

@@ -161,6 +161,7 @@ pg_replication_origin|t
 pg_resgroup|t
 pg_resgroupcapability|t
 pg_rewrite|t
+pg_role_status|t
 pg_seclabel|t
 pg_secmon_history|t
 pg_secmon_rule|t
@@ -216,7 +217,6 @@ regress_constr_partition1|t
 regress_constr_partitioned|t
 reservations|f
 road|t
-roles_status|t
 schema_antitamper|f
 shighway|t
 slow_emp4000|f

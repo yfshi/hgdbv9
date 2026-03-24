@@ -76,6 +76,7 @@ CATALOG_HEADERS := \
 	pg_object.h pg_mfaid.h \
 	pg_resgroup.h pg_resgroupcapability.h \
 	pg_recyclebin.h pg_synonym.h \
+	pg_role_status.h \
 	pg_ora_part_tables.h pg_ora_tab_partitions.h
 
 GENERATED_HEADERS := $(CATALOG_HEADERS:%.h=%_d.h) schemapg.h system_fk_info.h

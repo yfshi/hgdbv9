@@ -98,6 +98,8 @@
 #include "catalog/pg_resgroupcapability.h"
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
+#include "catalog/pg_role_status.h" /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
+
 #include "lib/qunique.h"
 #include "miscadmin.h"
 #include "storage/lmgr.h"
@@ -989,6 +991,19 @@ static const struct cachedesc cacheinfo[] = {
 		128
 	},
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+	/* Begin - ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
+	{RoleStatusId,			/* ROLESTATUSID */
+		RoleStatusOidIndexId,
+		1,
+		{
+			Anum_pg_role_status_roleid,
+			0,
+			0,
+			0
+		},
+		2
+	},
+	/* End - ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
 	{RewriteRelationId,			/* RULERELNAME */
 		RewriteRelRulenameIndexId,
 		2,

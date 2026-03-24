@@ -5199,6 +5199,29 @@ get_role_canlogin_oid(const char *rolname, bool missing_ok)
 	return get_role_oid(rolname, missing_ok);
 }
 
+/* Begin - ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
+/*
+ * get_role_canlogin_byoid
+ *
+ * Whether the user can login by oid
+ */
+bool
+get_role_canlogin_byoid(Oid roleid)
+{
+	HeapTuple roletup;
+	bool result = false;
+
+	roletup = SearchSysCache1(AUTHOID, ObjectIdGetDatum(roleid));
+	if (HeapTupleIsValid(roletup))
+	{
+		result = ((Form_pg_authid)GETSTRUCT(roletup))->rolcanlogin;
+		ReleaseSysCache(roletup);
+	}
+
+	return result;
+}
+/* End - ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
+
 /*
  * get_role_oid_or_public - As above, but return ACL_ID_PUBLIC if the
  *		role name is "public".
