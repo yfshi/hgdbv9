@@ -16,3 +16,4 @@ src/builtin_packages/dbms_output/dbms_output
 src/builtin_packages/dbms_ddl/dbms_ddl
 src/ora_trigger_pred/ora_trigger_pred
 src/collection/collection
+src/builtin_packages/dbms_rowid/dbms_rowid

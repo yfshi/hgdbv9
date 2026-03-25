@@ -5439,33 +5439,33 @@ CREATE OR REPLACE package body sys.test_pkg1 IS
 end;
 /
 
-SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
-SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
-SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
+SELECT name,type,line,text FROM dba_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
+SELECT name,type,line,text FROM all_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
+SELECT name,type,line,text FROM user_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
 
 GRANT EXECUTE ON package test_pkg1 TO test_user;
 
 set session authorization test_user;
 
-SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
-SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
-SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
+SELECT name,type,line,text FROM dba_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
+SELECT name,type,line,text FROM all_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
+SELECT name,type,line,text FROM user_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1')ORDER BY package_name,subprogram_id,object_name,position;
 
 
 reset session authorization;
@@ -5474,17 +5474,17 @@ ALTER package test_pkg owner TO test_user;
 
 set session authorization test_user;
 
-SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
-SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
-SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
+SELECT name,type,line,text FROM dba_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
+SELECT name,type,line,text FROM all_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
+SELECT name,type,line,text FROM user_source WHERE name in ('test_pkg', 'test_pkg1') AND (type = 'PACKAGE' OR type = 'PACKAGE BODY') ORDER BY name,type,line;
 
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
-SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
+SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_name in ('test_pkg', 'test_pkg1') AND object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
 
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
-SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
+SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL AND package_name in ('test_pkg', 'test_pkg1') ORDER BY package_name,subprogram_id,object_name,position;
 
 
 reset session authorization;
