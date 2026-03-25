@@ -229,14 +229,9 @@ RETURNS int
 AS 'MODULE_PATHNAME', 'hsm_import_key'
 LANGUAGE C STRICT PARALLEL SAFE;
 
-CREATE FUNCTION hsm_generate_key_pair(algname cstring, lenbit int)
-RETURNS TABLE(key bytea)
-AS 'MODULE_PATHNAME', 'hsm_generate_key_pair'
-LANGUAGE C STRICT PARALLEL SAFE;
-
-CREATE FUNCTION hsm_import_key_pair(algname cstring, pubkey bytea, prikey bytea, mode cstring default 'all')
+CREATE FUNCTION hsm_generate_key_pair(algname cstring, lenbit int, mode cstring default 'all')
 RETURNS int
-AS 'MODULE_PATHNAME', 'hsm_import_key_pair'
+AS 'MODULE_PATHNAME', 'hsm_generate_key_pair'
 LANGUAGE C STRICT PARALLEL SAFE;
 
 CREATE FUNCTION hsm_destroy_key(id int)
@@ -275,10 +270,10 @@ RETURNS bytea
 AS 'MODULE_PATHNAME', 'hsm_pub_encrypt'
 LANGUAGE C STRICT PARALLEL SAFE;
 
-CREATE FUNCTION hsm_pub_decrypt(algname cstring, id int, ciphertext bytea, 
+CREATE FUNCTION hsm_pri_decrypt(algname cstring, id int, ciphertext bytea, 
                                 passwd cstring default '', keylenbits int default 0)
 RETURNS bytea
-AS 'MODULE_PATHNAME', 'hsm_pub_decrypt'
+AS 'MODULE_PATHNAME', 'hsm_pri_decrypt'
 LANGUAGE C STRICT PARALLEL SAFE;
 
 CREATE FUNCTION hsm_sign(algname cstring, id int, datatext bytea, 
@@ -289,6 +284,6 @@ LANGUAGE C STRICT PARALLEL SAFE;
 
 CREATE FUNCTION hsm_verify(algname cstring, id int, datatext bytea, signtext bytea, 
                            keylenbits int default 0)
-RETURNS void
+RETURNS cstring
 AS 'MODULE_PATHNAME', 'hsm_verify'
 LANGUAGE C STRICT PARALLEL SAFE;

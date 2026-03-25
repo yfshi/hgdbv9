@@ -97,6 +97,7 @@ static const unsigned char SHA256_ASN1_OID[] = {
 		0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x01, 0x05,
 		0x00, 0x04, 0x20
 	};
+#define PKCS1_PADDING_MIN_PS 8
 
 hsm_encryption_algorithm_type hsm_encryption_algorithms[NUM_HSM_ENCRYPTION_ALGORITHMS] = {
 	{"", 0},
@@ -146,6 +147,14 @@ hsm_encryption_algorithm_type hsm_encryption_algorithms[NUM_HSM_ENCRYPTION_ALGOR
 	/* NUM_HSM_ENCRYPTION_ALGORITHMS */
 };
 
+static int PKCS1v15_Encryption_Pad(const unsigned char *msg, unsigned int msg_len,
+                				   unsigned char *em, unsigned int k);
+static int  PKCS1v15_Encryption_UnPad(const unsigned char *em, unsigned int k,
+                    				  unsigned char *msg, unsigned int *msg_len);
+static void ECCCipher_to_SM2Cipher(const ECCCipher *enc, unsigned char *cipherOut,
+                    			   unsigned int *cipherOutSize);
+static void SM2Cipher_to_ECCCipher(ECCCipher *enc, const unsigned char *cipherIn,
+								   unsigned int cipherInSize);
 static int PKCS1v15_Signature_Pad(const unsigned char *hash, unsigned int hash_len,
 					   			  unsigned char *em, unsigned int em_len);
 #endif
@@ -1220,7 +1229,8 @@ retry_hsm_random:
 void
 HSM_Hash(void* *phSessionHandle, unsigned int AlgId,
 		 unsigned char *indata, unsigned int inlen,
-		 unsigned char *outdata, unsigned int *outlen)
+		 unsigned char *outdata, unsigned int *outlen,
+		 void *pubKey)
 {
 	SGD_HANDLE hSessionHandle = NULL;
 	unsigned int rv;
@@ -1228,7 +1238,7 @@ HSM_Hash(void* *phSessionHandle, unsigned int AlgId,
 
 retry_hsm_hash:
 	hSessionHandle = HSM_GetSessionHandle(phSessionHandle, retry);
-	rv = SDF_HashInit(hSessionHandle, AlgId, NULL, NULL, 0);
+	rv = SDF_HashInit(hSessionHandle, AlgId, (ECCrefPublicKey *)pubKey, NULL, 0);
 	if (rv != SDR_OK)
 	{
 		if (!retry)
@@ -1316,6 +1326,86 @@ retry_hsm_generate_key_pair:
 	}
 }
 
+// Generate non-zero random bytes
+static int 
+rand_nonzero_bytes(unsigned char *buf, unsigned int len) 
+{
+	unsigned int i;
+
+    for (i = 0; i < len; i++) {
+        unsigned char b = 0;
+        int retry = 0;
+        do {
+            b = rand() & 0xFF;
+            retry++;
+            if (retry > 100) return -1; // prevent infinite loop
+        } while (b == 0);
+        buf[i] = b;
+    }
+    return 0;
+}
+
+// PKCS#1 v1.5 padding (for encryption)
+// EM = 0x00 || 0x02 || PS || 0x00 || M
+static int
+PKCS1v15_Encryption_Pad(const unsigned char *msg, unsigned int msg_len,
+                		unsigned char *em, unsigned int k)
+{
+	unsigned int ps_len;
+
+    if (!msg || !em) return -1;
+
+    // k = modulus length in bytes
+    if (k < msg_len + 11) return -2; // message too long
+
+    ps_len = k - msg_len - 3;
+    if (ps_len < PKCS1_PADDING_MIN_PS) return -3;
+
+    em[0] = 0x00;
+    em[1] = 0x02;
+
+    // Fill PS with non-zero random bytes
+    rand_nonzero_bytes(em + 2, ps_len);
+
+    em[2 + ps_len] = 0x00;
+
+    memcpy(em + 3 + ps_len, msg, msg_len);
+
+    return 0;
+}
+
+// PKCS#1 v1.5 unpadding (for decryption)
+static int 
+PKCS1v15_Encryption_UnPad(const unsigned char *em, unsigned int k,
+                    	  unsigned char *msg, unsigned int *msg_len) 
+{
+	unsigned int i, m_len;
+
+    if (!em || !msg || !msg_len) return -1;
+
+    // Basic structure check
+    if (k < 11) return -2;
+    if (em[0] != 0x00 || em[1] != 0x02) return -3;
+
+    // Find separator 0x00
+    i = 2;
+    while (i < k) {
+        if (em[i] == 0x00) break;
+        i++;
+    }
+
+    // Check PS length
+    if (i < 2 + PKCS1_PADDING_MIN_PS) return -4;
+    if (i == k) return -5; // separator not found
+
+    m_len = k - i - 1;
+
+    memcpy(msg, em + i + 1, m_len);
+    *msg_len = m_len;
+
+    return 0;
+}
+
 /*
  * Use HSM to encrypt with public key.
  * If encrypt failed, retry using a new session handle.
@@ -1335,22 +1425,46 @@ retry_hsm_pub_encrypt:
 	if (keyIndex > 0)
 	{
 		if (AlgId == SGD_RSA)
+		{
+			unsigned int emLen = *outlen;
+			unsigned char *em = palloc0(emLen);
+			
+			PKCS1v15_Encryption_Pad(indata, inlen, em, emLen);
 			rv = SDF_InternalPublicKeyOperation_RSA_Ex(hSessionHandle, keyIndex, SGD_RSA_ENC,
-													   indata, inlen, outdata, outlen);
+													   em, emLen, outdata, outlen);
+			pfree(em);
+		}
 		else if (AlgId == SGD_SM2_3)
+		{
+			ECCCipher *ecc_cipher = palloc0(sizeof(ECCCipher));
 			rv = SDF_InternalEncrypt_ECC(hSessionHandle, keyIndex, SGD_SM2_3, 
-										 indata, inlen, (ECCCipher *)outdata);
+										 indata, inlen, (ECCCipher *)ecc_cipher);
+			ECCCipher_to_SM2Cipher(ecc_cipher, outdata, outlen);
+			pfree(ecc_cipher);
+		}
 		else
 			rv = SDR_ALGNOTSUPPORT;
 	}
 	else
 	{
 		if (AlgId == SGD_RSA)
+		{
+			unsigned int emLen = *outlen;
+			unsigned char *em = palloc0(emLen);
+			
+			PKCS1v15_Encryption_Pad(indata, inlen, em, emLen);
 			rv = SDF_ExternalPublicKeyOperation_RSA(hSessionHandle, (RSArefPublicKey *)key, 
-													indata, inlen, outdata, outlen);
+													em, emLen, outdata, outlen);
+			pfree(em);
+		}
 		else if (AlgId == SGD_SM2_3)
+		{
+			ECCCipher *ecc_cipher = palloc0(sizeof(ECCCipher));
 			rv = SDF_ExternalEncrypt_ECC(hSessionHandle, SGD_SM2_3, (ECCrefPublicKey *)key, 
-										 indata, inlen, (ECCCipher *)outdata);
+										 indata, inlen, (ECCCipher *)ecc_cipher);
+			ECCCipher_to_SM2Cipher(ecc_cipher, outdata, outlen);
+			pfree(ecc_cipher);
+		}
 		else
 			rv = SDR_ALGNOTSUPPORT;		
 	}
@@ -1362,6 +1476,7 @@ retry_hsm_pub_encrypt:
 			retry = true;
 			goto retry_hsm_pub_encrypt;
 		}
+
 #ifndef FRONTEND
 		elog(ERROR, "HSM encrypt failed, errcode[0x%08x]", rv);
 #else
@@ -1376,7 +1491,7 @@ retry_hsm_pub_encrypt:
  * If decrypt failed, retry using a new session handle.
  */
 void
-HSM_Pub_Decrypt(void* *phSessionHandle, unsigned int AlgId, 
+HSM_Pri_Decrypt(void* *phSessionHandle, unsigned int AlgId, 
 				unsigned int keyIndex, void *key, 
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *outdata, unsigned int *outlen,
@@ -1385,30 +1500,60 @@ HSM_Pub_Decrypt(void* *phSessionHandle, unsigned int AlgId,
 	SGD_HANDLE hSessionHandle = NULL;
 	unsigned int rv;
 	bool	retry = false;
+	unsigned int keyIndexForAccess = keyIndex;
+
+	if (AlgId == SGD_SM2_3)
+	{
+		keyIndexForAccess += 10000;
+	}
 
 retry_hsm_pub_decrypt:
 	hSessionHandle = HSM_GetSessionHandle(phSessionHandle, retry);
 	if (keyIndex > 0)
 	{
-		SDF_GetPrivateKeyAccessRight(hSessionHandle, keyIndex, passwd, (SGD_UINT32)strlen((const char*)passwd));
+		SDF_GetPrivateKeyAccessRight(hSessionHandle, keyIndexForAccess, passwd, (SGD_UINT32)strlen((const char*)passwd));
 		if (AlgId == SGD_RSA)
+		{
+			unsigned int emLen = *outlen;
+			unsigned char *em = palloc0(emLen);
+
 			rv = SDF_InternalPrivateKeyOperation_RSA_Ex(hSessionHandle, keyIndex, SGD_RSA_ENC,
-														indata, inlen, outdata, outlen);
+														indata, inlen, em, &emLen);
+			PKCS1v15_Encryption_UnPad(em, emLen, outdata, outlen);
+			pfree(em);
+		}
 		else if (AlgId == SGD_SM2_3)
+		{
+			ECCCipher *ecc_cipher = palloc0(sizeof(ECCCipher));
+			SM2Cipher_to_ECCCipher(ecc_cipher, indata, inlen);
 			rv = SDF_InternalDecrypt_ECC(hSessionHandle, keyIndex, SGD_SM2_3, 
-										 (ECCCipher *)indata, outdata, outlen);
+										 (ECCCipher *)ecc_cipher, outdata, outlen);
+			pfree(ecc_cipher);
+		}
 		else
 			rv = SDR_ALGNOTSUPPORT;
-		SDF_ReleasePrivateKeyAccessRight(hSessionHandle, keyIndex);
+		SDF_ReleasePrivateKeyAccessRight(hSessionHandle, keyIndexForAccess);
 	}
 	else
 	{
 		if (AlgId == SGD_RSA)
+		{
+			unsigned int emLen = *outlen;
+			unsigned char *em = palloc0(emLen);
+
 			rv = SDF_ExternalPrivateKeyOperation_RSA(hSessionHandle, (RSArefPrivateKey *)key, 
-													 indata, inlen, outdata, outlen);
+													 indata, inlen, em, &emLen);
+			PKCS1v15_Encryption_UnPad(em, emLen, outdata, outlen);
+			pfree(em);
+		}
 		else if (AlgId == SGD_SM2_3)
+		{
+			ECCCipher *ecc_cipher = palloc0(sizeof(ECCCipher));
+			SM2Cipher_to_ECCCipher(ecc_cipher, indata, inlen);
 			rv = SDF_ExternalDecrypt_ECC(hSessionHandle, SGD_SM2_3, (ECCrefPrivateKey *)key, 
-										 (ECCCipher *)indata, outdata, outlen);
+										 (ECCCipher *)ecc_cipher, outdata, outlen);
+			pfree(ecc_cipher);
+		}
 		else
 			rv = SDR_ALGNOTSUPPORT;		
 	}
@@ -1420,6 +1565,7 @@ retry_hsm_pub_decrypt:
 			retry = true;
 			goto retry_hsm_pub_decrypt;
 		}
+
 #ifndef FRONTEND
 		elog(ERROR, "HSM decrypt failed, errcode[0x%08x]", rv);
 #else
@@ -1427,6 +1573,79 @@ retry_hsm_pub_decrypt:
 		exit(1);
 #endif
 	}
+}
+
+/* 
+ * Convert ECCCipher to standard SM2 ciphertext (C1C3C2)
+ */
+static void 
+ECCCipher_to_SM2Cipher(const ECCCipher *enc,
+                       unsigned char *cipherOut,
+                       unsigned int *cipherOutSize)
+{
+    unsigned int offset;
+    unsigned int plainLen, cipherLen;
+
+	Assert(enc && cipherOut);
+    plainLen = enc->L;
+
+    /* Standard ciphertext length = 96 + N */
+    cipherLen = 96 + plainLen;
+
+    if (*cipherOutSize < cipherLen)
+	{
+#ifndef FRONTEND
+		elog(ERROR, "HSM ECCCipher_to_SM2Cipher failed");
+#else
+		fprintf(stderr, _("HSM ECCCipher_to_SM2Cipher failed"));
+		exit(1);
+#endif
+	}
+
+    memset(cipherOut, 0, *cipherOutSize);
+	*cipherOutSize = cipherLen;
+    offset = 0;
+
+    /* ===== C1 = X || Y ===== */
+    /* x/y are 64 bytes, lower 32 bytes are valid */
+    memcpy(cipherOut + offset, enc->x + 32, 32);
+    offset += 32;
+
+    memcpy(cipherOut + offset, enc->y + 32, 32);
+    offset += 32;
+
+    /* ===== C3 = M ===== */
+    memcpy(cipherOut + offset, enc->M, 32);
+    offset += 32;
+
+    /* ===== C2 = C ===== */
+    memcpy(cipherOut + offset, enc->C, plainLen);
+    offset += plainLen;
+}
+
+/* 
+ * Convert standard SM2 ciphertext (C1C3C2) to ECCCipher
+ */
+static void 
+SM2Cipher_to_ECCCipher(ECCCipher *enc, 
+					   const unsigned char *cipherIn,
+					   unsigned int cipherInSize)
+{
+	Assert(enc && cipherIn);
+
+    /* Fill ECCCipher */
+    memset(enc, 0, sizeof(ECCCipher));
+
+    /* C1 = X || Y (32+32 bytes) */
+    memcpy(enc->x + 32, cipherIn, 32);
+    memcpy(enc->y + 32, cipherIn + 32, 32);
+
+    /* C3 = M (32 bytes) */
+    memcpy(enc->M, cipherIn + 64, 32);
+
+    /* C2 = C (remaining bytes) */
+    enc->L = cipherInSize - 96;
+    memcpy(enc->C, cipherIn + 96, enc->L);
 }
 
 /*
@@ -1465,11 +1684,19 @@ HSM_Sign(void* *phSessionHandle, unsigned int AlgId,
 				unsigned int keyIndex, void *key, unsigned int keylen,
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *signature, unsigned int *siglen,
-				unsigned char *passwd)
+				unsigned char *passwd, void *pubKey)
 {
-	SGD_HANDLE hSessionHandle = NULL;
-	unsigned int rv;
-	bool	retry = false;
+	SGD_HANDLE 		hSessionHandle = NULL;
+	unsigned int 	rv;
+	bool			retry = false;
+	unsigned int	keyIndexForAccess = keyIndex;
+	unsigned char  *padded_indata = NULL;
+	unsigned int	padded_len;
+
+	if (AlgId == SGD_SM2_1)
+	{
+		keyIndexForAccess += 10000;
+	}
 
 retry_hsm_sign:
 	hSessionHandle = HSM_GetSessionHandle(phSessionHandle, retry);
@@ -1479,40 +1706,50 @@ retry_hsm_sign:
 	{
 		unsigned char hashval[64];
 		unsigned int hashlen;
-		unsigned char *padded_hash;
-		unsigned int padded_len;
 		
 		if (keyIndex > 0)
 			padded_len = keylen;
 		else
 			padded_len = ((RSArefPrivateKey *)key)->bits / 8;
 
-		HSM_Hash(&hSessionHandle, SGD_SHA256, indata, inlen, (unsigned char *)&hashval, &hashlen);
-		padded_hash = palloc(padded_len);
-		PKCS1v15_Signature_Pad(hashval, hashlen, padded_hash, padded_len);
-		indata = padded_hash;
-		inlen = padded_len;
+		HSM_Hash(&hSessionHandle, SGD_SHA256, indata, inlen, (unsigned char *)&hashval, &hashlen, NULL);
+		padded_indata = palloc0(padded_len);
+		PKCS1v15_Signature_Pad(hashval, hashlen, padded_indata, padded_len);
+	}
+	else if (AlgId == SGD_SM2_1)
+	{
+		padded_len = 32;
+		padded_indata = palloc0(padded_len);
+		HSM_Hash(phSessionHandle, SGD_SM3, indata, inlen, padded_indata, &padded_len, (ECCrefPublicKey *)key);
 	}
 
 	/* Sign */
 	if (keyIndex > 0)
 	{
-		SDF_GetPrivateKeyAccessRight(hSessionHandle, keyIndex, passwd, (SGD_UINT32)strlen((const char*)passwd));
+		SDF_GetPrivateKeyAccessRight(hSessionHandle, keyIndexForAccess, passwd, (SGD_UINT32)strlen((const char*)passwd));
 		if (AlgId == SGD_RSA)
 			rv = SDF_InternalPrivateKeyOperation_RSA_Ex(hSessionHandle, keyIndex, SGD_RSA_SIGN,
-														indata, inlen, signature, siglen);
+														padded_indata, padded_len, signature, siglen);
+		else if (AlgId == SGD_SM2_1)
+			rv = SDF_InternalSign_ECC(hSessionHandle, keyIndex, padded_indata, padded_len, (ECCSignature *)signature);
 		else
 			rv = SDR_ALGNOTSUPPORT;
-		SDF_ReleasePrivateKeyAccessRight(hSessionHandle, keyIndex);
+		SDF_ReleasePrivateKeyAccessRight(hSessionHandle, keyIndexForAccess);
 	}
 	else
 	{
 		if (AlgId == SGD_RSA)
 			rv = SDF_ExternalPrivateKeyOperation_RSA(hSessionHandle, (RSArefPrivateKey *)key, 
-													 indata, inlen, signature, siglen);
+													 padded_indata, padded_len, signature, siglen);
+		else if (AlgId == SGD_SM2_1)
+			rv = SDF_ExternalSign_ECC(hSessionHandle, AlgId, (ECCrefPrivateKey *)key, 
+									  padded_indata, padded_len, (ECCSignature *)signature);
 		else
 			rv = SDR_ALGNOTSUPPORT;		
 	}
+
+	if (padded_indata)
+		pfree(padded_indata);
 
 	if (rv != SDR_OK)
 	{
@@ -1540,16 +1777,24 @@ HSM_Verify(void* *phSessionHandle, unsigned int AlgId,
 				unsigned char *indata, unsigned int inlen,
 				unsigned char *signature, unsigned int siglen)
 {
-	SGD_HANDLE hSessionHandle = NULL;
-	unsigned char *plaintext = NULL;
-	unsigned int  outlen = 0;
-	unsigned int rv;
-	bool	retry = false;
+	SGD_HANDLE 		hSessionHandle = NULL;
+	unsigned char  *plaintext = NULL;
+	unsigned int	outlen = 0;
+	unsigned int	rv;
+	bool			retry = false;
+	unsigned char  *padded_indata = NULL;
+	unsigned int	padded_len;
 
 	if (AlgId == SGD_RSA)
 	{
-		plaintext = palloc(keylen);
+		plaintext = palloc0(keylen);
 		outlen = keylen;
+	}
+	else if (AlgId == SGD_SM2_1)
+	{
+		padded_len = 32;
+		padded_indata = palloc0(padded_len);
+		HSM_Hash(phSessionHandle, SGD_SM3, indata, inlen, padded_indata, &padded_len, (ECCrefPublicKey *)key);
 	}
 
 retry_hsm_verify:
@@ -1561,6 +1806,8 @@ retry_hsm_verify:
 		if (AlgId == SGD_RSA)
 			rv = SDF_InternalPublicKeyOperation_RSA_Ex(hSessionHandle, keyIndex, SGD_RSA_SIGN,
 													   signature, siglen, plaintext, &outlen);
+		else if (AlgId == SGD_SM2_1)
+			rv = SDF_InternalVerify_ECC(hSessionHandle, keyIndex, padded_indata, padded_len, (ECCSignature *)signature);
 		else
 			rv = SDR_ALGNOTSUPPORT;
 	}
@@ -1569,9 +1816,15 @@ retry_hsm_verify:
 		if (AlgId == SGD_RSA)
 			rv = SDF_ExternalPublicKeyOperation_RSA(hSessionHandle, (RSArefPublicKey *)key, 
 													signature, siglen, plaintext, &outlen);
+		else if (AlgId == SGD_SM2_1)
+			rv = SDF_ExternalVerify_ECC(hSessionHandle, AlgId, (ECCrefPublicKey *)key, 
+										padded_indata, padded_len, (ECCSignature *)signature);
 		else
 			rv = SDR_ALGNOTSUPPORT;		
 	}
+
+	if (padded_indata)
+		pfree(padded_indata);
 
 	if (rv != SDR_OK)
 	{
@@ -1606,11 +1859,14 @@ retry_hsm_verify:
 		if (i >= outlen - SHA256_DIGEST_LENGTH - sizeof(SHA256_ASN1_OID))
 			goto hsm_verify_failed;
 
-		HSM_Hash(&hSessionHandle, SGD_SHA256, indata, inlen, (unsigned char *)&hashval, &hashlen);
+		HSM_Hash(&hSessionHandle, SGD_SHA256, indata, inlen, (unsigned char *)&hashval, &hashlen, NULL);
 		
 		if (memcmp(plaintext + outlen - SHA256_DIGEST_LENGTH, hashval, SHA256_DIGEST_LENGTH) != 0)
 		{
 hsm_verify_failed:
+			if (plaintext)
+				pfree(plaintext);
+
 #ifndef FRONTEND
 			elog(ERROR, "HSM verify failed");
 #else
@@ -1618,6 +1874,9 @@ hsm_verify_failed:
 			exit(1);
 #endif
 		}
+
+		if (plaintext)
+			pfree(plaintext);
 	}
 }
 
