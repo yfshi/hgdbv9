@@ -51,5 +51,9 @@ ifeq ($(with_ssl),openssl)
 SUBDIRS += pg_alterckey
 endif
 
+ifeq ($(enable_dky_beta_feature), yes)
+SUBDIRS += hg_watchdog
+endif
+
 $(recurse)
 $(recurse_always)
