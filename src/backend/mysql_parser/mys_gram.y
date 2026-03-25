@@ -257,7 +257,7 @@ static TypeName *TableFuncTypeName(List *columns);
 static RangeVar *makeRangeVarFromAnyName(List *names, int position, mys_core_yyscan_t yyscanner);
 static void SplitColQualList(List *qualList,
 							 List **constraintList, CollateClause **collClause, Node **commentStmt,
-							 mys_core_yyscan_t yyscanner);
+							 bool *autoincrement, mys_core_yyscan_t yyscanner);
 static void processCASbits(int cas_bits, int location, const char *constrType,
 			   bool *deferrable, bool *initdeferred, bool *not_valid,
 			   bool *no_inherit, mys_core_yyscan_t yyscanner);
@@ -4598,7 +4598,7 @@ columnDef:	ColId Typename opt_column_compression create_generic_options opt_col_
 					n->fdwoptions = $4;
 					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
 					SplitColQualList($6, &n->constraints, &n->collClause, &n->colcomment,
-									 yyscanner);
+									&n->is_auto_increment, yyscanner);
 					n->location = @1;
 					$$ = (Node *)n;
 
@@ -4680,7 +4680,7 @@ columnOptions:	ColId ColQualList
 					n->cooked_default = NULL;
 					n->collOid = InvalidOid;
 					SplitColQualList($2, &n->constraints, &n->collClause, &n->colcomment,
-									 yyscanner);
+									 &n->is_auto_increment, yyscanner);
 					n->location = @1;
 					$$ = (Node *)n;
 				}
@@ -4699,7 +4699,7 @@ columnOptions:	ColId ColQualList
 					n->cooked_default = NULL;
 					n->collOid = InvalidOid;
 					SplitColQualList($4, &n->constraints, &n->collClause, &n->colcomment,
-									 yyscanner);
+									 &n->is_auto_increment, yyscanner);
 					n->location = @1;
 					$$ = (Node *)n;
 				}
@@ -12684,7 +12684,7 @@ CreateDomainStmt:
 					n->domainname = $3;
 					n->typeName = $5;
 					SplitColQualList($6, &n->constraints, &n->collClause, NULL,
-									 yyscanner);
+									 NULL, yyscanner);
 					$$ = (Node *)n;
 				}
 		;
@@ -22192,10 +22192,11 @@ makeRangeVarFromAnyName(List *names, int position, mys_core_yyscan_t yyscanner)
 }
 
 /* Separate Constraint nodes from COLLATE clauses in a ColQualList */
+/* autoincrement: get auto increment flag*/
 static void
 SplitColQualList(List *qualList,
 				 List **constraintList, CollateClause **collClause, Node **commentStmt,
-				 mys_core_yyscan_t yyscanner)
+				 bool *autoincrement, mys_core_yyscan_t yyscanner)
 {
 	ListCell   *cell;
 
@@ -22206,6 +22207,16 @@ SplitColQualList(List *qualList,
 
 		if (IsA(n, Constraint))
 		{
+			/* Begin - #bug:z7341 */
+			if (autoincrement)
+			{
+				Constraint * constr = (Constraint *)n;
+				if (CONSTR_AUTO_INCREMENT == constr->contype)
+				{
+					*autoincrement = true;
+				}
+			}
+			/* End - #bug:z7341 */
 			/* keep it in list */
 			continue;
 		}

@@ -1822,3 +1822,56 @@ create table t8 (like t);
 \d t8;
 drop table t,t1,t2,t3,t4,t5,t6,t7,t8;
 -- End: OA-2123
+
+-- #bug7341
+create table tt1(id1 int auto_increment unique key);
+alter table tt1 add id11 int auto_increment unique key;
+ALTER TABLE tt1 ADD id111 int unsigned AUTO_INCREMENT, ADD primary key(id11), AUTO_INCREMENT = 100;
+ALTER TABLE tt1 ADD id1111 int unsigned AUTO_INCREMENT  primary key;
+
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id2 int unsigned AUTO_INCREMENT, ADD primary key(id2), AUTO_INCREMENT = 100;
+ALTER TABLE tt2 ADD id22 int unsigned AUTO_INCREMENT, ADD primary key(id22), AUTO_INCREMENT = 100;
+
+create table tt3(id1 int);
+ALTER TABLE tt3 ADD id3 int unsigned AUTO_INCREMENT  primary key;
+ALTER TABLE tt3 ADD id33 int unsigned AUTO_INCREMENT  primary key;
+
+create table tt4(id1 int);
+alter table tt4 add id4 int auto_increment unique key;
+alter table tt4 add id44 int auto_increment unique key;
+
+create table tt5(id1 int);
+ALTER TABLE tt5 ADD id5 int unsigned AUTO_INCREMENT  primary key, AUTO_INCREMENT = 100;
+ALTER TABLE tt5 ADD id55 int unsigned AUTO_INCREMENT  primary key, AUTO_INCREMENT = 100;
+
+drop table tt1,tt2,tt3,tt4,tt5;
+
+-- #bug7488
+create table tt (id float auto_increment primary key);
+insert into  tt values(10.11);
+insert into  tt values();
+insert into  tt values(30.4);
+insert into  tt values();
+insert into  tt values(41.56);
+insert into  tt values();
+insert into  tt values(50.5);
+insert into  tt values();
+insert into  tt values(60.51);
+insert into  tt values();
+select * from tt;
+drop table tt;
+
+create table tt2 (id float8 auto_increment primary key);
+insert into  tt2 values(10.11);
+insert into  tt2 values();
+insert into  tt2 values(30.4);
+insert into  tt2 values();
+insert into  tt2 values(41.56);
+insert into  tt2 values();
+insert into  tt2 values(50.5);
+insert into  tt2 values();
+insert into  tt2 values(60.51);
+insert into  tt2 values();
+select * from tt2;
+drop table tt2;
