@@ -27,6 +27,7 @@ chdir "../../.." if (-d "../../../src/tools/msvc");
 
 my $topdir         = getcwd();
 my $tmp_installdir = "$topdir/tmp_install";
+my $pg_port = get_free_port();
 
 do './src/tools/msvc/config_default.pl';
 do './src/tools/msvc/config.pl' if (-f 'src/tools/msvc/config.pl');
@@ -174,6 +175,7 @@ sub check
 		"--make-testtablespace-dir",
 		"--encoding=SQL_ASCII",
 		"--no-locale",
+		"--port=${pg_port}",
 		"--temp-instance=./tmp_check");
 	push(@args, $maxconn)     if $maxconn;
 	push(@args, $temp_config) if $temp_config;
@@ -201,6 +203,7 @@ sub ecpgcheck
 		"--schedule=${schedule}_schedule",
 		"--encoding=SQL_ASCII",
 		"--no-locale",
+		"--port=${pg_port}",
 		"--temp-instance=./tmp_chk");
 	push(@args, $maxconn) if $maxconn;
 	system(@args);
