@@ -33,6 +33,7 @@ OBJS = \
 	src/orarefcursor/orarefcursor.o \
 	src/builtin_packages/dbms_job/ora_dbms_job.o \
 	src/builtin_packages/dbms_job/ora_dbms_jobparse.o \
+	src/builtin_packages/dbms_ddl/dbms_ddl.o \
 	src/datatype/orachar_varchar.o \
 	src/builtin_packages/dbms_output/dbms_output.o \
 	src/ora_trigger_pred/ora_trigger_pred.o  \
@@ -120,7 +121,9 @@ ORA_REGRESS = \
 	ora_collection \
 	ora_buildin_func \
 	ora_bulk_collect \
-	ora_wmsys_wmconcat
+	ora_wmsys_wmconcat \
+	ora_dbms_ddl
+
 
 #/* Begin - ReqID:SRS-PLSQL-Collection */
 PG_CPPFLAGS = -I$../src/tstl2cl/include -I$../src/tstl2cl -I$(srcdir) -I$../src/include

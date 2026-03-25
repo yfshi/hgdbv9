@@ -910,3 +910,60 @@ makeOraPartSup(char *part_name, int16 part_level, int32 seqno)
 	return n;
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+/* Begin - OA-REQ-2198 */
+CompileFunctionStmt *
+makeCompileFunctionStmtNoArgs(char *nspname, char *funcname, ObjectType objtype)
+{
+	CompileFunctionStmt *stmt;
+	ObjectWithArgs		*func;
+
+	func = makeNode(ObjectWithArgs);
+	if (nspname)
+		func->objname = list_make2(makeString(pstrdup(nspname)), makeString(pstrdup(funcname)));
+	else
+		func->objname = list_make1(makeString(pstrdup(funcname)));
+	func->objargs = NIL;
+	func->objfuncargs = NIL;
+	func->args_unspecified = true;
+
+	stmt = makeNode(CompileFunctionStmt);
+	stmt->func = func;
+	stmt->objtype = objtype;
+	stmt->is_compile = true;
+	stmt->parameters = NIL;
+
+	return stmt;
+}
+
+AlterPackageStmt *
+makeAlterPackageOrPackageBody(char *nspname, char *pkgname, package_alter_flag flag)
+{
+	AlterPackageStmt	*stmt = makeNode(AlterPackageStmt);
+
+	if (nspname)
+		stmt->pkgname = list_make2(makeString(pstrdup(nspname)), makeString(pstrdup(pkgname)));
+	else
+		stmt->pkgname = list_make1(makeString(pstrdup(pkgname)));
+	stmt->alter_flag = flag;
+	stmt->parameters = NIL;
+
+	return stmt;
+}
+
+AlterOraTrigStmt *
+makeAlterOraTrigStmtCompile(char *nspname, char *trigname, char opt)
+{
+	AlterOraTrigStmt *at = makeNode(AlterOraTrigStmt);
+
+	if (nspname)
+		at->ora_trigschema = psprintf("%s", nspname);
+	else
+		at->ora_trigschema = NULL;
+	at->trigname = psprintf("%s", trigname);
+	at->rename = NULL;
+	at->opt = opt;
+
+	return at;
+}
+/* End - OA-REQ-2198 */

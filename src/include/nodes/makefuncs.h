@@ -107,4 +107,9 @@ extern GroupingSet *makeGroupingSet(GroupingSetKind kind, List *content, int loc
 extern VacuumRelation *makeVacuumRelation(RangeVar *relation, Oid oid, List *va_cols);
 extern OraPartSup *makeOraPartSup(char *part_name, int16 part_level, int32 seqno); /* ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - OA-REQ-2198 */
+extern CompileFunctionStmt *makeCompileFunctionStmtNoArgs(char *nspname, char *funcname, ObjectType objtype);
+extern AlterPackageStmt *makeAlterPackageOrPackageBody(char *nspname, char *pkgname, package_alter_flag flag);
+extern AlterOraTrigStmt *makeAlterOraTrigStmtCompile(char *nspname, char *trigname, char opt);
+/* End - OA-REQ-2198 */
 #endif							/* MAKEFUNC_H */

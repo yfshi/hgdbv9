@@ -1,0 +1,279 @@
+/* Begin - OA-REQ-2198 */
+DROP SCHEMA IF EXISTS dbmsddl;
+NOTICE:  schema "dbmsddl" does not exist, skipping
+DROP SCHEMA IF EXISTS "dbmsddl1";
+NOTICE:  schema "dbmsddl1" does not exist, skipping
+DROP SCHEMA IF EXISTS "DBMSDDL2";
+NOTICE:  schema "DBMSDDL2" does not exist, skipping
+DROP SCHEMA IF EXISTS "DbMsDdL3";
+NOTICE:  schema "DbMsDdL3" does not exist, skipping
+CREATE SCHEMA dbmsddl;
+CREATE SCHEMA "dbmsddl1";
+CREATE SCHEMA "DBMSDDL2";
+CREATE SCHEMA "DbMsDdL3";
+CREATE TABLE t_compile_test(
+    id NUMBER,
+    val NUMBER
+);
+CREATE TABLE dbmsddl.tc(
+    id NUMBER,
+    val NUMBER
+);
+CREATE TABLE "dbmsddl1".tc1(
+    id NUMBER,
+    val NUMBER
+);
+CREATE TABLE "DBMSDDL2".tc2(
+    id NUMBER,
+    val NUMBER
+);
+CREATE TABLE "DbMsDdL3".tc3(
+    id NUMBER,
+    val NUMBER
+);
+CREATE OR REPLACE PROCEDURE proc_test_compile
+AS
+BEGIN
+    INSERT INTO t_compile_test VALUES (1, 100);
+END;
+/
+CREATE OR REPLACE PROCEDURE dbmsddl.proc_tc
+AS
+BEGIN
+    INSERT INTO dbmsddl.tc VALUES (1, 10);
+END;
+/
+CREATE OR REPLACE PROCEDURE "dbmsddl1".proc_tc1
+AS
+BEGIN
+    INSERT INTO "dbmsddl1".tc1 VALUES (2, 100);
+END;
+/
+CREATE OR REPLACE PROCEDURE "DBMSDDL2".proc_tc2
+AS
+BEGIN
+    INSERT INTO "DBMSDDL2".tc2 VALUES (3, 1000);
+END;
+/
+CREATE OR REPLACE PROCEDURE "DbMsDdL3"."PROC_tc3"
+AS
+BEGIN
+    INSERT INTO "DbMsDdL3".tc3 VALUES (4, 10000);
+END;
+/
+--
+-- alter_compile PROCEDURE
+--
+-- public.proc_test_compile
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => 'public',
+		name   => 'proc_test_compile'
+	);
+END;
+/
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => 'PUBLIC',
+		name   => 'proc_test_compile',
+		reuse_settings => false
+	);
+END;
+/
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => 'Public',
+		name   => 'PROC_test_compile',
+		reuse_settings => true
+	);
+END;
+/
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => NULL,
+		name   => 'PROC_test_compile',
+		reuse_settings => true
+	);
+END;
+/
+-- dbmsddl.proc_tc
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => 'dbmsddl',
+		name   => 'proc_tc'
+	);
+END;
+/
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => 'DBmsddl',
+		name   => 'proc_tc'
+	);
+END;
+/
+-- "dbmsddl1".proc_tc1
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => '"dbmsddl1"',
+		name   => 'proc_tc1'
+	);
+END;
+/
+-- "DBMSDDL2".proc_tc2
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => '"DBMSDDL2"',
+		name   => 'proc_tc2'
+	);
+END;
+/
+-- "DbMsDdL3"."PROC_tc3"
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'PROCEDURE',
+		schema => '"DbMsDdL3"',
+		name   => '"PROC_tc3"'
+	);
+END;
+/
+CREATE OR REPLACE FUNCTION func_test_compile(p_id NUMBER)
+RETURN NUMBER
+AS
+BEGIN
+    RETURN p_id + 10;
+END;
+/
+--
+-- alter_compile FUNCTION
+--
+BEGIN
+    SYS.DBMS_DDL.ALTER_COMPILE(
+        type   => 'FUNCTION',
+        schema => 'public',
+        name   => 'func_test_compile'
+    );
+END;
+/
+BEGIN
+    SYS.DBMS_DDL.ALTER_COMPILE(
+        type   => 'FUNCTION',
+        schema => NULL,
+        name   => 'func_test_compile'
+    );
+END;
+/
+CREATE OR REPLACE PACKAGE pkg_test_compile AS
+    PROCEDURE p1;
+END pkg_test_compile;
+/
+CREATE OR REPLACE PACKAGE BODY pkg_test_compile AS
+    PROCEDURE p1 IS
+    BEGIN
+        INSERT INTO t_compile_test VALUES (2, 200);
+    END;
+END pkg_test_compile;
+/
+-- alter_compile package
+BEGIN
+    SYS.DBMS_DDL.ALTER_COMPILE(
+        type   => 'PACKAGE',
+        schema => 'public',
+        name   => 'pkg_test_compile'
+    );
+END;
+/
+BEGIN
+    SYS.DBMS_DDL.ALTER_COMPILE(
+        type   => 'PACKAGE',
+        schema => NULL,
+        name   => 'pkg_test_compile',
+        reuse_settings => true
+    );
+END;
+/
+-- alter_compile package body
+BEGIN
+    SYS.DBMS_DDL.ALTER_COMPILE(
+        type   => 'PACKAGE BODY',
+        schema => 'public',
+        name   => 'pkg_test_compile',
+        reuse_settings => true
+    );
+END;
+/
+BEGIN
+    SYS.DBMS_DDL.ALTER_COMPILE(
+        type   => 'PACKAGE BODY',
+        schema => NULL,
+        name   => 'pkg_test_compile'
+    );
+END;
+/
+CREATE OR REPLACE TRIGGER trg_test_compile
+BEFORE INSERT ON t_compile_test
+FOR EACH ROW
+BEGIN
+    :NEW.val := NVL(:NEW.val, 0);
+END;
+/
+-- alter_compile TRIGGER
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'TRIGGER',
+		schema => 'public',
+		name   => 'trg_test_compile'
+	);
+END;
+/
+BEGIN
+	SYS.DBMS_DDL.ALTER_COMPILE(
+		type   => 'TRIGGER',
+		schema => NULL,
+		name   => 'trg_test_compile'
+	);
+END;
+/
+SELECT object_name, object_type, status FROM ALL_OBJECTS
+WHERE upper(object_name) IN (
+'PROC_TEST_COMPILE',
+'FUNC_TEST_COMPILE',
+'PKG_TEST_COMPILE',
+'TRG_TEST_COMPILE'
+)
+ORDER BY object_type;
+    object_name    | object_type  | status 
+-------------------+--------------+--------
+ func_test_compile | FUNCTION     | VALID
+ pkg_test_compile  | PACKAGE      | VALID
+ pkg_test_compile  | PACKAGE BODY | VALID
+ proc_test_compile | PROCEDURE    | VALID
+ TRG_TEST_COMPILE  | TRIGGER      | VALID
+(5 rows)
+
+--cleanup
+drop trigger trg_test_compile;
+drop package pkg_test_compile;
+drop function func_test_compile;
+drop procedure proc_test_compile;
+drop procedure dbmsddl.proc_tc;
+drop procedure "dbmsddl1".proc_tc1;
+drop procedure "DBMSDDL2".proc_tc2;
+drop procedure "DbMsDdL3"."PROC_tc3";
+drop table t_compile_test;
+drop table dbmsddl.tc;
+drop table "dbmsddl1".tc1;
+drop table "DBMSDDL2".tc2;
+drop table "DbMsDdL3".tc3;
+DROP SCHEMA dbmsddl;
+DROP SCHEMA "dbmsddl1";
+DROP SCHEMA "DBMSDDL2";
+DROP SCHEMA "DbMsDdL3";
+/* End - OA-REQ-2198 */
