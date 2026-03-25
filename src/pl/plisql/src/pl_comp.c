@@ -1725,7 +1725,7 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 	function->fn_retset = false;
 	function->fn_retistuple = false;
 	function->fn_retisdomain = false;
-	function->fn_prokind = PROKIND_FUNCTION;
+	function->fn_prokind = PROKIND_ANONYMOUS_BLOCK;	/* anonymous block */
 	/* a bit of hardwired knowledge about type VOID here */
 	function->fn_retbyval = true;
 	function->fn_rettyplen = sizeof(int32);
@@ -1873,8 +1873,6 @@ plisql_compile_inline(char *proc_source, ParamListInfo inparams/* ReqID:SRS-SQL-
 			}
 			/* End - ReqID:SRS-PLSQL-DSQL */
 		}
-		if (inparams->numParams> 0)
-			function->fn_prokind = PROKIND_ANONYMOUS_BLOCK;
 	}
 	/* End - ReqID:SRS-SQL-ANONYOUT */
 
@@ -5361,7 +5359,7 @@ plisql_compile_inline_internal(char *proc_source)
 	function->fn_retset = false;
 	function->fn_retistuple = false;
 	function->fn_retisdomain = false;
-	function->fn_prokind = PROKIND_FUNCTION;
+	function->fn_prokind = PROKIND_ANONYMOUS_BLOCK;	/* anonymous block */
 	/* a bit of hardwired knowledge about type VOID here */
 	function->fn_retbyval = true;
 	function->fn_rettyplen = sizeof(int32);

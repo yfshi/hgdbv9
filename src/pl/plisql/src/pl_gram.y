@@ -751,7 +751,13 @@ ora_outermost_pl_block: ora_decl_sect K_BEGIN proc_sect exception_sect K_END opt
 						new->body		= $3;
 						new->exceptions	= $4;
 
-						check_labels($1.label, $6, @6);
+						/* Begin - BUG#7364
+						 * Check non-anonymous block's name and end label match only.
+						 */
+						if (plisql_curr_compile->fn_prokind != PROKIND_ANONYMOUS_BLOCK)
+							check_labels(plisql_curr_compile->namelabel, $6, @6);
+						/* End - BUG#7364 */
+
 						/* Begin - ReqID:SRS-SQL-PACKAGE */
 						/*
 						 * no decalre keyword, we don't add lable block namespace
@@ -800,7 +806,7 @@ ora_pl_package: ora_decl_sect K_END opt_label
 				/* End - BUG#M0000113 */
 				plisql_IdentifierLookup = IDENTIFIER_LOOKUP_NORMAL;
 				/* Remember variables declared in decl_stmts */
-				check_labels($1.label, $3, @3);
+				check_labels(plisql_curr_compile->namelabel, $3, @3);	/* Check package name and end label match. BUG#7364 */
 				plisql_check_package_refcursor_var(plisql_compile_packageitem->source.sql_varno); /* ReqID:SRS-PLSQL-CURSOR */
 				plisql_compile_packageitem->last_globaldno =
 										plisql_get_package_last_globaldno(-1, -1);
@@ -864,6 +870,18 @@ ora_first_opt_block_label:
 					}
 				| LESS_LESS any_identifier GREATER_GREATER
 					{
+						/* Begin - BUG#7364
+						 * Labels are not allowd to be defined in the top-level block of
+						 * "subproc" and "proc", except for anonymous blocks.
+						 */
+						if (plisql_curr_compile->fn_prokind != PROKIND_ANONYMOUS_BLOCK)
+						{
+							ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near"),
+								 parser_errposition(@1)));
+						}
+						/* End - BUG#7364 */
 						plisql_ns_push($2, PLISQL_LABEL_BLOCK);
 						$$ = $2;
 					}
@@ -947,7 +965,6 @@ pl_block		: decl_sect K_BEGIN proc_sect exception_sect K_END opt_label
 						new->body		= $3;
 						new->exceptions	= $4;
 
-						check_labels($1.label, $6, @6);
 						plisql_ns_pop();
 						/* Begin - ReqID:SRS-PLSQL-GOTO */
 						plisql_lscope_pop();
@@ -2635,7 +2652,6 @@ stmt_loop		: opt_loop_label K_LOOP loop_body
 						new->label	  = $1;
 						new->body	  = $3.stmts;
 
-						check_labels($1, $3.end_label, $3.end_label_location);
 						plisql_ns_pop();
 
 						/* Begin - ReqID:SRS-PLSQL-GOTO */
@@ -2659,7 +2675,6 @@ stmt_while		: opt_loop_label K_WHILE expr_until_loop loop_body
 						new->cond	  = $3;
 						new->body	  = $4.stmts;
 
-						check_labels($1, $4.end_label, $4.end_label_location);
 						plisql_ns_pop();
 
 						/* Begin - ReqID:SRS-PLSQL-GOTO */
@@ -2699,7 +2714,6 @@ stmt_for		: opt_loop_label K_FOR for_control loop_body
 							$$ = (PLiSQL_stmt *) new;
 						}
 
-						check_labels($1, $4.end_label, $4.end_label_location);
 						/* close namespace started in opt_loop_label */
 						plisql_ns_pop();
 
@@ -3124,7 +3138,6 @@ stmt_foreach_a	: opt_loop_label K_FOREACH for_variable foreach_slice K_IN K_ARRA
 											 parser_errposition(@3)));
 						}
 
-						check_labels($1, $8.end_label, $8.end_label_location);
 						plisql_ns_pop();
 
 						/* Begin - ReqID:SRS-PLSQL-GOTO */
@@ -5336,13 +5349,14 @@ read_sql_construct(int until,
 
 	/* Begin - BUG#M0000376 */
 	/*
-	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block,
+	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block with out parameters,
 	 * do transform the expr to get the placeholder mode.
 	 * e.g., id = func(:x, :y); the :x and :y are placeholder,
 	 * to get the mode, must transform the function func.
 	 */
 	if (enable_get_oraparam_mode &&
-		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK)
+		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK &&
+		plisql_curr_compile->fn_nargs > 0)
 	{
 		do_transform_for_anonyblock_expr(expr);
 	}
@@ -5818,13 +5832,14 @@ make_execsql_stmt(int firsttoken, int location)
 
 	/* Begin - BUG#M0000376 */
 	/*
-	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block,
+	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block with out parameters,
 	 * do transform the expr to get the placeholder mode.
 	 * e.g., id = func(:x, :y); the :x and :y are placeholder,
 	 * to get the mode, must transform the function func.
 	 */
 	if (enable_get_oraparam_mode &&
-		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK)
+		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK &&
+		plisql_curr_compile->fn_nargs > 0)
 	{
 		do_transform_for_anonyblock_expr(expr);
 	}
@@ -6836,7 +6851,7 @@ check_labels(const char *start_label, const char *end_label, int end_location)
 		if (strcmp(start_label, end_label) != 0)
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
-					 errmsg("end label \"%s\" differs from block's label \"%s\"",
+					 errmsg("end identifier '%s' must match '%s'",	/* BUG#7364 */
 							end_label, start_label),
 					 parser_errposition(end_location)));
 	}
@@ -7641,13 +7656,14 @@ build_call_expr(int firsttoken,const char *str, int location)
 
 	/* Begin - BUG#M0000376 */
 	/*
-	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block,
+	 * if enable_get_oraparam_mode is true, and plisql_curr_compile is an anonymous block with out parameters,
 	 * do transform the expr to get the placeholder mode.
 	 * e.g., proc(:x, :y); the :x and :y are placeholder,
 	 * to get the mode, must transform the procedure proc.
 	 */
 	if (enable_get_oraparam_mode &&
-		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK)
+		plisql_curr_compile->fn_prokind == PROKIND_ANONYMOUS_BLOCK &&
+		plisql_curr_compile->fn_nargs > 0)
 	{
 		do_transform_for_anonyblock_expr(expr);
 	}
@@ -7742,7 +7758,7 @@ ScanReservedKeywordLookup(const char *text,
 /* Begin - BUG#M0000376 */
 /*
  * check_oraparam_mode
- * if the current compiled function is an anonymous block,
+ * if the current compiled function is an anonymous block with out parameters,
  * the variable is a placeholder, such as :id,
  * set the mode.
  */
@@ -7750,7 +7766,8 @@ static void
 check_oraparam_mode(PLiSQL_datum *datum, int location, char mode)
 {
 	if (!enable_get_oraparam_mode &&
-		plisql_curr_compile->fn_prokind != PROKIND_ANONYMOUS_BLOCK)
+		(plisql_curr_compile->fn_prokind != PROKIND_ANONYMOUS_BLOCK ||
+		plisql_curr_compile->fn_nargs <= 0))
 		return;
 
 	switch (datum->dtype)
