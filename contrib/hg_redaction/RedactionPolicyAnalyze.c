@@ -719,7 +719,15 @@ redaction_data_all_function(ParseState *pstate, Var *var,
 		case CASHOID:
 		{
 			Node *const_int_node = NULL;
-			char *cashfuncname = "redact_cash";
+			/* Begin - BUG#Z7006
+			 * Because the search_path does not contain the hg_security schema
+			 * and only the funtion name is specified, the lookup will be ferformed
+			 * only within the current search_path, if the function is not found,
+			 * an error will be raised. therefore, the function's schema must be
+			 * explicitly specified here.
+			 */
+			char *cashfuncname = "hg_security.redact_cash";
+			/* End - BUG#Z7006 */
 
 			if (!pg_strcasecmp(funcname, "redact_all"))
 			{
@@ -743,8 +751,15 @@ redaction_data_all_function(ParseState *pstate, Var *var,
 				typname = format_type_be(var->vartype);
 			}
 
-			if ((typname != NULL && pg_strcasecmp(typname, "seclabel") == 0) &&
+			/* Begin - BUG#Z7006
+			 * Because search_path does not contain the hg_security schema, the returned
+			 * type name will be include the schema qualification. Therefore, it is necessary
+			 * to also check type names that are schema-qualified here.
+			 */
+			if ((typname != NULL && (pg_strcasecmp(typname, "seclabel") == 0 ||
+				pg_strcasecmp(typname, "hg_security.seclabel") == 0 )) &&
 				(typnamespace != NULL && pg_strcasecmp(typnamespace, "hg_security") == 0))
+			/* End - BUG#Z7006 */
 			{
 				Node *const_node = NULL;
 
