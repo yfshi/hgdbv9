@@ -163,6 +163,9 @@ typedef enum NodeTag
 	T_Var,
 	T_Const,
 	T_Param,
+	/* Begin - OA#00002227 */
+	T_PkgGlobalVarParam,
+	/* End - OA#00002227*/
 	T_Aggref,
 	T_GroupingFunc,
 	T_WindowFunc,

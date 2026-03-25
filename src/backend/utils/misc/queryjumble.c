@@ -412,6 +412,20 @@ JumbleExpr(JumbleState *jstate, Node *node)
 					jstate->highest_extern_param_id = p->paramid;
 			}
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			{
+				PkgGlobalVarParam	   *p = (PkgGlobalVarParam *) node;
+
+				JumbleExpr(jstate, (Node *) p->varnames);
+				APP_JUMB(p->pkgoid);
+				APP_JUMB(p->vartype);
+				APP_JUMB(p->vartypmod);
+				APP_JUMB(p->varcollid);
+				APP_JUMB(p->dno);
+			}
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			{
 				Aggref	   *expr = (Aggref *) node;

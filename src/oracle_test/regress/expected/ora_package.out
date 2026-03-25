@@ -8904,6 +8904,930 @@ drop function test_f;
 drop procedure test_p;
 \c - system
 drop user enrol11;
+----OA#2227
+create or replace package test_pkg is
+  var1 integer;
+  function test_f(id integer default var1) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer default var1) return integer is
+  begin
+    return id;
+  end;
+begin
+  var1 := 23;
+end;
+/
+create or replace function common_func(id integer default test_pkg.var1) return integer is
+begin
+  return id;
+end;
+/
+--ok
+select test_pkg.test_f,common_func from dual;
+ test_f | common_func 
+--------+-------------
+     23 |          23
+(1 row)
+
+set serveroutput on;
+--ok
+DECLARE
+  var1 integer;
+BEGIN
+  var1 := test_pkg.test_f;
+  dbms_output.put_line('var1 = ' || var1);
+end;
+/
+var1 = 23
+-- default value is other package global var
+create or replace package test_pkg1 is
+ var1 integer;
+ function test_f(id integer default test_pkg.var1) return integer;
+end;
+/
+create or replace package body test_pkg1 is
+  function test_f(id integer default test_pkg.var1) return integer is
+  begin
+    return id;
+  end;
+end;
+/
+--ok
+DECLARE
+  var1 integer;
+BEGIN
+  var1 := test_pkg1.test_f;
+  dbms_output.put_line('var1 = ' || var1);
+end;
+/
+var1 = 23
+--ok
+select test_pkg1.test_f from dual;
+ test_f 
+--------
+     23
+(1 row)
+
+---common mismatch type
+create or replace package test_pkg is
+  var1 varchar2(256);
+  function test_f(id integer default var1) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer default var1) return integer is
+  begin
+    return id;
+  end;
+end;
+/
+---NULL
+select test_pkg.test_f() from dual;
+ test_f 
+--------
+       
+(1 row)
+
+begin
+  test_pkg.var1 := '23';
+end;
+/
+--23
+select test_pkg.test_f() from dual;
+ test_f 
+--------
+     23
+(1 row)
+
+begin
+  test_pkg.var1 := 'ab';
+end;
+/
+--error
+select test_pkg.test_f() from dual;
+ERROR:  invalid input syntax for type integer: "ab"
+--ok
+create or replace function test_pp(id varchar2 default test_pkg.var1) return varchar2
+is
+begin
+  return id;
+end;
+/
+--ab
+select test_pp() from dual;
+ test_pp 
+---------
+ ab
+(1 row)
+
+drop package test_pkg;
+--error
+select test_pp() from dual;
+ERROR:  package var "public.test_pkg.var1"  does not exists
+create or replace package test_pkg is
+  var1 varchar2(256);
+  function test_f(id integer default var1) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer default var1) return integer is
+  begin
+    return id;
+  end;
+end;
+/
+--ok
+select test_pp() from dual;
+ test_pp 
+---------
+ 
+(1 row)
+
+create or replace package test_rowtype_pkg is
+  type t_type is record(id integer,name varchar2(256));
+  var1 t_type;
+  function test_f(id t_type default var1) return integer;
+end;
+/
+create or replace package body test_rowtype_pkg is
+  function test_f(id t_type default var1) return integer is
+  begin
+    return id.id;
+  end;
+begin
+  var1.id := 1;
+  var1.name := 'wel';
+end;
+/
+---1
+select test_rowtype_pkg.test_f() from dual;
+ test_f 
+--------
+      1
+(1 row)
+
+create or replace function test_rowtype_ff(id test_rowtype_pkg.t_type default test_rowtype_pkg.var1) return test_rowtype_pkg.t_type is
+begin
+  return id;
+end;
+/
+--oracle error, but we success
+select test_rowtype_ff() from dual;
+ test_rowtype_ff 
+-----------------
+ (1,wel)
+(1 row)
+
+--ok
+declare
+  var1 test_rowtype_pkg.t_type;
+begin
+  var1 := test_rowtype_ff();
+  dbms_output.put_line('var1.id = ' || var1.id || ' var1.name = ' || var1.name);
+end;
+/
+var1.id = 1 var1.name = wel
+create or replace package test_pkg is
+  var1 integer;
+  var2 integer;
+  function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 23;
+  end;
+end;
+/
+create or replace function test_f(id integer default test_pkg.var1) return integer is
+begin
+  return id * 2;
+end;
+/
+--ok
+begin
+  test_pkg.var1 := 23;
+end;
+/
+--46
+select test_f() from dual;
+ test_f 
+--------
+     46
+(1 row)
+
+drop package test_pkg;
+--oracle error, but we success
+select test_f(24) from dual;
+ test_f 
+--------
+     48
+(1 row)
+
+--repeate rebuild
+create or replace package test_pkg is
+  var2 integer;
+  var1 integer;
+  function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 23;
+  end;
+end;
+/
+--ok
+select test_f() from dual;
+ test_f 
+--------
+       
+(1 row)
+
+begin
+  test_pkg.var1 := 25;
+end;
+/
+--50
+select test_f() from dual;
+ test_f 
+--------
+     50
+(1 row)
+
+--change type
+create or replace package test_pkg is
+  var2 integer;
+  var1 varchar2(256);
+  function test_f(id integer) return integer;
+end;
+/
+--null
+select test_f() from dual;
+ test_f 
+--------
+       
+(1 row)
+
+begin
+  test_pkg.var1 := 'abc';
+end;
+/
+--error
+select test_f() from dual;
+ERROR:  invalid input syntax for type integer: "abc"
+--ok 46
+select test_f(23) from dual;
+ test_f 
+--------
+     46
+(1 row)
+
+drop function test_f;
+create or replace function test_f(id date default test_pkg.var1) return date is
+begin
+  return id;
+end;
+/
+--error
+select test_f() from dual;
+ERROR:  invalid value "abc" for "YYYY"
+DETAIL:  Value must be an integer.
+drop function test_f;
+--- pakcage has init
+create or replace function test_f(id integer default test_pkg.var1) return integer is
+begin
+  return id;
+end;
+/
+create or replace package test_pkg is
+  var2 integer;
+  var1 integer;
+  function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 23;
+  end;
+begin
+  var1 := 1;
+  var2 := 2;
+end;
+/
+--1
+select test_f() from dual;
+ test_f 
+--------
+      1
+(1 row)
+
+create or replace function test_f(id integer default test_pkg.var1 + 1) return integer is
+begin
+  return id;
+end;
+/
+--2
+select test_f() from dual;
+ test_f 
+--------
+      2
+(1 row)
+
+create or replace package test_pkg is
+  var2 integer;
+  var1 date;
+  function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 23;
+  end;
+begin
+  var1 := current_date;
+  var2 := 2;
+end;
+/
+--error,type mistmatch
+select test_f from dual;
+ERROR:  package var "public.test_pkg.var1" type (date) does not match that when creating (integer)
+create or replace package test_pkg is
+  var2 integer;
+  var1 varchar2(256);
+  function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg is
+  function test_f(id integer) return integer is
+  begin
+    return 23;
+  end;
+begin
+  var1 := '1';
+  var2 := 2;
+end;
+/
+--ok
+select test_f(23) from dual;
+ test_f 
+--------
+     23
+(1 row)
+
+--ok
+select test_f() from dual;
+ test_f 
+--------
+      2
+(1 row)
+
+---raise exception
+create or replace function test_f11111(id integer default 100 / test_pkg.var1) return integer is
+begin
+  return id;
+end;
+/
+BEGIN
+  test_pkg.var1 := '0';
+end;
+/
+--error division by zero
+select test_f11111 from dual;
+ERROR:  division by zero
+create or replace package test_pkg is
+  var1 date;
+  var2 integer;
+end;
+/
+--error
+create or replace function test_f(id integer default test_pkg.var1 + 1) return integer is
+begin
+  return id;
+end;
+/
+ERROR:  argument of DEFAULT must be type integer, not type date
+LINE 1: ... function test_f(id integer default test_pkg.var1 + 1) retur...
+                                                             ^
+drop package test_pkg;
+create or replace package test_pkg is
+  var1 varchar2(256);
+  var2 integer;
+end;
+/
+--ok
+select test_f(23) from dual;
+ test_f 
+--------
+     23
+(1 row)
+
+--NULL
+select test_f() from dual;
+ test_f 
+--------
+       
+(1 row)
+
+---complex var
+create or replace package test_pkg is
+  type r_type is record(id integer,name varchar2(256));
+  var1 r_type;
+  var2 integer;
+end;
+/
+create or replace function test_f(id integer default test_pkg.var1.id) return integer is
+begin
+  return 1;
+end;
+/
+begin
+  test_pkg.var1.id := 1;
+end;
+/
+--ok
+select test_f() from dual;
+ test_f 
+--------
+      1
+(1 row)
+
+--get current package var value
+create or replace package test_pkg is
+ var1 integer;
+ function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg is
+ function test_f(id integer) return integer is
+ begin
+   var1 := 23;
+   return var1;
+ end;
+begin
+  var1 := 1;
+end;
+/
+create or replace function test_f(id integer default test_pkg.var1) return integer is
+begin
+  return id;
+end;
+/
+--ok
+select test_pkg.test_f(23),test_f() from dual;
+ test_f | test_f 
+--------+--------
+     23 |     23
+(1 row)
+
+--more than one parameter
+CREATE OR REPLACE PACKAGE pkg_test_default_var AS
+    gv_str  VARCHAR2(50) := 'a value';
+    gv_num  NUMBER       := 888;
+    gv_date DATE         := to_date('2026-04-15','YYYY-MM-DD');
+    gv_null VARCHAR2(10) := NULL;
+	function test_f( p_str  VARCHAR2 DEFAULT pkg_test_default_var.gv_str,
+    p_num  NUMBER   DEFAULT pkg_test_default_var.gv_num,
+    p_date DATE     DEFAULT pkg_test_default_var.gv_date) return varchar2;
+END pkg_test_default_var;
+/
+CREATE OR REPLACE PACKAGE BODY pkg_test_default_var AS
+	function test_f( p_str  VARCHAR2 DEFAULT pkg_test_default_var.gv_str,
+    p_num  NUMBER   DEFAULT pkg_test_default_var.gv_num,
+    p_date DATE     DEFAULT pkg_test_default_var.gv_date) return varchar2 IS
+	BEGIN
+		RETURN 'str='||p_str||', num='||p_num||', date='||TO_CHAR(p_date,'YYYY-MM-DD');
+	end;
+END pkg_test_default_var;
+/
+CREATE OR REPLACE FUNCTION fn_test(
+    p_str  VARCHAR2 DEFAULT pkg_test_default_var.gv_str,
+    p_num  NUMBER   DEFAULT pkg_test_default_var.gv_num,
+    p_date DATE     DEFAULT pkg_test_default_var.gv_date
+) RETURN VARCHAR2 AS
+BEGIN
+    RETURN 'str='||p_str||', num='||p_num||', date='||TO_CHAR(p_date,'YYYY-MM-DD');
+END fn_test;
+/
+CREATE OR REPLACE PROCEDURE proc_test(
+    p_str  VARCHAR2 DEFAULT pkg_test_default_var.gv_str,
+    p_num  NUMBER   DEFAULT pkg_test_default_var.gv_num,
+    p_date DATE     DEFAULT pkg_test_default_var.gv_date
+) AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('str='||p_str||', num='||p_num||', date='||TO_CHAR(p_date,'YYYY-MM-DD'));
+END proc_test;
+/
+CREATE OR REPLACE PROCEDURE proc_mixed_default(
+    p_str  VARCHAR2 DEFAULT pkg_test_default_var.gv_str,
+    p_num  NUMBER   DEFAULT 123,
+    p_date DATE     DEFAULT to_date('2026-4-15', 'YYYY-MM-DD')
+) AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('complex => str='||p_str||', num='||p_num||', date='||TO_CHAR(p_date,'YYYY-MM-DD'));
+END proc_mixed_default;
+/
+CREATE OR REPLACE PROCEDURE proc_null_default(
+    p_str VARCHAR2 DEFAULT pkg_test_default_var.gv_null
+) AS
+BEGIN
+    IF p_str IS NULL THEN
+        DBMS_OUTPUT.PUT_LINE('parameter is null');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('parameter：'||p_str);
+    END IF;
+END proc_null_default;
+/
+CREATE OR REPLACE PROCEDURE proc_nested_call AS
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== nested ===');
+    proc_test();
+END proc_nested_call;
+/
+--ok
+DECLARE
+	v VARCHAR2(200);
+BEGIN
+    v := fn_test();
+    DBMS_OUTPUT.PUT_LINE('all parameter default '||v);
+END;
+/
+all parameter default str=a value, num=888, date=2026-04-15
+--one parameter
+DECLARE
+	v VARCHAR2(200);
+BEGIN
+    v := fn_test('I am parameter');
+    DBMS_OUTPUT.PUT_LINE('one parameter '||v);
+END;
+/
+one parameter str=I am parameter, num=888, date=2026-04-15
+DECLARE
+   v VARCHAR2(200);
+BEGIN
+    v := fn_test(p_num=>999);
+    DBMS_OUTPUT.PUT_LINE('parameter 2 '||v);
+END;
+/
+parameter 2 str=a value, num=999, date=2026-04-15
+--
+DECLARE
+	v VARCHAR2(200);
+BEGIN
+    v := fn_test(p_date=>TO_DATE('2025-10-01','YYYY-MM-DD'));
+    DBMS_OUTPUT.PUT_LINE('parameter 3 '||v);
+END;
+/
+parameter 3 str=a value, num=888, date=2025-10-01
+BEGIN
+    DBMS_OUTPUT.PUT('all parameter default');
+    proc_test();
+END;
+/
+all parameter defaultstr=a value, num=888, date=2026-04-15
+BEGIN
+    DBMS_OUTPUT.PUT('p_num');
+    proc_test(p_num=>555);
+END;
+/
+p_numstr=a value, num=555, date=2026-04-15
+--ok
+BEGIN
+    proc_mixed_default();
+END;
+/
+complex => str=a value, num=123, date=2026-04-15
+--ok
+BEGIN
+    proc_null_default();
+END;
+/
+parameter is null
+--nested
+BEGIN
+    proc_nested_call();
+END;
+/
+=== nested ===
+str=a value, num=888, date=2026-04-15
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('===change parameter ===');
+    pkg_test_default_var.gv_str := 'I am changed';
+    pkg_test_default_var.gv_num := 1000;
+END;
+/
+===change parameter ===
+--call
+BEGIN
+    DBMS_OUTPUT.PUT('change:');
+    proc_test();
+END;
+/
+change:str=I am changed, num=1000, date=2026-04-15
+--clean data
+drop function common_func;
+drop function fn_test;
+drop procedure proc_mixed_default;
+drop procedure proc_nested_call;
+drop procedure proc_null_default;
+drop procedure proc_test;
+drop function test_f;
+drop function test_f11111;
+drop function test_pp;
+drop function test_rowtype_ff;
+drop package pkg_test_default_var;
+drop package test_pkg;
+drop package test_pkg1;
+drop package test_rowtype_pkg;
+--test LOOP
+create or replace package test_complex_package IS
+  type mds is record(id integer,name varchar2(256));
+  gvar mds;
+  function test_f(var1 mds default gvar) return mds;
+  function change_gvar(id integer,name varchar2) return integer;
+  function return_id(id integer default gvar.id) return integer;
+end;
+/
+create or replace package body test_complex_package IS
+ function test_f(var1 mds default gvar) return mds IS
+ BEGIN
+	return var1;
+ end;
+ function change_gvar(id integer,name varchar2) return integer IS
+ BEGIN
+   gvar.id := id;
+   gvar.name := name;
+   return id;
+ end;
+ function return_id(id integer default gvar.id) return integer is
+ begin
+	return id;
+ end;
+BEGIN
+  gvar.id := 1;
+  gvar.name := 'welcome';
+end;
+/
+create or replace function test_complex_f(id integer,var1 test_complex_package.mds default test_complex_package.gvar) return test_complex_package.mds IS
+BEGIN
+    var1.id := var1.id + 1;
+	return var1;
+end;
+/
+create table test_mds(id integer primary key,name varchar2(256));
+DECLARE
+  var1 integer;
+  var2 varchar2(256);
+BEGIN
+ for var1 in 1 .. 10 LOOP
+    var2 := var1 || ' yy';
+    insert into test_mds values(var1, var2);
+ end loop;
+end;
+/
+select test_complex_package.change_gvar(id,name), test_complex_package.test_f,test_complex_f(id) from test_mds order by id;
+ change_gvar |    test_f    | test_complex_f 
+-------------+--------------+----------------
+           1 | (1,"1 yy")   | (2,"1 yy")
+           2 | (2,"2 yy")   | (3,"2 yy")
+           3 | (3,"3 yy")   | (4,"3 yy")
+           4 | (4,"4 yy")   | (5,"4 yy")
+           5 | (5,"5 yy")   | (6,"5 yy")
+           6 | (6,"6 yy")   | (7,"6 yy")
+           7 | (7,"7 yy")   | (8,"7 yy")
+           8 | (8,"8 yy")   | (9,"8 yy")
+           9 | (9,"9 yy")   | (10,"9 yy")
+          10 | (10,"10 yy") | (11,"10 yy")
+(10 rows)
+
+create or replace function test_complex_ff(id integer default test_complex_package.gvar.id) return integer IS
+BEGIN
+	return id;
+end;
+/
+create view test_complex_view as
+select test_complex_package.change_gvar(id,name),test_complex_package.return_id,test_complex_ff from test_mds order by id;
+create view test_complex_view1 as
+select test_complex_package.change_gvar(id,name),test_complex_package.return_id,test_complex_ff from test_mds where id = test_complex_ff() order by id;
+create view test_complex_view2 as
+select test_complex_package.change_gvar(id,name),test_complex_package.return_id,test_complex_ff  from test_mds where id = test_complex_package.return_id order by id;
+select  * from test_complex_view;
+ change_gvar | return_id | test_complex_ff 
+-------------+-----------+-----------------
+           1 |         1 |               1
+           2 |         2 |               2
+           3 |         3 |               3
+           4 |         4 |               4
+           5 |         5 |               5
+           6 |         6 |               6
+           7 |         7 |               7
+           8 |         8 |               8
+           9 |         9 |               9
+          10 |        10 |              10
+(10 rows)
+
+select * from test_complex_view1;
+ change_gvar | return_id | test_complex_ff 
+-------------+-----------+-----------------
+          10 |        10 |              10
+(1 row)
+
+select * from test_complex_view2;
+ change_gvar | return_id | test_complex_ff 
+-------------+-----------+-----------------
+          10 |        10 |              10
+(1 row)
+
+create or replace package test_mds_pkg is
+  var1 test_mds%rowtype;
+  cursor c1 is select * from test_mds;
+  r record;
+  var2 c1%rowtype;
+  function test_f(id test_mds%rowtype default var1) return test_mds%rowtype;
+  function test_ff(id varchar2 default var1.name) return varchar2;
+  function test_cursor(id c1%rowtype default var2) return c1%rowtype;
+  function test_record(id record default r) return record;
+end;
+/
+create or replace package body test_mds_pkg is
+  function test_f(id test_mds%rowtype default var1) return test_mds%rowtype is
+  begin
+    return id;
+  end;
+  function test_ff(id varchar2 default var1.name) return varchar2 is
+  begin
+	return id;
+  end;
+  function test_cursor(id c1%rowtype default var2) return c1%rowtype is
+  begin
+	return id;
+  end;
+  function test_record(id record default r) return record is
+  begin
+	return id;
+  end;
+begin
+	var1.id := 23;
+	var1.name := 'welcome';
+	select * into r from test_mds where id = 1;
+	select * into var2 from test_mds where id = 2;
+end;
+/
+create or replace function testff(id test_mds%rowtype default test_mds_pkg.var1) return test_mds%rowtype is
+begin
+  return id;
+end;
+/
+create or replace function testff1(id varchar2 default test_mds_pkg.var1.name) return varchar2 is
+begin
+  return id;
+end;
+/
+create or replace function test_record(id record default test_mds_pkg.r) return record is
+begin
+	return id;
+end;
+/
+select test_mds_pkg.test_f(),testff() from test_mds;
+    test_f    |    testff    
+--------------+--------------
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+ (23,welcome) | (23,welcome)
+(10 rows)
+
+select test_mds_pkg.test_ff(),testff1() from test_mds;
+ test_ff | testff1 
+---------+---------
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+ welcome | welcome
+(10 rows)
+
+select test_mds_pkg.test_cursor(),test_mds_pkg.test_record(),test_record() from test_mds;
+ test_cursor | test_record | test_record 
+-------------+-------------+-------------
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+ (2,"2 yy")  | (1,"1 yy")  | (1,"1 yy")
+(10 rows)
+
+--clean data
+drop view test_complex_view;
+drop view test_complex_view1;
+drop view test_complex_view2;
+drop function test_complex_ff;
+drop function  test_complex_f;
+drop package test_complex_package;
+drop table test_mds;
+drop function testff;
+drop function testff1;
+drop function test_record;
+drop package test_mds_pkg;
+--test change owner to find default value
+create or replace package test_pkg IS
+  var1 integer;
+  function test_f(id integer) return integer;
+end;
+/
+create or replace package body test_pkg IS
+ function test_f(id integer) return integer IS
+ BEGIN
+   return id;
+ end;
+BEGIN
+  var1 := 23;
+end;
+/
+--plpgsql can not reference package global var
+--error
+CREATE OR REPLACE FUNCTION test_plpgsql(id integer default test_pkg.var1)
+RETURNS integer AS $$
+BEGIN
+    RETURN id;
+END $$ LANGUAGE plpgsql;
+/
+ERROR:  only plisql language function or procedure can use package var in parameter default value
+create user enrol11;
+create schema enrol11;
+alter schema enrol11 owner to enrol11;
+\c - enrol11
+create or replace package test_pkg IS
+  var1 varchar2(256);
+  function test_f(id integer default test_pkg.var1) return integer;
+  procedure test_p(id integer default test_pkg.var1);
+end;
+/
+create or replace package body test_pkg IS
+  function test_f(id integer default test_pkg.var1) return integer IS
+  BEGIN
+    return id;
+  end;
+  procedure test_p(id integer default test_pkg.var1) is
+  begin
+    dbms_output.put_line('id = ' || id);
+  end;
+BEGIN
+  var1 := '24';
+end;
+/
+grant usage on schema enrol11 to system;
+grant execute on package test_pkg to system;
+--call  24
+set serveroutput on;
+select test_pkg.test_f() from dual;
+ test_f 
+--------
+     24
+(1 row)
+
+call test_pkg.test_p();
+id = 24
+\c - system
+--24
+set serveroutput on;
+select enrol11.test_pkg.test_f() from dual;
+ test_f 
+--------
+     24
+(1 row)
+
+call enrol11.test_pkg.test_p();
+id = 24
+\c - enrol11;
+--clean
+drop package test_pkg;
+drop schema enrol11;
+\c - system
+drop package test_pkg;
+drop user enrol11;
 declare
     name text;
 begin

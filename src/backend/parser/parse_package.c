@@ -25,10 +25,12 @@
 #include "utils/acl.h"
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
+#include "utils/lsyscache.h" /* OA#00002227*/
 #include "catalog/namespace.h"
 #include "commands/packagecmds.h"
 #include "commands/dbcommands.h"
 #include "miscadmin.h"
+#include "funcapi.h" /* OA#00002227*/
 
 /* usefull functions */
 static bool package_resolve_names(List *names, PackageCacheKey *pkey,
@@ -323,6 +325,7 @@ parse_package_var(List *names, PackageCacheKey *pkey,
 	pkgvar->pkgoid = *pkey;
 	pkgvar->value = (Datum) var;
 	pkgvar->item = item;
+	pkgvar->pkgname_startloc = varname_startloc; /* OA#00002227 */
 
 	return pkgvar;
 }
@@ -581,3 +584,38 @@ LookupPkgFunc(ParseState *pstate, List *funcname,
 			 has_udt_type);
 			 /* End - ReqID:SRS-PLSQL-RECORD */
 }
+
+
+/* Begin - OA#00002227 */
+/*
+ * mabye a package global var
+ */
+PkgGlobalVarParam *
+ParsePkgGlobalVarBynames(const List *names, bool missing_ok)
+{
+	PkgVar *pkgvar = LookupPkgVarByvarnames(names, missing_ok);
+	PkgGlobalVarParam *gparam;
+
+	if (pkgvar == NULL)
+		return NULL;
+
+	gparam = plisql_internal_funcs.build_gparam_from_package(pkgvar);
+
+	/*
+	 * names include schema name
+	 */
+	if (pkgvar->pkgname_startloc == 1)
+	{
+		char *pkgschema = get_namespace_name(get_package_namespace(pkgvar->pkgoid));
+
+		gparam->varnames = lcons(makeString(pkgschema), (List *) copyObject(names));
+	}
+	else
+		gparam->varnames = (List *) copyObject(names);
+
+	pfree(pkgvar);
+
+	return gparam;
+}
+/* End - OA#00002227*/
+

@@ -57,7 +57,7 @@ typedef struct polymorphic_actuals
 
 /* Begin - SRS-PLSQL-SUBPROC */
 PLiSQL_funcs_call plisql_internal_funcs = {NULL, NULL, NULL, NULL, NULL,
-NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
 NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
 /* End - SRS-PLSQL-SUBPROC */
 

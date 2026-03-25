@@ -444,6 +444,11 @@ static void exec_move_row_from_datum(PLiSQL_execstate *estate,
 									 Datum value);
 static void instantiate_empty_record_variable(PLiSQL_execstate *estate,
 											  PLiSQL_rec *rec);
+/* Begin - OA#00002227 */
+static void instantiate_empty_record_variable_internel(MemoryContext datum_context,
+												PLiSQL_rec *rec);
+/* End - OA#00002227*/
+
 static char *convert_value_to_string(PLiSQL_execstate *estate,
 									 Datum value, Oid valtype);
 static Datum do_cast_value(PLiSQL_execstate *estate,
@@ -10382,6 +10387,27 @@ exec_move_row_from_datum(PLiSQL_execstate *estate,
 static void
 instantiate_empty_record_variable(PLiSQL_execstate *estate, PLiSQL_rec *rec)
 {
+	instantiate_empty_record_variable_internel(estate->datum_context, rec); /* OA#00002227 */
+}
+
+
+/* Begin - OA#00002227 */
+/*
+ * init package global rec variable
+ */
+void
+instantiate_empty_package_record_variable(MemoryContext pkgctx,
+							PLiSQL_rec *rec)
+{
+	instantiate_empty_record_variable_internel(pkgctx, rec);
+}
+/*
+ * init record variable internel
+ */
+static void
+instantiate_empty_record_variable_internel(MemoryContext datum_context,
+												PLiSQL_rec *rec)
+{
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	MemoryContext mc;
 	/* End - ReqID:SRS-SQL-PACKAGE */
@@ -10394,7 +10420,7 @@ instantiate_empty_record_variable(PLiSQL_execstate *estate, PLiSQL_rec *rec)
 		rec->datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR)
 	{
 		mc = plisql_get_relevantContext((PLiSQL_variable *) rec,/* BUG#M0000167 */
-							estate->datum_context);
+							datum_context);
 		rec->erh = make_expanded_record_from_rowtype(rec->datatype, -1,
 												mc);
 		return;
@@ -10414,11 +10440,12 @@ instantiate_empty_record_variable(PLiSQL_execstate *estate, PLiSQL_rec *rec)
 	/* OK, do it */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	mc = plisql_get_relevantContext((PLiSQL_variable *) rec,/* BUG#M0000167 */
-							estate->datum_context);
+							datum_context);
 	rec->erh = make_expanded_record_from_typeid(rec->rectypeid, -1,
 												mc);
-	/* End - ReqID:SRS-SQL-PACKAGE */
 }
+/* End - OA#00002227*/
+
 
 /* ----------
  * convert_value_to_string			Convert a non-null Datum to C string

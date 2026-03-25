@@ -27,7 +27,6 @@
 #include "parser/parse_node.h"
 #include "parser/parse_func.h"
 #include "access/tupdesc.h"
-#include "funcapi.h"
 #include "utils/packagecache.h"
 
 typedef struct PkgType
@@ -47,6 +46,9 @@ typedef struct PkgVar
 	Oid pkgoid;			 /* package oid */
 	PackageCacheItem *item; /* package cache item */
 	Datum value;			 /* a PLisql datum */
+	/* Begin - OA#00002227 */
+	int	pkgname_startloc;	/* pkgname start location */
+	/* End - OA#00002227*/
 } PkgVar;
 
 typedef enum
@@ -88,5 +90,9 @@ extern FuncDetailCode LookupPkgFunc(ParseState *pstate, List *funcname,
 				/* Begin - ReqID:SRS-PLSQL-RECORD */
 				bool has_udt_type);
 				/* End - ReqID:SRS-PLSQL-RECORD */
+/* Begin - OA#00002227 */
+extern PkgGlobalVarParam *ParsePkgGlobalVarBynames(const List *names, bool missing_ok);
+extern PkgGlobalVarParam *RefreshPkgGlobalVar(PkgGlobalVarParam *oldparam);
+/* End - OA#00002227*/
 #endif
 

@@ -533,6 +533,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - ReqID:SRS-PLSQL-Collection */
 		&&CASE_EEOP_COLLECTYPEREF_SUBSCRIPTS,
 		/* End - ReqID:SRS-PLSQL-Collection */
+		/* Begin - OA#00002227 */
+		&&CASE_EEOP_PKGGLOBAL_VARREF,
+		/* End - OA#00002227*/
 		&&CASE_EEOP_LAST
 	};
 
@@ -1915,12 +1918,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - ReqID:SRS-SQL-ROWNUM */
 		EEO_CASE(EEOP_ORA_ROWNUM)
 		{
-#ifdef USE_FLOAT8_BYVAL
-			*op->resvalue = *op->d.ptr_rownum.num;
-#else
-			*op->resvalue = PointerGetDatum(op->d.ptr_rownum.num);
-#endif
-			*op->resnull = false;
+			/* Begin - OA#00002227 */
+			ExecEvalOraRownumExec(state, op);
+			/* End - OA#00002227*/
 			EEO_NEXT();
 		}
 		/* Begin - ReqID:SRS-SQL-ROWNUM */
@@ -1928,16 +1928,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - BUG#Z4591 */
 		EEO_CASE(EEOP_NVL_FETCH)
 		{
-			if (*op->resnull)
-			{
-				*op->resnull = *state->steps[op->d.nvl_val_fetchstep.expr3_step].resnull;
-				*op->resvalue = *state->steps[op->d.nvl_val_fetchstep.expr3_step].resvalue;
-			}
-			else
-			{
-				*op->resnull = *state->steps[op->d.nvl_val_fetchstep.expr2_step].resnull;
-				*op->resvalue = *state->steps[op->d.nvl_val_fetchstep.expr2_step].resvalue;
-			}
+			/* Begin - OA#00002227 */
+			ExecEvalNvlFetchExec(state, op);
+			/* End - OA#00002227*/
 
 			EEO_NEXT();
 		}
@@ -1946,33 +1939,9 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - ReqID:SRS-MYSQL-SET */
 		EEO_CASE(EEOP_VARREF)
 		{
-			VarRef	   *ref = makeNode(VarRef);
-
-			ref->varname = op->d.varref.varname;
-			ref->varkind = USER_VAR;
-			if (uservariable_hash_search_hook)
-			{
-				Const *currentval = (Const *)uservariable_hash_search_hook(NULL, ref);
-
-				*op->resnull = currentval->constisnull;
-
-				/* If a user defined variable appears in an expression, its value
-				 * must be recalculated and converted to the type determind during
-				 * expression parsing.
-				 */
-				if (OidIsValid(op->d.varref.rettype))
-				{
-					*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype);
-				}
-				else
-				{
-					*op->resvalue = currentval->constvalue;
-				}
-			}
-			else
-			{
-				*op->resvalue = op->d.varref.value->constvalue;
-			}
+			/* Begin - OA#00002227 */
+			ExecEvalVarRefExec(state, op);
+			/* End - OA#00002227*/
 
 			EEO_NEXT();
 		}
@@ -1981,11 +1950,20 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - ReqID:SRS-PLSQL-Collection */
 		EEO_CASE(EEOP_COLLECTYPEREF_SUBSCRIPTS)
 		{
+			/* Begin - OA#00002227 */
 			ExecEvalCollectionSubscriptingRefFetch(state, op);
+			/* End - OA#00002227*/
 			EEO_NEXT();
 		}
 		/* End - ReqID:SRS-PLSQL-Collection */
 
+		/* Begin - OA#00002227 */
+		EEO_CASE(EEOP_PKGGLOBAL_VARREF)
+		{
+			ExecEvalPkgGlobalVarExec(state, op);
+			EEO_NEXT();
+		}
+		/* End - OA#00002227*/
 
 		EEO_CASE(EEOP_LAST)
 		{
@@ -4752,3 +4730,96 @@ ExecEvalCollectionSubscriptingRefFetch(ExprState *state, ExprEvalStep *op)
 								sbsrefstate->ctindex, op->resnull);
 }
 /* End - ReqID:SRS-PLSQL-Collection */
+
+/* Begin - OA#00002227 */
+/*
+ * exec row num value
+ */
+void
+ExecEvalOraRownumExec(ExprState *state, ExprEvalStep *op)
+{
+#ifdef USE_FLOAT8_BYVAL
+	*op->resvalue = *op->d.ptr_rownum.num;
+#else
+	*op->resvalue = PointerGetDatum(op->d.ptr_rownum.num);
+#endif
+	*op->resnull = false;
+	return;
+}
+
+
+/*
+ * exec nvl fetch
+ */
+void
+ExecEvalNvlFetchExec(ExprState *state, ExprEvalStep *op)
+{
+	if (*op->resnull)
+	{
+		*op->resnull = *state->steps[op->d.nvl_val_fetchstep.expr3_step].resnull;
+		*op->resvalue = *state->steps[op->d.nvl_val_fetchstep.expr3_step].resvalue;
+	}
+	else
+	{
+		*op->resnull = *state->steps[op->d.nvl_val_fetchstep.expr2_step].resnull;
+		*op->resvalue = *state->steps[op->d.nvl_val_fetchstep.expr2_step].resvalue;
+	}
+
+	return;
+}
+
+
+/*
+ * exec VarRef value
+ */
+void
+ExecEvalVarRefExec(ExprState *state, ExprEvalStep *op)
+{
+	VarRef	   *ref = makeNode(VarRef);
+
+	ref->varname = op->d.varref.varname;
+	ref->varkind = USER_VAR;
+	if (uservariable_hash_search_hook)
+	{
+		Const *currentval = (Const *)uservariable_hash_search_hook(NULL, ref);
+
+		*op->resnull = currentval->constisnull;
+
+		/* If a user defined variable appears in an expression, its value
+		 * must be recalculated and converted to the type determind during
+		 * expression parsing.
+		 */
+		if (OidIsValid(op->d.varref.rettype))
+		{
+			*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype);
+		}
+		else
+		{
+			*op->resvalue = currentval->constvalue;
+		}
+	}
+	else
+	{
+		*op->resvalue = op->d.varref.value->constvalue;
+	}
+
+	return;
+}
+
+
+/*
+ * exec package global var value
+ */
+void
+ExecEvalPkgGlobalVarExec(ExprState *state, ExprEvalStep *op)
+{
+	PkgGlobalVarParam *gparam = op->d.pkgglobalvar.gparam;
+
+	plisql_internal_funcs.get_package_globalvar_value(gparam,
+											op->resvalue,
+											op->resnull);
+
+	return;
+}
+/* End - OA#00002227*/
+
