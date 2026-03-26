@@ -440,7 +440,7 @@ CREATE TABLE ctlt1 (LIKE ctlt1 INCLUDING ALL);
  a      | text | using_nls_comp | not null |         | main     |              | A
  b      | text | using_nls_comp |          |         | extended |              | B
 Indexes:
-    "ctlt1_pkey" PRIMARY KEY, btree (a)
+    "ctlt1_pkey1" PRIMARY KEY, btree (a)
     "ctlt1_b_idx" btree (b)
     "ctlt1_expr_idx" btree ((a || b))
 Check constraints:

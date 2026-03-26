@@ -415,7 +415,8 @@ static bool isAconstNode(Node *node);
 %type <str>		copy_file_name
 				access_method_clause attr_name
 				table_access_method_clause name cursor_name file_name
-				opt_index_name cluster_index_specification
+
+%type <range>	cluster_index_specification /* OA-REQ-2127 */
 
 %type <list>	func_name handler_name qual_Op qual_all_Op subquery_Op
 				opt_class opt_inline_handler opt_validator validator_clause
@@ -629,7 +630,7 @@ static bool isAconstNode(Node *node);
 %type <node>	ColConstraint ColConstraintElem ConstraintAttr virtual_node	/* ReqID:SRS-SQL-VIRTUALCOL */
 %type <ival>	key_actions key_delete key_match key_update key_action
 %type <ival>	ConstraintAttributeSpec ConstraintAttributeElem
-%type <str>		ExistingIndex
+%type <range>	ExistingIndex /* OA-REQ-2127 */
 
 %type <list>	constraints_set_list
 %type <boolean> constraints_set_mode
@@ -1060,6 +1061,10 @@ static bool isAconstNode(Node *node);
 				rename_partition_subpart truncate_partition_subpart move_table_partition
 				move_table_subpartition
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+/* Begin - OA-REQ-2127 */
+%type <range>	opt_index_name
+/* End - OA-REQ-2127 */
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
@@ -3371,11 +3376,11 @@ alter_table_cmd:
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> CLUSTER ON <indexname> */
-			| CLUSTER ON name
+			| CLUSTER ON any_name /* OA-REQ-2127 */
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ClusterOn;
-					n->name = $3;
+					n->def = (Node *) $3; /* OA-REQ-2127 */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> SET WITHOUT CLUSTER */
@@ -3683,11 +3688,14 @@ replica_identity:
 					n->name = NULL;
 					$$ = (Node *) n;
 				}
-			| USING INDEX name
+			| USING INDEX qualified_name /* OA-REQ-2127 */
 				{
 					ReplicaIdentityStmt *n = makeNode(ReplicaIdentityStmt);
 					n->identity_type = REPLICA_IDENTITY_INDEX;
-					n->name = $3;
+					/* Begin - OA-REQ-2127 */
+					n->name = $3->relname;
+					n->indexnamespace = $3->schemaname;
+					/* End - OA-REQ-2127 */
 					$$ = (Node *) n;
 				}
 ;
@@ -6068,7 +6076,10 @@ ConstraintElem:
 					n->keys = NIL;
 					n->including = NIL;
 					n->options = NIL;
-					n->indexname = $2;
+					/* Begin - OA-REQ-2127 */
+					n->indexname = $2->relname;
+					n->indexnamespace = $2->schemaname;
+					/* End - OA-REQ-2127 */
 					n->indexspace = NULL;
 					processCASbits($3, @3, "UNIQUE",
 								   &n->deferrable, &n->initdeferred, NULL,
@@ -6099,7 +6110,10 @@ ConstraintElem:
 					n->keys = NIL;
 					n->including = NIL;
 					n->options = NIL;
-					n->indexname = $3;
+					/* Begin - OA-REQ-2127 */
+					n->indexname = $3->relname;
+					n->indexnamespace = $3->schemaname;
+					/* Begin - OA-REQ-2127 */
 					n->indexspace = NULL;
 					processCASbits($4, @4, "PRIMARY KEY",
 								   &n->deferrable, &n->initdeferred, NULL,
@@ -6413,7 +6427,7 @@ OptConsTableSpace:   USING INDEX TABLESPACE name	{ $$ = $4; }
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
-ExistingIndex:   USING INDEX name					{ $$ = $3; }
+ExistingIndex:   USING INDEX qualified_name			{ $$ = $3; } /* OA-REQ-2127 */
 		;
 
 /*****************************************************************************
@@ -10605,7 +10619,18 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					IndexStmt *n = makeNode(IndexStmt);
 					n->unique = $2;
 					n->concurrent = $4;
-					n->idxname = $5;
+					/* Begin - OA-REQ-2127 */
+					if ($5 != NULL)
+					{
+						n->idxname = $5->relname;
+						n->idxschemaname = $5->schemaname;
+					}
+					else
+					{
+						n->idxname = NULL;
+						n->idxschemaname = NULL;
+					}
+					/* End - OA-REQ-2127 */
 					n->relation = $7;
 					n->accessMethod = $8;
 					n->indexParams = $10;
@@ -10628,14 +10653,17 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name
 					n->reset_default_tblspc = false;
 					$$ = (Node *)n;
 				}
-			| CREATE opt_unique INDEX opt_concurrently IF_P NOT EXISTS name
+			| CREATE opt_unique INDEX opt_concurrently IF_P NOT EXISTS qualified_name /* OA-REQ-2127 */
 			ON relation_expr access_method_clause '(' index_params ')'
 			opt_include opt_reloptions OptTableSpace where_clause
 				{
 					IndexStmt *n = makeNode(IndexStmt);
 					n->unique = $2;
 					n->concurrent = $4;
-					n->idxname = $8;
+					/* Begin - OA-REQ-2127 */
+					n->idxname = $8->relname;
+					n->idxschemaname = $8->schemaname;
+					/* End - OA-REQ-2127 */
 					n->relation = $10;
 					n->accessMethod = $11;
 					n->indexParams = $13;
@@ -10671,7 +10699,7 @@ opt_concurrently:
 		;
 
 opt_index_name:
-			name									{ $$ = $1; }
+			qualified_name							{ $$ = $1; }	/* OA-REQ-2127 */
 			| /*EMPTY*/								{ $$ = NULL; }
 		;
 
@@ -13604,6 +13632,31 @@ AlterObjectSchemaStmt:
 					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
+			/* Begin - OA-REQ-2127 */
+			/*
+			 * If partitioned index required parent and child to use the same schema in the future
+			 * we maybe need consider add the ALTER TABLE ONLY SET SCHMEA command for partitioned table.
+			 */
+			| ALTER INDEX qualified_name SET SCHEMA name
+				{
+					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					n->objectType = OBJECT_INDEX;
+					n->relation = $3;
+					n->newschema = $6;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			| ALTER INDEX IF_P EXISTS qualified_name SET SCHEMA name
+				{
+					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
+					n->objectType = OBJECT_INDEX;
+					n->relation = $5;
+					n->newschema = $8;
+					n->missing_ok = true;
+					$$ = (Node *)n;
+				}
+			/* End - OA-REQ-2127 */
+
 		;
 
 /*****************************************************************************
@@ -15081,7 +15134,18 @@ ClusterStmt:
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = $3;
-					n->indexname = $4;
+					/* Begin - OA-REQ-2127 */
+					if ($4)
+					{
+						n->indexnamespace = $4->schemaname;
+						n->indexname = $4->relname;
+					}
+					else
+					{
+						n->indexnamespace = NULL;
+						n->indexname = NULL;
+					}
+					/* End - OA-REQ-2127 */
 					n->params = NIL;
 					if ($2)
 						n->params = lappend(n->params, makeDefElem("verbose", NULL, @2));
@@ -15092,7 +15156,18 @@ ClusterStmt:
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = $5;
-					n->indexname = $6;
+					/* Begin - OA-REQ-2127 */
+					if ($6)
+					{
+						n->indexnamespace = $6->schemaname;
+						n->indexname = $6->relname;
+					}
+					else
+					{
+						n->indexnamespace = NULL;
+						n->indexname = NULL;
+					}
+					/* End - OA-REQ-2127 */
 					n->params = $3;
 					$$ = (Node*)n;
 				}
@@ -15100,6 +15175,7 @@ ClusterStmt:
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = NULL;
+					n->indexnamespace = NULL; /* OA-REQ-2127 */
 					n->indexname = NULL;
 					n->params = NIL;
 					if ($2)
@@ -15107,11 +15183,14 @@ ClusterStmt:
 					$$ = (Node*)n;
 				}
 			/* kept for pre-8.3 compatibility */
-			| CLUSTER opt_verbose name ON qualified_name
+			| CLUSTER opt_verbose qualified_name ON qualified_name
 				{
 					ClusterStmt *n = makeNode(ClusterStmt);
 					n->relation = $5;
-					n->indexname = $3;
+					/* Begin - OA-REQ-2127 */
+					n->indexnamespace = $3->schemaname;
+					n->indexname = $3->relname;
+					/* End - OA-REQ-2127 */
 					n->params = NIL;
 					if ($2)
 						n->params = lappend(n->params, makeDefElem("verbose", NULL, @2));
@@ -15120,7 +15199,7 @@ ClusterStmt:
 		;
 
 cluster_index_specification:
-			USING name				{ $$ = $2; }
+			USING qualified_name	{ $$ = $2; }	/* OA-REQ-2127 */
 			| /*EMPTY*/				{ $$ = NULL; }
 		;
 

@@ -1717,6 +1717,7 @@ pg_get_indexdef_worker(Oid indexrelid, int colno,
 	/*
 	 * Start the index definition.  Note that the index's name should never be
 	 * schema-qualified, but the indexed rel's name may be.
+	 * OA-REQ-2127: Now the index's name may also be schema-qualified.
 	 */
 	initStringInfo(&buf);
 
@@ -1725,7 +1726,13 @@ pg_get_indexdef_worker(Oid indexrelid, int colno,
 		if (!isConstraint)
 			appendStringInfo(&buf, "CREATE %sINDEX %s ON %s%s USING %s (",
 							 idxrec->indisunique ? "UNIQUE " : "",
-							 quote_identifier(NameStr(idxrelrec->relname)),
+							 /* Begin - OA-REQ-2127 */
+							 (ORA_MODE != compatible_mode ||
+							  (prettyFlags & PRETTYFLAG_SCHEMA) ||
+							  get_rel_namespace(indrelid) == get_rel_namespace(indexrelid)) ?
+							 quote_identifier(NameStr(idxrelrec->relname)) :
+							 generate_qualified_relation_name(indexrelid),
+							 /* End - OA-REQ-2127 */
 							 idxrelrec->relkind == RELKIND_PARTITIONED_INDEX
 							 && !inherits ? "ONLY " : "",
 							 (prettyFlags & PRETTYFLAG_SCHEMA) ?

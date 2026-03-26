@@ -3463,13 +3463,13 @@ explain (verbose, costs off)
 select unique1, x.*
 from tenk1, (select *, random() from f_immutable_int4(1) x) x
 where x = unique1;
-                        QUERY PLAN                         
------------------------------------------------------------
+                            QUERY PLAN                            
+------------------------------------------------------------------
  Nested Loop
    Output: tenk1.unique1, (1), (random())
    ->  Result
          Output: 1, random()
-   ->  Index Only Scan using tenk1_unique1 on public.tenk1
+   ->  Index Only Scan using public.tenk1_unique1 on public.tenk1
          Output: tenk1.unique1
          Index Cond: (tenk1.unique1 = (1))
 (7 rows)
@@ -3949,8 +3949,8 @@ left join
    using (join_key)
   ) foo3
 using (join_key);
-                                QUERY PLAN                                
---------------------------------------------------------------------------
+                                   QUERY PLAN                                    
+---------------------------------------------------------------------------------
  Nested Loop Left Join
    Output: "*VALUES*".column1, i1.f1, (666)
    Join Filter: ("*VALUES*".column1 = i1.f1)
@@ -3962,7 +3962,7 @@ using (join_key);
                Output: i1.f1, 666
                ->  Seq Scan on public.int4_tbl i1
                      Output: i1.f1
-               ->  Index Only Scan using tenk1_unique2 on public.tenk1 i2
+               ->  Index Only Scan using public.tenk1_unique2 on public.tenk1 i2
                      Output: i2.unique2
                      Index Cond: (i2.unique2 = i1.f1)
 (14 rows)
@@ -4865,8 +4865,8 @@ select i8.*, ss.v, t.unique2
     left join lateral (select i4.f1 + 1 as v) as ss on true
     left join tenk1 t on t.unique2 = ss.v
 where q2 = 456;
-                         QUERY PLAN                          
--------------------------------------------------------------
+                             QUERY PLAN                             
+--------------------------------------------------------------------
  Nested Loop Left Join
    Output: i8.q1, i8.q2, ((i4.f1 + 1)), t.unique2
    ->  Nested Loop Left Join
@@ -4877,7 +4877,7 @@ where q2 = 456;
          ->  Seq Scan on public.int4_tbl i4
                Output: i4.f1
                Filter: (i4.f1 = 1)
-   ->  Index Only Scan using tenk1_unique2 on public.tenk1 t
+   ->  Index Only Scan using public.tenk1_unique2 on public.tenk1 t
          Output: t.unique2
          Index Cond: (t.unique2 = ((i4.f1 + 1)))
 (13 rows)
@@ -5953,8 +5953,8 @@ select * from
   lateral (select f1 from int4_tbl
            where f1 = any (select unique1 from tenk1
                            where unique2 = v.x offset 0)) ss;
-                              QUERY PLAN                              
-----------------------------------------------------------------------
+                               QUERY PLAN                                
+-------------------------------------------------------------------------
  Nested Loop
    Output: "*VALUES*".column1, "*VALUES*".column2, int4_tbl.f1
    ->  Values Scan on "*VALUES*"
@@ -5966,7 +5966,7 @@ select * from
                Output: int4_tbl.f1
          ->  Materialize
                Output: tenk1.unique1
-               ->  Index Scan using tenk1_unique2 on public.tenk1
+               ->  Index Scan using public.tenk1_unique2 on public.tenk1
                      Output: tenk1.unique1
                      Index Cond: (tenk1.unique2 = "*VALUES*".column2)
 (14 rows)
@@ -6625,8 +6625,8 @@ from onek t1, tenk1 t2
 where exists (select 1 from tenk1 t3
               where t3.thousand = t1.unique1 and t3.tenthous = t2.hundred)
       and t1.unique1 < 1;
-                                   QUERY PLAN                                    
----------------------------------------------------------------------------------
+                                       QUERY PLAN                                       
+----------------------------------------------------------------------------------------
  Nested Loop
    Output: t1.unique1, t2.hundred
    ->  Hash Join
@@ -6635,14 +6635,14 @@ where exists (select 1 from tenk1 t3
          ->  HashAggregate
                Output: t3.thousand, t3.tenthous
                Group Key: t3.thousand, t3.tenthous
-               ->  Index Only Scan using tenk1_thous_tenthous on public.tenk1 t3
+               ->  Index Only Scan using public.tenk1_thous_tenthous on public.tenk1 t3
                      Output: t3.thousand, t3.tenthous
          ->  Hash
                Output: t1.unique1
-               ->  Index Only Scan using onek_unique1 on public.onek t1
+               ->  Index Only Scan using public.onek_unique1 on public.onek t1
                      Output: t1.unique1
                      Index Cond: (t1.unique1 < 1)
-   ->  Index Only Scan using tenk1_hundred on public.tenk1 t2
+   ->  Index Only Scan using public.tenk1_hundred on public.tenk1 t2
          Output: t2.hundred
          Index Cond: (t2.hundred = t3.tenthous)
 (18 rows)
@@ -6657,19 +6657,19 @@ from onek t1, tenk1 t2
 where exists (select 1 from j3
               where j3.unique1 = t1.unique1 and j3.tenthous = t2.hundred)
       and t1.unique1 < 1;
-                               QUERY PLAN                               
-------------------------------------------------------------------------
+                                  QUERY PLAN                                   
+-------------------------------------------------------------------------------
  Nested Loop
    Output: t1.unique1, t2.hundred
    ->  Nested Loop
          Output: t1.unique1, j3.tenthous
-         ->  Index Only Scan using onek_unique1 on public.onek t1
+         ->  Index Only Scan using public.onek_unique1 on public.onek t1
                Output: t1.unique1
                Index Cond: (t1.unique1 < 1)
-         ->  Index Only Scan using j3_unique1_tenthous_idx on public.j3
+         ->  Index Only Scan using public.j3_unique1_tenthous_idx on public.j3
                Output: j3.unique1, j3.tenthous
                Index Cond: (j3.unique1 = t1.unique1)
-   ->  Index Only Scan using tenk1_hundred on public.tenk1 t2
+   ->  Index Only Scan using public.tenk1_hundred on public.tenk1 t2
          Output: t2.hundred
          Index Cond: (t2.hundred = j3.tenthous)
 (13 rows)

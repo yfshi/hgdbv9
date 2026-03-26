@@ -693,7 +693,33 @@ DefineIndex(Oid relationId,
 	SetUserIdAndSecContext(rel->rd_rel->relowner,
 						   root_save_sec_context | SECURITY_RESTRICTED_OPERATION);
 
-	namespaceId = RelationGetNamespace(rel);
+	/* Begin - OA-REQ-2127 */
+	/*
+	 * The indexes of temp table must also be located in temp namespace,
+	 * it's pointless to go to the trouble of checking whether the specified
+	 * schema is the temp namespace of current backend, so indexes for temp
+	 * table do not support specifying a schema name.
+	 */
+	if (compatible_mode == ORA_MODE &&
+		stmt->idxschemaname != NULL &&
+		RelationGetRelPersistence(rel) == RELPERSISTENCE_TEMP)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot specify schema for temporary table index")));
+
+	if (compatible_mode == ORA_MODE && stmt->idxschemaname != NULL)
+		namespaceId = get_namespace_oid(stmt->idxschemaname, false);
+	else
+		namespaceId = RelationGetNamespace(rel);
+
+	/* Similarly, persistent relations should not use the temp namespace */
+	if (compatible_mode == ORA_MODE &&
+		isAnyTempNamespace(namespaceId) &&
+		RelationGetRelPersistence(rel) != RELPERSISTENCE_TEMP)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("index schema name cannot be specified as the name of temp schema")));
+	/* End - OA-REQ-2127 */
 
 	/* Ensure that it makes sense to index this kind of relation */
 	switch (rel->rd_rel->relkind)
@@ -1220,7 +1246,7 @@ DefineIndex(Oid relationId,
 		constr_flags |= INDEX_CONSTR_CREATE_INIT_DEFERRED;
 
 	indexRelationId =
-		index_create(rel, indexRelationName, indexRelationId, parentIndexId,
+		index_create(rel, indexRelationName, namespaceId, /* OA-REQ-2127 */ indexRelationId, parentIndexId,
 					 parentConstraintId,
 					 stmt->oldNode, indexInfo, indexColNames,
 					 accessMethodId, tablespaceId,
@@ -1255,7 +1281,7 @@ DefineIndex(Oid relationId,
 	if (ORA_MODE == compatible_mode && pg_object_create_obj_hook)
 	{
 		pg_object_create_obj_hook(indexRelationName, 		/* BUG#Z1410 */
-								  RelationGetNamespace(rel),
+								  namespaceId, /* OA-REQ-2127 */
 								  false,
 								  RELKIND_INDEX,
 								  address,
@@ -1452,8 +1478,16 @@ DefineIndex(Oid relationId,
 					 * a new name.  Likewise, the existing target relation
 					 * field is wrong, and if indexOid or oldNode are set,
 					 * they mustn't be applied to the child either.
+					 *
+					 * OA-REQ-2127:
+					 * The schema of partitioned table index is not recursively
+					 * passed to its children because when add a new partition
+					 * with PARTITION OF or ATTACH, we do not know whether the
+					 * schema of parent table's index is the schema explicitly
+					 * specified by the user. maybe change in the future.
 					 */
 					childStmt->idxname = NULL;
+					childStmt->idxschemaname = NULL; /* OA-REQ-2127 */
 					childStmt->relation = NULL;
 					childStmt->indexOid = InvalidOid;
 					childStmt->oldNode = InvalidOid;

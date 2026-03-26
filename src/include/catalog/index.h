@@ -68,6 +68,7 @@ extern void index_check_primary_key(Relation heapRel,
 
 extern Oid	index_create(Relation heapRelation,
 						 const char *indexRelationName,
+						 Oid namespaceId, /* OA-REQ-2127 */
 						 Oid indexRelationId,
 						 Oid parentIndexRelid,
 						 Oid parentConstraintId,

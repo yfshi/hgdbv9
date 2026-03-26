@@ -7490,6 +7490,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 	int			i_tableoid,
 				i_oid,
 				i_indexname,
+				i_indexnamespace, /* OA-REQ-2127 */
 				i_parentidx,
 				i_indexdef,
 				i_indnkeyatts,
@@ -7555,6 +7556,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 				appendPQExpBuffer(query,
 								"SELECT t.tableoid, t.oid, "
 								"t.relname AS indexname, "
+								"t.relnamespace AS indexnamespace, " /* OA-REQ-2127 */
 								"inh.inhparent AS parentidx, "
 								"pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, "
 								"i.indnkeyatts AS indnkeyatts, "
@@ -7599,6 +7601,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 				appendPQExpBuffer(query,
 								"SELECT t.tableoid, t.oid, "
 								"t.relname AS indexname, "
+								"t.relnamespace AS indexnamespace, " /* OA-REQ-2127 */
 								"inh.inhparent AS parentidx, "
 								"pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, "
 								"i.indnkeyatts AS indnkeyatts, "
@@ -7645,6 +7648,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 			appendPQExpBuffer(query,
 							  "SELECT t.tableoid, t.oid, "
 							  "t.relname AS indexname, "
+							  "t.relnamespace AS indexnamespace, " /* OA-REQ-2127 */
 							  "0 AS parentidx, "
 							  "pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, "
 							  "i.indnatts AS indnkeyatts, "
@@ -7680,6 +7684,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 			appendPQExpBuffer(query,
 							  "SELECT t.tableoid, t.oid, "
 							  "t.relname AS indexname, "
+							  "t.relnamespace AS indexnamespace, " /* OA-REQ-2127 */
 							  "0 AS parentidx, "
 							  "pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, "
 							  "i.indnatts AS indnkeyatts, "
@@ -7711,6 +7716,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 			appendPQExpBuffer(query,
 							  "SELECT t.tableoid, t.oid, "
 							  "t.relname AS indexname, "
+							  "t.relnamespace AS indexnamespace, " /* OA-REQ-2127 */
 							  "0 AS parentidx, "
 							  "pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, "
 							  "i.indnatts AS indnkeyatts, "
@@ -7745,6 +7751,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 			appendPQExpBuffer(query,
 							  "SELECT t.tableoid, t.oid, "
 							  "t.relname AS indexname, "
+							  "t.relnamespace AS indexnamespace, " /* OA-REQ-2127 */
 							  "0 AS parentidx, "
 							  "pg_catalog.pg_get_indexdef(i.indexrelid) AS indexdef, "
 							  "t.relnatts AS indnkeyatts, "
@@ -7781,6 +7788,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 		i_tableoid = PQfnumber(res, "tableoid");
 		i_oid = PQfnumber(res, "oid");
 		i_indexname = PQfnumber(res, "indexname");
+		i_indexnamespace = PQfnumber(res, "indexnamespace"); /* OA-REQ-2127 */
 		i_parentidx = PQfnumber(res, "parentidx");
 		i_indexdef = PQfnumber(res, "indexdef");
 		i_indnkeyatts = PQfnumber(res, "indnkeyatts");
@@ -7816,7 +7824,7 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 			AssignDumpId(&indxinfo[j].dobj);
 			indxinfo[j].dobj.dump = tbinfo->dobj.dump;
 			indxinfo[j].dobj.name = pg_strdup(PQgetvalue(res, j, i_indexname));
-			indxinfo[j].dobj.namespace = tbinfo->dobj.namespace;
+			indxinfo[j].dobj.namespace = findNamespace(atooid(PQgetvalue(res, j, i_indexnamespace))); /* OA-REQ-2127 */
 			indxinfo[j].indextable = tbinfo;
 			indxinfo[j].indexdef = pg_strdup(PQgetvalue(res, j, i_indexdef));
 			indxinfo[j].indnkeyattrs = atoi(PQgetvalue(res, j, i_indnkeyatts));
@@ -18059,7 +18067,7 @@ dumpIndex(Archive *fout, const IndxInfo *indxinfo)
 							  fmtQualifiedDumpable(tbinfo));
 			/* index name is not qualified in this syntax */
 			appendPQExpBuffer(q, " ON %s;\n",
-							  qindxname);
+							  qqindxname /* OA-REQ-2127 */);
 		}
 
 		/*
@@ -18104,7 +18112,7 @@ dumpIndex(Archive *fout, const IndxInfo *indxinfo)
 							  fmtQualifiedDumpable(tbinfo));
 			/* index name is not qualified in this syntax */
 			appendPQExpBuffer(q, " INDEX %s;\n",
-							  qindxname);
+							  qqindxname /* OA-REQ-2127 */);
 		}
 
 		appendPQExpBuffer(delq, "DROP INDEX %s;\n", qqindxname);
@@ -18112,7 +18120,7 @@ dumpIndex(Archive *fout, const IndxInfo *indxinfo)
 		if (indxinfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
 			ArchiveEntry(fout, indxinfo->dobj.catId, indxinfo->dobj.dumpId,
 						 ARCHIVE_OPTS(.tag = indxinfo->dobj.name,
-									  .namespace = tbinfo->dobj.namespace->dobj.name,
+									  .namespace = indxinfo->dobj.namespace->dobj.name, /* OA-REQ-2127 */
 									  .tablespace = indxinfo->tablespace,
 									  .owner = tbinfo->rolname,
 									  .description = "INDEX",
@@ -18130,7 +18138,7 @@ dumpIndex(Archive *fout, const IndxInfo *indxinfo)
 	/* Dump Index Comments */
 	if (indxinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
 		dumpComment(fout, "INDEX", qindxname,
-					tbinfo->dobj.namespace->dobj.name,
+					indxinfo->dobj.namespace->dobj.name, /* OA-REQ-2127 */
 					tbinfo->rolname,
 					indxinfo->dobj.catId, 0,
 					is_constraint ? indxinfo->indexconstraint :
@@ -18378,7 +18386,7 @@ dumpConstraint(Archive *fout, const ConstraintInfo *coninfo)
 							  fmtQualifiedDumpable(tbinfo));
 			/* index name is not qualified in this syntax */
 			appendPQExpBuffer(q, " ON %s;\n",
-							  fmtId(indxinfo->dobj.name));
+							  fmtQualifiedDumpable(indxinfo) /* OA-REQ-2127 */);
 		}
 
 		/* If the index defines identity, we need to record that. */
@@ -18388,7 +18396,7 @@ dumpConstraint(Archive *fout, const ConstraintInfo *coninfo)
 							  fmtQualifiedDumpable(tbinfo));
 			/* index name is not qualified in this syntax */
 			appendPQExpBuffer(q, " INDEX %s;\n",
-							  fmtId(indxinfo->dobj.name));
+							  fmtQualifiedDumpable(indxinfo) /* OA-REQ-2127 */);
 		}
 
 		/* Indexes can depend on extensions */

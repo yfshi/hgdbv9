@@ -1462,6 +1462,7 @@ static bool
 _equalClusterStmt(const ClusterStmt *a, const ClusterStmt *b)
 {
 	COMPARE_NODE_FIELD(relation);
+	COMPARE_STRING_FIELD(indexnamespace);	/* OA-REQ-2127 */
 	COMPARE_STRING_FIELD(indexname);
 	COMPARE_NODE_FIELD(params);
 
@@ -1596,6 +1597,7 @@ static bool
 _equalIndexStmt(const IndexStmt *a, const IndexStmt *b)
 {
 	COMPARE_STRING_FIELD(idxname);
+	COMPARE_STRING_FIELD(idxschemaname); /* OA-REQ-2127 */
 	COMPARE_NODE_FIELD(relation);
 	COMPARE_STRING_FIELD(accessMethod);
 	COMPARE_STRING_FIELD(tableSpace);
@@ -2103,6 +2105,7 @@ _equalReplicaIdentityStmt(const ReplicaIdentityStmt *a, const ReplicaIdentityStm
 {
 	COMPARE_SCALAR_FIELD(identity_type);
 	COMPARE_STRING_FIELD(name);
+	COMPARE_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 
 	return true;
 }
@@ -3198,6 +3201,7 @@ _equalConstraint(const Constraint *a, const Constraint *b)
 	COMPARE_NODE_FIELD(exclusions);
 	COMPARE_NODE_FIELD(options);
 	COMPARE_STRING_FIELD(indexname);
+	COMPARE_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 	COMPARE_STRING_FIELD(indexspace);
 	COMPARE_SCALAR_FIELD(reset_default_tblspc);
 	COMPARE_STRING_FIELD(access_method);

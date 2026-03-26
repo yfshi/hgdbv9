@@ -557,7 +557,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
          ->  Foreign Scan on public.ft2 t1
                Output: t1.c1
                Remote SQL: SELECT "C 1" FROM "S 1"."T 1" ORDER BY "C 1" ASC NULLS LAST
-         ->  Index Only Scan using t1_pkey on "S 1"."T 1" t2
+         ->  Index Only Scan using "S 1".t1_pkey on "S 1"."T 1" t2
                Output: t2."C 1"
 (11 rows)
 
@@ -591,7 +591,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
          ->  Foreign Scan on public.ft2 t1
                Output: t1.c1
                Remote SQL: SELECT "C 1" FROM "S 1"."T 1" ORDER BY "C 1" ASC NULLS LAST
-         ->  Index Only Scan using t1_pkey on "S 1"."T 1" t2
+         ->  Index Only Scan using "S 1".t1_pkey on "S 1"."T 1" t2
                Output: t2."C 1"
 (11 rows)
 
@@ -626,7 +626,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
                Output: t3.c1
                Relations: (public.ft1 t2) INNER JOIN (public.ft2 t3)
                Remote SQL: SELECT r3."C 1" FROM ("S 1"."T 1" r2 INNER JOIN "S 1"."T 1" r3 ON (((r2."C 1" OPERATOR(sys.=) r3."C 1")))) ORDER BY r2."C 1" ASC NULLS LAST
-         ->  Index Only Scan using t1_pkey on "S 1"."T 1" t1
+         ->  Index Only Scan using "S 1".t1_pkey on "S 1"."T 1" t1
                Output: t1."C 1"
 (12 rows)
 
@@ -662,7 +662,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
                Output: t3.c1, t2.c1
                Relations: (public.ft2 t3) LEFT JOIN (public.ft1 t2)
                Remote SQL: SELECT r3."C 1", r2."C 1" FROM ("S 1"."T 1" r3 LEFT JOIN "S 1"."T 1" r2 ON (((r2."C 1" OPERATOR(sys.=) r3."C 1")))) ORDER BY r3."C 1" ASC NULLS LAST
-         ->  Index Only Scan using t1_pkey on "S 1"."T 1" t1
+         ->  Index Only Scan using "S 1".t1_pkey on "S 1"."T 1" t1
                Output: t1."C 1"
 (12 rows)
 
@@ -696,7 +696,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
                Output: t2.c1, t3.c1
                Relations: (public.ft1 t2) FULL JOIN (public.ft2 t3)
                Remote SQL: SELECT r2."C 1", r3."C 1" FROM ("S 1"."T 1" r2 FULL JOIN "S 1"."T 1" r3 ON (((r2."C 1" OPERATOR(sys.=) r3."C 1")))) ORDER BY r3."C 1" ASC NULLS LAST
-         ->  Index Only Scan using t1_pkey on "S 1"."T 1" t1
+         ->  Index Only Scan using "S 1".t1_pkey on "S 1"."T 1" t1
                Output: t1."C 1"
 (12 rows)
 
@@ -846,7 +846,7 @@ EXPLAIN (VERBOSE, COSTS OFF)
 --------------------------------------------------------------------------------------------------------------------------------
  Nested Loop
    Output: a."C 1", a.c2, a.c3, a.c4, a.c5, a.c6, a.c7, a.c8, b.c1, b.c2, b.c3, b.c4, b.c5, b.c6, b.c7, b.c8
-   ->  Index Scan using t1_pkey on "S 1"."T 1" a
+   ->  Index Scan using "S 1".t1_pkey on "S 1"."T 1" a
          Output: a."C 1", a.c2, a.c3, a.c4, a.c5, a.c6, a.c7, a.c8
          Index Cond: (a."C 1" = '47'::number)
    ->  Foreign Scan on public.ft2 b
@@ -2449,7 +2449,7 @@ SELECT t1."C 1" FROM "S 1"."T 1" t1, LATERAL (SELECT DISTINCT t2.c1, t3.c1 FROM 
    Output: t1."C 1"
    ->  Nested Loop
          Output: t1."C 1"
-         ->  Index Scan using t1_pkey on "S 1"."T 1" t1
+         ->  Index Scan using "S 1".t1_pkey on "S 1"."T 1" t1
                Output: t1."C 1", t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
          ->  Memoize
                Cache Key: t1.c2
@@ -2685,7 +2685,7 @@ SELECT * FROM local_tbl LEFT JOIN (SELECT ft1.* FROM ft1 INNER JOIN ft2 ON (ft1.
    ->  Nested Loop Left Join
          Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, local_tbl.ctid, ft1.*, ft2.*
          Join Filter: ((local_tbl.c3)::text = (ft1.c3)::text)
-         ->  Index Scan using local_tbl_pkey on public.local_tbl
+         ->  Index Scan using public.local_tbl_pkey on public.local_tbl
                Output: local_tbl.c1, local_tbl.c2, local_tbl.c3, local_tbl.ctid
          ->  Materialize
                Output: ft1.c1, ft1.c2, ft1.c3, ft1.c4, ft1.c5, ft1.c6, ft1.c7, ft1.c8, ft1.*, ft2.*
@@ -3768,7 +3768,7 @@ select c2, sum from "S 1"."T 1" t1, lateral (select sum(t2.c1 + t1."C 1") sum fr
    Sort Key: t1.c2
    ->  Nested Loop
          Output: t1.c2, qry.sum
-         ->  Index Scan using t1_pkey on "S 1"."T 1" t1
+         ->  Index Scan using "S 1".t1_pkey on "S 1"."T 1" t1
                Output: t1."C 1", t1.c2, t1.c3, t1.c4, t1.c5, t1.c6, t1.c7, t1.c8
                Index Cond: (t1."C 1" < '100'::number)
                Filter: (t1.c2 < '3'::number)
@@ -3808,7 +3808,7 @@ ORDER BY ref_0."C 1";
    Output: ref_0.c2, ref_0."C 1", (ref_0.c2), ref_1.c3, ref_0."C 1"
    ->  Nested Loop
          Output: ref_0.c2, ref_0."C 1", ref_1.c3, (ref_0.c2)
-         ->  Index Scan using t1_pkey on "S 1"."T 1" ref_0
+         ->  Index Scan using "S 1".t1_pkey on "S 1"."T 1" ref_0
                Output: ref_0."C 1", ref_0.c2, ref_0.c3, ref_0.c4, ref_0.c5, ref_0.c6, ref_0.c7, ref_0.c8
                Index Cond: (ref_0."C 1" < '10'::number)
          ->  Foreign Scan on public.ft1 ref_1
@@ -4623,7 +4623,7 @@ explain (verbose, costs off) select * from ft3 f, loct3 l
  Nested Loop
    Output: f.f1, f.f2, f.f3, l.f1, l.f2, l.f3
    Join Filter: ((f.f3)::varchar2(10) = (l.f3)::varchar2(10))
-   ->  Index Scan using loct3_f1_key on public.loct3 l
+   ->  Index Scan using public.loct3_f1_key on public.loct3 l
          Output: l.f1, l.f2, l.f3
          Index Cond: (l.f1 = 'foo'::varchar2)
    ->  Foreign Scan on public.ft3 f
@@ -4675,7 +4675,7 @@ explain (verbose, costs off) select * from ft3 f, loct3 l
  Nested Loop
    Output: f.f1, f.f2, f.f3, l.f1, l.f2, l.f3
    Join Filter: ((f.f3)::varchar2(10) = (l.f3)::varchar2(10))
-   ->  Index Scan using loct3_f1_key on public.loct3 l
+   ->  Index Scan using public.loct3_f1_key on public.loct3 l
          Output: l.f1, l.f2, l.f3
          Index Cond: (l.f1 = 'foo'::varchar2)
    ->  Foreign Scan on public.ft3 f
@@ -8133,12 +8133,12 @@ explain (verbose, costs off)
                Merge Cond: (foo.f1 = loct1.f1)
                ->  Merge Append
                      Sort Key: foo.f1
-                     ->  Index Scan using i_foo_f1 on public.foo foo_1
+                     ->  Index Scan using public.i_foo_f1 on public.foo foo_1
                            Output: foo_1.f1, foo_1.f2
                      ->  Foreign Scan on public.foo2 foo_2
                            Output: foo_2.f1, foo_2.f2
                            Remote SQL: SELECT f1, f2 FROM public.loct1 ORDER BY f1 ASC NULLS LAST
-               ->  Index Only Scan using i_loct1_f1 on public.loct1
+               ->  Index Only Scan using public.i_loct1_f1 on public.loct1
                      Output: loct1.f1
 (17 rows)
 
@@ -8173,12 +8173,12 @@ explain (verbose, costs off)
                Merge Cond: (foo.f1 = loct1.f1)
                ->  Merge Append
                      Sort Key: foo.f1
-                     ->  Index Scan using i_foo_f1 on public.foo foo_1
+                     ->  Index Scan using public.i_foo_f1 on public.foo foo_1
                            Output: foo_1.f1, foo_1.f2
                      ->  Foreign Scan on public.foo2 foo_2
                            Output: foo_2.f1, foo_2.f2
                            Remote SQL: SELECT f1, f2 FROM public.loct1 ORDER BY f1 ASC NULLS LAST
-               ->  Index Only Scan using i_loct1_f1 on public.loct1
+               ->  Index Only Scan using public.i_loct1_f1 on public.loct1
                      Output: loct1.f1
 (17 rows)
 
@@ -8220,7 +8220,7 @@ delete from foo where f1 < 5 returning *;
    Delete on public.foo foo_1
    Foreign Delete on public.foo2 foo_2
    ->  Append
-         ->  Index Scan using i_foo_f1 on public.foo foo_1
+         ->  Index Scan using public.i_foo_f1 on public.foo foo_1
                Output: foo_1.tableoid, foo_1.ctid
                Index Cond: (foo_1.f1 < '5'::number)
          ->  Foreign Delete on public.foo2 foo_2

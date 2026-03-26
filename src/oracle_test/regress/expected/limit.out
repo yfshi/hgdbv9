@@ -373,7 +373,7 @@ select unique1, unique2, nextval('testseq')
 ----------------------------------------------------------------
  Limit
    Output: unique1, unique2, (nextval('testseq'::regclass))
-   ->  Index Scan using tenk1_unique2 on public.tenk1
+   ->  Index Scan using public.tenk1_unique2 on public.tenk1
          Output: unique1, unique2, nextval('testseq'::regclass)
 (4 rows)
 
@@ -446,7 +446,7 @@ select unique1, unique2, generate_series(1,10)
    Output: unique1, unique2, (generate_series(1, 10))
    ->  ProjectSet
          Output: unique1, unique2, generate_series(1, 10)
-         ->  Index Scan using tenk1_unique2 on public.tenk1
+         ->  Index Scan using public.tenk1_unique2 on public.tenk1
                Output: unique1, unique2, two, four, ten, twenty, hundred, thousand, twothousand, fivethous, tenthous, odd, even, stringu1, stringu2, string4
 (6 rows)
 
@@ -543,7 +543,7 @@ select sum(tenthous) as s1, sum(tenthous) + random()*0 as s2
    ->  GroupAggregate
          Output: sum(tenthous), ((sum(tenthous))::double precision + (random() * '0'::double precision)), thousand
          Group Key: tenk1.thousand
-         ->  Index Only Scan using tenk1_thous_tenthous on public.tenk1
+         ->  Index Only Scan using public.tenk1_thous_tenthous on public.tenk1
                Output: thousand, tenthous
 (7 rows)
 

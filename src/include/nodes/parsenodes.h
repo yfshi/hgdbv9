@@ -2502,6 +2502,7 @@ typedef struct ReplicaIdentityStmt
 	NodeTag		type;
 	char		identity_type;
 	char	   *name;
+	char	   *indexnamespace;	/* OA-REQ-2127: Only used for REPLICA_IDENTITY_INDEX */
 } ReplicaIdentityStmt;
 
 typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
@@ -2902,6 +2903,7 @@ typedef struct Constraint
 	/* Fields used for index constraints (UNIQUE, PRIMARY KEY, EXCLUSION): */
 	List	   *options;		/* options from WITH clause */
 	char	   *indexname;		/* existing index to use; otherwise NULL */
+	char	   *indexnamespace;	/* OA-REQ-2127: don't change indexname type to reduce pollution to gram.y */
 	char	   *indexspace;		/* index tablespace; NULL for default */
 	bool		reset_default_tblspc;	/* reset default_tablespace prior to
 										 * creating the index */
@@ -3661,6 +3663,7 @@ typedef struct IndexStmt
 {
 	NodeTag		type;
 	char	   *idxname;		/* name of new index, or NULL for default */
+	char	   *idxschemaname;	/* OA-REQ-2127: schema name for index, or NULL for default */
 	RangeVar   *relation;		/* relation to build index on */
 	char	   *accessMethod;	/* name of access method (eg. btree) */
 	char	   *tableSpace;		/* tablespace, or NULL for default */
@@ -4140,6 +4143,7 @@ typedef struct ClusterStmt
 {
 	NodeTag		type;
 	RangeVar   *relation;		/* relation being indexed, or NULL if all */
+	char	   *indexnamespace;	/* OA-REQ-2127 */
 	char	   *indexname;		/* original index defined */
 	List	   *params;			/* list of DefElem nodes */
 } ClusterStmt;

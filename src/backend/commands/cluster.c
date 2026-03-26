@@ -184,10 +184,12 @@ cluster(ParseState *pstate, ClusterStmt *stmt, bool isTopLevel)
 		{
 			/*
 			 * The index is expected to be in the same namespace as the
-			 * relation.
+			 * relation if indexnamespace is null.
 			 */
 			indexOid = get_relname_relid(stmt->indexname,
-										 rel->rd_rel->relnamespace);
+										 stmt->indexnamespace ?
+										 get_namespace_oid(stmt->indexnamespace, false) :
+										 rel->rd_rel->relnamespace);	/* OA-REQ-2127 */
 			if (!OidIsValid(indexOid))
 				ereport(ERROR,
 						(errcode(ERRCODE_UNDEFINED_OBJECT),

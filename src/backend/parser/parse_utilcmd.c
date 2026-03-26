@@ -2025,6 +2025,11 @@ expandTableLikeClause(RangeVar *heapRel, TableLikeClause *table_like_clause)
 												 attmap,
 												 NULL);
 
+			/* Begin - OA-REQ-2127 */
+			if (compatible_mode == ORA_MODE)
+				index_stmt->idxschemaname = get_namespace_name(RelationGetNamespace(parent_index));
+			/* End - OA-REQ-2127 */
+
 			/* Copy comment on index, if requested */
 			if (table_like_clause->options & CREATE_TABLE_LIKE_COMMENTS)
 			{
@@ -2245,6 +2250,7 @@ generateClonedIndexStmt(RangeVar *heapRel, Relation source_idx,
 	 * table was in a different schema.)
 	 */
 	index->idxname = NULL;
+	index->idxschemaname = NULL; /* OA-REQ-2127 */
 
 	/*
 	 * If the index is marked PRIMARY or has an exclusion condition, it's
@@ -2860,6 +2866,7 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 	else
 		index->idxname = NULL;	/* DefineIndex will choose name */
 
+	index->idxschemaname = NULL; /* OA-REQ-2127 */
 	index->relation = cxt->relation;
 	index->accessMethod = constraint->access_method ? constraint->access_method : DEFAULT_INDEX_TYPE;
 	index->options = constraint->options;
@@ -2910,8 +2917,19 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 					 errmsg("cannot use an existing index in CREATE TABLE"),
 					 parser_errposition(cxt->pstate, constraint->location)));
 
-		/* Look for the index in the same schema as the table */
-		index_oid = get_relname_relid(index_name, RelationGetNamespace(heap_rel));
+		/* Begin - OA-REQ-2127 */
+		/*
+		 * Look index in specified schema, if no schema is specified,
+		 * otherwise look for the index in the same schema as the table.
+		 */
+		if (ORA_MODE == compatible_mode && constraint->indexnamespace)
+		{
+			index_oid = get_relname_relid(index_name, get_namespace_oid(constraint->indexnamespace, false));
+			index_name = quote_qualified_identifier(constraint->indexnamespace, index_name);
+		}
+		else
+			index_oid = get_relname_relid(index_name, RelationGetNamespace(heap_rel));
+		/* End - OA-REQ-2127 */
 
 		if (!OidIsValid(index_oid))
 			ereport(ERROR,
