@@ -1331,6 +1331,33 @@ exec_simple_query(const char *query_string)
 		/* If we got a cancel signal in analysis or planning, quit */
 		CHECK_FOR_INTERRUPTS();
 
+		/* Begin - ReqID:SRS-MYSQL-AutoCommit */
+		/*
+		 * In MySQL compatibility mode, when autocommit is disabled and the current command
+		 * is not a transaction control statement, automatically promote the transaction
+		 * block state from TBLOCK_STARTED to TBLOCK_INPROGRESS.
+		 * The following transaction control statements are skipped because they already
+		 * manage the transaction state correctly on their own:
+		 *		- BEGIN / START TRANSACTION: initiate a new transaction block
+		 *		- COMMIT / ROLLBACK: finish the current transaction
+		 *		- SAVEPOINT / RELEASE: manage subtransactions
+		 *		- PREPARE TRANSACTION / COMMIT PREPARED / ROLLBACK PREPARED: handle two-phase commit
+		 * For these statements, we must NOT call BlockStateBeginToInprogress() because
+		 * doing so would interfere with their normal state transition logic and could
+		 * cause errors (e.g., attempting to promote state when already in a transaction
+		 * block that is about to be committed or rolled back).
+		 */
+		if (!mys_autocommit && compatible_mode == MYS_MODE &&
+			commandTag != CMDTAG_BEGIN && commandTag != CMDTAG_START_TRANSACTION &&
+			commandTag != CMDTAG_COMMIT && commandTag != CMDTAG_ROLLBACK &&
+			commandTag != CMDTAG_SAVEPOINT && commandTag != CMDTAG_RELEASE &&
+			commandTag != CMDTAG_PREPARE_TRANSACTION && commandTag != CMDTAG_COMMIT_PREPARED &&
+			commandTag != CMDTAG_ROLLBACK_PREPARED)
+		{
+			BlockStateBeginToInprogress();
+		}
+		 /* End - ReqID:SRS-MYSQL-AutoCommit */
+
 		/* ReqID:SRS-MISC-HSH */
 		pgstat_report_query_phase(QUERY_PHASE_EXEC);
 

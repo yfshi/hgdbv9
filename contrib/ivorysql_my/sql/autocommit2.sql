@@ -1,0 +1,1016 @@
+-- savepoint test
+truncate t;
+-- case 1-1
+-- autocommit = 1
+SET autocommit = 1;
+INSERT INTO t VALUES (1);  -- commit
+SAVEPOINT sp1;             -- ignore, not error (in mysql)
+INSERT INTO t VALUES (2);  -- commit
+ROLLBACK TO SAVEPOINT sp1; -- ERROR：ER_SP_DOES_NOT_EXIST (in mysql)
+select * from t;
+truncate t;
+
+-- case 1-2
+-- autocommit = 0
+SET autocommit = 0;
+INSERT INTO t VALUES (1);	-- not commit
+SAVEPOINT sp1;				-- create succeed savepoint
+INSERT INTO t VALUES (2);	-- not commit
+ROLLBACK TO SAVEPOINT sp1;	-- succeed：rollback to sp1
+SELECT * FROM t;			-- only value=1
+truncate t;
+
+-- case 1-3
+-- autocommit = 1 and BEGIN
+SET autocommit = 1;
+BEGIN; 
+INSERT INTO t VALUES (1);	-- not commit
+SAVEPOINT sp1;				-- create succeed savepoint
+INSERT INTO t VALUES (2);	-- not commit
+ROLLBACK TO SAVEPOINT sp1;	-- succeed：rollback to sp1
+COMMIT;						-- commit
+select * from t;
+truncate t;
+
+-- case 1-4
+-- autocommit = 0 and BEGIN
+SET autocommit = 0;
+BEGIN;
+INSERT INTO t VALUES (1);	-- not commit
+SAVEPOINT sp1;				-- create succeed savepoint
+INSERT INTO t VALUES (2);	-- not commit
+ROLLBACK TO SAVEPOINT sp1;	-- succeed：rollback to sp1
+COMMIT;						-- commit
+select * from t;
+SET autocommit = 1;
+delete from t;
+
+-- case 1-5
+-- autocommit = 0 -> BEGIN -> SAVEPOINT -> autocommit = 1
+SET autocommit = 0;
+BEGIN;
+INSERT INTO t VALUES (1);	-- not commit
+SAVEPOINT sp1;	
+SET autocommit = 1;
+ROLLBACK TO SAVEPOINT sp1;	-- succeed：rollback to sp1
+INSERT INTO t VALUES (2);
+show autocommit;
+select * from t;
+drop table t;
+
+-- case 2-1 
+-- set autocommit 1->0; call error;	--set succeed
+DROP TABLE IF EXISTS t1;
+DROP FUNCTION IF EXISTS test_case_1_basic_pk_conflict,
+						test_case_2_basic_pk_conflict,
+						test_case_3_basic_pk_conflict,
+						test_case_4_basic_pk_conflict,
+						test_case_5_basic_pk_conflict,
+						test_case_6_basic_pk_conflict,
+						test_case_7_basic_pk_conflict,
+						test_case_8_basic_pk_conflict,
+						test_case_9_basic_pk_conflict,
+						test_case_10_basic_pk_conflict,
+						test_case_11_basic_pk_conflict,
+						test_case_12_basic_pk_conflict,
+						test_case_13_basic_pk_conflict,
+						test_case_14_basic_pk_conflict,
+						test_case_15_basic_pk_conflict,
+						test_case_16_basic_pk_conflict,
+						test_case_17_basic_pk_conflict,
+						test_case_18_basic_pk_conflict,
+						test_case_19_basic_pk_conflict,
+						test_case_20_basic_pk_conflict,
+						test_case_21_basic_pk_conflict,
+						do_test_set_autocommit0,
+						do_test_set_autocommit1,
+						do_test_set_autocommit2,
+						do_test_set_autocommit3,
+						do_test_set_autocommit4,
+						do_test_set_autocommit5,
+						do_test_set_autocommit6;
+CREATE TABLE t1 (id INT PRIMARY KEY, name VARCHAR(50));
+
+CREATE OR REPLACE PROCEDURE test_case_1_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	SET AUTOCOMMIT = 0;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+END;
+$$;
+SET AUTOCOMMIT = 1;
+INSERT INTO t1 VALUES (1, 'initial');
+CALL test_case_1_basic_pk_conflict();	-- error
+SELECT * FROM t1;	-- 1 rows
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;	-- 2 rows
+commit;
+show autocommit;
+SET AUTOCOMMIT = 1;
+delete from t1;
+
+-- case 2-2
+--set autocommit 0->1; call error;	--set succeed
+CREATE OR REPLACE PROCEDURE test_case_2_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+SET AUTOCOMMIT = 0;
+CALL test_case_2_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+
+-- case 2-3
+--call error; set autocommit 1->0;	--set failed
+CREATE OR REPLACE PROCEDURE test_case_3_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET AUTOCOMMIT = 0;
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+CALL test_case_3_basic_pk_conflict();	--error
+SELECT * FROM t1;
+show autocommit;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+delete from t1;
+
+-- case 2-4
+--call error; set autocommit 0->1; 	--set failed
+CREATE OR REPLACE PROCEDURE test_case_4_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET AUTOCOMMIT = 1;
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+set autocommit = 0;
+CALL test_case_4_basic_pk_conflict();
+SELECT * FROM t1;
+show autocommit;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+delete from t1;
+commit;
+set autocommit = 1;
+delete from t1;
+
+-- case 2-5
+--set autocommit 0->1; call: insert 2 rows succeed, insert error; --set succeed(mysql insert 2\3 succeed)
+CREATE OR REPLACE PROCEDURE test_case_5_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (2, 'test1');
+	INSERT INTO t1 VALUES (3, 'test2');
+	INSERT INTO t1 VALUES (4, 'test3');
+	INSERT INTO t1 VALUES (4, 'test3');
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+SET AUTOCOMMIT = 0;
+CALL test_case_5_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 2-6
+--insert 2 rows succeed; set autocommit 0->1; insert 2 rows succeed, insert error; --set succeed(mysql insert 2\3 succeed)
+CREATE OR REPLACE PROCEDURE test_case_6_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (3, 'test3');
+	INSERT INTO t1 VALUES (4, 'test4');
+	INSERT INTO t1 VALUES (5, 'test5');
+	INSERT INTO t1 VALUES (5, 'test5');
+END;
+$$;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+CALL test_case_6_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+show autocommit;
+rollback;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 2-7
+--insert 2 rows succeed; set autocommit 0->1; rollback; --set succeed(mysql insert 2\3 succeed)
+CREATE OR REPLACE PROCEDURE test_case_7_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	rollback;
+END;
+$$;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+CALL test_case_7_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+show autocommit;
+rollback;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- function set autocommit testcase
+-- case 3-1 
+-- set autocommit 1->0; select error;	--set succeed
+CREATE OR REPLACE FUNCTION  test_case_8_basic_pk_conflict()
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	SET autocommit = 0;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	RETURN 'function executed';
+END;
+$$;
+SET AUTOCOMMIT = 1;
+INSERT INTO t1 VALUES (1, 'initial');
+select test_case_8_basic_pk_conflict();	-- error
+SELECT * FROM t1;	-- 1 rows
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;	-- 2 rows
+commit;
+show autocommit;
+SET AUTOCOMMIT = 1;
+delete from t1;
+
+-- case 3-2
+--set autocommit 0->1; select error;	--set succeed
+CREATE OR REPLACE FUNCTION  test_case_9_basic_pk_conflict()
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	RETURN 'function executed';
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+SET AUTOCOMMIT = 0;
+select test_case_9_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+
+-- case 3-3
+--select error; set autocommit 1->0;	--set failed
+CREATE OR REPLACE FUNCTION  test_case_10_basic_pk_conflict()
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET AUTOCOMMIT = 0;
+	RETURN 'function executed';
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+select test_case_10_basic_pk_conflict();	--error
+SELECT * FROM t1;
+show autocommit;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+delete from t1;
+
+-- case 3-4
+--select error; set autocommit 0->1; 	--set failed
+CREATE OR REPLACE FUNCTION test_case_11_basic_pk_conflict()
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET AUTOCOMMIT = 1;
+	RETURN 'function executed';
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+set autocommit = 0;
+select test_case_11_basic_pk_conflict();
+SELECT * FROM t1;
+show autocommit;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+delete from t1;
+commit;
+set autocommit = 1;
+
+-- case 3-5
+--set autocommit 0->1; select: insert 2 rows succeed, insert error; --set succeed(mysql insert 2\3 succeed)
+CREATE OR REPLACE FUNCTION test_case_12_basic_pk_conflict()
+RETURNS text
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (2, 'test1');
+	INSERT INTO t1 VALUES (3, 'test2');
+	INSERT INTO t1 VALUES (4, 'test3');
+	INSERT INTO t1 VALUES (4, 'test3');
+	RETURN 'function executed';
+END;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+SET AUTOCOMMIT = 0;
+select test_case_12_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 3-6
+--insert 2 rows succeed; set autocommit 0->1; insert 2 rows succeed, insert error; --set succeed
+CREATE OR REPLACE FUNCTION test_case_13_basic_pk_conflict()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (3, 'test3');
+	INSERT INTO t1 VALUES (4, 'test4');
+	INSERT INTO t1 VALUES (5, 'test5');
+	INSERT INTO t1 VALUES (5, 'test5');
+END;
+$$;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+select test_case_13_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+
+set autocommit = 1;
+
+-- case 3-7
+--insert 2 rows succeed; set autocommit 0->1; rollback; --set succeed
+CREATE OR REPLACE FUNCTION  test_case_14_basic_pk_conflict()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	rollback;
+END;
+$$;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+select test_case_14_basic_pk_conflict();	-- error
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- function exception set autocommit testcase
+-- case 4-1 
+-- insert error -> exception set autocommit = 0;
+CREATE OR REPLACE FUNCTION  test_case_15_basic_pk_conflict(p_id int, p_data text) 
+returns boolean
+language plpgsql
+as $$
+begin
+	insert into t1 values (p_id, p_data);
+	return true;
+exception
+	when others then
+		set autocommit = 0;
+    return false;
+end;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+SET AUTOCOMMIT = 1;
+select test_case_15_basic_pk_conflict(1, 'test1');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 4-2 
+-- insert error -> exception set autocommit = 1;
+CREATE OR REPLACE FUNCTION  test_case_16_basic_pk_conflict(p_id int, p_data text) 
+returns boolean
+language plpgsql
+as $$
+begin
+	insert into t1 values (p_id, p_data);
+	return true;
+exception
+	when others then
+		set autocommit = 1;
+	return false;
+end;
+$$;
+SET AUTOCOMMIT = 0;
+begin;
+INSERT INTO t1 VALUES (1, 'initial');
+select test_case_16_basic_pk_conflict(1, 'test1');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 4-3 
+-- insert error -> exception set autocommit = 0; insert;
+CREATE OR REPLACE FUNCTION test_case_17_basic_pk_conflict(p_id int, p_data text) 
+returns boolean
+language plpgsql
+as $$
+begin
+	insert into t1 values (p_id, p_data);
+	return true;
+exception
+	when others then
+		set autocommit = 0;
+		insert into t1 values (10, 'exception');
+	return false;
+end;
+$$;
+INSERT INTO t1 VALUES (1, 'initial');
+SET AUTOCOMMIT = 1;
+select test_case_17_basic_pk_conflict(1, 'test1');
+SELECT * FROM t1;
+show autocommit;
+rollback;
+SELECT * FROM t1;
+delete from t1;
+set autocommit = 1;
+
+-- case 4-4 
+-- insert error -> exception set autocommit = 1;
+CREATE OR REPLACE FUNCTION test_case_18_basic_pk_conflict(p_id int, p_data text) 
+returns boolean
+language plpgsql
+as $$
+begin
+	insert into t1 values (p_id, p_data);
+	return true;
+exception
+	when others then
+		set autocommit = 1;
+		insert into t1 values (10, 'exception');
+	return false;
+end;
+$$;
+SET AUTOCOMMIT = 0;
+begin;
+INSERT INTO t1 VALUES (1, 'initial');
+select test_case_18_basic_pk_conflict(1, 'test1');
+SELECT * FROM t1;
+show autocommit;
+rollback;
+delete from t1;
+set autocommit = 1;
+
+-- case 4-5 -- new
+-- insert error -> exception set autocommit = 1; rollback; all rows delete
+CREATE OR REPLACE FUNCTION test_case_19_basic_pk_conflict(p_id int, p_data text) 
+returns boolean
+language plpgsql
+as $$
+begin
+	insert into t1 values (p_id, p_data);
+	return true;
+exception
+	when others then
+		set autocommit = 1;
+		insert into t1 values (10, 'exception');
+		rollback;
+	return false;
+end;
+$$;
+SET AUTOCOMMIT = 0;
+begin;
+INSERT INTO t1 VALUES (1, 'initial');
+select test_case_19_basic_pk_conflict(1, 'test1');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 5-1 
+-- insert error in function;
+CREATE OR REPLACE FUNCTION  test_case_20_basic_pk_conflict()
+RETURNS void
+LANGUAGE plpgsql
+AS $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	INSERT INTO t1 VALUES (3, 'test3');
+	INSERT INTO t1 VALUES (3, 'test3');
+END;
+$$;
+INSERT INTO t1 VALUES (0, 'initial');
+select test_case_20_basic_pk_conflict();
+SELECT * FROM t1;
+delete from t1;
+
+-- case 5-2 
+-- insert error in procedure;
+CREATE OR REPLACE PROCEDURE test_case_21_basic_pk_conflict()
+LANGUAGE plpgsql AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	INSERT INTO t1 VALUES (3, 'test3');
+	INSERT INTO t1 VALUES (3, 'test3');
+END;
+$$;
+INSERT INTO t1 VALUES (0, 'initial');
+CALL test_case_21_basic_pk_conflict();
+SELECT * FROM t1;
+delete from t1;
+
+-- do set autocommit testcase
+-- case 6-0  
+-- set = 0; DO { function {INSERT succeed; set = 1;} } 
+-- set succeed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit0() RETURNS text AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'init'); 
+	SET autocommit = 1; 
+	RETURN 'function executed';
+END;
+$$ LANGUAGE plpgsql;
+
+set autocommit = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit0();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-1
+-- set = 1; DO { function {set = 0; INSERT failed;} } 
+-- set succeed;
+CREATE OR REPLACE FUNCTION do_test_set_autocommit1() RETURNS text AS $$
+BEGIN
+	SET autocommit = 0;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	RETURN 'function executed';
+END;
+$$ LANGUAGE plpgsql;
+
+set autocommit = 1;
+INSERT INTO t1 VALUES (1, 'initial');
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit1();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-2
+-- set = 1; DO { function {set = 1; INSERT failed;} } 
+-- set succeed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit2() RETURNS text AS $$
+BEGIN
+	SET autocommit = 1;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	RETURN 'function executed';
+END;
+$$ LANGUAGE plpgsql;
+INSERT INTO t1 VALUES (1, 'initial');
+set autocommit = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit2();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-3
+-- set = 1; DO { function {INSERT failed; set = 0;} } 
+-- set failed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit3() RETURNS text AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET autocommit = 0;
+	RETURN 'function executed';
+END;
+$$ LANGUAGE plpgsql;
+set autocommit = 1;
+INSERT INTO t1 VALUES (1, 'initial');
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit3();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+show autocommit;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-4
+-- set = 1; DO { function {INSERT failed; set = 1;} } 
+-- set failed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit4() RETURNS text AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET autocommit = 1;
+	RETURN 'function executed';
+END;
+$$ LANGUAGE plpgsql;
+INSERT INTO t1 VALUES (1, 'initial');
+set autocommit = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit4();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+rollback;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-5
+-- set = 1; DO { function {set = 1; INSERT succeed; INSERT failed;} } 
+-- set failed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit5() RETURNS text AS $$
+BEGIN
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (2, 'test1');
+	INSERT INTO t1 VALUES (3, 'test2');
+	INSERT INTO t1 VALUES (4, 'test3');
+	INSERT INTO t1 VALUES (4, 'test3');
+END;
+$$ LANGUAGE plpgsql;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit5();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 6-6
+-- set = 1; DO { function {INSERT succeed; set = 1; INSERT succeed; INSERT failed;} } 
+-- set succeed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit6() RETURNS text AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (3, 'test3');
+	INSERT INTO t1 VALUES (4, 'test4');
+	INSERT INTO t1 VALUES (5, 'test5');
+	INSERT INTO t1 VALUES (5, 'test5');
+END;
+$$ LANGUAGE plpgsql;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit6();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 6-7
+-- set = 1; DO { function {INSERT succeed; set = 1; rollback;} } 
+-- set succeed
+CREATE OR REPLACE FUNCTION do_test_set_autocommit6() RETURNS text AS $$
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	rollback;
+END;
+$$ LANGUAGE plpgsql;
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	result := do_test_set_autocommit6();
+	RAISE NOTICE 'Result: %', result;
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 6-8  
+-- set = 0; DO { INSERT succeed; set = 1;} 
+-- set succeed
+set autocommit = 0;
+DO $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'init'); 
+	SET autocommit = 1;
+	RAISE NOTICE 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-9
+-- set = 1; DO { set = 1; INSERT failed; } 
+-- set succeed
+set autocommit = 0;
+DO $$
+DECLARE
+BEGIN
+	SET autocommit = 1;
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	RAISE NOTICE 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-10
+-- set = 1; DO { INSERT failed; set = 0; } 
+-- set failed
+set autocommit = 1;
+INSERT INTO t1 VALUES (1, 'initial');
+DO $$
+DECLARE
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET autocommit = 0;
+	RETURN 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+show autocommit;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-11
+-- set = 1; DO {INSERT failed; set = 1;} 
+-- set failed
+INSERT INTO t1 VALUES (1, 'initial');
+set autocommit = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (1, 'test2');
+	SET autocommit = 1;
+	RAISE NOTICE 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+rollback;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (2, 'initial');
+SELECT * FROM t1;
+show autocommit;
+set autocommit = 1;
+delete from t1;
+
+-- case 6-12
+-- set = 1; DO { set = 1; INSERT succeed; INSERT failed; } 
+-- set succeed
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+DO $$
+DECLARE
+BEGIN
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (2, 'test1');
+	INSERT INTO t1 VALUES (3, 'test2');
+	INSERT INTO t1 VALUES (4, 'test3');
+	INSERT INTO t1 VALUES (4, 'test3');
+	RAISE NOTICE 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 6-13
+-- set = 1; DO { INSERT succeed; set = 1; INSERT succeed; INSERT failed;} 
+-- set succeed
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	INSERT INTO t1 VALUES (3, 'test3');
+	INSERT INTO t1 VALUES (4, 'test4');
+	INSERT INTO t1 VALUES (5, 'test5');
+	INSERT INTO t1 VALUES (5, 'test5');
+	RAISE NOTICE 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 6-14
+-- set = 1; DO { INSERT succeed; set = 1; rollback;} 
+-- set succeed
+INSERT INTO t1 VALUES (0, 'initial');
+SET AUTOCOMMIT = 0;
+DO $$
+DECLARE
+	result text;
+BEGIN
+	INSERT INTO t1 VALUES (1, 'test1');
+	INSERT INTO t1 VALUES (2, 'test2');
+	SET AUTOCOMMIT = 1;
+	rollback;
+	RAISE NOTICE 'function executed';
+END;
+$$;
+SELECT * FROM t1;
+INSERT INTO t1 VALUES (6, 'initial');
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 7-1
+-- set = 0; begin; insert succeed; set = 1; insert error;
+SET AUTOCOMMIT = 0;
+BEGIN;
+INSERT INTO t1 VALUES (0, 'initial');
+set autocommit = 1;
+INSERT INTO t1 VALUES (0, 'initial');
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+-- case 7-2
+-- set = 0; begin; insert succeed; call{ insert succeed; set = 1; rollback;}
+SET AUTOCOMMIT = 0;
+BEGIN;
+INSERT INTO t1 VALUES (0, 'initial');
+CALL test_case_7_basic_pk_conflict();	-- error
+rollback;
+SELECT * FROM t1;
+show autocommit;
+delete from t1;
+set autocommit = 1;
+
+DROP TABLE IF EXISTS t1;
+DROP FUNCTION IF EXISTS test_case_1_basic_pk_conflict,
+						test_case_2_basic_pk_conflict,
+						test_case_3_basic_pk_conflict,
+						test_case_4_basic_pk_conflict,
+						test_case_5_basic_pk_conflict,
+						test_case_6_basic_pk_conflict,
+						test_case_7_basic_pk_conflict,
+						test_case_8_basic_pk_conflict,
+						test_case_9_basic_pk_conflict,
+						test_case_10_basic_pk_conflict,
+						test_case_11_basic_pk_conflict,
+						test_case_12_basic_pk_conflict,
+						test_case_13_basic_pk_conflict,
+						test_case_14_basic_pk_conflict,
+						test_case_15_basic_pk_conflict,
+						test_case_16_basic_pk_conflict,
+						test_case_17_basic_pk_conflict,
+						test_case_18_basic_pk_conflict,
+						test_case_19_basic_pk_conflict,
+						test_case_20_basic_pk_conflict,
+						test_case_21_basic_pk_conflict,
+						do_test_set_autocommit0,
+						do_test_set_autocommit1,
+						do_test_set_autocommit2,
+						do_test_set_autocommit3,
+						do_test_set_autocommit4,
+						do_test_set_autocommit5,
+						do_test_set_autocommit6;

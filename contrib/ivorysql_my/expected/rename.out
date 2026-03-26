@@ -69,6 +69,7 @@ select usename from pg_user where usename = 'u1';
 
 drop role u2;
 ERROR:  role "u2" does not exist
+drop role u1;
 -- rename table
 create table t1 (c int);
 rename table t1 to t2;
