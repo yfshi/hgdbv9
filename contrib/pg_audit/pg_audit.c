@@ -12671,7 +12671,7 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 	if (!HeapTupleIsValid(tup))
 		ereport(ERROR,
 					(errmsg("throid %d does not exist in pg_secmon_threshold!", throid)));
-	
+
 	thrform = (Form_pg_secmon_threshold) GETSTRUCT(tup);	
 
 	nsteps = thrform->nsteps;
@@ -12688,6 +12688,10 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 		Name	name_thrname;
 		Oid		ruleoid;
 		oidvector   *ruleseq;
+		/* Begin BUG#z7413 */
+		Datum ruleseq_datum;
+		bool isNull = false;
+		/* End BUG#z7413 */
 
 		thrname = text_to_cstring(PG_GETARG_TEXT_PP(1));
 		name_thrname = (Name) palloc(NAMEDATALEN);
@@ -12695,7 +12699,17 @@ pg_alter_secmon_threshold(PG_FUNCTION_ARGS)
 		namestrcpy(name_thrname, thrname);
 
 		ruleoid = thrform->ruleoid;
-		ruleseq = &thrform->ruleseq;
+
+		/* Begin BUG#z7413 */
+		ruleseq_datum = fastgetattr(tup, Anum_pg_secmon_threshold_ruleseq,
+							RelationGetDescr(pg_secmon_threshold), &isNull);
+		if (isNull)
+		{
+			ereport(ERROR,
+						(errmsg("colname:ruleseq is null")));
+		}
+		ruleseq = (oidvector *)DatumGetPointer(ruleseq_datum);
+		/* End BUG#z7413 */
 
 		if (strncmp(thrname, NameStr(thrform->thrname), NAMEDATALEN) != 0)
 		{	
