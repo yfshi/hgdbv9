@@ -1575,7 +1575,12 @@ AutonPrestartPortals(void)
 	{
 		Portal		portal = hentry->portal;
 
-		if (portal->cursorOptions & CURSOR_OPT_HOLD && portal->status == PORTAL_READY)
+		/*
+		 * BUG#0000743 ignore portal has been hold
+		 */
+		if (portal->cursorOptions & CURSOR_OPT_HOLD &&
+			portal->status == PORTAL_READY &&
+			portal->createSubid != InvalidSubTransactionId) /* BUG#00007430 */
 		{
 			/*
 			 * Doing transaction control, especially abort, inside a cursor

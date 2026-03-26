@@ -2274,3 +2274,96 @@ select * from ax_ftable;
 rollback;
 select * from ax_ftable;
 */
+
+--but#Z7430
+--after trigger
+create table sys_audit_log(log_id integer,module_name varchar2(256), error_message varchar2(4000),log_time date);
+
+create sequence seq_audit_log;
+
+create table test_dml_table(id integer,name varchar2(256));
+
+create or replace package pkg_audit_log is
+	PROCEDURE log_event(p_module IN VARCHAR2, p_message IN VARCHAR2, p_level IN VARCHAR2 DEFAULT 'INFO');
+end;
+/
+
+CREATE OR REPLACE PACKAGE BODY PKG_AUDIT_LOG IS
+	PROCEDURE log_event(p_module IN VARCHAR2, p_message IN VARCHAR2, p_level IN VARCHAR2 DEFAULT 'INFO') IS
+		PRAGMA AUTONOMOUS_TRANSACTION;
+	BEGIN
+		INSERT INTO sys_audit_log (log_id, module_name, error_message, log_time)
+		VALUES (seq_audit_log.NEXTVAL, p_module || '[' || p_level || ']', SUBSTR(p_message, 1, 3500), SYSDATE);
+		COMMIT;
+	EXCEPTION WHEN OTHERS THEN
+		raise info 'error:%',sqlerrm;
+		ROLLBACK;
+	END log_event;
+end;
+/
+
+create or replace trigger test_delete_before after delete on test_dml_table for
+each row
+begin
+	CALL PKG_AUDIT_LOG.log_event('ORDERS_SEC', 'Attempting to delete COMPLETED order: ' || :OLD.id, 'WARN');
+end;
+/
+
+
+declare
+	var1 integer;
+begin
+	for var1 in 1 .. 10 LOOP
+		insert into test_dml_table values(var1,'var1' || 'xiexie');
+	end loop;
+end;
+/
+
+
+declare
+	var1 integer;
+begin
+	execute immediate 'drop table if exists test_temp';
+	execute immediate 'create temp table test_temp(id integer,name text);';
+	for var1 in 1 .. 10000 LOOP
+		delete from test_dml_table where id = var1;
+	end loop;
+exception
+when others then
+	raise info '%',sqlerrm;
+end;
+/
+
+
+--cursor already hold
+
+create table test_loop(id integer,name varchar2(256));
+
+insert into test_loop values(1,'one');
+insert into test_loop values(2,'two');
+
+
+declare
+  cursor c1 is select * from test_loop;
+  var1 c1%rowtype;
+  procedure test_p(id integer) is
+    pragma autonomous_transaction;
+  begin
+     fetch c1 into var1;
+	 raise info '%',var1.id;
+  end;
+begin
+  open c1;
+  fetch c1 into var1;
+  commit;
+  test_p(var1.id);
+  close c1;
+end;
+/
+
+--clean data
+drop table if exists test_temp;
+drop table test_dml_table;
+drop package PKG_AUDIT_LOG;
+drop sequence seq_audit_log;
+drop table sys_audit_log;
