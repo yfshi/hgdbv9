@@ -2267,13 +2267,13 @@ build_startup_packet(const PGconn *conn, char *packet,
 
 	/* Begin ReqID: SRS-SESSION-VIEWS */
 	if (conn->osname && conn->osname[0])
-		ADD_STARTUP_OPTION("osname", conn->osname);
+		ADD_STARTUP_OPTION("client.osname", conn->osname);
 	if (conn->client_uid && conn->client_uid[0])
-		ADD_STARTUP_OPTION("client_uid", conn->client_uid);
+		ADD_STARTUP_OPTION("client.uid", conn->client_uid);
 	if (conn->client_pid && conn->client_pid[0])
-		ADD_STARTUP_OPTION("client_pid", conn->client_pid);
+		ADD_STARTUP_OPTION("client.pid", conn->client_pid);
 	if (conn->client_mac && conn->client_mac[0])
-		ADD_STARTUP_OPTION("client_mac", conn->client_mac);
+		ADD_STARTUP_OPTION("client.mac", conn->client_mac);
 	/* End ReqID: SRS-SESSION-VIEWS */
 
 	if (conn->send_appname)
