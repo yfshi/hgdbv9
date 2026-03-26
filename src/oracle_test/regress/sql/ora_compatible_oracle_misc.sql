@@ -343,3 +343,12 @@ SELECT channel_id, promo_id, sum(amount_sold) s_sales,
 
 DROP TABLE sales_oa_2132;
 /* End - OA-REQ-2132 */
+
+--bug#Z7405
+create table test_id(id integer);
+
+insert into test_id values(1);
+
+select id year,id month,id day,id hour,id minute,id second from test_id;
+
+drop table test_id;
