@@ -1631,10 +1631,17 @@ AlterDatabase(ParseState *pstate, AlterDatabaseStmt *stmt, bool isTopLevel)
 			char *spc = defGetString(dtablespace);
 			if (spc)
 			{
-				if (get_tablespace_encrypt(get_tablespace_oid(spc, true)) &&
-					!get_tablespace_encrypt(get_database_tablespace(dbid)))
+				bool dstspc_encrypt = get_tablespace_encrypt(get_tablespace_oid(spc, true));
+				bool srcspc_encrypt = get_tablespace_encrypt(get_database_tablespace(dbid));
+
+				if (dstspc_encrypt && !srcspc_encrypt)
 					elog(ERROR, "database located in non-encrypted tablespace cannot "
 								"be moved to the encrypted tablespace \"%s\".", spc);
+				/* Begin - BUG#Z7332 */
+				if (!dstspc_encrypt && srcspc_encrypt)
+					elog(NOTICE, "The objects in database '%s' remains encrypted after being removed "
+						 "from its encrypted tablespace.", stmt->dbname);
+				/* End - BUG#Z7332 */
 			}
 		}
 		/* End - ReqID:SRS-SECURITY-TABLESPACE */
