@@ -2552,11 +2552,11 @@ retry1:
 					lappend(unrecognized_protocol_options, pstrdup(nameptr));
 			}
 			/* Begin ReqID: SRS-SESSION-VIEWS */
-			else if(strcmp(nameptr, "client_uid") == 0)
+			else if(strcmp(nameptr, "client.uid") == 0)
 				port->client_uid = pstrdup(valptr);
-			else if(strcmp(nameptr, "client_pid") == 0)
+			else if(strcmp(nameptr, "client.pid") == 0)
 				port->client_pid = pstrdup(valptr);
-			else if(strcmp(nameptr, "client_mac") == 0)
+			else if(strcmp(nameptr, "client.mac") == 0)
 				port->client_mac = pstrdup(valptr);
 			/* End ReqID: SRS-SESSION-VIEWS */
 			else
@@ -2582,7 +2582,7 @@ retry1:
 					port->application_name = tmp_app_name;
 				}
 				/* Begin ReqID: SRS-SESSION-VIEWS */
-				else if (strcmp(nameptr, "osname") == 0)
+				else if (strcmp(nameptr, "client.osname") == 0)
 				{
 					char	   *tmp_osname = pstrdup(valptr);
 

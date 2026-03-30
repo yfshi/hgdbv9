@@ -338,13 +338,13 @@ main(int argc, char *argv[])
 		values[9] = options.custom;
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 		/* Begin ReqID: SRS-SESSION-VIEWS */
-		keywords[10] = "osname";
+		keywords[10] = "client.osname";
 		values[10] = pset.osname;
-		keywords[11] = "client_uid";
+		keywords[11] = "client.uid";
 		values[11] = pg_strdup(client_info.uid);
-		keywords[12] = "client_pid";
+		keywords[12] = "client.pid";
 		values[12] = pg_strdup(client_info.pid);
-		keywords[13] = "client_mac";
+		keywords[13] = "client.mac";
 		values[13] = pg_strdup(client_info.mac);
 		/* End ReqID: SRS-SESSION-VIEWS */
 		keywords[14] = NULL;

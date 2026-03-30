@@ -5170,7 +5170,7 @@ static struct config_string ConfigureNamesString[] =
 
 	/* Begin ReqID: SESSION-VIEWS */
 	{
-		{"osname", PGC_USERSET, LOGGING_WHAT,
+		{"client.osname", PGC_USERSET, LOGGING_WHAT,
 			gettext_noop("Sets the application name to be reported in statistics and logs."),
 			NULL,
 			GUC_IS_NAME | GUC_REPORT | GUC_NOT_IN_SAMPLE
