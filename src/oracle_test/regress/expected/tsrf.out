@@ -457,10 +457,10 @@ reset enable_hashagg;
 -- case with degenerate ORDER BY
 explain (verbose, costs off)
 select 'foo' as f, generate_series(1,2) as g from few order by 1;
-                  QUERY PLAN                  
-----------------------------------------------
+                    QUERY PLAN                    
+--------------------------------------------------
  ProjectSet
-   Output: 'foo'::text, generate_series(1, 2)
+   Output: 'foo'::varchar2, generate_series(1, 2)
    ->  Seq Scan on public.few
          Output: id, dataa, datab
 (4 rows)

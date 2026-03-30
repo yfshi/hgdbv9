@@ -166,7 +166,7 @@ SELECT
 \gdesc
  Column |       Type       
 --------+------------------
- zero   | varchar2
+ zero   | unknown
  one    | integer
  two    | numeric
  three  | varchar2

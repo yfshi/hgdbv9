@@ -2443,7 +2443,9 @@ load_ivorysql_ora(FILE *cmdfd)
 {
 	/* switch to oracle parser and load extenison */
 	PG_CMD_PUTS("set ivorysql.compatible_mode to oracle;\n\n");	/* ReqID:SRS-MISC-GUC */
+	PG_CMD_PUTS("set ivorysql.enable_setoperation_null to false;\n\n"); /* ReqID:SRS-SQL-UNION */
 	PG_CMD_PUTS("CREATE EXTENSION ivorysql_ora;\n\n");
+	PG_CMD_PUTS("set ivorysql.enable_setoperation_null to true;\n\n"); /* ReqID:SRS-SQL-UNION */
 	PG_CMD_PUTS("set ivorysql.compatible_mode to pg;\n\n");	/* BUG#0000054 */
 }
 /* End - ReqID:SRS-GKC-DATATYPE_001 */
