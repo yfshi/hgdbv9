@@ -37,6 +37,11 @@
 	30、适配documentdb：OA-REQ-2182；
 	31、PG内核升级：14.20-14.22；
 	32、新增undo_sql功能插件；
+	33、新增安全特性完整性检查：在线配置检查部分、wal日志完整性检查部分；
+	34、兼容Oracle获取存储过程名字的变量$$PLSQL_UNIT、获取类型的变量$$PLSQL_UNIT_TYPE、获取行号的变量$$PLSQL_LINE；
+	35、EAL4支持hg_watchdog；
+	36、支持rsa/sm2的加密解密，签名验签，对应的za/pkcs填充算法；
+	37、O兼容year作为别名，不用添加as，中泰需求；
 
 2、修复问题	
 	1、会话管理补充了bug#6866遗漏的问题修复；
@@ -75,5 +80,14 @@
 	34、O兼容修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
 	35、Oracle兼容修复了动态SQL中RETURNING INTO报错问题，bug#7311；
 	36、修复了审计进程启动pgagent出错的问题，bug#7398/7404；
-	37、M兼容修复了period_add函数结果不正确的问题，bug#7183
+	37、M兼容修复了period_add函数结果不正确的问题，bug#7183；
+	38、修复了MySQL协议报文超长的解析错误，bug#7419、OA-REQ-2211；
+	39、兼容Oracle xml函数extractvalue中xpath '/' 引起的coredump问题，bug#7411/7412；
+	40、修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
+	41、修复标签兼容Oracle（匿名块end标签不检测、非匿名块和包规范不可定义标签），bug#7364；
+	42、修复数据脱敏在search_path中没有hg_security时，找不到函数和类型的问题，bug#7006；
+	43、自治事务在after trigger和cursor 处理时导致coredump，bug#7430 ；
+	44、修改安全检测阈值名称报错，bug#7413；
+	45、加密表空间，创建物化视图没有自动加密，bug#7282；
+	46、加密表空间的数据库迁移到非加密表空间建议增加告警提示，bug#7332；
 
