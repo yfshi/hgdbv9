@@ -15,6 +15,7 @@ subdir = src/se_features
 top_builddir = ../..
 
 include $(top_builddir)/src/Makefile.global
+include $(top_srcdir)/src/backend/common.mk
 
 # PGFILEDESC = "Security Enhancement Features"
 # NAME = se_features

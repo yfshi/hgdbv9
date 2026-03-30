@@ -312,6 +312,7 @@ Datum pg_wal_md5_verify(PG_FUNCTION_ARGS)
 		bool nulls[CHECK_REL_NUM] = {false, false, false, false, false};
 		char *fname = records[i].fname;
 		char act_md5[MD5_DATALEN] = {0};
+		bool match;
 
 		/* ----- file get md5 ----- */
 		if (!pg_file_md5_checksum(fname, act_md5, &errnumber))
@@ -326,7 +327,7 @@ Datum pg_wal_md5_verify(PG_FUNCTION_ARGS)
 		}
 
 		/* Normal SUCCESSFULLY */
-		bool match = (strcmp(act_md5, records[i].md5) == 0);
+		match = (strcmp(act_md5, records[i].md5) == 0);
 		values[0] = PointerGetDatum(cstring_to_text(fname));
 		values[1] = PointerGetDatum(cstring_to_text(records[i].md5));
 		values[2] = PointerGetDatum(cstring_to_text(act_md5));
