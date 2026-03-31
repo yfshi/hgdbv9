@@ -54,7 +54,7 @@ extern bool targetIsInSortList(TargetEntry *tle, Oid sortop, List *sortList);
 /* Begin - ReqID:SRS-SQL-ROWID */
 extern bool	interpretRowidOption(List *defList, bool allowRowid);
 /* End - ReqID:SRS-SQL-ROWID */
-extern bool	interpretAntiTamperOption(List *defList); /* ReqID: SRS-SECURITY-ANTITAMPERING */
+extern bool	interpretAntiTamperOption(List *defList, bool *enableatamper); /* ReqID: SRS-SECURITY-ANTITAMPERING */
 
 /* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 extern int	ora_extractRemainingColumns(ParseNamespaceColumn *src_nscolumns,

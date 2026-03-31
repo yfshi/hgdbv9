@@ -1,5 +1,5 @@
 # hg_antitamper extension
-comment = 'hg_antitamper -- '
+comment = 'hg_antitamper -- anti-tamper function plugin'
 default_version = '1.0'
 module_pathname = '$libdir/hg_antitamper'
 relocatable = true

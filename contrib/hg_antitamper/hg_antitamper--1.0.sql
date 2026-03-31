@@ -30,7 +30,7 @@ BEGIN
 		EXECUTE '
 			CREATE SEQUENCE antitamper_block as bigint;
 			CREATE TABLE hg_security.hg_global_antitamper(
-				blocknum int8 default nextval(''antitamper_block'') primary key, 
+				blocknum int8 default nextval(''antitamper_block'') primary key,
 				username name,
 				dbname name,
 				schemaoid Oid,
@@ -53,7 +53,7 @@ BEGIN
 		-- If the tablespace does not exist, do not specify the tablespace when creating the table (use the default tablespace)
 		EXECUTE '
 			CREATE TABLE hg_security.hg_global_antitamper_backup(
-				blocknum int, 
+				blocknum int,
 				username name,
 				dbname name,
 				schemaoid Oid,
@@ -75,8 +75,8 @@ DECLARE
 	value_exists BOOLEAN;
 BEGIN
 	SELECT EXISTS (
-		SELECT 1 
-		FROM pg_class 
+		SELECT 1
+		FROM pg_class
 		WHERE relname = 'schema_antitamper'
 	) INTO bc_table_exists;
 
@@ -85,7 +85,7 @@ BEGIN
 	END IF;
 
 	SELECT EXISTS (
-		SELECT 1 
+		SELECT 1
 		FROM hg_security.schema_antitamper c
 		WHERE c.schemaoid = schema_oid
 	) INTO value_exists;
@@ -100,10 +100,9 @@ $$ LANGUAGE plpgsql;
 
 ALTER FUNCTION hg_security.check_schema_is_antitamper(schema_oid OID) owner to syssso_role;
 
-
 /* calc hash value function */
 CREATE OR REPLACE FUNCTION hg_security.calculate_row_hash(
-	table_name regclass, 
+	table_name regclass,
 	row_data anyelement,
 	exclude_columns text[] DEFAULT ARRAY['__hg_hash__']  -- exclude hash column
 )
@@ -133,28 +132,28 @@ BEGIN
 	SELECT string_agg(hash_expr, ' || ')
 	INTO col_list
 	FROM column_info;
-	
+
 	-- not column return null
 	IF col_list IS NULL THEN
 		RETURN NULL;
 	END IF;
-	
-	-- construting the query : 
+
+	-- construting the query :
 	--     1.calculate the hash value for each column
 	--     2.concatrnate them and calculate the final hash value
 	query := format(
 		'SELECT (hashtext(%s::text)::bigint & x''FFFFFFFF''::bigint) FROM (SELECT $1.*) t',
 		rtrim(col_list, ' || ')
 	);
-	
+
 	EXECUTE query INTO result USING row_data;
-	
+
 	RETURN result;
 END;
 $$;
 
 ALTER FUNCTION hg_security.calculate_row_hash(
-	table_name regclass, 
+	table_name regclass,
 	row_data anyelement,
 	exclude_columns text[] )
 owner to syssso_role;
@@ -188,7 +187,7 @@ BEGIN
 	current_schemaname := TG_TABLE_SCHEMA;
 	current_tablename := TG_TABLE_NAME;
 	current_tableoid := TG_RELID;
-	
+
 	SELECT c.relnamespace INTO schema_oid
 	FROM pg_class c
 	WHERE c.oid = current_tableoid;
@@ -236,7 +235,7 @@ BEGIN
 		current_tablename := partitionrootrelname;
 		current_tableoid := partitionroot::oid;
 	END IF;
-	
+
 	select query into sqlcommand from pg_stat_activity where pid = pg_backend_pid();
 	-- insert global antitamper value
 	INSERT INTO hg_security.hg_global_antitamper (
@@ -258,7 +257,7 @@ BEGIN
 		hash_del_val,
 		sqlcommand
 	);
-	
+
 	IF TG_OP = 'DELETE' THEN
 		RETURN OLD;
 	END IF;
@@ -270,7 +269,7 @@ ALTER FUNCTION hg_security.set_generic_hash() owner to syssso_role;
 
 -- get table hash value
 CREATE OR REPLACE FUNCTION hg_security.get_table_hash_sum(
-	target_table_name text,
+	table_name text,
 	schema_name text DEFAULT 'public',
 	exclude_columns text[] DEFAULT ARRAY['__hg_hash__']
 )
@@ -288,19 +287,18 @@ BEGIN
 	SELECT c.oid INTO table_oid
 	FROM pg_class c
 	JOIN pg_namespace n ON c.relnamespace = n.oid
-	WHERE n.nspname = schema_name
-	  AND c.relname = target_table_name;
-	
+	WHERE n.nspname = schema_name AND c.relname = table_name;
+
 	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, target_table_name;
+		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
 	END IF;
-	
+
 	WITH column_info AS (
 		SELECT attname,
-			   format(
-				   '(hashtext(COALESCE(%I::text, ''''))::bigint & x''FFFFFFFF''::bigint)::text',
-				   attname
-			   ) as hash_expr
+			format(
+				'(hashtext(COALESCE(%I::text, ''''))::bigint & x''FFFFFFFF''::bigint)::text',
+				attname
+				) as hash_expr
 		FROM pg_attribute
 		WHERE attrelid = table_oid
 			AND attnum > 0
@@ -315,31 +313,30 @@ BEGIN
 	IF col_expressions IS NULL OR col_expressions = '' THEN
 		RETURN 0;
 	END IF;
-	
+
 	query := format(
 		'SELECT COALESCE(SUM(hashtext(%s)::bigint & x''FFFFFFFF''::bigint), 0) FROM %I.%I',
 		rtrim(col_expressions, ' || '),
 		schema_name,
-		target_table_name
+		table_name
 	);
-	
+
 	EXECUTE query INTO sum_result;
-	
 	RETURN sum_result;
 END;
 $$;
 
 ALTER FUNCTION hg_security.get_table_hash_sum(
-	target_table_name text,
+	table_name text,
 	schema_name text,
 	exclude_columns text[])
 owner to syssso_role;
 
--- antitamper_hist_check: is the sum of hash values in the user table consistent 
+-- antitamper_hist_check: is the sum of hash values in the user table consistent
 --    with the sum of insert - delete in the history table
 CREATE OR REPLACE FUNCTION hg_security.antitamper_hist_check(
-	schema_name text DEFAULT 'public',
-	target_table_name text DEFAULT 'users'
+	schema_name text,
+	table_name text
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -354,23 +351,37 @@ DECLARE
 	schema_oid oid;
 	hist_table_name text;
 	query text;
+	opt_val text;
 BEGIN
+	-- check function para
+	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
+		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';
+	END IF;
+
 	-- check table exists
 	SELECT c.oid, c.relnamespace INTO table_oid, schema_oid
 	FROM pg_class c
 	JOIN pg_namespace n ON c.relnamespace = n.oid
-	WHERE n.nspname = schema_name
-	  AND c.relname = target_table_name;
-	
+	WHERE n.nspname = schema_name AND c.relname = table_name;
+
 	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, target_table_name;
+		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
 	END IF;
-	
+
+	-- check is antitamper table
+	SELECT option_value INTO opt_val FROM pg_options_to_table(
+		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
+	) as opt WHERE opt.option_name = 'antitamper';
+
+	IF opt_val is null THEN
+		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
+	END IF;
+
 	hist_table_name := 'hist_' || table_oid;
 
-	-- 1. sum of hash values in user table 
-	table_hash_sum := hg_security.get_table_hash_sum(target_table_name, schema_name, ARRAY['__hg_hash__']);
-	
+	-- 1. sum of hash values in user table
+	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
+
 	-- 2. sum of insert hash values in history table
 	query := format(
 		'SELECT COALESCE(SUM(hash_ins)::BIGINT, 0)
@@ -379,7 +390,7 @@ BEGIN
 		hist_table_name
 	);
 	EXECUTE query INTO aaaa_insert_sum;
-	
+
 	-- 3. sum of delete hash values in history table
 	query := format(
 		'SELECT COALESCE(SUM(hash_del)::BIGINT, 0)
@@ -388,30 +399,30 @@ BEGIN
 		hist_table_name
 	);
 	EXECUTE query INTO aaaa_delete_sum;
-	
+
 	-- 4. insert - delete
 	aaaa_diff := aaaa_insert_sum - aaaa_delete_sum;
-	
+
 	-- 5. check
 	--RAISE NOTICE 'table: % hash values: %, history insert values: %, delete values: %, diff values: %',
-	--	target_table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
-	
+	--	table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
+
 	RETURN table_hash_sum = aaaa_diff;
 END;
 $$;
 
 ALTER FUNCTION hg_security.antitamper_hist_check(
 	schema_name text ,
-	target_table_name text
+	table_name text
 )
 owner to syssso_role;
 
 -- antitamper_hist_repair: comparative value and add a column of difference
 CREATE OR REPLACE FUNCTION hg_security.antitamper_hist_repair(
-	schema_name text DEFAULT 'public',
-	target_table_name text DEFAULT 'users'
+	schema_name text,
+	table_name text
 )
-RETURNS BIGINT
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -426,10 +437,16 @@ DECLARE
 	hist_table_name text;
 	query text;
 	nextblocknum BIGINT;
+	opt_val text;
 BEGIN
 	--check user permissions
 	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'user %s not repair permissions, need syssso user or superuser!',current_user;
+		RAISE EXCEPTION 'permission denied for function antitamper_hist_repair';
+	END IF;
+
+	-- check function para
+	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
+		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';
 	END IF;
 
 	-- check table exists
@@ -437,17 +454,26 @@ BEGIN
 	FROM pg_class c
 	JOIN pg_namespace n ON c.relnamespace = n.oid
 	WHERE n.nspname = schema_name
-	  AND c.relname = target_table_name;
-	
+	  AND c.relname = table_name;
+
 	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, target_table_name;
+		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
 	END IF;
-	
+
+	-- check is antitamper table
+	SELECT option_value INTO opt_val FROM pg_options_to_table(
+		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
+	) as opt WHERE opt.option_name = 'antitamper';
+
+	IF opt_val is null THEN
+		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
+	END IF;
+
 	hist_table_name := 'hist_' || table_oid;
 
-	-- 1. sum of hash values in user table 
-	table_hash_sum := hg_security.get_table_hash_sum(target_table_name, schema_name, ARRAY['__hg_hash__']);
-	
+	-- 1. sum of hash values in user table
+	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
+
 	-- 2. sum of insert hash values in history table
 	query := format(
 		'SELECT COALESCE(SUM(hash_ins)::BIGINT, 0)
@@ -456,7 +482,7 @@ BEGIN
 		hist_table_name
 	);
 	EXECUTE query INTO aaaa_insert_sum;
-	
+
 	-- 3. sum of delete hash values in history table
 	query := format(
 		'SELECT COALESCE(SUM(hash_del)::BIGINT, 0)
@@ -465,16 +491,16 @@ BEGIN
 		hist_table_name
 	);
 	EXECUTE query INTO aaaa_delete_sum;
-	
+
 	-- 4. insert - delete
 	aaaa_diff := aaaa_insert_sum - aaaa_delete_sum;
-	
+
 	-- 5. check
 	--RAISE NOTICE 'table: % hash values: %, history insert values: %, delete values: %, diff values: %',
-	--	target_table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
-	
+	--	table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
+
 	diff_value = table_hash_sum - aaaa_diff;
-	
+
 	EXECUTE format(
 		'SELECT COALESCE(MAX(rec_num), 0)+1 FROM hg_security.%I',
 		hist_table_name) INTO nextblocknum;
@@ -500,22 +526,22 @@ BEGIN
 	ELSE
 		--RAISE NOTICE 'data is consistent, no supplementation required';
 	END IF;
-	
-	RETURN diff_value;
+
+	RETURN TRUE;
 END;
 $$;
 
 ALTER FUNCTION hg_security.antitamper_hist_repair(
 	schema_name text ,
-	target_table_name text
+	table_name text
 )
 owner to syssso_role;
 
--- antitamper_gchain_check:  is the sum of hash values in the user table consistent 
+-- antitamper_gchain_check:  is the sum of hash values in the user table consistent
 --    with the sum of insert - delete in the global table
 CREATE OR REPLACE FUNCTION hg_security.antitamper_gchain_check(
-	schema_name text DEFAULT 'public',
-	target_table_name text DEFAULT 'users'
+	schema_name text,
+	table_name text
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql
@@ -527,66 +553,78 @@ DECLARE
 	aaaa_diff BIGINT;
 	full_table_name text;
 	table_oid oid;
-	hist_table_name text;
 	query text;
+	opt_val text;
 BEGIN
+	-- check function para
+	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
+		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';
+	END IF;
+
 	-- check table exists
 	SELECT c.oid INTO table_oid
 	FROM pg_class c
 	JOIN pg_namespace n ON c.relnamespace = n.oid
 	WHERE n.nspname = schema_name
-	  AND c.relname = target_table_name;
-	
-	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, target_table_name;
-	END IF;
-	
-	hist_table_name := 'hg_security.hg_global_antitamper';
+	  AND c.relname = table_name;
 
-	-- 1. sum of hash values in user table 
-	table_hash_sum := hg_security.get_table_hash_sum(target_table_name, schema_name, ARRAY['__hg_hash__']);
-	
+	IF table_oid IS NULL THEN
+		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
+	END IF;
+
+	-- check is antitamper table
+	SELECT option_value INTO opt_val FROM pg_options_to_table(
+		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
+	) as opt WHERE opt.option_name = 'antitamper';
+
+	IF opt_val is null THEN
+		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
+	END IF;
+
+	-- 1. sum of hash values in user table
+	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
+
 	-- 2. sum of insert hash values in global table
 	query := format(
 		'SELECT COALESCE(SUM(insertrelhash)::BIGINT, 0)
-			FROM %s
+			FROM hg_security.hg_global_antitamper
 			WHERE insertrelhash IS NOT NULL AND reloid = %s',
-		 hist_table_name, table_oid
+		 table_oid
 	);
 	EXECUTE query INTO aaaa_insert_sum;
-	
+
 	-- 3. sum of delete hash values in global table
 	query := format(
 		'SELECT COALESCE(SUM(deleterelhash)::BIGINT, 0)
-			FROM %s
+			FROM hg_security.hg_global_antitamper
 			WHERE deleterelhash IS NOT NULL AND reloid = %s',
-		hist_table_name, table_oid
+		table_oid
 	);
 	EXECUTE query INTO aaaa_delete_sum;
-	
+
 	-- 4. insert - delete
 	aaaa_diff := aaaa_insert_sum - aaaa_delete_sum;
-	
+
 	-- 5. check
 	--RAISE NOTICE 'table: % hash values: %, history insert values: %, delete values: %, diff values: %',
-	--	target_table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
-	
+	--	table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
+
 	RETURN table_hash_sum = aaaa_diff;
 END;
 $$;
 
 ALTER FUNCTION hg_security.antitamper_gchain_check(
 	schema_name text ,
-	target_table_name text
+	table_name text
 )
 owner to syssso_role;
 
 -- antitamper_gchain_repair: comparative value and add a column of difference
 CREATE OR REPLACE FUNCTION hg_security.antitamper_gchain_repair(
-	schema_name text DEFAULT 'public',
-	target_table_name text DEFAULT 'users'
+	schema_name text,
+	table_name text
 )
-RETURNS BIGINT
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -598,125 +636,135 @@ DECLARE
 	full_table_name text;
 	schema_oid oid;
 	table_oid oid;
-	hist_table_name text;
 	query text;
+	opt_val text;
 BEGIN
 	--check user permissions
 	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'user %s not repair permissions, need syssso user or superuser!',current_user;
+		RAISE EXCEPTION 'permission denied for function antitamper_gchain_repair';
+	END IF;
+
+	-- check function para
+	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
+		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';
 	END IF;
 
 	-- check table exists
 	SELECT c.oid ,c.relnamespace INTO table_oid, schema_oid
 	FROM pg_class c
 	JOIN pg_namespace n ON c.relnamespace = n.oid
-	WHERE n.nspname = schema_name
-	  AND c.relname = target_table_name;
-	
-	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, target_table_name;
-	END IF;
-	
-	hist_table_name := 'hg_security.hg_global_antitamper';
+	WHERE n.nspname = schema_name AND c.relname = table_name;
 
-	-- 1. sum of hash values in user table 
-	table_hash_sum := hg_security.get_table_hash_sum(target_table_name, schema_name, ARRAY['__hg_hash__']);
-	
+	IF table_oid IS NULL THEN
+		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
+	END IF;
+
+	-- check is antitamper table
+	SELECT option_value INTO opt_val FROM pg_options_to_table(
+		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
+	) as opt WHERE opt.option_name = 'antitamper';
+
+	IF opt_val is null THEN
+		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
+	END IF;
+
+	-- 1. sum of hash values in user table
+	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
+
 	-- 2. sum of insert hash values in global table
 	query := format(
 		'SELECT COALESCE(SUM(insertrelhash)::BIGINT, 0)
-			FROM %s
+			FROM hg_security.hg_global_antitamper
 			WHERE insertrelhash IS NOT NULL AND reloid = %s',
-		hist_table_name, table_oid
+		table_oid
 	);
 	EXECUTE query INTO aaaa_insert_sum;
-	
+
 	-- 3. sum of delete hash values in global table
 	query := format(
 		'SELECT COALESCE(SUM(deleterelhash)::BIGINT, 0)
-			FROM %s
+			FROM hg_security.hg_global_antitamper
 			WHERE deleterelhash IS NOT NULL AND reloid = %s',
-		hist_table_name, table_oid
+		table_oid
 	);
 	EXECUTE query INTO aaaa_delete_sum;
-	
+
 	-- 4. insert - delete
 	aaaa_diff := aaaa_insert_sum - aaaa_delete_sum;
-	
+
 	-- 5. check
 	--RAISE NOTICE 'table: % hash values: %, history insert values: %, delete values: %, diff values: %',
-	--	target_table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
-	
+	--	table_name, table_hash_sum, aaaa_insert_sum, aaaa_delete_sum, aaaa_diff;
+
 	diff_value = table_hash_sum - aaaa_diff;
-	
+
 	-- 6. insert difference column
 	IF diff_value != 0 THEN
 		IF diff_value > 0 THEN
 			-- positive numbers:insert
-			EXECUTE format(
-				'INSERT INTO %s (	username ,
-									dbname,
-									schemaoid,
-									reloid,
-									starttime,
-									insertrelhash,
-									deleterelhash,
-									sqlcommand) 
-						VALUES ($1, $2, $3, $4, $5, $6, NULL, $8)',
-				hist_table_name)
-				CURRENT_USER,
-				current_database(),
-				schema_oid,
-				table_oid
-				CURRENT_TIMESTAMP::timestamp without time zone,
-				ABS(diff_value),
-				'REPAIR INSERT'
-				;
+			INSERT INTO hg_security.hg_global_antitamper (
+					username ,
+					dbname,
+					schemaoid,
+					reloid,
+					starttime,
+					insertrelhash,
+					deleterelhash,
+					sqlcommand
+				) VALUES (
+					current_user,
+					current_database(),
+					schema_oid,
+					table_oid,
+					CURRENT_TIMESTAMP::timestamp without time zone,
+					ABS(diff_value),
+					NULL,
+					'REPAIR INSERT'
+				);
 			--RAISE NOTICE 'diff_value =insertrelhash[%] ',diff_value;
 		ELSE
 			-- negative numbers:delete
-			EXECUTE format(
-				'INSERT INTO %s (	username ,
-									dbname,
-									schemaoid
-									reloid,
-									starttime,
-									insertrelhash,
-									deleterelhash,
-									sqlcommand) 
-					VALUES ($1, $2, $3, $4, $5, NULL, $7, $8)',
-				hist_table_name)
-				CURRENT_USER,
-				current_database(),
-				schema_oid,
-				table_oid
-				CURRENT_TIMESTAMP::timestamp without time zone,
-				ABS(diff_value),
-				'REPAIR DELETE'
-				;
+			INSERT INTO hg_security.hg_global_antitamper (
+					username ,
+					dbname,
+					schemaoid,
+					reloid,
+					starttime,
+					insertrelhash,
+					deleterelhash,
+					sqlcommand
+				) VALUES (
+					current_user,
+					current_database(),
+					schema_oid,
+					table_oid,
+					CURRENT_TIMESTAMP::timestamp without time zone,
+					NULL,
+					ABS(diff_value),
+					'REPAIR DELETE'
+				);
 			--RAISE NOTICE 'diff_value =deleterelhash[%] ',ABS(diff_value);
 		END IF;
 	ELSE
 		--RAISE NOTICE 'data is consistent, no supplementation required';
 	END IF;
-	
-	RETURN diff_value;
+
+	RETURN TRUE;
 END;
 $$;
 
 ALTER FUNCTION hg_security.antitamper_gchain_repair(
 	schema_name text,
-	target_table_name text
+	table_name text
 )
 owner to syssso_role;
 
-
 -- antitamper_gchain_archive
 CREATE OR REPLACE FUNCTION hg_security.antitamper_gchain_archive(
-	schema_name text DEFAULT 'public',
-	target_table_name text DEFAULT 'users'
+	schema_name text,
+	table_name text
 )
-RETURNS BIGINT
+RETURNS BOOLEAN
 LANGUAGE plpgsql
 AS $$
 DECLARE
@@ -728,12 +776,17 @@ DECLARE
 	full_table_name text;
 	table_oid oid;
 	schema_oid oid;
-	hist_table_name text;
 	query text;
+	opt_val text;
 BEGIN
 	--check user permissions
 	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'user %s not repair permissions, need syssso user or superuser!',current_user;
+		RAISE EXCEPTION 'permission denied for function antitamper_gchain_archive';
+	END IF;
+
+	-- check function para
+	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
+		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';
 	END IF;
 
 	-- check table exists
@@ -741,43 +794,49 @@ BEGIN
 	FROM pg_class c
 	JOIN pg_namespace n ON c.relnamespace = n.oid
 	WHERE n.nspname = schema_name
-	  AND c.relname = target_table_name;
-	
-	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, target_table_name;
-	END IF;
-	
-	hist_table_name := 'hg_security.hg_global_antitamper';
+	  AND c.relname = table_name;
 
-	-- 1. sum of hash values in user table 
-	table_hash_sum := hg_security.get_table_hash_sum(target_table_name, schema_name, ARRAY['__hg_hash__']);
-	
+	IF table_oid IS NULL THEN
+		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
+	END IF;
+
+	-- check is antitamper table
+	SELECT option_value INTO opt_val FROM pg_options_to_table(
+		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
+	) as opt WHERE opt.option_name = 'antitamper';
+
+	IF opt_val is null THEN
+		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
+	END IF;
+
+	-- 1. sum of hash values in user table
+	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
+
 	-- 2. sum of insert hash values in global table
 	query := format(
 		'SELECT COALESCE(SUM(insertrelhash)::BIGINT, 0)
-			FROM %s
+			FROM hg_security.hg_global_antitamper
 			WHERE insertrelhash IS NOT NULL AND reloid = %s',
-		hist_table_name, table_oid
+		table_oid
 	);
 	EXECUTE query INTO aaaa_insert_sum;
-	
+
 	-- 3. sum of delete hash values in global table
 	query := format(
 		'SELECT COALESCE(SUM(deleterelhash)::BIGINT, 0)
-			FROM %s
+			FROM hg_security.hg_global_antitamper
 			WHERE deleterelhash IS NOT NULL AND reloid = %s',
-		hist_table_name, table_oid
+		table_oid
 	);
 	EXECUTE query INTO aaaa_delete_sum;
-
 
 	-- 4. insert bak global antitamper value
 	insert into hg_security.hg_global_antitamper_backup
 		select * from hg_security.hg_global_antitamper
 			where reloid = table_oid;
-	
+
 	delete from hg_security.hg_global_antitamper
-			where reloid = table_oid;
+		where reloid = table_oid;
 
 	-- 5. insert global antitamper value
 	INSERT INTO hg_security.hg_global_antitamper (
@@ -799,12 +858,40 @@ BEGIN
 		aaaa_delete_sum,
 		'archive'
 	);
-	RETURN aaaa_insert_sum - aaaa_delete_sum;
+	RETURN TRUE;
 END;
 $$;
 
 ALTER FUNCTION hg_security.antitamper_gchain_archive(
 	schema_name text,
-	target_table_name text
+	table_name text
 )
 owner to syssso_role;
+
+-- antitamper view
+-- schema view : show all schema
+create view hg_security.antitamper_class as
+	select
+	oid,
+	relname,
+	relnamespace,
+	relowner,
+	'hist_' || oid::text as hist_table_name
+	from pg_class
+	where reloptions is not null
+	and 'antitamper=true' = any(reloptions);
+
+-- table view : show antitamper table
+create view hg_security.antitamper_namespace as
+	select
+	n.oid,
+	n.nspname,
+	n.nspowner,
+	n.nspacl,
+	case
+		when a.schemaoid is not null and a.antitamper = true then true
+		else false
+	end as isantitamper
+	from pg_namespace n
+	left join hg_security.schema_antitamper a
+	on n.oid = a.schemaoid;

@@ -498,7 +498,7 @@ alter table nsp2.t3 drop id;
 drop table nsp2.t3;
 \d+ nsp2.t3;
 \d+ hg_security.nsp2_t3_hist
-
+drop schema nsp2;
 -------------------------------------------------------------------------------------------------------
 create table t4 (a int, b int, primary key (a)) partition by range (a) WITH(antitamper=true);
 create table t4part2 partition of t4 for values from (0) to (1000);
@@ -949,3 +949,115 @@ end;
 $$ language plpgsql;
 
 drop table t;
+
+
+--==============================================================================================--
+-- bug test
+--==============================================================================================--
+create table public.normal_test (id int, name text);
+select hg_security.antitamper_hist_check('public', 'normal_test');
+select hg_security.antitamper_hist_repair('public', 'normal_test');
+select hg_security.antitamper_gchain_check('public', 'normal_test');
+select hg_security.antitamper_gchain_repair('public', 'normal_test');
+select hg_security.antitamper_gchain_archive('public','normal_test');
+insert into public.normal_test values(1, 'test');
+select hg_security.antitamper_hist_check('public', 'normal_test');
+select hg_security.antitamper_hist_repair('public', 'normal_test');
+select hg_security.antitamper_gchain_check('public', 'normal_test');
+select hg_security.antitamper_gchain_repair('public', 'normal_test');
+select hg_security.antitamper_gchain_archive('public','normal_test');
+drop table public.normal_test;
+
+create unlogged table test (id int, name text) with (antitamper=on);
+create temp table test (id int,name text) with (antitamper=on);
+create unlogged table test (id int, name text) with (antitamper=off);
+create temp table test (id int,name text) with (antitamper=off);
+
+create schema secure_schema with antitamper;
+create table secure_schema.test(id int,name text) with (antitamper=off);
+create table secure_schema.test(id int,name text) with (antitamper=on , antitamper=on);
+create table secure_schema.test(id int,name text) with (antitamper=on , antitamper=off);
+create table secure_schema.test(id int,name text) with (antitamper=on);
+drop table secure_schema.test;
+drop schema secure_schema;
+
+select hg_security.antitamper_hist_check();
+select hg_security.antitamper_hist_check('', '');
+select hg_security.antitamper_hist_check(null,null);
+select hg_security.antitamper_hist_check('secure_schema');
+
+select hg_security.antitamper_hist_repair();
+select hg_security.antitamper_hist_repair('', '');
+select hg_security.antitamper_hist_repair(null,null);
+select hg_security.antitamper_hist_repair('secure_schema');
+
+select hg_security.antitamper_gchain_archive();
+select hg_security.antitamper_gchain_archive('', '');
+select hg_security.antitamper_gchain_archive(null,null);
+select hg_security.antitamper_gchain_archive('secure_schema');
+
+select hg_security.antitamper_gchain_check();
+select hg_security.antitamper_gchain_check('', '');
+select hg_security.antitamper_gchain_check(null,null);
+select hg_security.antitamper_gchain_check('secure_schema');
+
+select hg_security.antitamper_gchain_repair();
+select hg_security.antitamper_gchain_repair('', '');
+select hg_security.antitamper_gchain_repair(null,null);
+select hg_security.antitamper_gchain_repair('secure_schema');
+
+select hg_security.antitamper_gchain_archive();
+select hg_security.antitamper_gchain_archive('', '');
+select hg_security.antitamper_gchain_archive(null,null);
+select hg_security.antitamper_gchain_archive('secure_schema');
+
+
+create schema secure_schema1 with antitamper;
+create schema secure_schema2 with antitamper;
+create schema secure_schema3;
+
+create table test(id int, name text);
+alter table test set schema secure_schema1;
+alter table test set schema secure_schema2;
+alter table test set schema secure_schema3;
+drop table secure_schema3.test;
+
+create table secure_schema1.test2(id int, name text);
+alter table secure_schema1.test2 set schema secure_schema2;
+alter table secure_schema2.test2 set schema secure_schema3;
+drop table secure_schema2.test2;
+
+drop schema secure_schema1,secure_schema2,secure_schema3;
+
+create schema secure_schema1 with antitamper;
+create schema secure_schema2 with antitamper;
+create schema secure_schema3;
+create table secure_schema1.test1(id int, name text);
+create table secure_schema2.test2(id int, name text);
+create table secure_schema3.test3(id int, name text);
+
+create table secure_schema1.test4 (a int, b int, primary key (a)) partition by range (a);
+
+create table secure_schema1.test4part2 partition of secure_schema1.test4 for values from (0) to (1000) ;
+create table secure_schema1.test4part3 partition of secure_schema1.test4 for values from (1000) to (2000);
+create table secure_schema1.test4part4 partition of secure_schema1.test4 for values from (2000) to (3000);
+
+CREATE TABLE test5 (a int, b int, primary key (a)) partition by range (a) WITH(antitamper=true) ;
+CREATE TABLE test5part2 (a int, b int, primary key (a)) WITH(antitamper=true) ;
+ALTER TABLE test5 ATTACH PARTITION test5part2 FOR VALUES FROM (1) TO (1000);
+
+
+create table test6 (a int, b int, primary key (a)) partition by range (a) WITH(antitamper=true) ;
+create table test6part2 partition of test6 for values from (0) to (1000) ;
+create table test6part3 partition of test6 for values from (1000) to (2000);
+create table test6part4 partition of test6 for values from (2000) to (3000);
+
+select relname from hg_security.antitamper_class order by relname;
+select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;
+
+drop table secure_schema1.test1, secure_schema2.test2, secure_schema3.test3;
+drop table secure_schema1.test4;
+drop table test5,test6;
+drop schema secure_schema1,secure_schema2,secure_schema3;
+select relname from hg_security.antitamper_class order by relname;
+select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;

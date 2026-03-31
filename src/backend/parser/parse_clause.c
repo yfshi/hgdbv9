@@ -5618,7 +5618,7 @@ interpretRowidOption(List *defList, bool allowRowid)
 /* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
 /* add AntiTamper table option */
 bool
-interpretAntiTamperOption(List *defList)
+interpretAntiTamperOption(List *defList, bool *enableantitamper)
 {
 	ListCell *cell;
 
@@ -5630,7 +5630,11 @@ interpretAntiTamperOption(List *defList)
 		if (def->defnamespace == NULL &&
 			strcmp(def->defname, "antitamper") == 0)
 		{
-			return defGetBoolean(def);
+			if (enableantitamper != NULL)
+			{
+				*enableantitamper = defGetBoolean(def);
+			}
+			return true;
 		}
 	}
 
