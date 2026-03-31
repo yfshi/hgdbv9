@@ -5572,6 +5572,25 @@ end;
 SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
 ---------------+--------------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_ddl      | PACKAGE      | 1    | PACKAGE dbms_ddl IS
+ dbms_ddl      | PACKAGE      | 2    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE      | 3    |                 type varchar2,
+ dbms_ddl      | PACKAGE      | 4    |                 schema varchar2,
+ dbms_ddl      | PACKAGE      | 5    |                 name varchar2,
+ dbms_ddl      | PACKAGE      | 6    |                 reuse_settings boolean default false);
+ dbms_ddl      | PACKAGE      | 7    | END;
+ dbms_ddl      | PACKAGE BODY | 1    | PACKAGE BODY dbms_ddl IS
+ dbms_ddl      | PACKAGE BODY | 2    |         /* ALTER_COMPILE */
+ dbms_ddl      | PACKAGE BODY | 3    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE BODY | 4    |                 type varchar2,
+ dbms_ddl      | PACKAGE BODY | 5    |                 schema varchar2,
+ dbms_ddl      | PACKAGE BODY | 6    |                 name varchar2,
+ dbms_ddl      | PACKAGE BODY | 7    |                 reuse_settings boolean default false)
+ dbms_ddl      | PACKAGE BODY | 8    |         IS
+ dbms_ddl      | PACKAGE BODY | 9    |         BEGIN
+ dbms_ddl      | PACKAGE BODY | 10   |                 sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+ dbms_ddl      | PACKAGE BODY | 11   |         END;
+ dbms_ddl      | PACKAGE BODY | 12   | END;
  dbms_job      | PACKAGE      | 1    | PACKAGE dbms_job IS
  dbms_job      | PACKAGE      | 2    | 
  dbms_job      | PACKAGE      | 3    | 
@@ -7908,11 +7927,30 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2336 rows)
+(2355 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
 ---------------+--------------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_ddl      | PACKAGE      | 1    | PACKAGE dbms_ddl IS
+ dbms_ddl      | PACKAGE      | 2    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE      | 3    |                 type varchar2,
+ dbms_ddl      | PACKAGE      | 4    |                 schema varchar2,
+ dbms_ddl      | PACKAGE      | 5    |                 name varchar2,
+ dbms_ddl      | PACKAGE      | 6    |                 reuse_settings boolean default false);
+ dbms_ddl      | PACKAGE      | 7    | END;
+ dbms_ddl      | PACKAGE BODY | 1    | PACKAGE BODY dbms_ddl IS
+ dbms_ddl      | PACKAGE BODY | 2    |         /* ALTER_COMPILE */
+ dbms_ddl      | PACKAGE BODY | 3    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE BODY | 4    |                 type varchar2,
+ dbms_ddl      | PACKAGE BODY | 5    |                 schema varchar2,
+ dbms_ddl      | PACKAGE BODY | 6    |                 name varchar2,
+ dbms_ddl      | PACKAGE BODY | 7    |                 reuse_settings boolean default false)
+ dbms_ddl      | PACKAGE BODY | 8    |         IS
+ dbms_ddl      | PACKAGE BODY | 9    |         BEGIN
+ dbms_ddl      | PACKAGE BODY | 10   |                 sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+ dbms_ddl      | PACKAGE BODY | 11   |         END;
+ dbms_ddl      | PACKAGE BODY | 12   | END;
  dbms_job      | PACKAGE      | 1    | PACKAGE dbms_job IS
  dbms_job      | PACKAGE      | 2    | 
  dbms_job      | PACKAGE      | 3    | 
@@ -10249,7 +10287,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2336 rows)
+(2355 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name    |     type     | line |                                 text                                  
@@ -10306,6 +10344,8 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
+ dbms_ddl      | alter_compile           | 1             | PACKAGE     | DEFINER
+ dbms_ddl      |                         | 0             | PACKAGE     | DEFINER
  dbms_job      | broken                  | 9             | PACKAGE     | CURRENT_USER
  dbms_job      | change                  | 4             | PACKAGE     | CURRENT_USER
  dbms_job      | instance                | 7             | PACKAGE     | CURRENT_USER
@@ -10374,11 +10414,13 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(68 rows)
+(70 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
+ dbms_ddl      | alter_compile           | 1             | PACKAGE     | DEFINER
+ dbms_ddl      |                         | 0             | PACKAGE     | DEFINER
  dbms_job      | broken                  | 9             | PACKAGE     | CURRENT_USER
  dbms_job      | change                  | 4             | PACKAGE     | CURRENT_USER
  dbms_job      | instance                | 7             | PACKAGE     | CURRENT_USER
@@ -10447,7 +10489,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(68 rows)
+(70 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -10465,6 +10507,10 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ alter_compile           | dbms_ddl      | 1             | type           | 1        | 1        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | schema         | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | name           | 3        | 3        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | reuse_settings | 4        | 4        | boolean    | Y         | IN     |             |                |       | 
  isubmit                 | dbms_job      | 1             | job            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  isubmit                 | dbms_job      | 1             | what           | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
  isubmit                 | dbms_job      | 1             | next_date      | 3        | 3        | date       | N         | IN     |             |                |       | 
@@ -10600,11 +10646,15 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
-(135 rows)
+(139 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ alter_compile           | dbms_ddl      | 1             | type           | 1        | 1        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | schema         | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | name           | 3        | 3        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | reuse_settings | 4        | 4        | boolean    | Y         | IN     |             |                |       | 
  isubmit                 | dbms_job      | 1             | job            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  isubmit                 | dbms_job      | 1             | what           | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
  isubmit                 | dbms_job      | 1             | next_date      | 3        | 3        | date       | N         | IN     |             |                |       | 
@@ -10740,7 +10790,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
-(135 rows)
+(139 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -10760,6 +10810,25 @@ set session authorization test_user;
 SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
 ---------------+--------------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_ddl      | PACKAGE      | 1    | PACKAGE dbms_ddl IS
+ dbms_ddl      | PACKAGE      | 2    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE      | 3    |                 type varchar2,
+ dbms_ddl      | PACKAGE      | 4    |                 schema varchar2,
+ dbms_ddl      | PACKAGE      | 5    |                 name varchar2,
+ dbms_ddl      | PACKAGE      | 6    |                 reuse_settings boolean default false);
+ dbms_ddl      | PACKAGE      | 7    | END;
+ dbms_ddl      | PACKAGE BODY | 1    | PACKAGE BODY dbms_ddl IS
+ dbms_ddl      | PACKAGE BODY | 2    |         /* ALTER_COMPILE */
+ dbms_ddl      | PACKAGE BODY | 3    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE BODY | 4    |                 type varchar2,
+ dbms_ddl      | PACKAGE BODY | 5    |                 schema varchar2,
+ dbms_ddl      | PACKAGE BODY | 6    |                 name varchar2,
+ dbms_ddl      | PACKAGE BODY | 7    |                 reuse_settings boolean default false)
+ dbms_ddl      | PACKAGE BODY | 8    |         IS
+ dbms_ddl      | PACKAGE BODY | 9    |         BEGIN
+ dbms_ddl      | PACKAGE BODY | 10   |                 sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+ dbms_ddl      | PACKAGE BODY | 11   |         END;
+ dbms_ddl      | PACKAGE BODY | 12   | END;
  dbms_job      | PACKAGE      | 1    | PACKAGE dbms_job IS
  dbms_job      | PACKAGE      | 2    | 
  dbms_job      | PACKAGE      | 3    | 
@@ -13096,11 +13165,30 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2336 rows)
+(2355 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
 ---------------+--------------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_ddl      | PACKAGE      | 1    | PACKAGE dbms_ddl IS
+ dbms_ddl      | PACKAGE      | 2    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE      | 3    |                 type varchar2,
+ dbms_ddl      | PACKAGE      | 4    |                 schema varchar2,
+ dbms_ddl      | PACKAGE      | 5    |                 name varchar2,
+ dbms_ddl      | PACKAGE      | 6    |                 reuse_settings boolean default false);
+ dbms_ddl      | PACKAGE      | 7    | END;
+ dbms_ddl      | PACKAGE BODY | 1    | PACKAGE BODY dbms_ddl IS
+ dbms_ddl      | PACKAGE BODY | 2    |         /* ALTER_COMPILE */
+ dbms_ddl      | PACKAGE BODY | 3    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE BODY | 4    |                 type varchar2,
+ dbms_ddl      | PACKAGE BODY | 5    |                 schema varchar2,
+ dbms_ddl      | PACKAGE BODY | 6    |                 name varchar2,
+ dbms_ddl      | PACKAGE BODY | 7    |                 reuse_settings boolean default false)
+ dbms_ddl      | PACKAGE BODY | 8    |         IS
+ dbms_ddl      | PACKAGE BODY | 9    |         BEGIN
+ dbms_ddl      | PACKAGE BODY | 10   |                 sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+ dbms_ddl      | PACKAGE BODY | 11   |         END;
+ dbms_ddl      | PACKAGE BODY | 12   | END;
  dbms_metadata | PACKAGE      | 1    | PACKAGE dbms_metadata IS
  dbms_metadata | PACKAGE      | 2    |   FUNCTION GET_OBJNAME(ori_name IN VARCHAR(63)) RETURN VARCHAR(63);
  dbms_metadata | PACKAGE      | 3    |   FUNCTION CHECK_PRIVILEGE(owneroid IN OID) RETURN BOOLEAN;
@@ -14905,7 +14993,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(1804 rows)
+(1823 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
  name | type | line | text 
@@ -14915,6 +15003,8 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
+ dbms_ddl      | alter_compile           | 1             | PACKAGE     | DEFINER
+ dbms_ddl      |                         | 0             | PACKAGE     | DEFINER
  dbms_job      | broken                  | 9             | PACKAGE     | CURRENT_USER
  dbms_job      | change                  | 4             | PACKAGE     | CURRENT_USER
  dbms_job      | instance                | 7             | PACKAGE     | CURRENT_USER
@@ -14983,11 +15073,13 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(68 rows)
+(70 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
+ dbms_ddl      | alter_compile           | 1             | PACKAGE     | DEFINER
+ dbms_ddl      |                         | 0             | PACKAGE     | DEFINER
  dbms_metadata | check_privilege         | 2             | PACKAGE     | CURRENT_USER
  dbms_metadata | get_attr                | 12            | PACKAGE     | CURRENT_USER
  dbms_metadata | get_constraint_ddl      | 10            | PACKAGE     | CURRENT_USER
@@ -15038,7 +15130,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(50 rows)
+(52 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid 
@@ -15048,6 +15140,10 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ alter_compile           | dbms_ddl      | 1             | type           | 1        | 1        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | schema         | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | name           | 3        | 3        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | reuse_settings | 4        | 4        | boolean    | Y         | IN     |             |                |       | 
  isubmit                 | dbms_job      | 1             | job            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  isubmit                 | dbms_job      | 1             | what           | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
  isubmit                 | dbms_job      | 1             | next_date      | 3        | 3        | date       | N         | IN     |             |                |       | 
@@ -15183,11 +15279,15 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
-(135 rows)
+(139 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ alter_compile           | dbms_ddl      | 1             | type           | 1        | 1        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | schema         | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | name           | 3        | 3        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | reuse_settings | 4        | 4        | boolean    | Y         | IN     |             |                |       | 
  get_objname             | dbms_metadata | 1             |                | 0        | 1        | varchar2   | N         | OUT    | 63          |                |       | CHAR_CS
  get_objname             | dbms_metadata | 1             | ori_name       | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
  check_privilege         | dbms_metadata | 2             |                | 0        | 1        | boolean    | N         | OUT    |             |                |       | 
@@ -15281,7 +15381,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
-(93 rows)
+(97 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
@@ -15294,6 +15394,25 @@ set session authorization test_user;
 SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
 ---------------+--------------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_ddl      | PACKAGE      | 1    | PACKAGE dbms_ddl IS
+ dbms_ddl      | PACKAGE      | 2    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE      | 3    |                 type varchar2,
+ dbms_ddl      | PACKAGE      | 4    |                 schema varchar2,
+ dbms_ddl      | PACKAGE      | 5    |                 name varchar2,
+ dbms_ddl      | PACKAGE      | 6    |                 reuse_settings boolean default false);
+ dbms_ddl      | PACKAGE      | 7    | END;
+ dbms_ddl      | PACKAGE BODY | 1    | PACKAGE BODY dbms_ddl IS
+ dbms_ddl      | PACKAGE BODY | 2    |         /* ALTER_COMPILE */
+ dbms_ddl      | PACKAGE BODY | 3    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE BODY | 4    |                 type varchar2,
+ dbms_ddl      | PACKAGE BODY | 5    |                 schema varchar2,
+ dbms_ddl      | PACKAGE BODY | 6    |                 name varchar2,
+ dbms_ddl      | PACKAGE BODY | 7    |                 reuse_settings boolean default false)
+ dbms_ddl      | PACKAGE BODY | 8    |         IS
+ dbms_ddl      | PACKAGE BODY | 9    |         BEGIN
+ dbms_ddl      | PACKAGE BODY | 10   |                 sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+ dbms_ddl      | PACKAGE BODY | 11   |         END;
+ dbms_ddl      | PACKAGE BODY | 12   | END;
  dbms_job      | PACKAGE      | 1    | PACKAGE dbms_job IS
  dbms_job      | PACKAGE      | 2    | 
  dbms_job      | PACKAGE      | 3    | 
@@ -17630,11 +17749,30 @@ SELECT name,type,line,text FROM dba_source WHERE type = 'PACKAGE' OR type = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(2336 rows)
+(2355 rows)
 
 SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
      name      |     type     | line |                                                                                                            text                                                                                                             
 ---------------+--------------+------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ dbms_ddl      | PACKAGE      | 1    | PACKAGE dbms_ddl IS
+ dbms_ddl      | PACKAGE      | 2    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE      | 3    |                 type varchar2,
+ dbms_ddl      | PACKAGE      | 4    |                 schema varchar2,
+ dbms_ddl      | PACKAGE      | 5    |                 name varchar2,
+ dbms_ddl      | PACKAGE      | 6    |                 reuse_settings boolean default false);
+ dbms_ddl      | PACKAGE      | 7    | END;
+ dbms_ddl      | PACKAGE BODY | 1    | PACKAGE BODY dbms_ddl IS
+ dbms_ddl      | PACKAGE BODY | 2    |         /* ALTER_COMPILE */
+ dbms_ddl      | PACKAGE BODY | 3    |         PROCEDURE ALTER_COMPILE(
+ dbms_ddl      | PACKAGE BODY | 4    |                 type varchar2,
+ dbms_ddl      | PACKAGE BODY | 5    |                 schema varchar2,
+ dbms_ddl      | PACKAGE BODY | 6    |                 name varchar2,
+ dbms_ddl      | PACKAGE BODY | 7    |                 reuse_settings boolean default false)
+ dbms_ddl      | PACKAGE BODY | 8    |         IS
+ dbms_ddl      | PACKAGE BODY | 9    |         BEGIN
+ dbms_ddl      | PACKAGE BODY | 10   |                 sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+ dbms_ddl      | PACKAGE BODY | 11   |         END;
+ dbms_ddl      | PACKAGE BODY | 12   | END;
  dbms_metadata | PACKAGE      | 1    | PACKAGE dbms_metadata IS
  dbms_metadata | PACKAGE      | 2    |   FUNCTION GET_OBJNAME(ori_name IN VARCHAR(63)) RETURN VARCHAR(63);
  dbms_metadata | PACKAGE      | 3    |   FUNCTION CHECK_PRIVILEGE(owneroid IN OID) RETURN BOOLEAN;
@@ -19466,7 +19604,7 @@ SELECT name,type,line,text FROM all_source WHERE type = 'PACKAGE' OR TYPE = 'PAC
  test_pkg1     | PACKAGE BODY | 13   |      return id;
  test_pkg1     | PACKAGE BODY | 14   |   end;
  test_pkg1     | PACKAGE BODY | 15   | end;
-(1831 rows)
+(1850 rows)
 
 SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PACKAGE BODY' ORDER BY name,type,line;
    name   |     type     | line |                            text                            
@@ -19503,6 +19641,8 @@ SELECT name,type,line,text FROM user_source WHERE type = 'PACKAGE' OR TYPE = 'PA
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
+ dbms_ddl      | alter_compile           | 1             | PACKAGE     | DEFINER
+ dbms_ddl      |                         | 0             | PACKAGE     | DEFINER
  dbms_job      | broken                  | 9             | PACKAGE     | CURRENT_USER
  dbms_job      | change                  | 4             | PACKAGE     | CURRENT_USER
  dbms_job      | instance                | 7             | PACKAGE     | CURRENT_USER
@@ -19571,11 +19711,13 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM DBA_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(68 rows)
+(70 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
   object_name  |     procedure_name      | subprogram_id | object_type |    authid    
 ---------------+-------------------------+---------------+-------------+--------------
+ dbms_ddl      | alter_compile           | 1             | PACKAGE     | DEFINER
+ dbms_ddl      |                         | 0             | PACKAGE     | DEFINER
  dbms_metadata | check_privilege         | 2             | PACKAGE     | CURRENT_USER
  dbms_metadata | get_attr                | 12            | PACKAGE     | CURRENT_USER
  dbms_metadata | get_constraint_ddl      | 10            | PACKAGE     | CURRENT_USER
@@ -19631,7 +19773,7 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM ALL_PROC
  test_pkg1     | test_pkg1_f             | 1             | PACKAGE     | DEFINER
  test_pkg1     | test_pkg1_p             | 2             | PACKAGE     | DEFINER
  test_pkg1     |                         | 0             | PACKAGE     | DEFINER
-(55 rows)
+(57 rows)
 
 SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PROCEDURES WHERE object_type = 'PACKAGE' ORDER BY object_name,procedure_name,subprogram_id;
  object_name | procedure_name | subprogram_id | object_type | authid  
@@ -19646,6 +19788,10 @@ SELECT object_name,procedure_name,subprogram_id,object_type,authid FROM USER_PRO
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM DBA_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ alter_compile           | dbms_ddl      | 1             | type           | 1        | 1        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | schema         | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | name           | 3        | 3        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | reuse_settings | 4        | 4        | boolean    | Y         | IN     |             |                |       | 
  isubmit                 | dbms_job      | 1             | job            | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  isubmit                 | dbms_job      | 1             | what           | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
  isubmit                 | dbms_job      | 1             | next_date      | 3        | 3        | date       | N         | IN     |             |                |       | 
@@ -19781,11 +19927,15 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
-(135 rows)
+(139 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM ALL_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
        object_name       | package_name  | subprogram_id | argument_name  | position | sequence | data_type  | defaulted | in_out | data_length | data_precision | radix | character_set_name 
 -------------------------+---------------+---------------+----------------+----------+----------+------------+-----------+--------+-------------+----------------+-------+--------------------
+ alter_compile           | dbms_ddl      | 1             | type           | 1        | 1        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | schema         | 2        | 2        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | name           | 3        | 3        | varchar2   | N         | IN     |             |                |       | CHAR_CS
+ alter_compile           | dbms_ddl      | 1             | reuse_settings | 4        | 4        | boolean    | Y         | IN     |             |                |       | 
  get_objname             | dbms_metadata | 1             |                | 0        | 1        | varchar2   | N         | OUT    | 63          |                |       | CHAR_CS
  get_objname             | dbms_metadata | 1             | ori_name       | 1        | 2        | varchar2   | N         | IN     | 63          |                |       | CHAR_CS
  check_privilege         | dbms_metadata | 2             |                | 0        | 1        | boolean    | N         | OUT    |             |                |       | 
@@ -19883,7 +20033,7 @@ SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,da
  test_pkg1_f             | test_pkg1     | 1             | id             | 1        | 2        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | id             | 1        | 1        | NUMBER     | N         | IN     | 22          | 38             | 10    | 
  test_pkg1_p             | test_pkg1     | 2             | name           | 2        | 2        | varchar2   | Y         | IN     |             |                |       | CHAR_CS
-(97 rows)
+(101 rows)
 
 SELECT object_name,package_name,subprogram_id,argument_name,position,sequence,data_type,defaulted,in_out,data_length,data_precision,radix,character_set_name FROM USER_ARGUMENTS where package_name is not NULL ORDER BY package_name,subprogram_id,object_name,position;
  object_name | package_name | subprogram_id | argument_name | position | sequence | data_type | defaulted | in_out | data_length | data_precision | radix | character_set_name 
