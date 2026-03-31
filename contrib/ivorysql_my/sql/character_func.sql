@@ -361,8 +361,10 @@ SELECT OCTET_LENGTH(false); -- 1
 SELECT OCTET_LENGTH(binary 'Hello'); -- 5
 set escape_string_warning = off;
 SET standard_conforming_strings to OFF;
+SET sql_mode = '';
 SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 12
 SET standard_conforming_strings to ON;
+set sql_mode = default;
 SELECT OCTET_LENGTH('Hello\tWorld\n'); -- 14
 
 -- CONVERT

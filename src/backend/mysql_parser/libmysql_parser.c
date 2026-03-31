@@ -418,6 +418,8 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 				case LIKE:
 				case ILIKE:
 				case SIMILAR:
+				case REGEXP:
+				case RLIKE:
 					cur_token = NOT_LA;
 					break;
 			}

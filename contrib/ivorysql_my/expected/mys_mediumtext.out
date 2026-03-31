@@ -550,41 +550,68 @@ insert into tb values('Furball Inc.');
 insert into tb values('TNT (1 stick)');
 insert into tb values('TNT (5 sticks)');
 select * from tb where col regexp '1000';  -- JetPack 1000
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '1000';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+(1 row)
+
 select * from tb where col regexp '.000';  -- JetPack 1000, JetPack 2000, JetPack 3000  
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '.000';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+(3 rows)
+
 select * from tb where col regexp '1000|2000';  -- JetPack 1000, JetPack 2000
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '1000|2000';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+ JetPack 2000
+(2 rows)
+
 select * from tb where col regexp '[123] Ton';  -- 1 ton anvil, 2 ton anvil
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '[123] Ton';
-                                   ^
+     col     
+-------------
+ 1 ton anvil
+ 2 ton anvil
+(2 rows)
+
 select * from tb where col regexp '[1-5] Ton';  -- 1 ton anvil, 2 ton anvil, .5 ton anvil
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '[1-5] Ton';
-                                   ^
+     col      
+--------------
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+(3 rows)
+
 select * from tb where col regexp '\\.';  --  .5 ton anvil, Furball Inc. 
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '\\.';
-                                   ^
+     col      
+--------------
+ .5 ton anvil
+ Furball Inc.
+(2 rows)
+
 select * from tb where col regexp '\\([0-9] sticks?\\)';  -- TNT (1 stick), TNT (5 stick)
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '\\([0-9] sticks?\\)';
-                                   ^
+      col       
+----------------
+ TNT (1 stick)
+ TNT (5 sticks)
+(2 rows)
+
 select * from tb where col regexp '^[0-9]';  -- 1 ton anvil, 2 ton anvil
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '^[0-9]';
-                                   ^
+     col     
+-------------
+ 1 ton anvil
+ 2 ton anvil
+(2 rows)
+
 select * from tb where col regexp '\\.$';  -- Furball Inc.
-ERROR:  syntax error at or near "regexp"
-LINE 1: select * from tb where col regexp '\\.$';
-                                   ^
+     col      
+--------------
+ Furball Inc.
+(1 row)
+
 drop table if exists tb;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_OPER_005
 create table tb (col mediumtext);
@@ -598,41 +625,113 @@ insert into tb values('Furball Inc.');
 insert into tb values('TNT (1 stick)');
 insert into tb values('TNT (5 sticks)');
 select * from tb where col not regexp '1000';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '1000';
-                                   ^
+      col       
+----------------
+ JetPack 2000
+ JetPack 3000
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+ Furball Inc.
+ TNT (1 stick)
+ TNT (5 sticks)
+(8 rows)
+
 select * from tb where col not regexp '.000';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '.000';
-                                   ^
+      col       
+----------------
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+ Furball Inc.
+ TNT (1 stick)
+ TNT (5 sticks)
+(6 rows)
+
 select * from tb where col not regexp '1000|2000';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '1000|2000';
-                                   ^
+      col       
+----------------
+ JetPack 3000
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+ Furball Inc.
+ TNT (1 stick)
+ TNT (5 sticks)
+(7 rows)
+
 select * from tb where col not regexp '[123] Ton';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '[123] Ton';
-                                   ^
+      col       
+----------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+ .5 ton anvil
+ Furball Inc.
+ TNT (1 stick)
+ TNT (5 sticks)
+(7 rows)
+
 select * from tb where col not regexp '[1-5] Ton';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '[1-5] Ton';
-                                   ^
+      col       
+----------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+ Furball Inc.
+ TNT (1 stick)
+ TNT (5 sticks)
+(6 rows)
+
 select * from tb where col not regexp '\\.';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '\\.';
-                                   ^
+      col       
+----------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+ 1 ton anvil
+ 2 ton anvil
+ TNT (1 stick)
+ TNT (5 sticks)
+(7 rows)
+
 select * from tb where col not regexp '\\([0-9] sticks?\\)';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '\\([0-9] sticks?\\)';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+ Furball Inc.
+(7 rows)
+
 select * from tb where col not regexp '^[0-9]';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '^[0-9]';
-                                   ^
+      col       
+----------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+ .5 ton anvil
+ Furball Inc.
+ TNT (1 stick)
+ TNT (5 sticks)
+(7 rows)
+
 select * from tb where col not regexp '\\.$';
-ERROR:  syntax error at or near "not"
-LINE 1: select * from tb where col not regexp '\\.$';
-                                   ^
+      col       
+----------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+ TNT (1 stick)
+ TNT (5 sticks)
+(8 rows)
+
 drop table if exists tb;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_OPER_006
 create table tb (col mediumtext);
@@ -646,41 +745,68 @@ insert into tb values('Furball Inc.');
 insert into tb values('TNT (1 stick)');
 insert into tb values('TNT (5 sticks)');
 select * from tb where col rlike '1000';  -- JetPack 1000
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '1000';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+(1 row)
+
 select * from tb where col rlike '.000';  -- JetPack 1000, JetPack 2000, JetPack 3000
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '.000';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+ JetPack 2000
+ JetPack 3000
+(3 rows)
+
 select * from tb where col rlike '1000|2000';  -- JetPack 1000, JetPack 2000
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '1000|2000';
-                                   ^
+     col      
+--------------
+ JetPack 1000
+ JetPack 2000
+(2 rows)
+
 select * from tb where col rlike '[123] Ton';  -- 1 ton anvil, 2 ton anvil
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '[123] Ton';
-                                   ^
+     col     
+-------------
+ 1 ton anvil
+ 2 ton anvil
+(2 rows)
+
 select * from tb where col rlike '[1-5] Ton';  -- 1 ton anvil, 2 ton anvil, .5 ton anvil
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '[1-5] Ton';
-                                   ^
+     col      
+--------------
+ 1 ton anvil
+ 2 ton anvil
+ .5 ton anvil
+(3 rows)
+
 select * from tb where col rlike '\\.';  --  .5 ton anvil, Furball Inc.
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '\\.';
-                                   ^
+     col      
+--------------
+ .5 ton anvil
+ Furball Inc.
+(2 rows)
+
 select * from tb where col rlike '\\([0-9] sticks?\\)';  -- TNT (1 stick), TNT (5 stick)
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '\\([0-9] sticks?\\)';
-                                   ^
+      col       
+----------------
+ TNT (1 stick)
+ TNT (5 sticks)
+(2 rows)
+
 select * from tb where col rlike '^[0-9]';  -- 1 ton anvil, 2 ton anvil
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '^[0-9]';
-                                   ^
+     col     
+-------------
+ 1 ton anvil
+ 2 ton anvil
+(2 rows)
+
 select * from tb where col rlike '\\.$';  -- Furball Inc.
-ERROR:  syntax error at or near "rlike"
-LINE 1: select * from tb where col rlike '\\.$';
-                                   ^
+     col      
+--------------
+ Furball Inc.
+(1 row)
+
 drop table if exists tb;
 -- TC_IVYSQL_MSQL_DATATYPE_MEDIUMTEXT_OPER_007
 create table tb1(col mediumtext);
@@ -1195,21 +1321,36 @@ insert into tb1 values ('123m_ab');
 insert into tb1 values ('ert#qw');
 insert into tb1 values ('fa\fsd');
 insert into tb1 values('x''y');
-select * from tb1 where col like '%\%%' escape '\\';  -- ab%m
-ERROR:  invalid escape string
-HINT:  Escape string must be empty or one character.
-select * from tb1 where col like '%\_%' escape '\\';  -- 123m_ab
-ERROR:  invalid escape string
-HINT:  Escape string must be empty or one character.
-select * from tb1 where col like '%\#%' escape '\\';  -- ert#qw
-ERROR:  invalid escape string
-HINT:  Escape string must be empty or one character.
-select * from tb1 where col like '%\'%' escape '\\';  --  x'y
-invalid command \
+select * from tb1 where col like '%\\%%' escape '\\';  -- ab%m
+  col  
+-------
+  ab%m
+(1 row)
+
+select * from tb1 where col like '%\\_%' escape '\\';  -- 123m_ab
+   col   
+---------
+ 123m_ab
+(1 row)
+
+select * from tb1 where col like '%\\#%' escape '\\';  -- ert#qw
+  col   
+--------
+ ert#qw
+(1 row)
+
+select * from tb1 where col like "%\'%" escape '\\';  --  x'y
+ col 
+-----
+ x'y
+(1 row)
+
 select * from tb1 where col like '%+%%' escape '+';  -- ab%m
-ERROR:  syntax error at or near "select"
-LINE 2: select * from tb1 where col like '%+%%' escape '+';
-        ^
+  col  
+-------
+  ab%m
+(1 row)
+
 select * from tb1 where col like '%++%%' escape '++';  -- error “Incorrect arguments to ESCAPE”
 ERROR:  invalid escape string
 HINT:  Escape string must be empty or one character.

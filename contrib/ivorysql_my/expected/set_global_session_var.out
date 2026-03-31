@@ -488,9 +488,9 @@ set work_mem='8MB';
 set sql_mode=default;
 set work_mem=default;
 select @@sql_mode,@@work_mem;	--sql_mode'', work_mem 4MB
-                                                                                      ?column?                                                                                       | ?column? 
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------
- REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | 4MB
+                                                                                                 ?column?                                                                                                 | ?column? 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | 4MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_012

@@ -942,7 +942,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	QUARTER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
 	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
-	REFRESH REINDEX RELATIVE_P RELEASE RENAME REPEATABLE REPLACE REPLICA
+	REFRESH REGEXP REINDEX RELATIVE_P RLIKE RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS ROW_FORMAT /* oa-2019 */ RULE
 
@@ -1071,6 +1071,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 /* End - #Z7389 */
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
 /* Begin - bug#z5412 */
+%nonassoc	REGEXP RLIKE
 %left		'|'
 %left		'&'
 /* End - bug#z5412 */
@@ -17133,6 +17134,34 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = makeNotExpr($2, @1); }
 			| NOT_LA a_expr						%prec NOT
 				{ $$ = makeNotExpr($2, @1); }
+			| a_expr REGEXP a_expr				%prec REGEXP
+				{
+					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
+					Node	*pattern_text = makeTypeCast($3, SystemTypeName("text"),  @2);
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "~*",
+								left_text, pattern_text, @2);
+				}
+			| a_expr NOT_LA REGEXP a_expr		%prec REGEXP
+				{
+					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
+					Node	*pattern_text = makeTypeCast($4, SystemTypeName("text"),  @2);
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~*",
+								left_text, pattern_text, @2);
+				}
+			| a_expr RLIKE a_expr				%prec RLIKE
+				{
+					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
+					Node	*pattern_text = makeTypeCast($3, SystemTypeName("text"),  @2);
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "~*",
+								left_text, pattern_text, @2);
+				}
+			| a_expr NOT_LA RLIKE a_expr		%prec RLIKE
+				{
+					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
+					Node	*pattern_text = makeTypeCast($4, SystemTypeName("text"),  @2);
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~*",
+								left_text, pattern_text, @2);
+				}
 			| a_expr LIKE a_expr
 				{
 					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
@@ -20731,7 +20760,9 @@ reserved_keyword:
 			| PLACING
 			| PRIMARY
 			| REFERENCES
+			| REGEXP
 			| RETURNING
+			| RLIKE
 			| SCHEMAS /* ReqID: SRS-MYSQL-SHOW */
 			| SELECT
 			| SESSION_USER

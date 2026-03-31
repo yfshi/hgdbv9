@@ -6,7 +6,7 @@ EXEC SQL INCLUDE ../regression;
 
 int main() {
   EXEC SQL BEGIN DECLARE SECTION;
-    char var[25];
+    char var[1000];
     int i, loopcount;
   EXEC SQL END DECLARE SECTION;
 
@@ -19,20 +19,20 @@ int main() {
 
   EXEC SQL CREATE TABLE "My_Table" ( Item1 int, Item2 text );
 
-  EXEC SQL SET standard_conforming_strings TO off;
+  EXEC SQL set sql_mode = 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE';
 
-  EXEC SQL SHOW standard_conforming_strings INTO :var;
-  printf("Standard conforming strings: %s\n", var);
+  EXEC SQL SHOW SQL_MODE  INTO :var;
+  printf("SQL_MODE : %s\n", var);
 
   /* this is a\\b actually */
   EXEC SQL INSERT INTO "My_Table" VALUES ( 1, 'a\\\\b' );
   /* this is a\\b */
   EXEC SQL INSERT INTO "My_Table" VALUES ( 1, E'a\\\\b' );
 
-  EXEC SQL SET standard_conforming_strings TO on;
+  EXEC SQL SET SQL_MODE = DEFAULT ;
 
-  EXEC SQL SHOW standard_conforming_strings INTO :var;
-  printf("Standard conforming strings: %s\n", var);
+  EXEC SQL SHOW SQL_MODE  INTO :var;
+  printf("SQL_MODE: %s\n", var);
 
   /* this is a\\\\b actually */
   EXEC SQL INSERT INTO "My_Table" VALUES ( 2, 'a\\\\b' );

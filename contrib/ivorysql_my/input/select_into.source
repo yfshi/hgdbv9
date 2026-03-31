@@ -36,11 +36,13 @@ delete from test_check;
 -- using standard_conforming_strings to control \
 show standard_conforming_strings;
 set standard_conforming_strings = off;
+set sql_mode = '';
 select * into OUTFILE '@abs_builddir@/results/test_select_into_7.csv' FIELDS TERMINATED BY '\t' from test_select_into;
 copy test_check from '@abs_builddir@/results/test_select_into_7.csv' with(format csv, delimiter '\t');
 select * from test_check;
 delete from test_check;
 reset standard_conforming_strings;
+set sql_mode = default;
 
 -- test enclosed by
 select * into OUTFILE '@abs_builddir@/results/test_select_into_8.csv' FIELDS ENCLOSED BY '"' from test_select_into;

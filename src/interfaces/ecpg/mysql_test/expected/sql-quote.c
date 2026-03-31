@@ -28,7 +28,7 @@ int main() {
       
   
 #line 9 "quote.pgc"
- char var [ 25 ] ;
+ char var [ 1000 ] ;
  
 #line 10 "quote.pgc"
  int i , loopcount ;
@@ -61,7 +61,7 @@ if (sqlca.sqlcode < 0) exit (1);}
 #line 20 "quote.pgc"
 
 
-  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "set standard_conforming_strings to off", ECPGt_EOIT, ECPGt_EORT);
+  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "set sql_mode = 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE'", ECPGt_EOIT, ECPGt_EORT);
 #line 22 "quote.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') sqlprint();
@@ -71,8 +71,8 @@ if (sqlca.sqlcode < 0) exit (1);}
 #line 22 "quote.pgc"
 
 
-  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "show standard_conforming_strings", ECPGt_EOIT, 
-	ECPGt_char,(var),(long)25,(long)1,(25)*sizeof(char), 
+  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "show SQL_MODE", ECPGt_EOIT, 
+	ECPGt_char,(var),(long)1000,(long)1,(1000)*sizeof(char), 
 	ECPGt_NO_INDICATOR, NULL , 0L, 0L, 0L, ECPGt_EORT);
 #line 24 "quote.pgc"
 
@@ -82,7 +82,7 @@ if (sqlca.sqlwarn[0] == 'W') sqlprint();
 if (sqlca.sqlcode < 0) exit (1);}
 #line 24 "quote.pgc"
 
-  printf("Standard conforming strings: %s\n", var);
+  printf("SQL_MODE : %s\n", var);
 
   /* this is a\\b actually */
   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "insert into \"My_Table\" values ( 1 , 'a\\\\\\\\b' )", ECPGt_EOIT, ECPGt_EORT);
@@ -105,7 +105,7 @@ if (sqlca.sqlcode < 0) exit (1);}
 #line 30 "quote.pgc"
 
 
-  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "set standard_conforming_strings to on", ECPGt_EOIT, ECPGt_EORT);
+  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "set SQL_MODE = default", ECPGt_EOIT, ECPGt_EORT);
 #line 32 "quote.pgc"
 
 if (sqlca.sqlwarn[0] == 'W') sqlprint();
@@ -115,8 +115,8 @@ if (sqlca.sqlcode < 0) exit (1);}
 #line 32 "quote.pgc"
 
 
-  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "show standard_conforming_strings", ECPGt_EOIT, 
-	ECPGt_char,(var),(long)25,(long)1,(25)*sizeof(char), 
+  { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "show SQL_MODE", ECPGt_EOIT, 
+	ECPGt_char,(var),(long)1000,(long)1,(1000)*sizeof(char), 
 	ECPGt_NO_INDICATOR, NULL , 0L, 0L, 0L, ECPGt_EORT);
 #line 34 "quote.pgc"
 
@@ -126,7 +126,7 @@ if (sqlca.sqlwarn[0] == 'W') sqlprint();
 if (sqlca.sqlcode < 0) exit (1);}
 #line 34 "quote.pgc"
 
-  printf("Standard conforming strings: %s\n", var);
+  printf("SQL_MODE: %s\n", var);
 
   /* this is a\\\\b actually */
   { ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "insert into \"My_Table\" values ( 2 , 'a\\\\\\\\b' )", ECPGt_EOIT, ECPGt_EORT);
@@ -181,7 +181,7 @@ if (sqlca.sqlcode < 0) exit (1);}
 	{ ECPGdo(__LINE__, 0, 1, NULL, 0, ECPGst_normal, "fetch C", ECPGt_EOIT, 
 	ECPGt_int,&(i),(long)1,(long)1,sizeof(int), 
 	ECPGt_NO_INDICATOR, NULL , 0L, 0L, 0L, 
-	ECPGt_char,(var),(long)25,(long)1,(25)*sizeof(char), 
+	ECPGt_char,(var),(long)1000,(long)1,(1000)*sizeof(char), 
 	ECPGt_NO_INDICATOR, NULL , 0L, 0L, 0L, ECPGt_EORT);
 #line 51 "quote.pgc"
 

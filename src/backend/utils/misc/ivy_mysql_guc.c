@@ -916,7 +916,6 @@ trans_sql_mode(const char *val)
 
 		sql_mode |= cur;
 	}
-
 	return expand_sql_mode(sql_mode);
 }
 
@@ -942,7 +941,7 @@ sql_mode_to_cstring(sql_mode_t sql_mode, StringInfo str)
 static void
 assign_sql_mode(const char *newval, void *extra)
 {
-	sql_mode = trans_sql_mode(newval);;
+    sql_mode = trans_sql_mode(newval);
 }
 
 static bool
@@ -1118,6 +1117,9 @@ assign_regress_test_default_value(bool newval, void *extra)
 	{
 		SetConfigOption("mysql.cast_to_char", "off", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.mode_pad_char_to_full", "off", PGC_USERSET, PGC_S_OVERRIDE);
+		SetConfigOption("sql_mode", "NO_BACKSLASH_ESCAPES,REAL_AS_FLOAT,PIPES_AS_CONCAT,NO_BACKSLASH_ESCAPES,ANSI_QUOTES,"
+									"ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,"
+									"NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE", PGC_USERSET, PGC_S_OVERRIDE);
 		/**
 		 * bug#6805
 		 * The Default value of lower_case_table_names is different between

@@ -70,16 +70,9 @@ show standard_conforming_strings;
 (1 row)
 
 set standard_conforming_strings = off;
+set sql_mode = '';
 select * into OUTFILE '@abs_builddir@/results/test_select_into_7.csv' FIELDS TERMINATED BY '\t' from test_select_into;
-WARNING:  nonstandard use of escape in a string literal
-LINE 1: ...ults/test_select_into_7.csv' FIELDS TERMINATED BY '\t' from ...
-                                                             ^
-HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
 copy test_check from '@abs_builddir@/results/test_select_into_7.csv' with(format csv, delimiter '\t');
-WARNING:  nonstandard use of escape in a string literal
-LINE 1: ...ts/test_select_into_7.csv' with(format csv, delimiter '\t');
-                                                                 ^
-HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
 select * from test_check;
  id | age |  name   
 ----+-----+---------
@@ -90,6 +83,7 @@ select * from test_check;
 
 delete from test_check;
 reset standard_conforming_strings;
+set sql_mode = default;
 -- test enclosed by
 select * into OUTFILE '@abs_builddir@/results/test_select_into_8.csv' FIELDS ENCLOSED BY '"' from test_select_into;
 copy test_check from '@abs_builddir@/results/test_select_into_8.csv' with(format csv, quote '"');

@@ -753,7 +753,8 @@ other			.
 									 errhint("Use '' to write quotes in strings. \\' is insecure in client-only encodings."),
 									 lexer_errposition()));
 					}
-					check_string_escape_warning(yytext[1], yyscanner);
+					if (has_sql_mode(MODE_NO_BACKSLASH_ESCAPES))
+						check_string_escape_warning(yytext[1], yyscanner);
 					addlitchar(unescape_single_char(yytext[1], yyscanner),
 							   yyscanner);
 				}
@@ -1463,7 +1464,7 @@ mys_scanner_init(const char *str,
 	yyext->param_no = 0; /* SRS-MYSQL-SQL-PREPARE */
 	yyext->backslash_quote = backslash_quote;
 	yyext->escape_string_warning = escape_string_warning;
-	yyext->standard_conforming_strings = standard_conforming_strings;
+	yyext->standard_conforming_strings = has_sql_mode(MODE_NO_BACKSLASH_ESCAPES);
 
 	/*
 	 * Make a scan buffer with special termination needed by flex.

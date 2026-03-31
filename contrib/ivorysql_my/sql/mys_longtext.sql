@@ -285,10 +285,10 @@ insert into tb1 values ('123m_ab');
 insert into tb1 values ('ert#qw');
 insert into tb1 values ('fa\fsd');
 insert into tb1 values('x''y');
-select * from tb1 where col like '%\%%' escape '\\';  -- ab%m
-select * from tb1 where col like '%\_%' escape '\\';  -- 123m_ab
-select * from tb1 where col like '%\#%' escape '\\';  -- ert#qw
-select * from tb1 where col like '%\'%' escape '\\';  --  x'y
+select * from tb1 where col like '%\\%%' escape '\\';  -- ab%m
+select * from tb1 where col like '%\\_%' escape '\\';  -- 123m_ab
+select * from tb1 where col like '%\\#%' escape '\\';  -- ert#qw
+select * from tb1 where col like "%\'%" escape '\\';  --  x'y
 select * from tb1 where col like '%+%%' escape '+';  -- ab%m
 select * from tb1 where col like '%++%%' escape '++';  -- error “Incorrect arguments to ESCAPE”
 drop table if exists tb1;

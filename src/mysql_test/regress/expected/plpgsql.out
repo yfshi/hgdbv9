@@ -4452,37 +4452,30 @@ WARNING:  Division by 0
 
 drop function fail();
 -- Test handling of string literals.
-set standard_conforming_strings = off;
+set sql_mode = '';
 create or replace function strtest() returns text as $$
 begin
   raise notice 'foo\\bar\041baz';
   return 'foo\\bar\041baz';
 end
 $$ language plpgsql;
-WARNING:  nonstandard use of \\ in a string literal
-LINE 3:   raise notice 'foo\\bar\041baz';
-                       ^
-HINT:  Use the escape string syntax for backslashes, e.g., E'\\'.
-WARNING:  nonstandard use of \\ in a string literal
+WARNING:  nonstandard use of escape in a string literal
 LINE 4:   return 'foo\\bar\041baz';
                  ^
-HINT:  Use the escape string syntax for backslashes, e.g., E'\\'.
-WARNING:  nonstandard use of \\ in a string literal
-LINE 4:   return 'foo\\bar\041baz';
-                 ^
-HINT:  Use the escape string syntax for backslashes, e.g., E'\\'.
+HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
 select strtest();
-NOTICE:  foo\bar!baz
-WARNING:  nonstandard use of \\ in a string literal
+NOTICE:  foo\\bar\041baz
+WARNING:  nonstandard use of escape in a string literal
 LINE 1: 'foo\\bar\041baz'
         ^
-HINT:  Use the escape string syntax for backslashes, e.g., E'\\'.
+HINT:  Use the escape string syntax for escapes, e.g., E'\r\n'.
 QUERY:  'foo\\bar\041baz'
    strtest   
 -------------
  foo\bar!baz
 (1 row)
 
+set sql_mode = default;
 create or replace function strtest() returns text as $$
 begin
   raise notice E'foo\\bar\041baz';

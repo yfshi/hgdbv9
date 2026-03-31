@@ -1,38 +1,38 @@
 --show variables
 show global variables where VARIABLE_NAME = 'sql_mode';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 show session variables where VARIABLE_NAME = 'sql_mode';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 show global variables where VARIABLE_NAME like 'sql_mod%';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 show session variables where VARIABLE_NAME like 'sql_mod%';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 show variables where VARIABLE_NAME like 'sql_mod%';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 show variables where VARIABLE_NAME like 'sql_mo%';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 show global variables where VARIABLE_NAME = 'sql_quote_show_create';
@@ -792,9 +792,9 @@ DROP TABLE test_temp;
 SET GLOBAL sql_mode = E'\\110\\145\\154\\154\\157'::bytea;
 ERROR:  Variable 'sql_mode' can't be set to the value of '\x48656c6c6f'
 show variables like 'sql_mode';
- Variable_name |                                                                                        Value                                                                                        
----------------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
- sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+ Variable_name |                                                                                                  Value                                                                                                   
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ sql_mode      | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
 (1 row)
 
 --fix bug#Z5978

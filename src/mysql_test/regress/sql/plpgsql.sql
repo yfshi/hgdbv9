@@ -3708,7 +3708,7 @@ drop function fail();
 
 -- Test handling of string literals.
 
-set standard_conforming_strings = off;
+set sql_mode = '';
 
 create or replace function strtest() returns text as $$
 begin
@@ -3718,6 +3718,7 @@ end
 $$ language plpgsql;
 
 select strtest();
+set sql_mode = default;
 
 create or replace function strtest() returns text as $$
 begin

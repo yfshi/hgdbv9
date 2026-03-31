@@ -1035,7 +1035,7 @@ SELECT
 	-- Trigger condition (WHEN clause), NULL if no permission
 	CASE
 		WHEN pg_has_role(c.relowner, 'USAGE')
-		THEN (regexp_match(pg_get_triggerdef(t.oid), '.{35,} WHEN \((.+)\) EXECUTE FUNCTION'))[1]
+		THEN (regexp_match(pg_get_triggerdef(t.oid), '.{35,} WHEN \\((.+)\\) EXECUTE FUNCTION'))[1]
 		ELSE NULL
 	END::longtext AS "ACTION_CONDITION",
 
@@ -1274,7 +1274,7 @@ JOIN (
 ) AS p(privilege_type)
 ON has_schema_privilege(usr.oid, n.oid, p.privilege_type)
 WHERE
-	n.nspname NOT LIKE 'pg\_%' ESCAPE '\'
+	LEFT(n.nspname , 3) <> 'pg_'
 	AND n.nspname <> 'information_schema';
 
 GRANT SELECT ON mys_information_schema.schema_privileges TO PUBLIC;
@@ -1318,8 +1318,8 @@ SELECT
 		CASE WHEN am.amname = 'gist' THEN
 			mys_information_schema.mys_get_gistindex_column(i.indexrelid)
 			-- Handle PostgreSQL native expression indexes like "left"(name, 100)
-			WHEN pg_get_indexdef(i.indexrelid, k.n::integer, true) ~* '"?left"?\s*\(.*,\s*\d+\s*\)' THEN
-				(regexp_match(pg_get_indexdef(i.indexrelid, k.n::integer, true), '"left"\s*\(\s*([^,:\s")]+)'))[1]::varchar(64)
+			WHEN pg_get_indexdef(i.indexrelid, k.n::integer, true) ~* '"?left"?\\s*\\(.*,\\s*\\d+\\s*\\)' THEN
+				(regexp_match(pg_get_indexdef(i.indexrelid, k.n::integer, true), '"left"\\s*\\(\\s*([^,:\\s")]+)'))[1]::varchar(64)
 		ELSE
 			a.attname::varchar(64)
 		END
@@ -1337,11 +1337,11 @@ SELECT
 	  ELSE
 		CASE
 		  -- Handle MySQL-compatible prefix indexes, format like (100::name)
-		  WHEN pg_get_indexdef(ci.oid, k.n::integer, true) ~ '^\(\d+::name\)$' THEN
-			(regexp_match(pg_get_indexdef(ci.oid, k.n::integer, true), '^\((\d+)::name\)$'))[1]::int
+		  WHEN pg_get_indexdef(ci.oid, k.n::integer, true) ~ '^\\(\\d+::name\\)$' THEN
+			(regexp_match(pg_get_indexdef(ci.oid, k.n::integer, true), '^\\((\\d+)::name\\)$'))[1]::int
 		  -- Handle PostgreSQL native expression indexes like "left"(name, 100)
-		  WHEN pg_get_indexdef(ci.oid, k.n::integer, true) ~* '"?left"?\s*\(.*,\s*\d+\s*\)' THEN
-			(regexp_match(pg_get_indexdef(ci.oid, k.n::integer, true), '"?left"?\s*\(.*,\s*(\d+)\s*\)'))[1]::int
+		  WHEN pg_get_indexdef(ci.oid, k.n::integer, true) ~* '"?left"?\\s*\\(.*,\\s*\\d+\\s*\\)' THEN
+			(regexp_match(pg_get_indexdef(ci.oid, k.n::integer, true), '"?left"?\\s*\\(.*,\\s*(\\d+)\\s*\\)'))[1]::int
 		  ELSE NULL
 		END
 	END::bigint(3) AS "SUB_PART", 											   -- Prefix length extracted from index expression; NULL for normal columns
