@@ -2514,7 +2514,7 @@ SELECT
                  FROM jsonb_array_elements_text(obj.option->'referencing') AS elem
                 )
             )
-        ELSE NULL
+        ELSE 'REFERENCING NEW AS NEW OLD AS OLD'	/* BUG#Z7179 */
     END::varchar2(422) AS referencing_names,
 
 	WHEN_CLAUSE.when_expr::varchar2(4000) AS when_clause, /* BUG#Z6822 */
@@ -2536,12 +2536,13 @@ SELECT
 
     'NO'::varchar2(7)               AS crossedition,	/* BUG#Z6339 */
 
-    CASE WHEN trg.tgtype & 2 <> 0 AND trg.tgtype & 1 = 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS before_statement,
-    CASE WHEN trg.tgtype & 2 <> 0 AND trg.tgtype & 1 <> 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS before_row,
-    CASE WHEN trg.tgtype & 2 = 0 AND trg.tgtype & 1 <> 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS after_row,
-    CASE WHEN trg.tgtype & 2 = 0 AND trg.tgtype & 1 = 0 THEN 'YES' ELSE 'NO' END::varchar2(3) AS after_statement,
-
-    CASE WHEN trg.tgisinternal = false AND cls.relkind = 'v' THEN 'YES' ELSE 'NO' END::varchar2(3) AS instead_of_row,
+    /* Begin - BUG#Z7179 */
+    'NO'::varchar2(3) AS before_statement,
+    'NO'::varchar2(3) AS before_row,
+    'NO'::varchar2(3) AS after_row,
+    'NO'::varchar2(3) AS after_statement,
+    'NO'::varchar2(3) AS instead_of_row,
+    /* End - BUG#Z7179 */
 
     'YES'::varchar2(3)                 AS fire_once,
     'NO'::varchar2(3)                  AS apply_server_only
