@@ -12,7 +12,7 @@ DATA = hg_rolstatus--1.0.sql
 PGFILEDESC = "hg_rolstatus"
 
 REGRESS = hg_rolstatus
-MYS_REGRESS = hg_rolstatus
+MYS_REGRESS = mys_hg_rolstatus
 ORA_REGRESS = hg_rolstatus
 
 ifdef USE_PGXS

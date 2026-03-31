@@ -1,8 +1,8 @@
-set hg_rolstatus.enable to true;
-show hg_rolstatus.enable;
- hg_rolstatus.enable 
----------------------
- on
+ALTER SYSTEM SET hg_rolstatus.enable TO ON;
+SELECT PG_RELOAD_CONF();
+ pg_reload_conf 
+----------------
+ t
 (1 row)
 
 --==============================================================================================--
@@ -12,7 +12,7 @@ show hg_rolstatus.enable;
 create role role1;
 create user user2; 
 grant role1 to user2;
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -37,7 +37,7 @@ select hg_security.set_role_status('role1', false);
  t
 (1 row)
 
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
  role1   | f
@@ -61,7 +61,7 @@ select hg_security.set_role_status('role1', true);
  t
 (1 row)
 
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
  role1   | t
@@ -73,6 +73,13 @@ select hg_security.get_role_status('role1');
  t
 (1 row)
 
+-- enable/disable not exist role
+select hg_security.set_role_status('role12', true);
+ERROR:  role "role12" does not exist
+select hg_security.set_role_status('role12', false);
+ERROR:  role "role12" does not exist
+select hg_security.get_role_status('role12');
+ERROR:  role "role12" does not exist
 -- ok
 set role user2;
 select * from tb1;
@@ -82,6 +89,47 @@ select * from tb1;
 (1 row)
 
 reset role;
+-- repeat set
+select hg_security.set_role_status('role1', false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role1', false);
+WARNING:  role role1 already false
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role1', false);
+WARNING:  role role1 already false
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role1', true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role1', true);
+WARNING:  role role1 already true
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role1', true);
+WARNING:  role role1 already true
+ set_role_status 
+-----------------
+ t
+(1 row)
+
 drop table tb1;
 ------------------- schema -------------------------------
 create schema sh1;
@@ -97,7 +145,7 @@ select hg_security.set_role_status('role1', false);
  t
 (1 row)
 
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
  role1   | f
@@ -117,7 +165,7 @@ select hg_security.set_role_status('role1', true);
  t
 (1 row)
 
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
  role1   | t
@@ -132,6 +180,128 @@ drop table sh1.id3;
 drop schema sh1;
 drop user user2;
 drop role role1;
+------------------- db1 -------------------------------
+create database db1;
+create database db2;
+create role role1;
+create user user2; 
+grant role1 to user2;
+select rolname,rolstatus from pg_role_status;
+ rolname | rolstatus 
+---------+-----------
+(0 rows)
+
+\c db1
+create table tb1(id int);
+insert into tb1 values(111);
+grant select on table tb1 to role1;
+-- ok
+set role user2;
+select * from tb1;
+ id  
+-----
+ 111
+(1 row)
+
+reset role;
+-- disable role1
+select hg_security.set_role_status('role1', false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select rolname,rolstatus from pg_role_status;
+ rolname | rolstatus 
+---------+-----------
+ role1   | f
+(1 row)
+
+select hg_security.get_role_status('role1');
+ get_role_status 
+-----------------
+ f
+(1 row)
+
+-- fail
+set role user2;
+select * from tb1;
+ERROR:  permission denied for table tb1
+reset role;
+-- enable role1
+select hg_security.set_role_status('role1', true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select rolname,rolstatus from pg_role_status;
+ rolname | rolstatus 
+---------+-----------
+ role1   | t
+(1 row)
+
+select hg_security.get_role_status('role1');
+ get_role_status 
+-----------------
+ t
+(1 row)
+
+\c db2
+create table tb2(id int);
+insert into tb2 values(111);
+grant select on table tb2 to role1;
+-- ok
+set role user2;
+select * from tb2;
+ id  
+-----
+ 111
+(1 row)
+
+reset role;
+select hg_security.set_role_status('role1', false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+set role user2;
+select * from tb2;
+ERROR:  permission denied for table tb2
+reset role;
+\c db1
+-- err
+set role user2;
+select * from tb1;
+ERROR:  permission denied for table tb1
+reset role;
+\c db2
+select hg_security.set_role_status('role1', true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+\c db1
+-- ok
+set role user2;
+select * from tb1;
+ id  
+-----
+ 111
+(1 row)
+
+reset role;
+\c db2
+drop table tb2;
+\c db1
+drop table tb1;
+\c postgres;
+drop user user2;
+drop role role1;
+drop database db1;
+drop database db2;
 --==============================================================================================--
 -- test rolstatus, enable/disable role. 
 --     test role grant
@@ -174,12 +344,7 @@ grant role1 to user2;
 grant select on table tb1 to role1;
 set role user2;
 select hg_security.set_role_status('role1', false);
-WARNING:  The user[user2] has not set permissions, need syssso user or superuser!
- set_role_status 
------------------
- f
-(1 row)
-
+ERROR:  permission denied
 select * from tb1;
  id  
 -----
@@ -187,12 +352,7 @@ select * from tb1;
 (1 row)
 
 select hg_security.set_role_status('role1', true);
-WARNING:  The user[user2] has not set permissions, need syssso user or superuser!
- set_role_status 
------------------
- f
-(1 row)
-
+ERROR:  permission denied
 select * from tb1;
  id  
 -----
@@ -200,7 +360,7 @@ select * from tb1;
 (1 row)
 
 reset role;
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -212,11 +372,17 @@ drop role role1;
 -- test rolstatus, enable/disable role. 
 --     test guc
 --==============================================================================================--
-set hg_rolstatus.enable to false;
+ALTER SYSTEM SET hg_rolstatus.enable TO OFF;
+SELECT PG_RELOAD_CONF();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 create role role1;
 create user user2; 
 grant role1 to user2;
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -236,16 +402,12 @@ select * from tb1;
 reset role;
 -- disable role1
 select hg_security.set_role_status('role1', false);
- set_role_status 
------------------
- t
-(1 row)
-
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
- role1   | f
-(1 row)
+(0 rows)
 
 -- ok
 set role user2;
@@ -258,16 +420,12 @@ select * from tb1;
 reset role;
 -- enable role1
 select hg_security.set_role_status('role1', true);
- set_role_status 
------------------
- t
-(1 row)
-
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
- role1   | t
-(1 row)
+(0 rows)
 
 -- ok
 set role user2;
@@ -278,10 +436,45 @@ select * from tb1;
 (1 row)
 
 reset role;
+-- enable/disable not exist role
+select hg_security.set_role_status('role12', true);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.set_role_status('role12', false);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.get_role_status('role12');
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+-- repeat set
+select hg_security.set_role_status('role1', false);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.set_role_status('role1', false);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.set_role_status('role1', false);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.set_role_status('role1', true);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.set_role_status('role1', true);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
+select hg_security.set_role_status('role1', true);
+ERROR:  hg_rolstatus.enable is OFF
+DETAIL:  Please enable hg_rolstatus.enable.
 drop table tb1;
 drop user user2;
 drop role role1;
-set hg_rolstatus.enable to true;
+ALTER SYSTEM SET hg_rolstatus.enable TO ON;
+SELECT PG_RELOAD_CONF();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
 --==============================================================================================--
 -- test rolstatus, enable/disable role. 
 --     test set user
@@ -303,16 +496,10 @@ select * from tb1;
 reset role;
 -- disable user1
 select hg_security.set_role_status('user1', false);
-WARNING:  Only roles can be set, users cannot!
- set_role_status 
------------------
- f
-(1 row)
-
+ERROR:  Only roles can be set, users cannot!
 select hg_security.get_role_status('user1');
 ERROR:  Only roles can be get, users cannot!
-CONTEXT:  PL/pgSQL function hg_security.get_role_status(text) line 12 at RAISE
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -328,13 +515,8 @@ select * from tb1;
 reset role;
 -- enable user1
 select hg_security.set_role_status('user1', true);
-WARNING:  Only roles can be set, users cannot!
- set_role_status 
------------------
- f
-(1 row)
-
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+ERROR:  Only roles can be set, users cannot!
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -368,13 +550,8 @@ select * from tb1;
 reset role;
 -- disable user1
 select hg_security.set_role_status('user1', false);
-WARNING:  Only roles can be set, users cannot!
- set_role_status 
------------------
- f
-(1 row)
-
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+ERROR:  Only roles can be set, users cannot!
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -391,13 +568,8 @@ select * from tb1;
 reset role;
 -- enable user1
 select hg_security.set_role_status('user1', true);
-WARNING:  Only roles can be set, users cannot!
- set_role_status 
------------------
- f
-(1 row)
-
-select pa.rolname,rolstatus from hg_security.roles_status left join pg_authid pa on pa.oid = roleoid;
+ERROR:  Only roles can be set, users cannot!
+select rolname,rolstatus from pg_role_status;
  rolname | rolstatus 
 ---------+-----------
 (0 rows)
@@ -419,26 +591,11 @@ drop user user2;
 --     test set sso sao dba user
 --==============================================================================================--
 select hg_security.set_role_status('sysdba_role', false);
-WARNING:  Can not set syssso syssao sysdba user and superuser!
- set_role_status 
------------------
- f
-(1 row)
-
+ERROR:  Can not enable/disable sysdba_role syssso_role and syssao_role!
 select hg_security.set_role_status('syssso_role', false);
-WARNING:  Can not set syssso syssao sysdba user and superuser!
- set_role_status 
------------------
- f
-(1 row)
-
+ERROR:  Can not enable/disable sysdba_role syssso_role and syssao_role!
 select hg_security.set_role_status('syssao_role', false);
-WARNING:  Can not set syssso syssao sysdba user and superuser!
- set_role_status 
------------------
- f
-(1 row)
-
+ERROR:  Can not enable/disable sysdba_role syssso_role and syssao_role!
 select hg_security.get_role_status('sysdba_role');
  get_role_status 
 -----------------
@@ -457,10 +614,330 @@ select hg_security.get_role_status('syssao_role');
  t
 (1 row)
 
-set hg_rolstatus.enable to false;
-show hg_rolstatus.enable;
- hg_rolstatus.enable 
----------------------
- off
+ALTER SYSTEM SET hg_rolstatus.enable TO OFF;
+SELECT PG_RELOAD_CONF();
+ pg_reload_conf 
+----------------
+ t
 (1 row)
 
+--==============================================================================================--
+-- test seesion
+--==============================================================================================--
+ALTER SYSTEM SET hg_rolstatus.enable TO ON;
+SELECT PG_RELOAD_CONF();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+create role role1;
+create user user1;
+grant role1 to user1;
+create table tb1(id int, info text);
+insert into tb1 values(1,'1111');
+grant select on table tb1 to role1;
+grant insert on table tb1 to user1;
+set role user1;
+insert into tb1 values(2,'2222');
+update tb1 set id=22 where id=2;
+ERROR:  permission denied for table tb1
+select * from tb1;
+ id | info 
+----+------
+  1 | 1111
+  2 | 2222
+(2 rows)
+
+reset role;
+select hg_security.set_role_status('role1',False);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+set role user1;
+insert into tb1 values(3,'3333');
+update tb1 set id=22 where id=2;
+ERROR:  permission denied for table tb1
+select * from tb1;
+ERROR:  permission denied for table tb1
+reset role;
+-- test database
+select hg_security.set_role_status('role1',true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+create database db1;
+grant create on database db1 to role1;
+\c db1;
+set role user1;
+create schema s1;
+reset role;
+select hg_security.set_role_status('role1', False);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+set role user1;
+create schema s2;
+ERROR:  permission denied for database db1
+\c postgres;
+drop database db1;
+drop table tb1;
+drop role role1;
+drop role user1;
+--==============================================================================================--
+-- test view
+--==============================================================================================--
+create role test_role1;
+create role test_role2;
+create role test_role3;
+create role test_role4;
+create role test_role5;
+create role test_role6;
+create role test_role7;
+select rolname, rolstatus from hg_security.role_status where rolname like '%test_role%' order by rolname;
+  rolname   | rolstatus 
+------------+-----------
+ test_role1 | t
+ test_role2 | t
+ test_role3 | t
+ test_role4 | t
+ test_role5 | t
+ test_role6 | t
+ test_role7 | t
+(7 rows)
+
+select hg_security.set_role_status('test_role1',false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('test_role2',true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('test_role3',false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('test_role4',true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('test_role5',false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select rolname, rolstatus from hg_security.role_status where rolname like '%test_role%' order by rolname;
+  rolname   | rolstatus 
+------------+-----------
+ test_role1 | f
+ test_role2 | t
+ test_role3 | f
+ test_role4 | t
+ test_role5 | f
+ test_role6 | t
+ test_role7 | t
+(7 rows)
+
+drop role test_role1;
+drop role test_role2;
+drop role test_role3;
+drop role test_role4;
+drop role test_role5;
+drop role test_role6;
+drop role test_role7;
+select rolname, rolstatus from hg_security.role_status where rolname like '%test_role%' order by rolname;
+ rolname | rolstatus 
+---------+-----------
+(0 rows)
+
+--==============================================================================================--
+-- test se_feature.mode =on/off
+--==============================================================================================--
+create role role11;
+create user user11;
+create user user22;
+grant syssso_role to user11; 
+-- test se_feature.mode =off
+set role syssso;
+select hg_security.set_role_status('role11', false);
+ERROR:  permission denied
+select hg_security.set_role_status('role11', true);
+ERROR:  permission denied
+select hg_security.get_role_status('role11');
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=off;
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=on;
+ERROR:  permission denied
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+reset role;
+set role syssao;
+select hg_security.set_role_status('role11', false);
+ERROR:  permission denied
+select hg_security.set_role_status('role11', true);
+ERROR:  permission denied
+select hg_security.get_role_status('role11');
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=off;
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=on;
+ERROR:  permission denied
+select pg_reload_conf();
+ERROR:  permission denied for function pg_reload_conf
+reset role;
+set role user11;
+select hg_security.set_role_status('role11', false);
+ERROR:  permission denied
+select hg_security.set_role_status('role11', true);
+ERROR:  permission denied
+select hg_security.get_role_status('role11');
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=off;
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=on;
+ERROR:  permission denied
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+reset role;
+set role user22;
+select hg_security.set_role_status('role11', false);
+ERROR:  permission denied
+select hg_security.set_role_status('role11', true);
+ERROR:  permission denied
+select hg_security.get_role_status('role11');
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=off;
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=on;
+ERROR:  permission denied
+select pg_reload_conf();
+ERROR:  permission denied for function pg_reload_conf
+reset role;
+-- test se_feature.mode =on
+create user super11 with superuser password 'Hello@123';
+alter system set hg_rolstatus.enable=on;
+alter system set se_feature.mode =on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+\c - syssso;
+select hg_security.set_role_status('role11', false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role11', true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.get_role_status('role11');
+ get_role_status 
+-----------------
+ t
+(1 row)
+
+alter system set hg_rolstatus.enable=off;
+alter system set hg_rolstatus.enable=on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+\c - syssao;
+select hg_security.set_role_status('role11', false);
+ERROR:  permission denied for function set_role_status
+select hg_security.set_role_status('role11', true);
+ERROR:  permission denied for function set_role_status
+select hg_security.get_role_status('role11');
+ERROR:  permission denied for function get_role_status
+alter system set hg_rolstatus.enable=off;
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=on;
+ERROR:  permission denied
+select pg_reload_conf();
+ERROR:  permission denied for function pg_reload_conf
+\c - user11;
+select hg_security.set_role_status('role11', false);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.set_role_status('role11', true);
+ set_role_status 
+-----------------
+ t
+(1 row)
+
+select hg_security.get_role_status('role11');
+ get_role_status 
+-----------------
+ t
+(1 row)
+
+alter system set hg_rolstatus.enable=off;
+alter system set hg_rolstatus.enable=on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+\c - user22;
+select hg_security.set_role_status('role11', false);
+ERROR:  permission denied for function set_role_status
+select hg_security.set_role_status('role11', true);
+ERROR:  permission denied for function set_role_status
+select hg_security.get_role_status('role11');
+ERROR:  permission denied for function get_role_status
+alter system set hg_rolstatus.enable=off;
+ERROR:  permission denied
+alter system set hg_rolstatus.enable=on;
+ERROR:  permission denied
+select pg_reload_conf();
+ERROR:  permission denied for function pg_reload_conf
+\c - syssso;
+alter system set hg_rolstatus.enable=off;
+alter system set se_feature.mode=off;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+\c - super11
+drop user user11;
+drop user user22;
+drop role role11;

@@ -1,5 +1,5 @@
 # hg_rolstatus extension
-comment = 'hg_rolstatus -- '
+comment = 'hg_rolstatus -- Set user to enable/disable status'
 default_version = '1.0'
 module_pathname = '$libdir/hg_rolstatus'
 relocatable = true

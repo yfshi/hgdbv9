@@ -50,7 +50,7 @@
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
-
+#include "catalog/pg_role_status.h" /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
 #include "catalog/pg_mfaid.h"		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
@@ -287,6 +287,7 @@ IsSharedRelation(Oid relationId)
 		relationId == SharedSecLabelRelationId ||
 		relationId == TableSpaceRelationId ||
 		relationId == DbRoleSettingRelationId ||
+		relationId == RoleStatusId || /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
 		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		relationId == ResGroupRelationId ||
 		relationId == ResGroupCapabilityRelationId ||
@@ -320,6 +321,7 @@ IsSharedRelation(Oid relationId)
 		relationId == ResGroupCapabilityResgroupidResLimittypeIndexId ||
 		relationId == ResGroupCapabilityResgroupidIndexId ||
 		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+		relationId == RoleStatusOidIndexId || /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
 		relationId == SubscriptionObjectIndexId ||
                 relationId == SubscriptionNameIndexId
                 || relationId == MfaIdOidIndexId       /* ReqID:SRS-SECURITY-IDENTITYAUTH */
