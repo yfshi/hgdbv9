@@ -1,0 +1,5 @@
+comment = 'Flashback database based on PITR and pgBackRest'
+default_version = '1.0'
+module_pathname = '$libdir/hg_flashback_db'
+schema = hg_flashback_db
+relocatable = false
