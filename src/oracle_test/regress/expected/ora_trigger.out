@@ -671,9 +671,9 @@ SELECT pg_catalog.pg_get_triggerdef(t.oid, true) FROM pg_trigger t WHERE t.tgnam
 /* Begin - BUG#Z6822 */
 select trigger_name, table_name, trigger_type, status, referencing_names, when_clause
   from all_triggers where upper(trigger_name) = 'TG_REF_BASIC';
- trigger_name | table_name |  trigger_type   |  status  | referencing_names |       when_clause        
---------------+------------+-----------------+----------+-------------------+--------------------------
- tg_ref_basic | t1         | BEFORE EACH ROW | DISABLED |                   | old.salary <> new.salary
+ trigger_name | table_name |  trigger_type   |  status  |         referencing_names         |       when_clause        
+--------------+------------+-----------------+----------+-----------------------------------+--------------------------
+ tg_ref_basic | t1         | BEFORE EACH ROW | DISABLED | REFERENCING NEW AS NEW OLD AS OLD | old.salary <> new.salary
 (1 row)
 
 select trigger_name, table_name, trigger_type, status, referencing_names, when_clause
@@ -1624,6 +1624,13 @@ select triggering_event from all_triggers where upper(trigger_name) = 'TRIGGER1_
       triggering_event      
 ----------------------------
  INSERT OR DELETE OR UPDATE
+(1 row)
+
+SELECT TRIGGER_NAME, TRIGGER_TYPE, TRIGGERING_EVENT, DESCRIPTION, ACTION_TYPE, REFERENCING_NAMES, BEFORE_ROW
+ FROM ALL_TRIGGERS WHERE upper(TRIGGER_NAME) = 'TRIGGER1_Z7179';
+  trigger_name  |  trigger_type   |      triggering_event      |             description             | action_type |         referencing_names         | before_row 
+----------------+-----------------+----------------------------+-------------------------------------+-------------+-----------------------------------+------------
+ trigger1_z7179 | BEFORE EACH ROW | INSERT OR DELETE OR UPDATE | TRIGGER trigger1_z7179 ON tb1_z7179 | plisql      | REFERENCING NEW AS NEW OLD AS OLD | NO
 (1 row)
 
 SELECT * FROM TB1_Z7179;
