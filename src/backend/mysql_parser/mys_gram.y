@@ -1065,7 +1065,10 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
  * Using the same precedence as IDENT seems right for the reasons given above.
  */
 %nonassoc	UNBOUNDED		/* ideally would have same precedence as IDENT */
-%nonassoc	IDENT PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP
+%nonassoc	IDENT PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP 
+/* Begin - #Z7348 */
+%nonassoc	CURTIME IFNULL_P QUICK TABLES
+/* End - #Z7389 */
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
 /* Begin - bug#z5412 */
 %left		'|'
@@ -2446,9 +2449,9 @@ MysqlShowStmt:
 				{
 					$$ = (Node *)makeShowCreateViewStmt($4);
 				}
-			| SHOW TRIGGERS opt_db opt_show_filter
+			| SHOW TRIGGERS from_in IDENT opt_show_filter
 				{
-					$$ = (Node *)makeShowTriggersStmt($3, $4);
+					$$ = (Node *)makeShowTriggersStmt(makeStringConst($4, @4), $5);
 				}
 			| SHOW index_or_indexes_or_keys mys_show_table opt_db opt_show_filter
 				{
@@ -2466,17 +2469,17 @@ MysqlShowStmt:
 				{
 					$$ = (Node *)makeShowSchemasStmt($3);
 				}
-			| SHOW opt_full columns_or_fields mys_show_table opt_db opt_show_filter
+			| SHOW columns_or_fields mys_show_table opt_db opt_show_filter
 				{
-					$$ = (Node *)makeShowColumnsStmt((RangeVar *)$4, $5, $6, $2);
+					$$ = (Node *)makeShowColumnsStmt((RangeVar *)$3, $4, $5, false);
+				}
+			| SHOW FULL columns_or_fields mys_show_table opt_db opt_show_filter
+				{
+					$$ = (Node *)makeShowColumnsStmt((RangeVar *)$4, $5, $6, true);
 				}
 			| describe qualified_name opt_col_wild
 				{
 					$$ = (Node *)makeShowColumnsStmt($2, NULL, $3, false);
-				}
-			| SHOW VARIABLES opt_show_filter
-				{
-					$$ = makeShowVariableStmt(STATUS_SESSION, $3);
 				}
 			| SHOW GLOBAL VARIABLES opt_show_filter
 				{
@@ -2501,16 +2504,8 @@ MysqlShowStmt:
 				{
 					$$ = (Node *)makeShowProcesslistStmt();
 				}
-			| SHOW WARNINGS
-				{
-					$$ = (Node *)makeShowWarningsStmt();
-				}
 			/* End - #Z6036 */
 			/* Begin - ReqID: SRS-MYSQL-PROTOCOL */
-			| SHOW PLUGINS
-				{
-					$$ = makeShowPluginsStmt();
-				}
 			| SHOW opt_storage ENGINES
 				{
 					$$ = makeShowEnginesStmt();
@@ -2537,6 +2532,24 @@ VariableShowStmt:
 					{
 						$$ = makeShowPrivilegesStmt();
 					} /* End - #Z6036 */
+					/* Begin - #Z7348 */
+					else if (strcasecmp($2, "warnings") == 0)
+					{
+						$$ = (Node *)makeShowWarningsStmt();
+					}
+					else if (strcasecmp($2, "variables") == 0)
+					{
+						$$ = makeShowVariableStmt(STATUS_SESSION, $3);
+					}
+					else if (strcasecmp($2, "plugins") == 0)
+					{
+						$$ = makeShowPluginsStmt();
+					}
+					else if (strcasecmp($2, "triggers") == 0)
+					{
+						$$ = (Node *)makeShowTriggersStmt(NULL, $3);
+					}
+					/* End - #Z7389 */
 					else
 					{
 						VariableShowStmt *n = makeNode(VariableShowStmt);
@@ -13036,7 +13049,7 @@ opt_verbose:
 		;
 
 opt_full:	FULL									{ $$ = true; }
-			| /*EMPTY*/								{ $$ = false; }
+			| /*EMPTY*/			%prec Op			{ $$ = false; }
 		;
 
 opt_freeze: FREEZE									{ $$ = true; }
@@ -13668,7 +13681,7 @@ table_name_list:
 		;
 opt_quick:
 				QUICK								{ $$ = NULL; }
-			|/*EMPTY*/								{ $$ = NULL; }
+			|/*EMPTY*/		%prec UNBOUNDED			{ $$ = NULL; }
 		;
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 using_clause:
@@ -20171,6 +20184,7 @@ unreserved_keyword:
 			| CLASS
 			| CLOSE
 			| CLUSTER
+			| COLUMNS /* ReqID: SRS-MYSQL-SHOW */
 			| COMMENT
 			| COMMENTS
 			| COMMIT
@@ -20189,6 +20203,7 @@ unreserved_keyword:
 			| CUBE
 			| CURRENT_P
 			| CURSOR
+			| CURTIME
 			| CYCLE
 			| DATA_P
 			| DATABASE
@@ -20230,6 +20245,7 @@ unreserved_keyword:
 			| EXTENSION
 			| EXTERNAL
 			| FAMILY
+			| FIELDS /* ReqID: SRS-MYSQL-SHOW */
 			| FILTER
 			| FINALIZE
 			| FIRST_P
@@ -20247,6 +20263,7 @@ unreserved_keyword:
 			| HOLD
 			| HOUR_P
 			| IDENTITY_P
+			| IFNULL_P
 			| IMMEDIATE
 			| IMMUTABLE
 			| IMPLICIT_P
@@ -20332,6 +20349,7 @@ unreserved_keyword:
 			| PASSING
 			| PASSWORD
 			| PLANS
+			| PLUGINS
 			| POLICY
 			| PRECEDING
 			| PREPARE
@@ -20346,6 +20364,7 @@ unreserved_keyword:
 			| PROGRAM
 			| PUBLICATION
 			| QUARTER_P
+			| QUICK
 			| QUOTE
 			| RANGE
 			| READ
@@ -20425,6 +20444,7 @@ unreserved_keyword:
 			| SUPPORT
 			| SYSID
 			| SYSTEM_P
+			| TABLES /* ReqID: SRS-MYSQL-SHOW */
 			| TABLESPACE
 			| TEMP
 			| TEMPLATE
@@ -20434,6 +20454,7 @@ unreserved_keyword:
 			| TRANSACTION
 			| TRANSFORM
 			| TRIGGER
+			| TRIGGERS /* ReqID: SRS-MYSQL-SHOW */
 			| TRUNCATE
 			| TRUSTED
 			| TYPE_P
@@ -20453,11 +20474,13 @@ unreserved_keyword:
 			| VALIDATE
 			| VALIDATOR
 			| VALUE_P
+			| VARIABLES
 			| VARYING
 			| VERSION_P
 			| VIEW
 			| VIEWS
 			| VOLATILE
+			| WARNINGS /* Bug#Z6036 */
 			| WEEK_P
 			| WHITESPACE_P
 			| WITHIN
@@ -20653,7 +20676,6 @@ reserved_keyword:
 			| CHECK
 			| COLLATE
 			| COLUMN
-			| COLUMNS /* ReqID: SRS-MYSQL-SHOW */
 			| CONSTRAINT
 			| CONVERT
 			| CREATE
@@ -20663,7 +20685,6 @@ reserved_keyword:
 			| CURRENT_TIME
 			| CURRENT_TIMESTAMP
 			| CURRENT_USER
-			| CURTIME
 			| DATABASES /* ReqID: SRS-MYSQL-SHOW */
 			| DEFAULT
 			| DEFERRABLE
@@ -20680,7 +20701,6 @@ reserved_keyword:
 			| EXCEPT
 			| FALSE_P
 			| FETCH
-			| FIELDS /* ReqID: SRS-MYSQL-SHOW */
 			| FOR
 			| FOREIGN
 			| FROM
@@ -20690,7 +20710,6 @@ reserved_keyword:
 			| HAVING
 			| HIGH_PRIORITY	/* ReqID:SRS-MYSQL-SQL-INSERT */
 			| IF_P
-			| IFNULL_P
 			| IGNORE_P	/* ReqID:SRS-MYSQL-UPDATE */
 			| IN_P
 			| INITIALLY
@@ -20710,9 +20729,7 @@ reserved_keyword:
 			| OR
 			| ORDER
 			| PLACING
-			| PLUGINS
 			| PRIMARY
-			| QUICK
 			| REFERENCES
 			| RETURNING
 			| SCHEMAS /* ReqID: SRS-MYSQL-SHOW */
@@ -20722,11 +20739,9 @@ reserved_keyword:
 			| SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| SYMMETRIC
 			| TABLE
-			| TABLES /* ReqID: SRS-MYSQL-SHOW */
 			| THEN
 			| TO
 			| TRAILING
-			| TRIGGERS /* ReqID: SRS-MYSQL-SHOW */
 			| TRUE_P
 			| UNION
 			| UNIQUE
@@ -20735,9 +20750,7 @@ reserved_keyword:
 			| UTC_DATE /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| UTC_TIME /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
-			| VARIABLES /* ReqID: SRS-MYSQL-SHOW */
 			| VARIADIC
-			| WARNINGS /* Bug#Z6036 */
 			| WHEN
 			| WHERE
 			| WINDOW

@@ -181,7 +181,8 @@ MYS_REGRESS = numeric_to_times \
 			  select_into \
 			  load_data \
 			  not_full_group \
-			  ansi_quotes
+			  ansi_quotes \
+			  keyword_unreserved_batch
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28
