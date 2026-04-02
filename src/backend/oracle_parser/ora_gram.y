@@ -713,10 +713,11 @@ static bool isAconstNode(Node *node);
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-%type <node> opt_asof_clause FlashbackStmt
-%type <str> opt_flashback_rename
+%type <node> opt_flashback_clause FlashbackStmt
+%type <list> opt_flashback_rename
 %type <node> PurgeStmt
 %type <boolean> opt_purge
+%type <boolean> opt_flashback_triggers
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /* Begin - ReqID:SRS-PLSQL-DSQL */
@@ -768,6 +769,9 @@ static bool isAconstNode(Node *node);
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 %token			AS_LA
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+%token			VERSIONS_LA
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 %token			PUBLIC_SYNO	/* ReqID:SRS-SQL-SYNONYM */
 
 /*
@@ -873,14 +877,15 @@ static bool isAconstNode(Node *node);
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TASKID /* ReqID:SRS-MISC-BULKLOAD*/ TEMP TEMPLATE TEMPORARY TEXT_P THEN
 	TIES TIME TIMESTAMP TO TRAILING TRANSACTION TRANSFORM
-	TREAT TRIGGER TRIM TRUE_P
+	TREAT TRIGGER TRIGGERS /* ReqID:SRS-SECURITY-FLASHBACK */  TRIM TRUE_P
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
 	UNLISTEN UNLOGGED UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
-	VERBOSE VERSION_P VIEW VIEWS VIRTUAL VISIBLE VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */	/* ReqID:SRS-SQL-INVISIBLECOL */
+	VERBOSE VERSION_P VERSIONS_P /* ReqID:SRS-SECURITY-FLASHBACK */ 
+	VIEW VIEWS VIRTUAL VISIBLE VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 	WAIT/* BUG#M0000470:FOR UPDATE WAIT integer */ WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
@@ -4438,41 +4443,48 @@ default_collation_option:
 /*****************************************************************************
  *
  *      FLASHBACK :
- *          FLASHBACK TABLE { table_name } TO TIMESTAMP expression
+ *          FLASHBACK TABLE { table_name } TO TIMESTAMP expression [ [ENABLE | DISABLE] TRIGGERS ]
  *          FLASHBACK TABLE { table_name } TO BEFORE DROP [RENAME TO new_tablename]
  *          FLASHBACK TABLE { table_name } TO BEFORE TRUNCATE
  *
  *****************************************************************************/
  
 FlashbackStmt:
-		FLASHBACK TABLE qualified_name TO TIMESTAMP a_expr 
+		FLASHBACK TABLE qualified_name_list TO TIMESTAMP a_expr opt_flashback_triggers
 			{
 				FlashbackStmt *n = makeNode(FlashbackStmt);
-				n->relation = $3;
+				n->relation_list = $3;
 				n->kind = FLASHBACK_TIMEPOINT;
 				n->timepoint = $6;
+				n->enable_triggers = $7;
 				$$ = (Node *) n;
 			}
-		| FLASHBACK TABLE qualified_name TO BEFORE DROP opt_flashback_rename
+		| FLASHBACK TABLE qualified_name_list TO BEFORE DROP opt_flashback_rename
 			{
 				FlashbackStmt *n = makeNode(FlashbackStmt);
-				n->relation = $3;
+				n->relation_list = $3;
 				n->kind = FLASHBACK_DROP;
-				n->new_relname = $7;
+				n->new_relname_list = $7;
 				$$ = (Node *) n;
 			}
-		| FLASHBACK TABLE qualified_name TO BEFORE TRUNCATE
+		| FLASHBACK TABLE qualified_name_list TO BEFORE TRUNCATE
 			{
 				FlashbackStmt *n = makeNode(FlashbackStmt);
-				n->relation = $3;
+				n->relation_list = $3;
 				n->kind = FLASHBACK_TRUNCATE;
 				$$ = (Node *) n;
 			}
 		;
 
 opt_flashback_rename:
-		RENAME TO name					{ $$ = $3; }
+		RENAME TO name_list				{ $$ = $3; }
 		| /* EMPTY */					{ $$ = NULL; }
+	;
+
+opt_flashback_triggers:
+		ENABLE_P TRIGGERS				{ $$ = true; }
+		| DISABLE_P	TRIGGERS			{ $$ = false; }
+		| /* EMPTY */					{ $$ = false; }
 	;
 
 /*****************************************************************************
@@ -16849,18 +16861,18 @@ from_list:
 /*
  * table_ref is where an alias clause can be attached.
  */
-table_ref:	relation_expr opt_alias_clause 
+table_ref:	relation_expr opt_alias_clause /* ReqID:SRS-SECURITY-FLASHBACK */
 			/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-			opt_asof_clause
+			opt_flashback_clause
 			/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 				{
 					$1->alias = $2;
 					/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-					$1->asofTimestamp = $3;
+					$1->flashbackClause = (FlashbackNode *) $3;
 					/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) $1;
 				}
-			| relation_expr opt_alias_clause tablesample_clause
+			| relation_expr opt_alias_clause tablesample_clause /* ReqID:SRS-SECURITY-FLASHBACK */
 				{
 					RangeTableSample *n = (RangeTableSample *) $3;
 					$1->alias = $2;
@@ -16983,8 +16995,26 @@ table_ref:	relation_expr opt_alias_clause
 		;
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-opt_asof_clause: AS_LA OF a_expr                    { $$ = $3; }
-			| /*EMPTY*/								{ $$ = NULL; }
+opt_flashback_clause:
+			AS_LA OF TIMESTAMP a_expr
+				{
+					FlashbackNode *n = makeNode(FlashbackNode);
+					n->asofTimestamp = $4;
+					$$ = (Node *) n; 
+				}
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			| VERSIONS_LA BETWEEN TIMESTAMP a_expr AND a_expr
+				{
+					FlashbackNode *n = makeNode(FlashbackNode);
+					n->versionsLower = $4;
+					n->versionsUpper = $6;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
+			| /*EMPTY*/	
+				{
+					$$ = NULL; 
+				}
 		;
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
@@ -23022,6 +23052,7 @@ unreserved_keyword:
 			| TRANSACTION
 			| TRANSFORM
 			| TRIGGER
+			| TRIGGERS	/* ReqID:SRS-SECURITY-FLASHBACK */
 			| TRUNCATE
 			| TRUSTED
 			| TYPE_P
@@ -23043,6 +23074,7 @@ unreserved_keyword:
 			| VALUE_P
 			| VARYING
 			| VERSION_P
+			| VERSIONS_P
 			| VIEW
 			| VIEWS
 			| VIRTUAL			/* ReqID:SRS-SQL-VIRTUALCOL */
@@ -23791,6 +23823,7 @@ bare_label_keyword:
 			| TRANSFORM
 			| TREAT
 			| TRIGGER
+			| TRIGGERS	/* ReqID:SRS-SECURITY-FLASHBACK */
 			| TRIM
 			| TRUE_P
 			| TRUNCATE
@@ -23823,6 +23856,7 @@ bare_label_keyword:
 			| VARIADIC
 			| VERBOSE
 			| VERSION_P
+			| VERSIONS_P
 			| VIEW
 			| VIEWS
 			| VIRTUAL		/* ReqID:SRS-SQL-VIRTUALCOL */

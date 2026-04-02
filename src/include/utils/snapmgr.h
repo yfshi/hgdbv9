@@ -178,7 +178,7 @@ extern Snapshot RestoreSnapshot(char *start_address);
 extern void RestoreTransactionSnapshot(Snapshot snapshot, void *source_pgproc);
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-extern Snapshot TimestampGetSnapshot(TimestampTz ts);
+extern Snapshot TimestampGetSnapshot(TimestampTz ts, int32 snapshot_type, bool missing_ok);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 #endif							/* SNAPMGR_H */

@@ -59,24 +59,62 @@
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_trigger.h"
 #include "executor/executor.h"
+#include "commands/trigger.h"
 
 /*
  * Delete delta tuples that inserted after the snapshot.
  */
 static void
-table_delete_delta(Relation rel, Snapshot snapshot)
+table_delete_delta(Relation rel, Snapshot snapshot, bool enable_triggers)
 {
-    TableScanDesc scandesc;
+    TableScanDesc   scandesc;
     TupleTableSlot *slot;
+    ResultRelInfo  *resultRelInfo = makeNode(ResultRelInfo);
+    EState         *estate = CreateExecutorState();
+    RangeTblEntry  *rte;
+    EPQState        epqstate;
 
     snapshot->snapshot_type = SNAPSHOT_DELTA;
     scandesc = table_beginscan(rel, snapshot, 0, NULL);
 
     slot = table_slot_create(rel, NULL);
+
+    /* Build range table with single RTE for this relation */
+    estate->es_relations = (Relation *)palloc(sizeof(Relation));
+    estate->es_relations[0] = rel;
+    rte = makeNode(RangeTblEntry);
+	rte->rtekind = RTE_RELATION;
+	rte->relid = RelationGetRelid(rel);
+	rte->relkind = rel->rd_rel->relkind;
+	rte->rellockmode = AccessShareLock;
+    ExecInitRangeTable(estate, list_make1(rte));
+
+    /* Initialize result relation info (copies trigger desc from rel) */
+    ExecInitResultRelation(estate, resultRelInfo, 1);
+
+    /* Initialize EPQState (reuired for AFTER triggers to fetch old tuple) */
+    EvalPlanQualInit(&epqstate, estate, NULL, NIL, 1);
+
+    if (enable_triggers)
+        AfterTriggerBeginQuery();
+
+    /* Execute scan and delete */
     while (table_scan_getnextslot(scandesc, ForwardScanDirection, slot))
     {
-        simple_table_tuple_delete(rel, &slot->tts_tid, snapshot);
+        if (enable_triggers)
+            ExecSimpleRelationDelete(resultRelInfo, estate, &epqstate, slot);
+        else
+            simple_table_tuple_delete(rel, &slot->tts_tid, snapshot);
     }
+
+    if (enable_triggers)
+        AfterTriggerEndQuery(estate);
+
+    /* Cleanup */
+    EvalPlanQualEnd(&epqstate);
+    ExecResetTupleTable(estate->es_tupleTable, true);
+    ExecCloseRangeTableRelations(estate);
+    FreeExecutorState(estate);
 
     ExecDropSingleTupleTableSlot(slot);
     table_endscan(scandesc);
@@ -87,11 +125,11 @@ table_delete_delta(Relation rel, Snapshot snapshot)
  * but deleted after it.
  */
 static void
-table_insert_lost(Relation rel, Snapshot snapshot)
+table_insert_lost(Relation rel, Snapshot snapshot, bool enable_triggers)
 {
     TableScanDesc scandesc;
     TupleTableSlot *slot;
-    ResultRelInfo *reulstRelinfo = makeNode(ResultRelInfo);
+    ResultRelInfo *resultRelInfo = makeNode(ResultRelInfo);
     EState *estate = CreateExecutorState();
     RangeTblEntry *rte;
 
@@ -100,7 +138,7 @@ table_insert_lost(Relation rel, Snapshot snapshot)
 
     slot = table_slot_create(rel, NULL);
 
-    /* Struct for index insert. */
+    /* Build range table with single RTE for this relation */
     estate->es_relations = (Relation *)palloc(sizeof(Relation));
     estate->es_relations[0] = rel;
     rte = makeNode(RangeTblEntry);
@@ -109,16 +147,32 @@ table_insert_lost(Relation rel, Snapshot snapshot)
 	rte->relkind = rel->rd_rel->relkind;
 	rte->rellockmode = AccessShareLock;
     ExecInitRangeTable(estate, list_make1(rte));
-    ExecInitResultRelation(estate, reulstRelinfo, 1);
-    ExecOpenIndices(reulstRelinfo, false);
 
+    /* Initialize result relation info (copies trigger desc from rel) */
+    ExecInitResultRelation(estate, resultRelInfo, 1);
+    ExecOpenIndices(resultRelInfo, false);
+
+    if (enable_triggers)
+        AfterTriggerBeginQuery();
+
+    /* Execute scan and insert */
     while (table_scan_getnextslot(scandesc, ForwardScanDirection, slot))
     {
-        simple_table_tuple_insert(rel, slot);
-        ExecInsertIndexTuples(reulstRelinfo, slot, estate, false, false, NULL, NULL);
+        if (enable_triggers)
+            ExecSimpleRelationInsert(resultRelInfo, estate, slot);
+        else
+        {
+            simple_table_tuple_insert(rel, slot);
+            ExecInsertIndexTuples(resultRelInfo, slot, estate, false, false, NULL, NULL);
+        }
     }
 
-    ExecCloseResultRelations(estate);
+    if (enable_triggers)
+        AfterTriggerEndQuery(estate);
+
+    /* Cleanup */
+    ExecCloseIndices(resultRelInfo);
+    ExecResetTupleTable(estate->es_tupleTable, true);
     ExecCloseRangeTableRelations(estate);
     FreeExecutorState(estate);
 
@@ -129,12 +183,13 @@ table_insert_lost(Relation rel, Snapshot snapshot)
 /*
  * Restore the data in the table to the state at a specified time point.
  */
-void FlashbackToTimepoint(FlashbackStmt *stmt)
+void FlashbackToTimepoint(FlashbackStmt *stmt, int nth)
 {
+    RangeVar *rangevar = list_nth(stmt->relation_list, nth);
     Relation rel;
     Snapshot snapshot;
 
-    rel = table_openrv(stmt->relation, AccessExclusiveLock);
+    rel = table_openrv(rangevar, AccessExclusiveLock);
 
     if (!pg_class_ownercheck(RelationGetRelid(rel), GetUserId()))
     {
@@ -150,18 +205,19 @@ void FlashbackToTimepoint(FlashbackStmt *stmt)
      * Construct the snapshot based on the transaction status
      * at the corresponding timestamp.
      */
-    snapshot = TimestampGetSnapshot(DatumGetTimestampTz(((Const *)stmt->timepoint)->constvalue));
+    snapshot = TimestampGetSnapshot(DatumGetTimestampTz(((Const *)stmt->timepoint)->constvalue),
+                                    SNAPSHOT_FLASHBACK_MVCC, false);
 
     /*
      * Delete delta tuples that inserted after restore point.
      */
-    table_delete_delta(rel, snapshot);
+    table_delete_delta(rel, snapshot, stmt->enable_triggers);
 
     /*
      * Insert lost tuples that inserted before restore point
      * but deleted after restore point.
      */
-    table_insert_lost(rel, snapshot);
+    table_insert_lost(rel, snapshot, stmt->enable_triggers);
 
     table_close(rel, NoLock);
 
@@ -478,7 +534,7 @@ RbDescInit(Relation rel, RbObjDesc *desc, char operType, RbObjType objType)
     /* Notice: desc->id will be assigned by invoker later. */
     desc->relid = RelationGetRelid(rel);
 
-    pg_snprintf(desc->name, NAMEDATALEN, "BIN$%X%X%X$%lX==$0",
+    pg_snprintf(desc->name, NAMEDATALEN, "__bin_%x%x%x_%lx__",
                 MyDatabaseId, RelationRelationId, desc->relid, (uint64)GetXLogInsertRecPtr());
     (void)namestrcpy((Name)desc->originname, RelationGetRelationName(rel));
 
@@ -495,8 +551,9 @@ RbDescInit(Relation rel, RbObjDesc *desc, char operType, RbObjType objType)
  * Restore the object to its state before the drop operation.
  */
 void 
-FlashbackBeforeDrop(FlashbackStmt *stmt)
+FlashbackBeforeDrop(FlashbackStmt *stmt, int nth)
 {
+    RangeVar *rangevar = list_nth(stmt->relation_list, nth);
     RbObjDesc baseDesc;
     Relation rel;
     Relation rbRel;
@@ -509,8 +566,12 @@ FlashbackBeforeDrop(FlashbackStmt *stmt)
     bool nulls[Natts_pg_class] = {false};
     bool replaces[Natts_pg_class] = {false};
 
+    if (stmt->new_relname_list != NULL &&
+        list_length(stmt->relation_list) != list_length(stmt->new_relname_list))
+		ereport(ERROR, (errmsg("rename count mismatch")));
+
     /* 1. Fetch the latest available recycle object. */
-    RbOperFetch(stmt->relation->schemaname, stmt->relation->relname,
+    RbOperFetch(rangevar->schemaname, rangevar->relname,
                 RB_OBJ_TABLE, &baseDesc, RB_OPER_RESTORE_DROP);
 
     /* 2. Do restore. */
@@ -529,8 +590,8 @@ FlashbackBeforeDrop(FlashbackStmt *stmt)
         RbOperPrep(&desc, RB_OPER_RESTORE_DROP);
 
         replaces[Anum_pg_class_relname - 1] = true;
-        if (desc.type == RB_OBJ_TABLE && stmt->new_relname != NULL)
-            values[Anum_pg_class_relname - 1] = DirectFunctionCall1(namein, CStringGetDatum(stmt->new_relname));
+        if (desc.type == RB_OBJ_TABLE && stmt->new_relname_list != NULL)
+            values[Anum_pg_class_relname - 1] = DirectFunctionCall1(namein, CStringGetDatum((char*)list_nth(stmt->new_relname_list, nth)));
         else
             values[Anum_pg_class_relname - 1] = DirectFunctionCall1(namein, CStringGetDatum(desc.originname));
 
@@ -551,14 +612,14 @@ FlashbackBeforeDrop(FlashbackStmt *stmt)
     table_close(rel, RowExclusiveLock);
     table_close(rbRel, RowExclusiveLock);
 
+    /* 4. Delete from recyclebin. */
+    RbDeleteBaseid(baseDesc.baseid, RCYOPERATION_DROP);
+
     /*
      * CommandCounterIncrement here to ensure that preceding changes are all
      * visible to the next deletion step.
      */
     CommandCounterIncrement();
-
-    /* 4. Delete from recyclebin. */
-    RbDeleteBaseid(baseDesc.baseid, RCYOPERATION_DROP);
 
     return;
 }
@@ -828,8 +889,9 @@ RbSwapRelfilenode(Relation rbRel, HeapTuple rbTup)
  * Restore the object to its state before the truncate operation.
  */
 void 
-FlashbackBeforeTruncate(FlashbackStmt *stmt)
+FlashbackBeforeTruncate(FlashbackStmt *stmt, int nth)
 {
+    RangeVar *rangevar = list_nth(stmt->relation_list, nth);
     RbObjDesc baseDesc;
     Relation rbRel;
     SysScanDesc sd;
@@ -838,14 +900,14 @@ FlashbackBeforeTruncate(FlashbackStmt *stmt)
     Relation rel;
     ReindexParams newparams = {0};
 
-    rel = table_openrv(stmt->relation, AccessExclusiveLock);
+    rel = table_openrv(rangevar, AccessExclusiveLock);
 
     if (rel->rd_rel->relkind != RELKIND_RELATION ||
         rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT)
         elog(ERROR, "Flashback only support simple table");
 
     /* 1. Fetch the latest available recycle object. */
-    RbOperFetch(stmt->relation->schemaname, stmt->relation->relname,
+    RbOperFetch(rangevar->schemaname, rangevar->relname,
                 RB_OBJ_TABLE, &baseDesc, RB_OPER_RESTORE_TRUNCATE);
 
     /* 2. Do restore. */

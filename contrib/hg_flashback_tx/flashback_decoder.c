@@ -513,7 +513,7 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	else
 	{
 		appendStringInfoChar(ctx->out, '{');
-		flashback_json_add_string_field(ctx->out, &first, "op", "X");
+		flashback_json_add_string_field(ctx->out, &first, "op", "UNKNOWN");
 		flashback_json_add_string_field(ctx->out, &first, "nsp", nspname);
 		flashback_json_add_string_field(ctx->out, &first, "rel", relname);
 		appendStringInfoChar(ctx->out, '}');

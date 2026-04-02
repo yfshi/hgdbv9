@@ -1594,3 +1594,30 @@ CREATE AGGREGATE wmsys.wm_concat(varchar2) (
   PARALLEL=SAFE
 );
 /* End - OA-REQ-2129 */
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+CREATE FUNCTION sys.pg_versions_startscn()
+RETURNS int8
+AS 'MODULE_PATHNAME','pg_versions_startscn'
+LANGUAGE C VOLATILE;
+
+CREATE FUNCTION sys.pg_versions_endscn()
+RETURNS int8
+AS 'MODULE_PATHNAME','pg_versions_endscn'
+LANGUAGE C VOLATILE;
+
+CREATE FUNCTION sys.pg_versions_starttime(xid)
+RETURNS timestamptz
+AS 'MODULE_PATHNAME','pg_versions_starttime'
+LANGUAGE C VOLATILE;
+
+CREATE FUNCTION sys.pg_versions_endtime(xid)
+RETURNS timestamptz
+AS 'MODULE_PATHNAME','pg_versions_endtime'
+LANGUAGE C VOLATILE;
+
+CREATE FUNCTION sys.pg_versions_operation(tid, oid)
+RETURNS varchar2
+AS 'MODULE_PATHNAME','pg_versions_operation'
+LANGUAGE C VOLATILE;
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

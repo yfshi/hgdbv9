@@ -77,7 +77,8 @@ extern const char *commit_ts_identify(uint8 info);
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 extern bool TimestampGetTransactinIds(TimestampTz ts, TransactionId *xmin, 
-									TransactionId *xmax, List **active_xlist);
+									TransactionId *xmax, List **active_xlist,
+									bool missing_ok);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 #endif							/* COMMIT_TS_H */

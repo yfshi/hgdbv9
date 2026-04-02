@@ -32,7 +32,7 @@ int   hg_flashback_db_dry_run = 0;
 bool  hg_flashback_db_enabled = true;
 char *hg_flashback_db_bgw_database = "postgres";
 int   hg_flashback_db_retention_target = 10080;
-int   hg_flashback_db_auto_cleanup = 1;
+bool  hg_flashback_db_auto_cleanup = true;
 
 void		_PG_init(void);
 
@@ -116,16 +116,14 @@ _PG_init(void)
                            NULL, NULL, NULL);
 
     /* Auto cleanup orphan restore points after drop */
-    DefineCustomIntVariable("hg_flashback_db.auto_cleanup",
-                           "Auto cleanup orphan restore points after drop: 0=off, 1=on.",
-                           NULL,
-                           &hg_flashback_db_auto_cleanup,
-                           1,
-                           0,
-                           1,
-                           PGC_SIGHUP,
-                           0,
-                           NULL, NULL, NULL);
+    DefineCustomBoolVariable("hg_flashback_db.auto_cleanup",
+                             "Enable auto cleanup orphan restore points after drop.",
+                             NULL,
+                             &hg_flashback_db_auto_cleanup,
+                             true,
+                             PGC_SIGHUP,
+                             0,
+                             NULL, NULL, NULL);
 
     /* Can only set database name during preload, not via ALTER SYSTEM */
     if (!process_shared_preload_libraries_in_progress)
@@ -136,7 +134,7 @@ _PG_init(void)
                                "Database for the background worker to connect to.",
                                NULL,
                                &hg_flashback_db_bgw_database,
-                               "postgres",
+                               "highgo",
                                PGC_POSTMASTER,
                                0,
                                NULL, NULL, NULL);

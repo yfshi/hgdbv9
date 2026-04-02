@@ -79,7 +79,7 @@ create table sysview_all_tables_tb6(id int generated always as identity primary 
 select table_name, has_identity from all_tables where upper(table_name) = 'SYSVIEW_ALL_TABLES_TB6';
 drop table sysview_all_tables_tb6;
 
-select table_name from all_tables where upper(table_name) like('SYSVIEW_ALL_TABLES%') or upper(table_name) like('BIN%');
+select table_name from all_tables where upper(table_name) like('SYSVIEW_ALL_TABLES%') or upper(table_name) like('__BIN_%');
 
 set ivorysql.enable_ora_default_collation = off;
 set ivorysql.enable_recycle_bin = off;
@@ -132,7 +132,7 @@ from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_V1' order by colum
 drop view sysview_tab_cols_v1;
 drop table sysview_tab_cols_tb1;
 
-select table_name, column_name, data_type from all_tab_cols where upper(table_name) like('BIN$%');
+select table_name, column_name, data_type from all_tab_cols where upper(table_name) like('__BIN_%');
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin = off;
@@ -215,7 +215,7 @@ from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_V1'  order b
 drop view sysview_tab_columns_v1;
 drop table sysview_tab_columns_tb1;
 
-select table_name, column_name, data_type from all_tab_columns where upper(table_name) like('BIN$%');
+select table_name, column_name, data_type from all_tab_columns where upper(table_name) like('__BIN_%');
 
 set ivorysql.enable_recycle_bin = off;
 
@@ -234,7 +234,7 @@ select table_name, table_type, comments, origin_con_id from all_tab_comments whe
 drop view sysview_tab_comments_v;
 drop table sysview_tab_comments_tb;
 
-select table_type, comments, origin_con_id from all_tab_comments where upper(table_name) like ('BIN$%') order by table_name;
+select table_type, comments, origin_con_id from all_tab_comments where upper(table_name) like ('__BIN_%') order by table_name;
 
 set ivorysql.enable_recycle_bin = off;
 
@@ -305,7 +305,7 @@ drop table sysview_indexes_unlogged_tb cascade;
 drop table sysview_indexes_temp_tb1;
 drop table sysview_indexes_temp_tb2;
 
-select index_name, index_type, table_name from all_indexes where upper(table_name) like ('BIN$%');
+select index_name, index_type, table_name from all_indexes where upper(table_name) like ('__BIN_%');
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin = off;
@@ -377,7 +377,7 @@ drop table sysview_ind_columns_temp_tb1;
 drop table sysview_ind_columns_temp_tb2;
 
 select column_name, column_position, column_length, char_length, descend, collated_column_id
-from all_ind_columns where upper(table_name) like('BIN%') or index_name like('BIN%') order by table_name, index_name;
+from all_ind_columns where upper(table_name) like('__BIN_%') or index_name like('__BIN_%') order by table_name, index_name;
 
 set ivorysql.enable_recycle_bin to off;
 
@@ -400,7 +400,7 @@ drop view sysview_dependencies_v1;
 drop table sysview_dependencies_tb;
 
 select type, referenced_type, referenced_link_name, dependency_type from all_dependencies 
-where upper(referenced_name) like('BIN$%') or upper(name) like('BIN$%') order by name, referenced_name;
+where upper(referenced_name) like('__BIN_%') or upper(name) like('__BIN_%') order by name, referenced_name;
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
 
@@ -553,7 +553,7 @@ drop table sysview_objects_temp_tb;
 drop table sysview_objects_part;
 
 select object_type, temporary, editionable from all_objects 
-    where upper(object_name) like('BIN$%') and object_type in ('INDEX', 'TABLE', 'VIEW', 'SEQUENCE') order by object_name;
+    where upper(object_name) like('__BIN_%') and object_type in ('INDEX', 'TABLE', 'VIEW', 'SEQUENCE') order by object_name;
 
 set ivory.enable_ora_default_collation = off;
 purge recyclebin;
@@ -752,7 +752,7 @@ select constraint_name,table_name,r_constraint_name from all_constraints where u
 drop table sysview_constraints_tb1 cascade;
 drop table sysview_constraints_ref1 cascade;
 
-select count(*) from all_constraints where upper(table_name) like('BIN%');
+select count(*) from all_constraints where upper(table_name) like('__BIN_%');
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
 
@@ -777,7 +777,7 @@ where upper(table_name) like('SYSVIEW_CONS_COLUMNS_%') order by constraint_name;
 drop table sysview_cons_columns_tb cascade;
 drop table sysview_cons_columns_ref cascade;
 
-select count(*) from all_cons_columns where upper(table_name) like('BIN%');
+select count(*) from all_cons_columns where upper(table_name) like('__BIN_%');
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;
 
@@ -849,7 +849,7 @@ drop table sysview_tab_partitions_part2;
 -- recyclebin does not support partitioned table yet
 select table_name, composite, partition_name, subpartition_count, high_value, high_value_length, partition_position, pct_free, logging,
         num_rows, blocks, avg_row_len
-from all_tab_partitions where upper(table_name) like('BIN$%') order by table_name, partition_name;
+from all_tab_partitions where upper(table_name) like('__BIN_%') order by table_name, partition_name;
 
 purge recyclebin;
 set ivorysql.enable_recycle_bin to off;

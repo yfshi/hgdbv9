@@ -59,7 +59,7 @@ pgbackrest stanza-create --stanza=<stanza_name> --config=<pgbackrest.conf>
 | `hg_flashback_db.pgbackrest_dry_run` | 整数 | 0 | 干运行模式：0=关闭，1=dry-run（仅记录不执行），2=test-bypass（执行但不解析JSON） |
 | `hg_flashback_db.db_flashback_enabled` | 布尔 | true | 是否启用后台工作进程 |
 | `hg_flashback_db.db_flashback_bgw_database` | 字符串 | postgres | 后台工作进程连接的数据库名 |
-| `hg_flashback_db.auto_cleanup` | 整数 | 1 | 自动清理孤立恢复点：0=关闭，1=开启 |
+| `hg_flashback_db.auto_cleanup` | 布尔 | true | 自动清理孤立恢复点 |
 
 ## 使用方法
 

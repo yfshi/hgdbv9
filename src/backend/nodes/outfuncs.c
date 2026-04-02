@@ -1108,6 +1108,21 @@ _outAlias(StringInfo str, const Alias *node)
 	WRITE_NODE_FIELD(colnames);
 }
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+/*
+ * _outFlashbackNode
+ */
+static void
+_outFlashbackNode(StringInfo str, const FlashbackNode *node)
+{
+	WRITE_NODE_TYPE("FLASHBACKNODE");
+
+	WRITE_NODE_FIELD(asofTimestamp);
+	WRITE_NODE_FIELD(versionsLower);
+	WRITE_NODE_FIELD(versionsUpper);
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 static void
 _outRangeVar(StringInfo str, const RangeVar *node)
 {
@@ -1132,6 +1147,9 @@ _outRangeVar(StringInfo str, const RangeVar *node)
 	WRITE_NODE_FIELD(colnamelist);
 	WRITE_NODE_FIELD(partitionnamelist);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	WRITE_NODE_FIELD(flashbackClause);
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 }
 
 static void
@@ -3553,6 +3571,11 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 			WRITE_CHAR_FIELD(relkind);
 			WRITE_INT_FIELD(rellockmode);
 			WRITE_NODE_FIELD(tablesample);
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			WRITE_NODE_FIELD(asofTimestamp);
+			WRITE_NODE_FIELD(versionsLower);
+			WRITE_NODE_FIELD(versionsUpper);
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
 			break;
 		/* Begin - ReqID:SRS-SQL-DBLINK */
 		case RTE_DBLINK:
@@ -3626,9 +3649,6 @@ _outRangeTblEntry(StringInfo str, const RangeTblEntry *node)
 	WRITE_BITMAPSET_FIELD(updatedCols);
 	WRITE_BITMAPSET_FIELD(extraUpdatedCols);
 	WRITE_NODE_FIELD(securityQuals);
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	WRITE_NODE_FIELD(asofTimestamp);
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 }
 
 static void
@@ -4519,6 +4539,11 @@ outNode(StringInfo str, const void *obj)
 			case T_Alias:
 				_outAlias(str, obj);
 				break;
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			case T_FlashbackNode:
+				_outFlashbackNode(str, obj);
+				break;
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
 			case T_RangeVar:
 				_outRangeVar(str, obj);
 				break;

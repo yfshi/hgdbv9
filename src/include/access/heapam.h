@@ -409,6 +409,10 @@ TM_Result
 heapTupleSatisfiesUpdateOnconflict(HeapTuple htup, CommandId curcid,
 								  Buffer buffer);
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern bool HeapTuplePastUndoRetention(TransactionId xid,
+									   TimestampTz retention_cutoff_ts);
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * To avoid leaking too much knowledge about reorderbuffer implementation

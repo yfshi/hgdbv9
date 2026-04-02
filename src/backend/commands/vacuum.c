@@ -72,6 +72,9 @@ int			vacuum_multixact_freeze_min_age;
 int			vacuum_multixact_freeze_table_age;
 int			vacuum_failsafe_age;
 int			vacuum_multixact_failsafe_age;
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+int			undo_retention;
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 
 /* A few variables that don't seem worth passing around as parameters */

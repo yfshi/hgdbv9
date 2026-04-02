@@ -15,6 +15,7 @@ max_replication_slots = 4
 max_wal_senders = 4
 hg_flashback_tx.enable_flashback_transaction_query = on
 hg_flashback_tx.auto_replica_identity = on
+hg_flashback_tx.databases = 'postgres'
 ]);
 $node->start;
 

@@ -1048,7 +1048,8 @@ committssyncfiletag(const FileTag *ftag, char *path)
  */
 bool
 TimestampGetTransactinIds(TimestampTz ts, TransactionId *xmin, 
-						TransactionId *xmax, List **active_xlist)
+						TransactionId *xmax, List **active_xlist,
+						bool missing_ok)
 {
 	TransactionId oldestCommitTsXid;
 	TransactionId newestCommitTsXid;
@@ -1081,7 +1082,8 @@ TimestampGetTransactinIds(TimestampTz ts, TransactionId *xmin,
 					/* If the timestamp is earlier than the commit time of the 
 					 * oldest transaction, it means that the commit_ts of target 
 					 * transaction has already been cleaned up. */
-					elog(ERROR, "could not get commit timestamp data earlier than oldestCommitTsXid.");
+					if (!missing_ok)
+						elog(ERROR, "could not get commit timestamp data earlier than oldestCommitTsXid.");
 				}
 				
 				if (!TransactionIdIsValid(*xmin))

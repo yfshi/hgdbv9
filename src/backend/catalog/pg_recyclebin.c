@@ -94,7 +94,7 @@ RecyclebinRead(RbObjDesc *desc, HeapTuple rbtup)
 
 static bool 
 RbFetchOrinameImpl(Oid nspId, const char *oriname, RbObjType type, 
-				   RbObjDesc *desc, RbOperMode operMode)
+				   RbObjDesc *desc, RbOperMode operMode, bool useRcyName)
 {
 	StringInfoData	buf;
 	int				ret;
@@ -103,16 +103,18 @@ RbFetchOrinameImpl(Oid nspId, const char *oriname, RbObjType type,
 	initStringInfo(&buf);
 	if (operMode == RB_OPER_PURGE)
 		appendStringInfo(&buf, "SELECT * FROM pg_catalog.pg_recyclebin WHERE "
-							   "rcynamespace = %u AND rcyoriginname = '%s' "
+							   "rcynamespace = %u AND %s = '%s' "
 							   "AND rcytype = %d "
 							   "ORDER BY rcyrecycletime ASC LIMIT 1",
-							   nspId, oriname, RB_OBJ_TABLE);
+							   nspId, useRcyName ? "rcyname" : "rcyoriginname", 
+							   oriname, RB_OBJ_TABLE);
 	else
 		appendStringInfo(&buf, "SELECT * FROM pg_catalog.pg_recyclebin WHERE "
-							   "rcynamespace = %u AND rcyoriginname = '%s' "
+							   "rcynamespace = %u AND %s = '%s' "
 							   "AND rcytype = %d AND rcyoperation = '%c' "
 							   "ORDER BY rcyrecycletime DESC LIMIT 1",
-							   nspId, oriname, RB_OBJ_TABLE,
+							   nspId, useRcyName ? "rcyname" : "rcyoriginname",
+							   oriname, RB_OBJ_TABLE,
 							   operMode == RB_OPER_RESTORE_DROP ?
 							   RCYOPERATION_DROP :
 							   RCYOPERATION_TRUNCATE);
@@ -146,15 +148,17 @@ cleanup:
 
 static bool 
 RbFetchOriname(const char *schemaname, const char *relname,
-	RbObjType type, RbObjDesc *desc, RbOperMode operMode)
+	RbObjType type, RbObjDesc *desc, RbOperMode operMode, bool tryRcyrename)
 {
 	bool found = false;
 	Oid nspId;
+	bool useRcyName = false;
 
+retry_fetch:
 	if (schemaname)
 	{
 		nspId = get_namespace_oid(schemaname, true);
-		found = RbFetchOrinameImpl(nspId, relname, type, desc, operMode);
+		found = RbFetchOrinameImpl(nspId, relname, type, desc, operMode, useRcyName);
 	} 
 	else 
 	{
@@ -165,13 +169,19 @@ RbFetchOriname(const char *schemaname, const char *relname,
 		foreach (l, activeSearchPath) 
 		{
 			nspId = lfirst_oid(l);
-			if (RbFetchOrinameImpl(nspId, relname, type, desc, operMode)) 
+			if (RbFetchOrinameImpl(nspId, relname, type, desc, operMode, useRcyName)) 
 			{
 				found = true;
 				break;
 			}
 		}
 		list_free(activeSearchPath);
+	}
+
+	if (tryRcyrename && !found && !useRcyName)
+	{
+		useRcyName = true;
+		goto retry_fetch;
 	}
 
 	return found;
@@ -190,7 +200,7 @@ RbOperFetch(const char* schemaname, const char* relname,
 	AcceptInvalidationMessages();
 
 	/* Prefer to fetch as original name */
-	found = RbFetchOriname(schemaname, relname, type, desc, operMode);
+	found = RbFetchOriname(schemaname, relname, type, desc, operMode, true);
 
 	/* not found, throw error */
 	if (!found) 

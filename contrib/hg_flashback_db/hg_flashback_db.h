@@ -31,7 +31,7 @@ extern int   hg_flashback_db_dry_run;
 extern bool  hg_flashback_db_enabled;
 extern char *hg_flashback_db_bgw_database;
 extern int   hg_flashback_db_retention_target;
-extern int   hg_flashback_db_auto_cleanup;
+extern bool  hg_flashback_db_auto_cleanup;
 
 static inline char *
 hg_flashback_db_text_datum_copy(Datum datum, MemoryContext context)

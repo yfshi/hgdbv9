@@ -25,7 +25,7 @@
 #include "utils/rel.h"
 #include "utils/timestamp.h"
 #include "utils/snapmgr.h"
-#include "storage/procarray.h"
+#include "commands/vacuum.h"
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 
@@ -360,14 +360,16 @@ ExecScanReScan(ScanState *node)
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 /*
- * Evaluate ASOF timestamp and assign it to snapshot.
+ * Evaluate flashback timestamp and assign it to snapshot.
  */
 void 
-ExecAsofTimestamp(ScanState* ss)
+ExecFlashbackTimestamp(ScanState* ss)
 {
-	if (ss->asofExpr)
+	if (!ss->flashback_snapshot_set)
 	{
-		if (!ss->flashback_snapshot_set)
+		TimestampTz undo_cutoff_ts = GetCurrentTimestamp() - ((int64) undo_retention * USECS_PER_SEC);
+
+		if (ss->asofExpr)
 		{
 			Datum		val;
 			bool		isNull;
@@ -384,24 +386,63 @@ ExecAsofTimestamp(ScanState* ss)
 			{
 				TimestampTz asofTimestamp = DatumGetTimestampTz(val);
 
-				ss->flashback_snapshot = TimestampGetSnapshot(asofTimestamp);
-
-				/*
-				 * Once the data has been cleaned up by VACUUM, 
-				 * we can no longer access the historical data correctly.
-				 */
-				if (ss->ss_currentRelation != NULL && 
-					TransactionIdPrecedes(ss->flashback_snapshot->xmin, 
-						GetOldestNonRemovableTransactionId(ss->ss_currentRelation)))
-				{
+				if (asofTimestamp < undo_cutoff_ts)
 					ereport(ERROR,
 						errcode(ERRCODE_SNAPSHOT_TOO_OLD),
-						errmsg_internal("The flashback timepoint is older than XidHorizon of the table."),
-						errdetail_internal("Make sure the parameter vacuum_defer_cleanup_age is set to a appropriate value."));
-				}
+						errmsg_internal("The flashback timepoint is older than current undo_retention cutoff."),
+						errdetail_internal("Make sure the parameter undo_retention is set to a appropriate value."));
+
+				ss->flashback_snapshot = TimestampGetSnapshot(asofTimestamp, SNAPSHOT_FLASHBACK_MVCC, false);
 			}
 			ss->flashback_snapshot_set = true;
 		}
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		else if (ss->versionsLowerExpr && ss->versionsUpperExpr)
+		{
+			Datum		Lval, Uval;
+			bool		LisNull, UisNull;
+
+			Lval = ExecEvalExprSwitchContext(ss->versionsLowerExpr,
+											ss->ps.ps_ExprContext,
+											&LisNull);
+			Uval = ExecEvalExprSwitchContext(ss->versionsUpperExpr,
+											ss->ps.ps_ExprContext,
+											&UisNull);
+			if (LisNull || UisNull)
+			{
+				/* Interpret NULL timestamp as no timestamp */
+				ss->flashback_snapshot = InvalidSnapshot;
+			}
+			else
+			{
+				TimestampTz LTimestamp = DatumGetTimestampTz(Lval);
+				TimestampTz UTimestamp = DatumGetTimestampTz(Uval);
+				bool		use_minvalue = false;
+
+				/* when get -infinity, set it to undo_cutoff_ts */
+				if (LTimestamp == PG_INT64_MIN)
+				{
+					LTimestamp = undo_cutoff_ts;
+					use_minvalue = true;
+				}
+
+				if (LTimestamp < undo_cutoff_ts)
+					ereport(ERROR,
+						errcode(ERRCODE_SNAPSHOT_TOO_OLD),
+						errmsg_internal("The flashback timepoint is older than current undo_retention cutoff."),
+						errdetail_internal("Make sure the parameter undo_retention is set to a appropriate value."));
+
+				ss->flashback_snapshot = TimestampGetSnapshot(LTimestamp, SNAPSHOT_HISTORIC_RANGE, use_minvalue);
+
+				/* If upper time bigger than lower time, just return empty result. */
+				if (LTimestamp > UTimestamp)
+					ss->flashback_snapshot->extraPtr = NULL;
+				else
+					ss->flashback_snapshot->extraPtr = (void *)TimestampGetSnapshot(UTimestamp, SNAPSHOT_HISTORIC_RANGE, false);
+			}
+			ss->flashback_snapshot_set = true;
+		}
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	}
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */

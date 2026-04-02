@@ -82,7 +82,8 @@ typedef enum ParseExprKind
 	EXPR_KIND_GENERATED_COLUMN, /* generation expression for a column */
 	EXPR_KIND_CYCLE_MARK,		/* cycle mark value */
 	EXPR_KIND_GROUP_BY_DISTINCT,	/* Req: SRS-SQL-NLSSORT, used to distinguish `DISTINCT xx ORDER BY` xx when do pseudo collation replace */
-	EXPR_KIND_ASOF,				/* Req: SRS-RECOVERY-FLASHBACK, used to filter out operations that are not allowed in AS OF expressions */
+	EXPR_KIND_ASOF,				/* ReqID:SRS-RECOVERY-FLASHBACK */
+	EXPR_KIND_VERSIONS_BETWEEN,	/* ReqID:SRS-RECOVERY-FLASHBACK */
 } ParseExprKind;
 
 
@@ -409,6 +410,9 @@ struct ParseState
 	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
 	bool	mys_load_local;		/* mark its load local case on mysql mode */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	bool	p_tryVersionsPseudoColumn;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 };
 
 /*

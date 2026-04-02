@@ -1245,6 +1245,18 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 	},
 	/* End - ReqID:SRS-PLSQL-AUTONOMOUSTRANSACTION */
 	/* End - ReqID:SRS-SQL-DBLINK */	
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	{
+		{"ivorysql.undo_retention", PGC_SIGHUP, UNGROUPED,
+			gettext_noop("Keeps VACUUM from cleaning dead tuples newer than this age."),
+			gettext_noop("Value is specified in seconds. Zero disables this feature. Requires track_commit_timestamp to be enabled."),
+			GUC_UNIT_S
+		},
+		&undo_retention,
+		0, 0, INT_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 #endif
 #if 0
 	/* End-of-list marker */

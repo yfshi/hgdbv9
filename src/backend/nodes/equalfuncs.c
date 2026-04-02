@@ -104,6 +104,21 @@ _equalAlias(const Alias *a, const Alias *b)
 	return true;
 }
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+/*
+ * _equalFlashbackNode
+ */
+static bool
+_equalFlashbackNode(const FlashbackNode *a, const FlashbackNode *b)
+{
+	COMPARE_NODE_FIELD(asofTimestamp);
+	COMPARE_NODE_FIELD(versionsLower);
+	COMPARE_NODE_FIELD(versionsUpper);
+
+	return true;
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 static bool
 _equalRangeVar(const RangeVar *a, const RangeVar *b)
 {
@@ -122,9 +137,9 @@ _equalRangeVar(const RangeVar *a, const RangeVar *b)
 	COMPARE_NODE_FIELD(colnamelist);
 	COMPARE_NODE_FIELD(partitionnamelist);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	COMPARE_NODE_FIELD(asofTimestamp);
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	COMPARE_NODE_FIELD(flashbackClause);
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	return true;
 }
@@ -2458,9 +2473,10 @@ static bool
 _equalFlashbackStmt(const FlashbackStmt *a, const FlashbackStmt *b)
 {
 	COMPARE_SCALAR_FIELD(kind);
-    COMPARE_NODE_FIELD(relation);
-    COMPARE_STRING_FIELD(new_relname);
+    COMPARE_NODE_FIELD(relation_list);
+    COMPARE_NODE_FIELD(new_relname_list);
     COMPARE_NODE_FIELD(timepoint);
+	COMPARE_SCALAR_FIELD(enable_triggers);
 
 	return true;
 }
@@ -3286,6 +3302,10 @@ _equalRangeTblEntry(const RangeTblEntry *a, const RangeTblEntry *b)
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	COMPARE_NODE_FIELD(asofTimestamp);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COMPARE_NODE_FIELD(versionsLower);
+	COMPARE_NODE_FIELD(versionsUpper);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return true;
 }
@@ -3885,6 +3905,11 @@ equal(const void *a, const void *b)
 		case T_Alias:
 			retval = _equalAlias(a, b);
 			break;
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		case T_FlashbackNode:
+			retval = _equalFlashbackNode(a, b);
+			break;
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 		case T_RangeVar:
 			retval = _equalRangeVar(a, b);
 			break;

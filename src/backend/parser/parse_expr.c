@@ -54,7 +54,9 @@
 #include "mysql_parser/mys_set_hook.h"
 #include "parser/parser.h"
 /* End - ReqID:SRS-MYSQL-SET */
-
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+#include "catalog/pg_class.h"
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 /* GUC parameters */
 bool		Transform_null_equals = false;
@@ -118,6 +120,42 @@ static Node *mysmakeIntConst(int val, int location);	/* BUG#M533 */
 /* Begin - ReqID:SRS-MYSQL-SET */
 static Node *transformVarRef(ParseState *pstate, VarRef *varref);
 /* End - ReqID:SRS-MYSQL-SET */
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+typedef enum HgVersionsPseudoColumn
+{
+	HG_VERSIONS_PSEUDO_NONE,
+	HG_VERSIONS_PSEUDO_STARTSCN,
+	HG_VERSIONS_PSEUDO_ENDSCN,
+	HG_VERSIONS_PSEUDO_STARTTIME,
+	HG_VERSIONS_PSEUDO_ENDTIME,
+	HG_VERSIONS_PSEUDO_XID,
+	HG_VERSIONS_PSEUDO_OPERATION
+} HgVersionsPseudoColumn;
+
+typedef struct HgVersionsSourceRewriteContext
+{
+	Oid		funcid;
+	int32	source;
+} HgVersionsSourceRewriteContext;
+
+static HgVersionsPseudoColumn matchHgVersionsPseudoColumn(const char *colname);
+static ParseNamespaceItem *findHgVersionsNamespaceItem(ParseState *pstate,
+													   const char *colname,
+													   int location,
+													   int *sublevels_up);
+static Node *buildHgVersionsArg(ParseState *pstate,
+								ParseNamespaceItem *nsitem,
+								int sublevels_up,
+								const char *attname,
+								bool has_plus_token,
+								int location);
+static Node *buildHgVersionsExpr(ParseState *pstate,
+								 ParseNamespaceItem *nsitem,
+								 int sublevels_up,
+								 HgVersionsPseudoColumn pseudo,
+								 bool has_plus_token,
+								 int location);
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 /* Begin - Bug#Z167 */
 static inline void
@@ -339,6 +377,181 @@ transformExpr(ParseState *pstate, Node *expr, ParseExprKind exprKind)
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+static HgVersionsPseudoColumn
+matchHgVersionsPseudoColumn(const char *colname)
+{
+	if (pg_strcasecmp(colname, "versions_startscn") == 0)
+		return HG_VERSIONS_PSEUDO_STARTSCN;
+	if (pg_strcasecmp(colname, "versions_endscn") == 0)
+		return HG_VERSIONS_PSEUDO_ENDSCN;
+	if (pg_strcasecmp(colname, "versions_starttime") == 0)
+		return HG_VERSIONS_PSEUDO_STARTTIME;
+	if (pg_strcasecmp(colname, "versions_endtime") == 0)
+		return HG_VERSIONS_PSEUDO_ENDTIME;
+	if (pg_strcasecmp(colname, "versions_xid") == 0)
+		return HG_VERSIONS_PSEUDO_XID;
+	if (pg_strcasecmp(colname, "versions_operation") == 0)
+		return HG_VERSIONS_PSEUDO_OPERATION;
+
+	return HG_VERSIONS_PSEUDO_NONE;
+}
+
+/*
+ * Find the single relation namespace item that should supply system-column
+ * arguments for an unqualified VERSIONS_* pseudo-column reference.
+ */
+static ParseNamespaceItem *
+findHgVersionsNamespaceItem(ParseState *pstate, const char *colname,
+							int location, int *sublevels_up)
+{
+	ParseNamespaceItem *result = NULL;
+	int			result_levels_up = 0;
+	int			levels = 0;
+
+	while (pstate != NULL)
+	{
+		ListCell   *l;
+
+		foreach(l, pstate->p_namespace)
+		{
+			ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(l);
+
+			if (!nsitem->p_cols_visible)
+				continue;
+			if (nsitem->p_lateral_only && !pstate->p_lateral_active)
+				continue;
+			if (nsitem->p_rte->rtekind != RTE_RELATION ||
+				nsitem->p_rte->relkind == RELKIND_COMPOSITE_TYPE)
+				continue;
+
+			if (result != NULL)
+				ereport(ERROR,
+						(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+						 errmsg("column reference \"%s\" is ambiguous",
+								colname),
+						 parser_errposition(pstate, location)));
+
+			result = nsitem;
+			result_levels_up = levels;
+		}
+
+		pstate = pstate->parentParseState;
+		levels++;
+	}
+
+	if (result != NULL && sublevels_up != NULL)
+		*sublevels_up = result_levels_up;
+
+	return result;
+}
+
+/*
+ * Pseudo-columns are rewritten into builtin function calls over ordinary
+ * system columns, so resolve the requested system-column argument here.
+ */
+static Node *
+buildHgVersionsArg(ParseState *pstate, ParseNamespaceItem *nsitem,
+				   int sublevels_up, const char *attname, bool has_plus_token, int location)
+{
+	Node	   *arg;
+
+	arg = scanNSItemForColumn(pstate, nsitem, sublevels_up, attname, has_plus_token, location);
+	if (arg == NULL)
+		elog(ERROR, "could not resolve flashback pseudo-column argument \"%s\"",
+			 attname);
+
+	return arg;
+}
+
+/*
+ * Expand a flashback pseudo-column into the builtin function call or system
+ * column reference that implements it.
+ */
+static Node *
+buildHgVersionsExpr(ParseState *pstate, ParseNamespaceItem *nsitem,
+					int sublevels_up, HgVersionsPseudoColumn pseudo,
+					bool has_plus_token, int location)
+{
+	Node *res;
+
+	switch (pseudo)
+	{
+		case HG_VERSIONS_PSEUDO_STARTSCN:
+			res = ParseFuncOrColumn(pstate,
+									list_make1(makeString("pg_versions_startscn")),
+									NIL,
+									pstate->p_last_srf,
+									NULL,
+									false,
+									location);
+			break;
+		case HG_VERSIONS_PSEUDO_ENDSCN:
+			res = ParseFuncOrColumn(pstate,
+									list_make1(makeString("pg_versions_endscn")),
+									NIL,
+									pstate->p_last_srf,
+									NULL,
+									false,
+									location);
+			break;
+		case HG_VERSIONS_PSEUDO_STARTTIME:
+			res = ParseFuncOrColumn(pstate,
+									list_make1(makeString("pg_versions_starttime")),
+									list_make1(buildHgVersionsArg(pstate, nsitem,
+															   	  sublevels_up,
+															   	  "xmin",
+															   	  has_plus_token,
+															   	  location)),
+									pstate->p_last_srf,
+									NULL,
+									false,
+									location);
+			break;
+		case HG_VERSIONS_PSEUDO_ENDTIME:
+			res = ParseFuncOrColumn(pstate,
+									list_make1(makeString("pg_versions_endtime")),
+									list_make1(buildHgVersionsArg(pstate, nsitem,
+															   	  sublevels_up,
+															   	  "xmax",
+															   	  has_plus_token,
+															   	  location)),
+									pstate->p_last_srf,
+									NULL,
+									false,
+									location);
+			break;
+		case HG_VERSIONS_PSEUDO_XID:
+			res = buildHgVersionsArg(pstate, nsitem, sublevels_up,
+									 "xmin", has_plus_token, location);
+			break;
+		case HG_VERSIONS_PSEUDO_OPERATION:
+			res = ParseFuncOrColumn(pstate,
+									list_make1(makeString("pg_versions_operation")),
+									list_make2(buildHgVersionsArg(pstate, nsitem,
+															   	  sublevels_up,
+															   	  "ctid",
+															   	  has_plus_token,
+															   	  location),
+											   buildHgVersionsArg(pstate, nsitem,
+															   	  sublevels_up,
+															   	  "tableoid",
+															   	  has_plus_token,
+															   	  location)),
+									pstate->p_last_srf,
+									NULL,
+									false,
+									location);
+			break;
+		case HG_VERSIONS_PSEUDO_NONE:
+			res = NULL;
+			break;
+	}
+
+	return res;
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 static Node *
 transformExprRecurse(ParseState *pstate, Node *expr)
@@ -923,6 +1136,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		/* End: Req:SRS-SQL-NLSSORT */
 		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 		case EXPR_KIND_ASOF:
+		case EXPR_KIND_VERSIONS_BETWEEN:
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			/* okay */
 			break;
@@ -1077,6 +1291,22 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				}
 				/* End - ReqID:SRS-SQL-HierarchicalQueries */
 
+				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
+				{
+					HgVersionsPseudoColumn pseudo = matchHgVersionsPseudoColumn(colname);
+					if (pseudo != HG_VERSIONS_PSEUDO_NONE)
+					{
+						nsitem = findHgVersionsNamespaceItem(pstate, colname,
+															cref->location,
+															&levels_up);
+						if (nsitem != NULL)
+							node = buildHgVersionsExpr(pstate, nsitem, levels_up,
+													pseudo, cref->has_outer_join, cref->location);
+					}
+				}
+				/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 				if (node == NULL)
 				{
 					/*
@@ -1171,6 +1401,17 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
+
+				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
+				{
+					HgVersionsPseudoColumn pseudo = matchHgVersionsPseudoColumn(colname);
+
+					if (pseudo != HG_VERSIONS_PSEUDO_NONE)
+						node = buildHgVersionsExpr(pstate, nsitem, levels_up,
+												   pseudo, cref->has_outer_join, cref->location);
+				}
+				/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 				if (node == NULL)
 				{
@@ -1276,6 +1517,17 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
+
+				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
+				{
+					HgVersionsPseudoColumn pseudo = matchHgVersionsPseudoColumn(colname);
+
+					if (pseudo != HG_VERSIONS_PSEUDO_NONE)
+						node = buildHgVersionsExpr(pstate, nsitem, levels_up,
+												   pseudo, cref->has_outer_join, cref->location);
+				}
+				/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 				if (node == NULL)
 				{
@@ -1399,6 +1651,17 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
+
+				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
+				{
+					HgVersionsPseudoColumn pseudo = matchHgVersionsPseudoColumn(colname);
+
+					if (pseudo != HG_VERSIONS_PSEUDO_NONE)
+						node = buildHgVersionsExpr(pstate, nsitem, levels_up,
+												   pseudo, cref->has_outer_join, cref->location);
+				}
+				/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 				if (node == NULL)
 				{
@@ -3430,6 +3693,7 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		/* End: Req:SRS-SQL-NLSSORT */
 		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 		case EXPR_KIND_ASOF:
+		case EXPR_KIND_VERSIONS_BETWEEN:
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			/* okay */
 			break;
@@ -4976,6 +5240,10 @@ ParseExprKindName(ParseExprKind exprKind)
 		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 		case EXPR_KIND_ASOF:
 			return "AS OF";
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		case EXPR_KIND_VERSIONS_BETWEEN:
+			return "VERSIONS BETWEEN";
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 			/*
 			 * There is intentionally no default: case here, so that the

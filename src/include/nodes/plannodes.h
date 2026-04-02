@@ -373,8 +373,11 @@ typedef struct Scan
 	Index		scanrelid;		/* relid is index into the range table */
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	Node       *asof_expr;  /* for flashback queries */
-	
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	Node	   *versionsLower_expr;
+	Node	   *versionsUpper_expr;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 } Scan;
 
 /* ----------------
