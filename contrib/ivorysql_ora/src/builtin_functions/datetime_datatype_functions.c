@@ -26,6 +26,7 @@
 #include "utils/datetime.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
+#include "utils/lsyscache.h" /* OA-REQ-2131 */
 #include "utils/numeric.h"
 #include "access/xact.h"
 
@@ -47,15 +48,11 @@ PG_FUNCTION_INFO_V1(months_between);
 PG_FUNCTION_INFO_V1(ora_from_tz);
 PG_FUNCTION_INFO_V1(ora_sys_extract_utc);
 PG_FUNCTION_INFO_V1(ora_sessiontimezone); /* bug0000427 */
-PG_FUNCTION_INFO_V1(to_oradate1);
-PG_FUNCTION_INFO_V1(to_oradate2);
-PG_FUNCTION_INFO_V1(to_oradate3);
-PG_FUNCTION_INFO_V1(to_oratimestamp1);
-PG_FUNCTION_INFO_V1(to_oratimestamp2);
-PG_FUNCTION_INFO_V1(to_oratimestamp3);
-PG_FUNCTION_INFO_V1(to_oratimestamptz1);
-PG_FUNCTION_INFO_V1(to_oratimestamptz2);
-PG_FUNCTION_INFO_V1(to_oratimestamptz3);
+/* Begin - OA-REQ-2131 */
+PG_FUNCTION_INFO_V1(to_oradate);
+PG_FUNCTION_INFO_V1(to_oratimestamp);
+PG_FUNCTION_INFO_V1(to_oratimestamptz);
+/* End - OA-REQ-2131 */
 PG_FUNCTION_INFO_V1(oradate_to_char1);
 PG_FUNCTION_INFO_V1(oradate_to_char2);
 PG_FUNCTION_INFO_V1(oradate_to_char3);
@@ -784,87 +781,43 @@ ora_sessiontimezone(PG_FUNCTION_ARGS)
 }
 /* End - bug0000427 */
 
+/* Begin - OA-REQ-2131 */
 /*
  * Compatible with Oracle's to_date() function.
- *
- * Converts 'date_txt' to a value of DATE data type.
  */
 Datum
-to_oradate1(PG_FUNCTION_ARGS)
+to_oradate(PG_FUNCTION_ARGS)
 {
-	text		*date_txt = PG_GETARG_TEXT_P(0);
-	Oid		collid = PG_GET_COLLATION();
+	Datum		arg1 = PG_GETARG_DATUM(0);
+	text		*fmt = PG_GETARG_TEXT_PP(1);
+	Oid			arg1_type = get_fn_expr_argtype(fcinfo->flinfo, 0);
+	Oid			arg1_outfunction = InvalidOid;
+	bool		arg1_isvarlena;
+	char		*arg1_string;
+	Oid			collid = PG_GET_COLLATION();
 	Timestamp	result;
-	struct pg_tm tm;
 	fsec_t		fsec;
-				 
-	ora_do_to_timestamp(date_txt, cstring_to_text(nls_date_format), collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
-						&tm, &fsec, NULL, NULL, NULL);
-	
-	/* no timezone and no fractional second */
-	fsec = 0;
-	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
+	struct pg_tm tm;
+
+	if (arg1_type == InvalidOid)
 		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("oradate out of range")));
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("could not determine input data type")));
 
-	PG_RETURN_TIMESTAMP(result);
-}
+	/* Now, nlsparam not implemented(PG_GETARG_XXX_PP(2)) */
+	getTypeOutputInfo(arg1_type, &arg1_outfunction, &arg1_isvarlena);
+	arg1_string = OidOutputFunctionCall(arg1_outfunction, arg1);
 
-Datum
-to_oradate2(PG_FUNCTION_ARGS)
-{
-	text		*date_txt = PG_GETARG_TEXT_P(0);
-	text		*fmt = PG_GETARG_TEXT_P(1);
-	Oid		collid = PG_GET_COLLATION();
-	Timestamp	result;
-	struct pg_tm tm;
-	fsec_t		fsec;
-				 
-	ora_do_to_timestamp(date_txt, fmt, collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+	/* Compatible with oracle's empty string equal to null? */
+	if (ORA_MODE == compatible_mode &&
+		(strlen(arg1_string) == 0 ||
+		 strlen(text_to_cstring(fmt)) == 0))
+		PG_RETURN_NULL();
+
+	ora_do_to_timestamp(cstring_to_text(arg1_string), fmt, collid,
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode,
 						&tm, &fsec, NULL, NULL, NULL);
-	
-	/* no timezone and no fractional second */
-	fsec = 0;
-	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("oradate out of range")));
 
-	PG_RETURN_TIMESTAMP(result);
-}
-
-Datum
-to_oradate3(PG_FUNCTION_ARGS)
-{
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	text	   *fmt = PG_GETARG_TEXT_P(1);
-	text	   *nlsparam = PG_GETARG_TEXT_P(2);
-	Oid		collid = PG_GET_COLLATION();
-	Timestamp	result;
-	struct pg_tm tm;
-	fsec_t		fsec;
-
-	/* TODO */
-	char	*p;
-	p = text_to_cstring(nlsparam);
-	
-#if 0
-	if (strlen(p) != 0)
-		ereport(WARNING,
-				(errcode(ERRCODE_UNTERMINATED_C_STRING),
-				 errmsg("function \"to_date\" not support the parameter of \"nlsparam\".")));
-#endif
-
-	if (p && strlen(p) != 0)
-	/* make compiler quiet */
-
-	ora_do_to_timestamp(date_txt, fmt, collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
-						&tm, &fsec, NULL, NULL, NULL);
-	
 	/* no timezone and no fractional second */
 	fsec = 0;
 	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
@@ -877,78 +830,38 @@ to_oradate3(PG_FUNCTION_ARGS)
 
 /*
  * Compatible with Oracle's to_timestamp() function.
- *
- * Converts 'date_txt' to a value of TIMESTAMP data type.
  */
 Datum
-to_oratimestamp1(PG_FUNCTION_ARGS)
+to_oratimestamp(PG_FUNCTION_ARGS)
 {
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	Oid		collid = PG_GET_COLLATION();
+	Datum		arg1 = PG_GETARG_DATUM(0);
+	text		*fmt = PG_GETARG_TEXT_PP(1);
+	Oid			arg1_type = get_fn_expr_argtype(fcinfo->flinfo, 0);
+	Oid			arg1_outfunction = InvalidOid;
+	bool		arg1_isvarlena;
+	char		*arg1_string;
+	Oid			collid = PG_GET_COLLATION();
 	Timestamp	result;
-	struct pg_tm tm;
 	fsec_t		fsec;
+	struct pg_tm tm;
 
-	ora_do_to_timestamp(date_txt, cstring_to_text(nls_timestamp_format), collid, 
-						/* BUG:6022 */enable_standard_datetime_parsing_mode, 
-						&tm, &fsec, NULL, NULL, NULL);
-
-	/* no time zone */
-	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
+	if (arg1_type == InvalidOid)
 		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("timestamp out of range")));
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("could not determine input data type")));
 
-	PG_RETURN_TIMESTAMP(result);
-}
+	/* Now, nlsparam not implemented(PG_GETARG_XXX_PP(2)) */
+	getTypeOutputInfo(arg1_type, &arg1_outfunction, &arg1_isvarlena);
+	arg1_string = OidOutputFunctionCall(arg1_outfunction, arg1);
 
-Datum
-to_oratimestamp2(PG_FUNCTION_ARGS)
-{
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	text	   *fmt = PG_GETARG_TEXT_P(1);
-	Oid		collid = PG_GET_COLLATION();
-	Timestamp	result;
-	struct pg_tm tm;
-	fsec_t		fsec;
+	/* Compatible with oracle's empty string equal to null? */
+	if (ORA_MODE == compatible_mode &&
+		(strlen(arg1_string) == 0 ||
+		 strlen(text_to_cstring(fmt)) == 0))
+		PG_RETURN_NULL();
 
-	ora_do_to_timestamp(date_txt, fmt, collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
-						&tm, &fsec, NULL, NULL, NULL);
-
-	/* no time zone */
-	if (tm2timestamp(&tm, fsec, NULL, &result) != 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("timestamp out of range")));
-
-	PG_RETURN_TIMESTAMP(result);
-}
-
-Datum
-to_oratimestamp3(PG_FUNCTION_ARGS)
-{
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	text	   *fmt = PG_GETARG_TEXT_P(1);
-	text	   *nlsparam = PG_GETARG_TEXT_P(2);
-	Oid		collid = PG_GET_COLLATION();
-	Timestamp	result;
-	struct pg_tm tm;
-	fsec_t		fsec;
-	char	*p;
-	p = text_to_cstring(nlsparam);
-
-	/*
-	if (strlen(p) != 0)
-		ereport(WARNING,
-				(errcode(ERRCODE_UNTERMINATED_C_STRING),
-				 errmsg("function \"to_date\" not support the parameter of \"nlsparam\".")));
-	*/
-	if (p && strlen(p) != 0)
-	/* make compiler quiet */
-
-	ora_do_to_timestamp(date_txt, fmt, collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+	ora_do_to_timestamp(cstring_to_text(arg1_string), fmt, collid,
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode,
 						&tm, &fsec, NULL, NULL, NULL);
 
 	/* no time zone */
@@ -962,21 +875,39 @@ to_oratimestamp3(PG_FUNCTION_ARGS)
 
 /*
  * Compatible with Oracle's to_timestamp_tz() function.
- *
- * Converts 'date_txt' to a value of TIMESTAMP WITH TIME ZONE data type.
  */
 Datum
-to_oratimestamptz1(PG_FUNCTION_ARGS)
+to_oratimestamptz(PG_FUNCTION_ARGS)
 {
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	Oid		collid = PG_GET_COLLATION();
+	Datum		arg1 = PG_GETARG_DATUM(0);
+	text		*fmt = PG_GETARG_TEXT_PP(1);
+	Oid			arg1_type = get_fn_expr_argtype(fcinfo->flinfo, 0);
+	Oid			arg1_outfunction = InvalidOid;
+	bool		arg1_isvarlena;
+	char		*arg1_string;
+	Oid			collid = PG_GET_COLLATION();
 	Timestamp	result;
+	fsec_t		fsec;
 	int			tz;
 	struct pg_tm tm;
-	fsec_t		fsec;
 
-	ora_do_to_timestamp(date_txt, cstring_to_text(nls_timestamp_tz_format), collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
+	if (arg1_type == InvalidOid)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("could not determine input data type")));
+
+	/* Now, nlsparam not implemented(PG_GETARG_XXX_PP(2)) */
+	getTypeOutputInfo(arg1_type, &arg1_outfunction, &arg1_isvarlena);
+	arg1_string = OidOutputFunctionCall(arg1_outfunction, arg1);
+
+	/* Compatible with oracle's empty string equal to null? */
+	if (ORA_MODE == compatible_mode &&
+		(strlen(arg1_string) == 0 ||
+		 strlen(text_to_cstring(fmt)) == 0))
+		PG_RETURN_NULL();
+
+	ora_do_to_timestamp(cstring_to_text(arg1_string), fmt, collid,
+						/* BUG:6022 */ enable_standard_datetime_parsing_mode,
 						&tm, &fsec, NULL, NULL, NULL);
 
 	/* Begin - BUG:0000846 */
@@ -985,7 +916,7 @@ to_oratimestamptz1(PG_FUNCTION_ARGS)
 		int 		dterr = DecodeTimezone((char *)tm.tm_zone, &tz);
 
 		if (dterr)
-			DateTimeParseError(dterr, text_to_cstring(date_txt), "timestamptz");
+			DateTimeParseError(dterr, arg1_string, "timestamptz");
 	}
 	else
 		tz = DetermineTimeZoneOffset(&tm, session_timezone);
@@ -998,99 +929,7 @@ to_oratimestamptz1(PG_FUNCTION_ARGS)
 
 	PG_RETURN_TIMESTAMP(result);
 }
- 
-Datum
-to_oratimestamptz2(PG_FUNCTION_ARGS)
-{
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	text	   *fmt = PG_GETARG_TEXT_P(1);
-	Oid		collid = PG_GET_COLLATION();
-	Timestamp	result;
-	int			tz;
-	struct pg_tm tm;
-	fsec_t		fsec;
-
-	ora_do_to_timestamp(date_txt, fmt, collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
-						&tm, &fsec, NULL, NULL, NULL);
-
-/* Begin - BUG:0000846 */
-	if (tm.tm_zone)
-	{
-		int			dterr = DecodeTimezone((char *)tm.tm_zone, &tz);
-
-		if (dterr)
-			DateTimeParseError(dterr, text_to_cstring(date_txt), "timestamptz");
-	}
-	else
-		tz = DetermineTimeZoneOffset(&tm, session_timezone);
-
-#if 0
-	if(tm.tm_gmtoff == -1)
-	{	/* BUG:368 */
-		tm.tm_gmtoff = 0;
-		tz = DetermineTimeZoneOffset(&tm, session_timezone);
-	}
-	else
-		tz = (int)tm.tm_gmtoff * (-1);	/* BUG:368 */
-#endif
-/* End - BUG:0000846 */
-
-	if (tm2timestamp(&tm, fsec, &tz, &result) != 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("oratimestamptz out of range")));
-
-	PG_RETURN_TIMESTAMP(result);
-}
-
-Datum
-to_oratimestamptz3(PG_FUNCTION_ARGS)
-{
-	text	   *date_txt = PG_GETARG_TEXT_P(0);
-	text	   *fmt = PG_GETARG_TEXT_P(1);
-	text	   *nlsparam = PG_GETARG_TEXT_P(2);
-	Oid		collid = PG_GET_COLLATION();
-	Timestamp	result;
-	int			tz;
-	struct pg_tm tm;
-	fsec_t		fsec;
-	char	*p;
-	p = text_to_cstring(nlsparam);
-
-	if (p && strlen(p) != 0)
-	/* make compile quiet */
-
-	/*
-	if (strlen(p) != 0)
-		ereport(WARNING,
-				(errcode(ERRCODE_UNTERMINATED_C_STRING),
-				 errmsg("function \"to_date\" not support the parameter of \"nlsparam\".")));
-	*/
-
-	ora_do_to_timestamp(date_txt, fmt, collid, 
-						/* BUG:6022 */ enable_standard_datetime_parsing_mode, 
-						&tm, &fsec, NULL, NULL, NULL);
-
-	/* Begin - BUG:0000846 */
-	if (tm.tm_zone)
-	{
-		int 		dterr = DecodeTimezone((char *)tm.tm_zone, &tz);
-
-		if (dterr)
-			DateTimeParseError(dterr, text_to_cstring(date_txt), "timestamptz");
-	}
-	else
-		tz = DetermineTimeZoneOffset(&tm, session_timezone);
-	/* End - BUG:0000846 */
-
-	if (tm2timestamp(&tm, fsec, &tz, &result) != 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("oratimestamptz out of range")));
-
-	PG_RETURN_TIMESTAMP(result);
-}
+/* End - OA-REQ-2131 */
 
 /*
  * Compatible with Oracle's TO_CHAR(DATETIME) function.
