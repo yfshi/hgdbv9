@@ -1523,12 +1523,33 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				BitmapIndexScan *bitmapindexscan = (BitmapIndexScan *) plan;
 				const char *indexname =
 				explain_get_index_name(bitmapindexscan->indexid);
+				char	*indexnamespace = NULL;	/* OA-REQ-2127 */
+
+				/* Begin - OA-REQ-2127 */
+				if (ORA_MODE == compatible_mode && es->verbose)
+					indexnamespace = get_namespace_name(get_rel_namespace(bitmapindexscan->indexid));
+				/* End - OA-REQ-2127 */
 
 				if (es->format == EXPLAIN_FORMAT_TEXT)
-					appendStringInfo(es->str, " on %s",
-									 quote_identifier(indexname));
+				{
+					/* Begin - OA-REQ-2127 */
+					if (indexnamespace)
+						appendStringInfo(es->str, " on %s.%s",
+										 quote_identifier(indexnamespace),
+										 quote_identifier(indexname));
+					/* End - OA-REQ-2127 */
+					else
+						appendStringInfo(es->str, " on %s",
+										 quote_identifier(indexname));
+				}
 				else
+				{
+					/* Begin - OA-REQ-2127 */
+					if (indexnamespace)
+						ExplainPropertyText("Index Schema", indexnamespace, es);
+					/* End - OA-REQ-2127 */
 					ExplainPropertyText("Index Name", indexname, es);
+				}
 			}
 			break;
 		case T_ModifyTable:
@@ -3719,12 +3740,25 @@ ExplainIndexScanDetails(Oid indexid, ScanDirection indexorderdir,
 						ExplainState *es)
 {
 	const char *indexname = explain_get_index_name(indexid);
+	char	*indexnamespace = NULL;	/* OA-REQ-2127 */
+
+	/* Begin - OA-REQ-2127 */
+	if (ORA_MODE == compatible_mode && es->verbose)
+		indexnamespace = get_namespace_name(get_rel_namespace(indexid));
+	/* End - OA-REQ-2127 */
 
 	if (es->format == EXPLAIN_FORMAT_TEXT)
 	{
 		if (ScanDirectionIsBackward(indexorderdir))
 			appendStringInfoString(es->str, " Backward");
-		appendStringInfo(es->str, " using %s", quote_identifier(indexname));
+
+		/* Begin - OA-REQ-2127 */
+		if (indexnamespace)
+			appendStringInfo(es->str, " using %s.%s", quote_identifier(indexnamespace),
+							 quote_identifier(indexname));
+		else
+			appendStringInfo(es->str, " using %s", quote_identifier(indexname));
+		/* End - OA-REQ-2127 */
 	}
 	else
 	{
@@ -3746,6 +3780,10 @@ ExplainIndexScanDetails(Oid indexid, ScanDirection indexorderdir,
 				break;
 		}
 		ExplainPropertyText("Scan Direction", scandir, es);
+		/* Begin - OA-REQ-2127 */
+		if (indexnamespace)
+			ExplainPropertyText("Index Schema", indexnamespace, es);
+		/* End - OA-REQ-2127 */
 		ExplainPropertyText("Index Name", indexname, es);
 	}
 }

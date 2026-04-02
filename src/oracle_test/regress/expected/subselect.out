@@ -1081,7 +1081,7 @@ where o.ten = 0;
          ->  Seq Scan on public.onek o
                Output: o.unique1, o.unique2, o.two, o.four, o.ten, o.twenty, o.hundred, o.thousand, o.twothousand, o.fivethous, o.tenthous, o.odd, o.even, o.stringu1, o.stringu2, o.string4
                Filter: (o.ten = 0)
-         ->  Index Scan using onek_unique1 on public.onek i
+         ->  Index Scan using public.onek_unique1 on public.onek i
                Output: (hashed SubPlan 1), random()
                Index Cond: (i.unique1 = o.unique1)
                SubPlan 1
@@ -1284,7 +1284,7 @@ select * from int4_tbl where
    ->  Seq Scan on public.tenk1 b
          Output: b.unique1, b.unique2, b.two, b.four, b.ten, b.twenty, b.hundred, b.thousand, b.twothousand, b.fivethous, b.tenthous, b.odd, b.even, b.stringu1, b.stringu2, b.string4
    SubPlan 1
-     ->  Index Only Scan using tenk1_unique1 on public.tenk1 a
+     ->  Index Only Scan using public.tenk1_unique1 on public.tenk1 a
            Output: a.unique1
 (10 rows)
 

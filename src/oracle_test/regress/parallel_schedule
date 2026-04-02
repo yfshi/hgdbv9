@@ -279,3 +279,7 @@ test: ora_partition
 #/* Begin - OA-REQ-2132 */
 test: ora_ratio_to_report
 #/* End - OA-REQ-2132 */
+
+#/* Begin - OA-REQ-2127 */
+test: ora_index_create_with_schema
+#/* End - OA-REQ-2127 */

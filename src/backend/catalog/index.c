@@ -725,6 +725,7 @@ UpdateIndexRelation(Oid indexoid,
 Oid
 index_create(Relation heapRelation,
 			 const char *indexRelationName,
+			 Oid namespaceId, /* OA-REQ-2127 */
 			 Oid indexRelationId,
 			 Oid parentIndexRelid,
 			 Oid parentConstraintId,
@@ -750,7 +751,6 @@ index_create(Relation heapRelation,
 	bool		shared_relation;
 	bool		mapped_relation;
 	bool		is_exclusion;
-	Oid			namespaceId;
 	int			i;
 	char		relpersistence;
 	bool		isprimary = (flags & INDEX_CREATE_IS_PRIMARY) != 0;
@@ -815,8 +815,15 @@ index_create(Relation heapRelation,
 	 * shared across databases if and only if the parent is.  Likewise, it
 	 * will use the relfilenode map if and only if the parent does; and it
 	 * inherits the parent's relpersistence.
+	 *
+	 * OA-REQ-2127:
+	 * If namespaceId is InvalidOid, use the same namespace as parent table.
 	 */
-	namespaceId = RelationGetNamespace(heapRelation);
+	/* Begin - OA-REQ-2127 */
+	if (compatible_mode != ORA_MODE || (compatible_mode == ORA_MODE && !OidIsValid(namespaceId)))
+		namespaceId = RelationGetNamespace(heapRelation);
+	/* End - OA-REQ-2127 */
+
 	shared_relation = heapRelation->rd_rel->relisshared;
 	mapped_relation = RelationIsMapped(heapRelation);
 	relpersistence = heapRelation->rd_rel->relpersistence;
@@ -1456,6 +1463,7 @@ index_concurrently_create_copy(Relation heapRelation, Oid oldIndexId,
 	 */
 	newIndexId = index_create(heapRelation,
 							  newName,
+							  RelationGetNamespace(indexRelation), /* OA-REQ-2127 */
 							  InvalidOid,	/* indexRelationId */
 							  InvalidOid,	/* parentIndexRelid */
 							  InvalidOid,	/* parentConstraintId */

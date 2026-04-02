@@ -430,7 +430,7 @@ DELETE FROM T WHERE pk BETWEEN 10 AND 20 RETURNING *;
    ->  Bitmap Heap Scan on fast_default.t
          Output: ctid
          Recheck Cond: ((t.pk >= 10) AND (t.pk <= 20))
-         ->  Bitmap Index Scan on t_pkey
+         ->  Bitmap Index Scan on fast_default.t_pkey
                Index Cond: ((t.pk >= 10) AND (t.pk <= 20))
 (7 rows)
 

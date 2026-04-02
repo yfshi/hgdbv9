@@ -3310,6 +3310,7 @@ _copyConstraint(const Constraint *from)
 	COPY_NODE_FIELD(exclusions);
 	COPY_NODE_FIELD(options);
 	COPY_STRING_FIELD(indexname);
+	COPY_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 	COPY_STRING_FIELD(indexspace);
 	COPY_SCALAR_FIELD(reset_default_tblspc);
 	COPY_STRING_FIELD(access_method);
@@ -3894,6 +3895,7 @@ _copyClusterStmt(const ClusterStmt *from)
 	ClusterStmt *newnode = makeNode(ClusterStmt);
 
 	COPY_NODE_FIELD(relation);
+	COPY_STRING_FIELD(indexnamespace);	/* OA-REQ-2127 */
 	COPY_STRING_FIELD(indexname);
 	COPY_NODE_FIELD(params);
 
@@ -4060,6 +4062,7 @@ _copyIndexStmt(const IndexStmt *from)
 	IndexStmt  *newnode = makeNode(IndexStmt);
 
 	COPY_STRING_FIELD(idxname);
+	COPY_STRING_FIELD(idxschemaname); /* OA-REQ-2127 */
 	COPY_NODE_FIELD(relation);
 	COPY_STRING_FIELD(accessMethod);
 	COPY_STRING_FIELD(tableSpace);
@@ -4571,6 +4574,7 @@ _copyReplicaIdentityStmt(const ReplicaIdentityStmt *from)
 
 	COPY_SCALAR_FIELD(identity_type);
 	COPY_STRING_FIELD(name);
+	COPY_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 
 	return newnode;
 }

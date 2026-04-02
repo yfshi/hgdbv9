@@ -805,7 +805,7 @@ my %tests = (
 		create_sql =>
 		  'ALTER TABLE dump_test.test_table CLUSTER ON test_table_pkey',
 		regexp => qr/^
-			\QALTER TABLE dump_test.test_table CLUSTER ON test_table_pkey;\E\n
+			\QALTER TABLE dump_test.test_table CLUSTER ON dump_test.test_table_pkey;\E\n
 			/xm,
 		like => {
 			%full_runs,

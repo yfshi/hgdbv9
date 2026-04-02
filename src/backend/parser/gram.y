@@ -2621,7 +2621,7 @@ alter_table_cmd:
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ClusterOn;
-					n->name = $3;
+					n->def = (Node *) list_make1(makeString($3)); /* OA-REQ-2127 */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> SET WITHOUT CLUSTER */

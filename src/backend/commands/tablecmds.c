@@ -234,7 +234,9 @@ typedef struct AlteredTableInfo
 	List	   *changedConstraintDefs;	/* string definitions of same */
 	List	   *changedIndexOids;	/* OIDs of indexes to rebuild */
 	List	   *changedIndexDefs;	/* string definitions of same */
+	char	   *replicaIdentityIndexNamespace;	/* OA-REQ-2127: index schema to reset as REPLICA IDENTITY */ 
 	char	   *replicaIdentityIndex;	/* index to reset as REPLICA IDENTITY */
+	char	   *clusterOnIndexNamespace; /* OA-REQ-2127: index schema to use for CLUSTER */ 
 	char	   *clusterOnIndex; /* index to use for CLUSTER */
 	List	   *changedStatisticsOids;	/* OIDs of statistics to rebuild */
 	List	   *changedStatisticsDefs;	/* string definitions of same */
@@ -617,8 +619,8 @@ static void change_owner_recurse_to_sequences(Oid relationOid,
 static void change_owner_rowid_sequences(char *relname, Oid relnamespace,
 											Oid newOwnerId, LOCKMODE lockmode);
 /* End - Bug#Z928 */
-static ObjectAddress ATExecClusterOn(Relation rel, const char *indexName,
-									 LOCKMODE lockmode);
+static ObjectAddress ATExecClusterOn(Relation rel, List *indexName,
+									 LOCKMODE lockmode); /* OA-REQ-2127 */
 static void ATExecDropCluster(Relation rel, LOCKMODE lockmode);
 static bool ATPrepChangePersistence(Relation rel, bool toLogged);
 static void ATPrepSetTableSpace(AlteredTableInfo *tab, Relation rel,
@@ -6424,7 +6426,7 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 						false, lockmode);
 			break;
 		case AT_ClusterOn:		/* CLUSTER ON */
-			address = ATExecClusterOn(rel, cmd->name, lockmode);
+			address = ATExecClusterOn(rel, (List *) cmd->def, lockmode); /* OA-REQ-2127 */
 			break;
 		case AT_DropCluster:	/* SET WITHOUT CLUSTER */
 			ATExecDropCluster(rel, lockmode);
@@ -15082,6 +15084,7 @@ RememberReplicaIdentityForRebuilding(Oid indoid, AlteredTableInfo *tab)
 	if (tab->replicaIdentityIndex)
 		elog(ERROR, "relation %u has multiple indexes marked as replica identity", tab->relid);
 
+	tab->replicaIdentityIndexNamespace = get_namespace_name(get_rel_namespace(indoid)); /* OA-REQ-2127 */
 	tab->replicaIdentityIndex = get_rel_name(indoid);
 }
 
@@ -15097,6 +15100,7 @@ RememberClusterOnForRebuilding(Oid indoid, AlteredTableInfo *tab)
 	if (tab->clusterOnIndex)
 		elog(ERROR, "relation %u has multiple clustered indexes", tab->relid);
 
+	tab->clusterOnIndexNamespace = get_namespace_name(get_rel_namespace(indoid)); /* OA-REQ-2127 */
 	tab->clusterOnIndex = get_rel_name(indoid);
 }
 
@@ -15370,6 +15374,7 @@ ATPostAlterTypeCleanup(List **wqueue, AlteredTableInfo *tab, LOCKMODE lockmode)
 
 		subcmd->identity_type = REPLICA_IDENTITY_INDEX;
 		subcmd->name = tab->replicaIdentityIndex;
+		subcmd->indexnamespace = tab->replicaIdentityIndexNamespace; /* OA-REQ-2127 */
 		cmd->subtype = AT_ReplicaIdentity;
 		cmd->def = (Node *) subcmd;
 
@@ -15386,7 +15391,14 @@ ATPostAlterTypeCleanup(List **wqueue, AlteredTableInfo *tab, LOCKMODE lockmode)
 		AlterTableCmd *cmd = makeNode(AlterTableCmd);
 
 		cmd->subtype = AT_ClusterOn;
-		cmd->name = tab->clusterOnIndex;
+
+		/* Begin - OA-REQ-2127 */
+		if (ORA_MODE == compatible_mode && tab->clusterOnIndexNamespace)
+			cmd->def = (Node *) list_make2(makeString(tab->clusterOnIndexNamespace),
+										   makeString(tab->clusterOnIndex));
+		else
+			cmd->def = (Node *) list_make1(makeString(tab->clusterOnIndex));
+		/* End - OA-REQ-2127 */
 
 		/* do it after indexes and constraints */
 		tab->subcmds[AT_PASS_OLD_CONSTR] =
@@ -16266,18 +16278,25 @@ change_owner_rowid_sequences(char *relname, Oid relnamespace, Oid newOwnerId, LO
  * Return the address of the new clustering index.
  */
 static ObjectAddress
-ATExecClusterOn(Relation rel, const char *indexName, LOCKMODE lockmode)
+ATExecClusterOn(Relation rel, List *indexName , LOCKMODE lockmode) /* OA-REQ-2127 */
 {
 	Oid			indexOid;
 	ObjectAddress address;
+	/* Begin - OA-REQ-2127 */
+	char		*indexNameStr = NameListToString(indexName);
+	RangeVar	*indexrv = makeRangeVarFromNameList(indexName);
 
-	indexOid = get_relname_relid(indexName, rel->rd_rel->relnamespace);
+	if (list_length(indexName) == 1)
+		indexOid = get_relname_relid(indexrv->relname, rel->rd_rel->relnamespace);
+	else
+		indexOid = RangeVarGetRelid(indexrv, AccessShareLock, false);
+	/* End - OA-REQ-2127 */
 
 	if (!OidIsValid(indexOid))
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
 				 errmsg("index \"%s\" for table \"%s\" does not exist",
-						indexName, RelationGetRelationName(rel))));
+						indexNameStr, RelationGetRelationName(rel))));
 
 	/* Check index is valid to cluster on */
 	check_index_is_clusterable(rel, indexOid, false, lockmode);
@@ -18162,7 +18181,12 @@ ATExecReplicaIdentity(Relation rel, ReplicaIdentityStmt *stmt, LOCKMODE lockmode
 
 
 	/* Check that the index exists */
-	indexOid = get_relname_relid(stmt->name, rel->rd_rel->relnamespace);
+	/* Begin - OA-REQ-2127 */
+	if (ORA_MODE == compatible_mode && stmt->indexnamespace)
+		indexOid = get_relname_relid(stmt->name, get_namespace_oid(stmt->indexnamespace, false));
+	else
+		indexOid = get_relname_relid(stmt->name, rel->rd_rel->relnamespace);
+	/* End - OA-REQ-2127 */
 	if (!OidIsValid(indexOid))
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
@@ -18689,20 +18713,31 @@ AlterTableNamespaceInternal(Relation rel, Oid oldNspOid, Oid nspOid,
 	/* OK, modify the pg_class row and pg_depend entry */
 	classRel = table_open(RelationRelationId, RowExclusiveLock);
 
-	AlterRelationNamespaceInternal(classRel, RelationGetRelid(rel), oldNspOid,
-								   nspOid, true, objsMoved);
+	/* Begin - OA-REQ-2127 */
+	if (ORA_MODE == compatible_mode &&
+		(rel->rd_rel->relkind == RELKIND_INDEX ||
+		 rel->rd_rel->relkind == RELKIND_PARTITIONED_INDEX))
+		AlterRelationNamespaceInternal(classRel, RelationGetRelid(rel), oldNspOid,
+									   nspOid, false, objsMoved);
+	/* End - OA-REQ-2127 */
+	else
+	{
+		AlterRelationNamespaceInternal(classRel, RelationGetRelid(rel), oldNspOid,
+									   nspOid, true, objsMoved);
 
-	/* Fix the table's row type too, if it has one */
-	if (OidIsValid(rel->rd_rel->reltype))
-		AlterTypeNamespaceInternal(rel->rd_rel->reltype,
-								   nspOid, false, false, objsMoved);
+		/* Fix the table's row type too, if it has one */
+		if (OidIsValid(rel->rd_rel->reltype))
+			AlterTypeNamespaceInternal(rel->rd_rel->reltype,
+									   nspOid, false, false, objsMoved);
 
-	/* Fix other dependent stuff */
-	AlterIndexNamespaces(classRel, rel, oldNspOid, nspOid, objsMoved);
-	AlterSeqNamespaces(classRel, rel, oldNspOid, nspOid,
-					   objsMoved, AccessExclusiveLock);
-	AlterConstraintNamespaces(RelationGetRelid(rel), oldNspOid, nspOid,
-							  false, objsMoved);
+		/* Fix other dependent stuff */
+		if (ORA_MODE != compatible_mode) /* OA-REQ-2127 */
+			AlterIndexNamespaces(classRel, rel, oldNspOid, nspOid, objsMoved);
+		AlterSeqNamespaces(classRel, rel, oldNspOid, nspOid,
+						   objsMoved, AccessExclusiveLock);
+		AlterConstraintNamespaces(RelationGetRelid(rel), oldNspOid, nspOid,
+								  false, objsMoved);
+	}
 
 	table_close(classRel, RowExclusiveLock);
 }
@@ -19418,7 +19453,13 @@ RangeVarCallbackForAlterRelation(const RangeVar *rv, Oid relid, Oid oldrelid,
 		relkind != RELKIND_MATVIEW &&
 		relkind != RELKIND_SEQUENCE &&
 		relkind != RELKIND_FOREIGN_TABLE &&
-		relkind != RELKIND_PARTITIONED_TABLE)
+		relkind != RELKIND_PARTITIONED_TABLE &&
+		/* Begin - OA-REQ-2127 */
+		(ORA_MODE != compatible_mode ||
+		 (ORA_MODE == compatible_mode &&
+		  relkind != RELKIND_INDEX &&
+		  relkind != RELKIND_PARTITIONED_INDEX)))
+		/* End - OA-REQ-2127 */
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 				 errmsg("\"%s\" is not a table, view, materialized view, sequence, or foreign table",

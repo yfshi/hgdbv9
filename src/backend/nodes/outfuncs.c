@@ -2953,6 +2953,7 @@ _outIndexStmt(StringInfo str, const IndexStmt *node)
 	WRITE_NODE_TYPE("INDEXSTMT");
 
 	WRITE_STRING_FIELD(idxname);
+	WRITE_STRING_FIELD(idxschemaname); /* OA-REQ-2127 */
 	WRITE_NODE_FIELD(relation);
 	WRITE_STRING_FIELD(accessMethod);
 	WRITE_STRING_FIELD(tableSpace);
@@ -4055,6 +4056,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 			WRITE_NODE_FIELD(including);
 			WRITE_NODE_FIELD(options);
 			WRITE_STRING_FIELD(indexname);
+			WRITE_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 			WRITE_STRING_FIELD(indexspace);
 			WRITE_BOOL_FIELD(reset_default_tblspc);
 			/* access_method and where_clause not currently used */
@@ -4066,6 +4068,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 			WRITE_NODE_FIELD(including);
 			WRITE_NODE_FIELD(options);
 			WRITE_STRING_FIELD(indexname);
+			WRITE_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 			WRITE_STRING_FIELD(indexspace);
 			WRITE_BOOL_FIELD(reset_default_tblspc);
 			/* access_method and where_clause not currently used */
@@ -4077,6 +4080,7 @@ _outConstraint(StringInfo str, const Constraint *node)
 			WRITE_NODE_FIELD(including);
 			WRITE_NODE_FIELD(options);
 			WRITE_STRING_FIELD(indexname);
+			WRITE_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 			WRITE_STRING_FIELD(indexspace);
 			WRITE_BOOL_FIELD(reset_default_tblspc);
 			WRITE_STRING_FIELD(access_method);

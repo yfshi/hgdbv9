@@ -1005,8 +1005,8 @@ reset role;
 explain (costs off, verbose)
   select count(*) from tenk1 a where (unique1, two) in
     (select unique1, row_number() over() from tenk1 b);
-                                          QUERY PLAN                                          
-----------------------------------------------------------------------------------------------
+                                             QUERY PLAN                                              
+-----------------------------------------------------------------------------------------------------
  Aggregate
    Output: count(*)
    ->  Hash Semi Join
@@ -1023,7 +1023,7 @@ explain (costs off, verbose)
                      ->  Gather
                            Output: b.unique1
                            Workers Planned: 4
-                           ->  Parallel Index Only Scan using tenk1_unique1 on public.tenk1 b
+                           ->  Parallel Index Only Scan using public.tenk1_unique1 on public.tenk1 b
                                  Output: b.unique1
 (18 rows)
 

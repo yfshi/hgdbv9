@@ -597,6 +597,9 @@ ExecAlterObjectSchemaStmt(AlterObjectSchemaStmt *stmt,
 		case OBJECT_TABLE:
 		case OBJECT_VIEW:
 		case OBJECT_MATVIEW:
+		/* Begin - OA-REQ-2127 */
+		case OBJECT_INDEX:
+		/* End - OA-REQ-2127 */
 			address = AlterTableNamespace(stmt,
 										  oldSchemaAddr ? &oldNspOid : NULL);
 			break;
