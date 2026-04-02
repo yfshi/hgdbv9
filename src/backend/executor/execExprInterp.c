@@ -97,6 +97,7 @@
 #include "optimizer/optimizer.h"
 #include "catalog/pg_cast.h"
 /* End - ReqID:SRS-MYSQL-SET */
+#include "parser/scansup.h"	/* OA-REQ-2125 */
 
 /*
  * Use computed-goto-based opcode dispatch when computed gotos are available.
@@ -2699,11 +2700,30 @@ ExecEvalSQLValueFunction(ExprState *state, ExprEvalStep *op)
 			break;
 		case SVFOP_CURRENT_ROLE:
 		case SVFOP_CURRENT_USER:
-		case SVFOP_USER:
 			InitFunctionCallInfoData(*fcinfo, NULL, 0, InvalidOid, NULL, NULL);
 			*op->resvalue = current_user(fcinfo);
 			*op->resnull = fcinfo->isnull;
 			break;
+		/*Begin - OA-REQ-2125 */
+		case SVFOP_USER:
+			InitFunctionCallInfoData(*fcinfo, NULL, 0, InvalidOid, NULL, NULL);
+			if (compatible_mode == ORA_MODE && enable_case_switch
+					&& identifier_case_switch != NORMAL
+					&& !identifier_case_from_pg_dump)
+			{
+				char *usernames;
+				if (identifier_case_switch == LOWERCASE
+						&& identifier_is_all_upper(DatumGetCString(current_user(fcinfo)), strlen(DatumGetCString(current_user(fcinfo)))))
+					usernames = downcase_identifier(DatumGetCString(current_user(fcinfo)), strlen(DatumGetCString(current_user(fcinfo))), true, true);
+				else if (identifier_case_switch == INTERCHANGE)
+					usernames = identifier_case_transform(DatumGetCString(current_user(fcinfo)), strlen(DatumGetCString(current_user(fcinfo))));
+				*op->resvalue = CStringGetDatum(usernames);
+			}
+			else
+				*op->resvalue = current_user(fcinfo);
+			*op->resnull = fcinfo->isnull;
+			break;
+		/* End -OA-REQ-2125 */
 		case SVFOP_SESSION_USER:
 			InitFunctionCallInfoData(*fcinfo, NULL, 0, InvalidOid, NULL, NULL);
 			*op->resvalue = session_user(fcinfo);
