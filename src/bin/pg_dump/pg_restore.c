@@ -130,6 +130,7 @@ main(int argc, char **argv)
 		{"no-security-labels", no_argument, &no_security_labels, 1},
 		{"no-subscriptions", no_argument, &no_subscriptions, 1},
 		{"restrict-key", required_argument, NULL, 6},
+		{"no-hg-seclabel", no_argument, NULL, 7}, /* ReqID: SRS-SECURITY-LMAC */
 
 		{NULL, 0, NULL, 0}
 	};
@@ -304,6 +305,12 @@ main(int argc, char **argv)
 				opts->restrict_key = pg_strdup(optarg);
 				break;
 
+			/* Begin - ReqID: SRS-SECURITY-LMAC */
+			case 7:
+				opts->no_restore_hgseclabel = true;
+				break;
+			/* End - ReqID: SRS-SECURITY-LMAC */
+
 			default:
 				fprintf(stderr, _("Try \"%s --help\" for more information.\n"), progname);
 				exit_nicely(1);
@@ -433,6 +440,7 @@ main(int argc, char **argv)
 	}
 	opts->if_exists = if_exists;
 	opts->strict_names = strict_names;
+	opts->is_restore = true; /* ReqID: SRS-SECURITY-LMAC */
 
 	if (opts->formatName)
 	{
@@ -556,6 +564,7 @@ usage(const char *progname)
 	printf(_("  --no-security-labels         do not restore security labels\n"));
 	printf(_("  --no-subscriptions           do not restore subscriptions\n"));
 	printf(_("  --no-tablespaces             do not restore tablespace assignments\n"));
+	printf(_("  --no-hg-seclabel             do not restore the security label columns of the table (hg_sysmac)\n")); /* ReqID: SRS-SECURITY-LMAC */
 	printf(_("  --restrict-key=RESTRICT_KEY  use provided string as psql \\restrict key\n"));
 	printf(_("  --section=SECTION            restore named section (pre-data, data, or post-data)\n"));
 	printf(_("  --strict-names               require table and/or schema include patterns to\n"

@@ -207,73 +207,213 @@ AS 'MODULE_PATHNAME', 'apply_row_policy'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
 
 /*
+ * parameter:
+ * 		(table_name, action, is_dump)
+ */
+CREATE FUNCTION apply_row_policy(oid, text, bool)
+RETURNS text
+AS 'MODULE_PATHNAME', 'apply_row_policy'
+LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+
+/*
  * Create Mandatory Access Control (MAC) row-level policies:
  *	 - SELECT: user_seclabel >= row_seclabel
  *	 - UPDATE: user_seclabel = row_seclabel
  *	 - DELETE: user_seclabel = row_seclabel
  *	 - INSERT: table_seclabel >= user_seclabel
+ *
+ * When `is_dump` is true, it indicates that the current operation is pg_dump.
+ * Since pg_dump automatically exports policies, this function does not need
+ * to create the policy again.
  */
-create or replace function apply_table_policy(table_name text, is_partition bool) returns void as $$
+create or replace function apply_table_policy(schema_name text, table_name text, is_partition bool, is_dump bool) returns void as $$
 declare
     sql text;
 begin
     IF NOT is_partition THEN
         /* Begin - Bug #5996 */
-        sql='alter table '||table_name||' add column if not exists __hg_seclabel__ hg_security.seclabel';
+        sql = 'alter table '
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) ' add column if not exists __hg_seclabel__ hg_security.seclabel';
         execute sql;
-        sql='alter table '||table_name||' alter column __hg_seclabel__ set default (hg_security.mac_row_user_seclabel())';
+        sql = 'alter table '
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) 'alter column __hg_seclabel__ set default (hg_security.mac_row_user_seclabel())';
         execute sql;
         /* End - Bug #5996 */
     END IF;
-    sql='create policy policysel'||table_name||' on '||table_name||' for select using (hg_security.mac_row_select_policy(__hg_seclabel__))';
+    IF NOT is_dump THEN
+        sql = 'create policy "'
+              operator(pg_catalog.||) '__Policysel'
+              operator(pg_catalog.||) schema_name
+              operator(pg_catalog.||) table_name
+              operator(pg_catalog.||) '__" on '
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||)replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) ' for select using (hg_security.mac_row_select_policy(__hg_seclabel__))';
+        execute sql;
+        sql = 'create policy "'
+              operator(pg_catalog.||) '__Policyins'
+              operator(pg_catalog.||) schema_name
+              operator(pg_catalog.||) table_name
+              operator(pg_catalog.||) '__" on '
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) ' for insert with check (hg_security.mac_row_insert_policy(('''
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              ''')::regclass))';
+        execute sql;
+        sql = 'create policy "'
+              operator(pg_catalog.||) '__Policydel'
+              operator(pg_catalog.||) schema_name
+              operator(pg_catalog.||) table_name
+              operator(pg_catalog.||) '__" on '
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) ' for delete using (hg_security.mac_row_delete_policy(__hg_seclabel__))';
+        execute sql;
+        sql = 'create policy "'
+              operator(pg_catalog.||) '__Policyupd'
+              operator(pg_catalog.||) schema_name
+              operator(pg_catalog.||) table_name
+              operator(pg_catalog.||) '__" on '
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) replace(schema_name, '"', '""')
+              operator(pg_catalog.||) '"."'
+              operator(pg_catalog.||) replace(table_name, '"', '""')
+              operator(pg_catalog.||) '"'
+              operator(pg_catalog.||) ' for update using (hg_security.mac_row_update_policy(__hg_seclabel__))';
+        execute sql;
+    END IF;
+end;
+$$ language plpgsql
+security invoker;
+
+
+create or replace function enable_table_policy(schema_name text, table_name text) returns void as $$
+declare
+    sql text;
+begin
+    sql = 'alter table '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) ' FORCE ROW LEVEL SECURITY ';
     execute sql;
-    sql='create policy policyins'||table_name||' on '||table_name||' for insert with check (hg_security.mac_row_insert_policy(('''||table_name||''')::regclass))';
-    execute sql;
-    sql='create policy policydel'||table_name||' on '||table_name||' for delete using (hg_security.mac_row_delete_policy(__hg_seclabel__))';
-    execute sql;
-    sql='create policy policyupd'||table_name||' on '||table_name||' for update using (hg_security.mac_row_update_policy(__hg_seclabel__))';
+    sql = 'alter table '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) ' ENABLE ROW LEVEL SECURITY';
     execute sql;
 end;
 $$ language plpgsql
 security invoker;
 
-create or replace function enable_table_policy(table_name text) returns void as $$
+create or replace function disable_table_policy(schema_name text, table_name text) returns void as $$
 declare
     sql text;
 begin
-    sql='alter table '||table_name||' FORCE ROW LEVEL SECURITY ';
+    sql = 'alter table '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) ' no FORCE ROW LEVEL SECURITY ';
     execute sql;
-    sql='alter table '||table_name||' ENABLE ROW LEVEL SECURITY';
+    sql = 'alter table '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) ' disable ROW LEVEL SECURITY';
     execute sql;
 end;
 $$ language plpgsql
 security invoker;
 
-create or replace function disable_table_policy(table_name text) returns void as $$
+create or replace function drop_table_policy(schema_name text, table_name text) returns void as $$
 declare
     sql text;
 begin
-    sql='alter table '||table_name||' no FORCE ROW LEVEL SECURITY ';
+    sql = 'drop policy "'
+          operator(pg_catalog.||) '__Policysel'
+          operator(pg_catalog.||) schema_name
+          operator(pg_catalog.||) table_name
+          operator(pg_catalog.||) '__" on '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"';
     execute sql;
-    sql='alter table '||table_name||' disable ROW LEVEL SECURITY';
+    sql = 'drop policy "'
+          operator(pg_catalog.||) '__Policyins'
+          operator(pg_catalog.||) schema_name
+          operator(pg_catalog.||) table_name
+          operator(pg_catalog.||) '__" on '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"';
     execute sql;
-end;
-$$ language plpgsql
-security invoker;
-
-create or replace function drop_table_policy(table_name text) returns void as $$
-declare
-    sql text;
-begin
-    sql='drop policy policysel'||table_name||' on '||table_name;
+    sql = 'drop policy "'
+          operator(pg_catalog.||) '__Policydel'
+          operator(pg_catalog.||) schema_name
+          operator(pg_catalog.||) table_name
+          operator(pg_catalog.||) '__" on '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"';
     execute sql;
-    sql='drop policy policyins'||table_name||' on '||table_name;
+    sql = 'drop policy "'
+          operator(pg_catalog.||) '__Policyupd'
+          operator(pg_catalog.||) schema_name
+          operator(pg_catalog.||) table_name
+          operator(pg_catalog.||) '__" on '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"';
     execute sql;
-    sql='drop policy policydel'||table_name||' on '||table_name;
-    execute sql;
-    sql='drop policy policyupd'||table_name||' on '||table_name;
-    execute sql;
-    sql='alter table '||table_name||' drop column __hg_seclabel__ cascade';
+    sql = 'alter table '
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) replace(schema_name, '"', '""')
+          operator(pg_catalog.||) '"."'
+          operator(pg_catalog.||) replace(table_name, '"', '""')
+          operator(pg_catalog.||) '"'
+          operator(pg_catalog.||) ' drop column __hg_seclabel__ cascade';
     execute sql;
 end;
 $$ language plpgsql

@@ -33,6 +33,7 @@
 #include "commands/seclabel.h"
 #include "commands/tablecmds.h"
 #include "executor/executor.h"
+#include "libpq/libpq.h"
 #include "miscadmin.h"
 #include "nodes/bitmapset.h"
 #include "utils/lsyscache.h"
@@ -413,7 +414,18 @@ sysmac_dml_privileges(List *rangeTabls, bool abort_on_violation)
 		/* skip all relations created before first start */
 		if (rte->relid < FirstNormalObjectId)
 		{
-			if (rte->relid == SecLabelRelationId || rte->relid == SharedSecLabelRelationId)
+			if (MyProcPort &&
+				MyProcPort->application_name &&
+				!strcmp(MyProcPort->application_name, "pg_dump"))
+			{
+				/*
+				 * Since `pg_dump` needs to access the pg_seclabel and pg_shseclabel,
+				 * applying access restrictions at this point would lead to errors.
+				 * Therefore, the `pg_dump` command is exempt from these restrictions.
+				 */
+				;
+			}
+			else if (rte->relid == SecLabelRelationId || rte->relid == SharedSecLabelRelationId)
 			{
 				if (!IS_SYSSSO(GetUserId()))
 					ereport(ERROR,

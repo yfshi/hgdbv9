@@ -22,11 +22,14 @@
 #include "access/genam.h"
 #include "catalog/pg_authid.h"
 #include "catalog/pg_inherits.h"
+#include "catalog/pg_namespace.h"
 #include "executor/spi.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
 #include "miscadmin.h"
+#include "parser/scansup.h"
+#include "parser/pg_object_hook.h"
 
 #include "hg_sysmac.h"
 
@@ -64,6 +67,62 @@ relation_has_hgseclabel(Relation rel)
 	return false;
 }
 
+static void
+mac_identifier_case_transform(Oid relid, Relation target_rel, char **schema, char **relname)
+{
+	if (compatible_mode == MYS_MODE)
+	{
+		ObjectAddress address;
+		PgObjectInfo oriinf_schema = NULL;
+		PgObjectInfo oriinf_relname = NULL;
+
+		memset(&address, 0, sizeof(ObjectAddress));
+		ObjectAddressSet(address, RelationRelationId, relid);
+		if (pg_object_get_ori_infor_hook)
+		{
+			oriinf_relname = pg_object_get_ori_infor_hook (address);
+			if (oriinf_relname)
+				*relname = pstrdup(oriinf_relname->oriname);
+		}
+
+		memset(&address, 0, sizeof(ObjectAddress));
+		ObjectAddressSet(address, NamespaceRelationId, oriinf_relname->orischema);
+		if (pg_object_get_ori_infor_hook)
+		{
+			oriinf_schema = pg_object_get_ori_infor_hook (address);
+			if (oriinf_schema)
+				*schema = pstrdup(oriinf_schema->oriname);
+		}
+	}
+	else if (compatible_mode == ORA_MODE)
+	{
+		char *old_relname = pstrdup(RelationGetRelationName(target_rel));
+		char* old_schema = get_namespace_name(target_rel->rd_rel->relnamespace);
+
+		/* if identifier_case_switch is INTERCHANGE, performs the transformation. */
+		if (INTERCHANGE == identifier_case_switch)
+		{
+			*schema = identifier_case_transform(old_schema, strlen(old_schema));
+			*relname = identifier_case_transform(old_relname, strlen(old_relname));
+		}
+		else
+		{
+			*schema = old_schema;
+			*relname = old_relname;
+		}
+	}
+	else
+	{
+		*relname = pstrdup(RelationGetRelationName(target_rel));
+		*schema = get_namespace_name(target_rel->rd_rel->relnamespace);
+	}
+
+	if (*schema == NULL || *relname == NULL)
+	{
+		elog(ERROR, "Table name and schema for '%u' not found.", relid);
+	}
+}
+
 /*
  * Row-level mandatory access control processing supports the following actions:
  * 	 - apply  : function - apply_table_policy
@@ -72,7 +131,7 @@ relation_has_hgseclabel(Relation rel)
  * 	 - drop   : function - drop_table_policy
  */
 static bool
-apply_row_policy_on_table(Oid relid, PolicyActions action)
+apply_row_policy_on_table(Oid relid, PolicyActions action, bool dump)
 {
 	StringInfoData querybuf;
 	Relation	target_rel;
@@ -80,14 +139,19 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 	Oid			save_userid;
 	int			save_sec_context;
 	int			save_nestlevel;
-	char		*relname;
 	List		*tableIds;
 	ListCell	*li;
+	char		*schema = NULL;
+	char		*relname = NULL;
 
 	initStringInfo(&querybuf);
 	target_rel = table_open(relid, AccessShareLock);
 	relowner = target_rel->rd_rel->relowner;
-	relname = pstrdup(RelationGetRelationName(target_rel));
+	/*
+	 * Obtain the case-transformed schema and relname according to
+	 * the compatible modes of MySQL / Oracle / PG.
+	 */
+	mac_identifier_case_transform(relid, target_rel, &schema, &relname);
 	table_close(target_rel, AccessShareLock);
 
 	/*
@@ -119,14 +183,26 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 					elog(ERROR, "Mandatory access control row-level - partitioned tables"
 								" must be applied to the parent before the child tables.");
 				}
-				appendStringInfo(&querybuf,
-						 "select hg_security.apply_table_policy('%s', true) ",
-						 relname);
+				if (dump)
+					appendStringInfo(&querybuf,
+							 "select hg_security.apply_table_policy('%s', '%s', true, true) ",
+							 schema, relname);
+				else
+					appendStringInfo(&querybuf,
+							 "select hg_security.apply_table_policy('%s', '%s', true, false) ",
+							 schema, relname);
 			}
 			else
-				appendStringInfo(&querybuf,
-						 "select hg_security.apply_table_policy('%s', false) ",
-						 relname);
+			{
+				if (dump)
+					appendStringInfo(&querybuf,
+							 "select hg_security.apply_table_policy('%s', '%s', false, true) ",
+							 schema, relname);
+				else
+					appendStringInfo(&querybuf,
+							 "select hg_security.apply_table_policy('%s', '%s', false, false) ",
+							 schema, relname);
+			}
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 
@@ -151,8 +227,8 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		case ENABLE:
 		{
 			appendStringInfo(&querybuf,
-							 "select hg_security.enable_table_policy('%s') ",
-							 relname);
+							 "select hg_security.enable_table_policy('%s', '%s') ",
+							 schema, relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 			break;
@@ -160,8 +236,8 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		case DISABLE:
 		{
 			appendStringInfo(&querybuf,
-							 "select hg_security.disable_table_policy('%s') ",
-							 relname);
+							 "select hg_security.disable_table_policy('%s', '%s') ",
+							 schema, relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 			break;
@@ -170,18 +246,24 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 		{
 			foreach(li, tableIds)
 			{
+				char		*inh_schema = NULL;
+				char		*inh_relname = NULL;
 				Oid			tableOid = lfirst_oid(li);
+				Relation	rel = table_open(tableOid, AccessShareLock);
+				mac_identifier_case_transform(tableOid, rel, &inh_schema, &inh_relname);
+				table_close(rel, AccessShareLock);
+
 				appendStringInfo(&querybuf,
-							 "select hg_security.disable_table_policy('%s') ",
-							 get_rel_name(tableOid));
+							 "select hg_security.disable_table_policy('%s', '%s') ",
+							 inh_schema, inh_relname);
 				if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 					elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 				resetStringInfo(&querybuf);
 			}
 
 			appendStringInfo(&querybuf,
-							 "select hg_security.drop_table_policy('%s') ",
-							 relname);
+							 "select hg_security.drop_table_policy('%s', '%s') ",
+							 schema, relname);
 			if (SPI_exec(querybuf.data, 0) != SPI_OK_SELECT)
 				elog(ERROR, "SPI_exec failed: %s", querybuf.data);
 			break;
@@ -201,6 +283,7 @@ apply_row_policy_on_table(Oid relid, PolicyActions action)
 	/* Restore userid and security context */
 	SetUserIdAndSecContext(save_userid, save_sec_context);
 
+	pfree(schema);
 	pfree(relname);
 
 	return true;
@@ -214,7 +297,11 @@ apply_row_policy(PG_FUNCTION_ARGS)
 	Oid   relid = PG_GETARG_OID(0);
 	char *action_cmd = TextDatumGetCString(PG_GETARG_DATUM(1));
 	char *result;
+	bool  dump = false;
 	PolicyActions action;
+
+	if (PG_NARGS() == 3)
+		dump = PG_GETARG_BOOL(2);
 
 	is_security_roles();
 
@@ -235,7 +322,7 @@ apply_row_policy(PG_FUNCTION_ARGS)
 	else
 		elog(ERROR, "unsupported policy command type: %s", action_cmd);
 
-	if (apply_row_policy_on_table(relid, action))
+	if (apply_row_policy_on_table(relid, action, dump))
 		result = "set";
 	else
 		result = "failed";

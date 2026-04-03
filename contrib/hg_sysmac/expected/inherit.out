@@ -734,9 +734,9 @@ SELECT __hg_seclabel__,* FROM inh_parent;
 RESET ROLE;
 SELECT hg_security.apply_row_policy('inh_child'::regclass, 'drop');
 ERROR:  cannot drop inherited column "__hg_seclabel__"
-CONTEXT:  SQL statement "alter table inh_child drop column __hg_seclabel__ cascade"
-PL/pgSQL function hg_security.drop_table_policy(text) line 14 at EXECUTE
-SQL statement "select hg_security.drop_table_policy('inh_child') "
+CONTEXT:  SQL statement "alter table "public"."inh_child" drop column __hg_seclabel__ cascade"
+PL/pgSQL function hg_security.drop_table_policy(text,text) line 56 at EXECUTE
+SQL statement "select hg_security.drop_table_policy('public', 'inh_child') "
 SELECT hg_security.apply_row_policy('inh_parent'::regclass, 'drop');
  apply_row_policy 
 ------------------

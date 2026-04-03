@@ -1443,6 +1443,10 @@ msgstr "  -e, --extension=PATTERN      仅转储指定的扩展名\n"
 msgid "  -E, --encoding=ENCODING      dump the data in encoding ENCODING\n"
 msgstr "  -E, --encoding=ENCODING      转储以ENCODING形式编码的数据\n"
 
+#: pg_dump.c:1106
+#, c-format
+msgid "  -L, --dump-sysmac-label      dump the security label columns of the table (hg_sysmac)\n"
+msgstr "  -L, --dump-sysmac-label      备份表的安全标记列(标记强访)\n"
 
 #: pg_dump.c:1109 pg_dumpall.c:634
 #, c-format
@@ -2638,6 +2642,11 @@ msgstr "  --no-security-labels         不恢复安全标签信息\n"
 #, c-format
 msgid "  --no-subscriptions           do not restore subscriptions\n"
 msgstr "  --no-subscriptions           不恢复订阅\n"
+
+#: pg_restore.c:505
+#, c-format
+msgid "  --no-hg-seclabel             do not restore the security label columns of the table (hg_sysmac)\n"
+msgstr "  --no-hg-seclabel             不恢复表的安全标记列(hg_sysmac)\n"
 
 #: pg_restore.c:502
 #, c-format

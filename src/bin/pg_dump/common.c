@@ -1007,3 +1007,88 @@ strInArray(const char *pattern, char **arr, int arr_size)
 	}
 	return -1;
 }
+
+/* Begin - ReqID: SRS-SECURITY-LMAC */
+/*
+ * dumpHgSecLabel
+ *
+ * As above, but dump hg security label for both the specified table (or view)
+ * and its columns.
+ */
+void
+dumpHgSecLabel(Archive *fout, const TableInfo *tbinfo, const char *qualrelname)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer query;
+
+	/* do nothing */
+	if (!dopt->dump_sysmac_label || !tbinfo->has_hgseclabel)
+		return;
+
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query, "\nSELECT hg_security.apply_row_policy('%s'::regclass, 'apply', true);\n",
+						  qualrelname);
+	appendPQExpBuffer(query, "\nALTER TABLE %s FORCE ROW LEVEL SECURITY;\n",
+						  qualrelname);
+
+	ArchiveEntry(fout, nilCatalogId, createDumpId(),
+				 ARCHIVE_OPTS(.tag = HG_SECLABEL_COLNAME,
+							  .namespace = tbinfo->dobj.namespace->dobj.name,
+							  .description = "DUMP HG SECLABEL",
+							  .section = SECTION_NONE,
+							  .createStmt = query->data,
+							  .deps = &(tbinfo->dobj.dumpId),
+							  .nDeps = 1));
+
+	destroyPQExpBuffer(query);
+
+	return;
+}
+
+/*
+ * CleanHgSecLabel
+ *
+ * As above, but clean hg security label for both the specified table (or view)
+ * and its columns.
+ */
+void
+cleanHgSecLabel(Archive *fout, const TableDataInfo *tdinfo, const TableInfo *tbinfo)
+{
+	/*
+	 * Macro for producing quoted, schema-qualified name of a dumpable object.
+	 */
+	#define fmtQualifiedDumpable(obj) \
+		fmtQualifiedId((obj)->dobj.namespace->dobj.name, \
+					   (obj)->dobj.name)
+
+	DumpOptions *dopt = fout->dopt;
+	char		*qualrelname;
+	PQExpBuffer  query;
+
+	/* do nothing */
+	if (!dopt->dump_sysmac_label || !tbinfo->has_hgseclabel)
+		return;
+
+	query = createPQExpBuffer();
+	qualrelname = pg_strdup(fmtQualifiedDumpable(tbinfo));
+
+	appendPQExpBuffer(query, "\nALTER TABLE %s no FORCE ROW LEVEL SECURITY;\n",
+					  qualrelname);
+	appendPQExpBuffer(query, "\nALTER TABLE %s DROP COLUMN IF EXISTS __hg_seclabel__ CASCADE;\n",
+					  qualrelname);
+
+	ArchiveEntry(fout, nilCatalogId, createDumpId(),
+				 ARCHIVE_OPTS(.tag = HG_SECLABEL_COLNAME,
+							  .namespace = tbinfo->dobj.namespace->dobj.name,
+							  .description = "CLEAN HG SECLABEL",
+							  .section = SECTION_POST_DATA,
+							  .createStmt = query->data,
+							  .deps = &(tdinfo->dobj.dumpId),
+							  .nDeps = 1));
+
+	destroyPQExpBuffer(query);
+
+	return;
+}
+/* End - ReqID: SRS-SECURITY-LMAC */

@@ -4857,6 +4857,46 @@ _tocEntryRequired(TocEntry *te, teSection curSection, ArchiveHandle *AH)
 	if (ropt->dataOnly)
 		res = res & REQ_DATA;
 
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	/* If it's a hg security label, maybe ignore it */
+	if (ropt->is_restore)
+	{
+		if (ropt->no_restore_hgseclabel)
+		{
+			/* Filter out SQL statements that create row-level security policies */
+			if (strcmp(te->desc, "POLICY") == 0)
+			{
+				if (strstr(te->tag, "__Policydel") ||
+					strstr(te->tag, "__Policyins") ||
+					strstr(te->tag, "__Policysel") ||
+					strstr(te->tag, "__Policyupd"))
+					return 0;
+			}
+			/*
+			 * Filter out SQL statement that enable row-level security.
+			 *  - ALTER TABLE xxx ENABLE ROW LEVEL SECURITY;
+			 */
+			if (strcmp(te->desc, "HG ROW SECURITY") == 0)
+				return 0;
+			/*
+			 * Filter out SQL statement that set hg security label.
+			 *  - SECURITY LABEL FOR sysmac ON xxx IS xxx
+			 */
+			if (strcmp(te->desc, "HG SECURITY LABEL") == 0)
+				return 0;
+		}
+		else
+		{
+			/*
+			 * When importing sysmac labels, the TOC entry that drops the
+			 * __hg_seclabel__ column needs to be filtered out.
+			 */
+			if (strcmp(te->desc, "CLEAN HG SECLABEL") == 0)
+				return 0;
+		}
+	}
+	/* End - ReqID: SRS-SECURITY-LMAC */
+
 	return res;
 }
 

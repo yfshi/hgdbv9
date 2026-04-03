@@ -1814,6 +1814,8 @@ dumpTableData(Archive *fout, const TableDataInfo *tdinfo)
 		 * exceeding INT_MAX pages.
 		 */
 		te->dataLength = (BlockNumber) tbinfo->relpages;
+
+		cleanHgSecLabel(fout, tdinfo, tbinfo); /* ReqID: SRS-SECURITY-LMAC */
 	}
 
 	destroyPQExpBuffer(copyBuf);
@@ -3121,7 +3123,9 @@ getPolicies(Archive *fout, TableInfo tblinfo[], int numTables)
 		appendPQExpBuffer(tbloids, "%u", tbinfo->dobj.catId.oid);
 
 		/* Is RLS enabled?  (That's separate from whether it has policies) */
-		if (tbinfo->rowsec)
+		if (tbinfo->rowsec && /* Begin - ReqID: SRS-SECURITY-LMAC */
+			((tbinfo->has_hgseclabel && fout->dopt->dump_sysmac_label) || !tbinfo->has_hgseclabel))
+			/* End - ReqID: SRS-SECURITY-LMAC */
 		{
 			/*
 			 * We represent RLS being enabled on a table by creating a
@@ -3162,14 +3166,31 @@ getPolicies(Archive *fout, TableInfo tblinfo[], int numTables)
 		appendPQExpBuffer(query, "pol.polpermissive, ");
 	else
 		appendPQExpBuffer(query, "'t' as polpermissive, ");
-	appendPQExpBuffer(query,
-					  "CASE WHEN pol.polroles = '{0}' THEN NULL ELSE "
-					  "   pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(rolname) from pg_catalog.pg_roles WHERE oid = ANY(pol.polroles)), ', ') END AS polroles, "
-					  "pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS polqual, "
-					  "pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) AS polwithcheck "
-					  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
-					  "JOIN pg_catalog.pg_policy pol ON (src.tbloid = pol.polrelid)",
-					  tbloids->data);
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	if (fout->dopt->dump_sysmac_label)
+		appendPQExpBuffer(query,
+						  "CASE WHEN pol.polroles = '{0}' THEN NULL ELSE "
+						  "   pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(rolname) from pg_catalog.pg_roles WHERE oid = ANY(pol.polroles)), ', ') END AS polroles, "
+						  "pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS polqual, "
+						  "pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) AS polwithcheck "
+						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
+						  "JOIN pg_catalog.pg_policy pol ON (src.tbloid = pol.polrelid)",
+						  tbloids->data);
+	else
+		appendPQExpBuffer(query,
+						  "CASE WHEN pol.polroles = '{0}' THEN NULL ELSE "
+						  "   pg_catalog.array_to_string(ARRAY(SELECT pg_catalog.quote_ident(rolname) from pg_catalog.pg_roles WHERE oid = ANY(pol.polroles)), ', ') END AS polroles, "
+						  "pg_catalog.pg_get_expr(pol.polqual, pol.polrelid) AS polqual, "
+						  "pg_catalog.pg_get_expr(pol.polwithcheck, pol.polrelid) AS polwithcheck "
+						  "FROM unnest('%s'::pg_catalog.oid[]) AS src(tbloid)\n"
+						  "JOIN pg_catalog.pg_policy pol ON (src.tbloid = pol.polrelid)\n"
+						  "JOIN pg_catalog.pg_class cls ON (cls.oid = pol.polrelid)\n"
+						  "WHERE pol.polname NOT LIKE '__Policysel%%__'"
+						  "  AND pol.polname NOT LIKE '__Policyins%%__'"
+						  "  AND pol.polname NOT LIKE '__Policydel%%__'"
+						  "  AND pol.polname NOT LIKE '__Policyupd%%__'",
+						  tbloids->data);
+	/* End - ReqID: SRS-SECURITY-LMAC */
 
 	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
 
@@ -3256,6 +3277,15 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 	 */
 	if (polinfo->polname == NULL)
 	{
+		/* Begin - ReqID: SRS-SECURITY-LMAC */
+		char *des;
+
+		if (tbinfo->has_hgseclabel)
+			des = "HG ROW SECURITY";
+		else
+			des = "ROW SECURITY";
+		/* End - ReqID: SRS-SECURITY-LMAC */
+
 		query = createPQExpBuffer();
 
 		appendPQExpBuffer(query, "ALTER TABLE %s ENABLE ROW LEVEL SECURITY;",
@@ -3271,7 +3301,7 @@ dumpPolicy(Archive *fout, const PolicyInfo *polinfo)
 						 ARCHIVE_OPTS(.tag = polinfo->dobj.name,
 									  .namespace = polinfo->dobj.namespace->dobj.name,
 									  .owner = tbinfo->rolname,
-									  .description = "ROW SECURITY",
+									  .description = des,
 									  .section = SECTION_POST_DATA,
 									  .createStmt = query->data,
 									  .deps = &(tbinfo->dobj.dumpId),
@@ -9325,6 +9355,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->notnull = (bool *) pg_malloc(ntups * sizeof(bool));
 		tbinfo->inhNotNull = (bool *) pg_malloc(ntups * sizeof(bool));
 		tbinfo->attrdefs = (AttrDefInfo **) pg_malloc(ntups * sizeof(AttrDefInfo *));
+		tbinfo->no_export_hgseclabel = (bool *) pg_malloc(ntups * sizeof(bool)); /* ReqID: SRS-SECURITY-LMAC */
 		hasdefaults = false;
 
 		for (int j = 0; j < ntups; j++)
@@ -9357,6 +9388,12 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 				hasdefaults = true;
 			/* these flags will be set in flagInhAttrs() */
 			tbinfo->inhNotNull[j] = false;
+
+			/* Begin - ReqID: SRS-SECURITY-LMAC */
+			/* when include_sysmac_label is false and the column is __hg_seclabel__, do not export this column. */
+			tbinfo->no_export_hgseclabel[j] = (!dopt->dump_sysmac_label && !strcmp(tbinfo->attnames[j], HG_SECLABEL_COLNAME));
+			tbinfo->has_hgseclabel |= (!strcmp(tbinfo->attnames[j], HG_SECLABEL_COLNAME));
+			/* End - ReqID: SRS-SECURITY-LMAC */
 		}
 
 		PQclear(res);
@@ -16316,6 +16353,15 @@ dumpSecLabel(Archive *fout, const char *type, const char *name,
 		if (labels[i].objsubid != subid)
 			continue;
 
+		/* Begin - ReqID: SRS-SECURITY-LMAC */
+		/*
+		 * Ignore label entries for which the provider is 'sysmac'.
+		 */
+		if (!dopt->dump_sysmac_label &&
+			strcmp(fmtId(labels[i].provider), HG_SECLABEL_PROVIDER) == 0)
+			continue;
+		/* End - ReqID: SRS-SECURITY-LMAC */
+
 		appendPQExpBuffer(query,
 						  "SECURITY LABEL FOR %s ON %s ",
 						  fmtId(labels[i].provider), type);
@@ -16361,6 +16407,7 @@ dumpTableSecLabel(Archive *fout, const TableInfo *tbinfo, const char *reltypenam
 	int			i;
 	PQExpBuffer query;
 	PQExpBuffer target;
+	PQExpBuffer sysmac_query; /* ReqID: SRS-SECURITY-LMAC */
 
 	/* do nothing, if --no-security-labels is supplied */
 	if (dopt->no_security_labels)
@@ -16382,6 +16429,7 @@ dumpTableSecLabel(Archive *fout, const TableInfo *tbinfo, const char *reltypenam
 
 	query = createPQExpBuffer();
 	target = createPQExpBuffer();
+	sysmac_query = createPQExpBuffer(); /* ReqID: SRS-SECURITY-LMAC */
 
 	for (i = 0; i < nlabels; i++)
 	{
@@ -16389,6 +16437,15 @@ dumpTableSecLabel(Archive *fout, const TableInfo *tbinfo, const char *reltypenam
 		const char *provider = labels[i].provider;
 		const char *label = labels[i].label;
 		int			objsubid = labels[i].objsubid;
+
+		/* Begin - ReqID: SRS-SECURITY-LMAC */
+		/*
+		 * Ignore label entries for which the provider is 'sysmac'.
+		 */
+		if (!dopt->dump_sysmac_label &&
+			strcmp(fmtId(labels[i].provider), HG_SECLABEL_PROVIDER) == 0)
+			continue;
+		/* End - ReqID: SRS-SECURITY-LMAC */
 
 		resetPQExpBuffer(target);
 		if (objsubid == 0)
@@ -16404,10 +16461,22 @@ dumpTableSecLabel(Archive *fout, const TableInfo *tbinfo, const char *reltypenam
 							  fmtQualifiedDumpable(tbinfo));
 			appendPQExpBuffer(target, ".%s", fmtId(colname));
 		}
-		appendPQExpBuffer(query, "SECURITY LABEL FOR %s ON %s IS ",
-						  fmtId(provider), target->data);
-		appendStringLiteralAH(query, label, fout);
-		appendPQExpBufferStr(query, ";\n");
+
+		/* Begin - ReqID: SRS-SECURITY-LMAC */
+		if (strcmp(fmtId(labels[i].provider), HG_SECLABEL_PROVIDER) == 0)
+		{
+			appendPQExpBuffer(sysmac_query, "SECURITY LABEL FOR %s ON %s IS ",
+							  fmtId(provider), target->data);
+			appendStringLiteralAH(sysmac_query, label, fout);
+			appendPQExpBufferStr(sysmac_query, ";\n");
+		} /* End - ReqID: SRS-SECURITY-LMAC */
+		else
+		{
+			appendPQExpBuffer(query, "SECURITY LABEL FOR %s ON %s IS ",
+							  fmtId(provider), target->data);
+			appendStringLiteralAH(query, label, fout);
+			appendPQExpBufferStr(query, ";\n");
+		}
 	}
 	if (query->len > 0)
 	{
@@ -16424,6 +16493,28 @@ dumpTableSecLabel(Archive *fout, const TableInfo *tbinfo, const char *reltypenam
 								  .deps = &(tbinfo->dobj.dumpId),
 								  .nDeps = 1));
 	}
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	/*
+	 * Generate a TocEntry for provider 'sysmac' with the
+	 * description 'HG SECURITY LABEL'.
+	 */
+	if (sysmac_query->len > 0)
+	{
+		resetPQExpBuffer(target);
+		appendPQExpBuffer(target, "%s %s", reltypename,
+						  fmtId(tbinfo->dobj.name));
+		ArchiveEntry(fout, nilCatalogId, createDumpId(),
+					 ARCHIVE_OPTS(.tag = target->data,
+								  .namespace = tbinfo->dobj.namespace->dobj.name,
+								  .owner = tbinfo->rolname,
+								  .description = "HG SECURITY LABEL",
+								  .section = SECTION_NONE,
+								  .createStmt = sysmac_query->data,
+								  .deps = &(tbinfo->dobj.dumpId),
+								  .nDeps = 1));
+	}
+	destroyPQExpBuffer(sysmac_query);
+	/* End - ReqID: SRS-SECURITY-LMAC */
 	destroyPQExpBuffer(query);
 	destroyPQExpBuffer(target);
 }
@@ -17120,6 +17211,16 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			actual_atts = 0;
 			for (j = 0; j < tbinfo->numatts; j++)
 			{
+				/* Begin - ReqID: SRS-SECURITY-LMAC */
+				/*
+				 * Skip the __hg_seclabel__ column. if this column needs to be
+				 * exported, a TOC entry will be generated later to add the
+				 * column by calling function apply_row_policy.
+				 */
+				if (strcmp(tbinfo->attnames[j], HG_SECLABEL_COLNAME) == 0)
+					continue;
+				/* End - ReqID: SRS-SECURITY-LMAC */
+
 				/*
 				 * Normally, dump if it's locally defined in this table, and
 				 * not dropped.  But for binary upgrade, we'll dump all the
@@ -17765,9 +17866,14 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		}
 	}
 
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	if (tbinfo->has_hgseclabel)
+		; /* do nothing */
+	else /* End - ReqID: SRS-SECURITY-LMAC */
 	if (tbinfo->forcerowsec)
 		appendPQExpBuffer(q, "\nALTER TABLE ONLY %s FORCE ROW LEVEL SECURITY;\n",
 						  qualrelname);
+
 	/* Begin - BUGZ1641 */
 	if (tbinfo->relhasrowid && dopt->binary_upgrade)
 	{
@@ -17835,6 +17941,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 		if (tbinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
 			dumpTableConstraintComment(fout, constr);
 	}
+
+	dumpHgSecLabel(fout, tbinfo, qualrelname); /* ReqID: SRS-SECURITY-LMAC */
 
 	destroyPQExpBuffer(q);
 	destroyPQExpBuffer(delq);
@@ -20407,6 +20515,7 @@ fmtCopyColumnList(const TableInfo *ti, PQExpBuffer buffer)
 	char	   *attgenerated = ti->attgenerated;
 	bool		needComma;
 	int			i;
+	bool	   *no_export_seclabel = ti->no_export_hgseclabel; /* ReqID: SRS-SECURITY-LMAC */
 
 	appendPQExpBufferChar(buffer, '(');
 	needComma = false;
@@ -20416,6 +20525,10 @@ fmtCopyColumnList(const TableInfo *ti, PQExpBuffer buffer)
 			continue;
 		if (attgenerated[i])
 			continue;
+		/* Begin - ReqID: SRS-SECURITY-LMAC */
+		if (no_export_seclabel[i])
+			continue;
+		/* End - ReqID: SRS-SECURITY-LMAC */
 		if (needComma)
 			appendPQExpBufferStr(buffer, ", ");
 		appendPQExpBufferStr(buffer, fmtId(attnames[i]));

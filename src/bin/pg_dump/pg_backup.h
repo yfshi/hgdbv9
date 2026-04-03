@@ -92,6 +92,10 @@ typedef struct _restoreOptions
 	int			no_publications;	/* Skip publication entries */
 	int			no_security_labels; /* Skip security label entries */
 	int			no_subscriptions;	/* Skip subscription entries */
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	bool		no_restore_hgseclabel;		/* Skip __hg_seclabel__ entries */
+	bool		is_restore;		/* Whether the pg_restore command is being executed */
+	/* End - ReqID: SRS-SECURITY-LMAC */
 	int			strict_names;
 
 	const char *filename;
@@ -184,6 +188,9 @@ typedef struct _dumpOptions
 	int			do_nothing;
 
 	char	   *restrict_key;
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	bool		dump_sysmac_label; /* whether to dump __hg_seclabel__ */
+	/* End - ReqID: SRS-SECURITY-LMAC */
 } DumpOptions;
 
 /*

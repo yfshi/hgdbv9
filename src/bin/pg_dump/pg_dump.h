@@ -22,6 +22,11 @@
 
 #define oidcmp(x,y) ( ((x) < (y) ? -1 : ((x) > (y)) ?  1 : 0) )
 
+/* Begin - ReqID: SRS-SECURITY-LMAC */
+#define HG_SECLABEL_COLNAME		"__hg_seclabel__"
+#define HG_SECLABEL_PROVIDER	"sysmac"
+/* End - ReqID: SRS-SECURITY-LMAC */
+
 /*
  * The data structures used to store system catalog information.  Every
  * dumpable object is a subclass of DumpableObject.
@@ -414,6 +419,11 @@ typedef struct _tableInfo
 	bool	hastemplate;		/* does it have subpartition template? */
 	bool	isorainterval;		/* is interval range partitioned table? */	
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+	/* Begin - ReqID: SRS-SECURITY-LMAC */
+	bool	*no_export_hgseclabel; /* whether to export the security label column */
+	bool	has_hgseclabel;		/* does the __hg_seclabel__ column exist? */
+	/* End- ReqID: SRS-SECURITY-LMAC */
 } TableInfo;
 
 typedef struct _tableAttachInfo
@@ -935,4 +945,10 @@ extern void parseOidArray(const char *str, Oid *array, int arraysize);
 extern char 	*strtok_r(char *str, const char *delim, char **saveptr);
 #endif
 /* End - ReqID:SRS-SQL-DBLINK */
+
+/* Begin - ReqID: SRS-SECURITY-LMAC */
+extern void dumpHgSecLabel(Archive *fout, const TableInfo *tbinfo, const char *qualrelname);
+extern void cleanHgSecLabel(Archive *fout, const TableDataInfo *tdinfo, const TableInfo *tbinfo);
+/* End - ReqID: SRS-SECURITY-LMAC */
+
 #endif							/* PG_DUMP_H */
