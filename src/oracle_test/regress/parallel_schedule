@@ -283,3 +283,7 @@ test: ora_ratio_to_report
 #/* Begin - OA-REQ-2127 */
 test: ora_index_create_with_schema
 #/* End - OA-REQ-2127 */
+
+#/*Begin - OA-REQ-2125 */
+test: user_casesensitive
+#/* End -OA-REQ-2125 */

@@ -1,0 +1,53 @@
+SET IVORYSQL.IDENTIFIER_CASE_SWITCH = INTERCHANGE;
+SHOW IVORYSQL.IDENTIFIER_CASE_SWITCH;
+ ivorysql.identifier_case_switch 
+---------------------------------
+ interchange
+(1 row)
+
+CREATE USER "testcase_USER";
+SET ROLE "testcase_USER";
+SELECT USER;
+     user      
+---------------
+ testcase_USER
+(1 row)
+
+SELECT CURRENT_USER;
+ current_user  
+---------------
+ testcase_USER
+(1 row)
+
+RESET ROLE;
+CREATE USER "TESTCASE_USER";
+SET ROLE "TESTCASE_USER";
+SELECT USER;
+     user      
+---------------
+ TESTCASE_USER
+(1 row)
+
+SELECT CURRENT_USER;
+ current_user  
+---------------
+ testcase_user
+(1 row)
+
+RESET ROLE;
+CREATE USER "testcase_user";
+SET ROLE "testcase_user";
+SELECT USER;
+     user      
+---------------
+ testcase_user
+(1 row)
+
+SELECT CURRENT_USER;
+ current_user  
+---------------
+ TESTCASE_USER
+(1 row)
+
+RESET ROLE;
+RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
