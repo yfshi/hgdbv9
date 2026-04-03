@@ -1325,7 +1325,7 @@ SELECT col FROM test_alter_autoinc ORDER BY 1;
 
 -- err gram
 ALTER TABLE test_alter_autoinc ADD id int unsigned AUTO_INCREMENT, ADD primary key(id), AUTO_INCREMENT = 100;
-ERROR:  there can be only one auto increment column and it must be defined as a key
+ERROR:  The table can be only one auto increment column
 DROP TABLE test_alter_autoinc;
 --test alter table add AUTO_INCREMENT NULL UNIQUE
 CREATE TABLE test_alter_autoinc(col int1 unsigned);
@@ -2647,13 +2647,9 @@ create table auto_inc_uint8 (
     col2 int
 );
 insert into auto_inc_uint8 values(18446744073709551615, 1);
-WARNING:  auto_increment max is 9223372036854775807
+ERROR:  auto_increment max is 9223372036854775807
 insert into auto_inc_uint8(col2) values(2);
-ERROR:  duplicate key value violates unique constraint "auto_inc_uint8_pkey"
-DETAIL:  Key (col1)=(9223372036854775807) already exists.
 insert into auto_inc_uint8(col2) values(3);
-ERROR:  duplicate key value violates unique constraint "auto_inc_uint8_pkey"
-DETAIL:  Key (col1)=(9223372036854775807) already exists.
 --select * from auto_inc_uint8 order by 1,2;
 delete from auto_inc_uint8;
 insert into auto_inc_uint8(col2) values(4);
@@ -3949,17 +3945,15 @@ timestamp DATETIME
 );
 INSERT INTO test_bigint (timestamp) VALUES ('2025-10-01 12:00:00'), ('2025-10-02 12:00:00'), ('2025-10-03 12:00:00');
 INSERT INTO test_bigint (id,timestamp) VALUES (18446744073709551615,'2025-10-04 12:00:00');
-WARNING:  auto_increment max is 9223372036854775807
+ERROR:  auto_increment max is 9223372036854775807
 INSERT INTO test_bigint (timestamp) VALUES ('2025-10-04 12:00:00');
-ERROR:  duplicate key value violates unique constraint "test_bigint_pkey"
-DETAIL:  Key (id)=(9223372036854775807) already exists.
 SELECT * FROM test_bigint;
-         id          |      timestamp      
----------------------+---------------------
- 1                   | 2025-10-01 12:00:00
- 2                   | 2025-10-02 12:00:00
- 3                   | 2025-10-03 12:00:00
- 9223372036854775807 | 2025-10-04 12:00:00
+ id |      timestamp      
+----+---------------------
+ 1  | 2025-10-01 12:00:00
+ 2  | 2025-10-02 12:00:00
+ 3  | 2025-10-03 12:00:00
+ 4  | 2025-10-04 12:00:00
 (4 rows)
 
 drop TABLE test_bigint;
@@ -4153,3 +4147,85 @@ create table t8 (like t);
 
 drop table t,t1,t2,t3,t4,t5,t6,t7,t8;
 -- End: OA-2123
+-- #bug7341
+create table tt1(id1 int auto_increment unique key);
+alter table tt1 add id11 int auto_increment unique key;
+ERROR:  The table can be only one auto increment column
+ALTER TABLE tt1 ADD id111 int unsigned AUTO_INCREMENT, ADD primary key(id11), AUTO_INCREMENT = 100;
+ERROR:  The table can be only one auto increment column
+ALTER TABLE tt1 ADD id1111 int unsigned AUTO_INCREMENT  primary key;
+ERROR:  The table can be only one auto increment column
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id2 int unsigned AUTO_INCREMENT, ADD primary key(id2), AUTO_INCREMENT = 100;
+ERROR:  there can be only one auto increment column and it must be defined as a key
+ALTER TABLE tt2 ADD id22 int unsigned AUTO_INCREMENT, ADD primary key(id22), AUTO_INCREMENT = 100;
+ERROR:  there can be only one auto increment column and it must be defined as a key
+create table tt3(id1 int);
+ALTER TABLE tt3 ADD id3 int unsigned AUTO_INCREMENT  primary key;
+ALTER TABLE tt3 ADD id33 int unsigned AUTO_INCREMENT  primary key;
+ERROR:  The table can be only one auto increment column
+create table tt4(id1 int);
+alter table tt4 add id4 int auto_increment unique key;
+alter table tt4 add id44 int auto_increment unique key;
+ERROR:  The table can be only one auto increment column
+create table tt5(id1 int);
+ALTER TABLE tt5 ADD id5 int unsigned AUTO_INCREMENT  primary key, AUTO_INCREMENT = 100;
+ERROR:  no owned sequence found
+ALTER TABLE tt5 ADD id55 int unsigned AUTO_INCREMENT  primary key, AUTO_INCREMENT = 100;
+ERROR:  no owned sequence found
+drop table tt1,tt2,tt3,tt4,tt5;
+-- #bug7488
+create table tt (id float auto_increment primary key);
+insert into  tt values(10.11);
+insert into  tt values();
+insert into  tt values(30.4);
+insert into  tt values();
+insert into  tt values(41.56);
+insert into  tt values();
+insert into  tt values(50.5);
+insert into  tt values();
+insert into  tt values(60.51);
+insert into  tt values();
+select * from tt;
+  id   
+-------
+ 10.11
+    11
+  30.4
+    31
+ 41.56
+    43
+  50.5
+    51
+ 60.51
+    62
+(10 rows)
+
+drop table tt;
+create table tt2 (id float8 auto_increment primary key);
+insert into  tt2 values(10.11);
+insert into  tt2 values();
+insert into  tt2 values(30.4);
+insert into  tt2 values();
+insert into  tt2 values(41.56);
+insert into  tt2 values();
+insert into  tt2 values(50.5);
+insert into  tt2 values();
+insert into  tt2 values(60.51);
+insert into  tt2 values();
+select * from tt2;
+  id   
+-------
+ 10.11
+    11
+  30.4
+    31
+ 41.56
+    43
+  50.5
+    51
+ 60.51
+    62
+(10 rows)
+
+drop table tt2;

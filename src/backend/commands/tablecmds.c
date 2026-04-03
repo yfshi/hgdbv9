@@ -699,6 +699,7 @@ static void ATExecSetPartitionInterval(Relation rel, PartitionInterval *partInte
 /* End - ReqID:RSR-SQL-Partition-interval */
 /* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 static void ATExecSetAutoIncrement(Relation rel, Value* value);
+static bool check_rel_autoincrement(Oid relid);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
@@ -713,7 +714,6 @@ static void ATExecSetPartitioning(Relation rel, bool newval);
 static void ATExecSetSubPartitionTemplate(Relation rootrel, OraSubPartitionTemplateSpec *subptemp);
 static void ATExecRenamePartitionOrSubPartition(Relation rootrel, Oid partid, char *new_pname, bool is_partition);
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
-
 
 /* ----------------------------------------------------------------
  *		DefineRelation
@@ -8135,6 +8135,12 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	/* since this function recurses, it could be driven to stack overflow */
 	check_stack_depth();
+
+	/* add auto increment :check the table is exist auto increment column */
+	if (colDef->is_auto_increment && check_rel_autoincrement(myrelid))
+	{
+		elog(ERROR, "The table can be only one auto increment column");
+	}
 
 	/* At top level, permission check was done in ATPrepCmd, else do it */
 	if (recursing)
@@ -22539,6 +22545,58 @@ ATExecSetAutoIncrement(Relation rel, Value *value)
 	set_auto_nextval(rel->rd_id, autoinc);
 
 	return;
+}
+
+/*
+ * 	check_rel_autoincrement :
+ * 		add auto increment :check the table is exist auto increment column
+ * 			find all columns by rel oid, then check all column attidentity=='m'.
+ */
+bool
+check_rel_autoincrement(Oid relid)
+{
+	Relation attrel;
+	SysScanDesc scan;
+	ScanKeyData key[1];
+	HeapTuple atttup;
+
+	/* Grab an appropriate lock on the pg_attribute relation */
+	attrel = table_open(AttributeRelationId, AccessShareLock);
+
+	/* Use the index to scan only attributes of the target relation */
+	ScanKeyInit(&key[0],
+				Anum_pg_attribute_attrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(relid));
+
+	scan = systable_beginscan(attrel, AttributeRelidNumIndexId, true,
+							  NULL, 1, key);
+
+	/* check all the matching tuples */
+	while ((atttup = systable_getnext(scan)) != NULL)
+	{
+		Form_pg_attribute attForm;
+
+		if (!HeapTupleIsValid(atttup))
+		{
+			elog(ERROR, "could not find tuple for column  of relation %u", relid);
+		}
+
+		attForm = (Form_pg_attribute) GETSTRUCT(atttup);
+		if (ATTRIBUTE_IDENTITY_AUTO_INCREMENT == attForm->attidentity)
+		{
+			/* Clean up after the scan */
+			systable_endscan(scan);
+			table_close(attrel, AccessShareLock);
+			return true;
+		}
+	}
+
+	/* Clean up after the scan */
+	systable_endscan(scan);
+	table_close(attrel, AccessShareLock);
+
+	return false;
 }
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 

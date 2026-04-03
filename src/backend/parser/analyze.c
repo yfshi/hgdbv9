@@ -6488,16 +6488,6 @@ set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno)
 		Const *NullordefaultNode = NULL;
 		Const *valueNode = NULL;
 
-		reloidNode     = makeConst(OIDOID, -1, InvalidOid, sizeof(Oid),
-								   ObjectIdGetDatum(pstate->p_target_relation->rd_id),
-								   false, true);
-		attnumNode     = makeConst(INT2OID, -1, InvalidOid, sizeof(Oid),
-								   Int16GetDatum(attr->attnum),
-								   false, true);
-		colnotnullNode = makeConst(BOOLOID, -1, InvalidOid, 1,
-								   BoolGetDatum(attr->attnotnull),
-								   false, true);
-
 		/* insert value: (NULL) . (default) . (0) 
 		*  null col:
 		* ---------------------------------------------------------------------------
@@ -6538,10 +6528,26 @@ set_auto_increment_func_node(ParseState *pstate, Expr* expr, int attno)
 		}
 		else
 		{
+			if (exprType((Node *)expr) == FLOAT4OID || exprType((Node *)expr) == FLOAT8OID ||
+				 exprType((Node *)expr) == NUMERICOID)
+			{
+				return expr;
+			}
+
 			NullordefaultNode = makeConst(INT8OID, -1, InvalidOid, sizeof(int64),
 										  Int64GetDatum(AUTO_INCREMENT_INSERT_ZERO),
 										  false, FLOAT8PASSBYVAL);
 		}
+
+		reloidNode     = makeConst(OIDOID, -1, InvalidOid, sizeof(Oid),
+								   ObjectIdGetDatum(pstate->p_target_relation->rd_id),
+								   false, true);
+		attnumNode     = makeConst(INT2OID, -1, InvalidOid, sizeof(Oid),
+								   Int16GetDatum(attr->attnum),
+								   false, true);
+		colnotnullNode = makeConst(BOOLOID, -1, InvalidOid, 1,
+								   BoolGetDatum(attr->attnotnull),
+								   false, true);
 
 		/* convert the original expression node to a cast numeric node*/
 		valueNode = (Const *) coerce_to_target_type(pstate,

@@ -75,7 +75,8 @@
 /* Begin - SRS-SQL-MULTITABLEINSERT */
 #include "partitioning/partdesc.h"
 /* End - SRS-SQL-MULTITABLEINSERT */
-
+#include "catalog/dependency.h"
+#include "commands/sequence.h"
 
 typedef struct MTTargetRelLookup
 {
@@ -163,7 +164,7 @@ static ResultRelInfo * ExecInitCheckpartitionResultInfo(ModifyTableState *mtstat
 static bool CheckSamerootResultRelInfo(List *partresultRelInfo, ResultRelInfo *resultRelInfo);
 /* End - BUG#Z4241 */
 
-
+static void autoIncrementUpdate(Relation resultRelationDesc, TupleTableSlot *slot); /* #bug7488 */
 /*
  * Verify that the tuples to be produced by INSERT match the
  * target relation's rowtype
@@ -964,6 +965,70 @@ CheckPartitionRelationIsexist(ResultRelInfo *partRelInfo, List *partOids)
 }
 /* End - ReqID:SRS-MYSQL-SQL-REPLACE */
 
+/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+/*
+ * autoIncrementUpdate
+ * 		update anto increment value when type is float4/8,uint8.
+ * insert value and sum new auto increment value.
+ */
+static void
+autoIncrementUpdate(Relation resultRelationDesc, TupleTableSlot *slot)
+{
+	TupleDesc tupdesc = RelationGetDescr(resultRelationDesc);
+	int natts = tupdesc->natts;
+	Datum *value = slot->tts_values;
+	bool *isnull = slot->tts_isnull;
+	uint64 inserted_val = 0;
+	int attnum = 0;
+
+	for (attnum = 0; attnum < natts; attnum++)
+	{
+		Form_pg_attribute attr = TupleDescAttr(tupdesc, attnum);
+		Oid atttypid = attr->atttypid;
+		Oid seqoid;
+
+		if (attr->attisdropped || attr->attnum <= 0)
+		{
+			continue;
+		}
+
+		if (attr->attidentity != ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		{
+			continue;
+		}
+		if (isnull[attnum])
+		{
+			return;
+		}
+		seqoid = getIdentityAutoIncrement(RelationGetRelid(resultRelationDesc), attnum + 1, false);
+		if (!OidIsValid(seqoid))
+		{
+			continue;
+		}
+
+		if (atttypid == FLOAT4OID)
+		{
+			inserted_val = DatumGetInt64(DirectFunctionCall1(ftoi8, value[attnum]));
+		}
+		else if (atttypid == FLOAT8OID)
+		{
+			inserted_val = DatumGetInt64(DirectFunctionCall1(dtoi8, value[attnum]));
+		}
+		else if (atttypid == UINT8OID)
+		{
+			inserted_val = DatumGetUInt64(value[attnum]);
+			if (inserted_val > INT64_MAX)
+			{
+				ereport(ERROR, (errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE), errmsg("auto_increment max is 9223372036854775807")));
+				inserted_val = INT64_MAX - 1;
+			}
+		}
+		set_auto_nextval(slot->tts_tableOid, inserted_val + 1);
+		return;
+	}
+	return;
+}
+/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
 /* ----------------------------------------------------------------
  *		ExecInsert
@@ -1403,6 +1468,8 @@ ExecInsert(ModifyTableContext *context,
 													   false, NULL, NIL);
 		}
 	}
+
+	autoIncrementUpdate(resultRelationDesc, slot); /* #bug7488 */
 
 	/*
 	 * there, multi table insert convert to insert + cte
