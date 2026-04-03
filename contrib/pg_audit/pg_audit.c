@@ -279,7 +279,6 @@ MemoryContext	old_context;
 
 /* flags set by signal handlers */
 static volatile sig_atomic_t got_sighup = false;
-static volatile sig_atomic_t got_sigterm = false;
 static int	worker_naptime = 10;
 
 
@@ -367,7 +366,6 @@ static AuditEvent *generateSystemEvent(AuditSystemEvent event, AuditResult resul
 static void audit_cmd(void);
 static void execute_snapshot(void);
 static void pg_audit_sighup(SIGNAL_ARGS);
-static void pg_audit_sigterm(SIGNAL_ARGS);
 static void pgaudit_setup_memcxt(void);
 static void audit_postmaster_sighup_guc(char *context);
 static void audit_arch_job(void);
@@ -5705,20 +5703,6 @@ pg_audit_wakeup(SIGNAL_ARGS)
 	errno = save_errno;
 }
 
-
-static void
-pg_audit_sigterm(SIGNAL_ARGS)
-{
-	int			save_errno = errno;
-
-	got_sigterm = true;
-	SetLatch(MyLatch);
-
-	errno = save_errno;
-}
-
-
-
 static void
 pgaudit_setup_memcxt(void)
 {
@@ -7009,7 +6993,7 @@ pg_audit_launch(void)
 
 	/* Establish signal handlers before unblocking signals. */
 	pqsignal(SIGHUP, pg_audit_sighup);//wakeup latch
-	pqsignal(SIGTERM, pg_audit_sigterm);//backend
+	pqsignal(SIGTERM, die);//backend
 	pqsignal(SIGUSR1, procsignal_sigusr1_handler);
 	pqsignal(SIGUSR2, pg_audit_wakeup);
 
@@ -7109,7 +7093,7 @@ pg_audit_launch(void)
 		/*
 		 * Main loop: do this until the SIGTERM handler tells us to terminate
 		 */
-		while (!got_sigterm)
+		while (true)	// OA-2224
 		{
 			/* check based on time or space*/
 				audit_choice_retentionpolicy_mode();
