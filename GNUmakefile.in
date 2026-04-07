@@ -14,9 +14,9 @@ top_builddir = .
 include $(top_builddir)/src/Makefile.global
  
 ifeq ($(with_sqlite),yes)
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #/* ReqID:SRS-SQL-SYNONYM */
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #/* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK
 else
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK
 endif
 
 #/* Begin - BUG#Z00004703 */
@@ -56,6 +56,8 @@ all-contrib/hg_rolstatus: all-src-recurse
 install-contrib/hg_rolstatus: install-src-recurse
 all-contrib/hg_integrity_check: all-src-recurse
 install-contrib/hg_integrity_check: install-src-recurse
+all-contrib/diskquota: all-src-recurse
+install-contrib/diskquota: install-src-recurse
 #/* End - BUG#Z00004703 */
 
 
@@ -95,9 +97,9 @@ $(call recurse,distprep coverage,doc src config contrib)
 # clean, distclean, etc should apply to contrib too, even though
 # it's not built by default
 ifeq ($(with_sqlite),yes)
-$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/hg_sysmac contrib/hg_antitamper  contrib/hg_rolstatus contrib/hg_integrity_check src config)	#BUG#M0000243 #BUGM0000266  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/hg_sysmac contrib/hg_antitamper  contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota src config)	#BUG#M0000243 #BUGM0000266  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK
 else
-$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/hg_sysmac contrib/hg_antitamper  contrib/hg_rolstatus contrib/hg_integrity_check src config)     #BUG#M0000243 #BUGM0000266  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH
+$(call recurse,clean,doc contrib contrib/ivorysql_ora contrib/gb18030_2022 contrib/postgres_fdw contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/hg_sysmac contrib/hg_antitamper  contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota src config)     #BUG#M0000243 #BUGM0000266  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK
 endif
 
 clean:
