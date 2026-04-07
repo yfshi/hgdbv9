@@ -1341,13 +1341,6 @@ lc_collate_is_c(Oid collation)
 		static int	result = -1;
 		char	   *localeptr;
 
-		/* Begin: SRS-SQL-NLSSORT */
-		if ((ORA_MODE == compatible_mode ||
-			MYS_MODE == compatible_mode) && /* bug- #z6175 */
-			default_collation_is_c)
-			return true;
-		/* End: SRS-SQL-NLSSORT */
-
 		if (result >= 0)
 			return (bool) result;
 		localeptr = setlocale(LC_COLLATE, NULL);

@@ -61,7 +61,6 @@ char	   *nls_numeric_characters = "";
 /* Begin - SRS-SQL-NLSSORT */
 bool		 enable_ora_default_collation = false;
 bool		 subquery_with_raw_collation = true;
-bool		 default_collation_is_c = true;
 char		*nls_sort_str;
 char		*nls_comp_str;
 char		*default_collation_str;
@@ -727,15 +726,6 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		},
 		&enable_ora_default_collation,
 		false,
-		NULL, NULL, NULL
-	},
-	{
-		{"ivorysql.default_collation_is_c", PGC_USERSET, CLIENT_CONN_STATEMENT,
-			gettext_noop("whether the default collation(100) is C collation in oracle compatible mode."),
-			NULL
-		},
-		&default_collation_is_c,
-		true,
 		NULL, NULL, NULL
 	},
 	{

@@ -1705,7 +1705,7 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 			result = (len1 < len2) ? -1 : 1;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_mode == ORA_MODE && get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	else if(get_collation_provider(collid) == COLLPROVIDER_ORACLE)	/* OA#2190 */
 	{
 		result = nlssortfastcmp_internal_with_collid(arg1, len1, arg2, len2, collid, false);
 	}
@@ -2254,7 +2254,7 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		collate_c = true;
 	}
 	/* Begin - SRS-SQL-NLSSORT */
-	else if(compatible_mode == ORA_MODE && get_collation_provider(collid) == COLLPROVIDER_ORACLE)
+	else if(get_collation_provider(collid) == COLLPROVIDER_ORACLE)	/* OA#2190 */
 	{
 		if (typid == NAMEOID)
 			ssup->comparator = namefastcmp_nlssort;
