@@ -7,6 +7,7 @@ NOTICE:  schema "rnrol11" does not exist, skipping
 DROP SCHEMA IF EXISTS rnrol22;
 NOTICE:  schema "rnrol22" does not exist, skipping
 DROP USER IF EXISTS enrol11;
+NOTICE:  role "enrol11" does not exist, skipping
 DROP USER IF EXISTS enrol22;
 NOTICE:  role "enrol22" does not exist, skipping
 CREATE USER system WITH superuser;

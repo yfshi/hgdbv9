@@ -1221,3 +1221,87 @@ drop sequence TB2SEQ_Z7179;
 drop table TB2_Z7179;
 drop table TB1_Z7179;
 /* End - BUG#Z7179*/
+
+/* Begin - OA-REQ-2244 */
+CREATE USER system WITH superuser;
+SET ivorysql.enable_ora_user_schema = on;
+
+DROP USER IF EXISTS enrol11;
+DROP USER IF EXISTS enrol22;
+CREATE USER enrol11;
+CREATE USER enrol22;
+
+\c - enrol11
+
+SET ivorysql.enable_ora_user_schema = on;
+show ivorysql.enable_ora_user_schema;
+
+CREATE TABLE tb (
+    id          NUMBER,
+    name        VARCHAR2(100),
+    created_log  VARCHAR2(100)
+);
+
+CREATE TABLE tb_log (
+    log_id      NUMBER,
+    tb_id       NUMBER,
+    tb_name     VARCHAR2(100),
+    action      VARCHAR2(50)
+);
+
+CREATE SEQUENCE tb_log_seq
+START WITH 1
+INCREMENT BY 1
+NOCACHE
+NOCYCLE;
+
+CREATE OR REPLACE TRIGGER trg_tb_after_ins
+AFTER INSERT ON tb
+FOR EACH ROW
+DECLARE
+	var1 tb%rowtype;
+BEGIN
+    INSERT INTO tb_log (
+        log_id,
+        tb_id,
+        tb_name,
+        action
+    )
+    VALUES (
+        tb_log_seq.NEXTVAL,
+        :NEW.id,
+        :NEW.name,
+        'INSERT'
+    );
+END;
+/
+
+grant usage on schema enrol11 to enrol22;
+grant select, insert, update, delete on table enrol11.tb to enrol22;
+
+\c - enrol22
+
+INSERT INTO enrol11.tb (id, name, created_log) VALUES (1, 'Alice', 'enrol22 Insert');
+INSERT INTO enrol11.tb (id, name, created_log) VALUES (2, 'Bob', 'enrol22 Insert');
+
+\c - enrol11
+
+select * from tb;
+select * from tb_log;
+
+\c - system
+drop schema enrol11 cascade;
+drop schema enrol22;
+drop user enrol11;
+drop user enrol22;
+
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;
+/* End - OA-REQ-2244 */

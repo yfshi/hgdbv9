@@ -850,6 +850,10 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 		char	*nspname = NULL;
 		char	*temp = NULL;
 		Oid		nspoid = InvalidOid;
+		/* Begin - OA-REQ-2244 */
+		Oid 		save_userid;
+		int 		save_sec_context;
+		/* End - OA-REQ-2244 */
 
 		if (OidIsValid(otrigid) && !stmt->replace)
 			ereport(ERROR,
@@ -895,7 +899,21 @@ CreateTriggerFiringOn(CreateTrigStmt *stmt, const char *queryString,
 		tfunc->options = lappend(tfunc->options, makeDefElem("language", (Node*)makeString("plisql"), -1));
 
 		pstate = make_parsestate(NULL);
+
+		/* Begin - OA-REQ-2244 */
+		/*
+		 * Before creating a trigger function, we switch the user to the owner of
+		 * the table on which the trigger depends. This ensures that following a
+		 * backup and restore operation, the trigger function can be sussessfully
+		 * invoked by oridinary users.
+		 */
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+		SetUserIdAndSecContext(rel->rd_rel->relowner, save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+
 		objfunc = CreateFunction(pstate, tfunc);
+
+		SetUserIdAndSecContext(save_userid, save_sec_context);
+		/* End - OA-REQ-2244 */
 
 		funcoid = objfunc.objectId;
 
