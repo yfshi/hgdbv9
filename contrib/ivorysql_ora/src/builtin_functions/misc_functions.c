@@ -28,6 +28,11 @@
 #include "access/transam.h"
 /* End - Bug#Z1064 */
 #include "lib/stringinfo.h" /* BUG#M0000457 */
+/* Begin - bug#5514 */
+#include "utils/guc.h"
+#include "storage/lwlock.h"
+/* End - bug#5514 */
+
 
 
 PG_FUNCTION_INFO_V1(uid);	/* bug0000459 */
@@ -41,6 +46,11 @@ PG_FUNCTION_INFO_V1(pg_get_partinterval_def);	/* ReqID:RSR-SQL-Partition-interva
 /* Begin - OA-REQ-2129 */
 PG_FUNCTION_INFO_V1(wm_concat_transfn);
 /* End - OA-REQ-2129 */
+
+/* Begin - bug#5514 */
+PG_FUNCTION_INFO_V1(ora_set_first_normal_objectid);
+/* End - bug#5514 */
+
 
 /* Begin - bug0000459 */
 Datum
@@ -147,6 +157,51 @@ pg_get_partinterval_def(PG_FUNCTION_ARGS)
 
 	PG_RETURN_TEXT_P(CStringGetTextDatum(res));
 }
+
+/* Begin - bug#5514 */
+
+Datum
+ora_set_first_normal_objectid(PG_FUNCTION_ARGS)
+{
+	int	first_normalid;
+	StringInfoData data;
+
+	/*
+	 * only suppert user and call under postmaster
+	 */
+	if (!superuser())
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("must be superuser to call.")));
+
+	/*
+	 * should called initdb
+	 */
+	if (IsUnderPostmaster)
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("Only allow to be executed in initdb.")));
+
+	/* get current oid */
+	LWLockAcquire(OidGenLock, LW_SHARED);
+	first_normalid = (int) ShmemVariableCache->nextOid;
+	LWLockRelease(OidGenLock);
+
+	/* check guc is change */
+	if (FirstNormalId == first_normalid)
+		PG_RETURN_VOID();
+
+	initStringInfo(&data);
+	appendStringInfo(&data, "ivorysql.first_normal_object_id = %d\n", first_normalid);
+	AppendVarConfInConfigFile(ConfigFileName, NULL, data.data);
+
+	pfree(data.data);
+
+	PG_RETURN_VOID();
+}
+/* End - bug#5514 */
+
+
 
 /* Begin - OA-REQ-2129 */
 Datum

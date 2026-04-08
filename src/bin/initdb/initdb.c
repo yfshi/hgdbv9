@@ -3905,6 +3905,14 @@ initialize_data_directory(void)
 
 	make_postgres(cmdfd);
 
+	/* Begin - bug#5514 */
+	/*
+	 * set noraml objectid
+	 */
+	if (database_mode == DB_ORACLE)
+		PG_CMD_PUTS("select sys.ora_set_first_normal_objectid();\n\n");
+	/* End - bug#5514 */
+
 	PG_CMD_CLOSE;
 
 	check_ok();

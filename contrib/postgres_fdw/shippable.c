@@ -164,7 +164,7 @@ is_builtin(Oid objectId)
 bool
 is_catalog_objectid(Oid objectId)
 {
-	return (objectId < FirstNormalObjectId);
+	return (objectId < FirstNormalId); /* bug#5514 */
 }
 /* End - OA#00001554 */
 

@@ -900,6 +900,53 @@ explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
 (2 rows)
 
 --explain(costs off) select * from enrol11.test_text@tdblnk where standard.test_to_char(id) = '10000';
+--test bug#5514
+set ivorysql.enable_compatible_type_shippable = on;
+set ivorysql.first_normal_object_id = 1584;
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where int_id = '100000';
+                  QUERY PLAN                  
+----------------------------------------------
+ Foreign Scan on "enrol11_rms_bssport@tdblnk"
+   Filter: (int_id = '100000'::number)
+(2 rows)
+
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_f(int_id) = '100000';
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Foreign Scan on "enrol11_rms_bssport@tdblnk"
+   Filter: (enrol11.test_pkg.test_f((int_id)::integer) = 100000)
+(2 rows)
+
+explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
+                 QUERY PLAN                 
+--------------------------------------------
+ Foreign Scan on "enrol11_test_text@tdblnk"
+   Filter: (id = '100000'::varchar2)
+(2 rows)
+
+set ivorysql.first_normal_object_id = 36384;
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where int_id = '100000';
+                  QUERY PLAN                  
+----------------------------------------------
+ Foreign Scan on "enrol11_rms_bssport@tdblnk"
+(1 row)
+
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_f(int_id) = '100000';
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Foreign Scan on "enrol11_rms_bssport@tdblnk"
+   Filter: (enrol11.test_pkg.test_f((int_id)::integer) = 100000)
+(2 rows)
+
+explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
+                 QUERY PLAN                 
+--------------------------------------------
+ Foreign Scan on "enrol11_test_text@tdblnk"
+(1 row)
+
+--failed
+select ora_set_first_normal_objectid();
+ERROR:  Only allow to be executed in initdb.
 --clean data
 drop package test_pkg;
 drop public database link tdblnk;

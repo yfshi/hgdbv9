@@ -1596,3 +1596,12 @@ RETURNS varchar2
 AS 'MODULE_PATHNAME','pg_versions_operation'
 LANGUAGE C VOLATILE;
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+/* Begin - bug#5514 */
+CREATE OR REPLACE FUNCTION sys.ora_set_first_normal_objectid()
+RETURNS void
+AS 'MODULE_PATHNAME', 'ora_set_first_normal_objectid'
+LANGUAGE c
+STRICT
+STABLE;
+/* End - bug#5514 */
