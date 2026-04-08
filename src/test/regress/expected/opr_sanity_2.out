@@ -1031,7 +1031,7 @@ WHERE c.castmethod = 'b' AND
  pg_ndistinct      | bytea             |        0 | i
  pg_dependencies   | bytea             |        0 | i
  pg_mcv_list       | bytea             |        0 | i
- ivymy.mediumint   | integer           |        0 | i
+ mediumint         | integer           |        0 | i
  ivymy.uint3       | ivymy.uint4       |        0 | i
  tinyblob          | bytea             |        0 | i
  blob              | bytea             |        0 | i
@@ -2261,7 +2261,7 @@ ORDER BY 1, 2, 3;
                        | binary_ops            | binary_ops        | binary
                        | float_ops             | float4_ops        | real
                        | float_ops             | float8_ops        | double precision
-                       | integer_ops           | int1_ops          | ivymy.tinyint
+                       | integer_ops           | int1_ops          | tinyint
                        | integer_ops           | uint1_ops         | ivymy.uint1
                        | integer_ops           | uint2_ops         | ivymy.uint2
                        | integer_ops           | uint4_ops         | ivymy.uint4

@@ -225,14 +225,6 @@ initialize_TLCP(PGconn *conn)
 			return -1;
 		}
 	}
-	/* Begin - BUG Z7353 */
-	else
-	{
-		appendPQExpBuffer(&conn->errorMessage,
-						  libpq_gettext("client TLCP get ca certificates suites fail:%s \n"), cacertfile);
-		return -1;
-	}
-	/* End - BUG Z7353 */
 
 	if (stat(certfile, &bufenc) == 0)
 	{
@@ -301,6 +293,7 @@ open_client_TLCP(PGconn *conn)
 			case TLCP_internal_error:
 				appendPQExpBuffer(&conn->errorMessage,
 						libpq_gettext("TLCP connection: internal error!\n"));
+				break;
 			case TLCP_bad_certificate:
 				appendPQExpBuffer(&conn->errorMessage,
 						libpq_gettext("TLCP connection: bad certificate!\n"));
@@ -308,7 +301,7 @@ open_client_TLCP(PGconn *conn)
 			case TLCP_decrypt_error:
 				appendPQExpBuffer(&conn->errorMessage,
 						libpq_gettext("TLCP connection: decrypt error!\n"));
-
+				break;
 			case TLCP_close_notify:
 				return PGRES_POLLING_READING;
 				break;

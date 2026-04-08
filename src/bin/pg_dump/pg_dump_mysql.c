@@ -17964,37 +17964,50 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		default_maxv = is_ascending ? PG_INT64_MAX : -1;
 	}
 	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	else if (strcmp(seqtype, "uint1") == 0)
+	else if (strcmp(seqtype, "ivymy.uint1") == 0 || strcmp(seqtype, "uint1") == 0)
 	{
 		default_minv = 1;
 		default_maxv = is_ascending ? PG_UINT8_MAX : -1;
 	}
-	else if (strcmp(seqtype, "uint2") == 0)
+
+	else if (strcmp(seqtype, "ivymy.uint2") == 0  || strcmp(seqtype, "uint2") == 0)
 	{
 		default_minv = 1;
 		default_maxv = is_ascending ? PG_UINT16_MAX : -1;
 	}
-	else if (strcmp(seqtype, "uint3") == 0)
+
+	else if (strcmp(seqtype, "ivymy.uint3") == 0  || strcmp(seqtype, "uint3") == 0)
 	{
 		default_minv = 1;
 		default_maxv = is_ascending ? PG_UINT24_MAX : -1;
 	}
-	else if (strcmp(seqtype, "uint4") == 0)
+
+	else if (strcmp(seqtype, "ivymy.uint4") == 0 || strcmp(seqtype, "uint4") == 0)
 	{
 		default_minv = 1;
 		default_maxv = is_ascending ? PG_UINT32_MAX : -1;
 	}
-	else if (strcmp(seqtype, "uint8") == 0)
+	else if (strcmp(seqtype, "ivymy.uint8") == 0 || strcmp(seqtype, "uint8") == 0)
 	{
 		default_minv = 1;
 		default_maxv = is_ascending ? PG_UINT64_MAX : -1;
 	}
-	else if (strcmp(seqtype, "float4") == 0)
+	else if (strcmp(seqtype, "tinyint") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_INT8_MAX : -1;
+	}
+	else if (strcmp(seqtype, "mediumint") == 0)
+	{
+		default_minv = 1;
+		default_maxv = is_ascending ? PG_INT32_MAX : -1;
+	}
+	else if (strcmp(seqtype, "float4") == 0 || strcmp(seqtype, "real") == 0)
 	{
 		default_minv = is_ascending ? 1 : PG_INT32_MIN;
 		default_maxv = is_ascending ? PG_INT32_MAX : -1;
 	}
-	else if (strcmp(seqtype, "float8") == 0)
+	else if (strcmp(seqtype, "double precision") == 0)
 	{
 		default_minv = is_ascending ? 1 : PG_INT64_MIN;
 		default_maxv = is_ascending ? PG_INT64_MAX : -1;

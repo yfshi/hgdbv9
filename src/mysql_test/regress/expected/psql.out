@@ -5039,10 +5039,10 @@ List of access methods
 (7 rows)
 
 \dAf btree int4
-                                 List of operator families
-  AM   | Operator family |                         Applicable types                         
--------+-----------------+------------------------------------------------------------------
- btree | integer_ops     | smallint, integer, bigint, "tinyint", uint1, uint2, uint4, uint8
+                                List of operator families
+  AM   | Operator family |                        Applicable types                        
+-------+-----------------+----------------------------------------------------------------
+ btree | integer_ops     | smallint, integer, bigint, tinyint, uint1, uint2, uint4, uint8
 (1 row)
 
 \dAo+ btree float_ops
@@ -5125,22 +5125,22 @@ List of access methods
 (2 rows)
 
 \df int*pl
-                               List of functions
-   Schema   |    Name     | Result data type |   Argument data types    | Type 
-------------+-------------+------------------+--------------------------+------
- ivymy      | int2_pl     | integer          | smallint, smallint       | func
- ivymy      | int3_pl     | integer          | "mediumint", "mediumint" | func
- ivymy      | int4_pl     | bigint           | integer, integer         | func
- pg_catalog | int24pl     | integer          | smallint, integer        | func
- pg_catalog | int28pl     | bigint           | smallint, bigint         | func
- pg_catalog | int2pl      | smallint         | smallint, smallint       | func
- pg_catalog | int42pl     | integer          | integer, smallint        | func
- pg_catalog | int48pl     | bigint           | integer, bigint          | func
- pg_catalog | int4pl      | integer          | integer, integer         | func
- pg_catalog | int82pl     | bigint           | bigint, smallint         | func
- pg_catalog | int84pl     | bigint           | bigint, integer          | func
- pg_catalog | int8pl      | bigint           | bigint, bigint           | func
- pg_catalog | interval_pl | interval         | interval, interval       | func
+                             List of functions
+   Schema   |    Name     | Result data type | Argument data types  | Type 
+------------+-------------+------------------+----------------------+------
+ ivymy      | int2_pl     | integer          | smallint, smallint   | func
+ ivymy      | int3_pl     | integer          | mediumint, mediumint | func
+ ivymy      | int4_pl     | bigint           | integer, integer     | func
+ pg_catalog | int24pl     | integer          | smallint, integer    | func
+ pg_catalog | int28pl     | bigint           | smallint, bigint     | func
+ pg_catalog | int2pl      | smallint         | smallint, smallint   | func
+ pg_catalog | int42pl     | integer          | integer, smallint    | func
+ pg_catalog | int48pl     | bigint           | integer, bigint      | func
+ pg_catalog | int4pl      | integer          | integer, integer     | func
+ pg_catalog | int82pl     | bigint           | bigint, smallint     | func
+ pg_catalog | int84pl     | bigint           | bigint, integer      | func
+ pg_catalog | int8pl      | bigint           | bigint, bigint       | func
+ pg_catalog | interval_pl | interval         | interval, interval   | func
 (13 rows)
 
 \df int*pl int4

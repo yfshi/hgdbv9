@@ -264,6 +264,15 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 			buf = pstrdup("integer");
 			break;
 
+		/* Begin - bug: 7565 */
+		case TINYINTOID:
+			buf = pstrdup("tinyint");
+			break;
+		case MEDIUMINTOID:
+			buf = pstrdup("mediumint");
+			break;
+		/* End - bug:7565 */
+
 		case INT8OID:
 			buf = pstrdup("bigint");
 			break;

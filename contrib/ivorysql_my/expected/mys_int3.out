@@ -9,10 +9,10 @@ LINE 1: create table t1 (a mediumint(256));
                                     ^
 create table t2 (a mediumint(0));
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | "mediumint" |           |          | 
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | mediumint |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -24,10 +24,10 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(3));
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | "mediumint" |           |          | 
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | mediumint |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -39,18 +39,18 @@ select * from t2;
 drop table t2;
 create table t2 (a mediumint(3.1));
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | "mediumint" |           |          | 
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | mediumint |           |          | 
 
 drop table t2;
 create table t2 (a mediumint(3.9));
 \d t2
-                   Table "public.t2"
- Column |    Type     | Collation | Nullable | Default 
---------+-------------+-----------+----------+---------
- a      | "mediumint" |           |          | 
+                  Table "public.t2"
+ Column |   Type    | Collation | Nullable | Default 
+--------+-----------+-----------+----------+---------
+ a      | mediumint |           |          | 
 
 drop table t2;
 --mediumint

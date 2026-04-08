@@ -2856,8 +2856,8 @@ ORDER BY
  string_to_spatial        | character varying | character varying |                          |                   |               | YES         | UTF8               | 
  date_to_datetime         | datetime          | datetime          |                          |                   |               | YES         | UTF8               | 
  datetime_to_date         | datetime          | datetime          |                          |                   |               | YES         | UTF8               | 
- null_to_bool             | "tinyint"         | "tinyint"         |                          |                   |               | YES         | UTF8               | 
- bool_to_null             | "tinyint"         | "tinyint"         |                          |                   |               | YES         | UTF8               | 
+ null_to_bool             | tinyint           | tinyint           |                          |                   |               | YES         | UTF8               | 
+ bool_to_null             | tinyint           | tinyint           |                          |                   |               | YES         | UTF8               | 
  null_default             | character varying | character varying |                          |                   |               | YES         | UTF8               | 
 (63 rows)
 

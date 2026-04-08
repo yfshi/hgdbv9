@@ -358,7 +358,7 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	TupleDesc	desc;
 	int			natts;
 	bool		has_rowid;
-	char	   *rowid_literal;
+	char	   *rowid_literal = NULL;
 	int			pk_natts;
 	bool		first = true;
 

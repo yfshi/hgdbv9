@@ -228,9 +228,9 @@ ERROR:  relation "pg_classes" does not exist
 LINE 1: SELECT regclass('pg_classes');
                         ^
 SELECT regtype('int3');
-   regtype   
--------------
- "mediumint"
+  regtype  
+-----------
+ mediumint
 (1 row)
 
 -- with schemaname
@@ -328,9 +328,9 @@ SELECT to_regclass('pg_classes');
 (1 row)
 
 SELECT to_regtype('int3');
- to_regtype  
--------------
- "mediumint"
+ to_regtype 
+------------
+ mediumint
 (1 row)
 
 SELECT to_regcollation('notacollation');

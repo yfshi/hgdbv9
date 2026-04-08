@@ -16,8 +16,19 @@ $primary->init(
 	has_archiving    => 1,
 	allows_streaming => 1);
 $primary->append_conf('postgresql.conf', 'autovacuum = off');
+$primary->append_conf('postgresql.conf', 'archive_mode = off');
 $primary->start;
 my $primary_data = $primary->data_dir;
+
+$primary->safe_psql(
+	'postgres', q{
+	SELECT pg_switch_wal();
+	CHECKPOINT;
+});
+
+$primary->append_conf('postgresql.conf', 'archive_mode = on');
+$primary->stop('immediate');
+$primary->start;
 
 # Temporarily use an archive_command value to make the archiver fail,
 # knowing that archiving is enabled.  Note that we cannot use a command
@@ -36,6 +47,10 @@ $primary->safe_psql(
     SELECT pg_reload_conf();
 });
 
+$primary->safe_psql(
+	'postgres', q{
+	SELECT pg_stat_reset_shared('archiver');
+});
 # Save the WAL segment currently in use and switch to a new segment.
 # This will be used to track the activity of the archiver.
 my $segment_name_1 = $primary->safe_psql('postgres',
@@ -61,16 +76,12 @@ ok( !-f "$primary_data/$segment_path_1_done",
 	".done file does not exist for WAL segment $segment_name_1 waiting to be archived"
 );
 
-# BUG#z7375
-# we already see the $segment_path_1_ready, but archiver may process multiple WAL files
-# and stop after NUM_ARCHIVE_RETRIES failures on the first file, so we cannot rely on
-# last_failed_wal being equal to $segment_name_1.
 is( $primary->safe_psql(
 		'postgres', q{
-		SELECT archived_count
+		SELECT archived_count, last_failed_wal
 		FROM pg_stat_archiver
 	}),
-	"0",
+	"0|$segment_name_1",
 	"pg_stat_archiver failed to archive $segment_name_1");
 
 # Crash the cluster for the next test in charge of checking that non-archived
@@ -100,11 +111,9 @@ $primary->safe_psql(
 
 # BUG#z7375
 # As development progressed, the number of WAL files generated after initdb
-# in Oracle mode increased, it may be unpredictable, so using archived_count
-# within poll_query_until is unsafe.
+# in Oracle mode increased, it may be unpredictable.
 $primary->poll_query_until('postgres',
-	q{SELECT last_archived_wal FROM pg_stat_archiver},
-	$segment_name_1)
+	q{SELECT archived_count >= 1 FROM pg_stat_archiver})
   or die "Timed out while waiting for archiving to finish";
 
 ok(!-f "$primary_data/$segment_path_1_ready",

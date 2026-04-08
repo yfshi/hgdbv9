@@ -2711,7 +2711,7 @@ ExecEvalSQLValueFunction(ExprState *state, ExprEvalStep *op)
 					&& identifier_case_switch != NORMAL
 					&& !identifier_case_from_pg_dump)
 			{
-				char *usernames;
+				char *usernames = NULL;
 				if (identifier_case_switch == LOWERCASE
 						&& identifier_is_all_upper(DatumGetCString(current_user(fcinfo)), strlen(DatumGetCString(current_user(fcinfo)))))
 					usernames = downcase_identifier(DatumGetCString(current_user(fcinfo)), strlen(DatumGetCString(current_user(fcinfo))), true, true);

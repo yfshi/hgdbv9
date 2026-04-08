@@ -474,7 +474,7 @@ buildHgVersionsExpr(ParseState *pstate, ParseNamespaceItem *nsitem,
 					int sublevels_up, HgVersionsPseudoColumn pseudo,
 					bool has_plus_token, int location)
 {
-	Node *res;
+	Node *res = NULL;
 
 	switch (pseudo)
 	{

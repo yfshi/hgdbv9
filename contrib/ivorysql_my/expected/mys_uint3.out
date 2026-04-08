@@ -2249,9 +2249,9 @@ select pg_typeof(a - b) from int3_test; -- int4
 (1 row)
 
 select pg_typeof(+b) from int3_test;    -- int3
-  pg_typeof  
--------------
- "mediumint"
+ pg_typeof 
+-----------
+ mediumint
 (1 row)
 
 select pg_typeof(-b) from int3_test;    -- int4

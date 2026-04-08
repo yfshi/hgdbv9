@@ -133,10 +133,10 @@ LINE 1: create table t1 (a int1(-1));
                                ^
 create table t2 (a int1(0));
 \d t2
-                  Table "public.t2"
- Column |   Type    | Collation | Nullable | Default 
---------+-----------+-----------+----------+---------
- a      | "tinyint" |           |          | 
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | tinyint |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -148,10 +148,10 @@ select * from t2;
 drop table t2;
 create table t2 (a int1(3));
 \d t2
-                  Table "public.t2"
- Column |   Type    | Collation | Nullable | Default 
---------+-----------+-----------+----------+---------
- a      | "tinyint" |           |          | 
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | tinyint |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -163,18 +163,18 @@ select * from t2;
 drop table t2;
 create table t2 (a int1(3.1));
 \d t2
-                  Table "public.t2"
- Column |   Type    | Collation | Nullable | Default 
---------+-----------+-----------+----------+---------
- a      | "tinyint" |           |          | 
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | tinyint |           |          | 
 
 drop table t2;
 create table t2 (a int1(3.9));
 \d t2
-                  Table "public.t2"
- Column |   Type    | Collation | Nullable | Default 
---------+-----------+-----------+----------+---------
- a      | "tinyint" |           |          | 
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | tinyint |           |          | 
 
 drop table t2;
 --tinyint[(M)]
@@ -188,10 +188,10 @@ LINE 1: create table t1 (a tinyint(256));
                                   ^
 create table t2 (a tinyint(0));
 \d t2
-                  Table "public.t2"
- Column |   Type    | Collation | Nullable | Default 
---------+-----------+-----------+----------+---------
- a      | "tinyint" |           |          | 
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | tinyint |           |          | 
 
 insert into t2 values (1);
 select * from t2;
@@ -203,10 +203,10 @@ select * from t2;
 drop table t2;
 create table t2 (a tinyint(3));
 \d t2
-                  Table "public.t2"
- Column |   Type    | Collation | Nullable | Default 
---------+-----------+-----------+----------+---------
- a      | "tinyint" |           |          | 
+                 Table "public.t2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | tinyint |           |          | 
 
 insert into t2 values (2);
 select * from t2;
@@ -1133,17 +1133,17 @@ create index idx2 on idx_2 using hash (idx);
 vacuum full analyze idx_2;
 insert into idx_2 values (11),(22),(33);
 explain (COSTS OFF) select * from idx_2 where idx = cast(11 as tinyint);
-              QUERY PLAN               
----------------------------------------
+             QUERY PLAN              
+-------------------------------------
  Index Scan using idx2 on idx_2
-   Index Cond: (idx = '11'::"tinyint")
+   Index Cond: (idx = '11'::tinyint)
 (2 rows)
 
 explain (COSTS OFF) select * from idx_2 where idx > cast(11 as tinyint);
-            QUERY PLAN             
------------------------------------
+           QUERY PLAN            
+---------------------------------
  Seq Scan on idx_2
-   Filter: (idx > '11'::"tinyint")
+   Filter: (idx > '11'::tinyint)
 (2 rows)
 
 drop table idx_1,idx_2;
