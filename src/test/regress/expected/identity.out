@@ -1,5 +1,5 @@
 -- sanity check of system catalog
-SELECT attrelid, attname, attidentity FROM pg_attribute WHERE attidentity NOT IN ('', 'a', 'd');
+SELECT attrelid, attname, attidentity FROM pg_attribute WHERE attidentity NOT IN ('', 'a', 'd', 'i');
  attrelid | attname | attidentity 
 ----------+---------+-------------
 (0 rows)

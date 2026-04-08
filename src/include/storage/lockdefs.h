@@ -58,4 +58,13 @@ typedef struct xl_standby_lock
 	Oid			relOid;			/* OID of table */
 } xl_standby_lock;
 
+/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+#define OraNullLock                1
+#define OraSubSharedLock           2
+#define OraSubExecusiveLock        3
+#define OraSharedLock              4
+#define OraSharedSubExecusiveLock  5
+#define OraExecusiveLock           6
+/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
+
 #endif							/* LOCKDEFS_H_ */

@@ -104,6 +104,7 @@ typedef enum
 	PROC_WAIT_STATUS_OK,
 	PROC_WAIT_STATUS_WAITING,
 	PROC_WAIT_STATUS_ERROR,
+	PROC_WAIT_STATUS_TIMEOUT,		// ReqID: SRS-PLSQL-DBMS_LOCK
 } ProcWaitStatus;
 
 /*
@@ -486,6 +487,7 @@ extern ProcWaitStatus ProcSleep(LOCALLOCK *locallock, LockMethod lockMethodTable
 extern PGPROC *ProcWakeup(PGPROC *proc, ProcWaitStatus waitStatus);
 extern void ProcLockWakeup(LockMethod lockMethodTable, LOCK *lock);
 extern void CheckDeadLockAlert(void);
+extern void DbmsLockTimeoutHandler(void);		// ReqID: SRS-PLSQL-DBMS_LOCK
 extern bool IsWaitingForLock(void);
 extern void LockErrorCleanup(void);
 

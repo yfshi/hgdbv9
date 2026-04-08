@@ -35,6 +35,7 @@ typedef struct PROC_QUEUE
 
 /* GUC variables */
 extern int	max_locks_per_xact;
+extern PGDLLIMPORT float8  waitTime;	// ReqID: SRS-PLSQL-DBMS_LOCK
 
 #ifdef LOCK_DEBUG
 extern int	Trace_lock_oidmin;
@@ -129,6 +130,7 @@ typedef uint16 LOCKMETHODID;
 /* These identify the known lock methods */
 #define DEFAULT_LOCKMETHOD	1
 #define USER_LOCKMETHOD		2
+#define ORA_DBMS_LOCK_LOCKMETHOD 3		// ReqID: SRS-PLSQL-DBMS_LOCK
 
 /*
  * LOCKTAG is the key information needed to look up a LOCK item in the
@@ -149,10 +151,11 @@ typedef enum LockTagType
 	LOCKTAG_SPECULATIVE_TOKEN,	/* speculative insertion Xid and token */
 	LOCKTAG_OBJECT,				/* non-relation database object */
 	LOCKTAG_USERLOCK,			/* reserved for old contrib/userlock code */
-	LOCKTAG_ADVISORY			/* advisory user locks */
+	LOCKTAG_ADVISORY,			/* advisory user locks */
+	LOCKTAG_DBMS_LOCK            /* for oracle dbms_lock, ReqID: SRS-PLSQL-DBMS_LOCK*/
 } LockTagType;
 
-#define LOCKTAG_LAST_TYPE	LOCKTAG_ADVISORY
+#define LOCKTAG_LAST_TYPE	LOCKTAG_DBMS_LOCK		// ReqID: SRS-PLSQL-DBMS_LOCK
 
 extern const char *const LockTagTypeNames[];
 
@@ -278,6 +281,15 @@ typedef struct LOCKTAG
 	 (locktag).locktag_type = LOCKTAG_ADVISORY, \
 	 (locktag).locktag_lockmethodid = USER_LOCKMETHOD)
 
+/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+#define SET_LOCKTAG_DBMS_LOCK(locktag, dbid, id) \
+	((locktag).locktag_field1 = 0, \
+	 (locktag).locktag_field2 = 0, \
+	 (locktag).locktag_field3 = dbid, \
+	 (locktag).locktag_field4 = (id), \
+	 (locktag).locktag_type = LOCKTAG_DBMS_LOCK, \
+	 (locktag).locktag_lockmethodid = ORA_DBMS_LOCK_LOCKMETHOD)
+/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 
 /*
  * Per-locked-object lock information:

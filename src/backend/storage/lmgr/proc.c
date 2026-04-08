@@ -100,6 +100,9 @@ static DeadLockState deadlock_state = DS_NOT_YET_CHECKED;
 
 /* Is a deadlock check pending? */
 static volatile sig_atomic_t got_deadlock_timeout;
+/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+static volatile sig_atomic_t got_dbmslock_timeout;
+/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 
 static void RemoveProcFromArray(int code, Datum arg);
 static void ProcKill(int code, Datum arg);
@@ -961,6 +964,7 @@ ProcReleaseLocks(bool isCommit)
 	LockReleaseAll(DEFAULT_LOCKMETHOD, !isCommit);
 	/* Release transaction-level advisory locks */
 	LockReleaseAll(USER_LOCKMETHOD, false);
+	LockReleaseAll(ORA_DBMS_LOCK_LOCKMETHOD, false);	/* ReqID: SRS-PLSQL-DBMS_LOCK */
 }
 
 
@@ -1438,6 +1442,7 @@ ProcSleep(LOCALLOCK *locallock, LockMethod lockMethodTable)
 	/* Reset deadlock_state before enabling the timeout handler */
 	deadlock_state = DS_NOT_YET_CHECKED;
 	got_deadlock_timeout = false;
+	got_dbmslock_timeout = false;	/* ReqID: SRS-PLSQL-DBMS_LOCK */
 
 	/*
 	 * Set timer so we can wake up after awhile and check for a deadlock. If a
@@ -1470,6 +1475,12 @@ ProcSleep(LOCALLOCK *locallock, LockMethod lockMethodTable)
 		}
 		else
 			enable_timeout_after(DEADLOCK_TIMEOUT, DeadlockTimeout);
+		/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+		if (locallock->tag.lock.locktag_type == LOCKTAG_DBMS_LOCK && (int)(waitTime * 1000) < DeadlockTimeout)
+		{
+			enable_timeout_after(DBMSLOCK_TIMEOUT, (int)(waitTime * 1000));
+		}
+		/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 
 		/*
 		 * Use the current time obtained for the deadlock timeout timer as
@@ -1564,6 +1575,28 @@ ProcSleep(LOCALLOCK *locallock, LockMethod lockMethodTable)
 				CheckDeadLock();
 				got_deadlock_timeout = false;
 			}
+			/* Begin - ReqID: SRS-PLSQL-DBMS_LOCK */
+			#define MAXWAIT 32767
+			if (locallock->tag.lock.locktag_type == LOCKTAG_DBMS_LOCK && (int)waitTime < MAXWAIT)
+			{
+				if (got_dbmslock_timeout)
+				{
+					got_dbmslock_timeout = false;
+					RemoveFromWaitQueue(MyProc, hashcode);
+					MyProc->waitStatus = PROC_WAIT_STATUS_TIMEOUT;
+				}
+				/*
+				* We need to check whether the waitTime is less than the DeadLockTimeout;
+				* if so, the process no longer waitLatch but returns immediately with timeout instead.
+				* if not, we set the DBMSLOCK_TIMEOUT timer
+				*/
+				if ((int)(waitTime * 1000) > DeadlockTimeout)
+				{
+					enable_timeout_after(DBMSLOCK_TIMEOUT, (int)(waitTime * 1000) - DeadlockTimeout);
+				}
+			}
+			#undef MAXWAIT
+			/* End - ReqID: SRS-PLSQL-DBMS_LOCK */
 			CHECK_FOR_INTERRUPTS();
 		}
 
@@ -2530,4 +2563,17 @@ RegisterAutonxIsoVars_Process(void)
 	RegisterAutonxIsoVarExt("MyProc", &MyProc, sizeof(MyProc),
 					   PostbackupAutonxIsoVars_Process, PrerestoreAutonxIsoVars_Process,
 					   PrebackupAutonxIsoVars_Process, PostrestoreAutonxIsoVars_Process);
+}
+
+/*
+ * ReqID: SRS-PLSQL-DBMS_LOCK
+ * DbmsLockTimeoutHandler - Handle the expiry of dbmslock_timeout.
+*/
+void
+DbmsLockTimeoutHandler(void)
+{
+	int save_errno = errno;
+	got_dbmslock_timeout = true;
+	SetLatch(MyLatch);
+	errno = save_errno;
 }

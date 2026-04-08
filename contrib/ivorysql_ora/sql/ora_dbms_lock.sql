@@ -1,0 +1,580 @@
+-- test procedure: DBMS_LOCK.ALLOCATE_UNIQUE
+SET SERVEROUTPUT ON;
+
+CREATE TABLE dbms_lock_tb(col int);
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    INSERT INTO dbms_lock_tb VALUES(0);
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_1', v_lockhandle, 1000000);
+    INSERT INTO dbms_lock_tb VALUES(1);
+    ROLLBACK;
+END;
+/
+
+SELECT * FROM dbms_lock_tb;
+SELECT count(*) FROM dbms_lock_allocated WHERE NAME = 'dbms_lock_test_lock_1';
+
+-- test procedure: DBMS_LOCK.ALLOCATE_UNIQUE_AUTONOMOUS
+TRUNCATE dbms_lock_tb;
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    INSERT INTO dbms_lock_tb VALUES(0);
+    DBMS_LOCK.ALLOCATE_UNIQUE_AUTONOMOUS('dbms_lock_test_lock_1_1', v_lockhandle, 1000000);
+    INSERT INTO dbms_lock_tb VALUES(1);
+    ROLLBACK;
+END;
+/
+
+SELECT * FROM dbms_lock_tb;
+SELECT count(*) FROM dbms_lock_allocated WHERE NAME = 'dbms_lock_test_lock_1_1';
+
+DROP TABLE dbms_lock_tb;
+
+-- test function: DBMS_LOCK.REQUEST
+SET SERVEROUTPUT ON;
+-- should get lock success
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+    v_lockid     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.REQUEST(      -- get lock by lockhandle
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5.5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" by lockhandle success');
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+
+    SELECT lockid INTO v_lockid FROM DBMS_LOCK_ALLOCATED WHERE NAME = 'dbms_lock_test_lock_2';
+    v_result := DBMS_LOCK.REQUEST(      -- get lock by lockid
+        id => v_lockid,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5.01,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" by lockid success');
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- get lock failed due to INVALID PARAMETER, return 3
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => -1,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => 10,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- The second time get lock failed due to ALREADY LOCK OWNER, return code: 4
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+
+        v_result := DBMS_LOCK.REQUEST(
+            lockhandle => v_lockhandle,
+            lockmode   => DBMS_LOCK.X_MODE,
+            timeout    => 5,
+            release_on_commit => FALSE
+        );
+        IF v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+            v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+        END IF;
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- get lock failed due to ILLEGAL LOCKHANDLE, return code: 5
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_lockhandle := v_lockhandle || '010';
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+
+END;
+/
+
+-- test release_on_commit parameter
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- release lock success
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_2" by lockhandle success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => true
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- release lock failed due to NOT OWNER, return code: 4
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_2" by lockhandle success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- test function: DBMS_LOCK.RELEASE
+SET SERVEROUTPUT ON;
+-- release lock success
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_3', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(      -- get lock by lockhandle
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    
+    v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_3" by lockhandle success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_3" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- release lock failed due to PARAMETER ERROR, return code: 3
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_3', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    
+    v_result := DBMS_LOCK.RELEASE(id => 10101);
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_3" by lockhandle success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_3" failed, return code: ' || v_result);
+    END IF;
+	v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+END;
+/
+
+-- release lock failed due to NOT OWNER, return code: 4
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_3', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_3" by lockhandle success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_3" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- release lock failed due to ILLEGAL LOCKHANDLE, return code: 5
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_2', v_lockhandle, 1000000);
+
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" success');
+        v_lockhandle := v_lockhandle || '010';
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+        IF v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_2" by lockhandle success');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+        END IF;
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_2" failed, return code: ' || v_result);
+    END IF;
+
+END;
+/
+
+-- test function: DBMS_LOCK.CONVERT
+SET SERVEROUTPUT ON;
+
+-- convert lock success
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_4', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.SS_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_4" by lockhandle success');
+
+        v_result := DBMS_LOCK.CONVERT(  -- convert lock from SS_MODE to X_MODE
+            lockhandle => v_lockhandle,
+            lockmode   => DBMS_LOCK.X_MODE,
+            timeout    => 2.5
+        );
+        if v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE success');
+            
+            v_result := DBMS_LOCK.CONVERT(  -- convert lock from X_MODE to SS_MODE
+                lockhandle => v_lockhandle,
+                lockmode   => DBMS_LOCK.SS_MODE,
+                timeout    => 2.5
+            );
+            if v_result = 0 THEN
+                DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from X_MODE to SS_MODE success');
+
+            ELSE
+                DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from X_MODE to SS_MODE failed: ' || v_result);
+            END If;
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: ' || v_result);
+        END If;
+
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+        if v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_4" success');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Release lock "dbms_lock_test_lock_4" failed: ' || v_result);
+        END If;
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_4" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- convert lock failed due to INVALID PARAMETER, return 3
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_4', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.SS_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_4" by lockhandle success');
+
+        v_result := DBMS_LOCK.CONVERT(  -- convert lock from SS_MODE to X_MODE
+            lockhandle => v_lockhandle,
+            lockmode   => 10,
+            timeout    => 2.5
+        );
+        if v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE success');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: ' || v_result);
+        END If;
+
+        v_result := DBMS_LOCK.CONVERT(  -- convert lock from SS_MODE to X_MODE
+            lockhandle => v_lockhandle,
+            lockmode   => DBMS_LOCK.X_MODE,
+            timeout    => -2.5
+        );
+        if v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE success');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: ' || v_result);
+        END If;
+
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_4" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- convert lock failed due to NOT OWNER, return code: 4
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_4', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.CONVERT(  -- convert lock from SS_MODE to X_MODE
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 2.5
+    );
+    if v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE success');
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: ' || v_result);
+    END If;
+END;
+/
+
+-- convert lock failed due to ILLEGAL LOCKHANDLE, return code: 5
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_4', v_lockhandle, 1000000);
+    v_result := DBMS_LOCK.REQUEST(
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.SS_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_4" by lockhandle success');
+
+        v_lockhandle := v_lockhandle || '0110';
+        v_result := DBMS_LOCK.CONVERT(  -- convert lock from SS_MODE to X_MODE
+            lockhandle => v_lockhandle,
+            lockmode   => DBMS_LOCK.X_MODE,
+            timeout    => 2.5
+        );
+        if v_result = 0 THEN
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE success');
+        ELSE
+            DBMS_OUTPUT.PUT_LINE('Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: ' || v_result);
+        END If;
+
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "dbms_lock_test_lock_4" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+    i int;
+    name varchar2(128);
+BEGIN
+    for i in 1..10000 loop
+        name = 'test_lock_' || i;
+        DBMS_LOCK.ALLOCATE_UNIQUE(name, v_lockhandle, 10);
+    end loop;
+END;
+/
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+    v_lockid     NUMBER;
+BEGIN
+    DBMS_LOCK.ALLOCATE_UNIQUE('test_lock_999', v_lockhandle, -10);
+
+    v_result := DBMS_LOCK.REQUEST(      -- get lock by lockhandle
+        lockhandle => v_lockhandle,
+        lockmode   => DBMS_LOCK.X_MODE,
+        timeout    => 5,
+        release_on_commit => FALSE
+    );
+    IF v_result = 0 THEN
+        DBMS_OUTPUT.PUT_LINE('Request lock "test_lock_999" by lockhandle success');
+        v_result := DBMS_LOCK.RELEASE(v_lockhandle);
+    ELSE
+        DBMS_OUTPUT.PUT_LINE('Request lock "test_lock_999" failed, return code: ' || v_result);
+    END IF;
+END;
+/
+
+-- test different type user
+DROP SCHEMA IF EXISTS system;
+DROP USER IF EXISTS system;
+CREATE USER system WITH superuser;
+\c - system
+
+DROP SCHEMA IF EXISTS rnrol11;
+DROP USER IF EXISTS enrol11;
+CREATE USER enrol11;
+
+\c - enrol11
+CREATE TABLE dbms_lock_tb(col int);
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    INSERT INTO dbms_lock_tb VALUES(0);
+    DBMS_LOCK.ALLOCATE_UNIQUE('dbms_lock_test_lock_5', v_lockhandle, 1000000);
+    INSERT INTO dbms_lock_tb VALUES(1);
+    ROLLBACK;
+END;
+/
+
+SELECT * FROM dbms_lock_tb;
+SELECT count(*) FROM dbms_lock_allocated WHERE NAME = 'dbms_lock_test_lock_5';
+
+-- test procedure: DBMS_LOCK.ALLOCATE_UNIQUE_AUTONOMOUS
+TRUNCATE dbms_lock_tb;
+
+DECLARE
+    v_lockhandle VARCHAR2(128);
+    v_result     NUMBER;
+BEGIN
+    INSERT INTO dbms_lock_tb VALUES(0);
+    DBMS_LOCK.ALLOCATE_UNIQUE_AUTONOMOUS('dbms_lock_test_lock_5_1', v_lockhandle, 1000000);
+    INSERT INTO dbms_lock_tb VALUES(1);
+    ROLLBACK;
+END;
+/
+
+SELECT * FROM dbms_lock_tb;
+SELECT count(*) FROM dbms_lock_allocated WHERE NAME = 'dbms_lock_test_lock_5_1';
+
+DROP TABLE dbms_lock_tb;
+
+\c - system
+
+DECLARE
+    name text;
+BEGIN
+        SELECT INTO name 10::regrole;
+		EXECUTE format('set session authorization %s;',name);
+END;
+/
+
+DROP SCHEMA IF EXISTS system;
+DROP USER IF EXISTS system;
+
+DROP SCHEMA IF EXISTS rnrol11;
+DROP USER IF EXISTS enrol11;
