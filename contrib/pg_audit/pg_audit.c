@@ -149,7 +149,7 @@
 #include "catalog/pg_foreign_server.h"
 #include "se_features_interface.h"
 #include "catalog/pg_authid.h"
-
+#include "libpq/ifaddr.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -190,7 +190,7 @@ static const struct config_enum_entry audit_opers_options[] = {
 AuditSwitch pg_audit = AUDIT_OFF;
 
 
-AduitSwitchGUC audit_GUC;
+AduitSwitchGUC audit_GUC = {0};
 int audit_spacelimit = 10240; //G
 char *audit_alarmemail = NULL;
 char *audit_space_alarm = NULL;
@@ -220,6 +220,9 @@ char *audit_space_alarm = NULL;
 
 #define CHECK_LIMIT_TIMES 200
 
+#define TIME_LENGTH 2
+#define FTYPE_NUM 1
+
 /* Begin - BUG#Z6092 */
 typedef enum AuditParameter
 {
@@ -240,9 +243,22 @@ typedef enum AuditParameter
 #endif
         AUDIT_TRACE_SETTINGS,
         AUDIT_LOGPOLICY,
+        AUDIT_LOGIN,
+        AUDIT_APP,
+        AUDIT_USER,
+        AUDIT_TIME,
+        AUDIT_IP,
         NUM_AUDIT_PARAMS
 } AuditParameter;
 /* End - BUG#Z6092 */
+typedef struct ip_node
+{
+	struct sockaddr_storage addr;
+	int			addrlen;
+	struct sockaddr_storage mask;
+	int			masklen;
+} ip_node;
+
 
 /* audit using independent memory context */
 static MemoryContext AuditContext = NULL;
@@ -275,6 +291,8 @@ static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
 
 static MemoryContext pgAuditLocalContext = NULL;
+static MemoryContext pgAuditGucContext = NULL;
+
 MemoryContext	old_context;
 
 /* flags set by signal handlers */
@@ -456,6 +474,12 @@ static bool is_pgagent_live(char *cmd);
 static int check_process(pid_t pid, char *cmd);
 #endif
 /* End - BUG#Z7404 */
+static bool audit_filter_events(AuditSystemEvent event);
+static bool audit_users_check_hook(char **newvalue, void **extra, GucSource source);
+static bool audit_time_check_hook(char **newvalue, void **extra, GucSource source);
+static bool audit_check_ip_hook(char **newvalue, void **extra, GucSource source);
+static bool check_ip(SockAddr *raddr, struct sockaddr *addr, struct sockaddr *mask);
+static bool audit_app_check_hook(char **newvalue, void **extra, GucSource source);
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -904,6 +928,13 @@ audit_sqlite_assign_hook(const char *newvalue, void *extra)
  */
 static void audit_define_GUC(void)
 {
+	MemoryContext oldContext;
+
+	pgAuditGucContext = AllocSetContextCreate(TopMemoryContext,
+										  "pg_audit_guc",
+										  ALLOCSET_DEFAULT_SIZES);
+	oldContext = MemoryContextSwitchTo(pgAuditGucContext);
+
 	/* audit switch */
 	DefineCustomEnumVariable(audit_parameters[AUDIT_ENABLE],
 						 "turn on or off pg_audit",
@@ -1087,6 +1118,62 @@ static void audit_define_GUC(void)
 						  NULL,
 						  NULL,
 						  NULL);
+
+	DefineCustomEnumVariable(audit_parameters[AUDIT_LOGIN],
+						"only audit login/logout",
+						NULL,
+						(int *)&(audit_GUC.login_logout_only),
+						AUDIT_OFF,
+						audit_turn_options,
+						PGC_SIGHUP,
+						0,
+						NULL,
+						NULL,
+						NULL);
+	DefineCustomStringVariable(audit_parameters[AUDIT_APP],
+					 "forbidden audit app",
+					 NULL,
+					 &audit_GUC.exclude_apps,
+					 "",
+					 PGC_SIGHUP,
+					 0,
+					 audit_app_check_hook,
+					 NULL,
+					 NULL);
+	DefineCustomStringVariable(audit_parameters[AUDIT_USER],
+					 "forbidden audit users",
+					 NULL,
+					 &audit_GUC.exclude_users,
+					 "",
+					 PGC_SIGHUP,
+					 0,
+					 audit_users_check_hook,
+					 NULL,
+					 NULL);
+
+	DefineCustomStringVariable(audit_parameters[AUDIT_TIME],
+					 "forbidden audit time",
+					 NULL,
+					 &audit_GUC.exclude_time,
+					 "",
+					 PGC_SIGHUP,
+					 0,
+					 audit_time_check_hook,
+					 NULL,
+					 NULL);
+
+	DefineCustomStringVariable(audit_parameters[AUDIT_IP],
+					 "forbidden audit ip",
+					 NULL,
+					 &audit_GUC.exclude_ips,
+					 "",
+					 PGC_SIGHUP,
+					 0,
+					 audit_check_ip_hook,
+					 NULL,
+					 NULL);
+
+	MemoryContextSwitchTo(oldContext);
 }
 
 /*
@@ -3638,6 +3725,7 @@ audit_alter_set_guc(List *parsetreeList)
 			audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
 			return;
 		
+
 		if (parsetree->stmt->type != T_AlterDatabaseSetStmt && 
 			parsetree->stmt->type != T_AlterRoleSetStmt)
 			continue;
@@ -3696,6 +3784,11 @@ audit_alter_set_guc(List *parsetreeList)
 			if (relOid == InvalidOid)
 			{
 				elog(WARNING, "could not get oid of relation pg_audit_log");
+				return;
+			}
+
+			if (audit_filter_events(SYSTEMAUDIT_ALTER_GUC))
+			{
 				return;
 			}
 
@@ -4715,6 +4808,11 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 		return;
 	}
 
+	if (audit_filter_events(event))
+	{
+		return;
+	}
+
 	/*result == SYSTEMAUDIT_AUDIT_LOG_DISK_FULL is special.
 	   when process "logger" does not use *audit_GUC.audit_pause*/
 	if(event != SYSTEMAUDIT_AUDIT_LOG_DISK_FULL && *audit_GUC.audit_pause)
@@ -5368,6 +5466,11 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 	if (audit_GUC.audit_enable != AUDIT_ON || *audit_GUC.audit_pause)
 		return;
 
+	if (audit_filter_events(event))
+	{
+		return;
+	}
+
 #ifdef USE_SQLITE
 	if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 	{
@@ -5879,6 +5982,10 @@ audit_postmaster_sighup_guc(char *context)
 					(audit_GUC.audit_systemopers == AUDIT_OPER_SUCC ||
                      audit_GUC.audit_systemopers == AUDIT_OPER_ALL))
 				{
+					if (audit_filter_events(SYSTEMAUDIT_ALTER_GUC))
+					{
+						continue;
+					}
 					ret = -1;
 					strcpy(auditevent->actionname, ALTER_GUC_S);
 				}
@@ -13956,3 +14063,539 @@ is_pgagent_live(char *cmd)
 }
 #endif
 /* End - BUG#Z7404 */
+
+static bool audit_filter_events_loginout(AuditSystemEvent event)
+{
+	/* only audit login/logout */
+	if (audit_GUC.login_logout_only == AUDIT_ON &&
+		(event != SYSTEMAUDIT_LOGIN && event != SYSTEMAUDIT_LOGOUT))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+static bool audit_filter_events_app(AuditSystemEvent event)
+{
+	ListCell *l = NULL;
+	List *elemlist = NULL;
+
+	if (audit_GUC.exclude_apps != NULL && audit_GUC.exclude_apps[0] != '\0')
+	{
+		/* Parse string into list of filename paths */
+		elemlist = audit_GUC.exclude_apps_list;
+
+		foreach(l, elemlist)
+		{
+			/* Note that filename was already canonicalized */
+			char	   *appname = (char *) lfirst(l);
+
+			if (MyProcPort != NULL && MyProcPort->application_name != NULL &&  // BUG#Z7627
+				pg_strcasecmp(MyProcPort->application_name, appname) == 0)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool audit_filter_events_users(AuditSystemEvent event)
+{
+	ListCell *l = NULL;
+	List *elemlist = NULL;
+	bool transaction_flag = false;
+
+	if (audit_GUC.exclude_users != NULL && audit_GUC.exclude_users[0] != '\0')
+	{
+		/* Parse string into list of filename paths */
+		elemlist = audit_GUC.exclude_users_list;
+
+		foreach(l, elemlist)
+		{
+			/* Note that filename was already canonicalized */
+			char *user = (char *) lfirst(l);
+			char *cur_name = NULL;
+			Oid user_oid = InvalidOid;
+
+			/* sometimes we can't get role oid, so strcmp with username */
+			user_oid = GetUserId_audit();
+			if (OidIsValid(user_oid))
+			{
+				if (!IsTransactionOrTransactionBlock())
+				{
+					StartTransactionCommand();
+					PushActiveSnapshot(GetTransactionSnapshot());
+					transaction_flag = true;
+				}
+
+				cur_name = GetUserNameFromId(user_oid, true);
+				if (strcmp(cur_name, user) == 0)
+				{
+					if (transaction_flag)
+					{
+						PopActiveSnapshot();
+						CommitTransactionCommand();
+					}
+					return true;
+				}
+
+				if (transaction_flag)
+				{
+					PopActiveSnapshot();
+					CommitTransactionCommand();
+				}
+			}
+			/* Begin - BUG#Z7627 */
+			else if (MyProcPort != NULL && MyProcPort->user_name != NULL &&
+					strcmp(MyProcPort->user_name, user) == 0)
+			{
+				return true;
+			}
+			/* End - BUG#Z7627 */
+		}
+	}
+
+	return false;
+}
+
+static bool audit_filter_events_time(AuditSystemEvent event)
+{
+	if (audit_GUC.exclude_time != NULL && audit_GUC.exclude_time[0] != '\0')
+	{
+		Timestamp tmp_cur_time;
+		struct pg_tm cur_time;
+		fsec_t		fsec;
+		int cur = 0;
+
+		tmp_cur_time = DatumGetTimestamp(DirectFunctionCall1(timestamptz_timestamp, TimestampTzGetDatum(GetCurrentTimestamp())));
+		if (timestamp2tm(tmp_cur_time, NULL, &cur_time, &fsec, NULL, NULL) != 0)
+		{
+			ereport(WARNING,(errmsg("timestamp out of range")));
+			return false;
+		}
+
+		cur = cur_time.tm_hour * SECS_PER_HOUR + cur_time.tm_min * SECS_PER_MINUTE + cur_time.tm_sec;
+
+		/* if set 3:00-22:00 */
+		if (audit_GUC.audit_starttime <= audit_GUC.audit_endtime &&
+				cur >= audit_GUC.audit_starttime && cur <= audit_GUC.audit_endtime)
+		{
+			return true;
+		}
+		/* if set 22:00-3:00 */
+		else if (audit_GUC.audit_starttime > audit_GUC.audit_endtime)
+		{
+			/* 22:00:00 -23:59:59 */
+			if (cur >= audit_GUC.audit_starttime && cur < SECS_PER_DAY)
+			{
+				return true;
+			}
+			/* 00:00:00-3:00:00 */
+			else if (cur <= audit_GUC.audit_endtime && cur >= 0)
+			{
+				return true;
+			}
+		}
+	}
+
+	return false;
+}
+
+static bool audit_filter_events_ip(AuditSystemEvent event)
+{
+	ListCell *l = NULL;
+	List *elemlist = NULL;
+	#define LOCAL_IP "127.0.0.1"
+	
+
+	if (audit_GUC.exclude_ips != NULL && audit_GUC.exclude_ips[0] != '\0')
+	{
+		/* Parse string into list of filename paths */
+		MemoryContext oldcontext = MemoryContextSwitchTo(pgAuditGucContext);
+
+		elemlist = audit_GUC.exclude_ips_list;
+
+		if (MyProcPort == NULL)
+		{
+			if (strstr(audit_GUC.exclude_ips, LOCAL_IP) != NULL)
+				return true;
+			return false;
+		}
+
+		foreach(l, elemlist)
+		{
+			/* Note that filename was already canonicalized */
+			ip_node	   *ip = (ip_node *) lfirst(l);
+
+			if (check_ip(&MyProcPort->raddr, (struct sockaddr *) &ip->addr, (struct sockaddr *) &ip->mask))
+			{
+				return true;
+			}
+		}
+
+		MemoryContextSwitchTo(oldcontext);
+	}
+
+	return false;
+}
+
+static bool audit_filter_events(AuditSystemEvent event)
+{
+	if (audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
+		return false;
+
+	if (audit_filter_events_loginout(event))
+	{
+		return true;
+	}
+
+	/* forbidden audit app */
+	if (audit_filter_events_app(event))
+	{
+		return true;
+	}
+
+	/* forbidden audit user */
+	if (audit_filter_events_users(event))
+	{
+		return true;
+	}
+
+	/* forbidden audit time */
+	if (audit_filter_events_time(event))
+	{
+		return true;
+	}
+
+	if (audit_filter_events_ip(event))
+	{
+		return true;
+	}
+
+	return false;
+}
+
+static bool 
+audit_users_check_hook(char **newvalue, void **extra, GucSource source)
+{
+	char *rawstring = NULL;
+	List *elemlist = NULL;
+	MemoryContext oldContext;
+
+	if (*newvalue == NULL || *newvalue[0] == '\0')
+		return true;
+
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	oldContext = MemoryContextSwitchTo(pgAuditGucContext);
+
+	/* Need a modifiable copy of string */
+	rawstring = pstrdup(*newvalue);
+
+	/* Parse string into list of filename paths */
+	if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+	{
+		/* syntax error in list */
+		pfree(rawstring);
+		GUC_check_errdetail("invalid list syntax in parameter audit.app= %s:", *newvalue);
+		MemoryContextSwitchTo(oldContext);
+		return false;
+	}
+
+	if (audit_GUC.exclude_users_list != NULL)
+	{
+		list_free_deep(audit_GUC.exclude_users_list);
+	}
+	audit_GUC.exclude_users_list = elemlist;
+
+	pfree(rawstring);
+	MemoryContextSwitchTo(oldContext);
+
+	return true;
+}
+
+static bool 
+audit_app_check_hook(char **newvalue, void **extra, GucSource source)
+{
+	char *rawstring = NULL;
+	List *elemlist = NULL;
+	MemoryContext oldContext;
+
+	if (*newvalue == NULL || *newvalue[0] == '\0')
+		return true;
+
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	/* Need a modifiable copy of string */
+	rawstring = pstrdup(*newvalue);
+
+	oldContext = MemoryContextSwitchTo(pgAuditGucContext);
+
+	/* Parse string into list of filename paths */
+	if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+	{
+		/* syntax error in list */
+		pfree(rawstring);
+		GUC_check_errdetail("invalid list syntax in parameter audit.app= %s:", *newvalue);
+		MemoryContextSwitchTo(oldContext);
+		return false;
+	}
+
+	if (audit_GUC.exclude_apps_list != NULL)
+	{
+		list_free_deep(audit_GUC.exclude_apps_list);
+	}
+
+	audit_GUC.exclude_apps_list = elemlist;
+	pfree(rawstring);
+	MemoryContextSwitchTo(oldContext);
+
+	return true;
+}
+
+
+static bool 
+audit_time_check_hook(char **newvalue, void **extra, GucSource source)
+{
+	char *rawstring = NULL;
+	List *elemlist = NULL;
+	ListCell *l = NULL;
+	char		workbuf[MAXDATELEN + 1];
+	char	   *field[MAXDATEFIELDS];
+	int			dtype;
+	int			ftype[MAXDATEFIELDS];
+	int			tz;
+	int			nf;
+	int			dterr;
+	fsec_t		fsec;
+	int i = 0;
+	
+	struct pg_tm strart_time, end_time,
+			   *start_tm = &strart_time,
+			   *end_tm = &end_time;
+
+	if (*newvalue == NULL || *newvalue[0] == '\0')
+		return true;
+
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	/* Need a modifiable copy of string */
+	rawstring = pstrdup(*newvalue);
+
+	/* Parse string into list of filename paths */
+	if (!SplitDirectoriesString(rawstring, '-', &elemlist))
+	{
+		/* syntax error in list */
+		pfree(rawstring);
+		GUC_check_errdetail("invalid list syntax in parameter audit.app= %s:", *newvalue);
+		return false;
+	}
+
+	if (list_length(elemlist) != TIME_LENGTH)
+	{
+		list_free_deep(elemlist);
+		pfree(rawstring);
+		GUC_check_errdetail("invalid list syntax in parameter format:starttime-endtime. audit.app= %s:", *newvalue);
+		return false;
+	}
+
+	foreach(l, elemlist)
+	{
+		char *time = (char *) lfirst(l);
+		dterr = ParseDateTime(time, workbuf, sizeof(workbuf),
+							  field, ftype, MAXDATEFIELDS, &nf);
+		if (dterr != 0 || nf != FTYPE_NUM || ftype[0] != DTK_TIME)
+		{
+			list_free_deep(elemlist);
+			pfree(rawstring);
+			GUC_check_errdetail("time format error in parameter audit.app= %s:", *newvalue);
+			return false;
+		}
+
+		if (dterr == 0)
+		{
+			if (i == 0)
+				dterr = DecodeTimeOnly(field, ftype, nf, &dtype, start_tm, &fsec, &tz);
+			else
+				dterr = DecodeTimeOnly(field, ftype, nf, &dtype, end_tm, &fsec, &tz);
+			i++;
+		}
+	}
+
+	audit_GUC.audit_starttime = start_tm->tm_hour * SECS_PER_HOUR + start_tm->tm_min * SECS_PER_MINUTE + start_tm->tm_sec;
+	audit_GUC.audit_endtime = end_tm->tm_hour * SECS_PER_HOUR + end_tm->tm_min * SECS_PER_MINUTE + end_tm->tm_sec;
+
+	list_free_deep(elemlist);
+	pfree(rawstring);
+
+	return true;
+}
+
+static bool
+check_ip(SockAddr *raddr, struct sockaddr *addr, struct sockaddr *mask)
+{
+	if (raddr->addr.ss_family == addr->sa_family &&
+		pg_range_sockaddr(&raddr->addr,
+						  (struct sockaddr_storage *) addr,
+						  (struct sockaddr_storage *) mask))
+		return true;
+	return false;
+}
+
+static bool audit_check_ip(char *ip, List **iplist)
+{
+	char *cidr_slash = NULL;
+	int ret = 0;
+	char *hostname = NULL;
+	char *str=NULL;
+	ip_node *ipnode = NULL;
+
+	struct addrinfo *gai_result;
+	struct addrinfo hints;
+	struct sockaddr_storage mask;
+
+	ipnode = palloc0(sizeof(ip_node));
+
+	/* need a modifiable copy of token */
+	str = pstrdup(ip);
+
+	/* Check if it has a CIDR suffix and if so isolate it */
+	cidr_slash = strchr(str, '/');
+	if (cidr_slash)
+		*cidr_slash = '\0';
+
+	/* Get the IP address either way */
+	hints.ai_flags = AI_NUMERICHOST;
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = 0;
+	hints.ai_protocol = 0;
+	hints.ai_addrlen = 0;
+	hints.ai_canonname = NULL;
+	hints.ai_addr = NULL;
+	hints.ai_next = NULL;
+
+	ret = pg_getaddrinfo_all(str, NULL, &hints, &gai_result);
+	if (ret == 0 && gai_result)
+	{
+		memcpy(&ipnode->addr, gai_result->ai_addr,
+			   gai_result->ai_addrlen);
+		ipnode->addrlen = gai_result->ai_addrlen;
+	}
+	else if (ret == EAI_NONAME)
+		hostname = str;
+	else
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_CONFIG_FILE_ERROR),
+				 errmsg("invalid IP address \"%s\": %s",
+						str, gai_strerror(ret))));
+		if (gai_result)
+			pg_freeaddrinfo_all(hints.ai_family, gai_result);
+		pfree(str);
+		return false;
+	}
+
+	/* Get the netmask */
+	if (cidr_slash)
+	{
+		if (hostname)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_CONFIG_FILE_ERROR),
+					 errmsg("specifying both host name and CIDR mask is invalid: \"%s\"",
+							str)));
+			if (gai_result)
+				pg_freeaddrinfo_all(hints.ai_family, gai_result);
+			pfree(str);
+			return false;
+		}
+
+		if (pg_sockaddr_cidr_mask(&mask, cidr_slash + 1,
+								  gai_result->ai_addr->sa_family) < 0)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_CONFIG_FILE_ERROR),
+					 errmsg("invalid CIDR mask in address \"%s\"",
+							str)));
+
+			if (gai_result)
+				pg_freeaddrinfo_all(hints.ai_family, gai_result);
+			pfree(str);
+			return false;
+		}
+
+		memcpy(&ipnode->mask, &mask, sizeof(struct sockaddr_storage));
+		ipnode->masklen = ipnode->addrlen;
+	}
+
+	*iplist = lappend(*iplist, ipnode);
+
+	pfree(str);
+	pg_freeaddrinfo_all(hints.ai_family, gai_result);
+
+	return true;
+}
+
+static bool audit_check_ip_hook(char **newvalue, void **extra, GucSource source)
+{
+	ListCell *l = NULL;
+	List *elemlist = NULL;
+	List *iplist = NULL;
+	char *rawstring = NULL;
+	MemoryContext oldContext;
+
+	if (*newvalue == NULL || *newvalue[0] == '\0')
+		return true;
+
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	oldContext = MemoryContextSwitchTo(pgAuditGucContext);
+
+	/* Need a modifiable copy of string */
+	rawstring = pstrdup(*newvalue);
+
+	/* Parse string into list of filename paths */
+	if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+	{
+		/* syntax error in list */
+		pfree(rawstring);
+		GUC_check_errdetail("invalid list syntax in parameter audit.app= %s:", *newvalue);
+		MemoryContextSwitchTo(oldContext);
+		return false;
+	}
+
+	foreach(l, elemlist)
+	{
+		/* Note that filename was already canonicalized */
+		char	   *ip = (char *) lfirst(l);
+
+		if (!audit_check_ip(ip, &iplist))
+		{
+			list_free_deep(elemlist);
+			pfree(rawstring);
+			MemoryContextSwitchTo(oldContext);
+			GUC_check_errdetail("invalid list syntax in parameter audit.ip= %s:", *newvalue);
+			return false;
+		}
+	}
+
+	if (audit_GUC.exclude_ips_list != NULL)
+	{
+		list_free_deep(audit_GUC.exclude_ips_list);
+	}
+
+	audit_GUC.exclude_ips_list = iplist;
+
+	pfree(rawstring);
+	MemoryContextSwitchTo(oldContext);
+
+	return true;
+}
+

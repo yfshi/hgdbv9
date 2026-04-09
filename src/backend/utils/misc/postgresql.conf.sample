@@ -840,6 +840,11 @@
 #audit.systemopers = off						# system audit, support off/succ/fail/all
 #audit.sqlitedbpath = 'pgaudit/sqlite/sqlite.db'			# sqlite database path
 #audit.track_settings = on						# pg_track_settings feature switch, off or on
+#audit.login_logout_only = off						# only audit login/logout
+#audit.exclude_apps = ''						# forbidden system audit by audit.audit.exclude_apps
+#audit.exclude_users = ''						# forbidden system audit by audit.exclude_users
+#audit.exclude_time = ''						# forbidden system audit by audit.exclude_time
+#audit.exclude_ips = ''							# forbidden system audit by audit.exclude_ips
 
 #------------------------------------------------------------------------------
 # se_feature parameters

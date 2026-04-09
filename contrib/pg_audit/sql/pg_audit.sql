@@ -663,3 +663,80 @@ call public.pro_test(1, 2);
 select count(*) from hg_security.pg_audit_log;
 
 select * from hg_security.show_audit_param();
+
+/* audit.app */
+truncate hg_security.pg_audit_log;
+alter system set audit.exclude_apps='psql,patroni';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_apps ;
+select hg_security.pg_audit_switch_primary(1);
+select * from hg_security.pg_audit_log;
+
+alter system set audit.exclude_apps='';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_apps ;
+
+/* audit.time */
+truncate hg_security.pg_audit_log;
+alter system set audit.exclude_time='22:00-3:00';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_time ;
+
+alter system set audit.exclude_time='';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_time ;
+
+/* audit.ip */
+truncate hg_security.pg_audit_log;
+alter system set audit.exclude_ips='127.0.0.1/32';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_ips ;
+
+alter system set audit.exclude_ips='';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_ips ;
+
+/* audit users */
+truncate hg_security.pg_audit_log;
+
+drop user if exists user1;
+create user user1 with superuser password '123456';
+
+alter system set audit.exclude_users = 'user1';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_users;
+
+\c - user1
+
+select * from hg_security.pg_audit_log ;
+alter system set audit.exclude_users='';
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.exclude_users ;
+
+/* audit.login */
+alter system set audit.login_logout_only=on;
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.login_logout_only ;
+drop user if exists user2;
+
+create user user2 with password '123456';
+truncate hg_security.pg_audit_log;
+
+\c - user2
+
+\c - user1
+select * from hg_security.pg_audit_log ;
+
+alter system set audit.login_logout_only=off;
+select pg_reload_conf();
+select pg_sleep(1);
+show audit.login_logout_only ;

@@ -883,7 +883,12 @@ static const char * const audit_parameters[] = {
 	"audit.systemopers",
 	"audit.sqlitedbpath",
 	"audit.track_settings",
-	"audit.logpolicy"
+	"audit.logpolicy",
+	"audit.login_logout_only",
+	"audit.exclude_apps",
+	"audit.exclude_users",
+	"audit.exclude_time",
+	"audit.exclude_ips"
 };
 /* End - BUG#Z6092 */
 
