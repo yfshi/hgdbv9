@@ -574,35 +574,29 @@ PARALLEL SAFE -- BUG#M0000422
 STRICT
 STABLE;
 /* End - bug0000427 */
+
 --bug#Z4327
 --change to_date like pg_catalog.to_date to PARALLEL SAFE
-CREATE FUNCTION sys.to_date(text)
+/* Begin - OA-REQ-2131 */
+CREATE FUNCTION sys.to_date(pg_catalog.any, text default current_setting('nls_date_format'), text default 'N/A')
 RETURNS sys.oradate
-AS 'MODULE_PATHNAME','to_oradate1'
+AS 'MODULE_PATHNAME','to_oradate'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.to_date(text,text)
+CREATE FUNCTION sys.to_date(text, text)
 RETURNS sys.oradate
-AS 'MODULE_PATHNAME','to_oradate2'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-STABLE;
- 
-CREATE FUNCTION sys.to_date(text, text, text)
-RETURNS sys.oradate
-AS 'MODULE_PATHNAME','to_oradate3'
+AS 'MODULE_PATHNAME','to_oradate'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.to_timestamp(text)
+CREATE FUNCTION sys.to_timestamp(pg_catalog.any, text default current_setting('nls_timestamp_format'), text default 'N/A')
 RETURNS sys.oratimestamp
-AS 'MODULE_PATHNAME','to_oratimestamp1'
+AS 'MODULE_PATHNAME','to_oratimestamp'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
@@ -610,43 +604,36 @@ STABLE;
 
 CREATE FUNCTION sys.to_timestamp(text, text)
 RETURNS sys.oratimestamp
-AS 'MODULE_PATHNAME','to_oratimestamp2'
+AS 'MODULE_PATHNAME','to_oratimestamp'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
 
-CREATE FUNCTION sys.to_timestamp(text, text, text)
+CREATE FUNCTION sys.to_timestamp(text)
 RETURNS sys.oratimestamp
-AS 'MODULE_PATHNAME','to_oratimestamp3'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
+AS $$select sys.to_timestamp($1, current_setting('nls_timestamp_format')::text)$$
+LANGUAGE SQL 
+PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION sys.to_timestamp_tz(text)
-RETURNS sys.oratimestamptz
-AS 'MODULE_PATHNAME','to_oratimestamptz1'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
+CREATE FUNCTION sys.to_timestamp(float8)
+RETURNS sys.oratimestamp
+AS $$select sys.to_timestamp($1::text, current_setting('nls_timestamp_format')::text)$$
+LANGUAGE SQL 
+PARALLEL SAFE
 STRICT
 STABLE;
 
-CREATE FUNCTION sys.to_timestamp_tz(text, text)
+CREATE FUNCTION sys.to_timestamp_tz(pg_catalog.any, text default current_setting('nls_timestamp_tz_format'), text default 'N/A')
 RETURNS sys.oratimestamptz
-AS 'MODULE_PATHNAME','to_oratimestamptz2'
+AS 'MODULE_PATHNAME','to_oratimestamptz'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
 STABLE;
-
-CREATE FUNCTION sys.to_timestamp_tz(text, text, text)
-RETURNS sys.oratimestamptz
-AS 'MODULE_PATHNAME','to_oratimestamptz3'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-STABLE;
+/* End - OA-REQ-2131 */
 
 CREATE FUNCTION sys.to_char(sys.oradate)
 RETURNS varchar2
@@ -1171,18 +1158,6 @@ CREATE OR REPLACE FUNCTION sys.trunc(double precision, integer)
 RETURNS sys.number
 AS 'select pg_catalog.trunc($1::pg_catalog.numeric, $2)'
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
-
---to_date
----bug#Z4327 change to_date to STABLE
-CREATE OR REPLACE FUNCTION sys.to_date(bigint)
-RETURNS sys.oradate
-AS 'select sys.to_date($1::text)'
-LANGUAGE SQL STABLE PARALLEL SAFE STRICT;
-
-CREATE OR REPLACE FUNCTION sys.to_date(bigint, text)
-RETURNS sys.oradate
-AS 'select sys.to_date($1::text, $2)'
-LANGUAGE SQL STABLE PARALLEL SAFE STRICT;
 
 --to_char
 CREATE OR REPLACE FUNCTION sys.to_char(number)

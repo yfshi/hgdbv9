@@ -373,3 +373,81 @@ set ivorysql.disable_hex_bytea_for_blob = off;
 select * from test_raw_blob;
 
 drop table test_raw_blob;
+
+/* Begin - OA-REQ-2131 */
+set nls_date_format = 'YYYY-MM-DD';
+set nls_timestamp_format = 'YYYY-MM-DD HH24:MI:SS.FF6';
+set nls_timestamp_tz_format = 'YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM';
+
+-- function is strict
+select to_date(null);
+select to_date('2026-1-1', null);
+select to_date('2026-1-1', 'YYYY-MM-DD', null);
+select to_timestamp(null);
+select to_timestamp('2026-1-1', null);
+select to_timestamp('2026-1-1', 'YYYY-MM-DD', null);
+select to_timestamp_tz(null);
+select to_timestamp_tz('2026-1-1', null);
+select to_timestamp_tz('2026-1-1', 'YYYY-MM-DD', null);
+
+-- ignore fmt so using nls_xxx_format
+-- ok
+select to_date('2026-1-2');
+select to_timestamp('2026-1-2');
+select to_timestamp_tz('2026-1-2');
+-- error
+select to_date('2026-13-2');
+select to_timestamp('2026-13-2');
+select to_timestamp_tz('2026-13-2');
+-- ok
+select to_date('2026-13-2', 'YYYY-DD-MM');
+select to_timestamp('2026-13-2', 'YYYY-DD-MM');
+select to_timestamp_tz('2026-13-2', 'YYYY-DD-MM');
+-- nlsparam not implemented only a dummy param
+select to_date('2026-13-2', 'YYYY-DD-MM', 'xxx');
+select to_timestamp('2026-13-2', 'YYYY-DD-MM', 'xxx');
+select to_timestamp_tz('2026-13-2', 'YYYY-DD-MM', 'xxx');
+
+-- empty string always equal to null
+select to_date('');
+select to_timestamp('');
+select to_timestamp_tz('');
+set ivorysql.enable_emptystring_to_null to off;
+select to_date('');
+select to_timestamp('');
+select to_timestamp_tz('');
+reset ivorysql.enable_emptystring_to_null;
+
+create table test_oa_2131(
+ col1 date,
+ col2 timestamp without time zone,
+ col3 timestamp with time zone
+);
+
+insert into test_oa_2131 values('2026-4-1', '2026-4-1 11:12:13.123', '2026-4-1 11:12:13.123456 +08:00');
+
+select to_date(col1) from test_oa_2131;	-- ok
+select to_date(col1, 'MM-DD-YYYY') from test_oa_2131;	-- error
+set nls_date_format = 'MM-DD-YYYY';
+select to_date(col1, 'MM-DD-YYYY') from test_oa_2131;	-- ok
+
+select to_timestamp(col2) from test_oa_2131;	-- ok
+select to_timestamp(col2, 'MM-DD-YYYY') from test_oa_2131;	-- error
+set nls_timestamp_format = 'MM-DD-YYYY';
+select to_timestamp(col2, 'MM-DD-YYYY') from test_oa_2131;	-- ok
+
+select to_timestamp_tz(col3) from test_oa_2131;	-- ok
+select to_timestamp_tz(col3, 'MM-DD-YYYY') from test_oa_2131;	-- error
+set nls_timestamp_tz_format = 'MM-DD-YYYY';
+select to_timestamp_tz(col3, 'MM-DD-YYYY') from test_oa_2131;	-- ok
+
+-- ok
+select to_date(10012026);
+select to_timestamp(10012026);
+select to_timestamp_tz(10012026);
+
+reset nls_date_format;
+reset nls_timestamp_format;
+reset nls_timestamp_tz_format;
+drop table test_oa_2131;
+/* End - OA-REQ-2131 */

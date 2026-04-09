@@ -515,3 +515,241 @@ select * from test_raw_blob;
 (1 row)
 
 drop table test_raw_blob;
+/* Begin - OA-REQ-2131 */
+set nls_date_format = 'YYYY-MM-DD';
+set nls_timestamp_format = 'YYYY-MM-DD HH24:MI:SS.FF6';
+set nls_timestamp_tz_format = 'YYYY-MM-DD HH24:MI:SS.FF6 TZH:TZM';
+-- function is strict
+select to_date(null);
+ to_date 
+---------
+ 
+(1 row)
+
+select to_date('2026-1-1', null);
+ to_date 
+---------
+ 
+(1 row)
+
+select to_date('2026-1-1', 'YYYY-MM-DD', null);
+ to_date 
+---------
+ 
+(1 row)
+
+select to_timestamp(null);
+ to_timestamp 
+--------------
+ 
+(1 row)
+
+select to_timestamp('2026-1-1', null);
+ to_timestamp 
+--------------
+ 
+(1 row)
+
+select to_timestamp('2026-1-1', 'YYYY-MM-DD', null);
+ to_timestamp 
+--------------
+ 
+(1 row)
+
+select to_timestamp_tz(null);
+ to_timestamp_tz 
+-----------------
+ 
+(1 row)
+
+select to_timestamp_tz('2026-1-1', null);
+ to_timestamp_tz 
+-----------------
+ 
+(1 row)
+
+select to_timestamp_tz('2026-1-1', 'YYYY-MM-DD', null);
+ to_timestamp_tz 
+-----------------
+ 
+(1 row)
+
+-- ignore fmt so using nls_xxx_format
+-- ok
+select to_date('2026-1-2');
+  to_date   
+------------
+ 2026-01-02
+(1 row)
+
+select to_timestamp('2026-1-2');
+        to_timestamp        
+----------------------------
+ 2026-01-02 00:00:00.000000
+(1 row)
+
+select to_timestamp_tz('2026-1-2');
+          to_timestamp_tz          
+-----------------------------------
+ 2026-01-02 00:00:00.000000 -08:00
+(1 row)
+
+-- error
+select to_date('2026-13-2');
+ERROR:  The value of month is invalid.
+select to_timestamp('2026-13-2');
+ERROR:  The value of month is invalid.
+select to_timestamp_tz('2026-13-2');
+ERROR:  The value of month is invalid.
+-- ok
+select to_date('2026-13-2', 'YYYY-DD-MM');
+  to_date   
+------------
+ 2026-02-13
+(1 row)
+
+select to_timestamp('2026-13-2', 'YYYY-DD-MM');
+        to_timestamp        
+----------------------------
+ 2026-02-13 00:00:00.000000
+(1 row)
+
+select to_timestamp_tz('2026-13-2', 'YYYY-DD-MM');
+          to_timestamp_tz          
+-----------------------------------
+ 2026-02-13 00:00:00.000000 -08:00
+(1 row)
+
+-- nlsparam not implemented only a dummy param
+select to_date('2026-13-2', 'YYYY-DD-MM', 'xxx');
+  to_date   
+------------
+ 2026-02-13
+(1 row)
+
+select to_timestamp('2026-13-2', 'YYYY-DD-MM', 'xxx');
+        to_timestamp        
+----------------------------
+ 2026-02-13 00:00:00.000000
+(1 row)
+
+select to_timestamp_tz('2026-13-2', 'YYYY-DD-MM', 'xxx');
+          to_timestamp_tz          
+-----------------------------------
+ 2026-02-13 00:00:00.000000 -08:00
+(1 row)
+
+-- empty string always equal to null
+select to_date('');
+ to_date 
+---------
+ 
+(1 row)
+
+select to_timestamp('');
+ to_timestamp 
+--------------
+ 
+(1 row)
+
+select to_timestamp_tz('');
+ to_timestamp_tz 
+-----------------
+ 
+(1 row)
+
+set ivorysql.enable_emptystring_to_null to off;
+select to_date('');
+ to_date 
+---------
+ 
+(1 row)
+
+select to_timestamp('');
+ to_timestamp 
+--------------
+ 
+(1 row)
+
+select to_timestamp_tz('');
+ to_timestamp_tz 
+-----------------
+ 
+(1 row)
+
+reset ivorysql.enable_emptystring_to_null;
+create table test_oa_2131(
+ col1 date,
+ col2 timestamp without time zone,
+ col3 timestamp with time zone
+);
+insert into test_oa_2131 values('2026-4-1', '2026-4-1 11:12:13.123', '2026-4-1 11:12:13.123456 +08:00');
+select to_date(col1) from test_oa_2131;	-- ok
+  to_date   
+------------
+ 2026-04-01
+(1 row)
+
+select to_date(col1, 'MM-DD-YYYY') from test_oa_2131;	-- error
+ERROR:  The value of month is invalid.
+set nls_date_format = 'MM-DD-YYYY';
+select to_date(col1, 'MM-DD-YYYY') from test_oa_2131;	-- ok
+  to_date   
+------------
+ 04-01-2026
+(1 row)
+
+select to_timestamp(col2) from test_oa_2131;	-- ok
+        to_timestamp        
+----------------------------
+ 2026-04-01 11:12:13.123000
+(1 row)
+
+select to_timestamp(col2, 'MM-DD-YYYY') from test_oa_2131;	-- error
+ERROR:  The value of month is invalid.
+set nls_timestamp_format = 'MM-DD-YYYY';
+select to_timestamp(col2, 'MM-DD-YYYY') from test_oa_2131;	-- ok
+ to_timestamp 
+--------------
+ 04-01-2026
+(1 row)
+
+select to_timestamp_tz(col3) from test_oa_2131;	-- ok
+          to_timestamp_tz          
+-----------------------------------
+ 2026-03-31 20:12:13.123456 -07:00
+(1 row)
+
+select to_timestamp_tz(col3, 'MM-DD-YYYY') from test_oa_2131;	-- error
+ERROR:  The value of month is invalid.
+set nls_timestamp_tz_format = 'MM-DD-YYYY';
+select to_timestamp_tz(col3, 'MM-DD-YYYY') from test_oa_2131;	-- ok
+ to_timestamp_tz 
+-----------------
+ 03-31-2026
+(1 row)
+
+-- ok
+select to_date(10012026);
+  to_date   
+------------
+ 10-01-2026
+(1 row)
+
+select to_timestamp(10012026);
+ to_timestamp 
+--------------
+ 10-01-2026
+(1 row)
+
+select to_timestamp_tz(10012026);
+ to_timestamp_tz 
+-----------------
+ 10-01-2026
+(1 row)
+
+reset nls_date_format;
+reset nls_timestamp_format;
+reset nls_timestamp_tz_format;
+drop table test_oa_2131;
+/* End - OA-REQ-2131 */
