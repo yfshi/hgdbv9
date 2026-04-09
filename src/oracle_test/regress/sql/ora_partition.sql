@@ -4927,3 +4927,288 @@ WHERE t.relid=c.oid;
 SELECT partroot::regclass, partparent::regclass, part::regclass, partname, partlevel
 FROM pg_ora_tab_partitions WHERE partroot = 'par_test'::regclass order by partlevel, partname;
 DROP TABLE PAR_TEST;
+ 
+--
+-- SQL-callable interfaces for system views
+--
+-- ora_def_subpartition_count
+CREATE TABLE PT_SIMPLE(A INT, B INT)
+PARTITION BY RANGE(A)
+(
+ PARTITION p1 VALUES LESS THAN(10),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+SELECT ora_def_subpartition_count('pt_simple'::regclass) FROM dual;	-- 0
+DROP TABLE PT_SIMPLE;
+
+CREATE TABLE PT_COMPOSITE_NO_TEMPLATE(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY RANGE(B)
+(
+ PARTITION p1 VALUES LESS THAN(10) (SUBPARTITION S1 VALUES LESS THAN(20), SUBPARTITION S2 VALUES LESS THAN(30)),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30) (SUBPARTITION VALUES LESS THAN(20), SUBPARTITION VALUES LESS THAN(30))
+);
+
+SELECT ora_def_subpartition_count('pt_composite_no_template'::regclass) FROM dual;	-- 1
+DROP TABLE PT_COMPOSITE_NO_TEMPLATE;
+
+CREATE TABLE PT_COMPOSITE_WITH_TEMPLATE(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY RANGE(B)
+SUBPARTITION TEMPLATE
+(
+ SUBPARTITION T1 VALUES LESS THAN(9),
+ SUBPARTITION T2 VALUES LESS THAN(99),
+ SUBPARTITION T3 VALUES LESS THAN(999)
+)
+(
+ PARTITION p1 VALUES LESS THAN(10) (SUBPARTITION S1 VALUES LESS THAN(20), SUBPARTITION S2 VALUES LESS THAN(30)),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30) (SUBPARTITION VALUES LESS THAN(20), SUBPARTITION VALUES LESS THAN(30))
+);
+
+SELECT ora_def_subpartition_count('pt_composite_with_template'::regclass) FROM dual;	-- 3
+DROP TABLE PT_COMPOSITE_WITH_TEMPLATE;
+
+CREATE TABLE PT_COMPOSITE_HASH_TEMPLATE1(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY HASH(B)
+SUBPARTITION TEMPLATE 10
+(
+ PARTITION p1 VALUES LESS THAN(10) (SUBPARTITION S1, SUBPARTITION S2),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+CREATE TABLE PT_COMPOSITE_HASH_TEMPLATE2(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY HASH(B)
+SUBPARTITIONS 20
+(
+ PARTITION p1 VALUES LESS THAN(10) (SUBPARTITION S1, SUBPARTITION S2),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+SELECT ora_def_subpartition_count('pt_composite_hash_template1'::regclass) FROM dual;	-- 10
+SELECT ora_def_subpartition_count('pt_composite_hash_template2'::regclass) FROM dual;	-- 20
+DROP TABLE PT_COMPOSITE_HASH_TEMPLATE1;
+DROP TABLE PT_COMPOSITE_HASH_TEMPLATE2;
+
+-- ora_get_partition_highvalue
+CREATE TABLE NORMAL_TBL(A INT);
+
+CREATE TABLE PT_HASH_TBL(A INT)
+PARTITION BY HASH(A)
+(
+ PARTITION P1,
+ PARTITION P2
+);
+
+CREATE TABLE PT_SIMPLE(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION BY LIST(B)
+(
+ PARTITION p1 VALUES LESS THAN(10) (SUBPARTITION S1 VALUES(1,2,3), SUBPARTITION S2 VALUES(7,8,9)),
+ PARTITION p2 VALUES LESS THAN(20) (SUBPARTITION S3 VALUES(NULL), SUBPARTITION S4 VALUES(DEFAULT)),
+ PARTITION p3 VALUES LESS THAN(30),
+ PARTITION p4 VALUES LESS THAN(MAXVALUE)
+);
+
+SELECT ora_get_partition_highvalue('pt_simple'::regclass) FROM dual;	-- null
+SELECT ora_get_partition_highvalue('normal_tbl'::regclass) FROM dual;	-- null
+SELECT ora_get_partition_highvalue('pt_hash_tbl'::regclass) FROM dual;	-- null
+SELECT ora_get_partition_highvalue('pt_hash_tbl_p1'::regclass) FROM dual;	-- null
+SELECT ora_get_partition_highvalue('pt_hash_tbl_p2'::regclass) FROM dual;	-- null
+SELECT ora_get_partition_highvalue('pt_simple_p1'::regclass) FROM dual;	-- 10
+SELECT ora_get_partition_highvalue('pt_simple_p2'::regclass) FROM dual;	-- 20
+SELECT ora_get_partition_highvalue('pt_simple_p3'::regclass) FROM dual;	-- 30
+SELECT ora_get_partition_highvalue('pt_simple_p4'::regclass) FROM dual;	-- MAXVALUE
+SELECT ora_get_partition_highvalue('pt_simple_p1_s1'::regclass) FROM dual;	-- 1,2,3
+SELECT ora_get_partition_highvalue('pt_simple_p1_s2'::regclass) FROM dual;	-- 7,8,9
+SELECT ora_get_partition_highvalue('pt_simple_p2_s3'::regclass) FROM dual;	-- NULL
+SELECT ora_get_partition_highvalue('pt_simple_p2_s4'::regclass) FROM dual;	-- DEFAULT
+SELECT ora_get_partition_highvalue('pt_simple_p3_sys_subp1'::regclass) FROM dual;	-- DEFAULT
+SELECT ora_get_partition_highvalue('pt_simple_p4_sys_subp2'::regclass) FROM dual;	-- DEFAULT
+
+DROP TABLE PT_SIMPLE;
+DROP TABLE NORMAL_TBL;
+DROP TABLE PT_HASH_TBL;
+
+-- ora_get_partition_position
+CREATE TABLE NORMAL_TBL(A INT);
+
+CREATE TABLE PT_HASH_TBL(A INT)
+PARTITION BY HASH(A)
+(
+ PARTITION P1,
+ PARTITION P2
+);
+
+CREATE TABLE PT_COMPOSITE_TBL(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION BY LIST(B)
+(
+ PARTITION p1 VALUES LESS THAN(10) (SUBPARTITION S1 VALUES(1,2,3), SUBPARTITION S2 VALUES(7,8,9)),
+ PARTITION p2 VALUES LESS THAN(20) (SUBPARTITION S3 VALUES(NULL), SUBPARTITION S4 VALUES(DEFAULT)),
+ PARTITION p3 VALUES LESS THAN(30),
+ PARTITION p4 VALUES LESS THAN(MAXVALUE)
+);
+
+SELECT ora_get_partition_position('normal_tbl'::regclass, 0) FROM dual;	-- NULL
+
+SELECT ora_get_partition_position('pt_hash_tbl'::regclass, 'pt_hash_tbl_p1'::regclass) FROM dual;	-- 1
+SELECT ora_get_partition_position('pt_hash_tbl'::regclass, 'pt_hash_tbl_p2'::regclass) FROM dual;	-- 2
+
+SELECT ora_get_partition_position('pt_composite_tbl'::regclass, 'pt_composite_tbl_p1'::regclass) FROM dual;	-- 1
+SELECT ora_get_partition_position('pt_composite_tbl'::regclass, 'pt_composite_tbl_p2'::regclass) FROM dual;	-- 2
+SELECT ora_get_partition_position('pt_composite_tbl'::regclass, 'pt_composite_tbl_p3'::regclass) FROM dual;	-- 3
+SELECT ora_get_partition_position('pt_composite_tbl'::regclass, 'pt_composite_tbl_p4'::regclass) FROM dual;	-- 4
+
+SELECT ora_get_partition_position('pt_composite_tbl_p1'::regclass, 'pt_composite_tbl_p1_s1'::regclass) FROM dual;	-- 1
+SELECT ora_get_partition_position('pt_composite_tbl_p1'::regclass, 'pt_composite_tbl_p1_s2'::regclass) FROM dual;	-- 2
+SELECT ora_get_partition_position('pt_composite_tbl_p2'::regclass, 'pt_composite_tbl_p2_s3'::regclass) FROM dual;	-- 1
+SELECT ora_get_partition_position('pt_composite_tbl_p2'::regclass, 'pt_composite_tbl_p2_s4'::regclass) FROM dual;	-- 2
+
+DROP TABLE NORMAL_TBL;
+DROP TABLE PT_HASH_TBL;
+DROP TABLE PT_COMPOSITE_TBL;
+
+-- AUTO PARTITION
+CREATE TABLE PT_LIST_TBL(A INT)
+PARTITION BY LIST(A) AUTOMATIC
+(
+ PARTITION P1 VALUES(4,3),
+ PARTITION P2 VALUES(1,2)
+);
+
+SELECT ora_get_partition_position('pt_list_tbl'::regclass, 'pt_list_tbl_p1'::regclass) FROM dual;	-- 1
+SELECT ora_get_partition_position('pt_list_tbl'::regclass, 'pt_list_tbl_p2'::regclass) FROM dual;	-- 2
+
+INSERT INTO PT_LIST_TBL VALUES(100);
+INSERT INTO PT_LIST_TBL VALUES(10);
+
+SELECT ora_get_partition_position('pt_list_tbl'::regclass, 'pt_list_tbl_sys_p1'::regclass) FROM dual;	-- 3
+SELECT ora_get_partition_position('pt_list_tbl'::regclass, 'pt_list_tbl_sys_p2'::regclass) FROM dual;	-- 4
+
+DROP TABLE PT_LIST_TBL;
+
+CREATE TABLE PT_RANGE_TBL(A INT)
+PARTITION BY RANGE(A) INTERVAL(10)
+(
+ PARTITION P1 VALUES LESS THAN(10),
+ PARTITION P2 VALUES LESS THAN(20)
+);
+
+SELECT ora_get_partition_position('pt_range_tbl'::regclass, 'pt_range_tbl_p1'::regclass) FROM dual;	-- 1
+SELECT ora_get_partition_position('pt_range_tbl'::regclass, 'pt_range_tbl_p2'::regclass) FROM dual;	-- 2
+
+INSERT INTO PT_RANGE_TBL VALUES(100);
+SELECT ora_get_partition_position('pt_range_tbl'::regclass, 'pt_range_tbl_sys_p1'::regclass) FROM dual;	-- 3
+
+INSERT INTO PT_RANGE_TBL VALUES(50);
+SELECT ora_get_partition_position('pt_range_tbl'::regclass, 'pt_range_tbl_sys_p1'::regclass) FROM dual;	-- 4
+SELECT ora_get_partition_position('pt_range_tbl'::regclass, 'pt_range_tbl_sys_p2'::regclass) FROM dual;	-- 3
+
+DROP TABLE PT_RANGE_TBL;
+
+-- ora_get_subpartition_templates
+CREATE TABLE PT_TEMPLATE_LIST(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY LIST(B)
+SUBPARTITION TEMPLATE
+(
+ SUBPARTITION T1 VALUES (9,8,7),
+ SUBPARTITION T2 VALUES (99,88,77),
+ SUBPARTITION T3 VALUES (999,888,777)
+)
+(
+ PARTITION p1 VALUES LESS THAN(10),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+CREATE TABLE PT_TEMPLATE_RANGE(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY RANGE(B)
+SUBPARTITION TEMPLATE
+(
+ SUBPARTITION T1 VALUES LESS THAN(9),
+ SUBPARTITION T2 VALUES LESS THAN(99),
+ SUBPARTITION T3 VALUES LESS THAN(999)
+)
+(
+ PARTITION p1 VALUES LESS THAN(10),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+CREATE TABLE PT_TEMPLATE_HASH_1(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY HASH(B)
+SUBPARTITION TEMPLATE
+(
+ SUBPARTITION T1,
+ SUBPARTITION T2,
+ SUBPARTITION T3
+)
+(
+ PARTITION p1 VALUES LESS THAN(10),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+CREATE TABLE PT_TEMPLATE_HASH_2(A INT, B INT)
+PARTITION BY RANGE(A)
+SUBPARTITION  BY HASH(B)
+SUBPARTITION TEMPLATE 5
+(
+ PARTITION p1 VALUES LESS THAN(10),
+ PARTITION p2 VALUES LESS THAN(20),
+ PARTITION p3 VALUES LESS THAN(30)
+);
+
+SELECT * FROM ora_get_subpartition_templates('pt_template_list'::regclass) ORDER BY name, position;
+SELECT * FROM ora_get_subpartition_templates('pt_template_range'::regclass) ORDER BY name, position;
+SELECT * FROM ora_get_subpartition_templates('pt_template_hash_1'::regclass) ORDER BY name, position;
+SELECT * FROM ora_get_subpartition_templates('pt_template_hash_2'::regclass) ORDER BY name, position;	-- null
+
+DROP TABLE PT_TEMPLATE_LIST;
+DROP TABLE PT_TEMPLATE_RANGE;
+DROP TABLE PT_TEMPLATE_HASH_1;
+DROP TABLE PT_TEMPLATE_HASH_2;
+
+-- pg_get_partinterval_string
+CREATE TABLE PAR_TEST_INTERVAL(A INT, B INT)
+PARTITION BY RANGE(A) INTERVAL(10)
+SUBPARTITION BY LIST(B)
+(
+ PARTITION P1 VALUES LESS THAN(10) (SUBPARTITION S1 VALUES(1,2,3), SUBPARTITION S2 VALUES(4,5,6)),
+ PARTITION P2 VALUES LESS THAN(20) (SUBPARTITION S3 VALUES(11,12,13), SUBPARTITION S4 VALUES(14,15,16))
+);
+
+SELECT pg_get_partinterval_string('par_test_interval'::regclass);	-- 10
+SELECT table_name, partitioning_type, subpartitioning_type, partition_count, interval
+FROM ALL_PART_TABLES
+WHERE table_name = 'par_test_interval';
+
+SELECT table_name, partition_name, partition_position, high_value, interval
+FROM ALL_TAB_PARTITIONS
+WHERE table_name = 'par_test_interval'
+ORDER BY table_name, partition_position;
+
+INSERT INTO PAR_TEST_INTERVAL VALUES(66,1);
+
+SELECT table_name, partitioning_type, subpartitioning_type, partition_count, interval
+FROM ALL_PART_TABLES
+WHERE table_name = 'par_test_interval';
+
+SELECT table_name, partition_name, partition_position, high_value, interval
+FROM ALL_TAB_PARTITIONS
+WHERE table_name = 'par_test_interval'
+ORDER BY table_name, partition_position;
+
+DROP TABLE PAR_TEST_INTERVAL;

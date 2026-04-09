@@ -1088,6 +1088,7 @@ typedef struct OraPartSup
 	char	*partname;
 	int16	partlevel;
 	int32	seqno;
+	bool	autogen;
 } OraPartSup;
 
 /*

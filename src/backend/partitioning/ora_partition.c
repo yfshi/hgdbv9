@@ -340,7 +340,8 @@ RemoveOraclePartitionedTable(Oid relid)
  *		Store Oracle partitions and subpartitions information.
  */
 void
-StoreOraclePartitions(Oid partid, Oid parentid, Oid rootpartid, char *partname, int16 partlevel)
+StoreOraclePartitions(Oid partid, Oid parentid, Oid rootpartid,
+							  char *partname, int16 partlevel, bool autogen)
 {
 	Datum		values[Natts_pg_ora_tab_partitions];
 	bool		nulls[Natts_pg_ora_tab_partitions];
@@ -362,6 +363,7 @@ StoreOraclePartitions(Oid partid, Oid parentid, Oid rootpartid, char *partname, 
 	values[Anum_pg_ora_tab_partitions_part - 1] = ObjectIdGetDatum(partid);
 	values[Anum_pg_ora_tab_partitions_partname - 1] = NameGetDatum(&part_name);
 	values[Anum_pg_ora_tab_partitions_partlevel - 1] = Int16GetDatum(partlevel);
+	values[Anum_pg_ora_tab_partitions_autogen - 1] = BoolGetDatum(autogen);
 
 	tuple = heap_form_tuple(RelationGetDescr(pg_ora_tab_partitions), values, nulls);
 
@@ -1065,7 +1067,7 @@ derivePostgresPartitionStmts(char strategy, List *part_desc, RangeVar *part_pare
 						part_stmt->tableElts = NIL;
 						part_stmt->inhRelations = list_make1(copyObject(part_parent));
 						part_stmt->partbound = single_part_bound;
-						part_stmt->ora_partsup = makeOraPartSup(single_part_name, 2, 0);
+						part_stmt->ora_partsup = makeOraPartSup(single_part_name, 2, 0, false);
 						part_stmt->partspec = NULL;
 						part_stmt->oncommit = ONCOMMIT_NOOP;
 						part_stmt->tablespacename = NULL;
@@ -1216,7 +1218,7 @@ derivePostgresPartitionStmts(char strategy, List *part_desc, RangeVar *part_pare
 					part_stmt->inhRelations = list_make1(copyObject(part_parent));
 					part_stmt->partbound = part_bound;
 					part_stmt->partspec = copyObject(subpart_key);
-					part_stmt->ora_partsup = makeOraPartSup(part_name, is_subpart ? 2 : 1, 0);
+					part_stmt->ora_partsup = makeOraPartSup(part_name, is_subpart ? 2 : 1, 0, false);
 					part_stmt->oncommit = ONCOMMIT_NOOP;
 					part_stmt->tablespacename = part->tablespace_name ? pstrdup(part->tablespace_name) : NULL;
 					part_stmt->if_not_exists = false;
@@ -1272,7 +1274,7 @@ derivePostgresPartitionStmts(char strategy, List *part_desc, RangeVar *part_pare
 						part_stmt->inhRelations = list_make1(copyObject(part_parent));
 						part_stmt->partbound = single_part_bound;
 						part_stmt->partspec = NULL;
-						part_stmt->ora_partsup = makeOraPartSup(single_part_name, 2, 0);
+						part_stmt->ora_partsup = makeOraPartSup(single_part_name, 2, 0, false);
 						part_stmt->oncommit = ONCOMMIT_NOOP;
 						part_stmt->tablespacename = NULL;
 						part_stmt->if_not_exists = false;
@@ -1382,7 +1384,7 @@ derivePostgresPartitionStmts(char strategy, List *part_desc, RangeVar *part_pare
 					part_stmt->inhRelations = list_make1(copyObject(part_parent));
 					part_stmt->partbound = part_bound;
 					part_stmt->partspec = copyObject(subpart_key);
-					part_stmt->ora_partsup = makeOraPartSup(part_name, is_subpart ? 2 : 1, 0);
+					part_stmt->ora_partsup = makeOraPartSup(part_name, is_subpart ? 2 : 1, 0, false);
 					part_stmt->oncommit = ONCOMMIT_NOOP;
 					part_stmt->tablespacename = part->tablespace_name ? pstrdup(part->tablespace_name) : NULL;
 					part_stmt->if_not_exists = false;
@@ -1443,7 +1445,7 @@ derivePostgresPartitionStmts(char strategy, List *part_desc, RangeVar *part_pare
 						part_stmt->inhRelations = list_make1(copyObject(part_parent));
 						part_stmt->partbound = single_part_bound;
 						part_stmt->partspec = NULL;
-						part_stmt->ora_partsup = makeOraPartSup(single_part_name, 2, 0);
+						part_stmt->ora_partsup = makeOraPartSup(single_part_name, 2, 0, false);
 						part_stmt->oncommit = ONCOMMIT_NOOP;
 						part_stmt->tablespacename = NULL;
 						part_stmt->if_not_exists = false;
@@ -1552,7 +1554,7 @@ derivePostgresPartitionStmts(char strategy, List *part_desc, RangeVar *part_pare
 					part_stmt->inhRelations = list_make1(copyObject(part_parent));
 					part_stmt->partbound = part_bound;
 					part_stmt->partspec = copyObject(subpart_key);
-					part_stmt->ora_partsup = makeOraPartSup(part_name, is_subpart ? 2 : 1, 0);
+					part_stmt->ora_partsup = makeOraPartSup(part_name, is_subpart ? 2 : 1, 0, false);
 					part_stmt->oncommit = ONCOMMIT_NOOP;
 					/* TODO: TABLESPACE come from STORE IN clause */
 					part_stmt->tablespacename = (part && part->tablespace_name) ? pstrdup(part->tablespace_name) : NULL;
@@ -3600,3 +3602,118 @@ GetOracleSubpartitionKey(Relation rootrel)
 	return result;
 }
 
+/* ----------------------------------------------------------------
+ *					export interface
+ * ----------------------------------------------------------------
+ */
+
+/*
+ *  ora_def_subpartition_count
+ *		Get the default number of subpartitions for a composite partition table.
+ *
+ * If it is an Oracle composite partitioned table, the default number of subpartitions is
+ * returned. If a subpartition template exists, the number of subpartitions in the subpartition
+ * template is returned. Otherwise, the default number of subpartitions is 1. That is, by default
+ * the RANGE partition strategy create a MAXVALUE subpartition, the LIST partition strategy create
+ * a DEFAULT subpartition, and the HASH partition strategy create one hash partition.
+ */
+Datum
+ora_def_subpartition_count(PG_FUNCTION_ARGS)
+{
+	Oid		partid = PG_GETARG_OID(0);
+	int		defsubpartcnt = 0;
+	OraSubPartitionTemplateSpec	*temp = NULL;
+
+	/*
+	 * If it is not an Oracle partitioned table or is a Oracle
+	 * simple partitioned table, we return 0.
+	 */
+	if (!is_oracle_partitioned_table(partid) ||
+		!is_ora_composite_partitioning(partid))
+		PG_RETURN_INT32(0);
+
+	temp = ora_get_subpartition_template(partid);
+	if (temp)
+		defsubpartcnt =
+			temp->subpartitons_desc ? 
+			list_length(temp->subpartitons_desc) : temp->hash_subpartition_quantity;
+	else
+		defsubpartcnt = 1;
+
+	PG_RETURN_INT32(defsubpartcnt);
+}
+
+/*
+ * ora_def_subpartition_count
+ *		Get the (sub)partition location of an Oracle partitioned table.
+ */
+Datum
+ora_get_partition_position(PG_FUNCTION_ARGS)
+{
+	Oid				parentid = PG_GETARG_OID(0);
+	Oid				childid = PG_GETARG_OID(1);
+	char			parent_strategy;
+	int				nchild = 0;
+	int				i = -1;
+	Oid				*allchild;
+	Relation		parentrel;
+	PartitionDesc	parentdesc;
+
+	if (get_rel_relkind(parentid) != RELKIND_PARTITIONED_TABLE)
+		PG_RETURN_NULL();
+
+	parentrel = table_open(parentid, AccessShareLock);
+	parentdesc = RelationGetPartitionDesc(parentrel, true);
+
+	if (parentdesc->nparts <= 0)
+	{
+		table_close(parentrel, AccessShareLock);
+		PG_RETURN_NULL();
+	}
+	else
+	{
+		nchild = parentdesc->nparts;
+		allchild = (Oid *) palloc(nchild * sizeof(Oid));
+		memcpy(allchild, parentdesc->oids, nchild * sizeof(Oid));
+	}
+
+	table_close(parentrel, AccessShareLock);
+
+	parent_strategy = get_partitioning_strategy(parentid);
+	switch (parent_strategy)
+	{
+		case PARTITION_STRATEGY_RANGE:
+			/*
+			 * The range partitions are ordered according to their
+			 * partition boundary values; therefore, the partition
+			 * description has already done all the work.
+			 */
+			for (i = 0; i < nchild; i++)
+				if (childid == allchild[i])
+					break;
+			break;
+
+		case PARTITION_STRATEGY_LIST:
+		case PARTITION_STRATEGY_HASH:
+			/* sort them by oid */
+			if (nchild > 1)
+				qsort(allchild, nchild, sizeof(Oid), oid_cmp);
+
+			for (i = 0; i < nchild; i++)
+				if (childid == allchild[i])
+					break;
+			break;
+
+		default:
+			elog(ERROR, "unexpected partition strategy: %d",
+				 (int) parent_strategy);
+			break;
+	}
+
+	pfree(allchild);
+
+	if (i >= 0 && i < nchild)
+		PG_RETURN_INT32(i + 1);
+	else
+		PG_RETURN_NULL();
+}

@@ -56,7 +56,7 @@ extern char *ivy_get_query_def(Query *query);
 /* End - ReqID:SRS-SQL-HierarchicalQueries */
 
 /* Begin - ReqID:RSR-SQL-Partition-interval */
-extern char *pg_get_partinterval_def_string(Oid relid);
+extern char *pg_get_partinterval_def_string(Oid relid, bool full /* ReqID:SRS-SQL-PARTITION-TABLE */);
 /* End - ReqID:RSR-SQL-Partition-interval */
 
 /* Begin - ReqID:RSR-SQL-TRIGGER */

@@ -62,7 +62,8 @@ extern void UpdateOraclePartitionedTableSeqno(Oid rootid, int32 seqno);
 extern void UpdateOraclePartitionedTableTemplate(Oid rootid, OraSubPartitionTemplateSpec *temp);
 extern void UpdateOraclePartitionedTableInterval(Oid rootid, PartitionInterval *interval_expr);
 extern void RemoveOraclePartitionedTable(Oid relid);
-extern void StoreOraclePartitions(Oid partid, Oid parentid, Oid rootpartid, char *partname, int16 partlevel);
+extern void StoreOraclePartitions(Oid partid, Oid parentid, Oid rootpartid,
+										  char *partname, int16 partlevel, bool autogen);
 extern void RemoveOraclePartitions(Oid relid);
 extern void StorePartitionKeyFromSibling(Relation rel, Oid sibling);
 extern Oid update_next_range_partition_bound(Oid relid, Oid parentOid, bool uselower);

@@ -105,7 +105,7 @@ extern DefElem *makeDefElemExtended(char *nameSpace, char *name, Node *arg,
 extern GroupingSet *makeGroupingSet(GroupingSetKind kind, List *content, int location);
 
 extern VacuumRelation *makeVacuumRelation(RangeVar *relation, Oid oid, List *va_cols);
-extern OraPartSup *makeOraPartSup(char *part_name, int16 part_level, int32 seqno); /* ReqID:SRS-SQL-PARTITION-TABLE */
+extern OraPartSup *makeOraPartSup(char *part_name, int16 part_level, int32 seqno, bool autogen); /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 /* Begin - OA-REQ-2198 */
 extern CompileFunctionStmt *makeCompileFunctionStmtNoArgs(char *nspname, char *funcname, ObjectType objtype);

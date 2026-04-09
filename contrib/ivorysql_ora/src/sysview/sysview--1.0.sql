@@ -11542,311 +11542,6 @@ CREATE OR REPLACE VIEW SYS.USER_TAB_PRIVS AS
         OR objp.grantor = current_user);
 
 GRANT SELECT ON SYS.USER_TAB_PRIVS TO PUBLIC;
-
-/* *******************************************************************************************
-                                         XXX_TAB_PARTITIONS
-* *******************************************************************************************/
-CREATE OR REPLACE VIEW SYS.TAB_PARTITIONS_INTERNAL AS
-WITH partition_info AS (
-    SELECT
-        c_parent.oid AS parent_table_oid,
-        c_parent.relname AS parent_table_name,
-        c_parent.relowner AS parent_table_owner,
-        c_child.oid AS partition_oid,
-        c_child.relname AS partition_name,
-        pg_get_expr(c_child.relpartbound, c_parent.oid, true) AS partition_bound,
-        row_number() OVER (
-            PARTITION BY c_parent.oid
-            ORDER BY c_child.relname
-        ) AS partition_position,
-        c_child.reltablespace AS tablespace_oid,
-        c_child.reloptions AS reloptions,
-        c_child.reltuples,
-        c_child.relpages,
-        c_child.relpersistence,
-        c_child.relowner,
-        CASE
-            WHEN EXISTS (
-                SELECT 1 FROM pg_inherits 
-                WHERE inhparent = c_child.oid
-            ) THEN 'YES'
-            ELSE 'NO'
-        END AS composite
-    FROM pg_class c_parent
-    JOIN pg_inherits i ON c_parent.oid = i.inhparent
-    JOIN pg_class c_child ON i.inhrelid = c_child.oid
-    WHERE
-        c_parent.relkind = 'p'
-        AND c_parent.relispartition = false
-        AND c_child.relkind NOT IN ('i', 'I')
-)
-    SELECT
-        pi.parent_table_oid AS oid,
-        SYS.ORA_CASE_TRANS(PG_GET_USERBYID(pi.parent_table_owner)::varchar2)::varchar2(128) AS table_owner,
-        SYS.ORA_CASE_TRANS(pi.parent_table_name::varchar2)::varchar2(128) AS table_name,
-        pi.composite::varchar2(3) AS composite,
-        SYS.ORA_CASE_TRANS(pi.partition_name::varchar2)::varchar2(128) AS partition_name,
-        (SELECT COUNT(*) FROM pg_class c 
-            WHERE c.relispartition AND c.oid IN (SELECT inhrelid FROM pg_inherits WHERE inhparent = pi.partition_oid)
-                AND c.relkind NOT IN ('i', 'I')
-        )::number AS subpartition_count,
-        pi.partition_bound::long AS high_value,
-        length(pi.partition_bound::text)::number AS high_value_length,
-        pi.partition_position::number AS partition_position,
-        SYS.ORA_CASE_TRANS((COALESCE(tspc.spcname, 'pg_default'))::varchar2)::varchar2(30) AS tablespace_name,
-        COALESCE(
-            (100 - (SELECT split_part(opt, '=', 2)::integer
-            FROM unnest(pi.reloptions) AS opt 
-            WHERE split_part(opt, '=', 1) = 'fillfactor')),
-            0
-        )::number AS pct_free,
-        NULL::number AS pct_used,
-        NULL::number AS ini_trans,
-        NULL::number AS max_trans,
-        NULL::number AS initial_extent,
-        NULL::number AS next_extent,
-        NULL::number AS min_extent,
-        NULL::number AS max_extent,
-        NULL::number AS max_size,
-        NULL::number AS pct_increase,
-        NULL::number AS freelists,
-        NULL::number AS freelist_groups,
-        CASE
-            WHEN pi.relpersistence = 'u' THEN 'NO'
-            ELSE 'YES'
-        END::varchar2(3) AS logging,
-        'DISABLED'::varchar2(8) AS compression,
-        NULL::varchar2(30) AS compress_for,
-        CASE
-            WHEN pi.reltuples > -1 THEN pi.reltuples
-            ELSE NULL
-        END::number AS num_rows,
-        CASE
-            WHEN pi.relpages > -1 THEN pi.relpages
-            ELSE NULL
-        END::number AS blocks,
-        NULL::number AS empty_blocks,
-        NULL::number AS avg_space,
-        NULL::number AS chain_cnt,
-        (SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = pi.partition_oid LIMIT 1)::number AS avg_row_len,
-        NULL::number AS sample_size,
-        TO_CHAR((GREATEST(
-                pg_stat_get_last_analyze_time(pi.partition_oid),
-                pg_stat_get_last_autoanalyze_time(pi.partition_oid)
-        )), current_setting('nls_date_format'))::date AS last_analyzed,
-        NULL::varchar2(7) AS buffer_pool,
-        NULL::varchar2(7) AS flash_cache,
-        NULL::varchar2(7) AS cell_flash_cache,
-        'YES'::varchar2(3) AS global_stats,
-        'NO'::varchar2(3) AS user_stats,
-        'NO'::varchar2(3) AS is_nested,
-        NULL::varchar2(128) AS parent_table_partition,
-        'NO'::varchar2(3) AS interval,
-        NULL::varchar2(3) AS segment_created,
-        NULL::varchar2(4) AS indexing,
-        NULL::varchar2(3) AS read_only,
-        'DISABLED'::varchar2(8) AS inmemory,
-        NULL::varchar2(8) AS inmemory_priority,
-        NULL::varchar2(15) AS inmemory_distribute,
-        NULL::varchar2(17) AS inmemory_compression,
-        NULL::varchar2(13) AS inmemory_duplicate,
-        NULL::varchar2(24) AS cellmemory,
-        NULL::varchar2(12) AS inmemory_service,
-        NULL::varchar2(1000) AS inmemory_service_name,
-        'DISABLED'::varchar2(8) AS memoptimize_read,
-        NULL::varchar2(8) AS memoptimize_write
-    FROM partition_info pi
-    LEFT JOIN
-        pg_tablespace tspc ON pi.tablespace_oid = tspc.oid;
-
-CREATE OR REPLACE VIEW SYS.DBA_TAB_PARTITIONS AS
-    SELECT
-        table_owner,
-        table_name,
-        composite,
-        partition_name,
-        subpartition_count,
-        high_value,
-        high_value_length,
-        partition_position,
-        tablespace_name,
-        pct_free,
-        pct_used,
-        ini_trans,
-        max_trans,
-        initial_extent,
-        next_extent,
-        min_extent,
-        max_extent,
-        max_size,
-        pct_increase,
-        freelists,
-        freelist_groups,
-        logging,
-        compression,
-        compress_for,
-        num_rows,
-        blocks,
-        empty_blocks,
-        avg_space,
-        chain_cnt,
-        avg_row_len,
-        sample_size,
-        last_analyzed,
-        buffer_pool,
-        flash_cache,
-        cell_flash_cache,
-        global_stats,
-        user_stats,
-        is_nested,
-        parent_table_partition,
-        interval,
-        segment_created,
-        indexing,
-        read_only,
-        inmemory,
-        inmemory_priority,
-        inmemory_distribute,
-        inmemory_compression,
-        inmemory_duplicate,
-        cellmemory,
-        inmemory_service,
-        inmemory_service_name,
-        memoptimize_read,
-        memoptimize_write
-    FROM SYS.TAB_PARTITIONS_INTERNAL;
-GRANT SELECT ON SYS.DBA_TAB_PARTITIONS TO PUBLIC;
-
-CREATE OR REPLACE VIEW SYS.ALL_TAB_PARTITIONS AS
-    SELECT
-        table_owner,
-        table_name,
-        composite,
-        partition_name,
-        subpartition_count,
-        high_value,
-        high_value_length,
-        partition_position,
-        tablespace_name,
-        pct_free,
-        pct_used,
-        ini_trans,
-        max_trans,
-        initial_extent,
-        next_extent,
-        min_extent,
-        max_extent,
-        max_size,
-        pct_increase,
-        freelists,
-        freelist_groups,
-        logging,
-        compression,
-        compress_for,
-        num_rows,
-        blocks,
-        empty_blocks,
-        avg_space,
-        chain_cnt,
-        avg_row_len,
-        sample_size,
-        last_analyzed,
-        buffer_pool,
-        flash_cache,
-        cell_flash_cache,
-        global_stats,
-        user_stats,
-        is_nested,
-        parent_table_partition,
-        interval,
-        segment_created,
-        indexing,
-        read_only,
-        inmemory,
-        inmemory_priority,
-        inmemory_distribute,
-        inmemory_compression,
-        inmemory_duplicate,
-        cellmemory,
-        inmemory_service,
-        inmemory_service_name,
-        memoptimize_read,
-        memoptimize_write
-    FROM SYS.TAB_PARTITIONS_INTERNAL
-    WHERE
-        HAS_TABLE_PRIVILEGE(oid, 'SELECT')
-        OR HAS_TABLE_PRIVILEGE(oid,'INSERT')
-        OR HAS_TABLE_PRIVILEGE(oid, 'UPDATE')
-        OR HAS_TABLE_PRIVILEGE(oid, 'DELETE')
-        OR HAS_TABLE_PRIVILEGE(oid, 'TRUNCATE')
-        OR HAS_TABLE_PRIVILEGE(oid, 'TRIGGER')
-        OR HAS_TABLE_PRIVILEGE(oid, 'REFERENCES')
-    ORDER BY
-        table_name,
-        partition_position;
-GRANT SELECT ON SYS.ALL_TAB_PARTITIONS TO PUBLIC;
-
-CREATE OR REPLACE VIEW SYS.USER_TAB_PARTITIONS AS
-    SELECT
-        table_name,
-        composite,
-        partition_name,
-        subpartition_count,
-        high_value,
-        high_value_length,
-        partition_position,
-        tablespace_name,
-        pct_free,
-        pct_used,
-        ini_trans,
-        max_trans,
-        initial_extent,
-        next_extent,
-        min_extent,
-        max_extent,
-        max_size,
-        pct_increase,
-        freelists,
-        freelist_groups,
-        logging,
-        compression,
-        compress_for,
-        num_rows,
-        blocks,
-        empty_blocks,
-        avg_space,
-        chain_cnt,
-        avg_row_len,
-        sample_size,
-        last_analyzed,
-        buffer_pool,
-        flash_cache,
-        cell_flash_cache,
-        global_stats,
-        user_stats,
-        is_nested,
-        parent_table_partition,
-        interval,
-        segment_created,
-        indexing,
-        read_only,
-        inmemory,
-        inmemory_priority,
-        inmemory_distribute,
-        inmemory_compression,
-        inmemory_duplicate,
-        cellmemory,
-        inmemory_service,
-        inmemory_service_name,
-        memoptimize_read,
-        memoptimize_write
-    FROM SYS.TAB_PARTITIONS_INTERNAL
-    WHERE
-        table_owner::regrole = current_user::regrole
-    ORDER BY
-        table_name,
-        partition_position;
-GRANT SELECT ON SYS.USER_TAB_PARTITIONS TO PUBLIC;
 /* End - ReqID: RQ-SQL-SYSVIEW */
 
 /* Begin - OA-REQ-2126 */
@@ -12030,3 +11725,1456 @@ CREATE OR REPLACE VIEW sys.user_registry AS
 SELECT * FROM sys.dba_registry WHERE control = CURRENT_USER;
 GRANT SELECT ON sys.user_registry TO PUBLIC;
 /* End - OA-REQ-2126 */
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+CREATE OR REPLACE FUNCTION sys.ora_check_subpart_keys_consistent(rootoid Oid)
+RETURNS boolean AS $$
+DECLARE
+    key_count integer;
+    first_key int2vector;
+    subpart_rec record;
+BEGIN
+    SELECT COUNT(*) INTO key_count
+    FROM pg_inherits pi
+    JOIN pg_partitioned_table ppt ON ppt.partrelid = pi.inhrelid
+    WHERE pi.inhparent = rootoid;
+
+    IF key_count = 0 THEN
+        RETURN false;
+    END IF;
+
+    SELECT ppt.partattrs INTO first_key
+    FROM pg_inherits pi
+    JOIN pg_partitioned_table ppt ON ppt.partrelid = pi.inhrelid
+    WHERE pi.inhparent = rootoid
+    LIMIT 1;
+
+    FOR subpart_rec IN
+        SELECT ppt.partattrs
+        FROM pg_inherits pi
+        JOIN pg_partitioned_table ppt ON ppt.partrelid = pi.inhrelid
+        WHERE pi.inhparent = rootoid
+    LOOP
+        IF subpart_rec.partattrs IS DISTINCT FROM first_key THEN
+            RETURN false;
+        END IF;
+    END LOOP;
+
+    RETURN true;
+END;
+$$ LANGUAGE plpgsql STABLE;
+
+--
+-- XXX_PART_TABLES
+--
+CREATE OR REPLACE VIEW SYS.DBA_PART_TABLES_INTERNAL AS
+-- Oracle partitioned table info
+SELECT
+	c.relowner AS owner_id,
+	c.oid AS obj_id,
+	c.relnamespace AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(c.relowner)::varchar2)::varchar2(128) AS owner,
+	sys.ora_case_trans(c.relname::varchar2)::varchar2(128) AS table_name,
+	CASE ppt.partstrat
+		WHEN 'r'::pg_catalog.char THEN 'RANGE'::varchar2(9)
+		WHEN 'l'::pg_catalog.char THEN 'LIST'::varchar2(9)
+		WHEN 'h'::pg_catalog.char THEN 'HASH'::varchar2(9)
+		ELSE 'UNKNOWN'::varchar2(9)
+	END::varchar2(9) AS partitioning_type,
+	CASE opt.subpartstrat
+		WHEN 'r'::pg_catalog.char THEN 'RANGE'::varchar2(9)
+		WHEN 'l'::pg_catalog.char THEN 'LIST'::varchar2(9)
+		WHEN 'h'::pg_catalog.char THEN 'HASH'::varchar2(9)
+		WHEN 'n'::pg_catalog.char THEN 'NONE'::varchar2(9)
+		ELSE 'UNKNOWN'::varchar2(9)
+	END::varchar2(9) AS subpartitioning_type,
+	CASE WHEN opt.interval_expr IS NOT NULL THEN 1048575::number
+	ELSE
+	(SELECT count(*) AS count
+		FROM pg_ora_tab_partitions tp
+		WHERE tp.partroot = opt.partrelid
+		AND partlevel = 1)
+	END::number AS partition_count,
+	ora_def_subpartition_count(opt.partrelid)::number AS def_subpartition_count,
+	ppt.partnatts::number AS partitioning_key_count,
+	opt.subpartnatts::number AS subpartitioning_key_count,
+	'VALID'::varchar2(8) AS status,
+	CASE c.reltablespace
+		WHEN 0 THEN
+			(SELECT sys.ora_case_trans(spc.spcname::varchar2) FROM pg_database db, pg_tablespace spc
+			 WHERE db.datname = current_database and db.dattablespace = spc.oid)::varchar2(30)
+		ELSE
+			(SELECT sys.ora_case_trans(spcname::varchar2)::varchar2(30)
+			 FROM pg_tablespace spc WHERE spc.oid = c.reltablespace)
+	END::varchar2(30) AS def_tablespace_name,
+	NULL::number AS def_pct_free,
+	NULL::number AS def_pct_used,
+	NULL::number AS def_ini_trans,
+	NULL::number AS def_max_trans,
+	'DEFAULT'::varchar2(40) AS def_initial_extent,
+	'DEFAULT'::varchar2(40) AS def_next_extent,
+	'DEFAULT'::varchar2(40) AS def_min_extents,
+	'DEFAULT'::varchar2(40) AS def_max_extents,
+	'DEFAULT'::varchar2(40) AS def_max_size,
+	'DEFAULT'::varchar2(40) AS def_pct_increase,
+	NULL::number AS def_freelists,
+	NULL::number AS def_freelist_groups,
+	'YES'::varchar2(7) AS def_logging,
+	'NONE'::varchar2(8) AS def_compression,
+	NULL::varchar2(8) AS def_compress_for,
+	'DEFAULT'::varchar2(7) AS def_buffer_pool,
+	'DEFAULT'::varchar2(7) AS def_flash_cache,
+	'DEFAULT'::varchar2(7) AS def_cell_flash_cache,
+	NULL::varchar2(128) AS ref_ptn_constraint_name,
+	pg_get_partinterval_string(c.oid)::varchar2(1000) AS interval,
+	CASE opt.automatic
+		WHEN TRUE THEN 'YES'::varchar2(3)
+		ELSE 'NO'::varchar2(3)
+	END::varchar2(3) AS autolist,
+	NULL::varchar2(1000) AS interval_subpartition,
+	'NO'::varchar2(3) AS autolist_subpartition,
+	'NO'::varchar2(3) AS is_nested,
+	'NONE'::varchar2(4) AS def_segment_creation,
+	'ON'::varchar2(3) AS def_indexing,
+	'NONE'::varchar2(8) AS def_inmemory,
+	NULL::varchar2(8) AS def_inmemory_priority,
+	NULL::varchar2(15) AS def_inmemory_distribute,
+	NULL::varchar2(17) AS def_inmemory_compression,
+	NULL::varchar2(13) AS def_inmemory_duplicate,
+	'NO'::varchar2(3) AS def_read_only,
+	NULL::varchar2(24) AS def_cellmemory,
+	NULL::varchar2(12) AS def_inmemory_service,
+	NULL::varchar2(1000) AS def_inmemory_service_name,
+	CASE WHEN opt.automatic IS TRUE OR opt.interval_expr IS NOT NULL THEN 'YES'
+	ELSE 'NO'
+	END::varchar2(3) AS auto
+FROM pg_class c
+	JOIN pg_ora_part_tables opt ON c.oid = opt.partrelid
+	JOIN pg_partitioned_table ppt ON c.oid = ppt.partrelid
+
+UNION ALL
+-- PostgreSQL partitioned table info
+SELECT
+	c.relowner AS owner_id,
+	c.oid AS obj_id,
+	c.relnamespace AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(c.relowner)::varchar2)::varchar2(128) AS owner,
+	sys.ora_case_trans(c.relname::varchar2)::varchar2(128) AS table_name,
+	CASE ppt.partstrat
+		WHEN 'r'::pg_catalog.char THEN 'RANGE'::varchar2(9)
+		WHEN 'l'::pg_catalog.char THEN 'LIST'::varchar2(9)
+		WHEN 'h'::pg_catalog.char THEN 'HASH'::varchar2(9)
+		ELSE 'UNKNOWN'::varchar2(9)
+	END::varchar2(9) AS partitioning_type,
+	CASE
+		WHEN NOT EXISTS (
+			SELECT 1 FROM pg_inherits pi
+			JOIN pg_partitioned_table ppt2 ON ppt2.partrelid = pi.inhrelid
+			WHERE pi.inhparent = c.oid
+		) THEN 'NONE'::varchar2(9)
+		WHEN (
+			SELECT COUNT(DISTINCT ppt2.partstrat)
+			FROM pg_inherits pi
+			JOIN pg_partitioned_table ppt2 ON ppt2.partrelid = pi.inhrelid
+			WHERE pi.inhparent = c.oid
+		) > 1 THEN 'UNKNOWN'::varchar2(9)
+		ELSE (
+			SELECT CASE ppt2.partstrat
+				WHEN 'r' THEN 'RANGE'::varchar2(9)
+				WHEN 'l' THEN 'LIST'::varchar2(9)
+				WHEN 'h' THEN 'HASH'::varchar2(9)
+				ELSE 'UNKNOWN'::varchar2(9)
+			END
+			FROM pg_inherits pi
+			JOIN pg_partitioned_table ppt2 ON ppt2.partrelid = pi.inhrelid
+			WHERE pi.inhparent = c.oid
+			LIMIT 1
+		)
+	END::varchar2(9) AS subpartitioning_type,
+	(SELECT count(*)::number
+	 FROM pg_inherits pi
+	 WHERE pi.inhparent = c.oid) AS partition_count,
+	0::number AS def_subpartition_count,
+	ppt.partnatts::number AS partitioning_key_count,
+	CASE
+		WHEN NOT EXISTS (
+			SELECT 1 FROM pg_inherits pi
+			JOIN pg_partitioned_table ppt2 ON ppt2.partrelid = pi.inhrelid
+			WHERE pi.inhparent = c.oid
+		) THEN 0::number
+		WHEN (
+			SELECT COUNT(DISTINCT ppt2.partnatts)
+			FROM pg_inherits pi
+			JOIN pg_partitioned_table ppt2 ON ppt2.partrelid = pi.inhrelid
+			WHERE pi.inhparent = c.oid
+		) > 1 THEN NULL::number
+		ELSE (
+			SELECT ppt2.partnatts::number
+			FROM pg_inherits pi
+			JOIN pg_partitioned_table ppt2 ON ppt2.partrelid = pi.inhrelid
+			WHERE pi.inhparent = c.oid
+			LIMIT 1
+		)
+	END AS subpartitioning_key_count,
+	'VALID'::varchar2(8) AS status,
+	CASE c.reltablespace
+		WHEN 0 THEN
+			(SELECT sys.ora_case_trans(spc.spcname::varchar2) FROM pg_database db, pg_tablespace spc
+			 WHERE db.datname = current_database and db.dattablespace = spc.oid)::varchar2(30)
+		ELSE
+			(SELECT sys.ora_case_trans(spcname::varchar2)::varchar2(30)
+			 FROM pg_tablespace spc WHERE spc.oid = c.reltablespace)
+	END::varchar2(30) AS def_tablespace_name,
+	NULL::number AS def_pct_free,
+	NULL::number AS def_pct_used,
+	NULL::number AS def_ini_trans,
+	NULL::number AS def_max_trans,
+	'DEFAULT'::varchar2(40) AS def_initial_extent,
+	'DEFAULT'::varchar2(40) AS def_next_extent,
+	'DEFAULT'::varchar2(40) AS def_min_extents,
+	'DEFAULT'::varchar2(40) AS def_max_extents,
+	'DEFAULT'::varchar2(40) AS def_max_size,
+	'DEFAULT'::varchar2(40) AS def_pct_increase,
+	NULL::number AS def_freelists,
+	NULL::number AS def_freelist_groups,
+	'YES'::varchar2(7) AS def_logging,
+	'NONE'::varchar2(8) AS def_compression,
+	NULL::varchar2(8) AS def_compress_for,
+	'DEFAULT'::varchar2(7) AS def_buffer_pool,
+	'DEFAULT'::varchar2(7) AS def_flash_cache,
+	'DEFAULT'::varchar2(7) AS def_cell_flash_cache,
+	NULL::varchar2(128) AS ref_ptn_constraint_name,
+	NULL::varchar2(1000) AS interval,
+	'NO'::varchar2(3) AS autolist,
+	NULL::varchar2(1000) AS interval_subpartition,
+	'NO'::varchar2(3) AS autolist_subpartition,
+	'NO'::varchar2(3) AS is_nested,
+	'NONE'::varchar2(4) AS def_segment_creation,
+	'ON'::varchar2(3) AS def_indexing,
+	'NONE'::varchar2(8) AS def_inmemory,
+	NULL::varchar2(8) AS def_inmemory_priority,
+	NULL::varchar2(15) AS def_inmemory_distribute,
+	NULL::varchar2(17) AS def_inmemory_compression,
+	NULL::varchar2(13) AS def_inmemory_duplicate,
+	'NO'::varchar2(3) AS def_read_only,
+	NULL::varchar2(24) AS def_cellmemory,
+	NULL::varchar2(12) AS def_inmemory_service,
+	NULL::varchar2(1000) AS def_inmemory_service_name,
+	'NO'::varchar2(3) AS auto
+FROM pg_class c
+	JOIN pg_partitioned_table ppt ON c.oid = ppt.partrelid
+WHERE NOT EXISTS (
+	SELECT 1 FROM pg_ora_part_tables opt WHERE opt.partrelid = c.oid
+)
+AND NOT EXISTS (
+	SELECT 1 FROM pg_inherits pi WHERE pi.inhrelid = c.oid
+);
+
+CREATE OR REPLACE VIEW SYS.DBA_PART_TABLES AS
+SELECT
+	owner,
+	table_name,
+	partitioning_type,
+	subpartitioning_type,
+	partition_count,
+	def_subpartition_count,
+	partitioning_key_count,
+	subpartitioning_key_count,
+	status,
+	def_tablespace_name,
+	def_pct_free,
+	def_pct_used,
+	def_ini_trans,
+	def_max_trans,
+	def_initial_extent,
+	def_next_extent,
+	def_min_extents,
+	def_max_extents,
+	def_max_size,
+	def_pct_increase,
+	def_freelists,
+	def_freelist_groups,
+	def_logging,
+	def_compression,
+	def_compress_for,
+	def_buffer_pool,
+	def_flash_cache,
+	def_cell_flash_cache,
+	ref_ptn_constraint_name,
+	interval,
+	autolist,
+	interval_subpartition,
+	autolist_subpartition,
+	is_nested,
+	def_segment_creation,
+	def_indexing,
+	def_inmemory,
+	def_inmemory_priority,
+	def_inmemory_distribute,
+	def_inmemory_compression,
+	def_inmemory_duplicate,
+	def_read_only,
+	def_cellmemory,
+	def_inmemory_service,
+	def_inmemory_service_name,
+	auto
+FROM DBA_PART_TABLES_INTERNAL;
+
+GRANT SELECT ON SYS.DBA_PART_TABLES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_PART_TABLES AS
+SELECT
+	owner,
+	table_name,
+	partitioning_type,
+	subpartitioning_type,
+	partition_count,
+	def_subpartition_count,
+	partitioning_key_count,
+	subpartitioning_key_count,
+	status,
+	def_tablespace_name,
+	def_pct_free,
+	def_pct_used,
+	def_ini_trans,
+	def_max_trans,
+	def_initial_extent,
+	def_next_extent,
+	def_min_extents,
+	def_max_extents,
+	def_max_size,
+	def_pct_increase,
+	def_freelists,
+	def_freelist_groups,
+	def_logging,
+	def_compression,
+	def_compress_for,
+	def_buffer_pool,
+	def_flash_cache,
+	def_cell_flash_cache,
+	ref_ptn_constraint_name,
+	interval,
+	autolist,
+	interval_subpartition,
+	autolist_subpartition,
+	is_nested,
+	def_segment_creation,
+	def_indexing,
+	def_inmemory,
+	def_inmemory_priority,
+	def_inmemory_distribute,
+	def_inmemory_compression,
+	def_inmemory_duplicate,
+	def_read_only,
+	def_cellmemory,
+	def_inmemory_service,
+	def_inmemory_service_name,
+	auto
+FROM DBA_PART_TABLES_INTERNAL i
+WHERE
+	has_schema_privilege(i.namespace_id, 'USAGE'::text)
+	AND has_table_privilege(i.obj_id, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'::text);
+
+GRANT SELECT ON SYS.ALL_PART_TABLES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_PART_TABLES AS
+SELECT
+	table_name,
+	partitioning_type,
+	subpartitioning_type,
+	partition_count,
+	def_subpartition_count,
+	partitioning_key_count,
+	subpartitioning_key_count,
+	status,
+	def_tablespace_name,
+	def_pct_free,
+	def_pct_used,
+	def_ini_trans,
+	def_max_trans,
+	def_initial_extent,
+	def_next_extent,
+	def_min_extents,
+	def_max_extents,
+	def_max_size,
+	def_pct_increase,
+	def_freelists,
+	def_freelist_groups,
+	def_logging,
+	def_compression,
+	def_compress_for,
+	def_buffer_pool,
+	def_flash_cache,
+	def_cell_flash_cache,
+	ref_ptn_constraint_name,
+	interval,
+	autolist,
+	interval_subpartition,
+	autolist_subpartition,
+	is_nested,
+	def_segment_creation,
+	def_indexing,
+	def_inmemory,
+	def_inmemory_priority,
+	def_inmemory_distribute,
+	def_inmemory_compression,
+	def_inmemory_duplicate,
+	def_read_only,
+	def_cellmemory,
+	def_inmemory_service,
+	def_inmemory_service_name,
+	auto
+FROM DBA_PART_TABLES_INTERNAL i
+WHERE
+	pg_get_userbyid(i.owner_id) = CURRENT_USER;
+
+GRANT SELECT ON SYS.USER_PART_TABLES TO PUBLIC;
+
+--
+-- XXX_TAB_PARTITIONS
+--
+CREATE OR REPLACE VIEW SYS.DBA_TAB_PARTITIONS_INTERNAL AS
+-- Partitions info of Oracle partitioned tables
+SELECT
+	c2.relowner AS owner_id,
+	c2.oid AS obj_id,
+	c2.relnamespace AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(c2.relowner)::varchar2)::varchar2(128) AS table_owner,
+	sys.ora_case_trans(c2.relname::varchar2)::varchar2(128) AS table_name,
+	CASE opt.composite
+		WHEN TRUE THEN 'YES'::varchar2(3)
+		ELSE 'NO'::varchar2(3)
+	END::varchar2(3) AS composite,
+	sys.ora_case_trans(otp.partname::varchar2)::varchar2(128) AS partition_name,
+	CASE WHEN opt.composite IS FALSE THEN 0::number
+	ELSE
+	(SELECT count(*) AS count
+		FROM pg_ora_tab_partitions tp
+		WHERE tp.partparent = otp.part
+		AND partlevel = 2)
+	END::number AS subpartition_count,
+	ora_get_partition_highvalue(otp.part)::text AS high_value,
+	lengthb(ora_get_partition_highvalue(otp.part)::text)::number AS high_value_length,
+	ora_get_partition_position(otp.partparent, otp.part)::number AS partition_position,
+	CASE c.reltablespace
+		WHEN 0 THEN
+			(SELECT sys.ora_case_trans(spc.spcname::varchar2) FROM pg_database db, pg_tablespace spc
+			 WHERE db.datname = current_database and db.dattablespace = spc.oid)::varchar2(30)
+		ELSE
+			(SELECT sys.ora_case_trans(spcname::varchar2)::varchar2(30)
+			 FROM pg_tablespace spc WHERE spc.oid = c.reltablespace)
+	END::varchar2(30) AS tablespace_name,
+	COALESCE(
+		(100 - (SELECT split_part(opt, '=', 2)::integer
+				FROM unnest(c.reloptions) AS opt
+				WHERE split_part(opt, '=', 1) = 'fillfactor')
+		), 0)::number AS pct_free,
+	NULL::number AS pct_used,
+	0::number AS ini_trans,
+	0::number AS max_trans,
+	NULL::number AS initial_extent,
+	NULL::number AS next_extent,
+	NULL::number AS min_extent,
+	NULL::number AS max_extent,
+	NULL::number AS max_size,
+	NULL::number AS pct_increase,
+	NULL::number AS freelists,
+	NULL::number AS freelist_groups,
+	CASE c.relpersistence
+		WHEN 'u'::pg_catalog.char THEN 'NO'::varchar2(7)
+		ELSE 'YES'::varchar2(7)
+	END::varchar2(7) AS logging,
+	'DISABLED'::varchar2(8) AS compression,
+	NULL::varchar2(30) AS compress_for,
+	CASE
+		WHEN c.reltuples > -1 THEN c.reltuples
+		ELSE NULL
+	END::number AS num_rows,
+	CASE
+		WHEN c.relpages > -1 THEN c.relpages
+		ELSE NULL
+	END::number AS blocks,
+	NULL::number AS empty_blocks,
+	NULL::number AS avg_space,
+	NULL::number AS chain_cnt,
+	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = c.oid LIMIT 1)::number AS avg_row_len,
+	NULL::number AS sample_size,
+	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(c.oid),
+			pg_stat_get_last_autoanalyze_time(c.oid)
+	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	NULL::varchar2(7) AS buffer_pool,
+	'NONE'::varchar2(7) AS flash_cache,
+	'NONE'::varchar2(7) AS cell_flash_cache,
+	'YES'::varchar2(3) AS global_stats,
+	'NO'::varchar2(3) AS user_stats,
+	'NO'::varchar2(3) AS is_nested,
+	NULL::varchar2(128) AS parent_table_partition,
+	CASE otp.autogen
+		WHEN TRUE THEN 'YES'::varchar2(3)
+		ELSE 'NO'::varchar2(3)
+	END::varchar2(3) AS interval,
+	'YES'::varchar2(4) AS segment_created,
+	NULL::varchar2(4) AS indexing,
+	'NO'::varchar2(4) AS read_only,
+	'DISABLED'::varchar2(8) AS inmemory,
+	NULL::varchar2(8) AS inmemory_priority,
+	NULL::varchar2(15) AS inmemory_distribute,
+	NULL::varchar2(17) AS inmemory_compression,
+	NULL::varchar2(13) AS inmemory_duplicate,
+	NULL::varchar2(24) AS cellmemory,
+	NULL::varchar2(12) AS inmemory_service,
+	NULL::varchar2(100) AS inmemory_service_name,
+	NULL::varchar2(8) AS memoptimize_read,
+	NULL::varchar2(8) AS memoptimize_write
+FROM pg_class c
+	JOIN pg_ora_tab_partitions otp ON c.oid = otp.part AND otp.partlevel = 1
+	JOIN pg_ora_part_tables opt ON otp.partroot = opt.partrelid
+	JOIN pg_class c2 ON c2.oid = opt.partrelid
+
+UNION ALL
+-- Partitions info of PostgreSQL partitioned tables
+SELECT
+	root_c.relowner AS owner_id,
+	root_c.oid AS obj_id,
+	root_c.relnamespace AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(root_c.relowner)::varchar2)::varchar2(128) AS table_owner,
+	sys.ora_case_trans(root_c.relname::varchar2)::varchar2(128) AS table_name,
+	CASE
+		WHEN EXISTS (
+			SELECT 1 FROM pg_partitioned_table ppt2
+			WHERE ppt2.partrelid = part_c.oid
+		) THEN 'YES'::varchar2(3)
+		ELSE 'NO'::varchar2(3)
+	END::varchar2(3) AS composite,
+	sys.ora_case_trans(part_c.relname::varchar2)::varchar2(128) AS partition_name,
+	(SELECT count(*)::number
+	 FROM pg_inherits pi
+	 WHERE pi.inhparent = part_c.oid) AS subpartition_count,
+	ora_get_partition_highvalue(part_c.oid)::text AS high_value,
+	lengthb(ora_get_partition_highvalue(part_c.oid)::text)::number AS high_value_length,
+	ora_get_partition_position(root_c.oid, part_c.oid)::number AS partition_position,
+	CASE part_c.reltablespace
+		WHEN 0 THEN
+			(SELECT sys.ora_case_trans(spc.spcname::varchar2) FROM pg_database db, pg_tablespace spc
+			 WHERE db.datname = current_database and db.dattablespace = spc.oid)::varchar2(30)
+		ELSE
+			(SELECT sys.ora_case_trans(spcname::varchar2)::varchar2(30)
+			 FROM pg_tablespace spc WHERE spc.oid = part_c.reltablespace)
+	END::varchar2(30) AS tablespace_name,
+	COALESCE(
+		(100 - (SELECT split_part(opt, '=', 2)::integer
+				FROM unnest(part_c.reloptions) AS opt
+				WHERE split_part(opt, '=', 1) = 'fillfactor')
+		), 0)::number AS pct_free,
+	NULL::number AS pct_used,
+	0::number AS ini_trans,
+	0::number AS max_trans,
+	NULL::number AS initial_extent,
+	NULL::number AS next_extent,
+	NULL::number AS min_extent,
+	NULL::number AS max_extent,
+	NULL::number AS max_size,
+	NULL::number AS pct_increase,
+	NULL::number AS freelists,
+	NULL::number AS freelist_groups,
+	CASE part_c.relpersistence
+		WHEN 'u'::pg_catalog.char THEN 'NO'::varchar2(7)
+		ELSE 'YES'::varchar2(7)
+	END::varchar2(7) AS logging,
+	'DISABLED'::varchar2(8) AS compression,
+	NULL::varchar2(30) AS compress_for,
+	CASE
+		WHEN part_c.reltuples > -1 THEN part_c.reltuples
+		ELSE NULL
+	END::number AS num_rows,
+	CASE
+		WHEN part_c.relpages > -1 THEN part_c.relpages
+		ELSE NULL
+	END::number AS blocks,
+	NULL::number AS empty_blocks,
+	NULL::number AS avg_space,
+	NULL::number AS chain_cnt,
+	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = part_c.oid LIMIT 1)::number AS avg_row_len,
+	NULL::number AS sample_size,
+	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(part_c.oid),
+			pg_stat_get_last_autoanalyze_time(part_c.oid)
+	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	NULL::varchar2(7) AS buffer_pool,
+	'NONE'::varchar2(7) AS flash_cache,
+	'NONE'::varchar2(7) AS cell_flash_cache,
+	'YES'::varchar2(3) AS global_stats,
+	'NO'::varchar2(3) AS user_stats,
+	'NO'::varchar2(3) AS is_nested,
+	NULL::varchar2(128) AS parent_table_partition,
+	'NO'::varchar2(3) AS interval,
+	'YES'::varchar2(4) AS segment_created,
+	NULL::varchar2(4) AS indexing,
+	'NO'::varchar2(4) AS read_only,
+	'DISABLED'::varchar2(8) AS inmemory,
+	NULL::varchar2(8) AS inmemory_priority,
+	NULL::varchar2(15) AS inmemory_distribute,
+	NULL::varchar2(17) AS inmemory_compression,
+	NULL::varchar2(13) AS inmemory_duplicate,
+	NULL::varchar2(24) AS cellmemory,
+	NULL::varchar2(12) AS inmemory_service,
+	NULL::varchar2(100) AS inmemory_service_name,
+	NULL::varchar2(8) AS memoptimize_read,
+	NULL::varchar2(8) AS memoptimize_write
+FROM pg_class root_c
+	JOIN pg_partitioned_table ppt ON root_c.oid = ppt.partrelid
+	JOIN pg_inherits pi ON pi.inhparent = root_c.oid
+	JOIN pg_class part_c ON part_c.oid = pi.inhrelid
+WHERE NOT EXISTS (
+	SELECT 1 FROM pg_ora_part_tables opt WHERE opt.partrelid = root_c.oid
+)
+AND NOT EXISTS (
+	SELECT 1 FROM pg_inherits pi2 WHERE pi2.inhrelid = root_c.oid
+)
+ORDER BY table_name, partition_position;
+
+CREATE OR REPLACE VIEW SYS.DBA_TAB_PARTITIONS AS
+SELECT
+	table_owner,
+	table_name,
+	composite,
+	partition_name,
+	subpartition_count,
+	high_value,
+	high_value_length,
+	partition_position,
+	tablespace_name,
+	pct_free,
+	pct_used,
+	ini_trans,
+	max_trans,
+	initial_extent,
+	next_extent,
+	min_extent,
+	max_extent,
+	max_size,
+	pct_increase,
+	freelists,
+	freelist_groups,
+	logging,
+	compression,
+	compress_for,
+	num_rows,
+	blocks,
+	empty_blocks,
+	avg_space,
+	chain_cnt,
+	avg_row_len,
+	sample_size,
+	last_analyzed,
+	buffer_pool,
+	flash_cache,
+	cell_flash_cache,
+	global_stats,
+	user_stats,
+	is_nested,
+	parent_table_partition,
+	interval,
+	segment_created,
+	indexing,
+	read_only,
+	inmemory,
+	inmemory_priority,
+	inmemory_distribute,
+	inmemory_compression,
+	inmemory_duplicate,
+	cellmemory,
+	inmemory_service,
+	inmemory_service_name,
+	memoptimize_read,
+	memoptimize_write
+FROM DBA_TAB_PARTITIONS_INTERNAL
+ORDER BY table_name, partition_position;
+
+GRANT SELECT ON SYS.DBA_TAB_PARTITIONS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_PARTITIONS AS
+SELECT
+	table_owner,
+	table_name,
+	composite,
+	partition_name,
+	subpartition_count,
+	high_value,
+	high_value_length,
+	partition_position,
+	tablespace_name,
+	pct_free,
+	pct_used,
+	ini_trans,
+	max_trans,
+	initial_extent,
+	next_extent,
+	min_extent,
+	max_extent,
+	max_size,
+	pct_increase,
+	freelists,
+	freelist_groups,
+	logging,
+	compression,
+	compress_for,
+	num_rows,
+	blocks,
+	empty_blocks,
+	avg_space,
+	chain_cnt,
+	avg_row_len,
+	sample_size,
+	last_analyzed,
+	buffer_pool,
+	flash_cache,
+	cell_flash_cache,
+	global_stats,
+	user_stats,
+	is_nested,
+	parent_table_partition,
+	interval,
+	segment_created,
+	indexing,
+	read_only,
+	inmemory,
+	inmemory_priority,
+	inmemory_distribute,
+	inmemory_compression,
+	inmemory_duplicate,
+	cellmemory,
+	inmemory_service,
+	inmemory_service_name,
+	memoptimize_read,
+	memoptimize_write
+FROM DBA_TAB_PARTITIONS_INTERNAL i
+WHERE
+	has_schema_privilege(i.namespace_id, 'USAGE'::text)
+	AND has_table_privilege(i.obj_id, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'::text)
+ORDER BY table_name, partition_position;
+
+GRANT SELECT ON SYS.ALL_TAB_PARTITIONS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_PARTITIONS AS
+SELECT
+	table_name,
+	composite,
+	partition_name,
+	subpartition_count,
+	high_value,
+	high_value_length,
+	partition_position,
+	tablespace_name,
+	pct_free,
+	pct_used,
+	ini_trans,
+	max_trans,
+	initial_extent,
+	next_extent,
+	min_extent,
+	max_extent,
+	max_size,
+	pct_increase,
+	freelists,
+	freelist_groups,
+	logging,
+	compression,
+	compress_for,
+	num_rows,
+	blocks,
+	empty_blocks,
+	avg_space,
+	chain_cnt,
+	avg_row_len,
+	sample_size,
+	last_analyzed,
+	buffer_pool,
+	flash_cache,
+	cell_flash_cache,
+	global_stats,
+	user_stats,
+	is_nested,
+	parent_table_partition,
+	interval,
+	segment_created,
+	indexing,
+	read_only,
+	inmemory,
+	inmemory_priority,
+	inmemory_distribute,
+	inmemory_compression,
+	inmemory_duplicate,
+	cellmemory,
+	inmemory_service,
+	inmemory_service_name,
+	memoptimize_read,
+	memoptimize_write
+FROM DBA_TAB_PARTITIONS_INTERNAL i
+WHERE
+	pg_get_userbyid(i.owner_id) = CURRENT_USER
+ORDER BY table_name, partition_position;
+
+GRANT SELECT ON SYS.USER_TAB_PARTITIONS TO PUBLIC;
+
+--
+-- XXX_TAB_SUBPARTITIONS
+--
+CREATE OR REPLACE VIEW SYS.DBA_TAB_SUBPARTITIONS_INTERNAL AS
+-- Subpartitions info of Oracle partitioned tables
+SELECT
+	c2.relowner AS owner_id,
+	c2.oid AS obj_id,
+	c2.relnamespace AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(c2.relowner)::varchar2)::varchar2(128) AS table_owner,
+	sys.ora_case_trans(c2.relname::varchar2)::varchar2(128) AS table_name,
+	sys.ora_case_trans(otp.partname::varchar2)::varchar2(128) AS partition_name,
+	sys.ora_case_trans(otsp.partname::varchar2)::varchar2(128) AS subpartition_name,
+	ora_get_partition_highvalue(otsp.part)::text AS high_value,
+	lengthb(ora_get_partition_highvalue(otsp.part)::text)::number AS high_value_length,
+	ora_get_partition_position(otp.partparent, otp.part)::number AS partition_position,
+	ora_get_partition_position(otsp.partparent, otsp.part)::number AS subpartition_position,
+	CASE c.reltablespace
+		WHEN 0 THEN
+			(SELECT sys.ora_case_trans(spc.spcname::varchar2) FROM pg_database db, pg_tablespace spc
+			 WHERE db.datname = current_database and db.dattablespace = spc.oid)::varchar2(30)
+		ELSE
+			(SELECT sys.ora_case_trans(spcname::varchar2)::varchar2(30)
+			 FROM pg_tablespace spc WHERE spc.oid = c.reltablespace)
+	END::varchar2(30) AS tablespace_name,
+	COALESCE(
+		(100 - (SELECT split_part(opt, '=', 2)::integer
+				FROM unnest(c.reloptions) AS opt
+				WHERE split_part(opt, '=', 1) = 'fillfactor')
+		), 0)::number AS pct_free,
+	NULL::number AS pct_used,
+	0::number AS ini_trans,
+	0::number AS max_trans,
+	NULL::number AS initial_extent,
+	NULL::number AS next_extent,
+	NULL::number AS min_extent,
+	NULL::number AS max_extent,
+	NULL::number AS max_size,
+	NULL::number AS pct_increase,
+	NULL::number AS freelists,
+	NULL::number AS freelist_groups,
+	CASE c.relpersistence
+		WHEN 'u'::pg_catalog.char THEN 'NO'::varchar2(3)
+		ELSE 'YES'::varchar2(3)
+	END::varchar2(3) AS logging,
+	'DISABLED'::varchar2(8) AS compression,
+	NULL::varchar2(30) AS compress_for,
+	CASE
+		WHEN c.reltuples > -1 THEN c.reltuples
+		ELSE NULL
+	END::number AS num_rows,
+	CASE
+		WHEN c.relpages > -1 THEN c.relpages
+		ELSE NULL
+	END::number AS blocks,
+	NULL::number AS empty_blocks,
+	NULL::number AS avg_space,
+	NULL::number AS chain_cnt,
+	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = c.oid LIMIT 1)::number AS avg_row_len,
+	NULL::number AS sample_size,
+	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(c.oid),
+			pg_stat_get_last_autoanalyze_time(c.oid)
+	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	NULL::varchar2(7) AS buffer_pool,
+	'NONE'::varchar2(7) AS flash_cache,
+	'NONE'::varchar2(7) AS cell_flash_cache,
+	'YES'::varchar2(3) AS global_stats,
+	'NO'::varchar2(3) AS user_stats,
+	'NO'::varchar2(3) AS interval,
+	'YES'::varchar2(3) AS segment_created,
+	NULL::varchar2(3) AS indexing,
+	'NO'::varchar2(3) AS read_only,
+	'DISABLED'::varchar2(8) AS inmemory,
+	NULL::varchar2(8) AS inmemory_priority,
+	NULL::varchar2(15) AS inmemory_distribute,
+	NULL::varchar2(17) AS inmemory_compression,
+	NULL::varchar2(13) AS inmemory_duplicate,
+	NULL::varchar2(12) AS inmemory_service,
+	NULL::varchar2(1000) AS inmemory_service_name,
+	NULL::varchar2(24) AS cellmemory,
+	NULL::varchar2(8) AS memoptimize_read,
+	NULL::varchar2(8) AS memoptimize_write
+FROM pg_class c
+	JOIN pg_ora_tab_partitions otsp ON c.oid = otsp.part AND otsp.partlevel = 2
+	JOIN pg_ora_part_tables opt ON otsp.partroot = opt.partrelid
+	JOIN pg_class c2 ON c2.oid = opt.partrelid
+	JOIN pg_ora_tab_partitions otp ON otp.part = otsp.partparent
+
+UNION ALL
+-- Subpartitions info of PostgreSQL partitioned tables
+SELECT
+	root_c.relowner AS owner_id,
+	root_c.oid AS obj_id,
+	root_c.relnamespace AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(root_c.relowner)::varchar2)::varchar2(128) AS table_owner,
+	sys.ora_case_trans(root_c.relname::varchar2)::varchar2(128) AS table_name,
+	sys.ora_case_trans(parent_c.relname::varchar2)::varchar2(128) AS partition_name,
+	sys.ora_case_trans(subpart_c.relname::varchar2)::varchar2(128) AS subpartition_name,
+	ora_get_partition_highvalue(subpart_c.oid)::text AS high_value,
+	lengthb(ora_get_partition_highvalue(subpart_c.oid)::text)::number AS high_value_length,
+	ora_get_partition_position(root_c.oid, parent_c.oid)::number AS partition_position,
+	ora_get_partition_position(parent_c.oid, subpart_c.oid)::number AS subpartition_position,
+	CASE subpart_c.reltablespace
+		WHEN 0 THEN
+			(SELECT sys.ora_case_trans(spc.spcname::varchar2) FROM pg_database db, pg_tablespace spc
+			 WHERE db.datname = current_database and db.dattablespace = spc.oid)::varchar2(30)
+		ELSE
+			(SELECT sys.ora_case_trans(spcname::varchar2)::varchar2(30)
+			 FROM pg_tablespace spc WHERE spc.oid = subpart_c.reltablespace)
+	END::varchar2(30) AS tablespace_name,
+	COALESCE(
+		(100 - (SELECT split_part(opt, '=', 2)::integer
+				FROM unnest(subpart_c.reloptions) AS opt
+				WHERE split_part(opt, '=', 1) = 'fillfactor')
+		), 0)::number AS pct_free,
+	NULL::number AS pct_used,
+	0::number AS ini_trans,
+	0::number AS max_trans,
+	NULL::number AS initial_extent,
+	NULL::number AS next_extent,
+	NULL::number AS min_extent,
+	NULL::number AS max_extent,
+	NULL::number AS max_size,
+	NULL::number AS pct_increase,
+	NULL::number AS freelists,
+	NULL::number AS freelist_groups,
+	CASE subpart_c.relpersistence
+		WHEN 'u'::pg_catalog.char THEN 'NO'::varchar2(3)
+		ELSE 'YES'::varchar2(3)
+	END::varchar2(3) AS logging,
+	'DISABLED'::varchar2(8) AS compression,
+	NULL::varchar2(30) AS compress_for,
+	CASE
+		WHEN subpart_c.reltuples > -1 THEN subpart_c.reltuples
+		ELSE NULL
+	END::number AS num_rows,
+	CASE
+		WHEN subpart_c.relpages > -1 THEN subpart_c.relpages
+		ELSE NULL
+	END::number AS blocks,
+	NULL::number AS empty_blocks,
+	NULL::number AS avg_space,
+	NULL::number AS chain_cnt,
+	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = subpart_c.oid LIMIT 1)::number AS avg_row_len,
+	NULL::number AS sample_size,
+	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(subpart_c.oid),
+			pg_stat_get_last_autoanalyze_time(subpart_c.oid)
+	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	NULL::varchar2(7) AS buffer_pool,
+	'NONE'::varchar2(7) AS flash_cache,
+	'NONE'::varchar2(7) AS cell_flash_cache,
+	'YES'::varchar2(3) AS global_stats,
+	'NO'::varchar2(3) AS user_stats,
+	'NO'::varchar2(3) AS interval,
+	'YES'::varchar2(3) AS segment_created,
+	NULL::varchar2(3) AS indexing,
+	'NO'::varchar2(3) AS read_only,
+	'DISABLED'::varchar2(8) AS inmemory,
+	NULL::varchar2(8) AS inmemory_priority,
+	NULL::varchar2(15) AS inmemory_distribute,
+	NULL::varchar2(17) AS inmemory_compression,
+	NULL::varchar2(13) AS inmemory_duplicate,
+	NULL::varchar2(12) AS inmemory_service,
+	NULL::varchar2(1000) AS inmemory_service_name,
+	NULL::varchar2(24) AS cellmemory,
+	NULL::varchar2(8) AS memoptimize_read,
+	NULL::varchar2(8) AS memoptimize_write
+FROM pg_class root_c
+	JOIN pg_partitioned_table root_ppt ON root_c.oid = root_ppt.partrelid
+	JOIN pg_inherits parent_pi ON parent_pi.inhparent = root_c.oid
+	JOIN pg_class parent_c ON parent_c.oid = parent_pi.inhrelid
+	JOIN pg_partitioned_table parent_ppt ON parent_ppt.partrelid = parent_c.oid
+	JOIN pg_inherits sub_pi ON sub_pi.inhparent = parent_c.oid
+	JOIN pg_class subpart_c ON subpart_c.oid = sub_pi.inhrelid
+WHERE NOT EXISTS (
+	SELECT 1 FROM pg_ora_part_tables opt WHERE opt.partrelid = root_c.oid
+)
+AND NOT EXISTS (
+	SELECT 1 FROM pg_inherits pi2 WHERE pi2.inhrelid = root_c.oid
+)
+ORDER BY table_name, partition_position, subpartition_position;
+
+CREATE OR REPLACE VIEW SYS.DBA_TAB_SUBPARTITIONS AS
+SELECT
+	table_owner,
+	table_name,
+	partition_name,
+	subpartition_name,
+	high_value,
+	high_value_length,
+	partition_position,
+	subpartition_position,
+	tablespace_name,
+	pct_free,
+	pct_used,
+	ini_trans,
+	max_trans,
+	initial_extent,
+	next_extent,
+	min_extent,
+	max_extent,
+	max_size,
+	pct_increase,
+	freelists,
+	freelist_groups,
+	logging,
+	compression,
+	compress_for,
+	num_rows,
+	blocks,
+	empty_blocks,
+	avg_space,
+	chain_cnt,
+	avg_row_len,
+	sample_size,
+	last_analyzed,
+	buffer_pool,
+	flash_cache,
+	cell_flash_cache,
+	global_stats,
+	user_stats,
+	INTERVAL,
+	segment_created,
+	indexing,
+	read_only,
+	inmemory,
+	inmemory_priority,
+	inmemory_distribute,
+	inmemory_compression,
+	inmemory_duplicate,
+	inmemory_service,
+	inmemory_service_name,
+	cellmemory,
+	memoptimize_read,
+	memoptimize_write
+FROM DBA_TAB_SUBPARTITIONS_INTERNAL
+ORDER BY table_name, partition_position, subpartition_position;
+
+GRANT SELECT ON SYS.DBA_TAB_SUBPARTITIONS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_TAB_SUBPARTITIONS AS
+SELECT
+	table_owner,
+	table_name,
+	partition_name,
+	subpartition_name,
+	high_value,
+	high_value_length,
+	partition_position,
+	subpartition_position,
+	tablespace_name,
+	pct_free,
+	pct_used,
+	ini_trans,
+	max_trans,
+	initial_extent,
+	next_extent,
+	min_extent,
+	max_extent,
+	max_size,
+	pct_increase,
+	freelists,
+	freelist_groups,
+	logging,
+	compression,
+	compress_for,
+	num_rows,
+	blocks,
+	empty_blocks,
+	avg_space,
+	chain_cnt,
+	avg_row_len,
+	sample_size,
+	last_analyzed,
+	buffer_pool,
+	flash_cache,
+	cell_flash_cache,
+	global_stats,
+	user_stats,
+	INTERVAL,
+	segment_created,
+	indexing,
+	read_only,
+	inmemory,
+	inmemory_priority,
+	inmemory_distribute,
+	inmemory_compression,
+	inmemory_duplicate,
+	inmemory_service,
+	inmemory_service_name,
+	cellmemory,
+	memoptimize_read,
+	memoptimize_write
+FROM DBA_TAB_SUBPARTITIONS_INTERNAL i
+WHERE
+	has_schema_privilege(i.namespace_id, 'USAGE'::text)
+	AND has_table_privilege(i.obj_id, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'::text)
+ORDER BY table_name, partition_position, subpartition_position;
+
+GRANT SELECT ON SYS.ALL_TAB_SUBPARTITIONS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_TAB_SUBPARTITIONS AS
+SELECT
+	table_name,
+	partition_name,
+	subpartition_name,
+	high_value,
+	high_value_length,
+	partition_position,
+	subpartition_position,
+	tablespace_name,
+	pct_free,
+	pct_used,
+	ini_trans,
+	max_trans,
+	initial_extent,
+	next_extent,
+	min_extent,
+	max_extent,
+	max_size,
+	pct_increase,
+	freelists,
+	freelist_groups,
+	logging,
+	compression,
+	compress_for,
+	num_rows,
+	blocks,
+	empty_blocks,
+	avg_space,
+	chain_cnt,
+	avg_row_len,
+	sample_size,
+	last_analyzed,
+	buffer_pool,
+	flash_cache,
+	cell_flash_cache,
+	global_stats,
+	user_stats,
+	INTERVAL,
+	segment_created,
+	indexing,
+	read_only,
+	inmemory,
+	inmemory_priority,
+	inmemory_distribute,
+	inmemory_compression,
+	inmemory_duplicate,
+	inmemory_service,
+	inmemory_service_name,
+	cellmemory,
+	memoptimize_read,
+	memoptimize_write
+FROM DBA_TAB_SUBPARTITIONS_INTERNAL i
+WHERE
+	pg_get_userbyid(i.owner_id) = CURRENT_USER
+ORDER BY table_name, partition_position, subpartition_position;
+
+GRANT SELECT ON SYS.USER_TAB_SUBPARTITIONS TO PUBLIC;
+
+--
+-- XXX_PART_KEY_COLUMNS
+--
+CREATE OR REPLACE VIEW SYS.DBA_PART_KEY_COLUMNS_INTERNAL AS
+-- Partition keys info of Oracle partitionde tables
+SELECT
+	pk.ptowner AS owner_id,
+	pk.ptschema AS namespace_id,
+	pk.partrelid AS obj_id,
+	a.attnum AS attno,
+	sys.ora_case_trans(pg_get_userbyid(pk.ptowner)::varchar2)::varchar2(128) AS owner,
+	sys.ora_case_trans(pk.ptname::varchar2)::varchar2(128) AS name,
+	'TABLE'::char(5) AS object_type,
+	CASE WHEN a.attname IS NULL THEN 'N/A'
+	ELSE sys.ora_case_trans(a.attname::varchar2)
+	END::varchar2(4000) AS column_name,
+	(pk.pos + 1)::number AS column_position,
+	NULL::number AS collated_column_id
+FROM (SELECT ppt.partrelid,
+			 ppt.partattrs,
+			 generate_subscripts(ppt.partattrs, 1) AS pos,
+			 c.relname AS ptname,
+			 c.relnamespace AS ptschema,
+			 c.relowner AS ptowner
+	  FROM pg_partitioned_table ppt
+		   JOIN pg_ora_part_tables opt ON ppt.partrelid = opt.partrelid
+		   JOIN pg_class c ON c.oid = opt.partrelid
+	 ) pk
+	LEFT JOIN pg_attribute a ON a.attrelid = pk.partrelid AND a.attnum = pk.partattrs[pk.pos]
+
+UNION ALL
+-- Partition keys info of PostgreSQL partitioned tables
+SELECT
+	pk.ptowner AS owner_id,
+	pk.ptschema AS namespace_id,
+	pk.partrelid AS obj_id,
+	a.attnum AS attno,
+	sys.ora_case_trans(pg_get_userbyid(pk.ptowner)::varchar2)::varchar2(128) AS owner,
+	sys.ora_case_trans(pk.ptname::varchar2)::varchar2(128) AS name,
+	'TABLE'::char(5) AS object_type,
+	CASE WHEN a.attname IS NULL THEN 'N/A'
+	ELSE sys.ora_case_trans(a.attname::varchar2)
+	END::varchar2(4000) AS column_name,
+	(pk.pos + 1)::number AS column_position,
+	NULL::number AS collated_column_id
+FROM (SELECT ppt.partrelid,
+			 ppt.partattrs,
+			 generate_subscripts(ppt.partattrs, 1) AS pos,
+			 c.relname AS ptname,
+			 c.relnamespace AS ptschema,
+			 c.relowner AS ptowner
+	  FROM pg_partitioned_table ppt
+		   JOIN pg_class c ON c.oid = ppt.partrelid
+	  WHERE NOT EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE opt.partrelid = ppt.partrelid)
+		AND NOT EXISTS (SELECT 1 FROM pg_inherits pi WHERE pi.inhrelid = ppt.partrelid)
+	 ) pk
+	LEFT JOIN pg_attribute a ON a.attrelid = pk.partrelid AND a.attnum = pk.partattrs[pk.pos]
+ORDER BY name, column_position;
+
+CREATE OR REPLACE VIEW SYS.DBA_PART_KEY_COLUMNS AS
+SELECT
+	owner,
+	name,
+	object_type,
+	column_name,
+	column_position,
+	collated_column_id
+FROM DBA_PART_KEY_COLUMNS_INTERNAL
+ORDER BY name, column_position;
+
+GRANT SELECT ON SYS.DBA_PART_KEY_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_PART_KEY_COLUMNS AS
+SELECT
+	owner,
+	name,
+	object_type,
+	column_name,
+	column_position,
+	collated_column_id
+FROM DBA_PART_KEY_COLUMNS_INTERNAL i
+WHERE
+	has_schema_privilege(i.namespace_id, 'USAGE'::text) AND 
+	CASE WHEN i.attno IS NULL THEN 't'
+	ELSE has_column_privilege(i.obj_id, i.attno, 'SELECT, INSERT, UPDATE, REFERENCES'::text)
+	END = 't'
+ORDER BY name, column_position;
+
+GRANT SELECT ON SYS.ALL_PART_KEY_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_PART_KEY_COLUMNS AS
+SELECT
+	name,
+	object_type,
+	column_name,
+	column_position,
+	collated_column_id
+FROM DBA_PART_KEY_COLUMNS_INTERNAL i
+WHERE
+	pg_get_userbyid(i.owner_id) = CURRENT_USER
+ORDER BY name, column_position;
+
+GRANT SELECT ON SYS.USER_PART_KEY_COLUMNS TO PUBLIC;
+
+--
+-- XXX_SUBPART_KEY_COLUMNS
+--
+CREATE OR REPLACE VIEW SYS.DBA_SUBPART_KEY_COLUMNS_INTERNAL AS
+-- Subpartition keys info of Oracle partitioned tables
+SELECT
+	pk.ptowner AS owner_id,
+	pk.ptschema AS namespace_id,
+	pk.partrelid AS obj_id,
+	a.attnum AS attno,
+	sys.ora_case_trans(pg_get_userbyid(pk.ptowner)::varchar2)::varchar2(128) AS owner,
+	sys.ora_case_trans(pk.ptname::varchar2)::varchar2(128) AS name,
+	'TABLE'::char(5) AS object_type,
+	CASE WHEN a.attname IS NULL THEN 'N/A'
+	ELSE sys.ora_case_trans(a.attname::varchar2)
+	END::varchar2(4000) AS column_name,
+	(pk.pos + 1)::number AS column_position,
+	NULL::number AS collated_column_id
+FROM (SELECT opt.partrelid,
+			 opt.subpartattrs,
+			 generate_subscripts(opt.subpartattrs, 1) AS pos,
+			 c.relname AS ptname,
+			 c.relnamespace AS ptschema,
+			 c.relowner AS ptowner
+	  FROM pg_ora_part_tables opt
+		   JOIN pg_class c ON c.oid = opt.partrelid
+	 ) pk
+	LEFT JOIN pg_attribute a ON a.attrelid = pk.partrelid AND a.attnum = pk.subpartattrs[pk.pos]
+
+UNION ALL
+-- Subpartition keys info of PostgreSQL partitioned tables
+SELECT
+	pk.root_owner AS owner_id,
+	pk.ptschema AS namespace_id,
+	pk.partrelid AS obj_id,
+	a.attnum AS attno,
+	sys.ora_case_trans(pg_get_userbyid(pk.root_owner)::varchar2)::varchar2(128) AS owner,
+	sys.ora_case_trans(pk.root_name::varchar2)::varchar2(128) AS name,
+	'TABLE'::char(5) AS object_type,
+	CASE WHEN a.attname IS NULL THEN 'N/A'
+	ELSE sys.ora_case_trans(a.attname::varchar2)
+	END::varchar2(4000) AS column_name,
+	(pk.pos + 1)::number AS column_position,
+	NULL::number AS collated_column_id
+FROM (SELECT subpart.partrelid,
+			 subpart.partattrs,
+			 generate_subscripts(subpart.partattrs, 1) AS pos,
+			 c.relname AS ptname,
+			 c.relnamespace AS ptschema,
+			 c.relowner AS ptowner,
+			 root_c.relname AS root_name,
+			 root_c.relowner AS root_owner
+	  FROM pg_partitioned_table subpart
+		   JOIN pg_class c ON c.oid = subpart.partrelid
+		   JOIN pg_inherits pi ON pi.inhrelid = subpart.partrelid
+		   JOIN pg_class root_c ON root_c.oid = pi.inhparent
+		   JOIN pg_partitioned_table root_ppt ON root_ppt.partrelid = root_c.oid
+	  WHERE NOT EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE opt.partrelid = root_c.oid)
+		AND NOT EXISTS (SELECT 1 FROM pg_inherits pi2 WHERE pi2.inhrelid = root_c.oid)
+		AND sys.ora_check_subpart_keys_consistent(root_c.oid)
+		AND subpart.partrelid = (
+			SELECT pi2.inhrelid
+			FROM pg_inherits pi2
+			WHERE pi2.inhparent = root_c.oid
+			LIMIT 1
+		)
+	 ) pk
+	LEFT JOIN pg_attribute a ON a.attrelid = pk.partrelid AND a.attnum = pk.partattrs[pk.pos]
+ORDER BY name, column_position;
+
+CREATE OR REPLACE VIEW SYS.DBA_SUBPART_KEY_COLUMNS AS
+SELECT
+	owner,
+	name,
+	object_type,
+	column_name,
+	column_position,
+	collated_column_id
+FROM DBA_SUBPART_KEY_COLUMNS_INTERNAL
+ORDER BY name, column_position;
+
+GRANT SELECT ON SYS.DBA_SUBPART_KEY_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_SUBPART_KEY_COLUMNS AS
+SELECT
+	owner,
+	name,
+	object_type,
+	column_name,
+	column_position,
+	collated_column_id
+FROM DBA_SUBPART_KEY_COLUMNS_INTERNAL i
+WHERE
+	has_schema_privilege(i.namespace_id, 'USAGE'::text) AND 
+	CASE WHEN i.attno IS NULL THEN 't'
+	ELSE has_column_privilege(i.obj_id, i.attno, 'SELECT, INSERT, UPDATE, REFERENCES'::text)
+	END = 't'
+ORDER BY name, column_position;
+
+GRANT SELECT ON SYS.ALL_SUBPART_KEY_COLUMNS TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_SUBPART_KEY_COLUMNS AS
+SELECT
+	name,
+	object_type,
+	column_name,
+	column_position,
+	collated_column_id
+FROM DBA_SUBPART_KEY_COLUMNS_INTERNAL i
+WHERE
+	pg_get_userbyid(i.owner_id) = CURRENT_USER
+ORDER BY name, column_position;
+
+GRANT SELECT ON SYS.USER_SUBPART_KEY_COLUMNS TO PUBLIC;
+
+--
+-- XXX_SUBPARTITION_TEMPLATES
+--
+CREATE OR REPLACE VIEW SYS.DBA_SUBPARTITION_TEMPLATES_INTERNAL AS
+SELECT
+	ptmp.ptowner AS owner_id,
+	ptmp.partrelid AS obj_id,
+	ptmp.ptschema AS namespace_id,
+	sys.ora_case_trans(pg_get_userbyid(ptmp.ptowner)::varchar2)::varchar2(128) AS user_name,
+	sys.ora_case_trans(ptmp.ptname::varchar2)::varchar2(128) AS table_name,
+	sys.ora_case_trans(ptmp.name::varchar2)::varchar2(132) AS subpartition_name,
+	ptmp.position::number AS subpartition_position,
+	sys.ora_case_trans(ptmp.tablespace::varchar2)::varchar2(30) AS tablespace_name,
+	ptmp.highbound::text AS high_bound,
+	'NONE'::varchar2(4) AS compression,
+	'NONE'::varchar2(4) AS indexing,
+	'NONE'::varchar2(4) AS read_only
+FROM (SELECT opt.partrelid,
+			 c.relowner AS ptowner,
+			 c.relnamespace AS ptschema,
+			 c.relname AS ptname,
+			 t.name,
+			 t.position,
+			 t.tablespace,
+			 t.highbound
+	  FROM pg_ora_part_tables opt
+		   JOIN pg_class c ON c.oid = opt.partrelid,
+		   ora_get_subpartition_templates(opt.partrelid) t
+	 ) ptmp
+ORDER BY table_name, subpartition_position;
+
+CREATE OR REPLACE VIEW SYS.DBA_SUBPARTITION_TEMPLATES AS
+SELECT
+	user_name,
+	table_name,
+	subpartition_name,
+	subpartition_position,
+	tablespace_name,
+	high_bound,
+	compression,
+	indexing,
+	read_only
+FROM DBA_SUBPARTITION_TEMPLATES_INTERNAL
+ORDER BY table_name, subpartition_position;
+
+GRANT SELECT ON SYS.DBA_SUBPARTITION_TEMPLATES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.ALL_SUBPARTITION_TEMPLATES AS
+SELECT
+	user_name,
+	table_name,
+	subpartition_name,
+	subpartition_position,
+	tablespace_name,
+	high_bound,
+	compression,
+	indexing,
+	read_only
+FROM DBA_SUBPARTITION_TEMPLATES_INTERNAL i
+WHERE
+	has_schema_privilege(i.namespace_id, 'USAGE'::text)
+	AND has_table_privilege(i.obj_id, 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'::text)
+ORDER BY table_name, subpartition_position;
+
+GRANT SELECT ON SYS.ALL_SUBPARTITION_TEMPLATES TO PUBLIC;
+
+CREATE OR REPLACE VIEW SYS.USER_SUBPARTITION_TEMPLATES AS
+SELECT
+	table_name,
+	subpartition_name,
+	subpartition_position,
+	tablespace_name,
+	high_bound,
+	compression,
+	indexing,
+	read_only
+FROM DBA_SUBPARTITION_TEMPLATES_INTERNAL i
+WHERE
+	pg_get_userbyid(i.owner_id) = CURRENT_USER
+ORDER BY table_name, subpartition_position;
+
+GRANT SELECT ON SYS.USER_SUBPARTITION_TEMPLATES TO PUBLIC;
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

@@ -899,13 +899,14 @@ makeVacuumRelation(RangeVar *relation, Oid oid, List *va_cols)
  *	  create a OraPartSup node
  */
 OraPartSup *
-makeOraPartSup(char *part_name, int16 part_level, int32 seqno)
+makeOraPartSup(char *part_name, int16 part_level, int32 seqno, bool autogen)
 {
 	OraPartSup *n = makeNode(OraPartSup);
 
 	n->partname = pstrdup(part_name);
 	n->partlevel = part_level;
 	n->seqno = seqno;
+	n->autogen = autogen;
 
 	return n;
 }

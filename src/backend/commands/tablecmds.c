@@ -1421,7 +1421,8 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 								parentId,
 								rootpartid,
 								stmt->ora_partsup->partname,
-								stmt->ora_partsup->partlevel);
+								stmt->ora_partsup->partlevel,
+								stmt->ora_partsup->autogen);
 
 			if (stmt->ora_partsup->seqno > 0)
 				UpdateOraclePartitionedTableSeqno(rootpartid, stmt->ora_partsup->seqno);
@@ -20351,7 +20352,8 @@ ATExecAttachPartition(List **wqueue, Relation rel, PartitionCmd *cmd,
 							  RelationGetRelid(rel),
 							  RelationGetRelid(rel),
 							  cmd->partname,
-							  1);
+							  1,
+							  false);
 	}
 	else if (is_oracle_partition(RelationGetRelid(rel)))
 	{
@@ -20380,7 +20382,8 @@ ATExecAttachPartition(List **wqueue, Relation rel, PartitionCmd *cmd,
 							  RelationGetRelid(rel),
 							  rootpartid,
 							  cmd->partname,
-							  2);
+							  2,
+							  false);
 	}
 	else if (is_oracle_subpartition(RelationGetRelid(rel)))
 	{

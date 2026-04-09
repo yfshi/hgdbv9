@@ -2709,7 +2709,7 @@ ExecBuildAutomaticPartition(PartitionDispatch dispatch, Datum *values, bool *isn
 	cstmt->inhRelations = list_make1(new_part_parent_rv);
 	cstmt->partbound = new_part_bound;
 	cstmt->partspec = new_part_spec;
-	cstmt->ora_partsup = makeOraPartSup(new_part_name, 1, seqno);
+	cstmt->ora_partsup = makeOraPartSup(new_part_name, 1, seqno, false);
 	cstmt->oncommit = ONCOMMIT_NOOP;
 	cstmt->tablespacename = NULL;	/* TODO: from stroe in clause */
 	cstmt->if_not_exists = false;
@@ -2951,7 +2951,7 @@ ExecBuildOracleIntervalPartition(PartitionDispatch dispatch, Datum *values)
 	cstmt->inhRelations = list_make1(new_part_parent_rv);
 	cstmt->partbound = new_part_bound;
 	cstmt->partspec = new_part_spec;
-	cstmt->ora_partsup = makeOraPartSup(new_part_name, 1, seqno);
+	cstmt->ora_partsup = makeOraPartSup(new_part_name, 1, seqno, true);
 	cstmt->oncommit = ONCOMMIT_NOOP;
 	cstmt->tablespacename = NULL;	/* TODO: from stroe in clause */
 	cstmt->if_not_exists = false;

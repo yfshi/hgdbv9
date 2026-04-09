@@ -839,8 +839,7 @@ insert into sysview_tab_partitions_part2 values(generate_series(0, 999), 2, 'sgj
 insert into sysview_tab_partitions_part2 values(generate_series(0, 999), 3, 'sjtbjnyyukyukjtyjytrug');
 
 analyze;
-select table_name, composite, partition_name, subpartition_count, high_value, high_value_length, partition_position, pct_free, logging,
-        num_rows, blocks, avg_row_len, inmemory
+select table_name, composite, partition_name, subpartition_count, high_value, high_value_length, partition_position, pct_free, logging
 from all_tab_partitions where upper(table_name) like('SYSVIEW_TAB_PARTITIONS_%') order by table_name, partition_name;
 
 drop table sysview_tab_partitions_part1;
@@ -1025,3 +1024,495 @@ end;
 /
 
 DROP USER system;
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+--
+-- Oracle system views
+--
+CREATE ROLE part_test_user_1 LOGIN;
+CREATE ROLE part_test_user_2 LOGIN;
+
+-- Grant privileges
+GRANT USAGE ON SCHEMA public TO part_test_user_1, part_test_user_2;
+GRANT CREATE ON SCHEMA public TO part_test_user_1, part_test_user_2;
+
+-- Create test tables
+-- Range partitioned table
+CREATE TABLE test_range_part (
+    id INT,
+    create_date DATE,
+    name VARCHAR2(50)
+)
+PARTITION BY RANGE (create_date) (
+    PARTITION p202401 VALUES LESS THAN (TO_DATE('2024-02-01', 'YYYY-MM-DD')),
+    PARTITION p202402 VALUES LESS THAN (TO_DATE('2024-03-01', 'YYYY-MM-DD')),
+    PARTITION p202403 VALUES LESS THAN (MAXVALUE)
+);
+
+-- List partitioned table
+CREATE TABLE test_list_part (
+    id INT,
+    region VARCHAR2(20),
+    info TEXT
+)
+PARTITION BY LIST (region) (
+    PARTITION p_east VALUES ('EAST', '华东'),
+    PARTITION p_west VALUES ('WEST', '华西'),
+    PARTITION p_other VALUES (DEFAULT)
+);
+
+-- Hash partitioned table
+CREATE TABLE test_hash_part (
+    id INT,
+    data VARCHAR2(100)
+)
+PARTITION BY HASH (id)
+PARTITIONS 4;
+
+-- Composite partition table with subpartition template
+CREATE TABLE test_subpart (
+    id INT,
+    create_date DATE,
+    region VARCHAR2(20),
+    status CHAR(1)
+)
+PARTITION BY RANGE (create_date)
+SUBPARTITION BY LIST (region)
+SUBPARTITION TEMPLATE (
+    SUBPARTITION sp_east VALUES ('EAST'),
+    SUBPARTITION sp_west VALUES ('WEST'),
+    SUBPARTITION sp_other VALUES (DEFAULT)
+)
+(
+    PARTITION p202401 VALUES LESS THAN (TO_DATE('2024-02-01', 'YYYY-MM-DD')),
+    PARTITION p202402 VALUES LESS THAN (MAXVALUE)
+);
+
+-- Insert some data
+INSERT INTO test_range_part VALUES (1, '2024-01-10', 'test1');
+INSERT INTO test_list_part VALUES (1, 'EAST', 'east data');
+INSERT INTO test_hash_part VALUES (1, 'hash test');
+INSERT INTO test_subpart VALUES (1, '2024-01-05', 'EAST', '1');
+
+-- Switch to part_test_user_1 and create a partition table
+SET ROLE part_test_user_1;
+
+CREATE TABLE user1_range_part (
+    id INT,
+    create_date DATE
+)
+PARTITION BY RANGE (create_date) (
+    PARTITION p1 VALUES LESS THAN ('2024-01-01'),
+    PARTITION p2 VALUES LESS THAN (MAXVALUE)
+);
+
+RESET ROLE;
+
+-- Switch to part_test_user_2 and create a partition table
+SET ROLE part_test_user_2;
+
+CREATE TABLE user2_list_part (
+    id INT,
+    type VARCHAR2(10)
+)
+PARTITION BY LIST (type) (
+    PARTITION p_a VALUES ('A'),
+    PARTITION p_b VALUES ('B')
+);
+
+RESET ROLE;
+
+-- DBA_PART_TABLES
+SELECT
+ table_name,
+ partitioning_type,
+ subpartitioning_type,
+ partition_count,
+ def_subpartition_count,
+ partitioning_key_count,
+ subpartitioning_key_count,
+ interval,
+ autolist,
+ auto
+FROM DBA_PART_TABLES
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY owner, table_name;
+
+-- DBA_TAB_PARTITIONS
+SELECT
+ table_name,
+ composite,
+ partition_name,
+ subpartition_count,
+ high_value,
+ high_value_length,
+ partition_position,
+ interval
+FROM DBA_TAB_PARTITIONS
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_owner, table_name, partition_name;
+
+-- DBA_TAB_SUBPARTITIONS
+SELECT
+ table_name,
+ partition_name,
+ subpartition_name,
+ high_value,
+ high_value_length,
+ partition_position,
+ subpartition_position
+FROM DBA_TAB_SUBPARTITIONS
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_owner, table_name, partition_name, subpartition_name;
+
+-- DBA_PART_KEY_COLUMNS
+SELECT
+ name,
+ object_type,
+ column_name,
+ column_position
+FROM DBA_PART_KEY_COLUMNS
+WHERE name ILIKE 'test_%' OR name ILIKE 'user1_%' OR name ILIKE 'user2_%'
+ORDER BY owner, name, column_position;
+
+-- DBA_SUBPART_KEY_COLUMNS
+SELECT
+ name,
+ object_type,
+ column_name,
+ column_position
+FROM DBA_SUBPART_KEY_COLUMNS
+WHERE name ILIKE 'test_%' OR name ILIKE 'user1_%' OR name ILIKE 'user2_%'
+ORDER BY owner, name, column_position;
+
+-- DBA_SUBPARTITION_TEMPLATES
+SELECT
+ table_name,
+ subpartition_name,
+ subpartition_position,
+ tablespace_name,
+ high_bound
+FROM DBA_SUBPARTITION_TEMPLATES
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY user_name, table_name, subpartition_position;
+
+-- ALL_PART_TABLES
+SELECT
+ table_name,
+ partitioning_type,
+ subpartitioning_type,
+ partition_count,
+ def_subpartition_count,
+ partitioning_key_count,
+ subpartitioning_key_count,
+ interval,
+ autolist,
+ auto
+FROM ALL_PART_TABLES
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY owner, table_name;
+
+-- ALL_TAB_PARTITIONS
+SELECT
+ table_name,
+ composite,
+ partition_name,
+ subpartition_count,
+ high_value,
+ high_value_length,
+ partition_position,
+ interval
+FROM ALL_TAB_PARTITIONS
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_owner, table_name, partition_name;
+
+-- ALL_TAB_SUBPARTITIONS
+SELECT
+ table_name,
+ partition_name,
+ subpartition_name,
+ high_value,
+ high_value_length,
+ partition_position,
+ subpartition_position
+FROM ALL_TAB_SUBPARTITIONS
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_owner, table_name, partition_name, subpartition_name;
+
+-- ALL_PART_KEY_COLUMNS
+SELECT
+ name,
+ object_type,
+ column_name,
+ column_position
+FROM ALL_PART_KEY_COLUMNS
+WHERE name ILIKE 'test_%' OR name ILIKE 'user1_%' OR name ILIKE 'user2_%'
+ORDER BY owner, name, column_position;
+
+-- ALL_SUBPART_KEY_COLUMNS
+SELECT
+ name,
+ object_type,
+ column_name,
+ column_position
+FROM ALL_SUBPART_KEY_COLUMNS
+WHERE name ILIKE 'test_%' OR name ILIKE 'user1_%' OR name ILIKE 'user2_%'
+ORDER BY owner, name, column_position;
+
+-- ALL_SUBPARTITION_TEMPLATES
+SELECT
+ table_name,
+ subpartition_name,
+ subpartition_position,
+ tablespace_name,
+ high_bound
+FROM ALL_SUBPARTITION_TEMPLATES
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY user_name, table_name, subpartition_position;
+
+-- USER_PART_TABLES
+SELECT
+ table_name,
+ partitioning_type,
+ subpartitioning_type,
+ partition_count,
+ def_subpartition_count,
+ partitioning_key_count,
+ subpartitioning_key_count,
+ interval,
+ autolist,
+ auto
+FROM USER_PART_TABLES
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_name;
+
+-- USER_TAB_PARTITIONS
+SELECT
+ table_name,
+ composite,
+ partition_name,
+ subpartition_count,
+ high_value,
+ high_value_length,
+ partition_position,
+ interval
+FROM USER_TAB_PARTITIONS
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_name, partition_name;
+
+-- USER_TAB_SUBPARTITIONS
+SELECT
+ table_name,
+ partition_name,
+ subpartition_name,
+ high_value,
+ high_value_length,
+ partition_position,
+ subpartition_position
+FROM USER_TAB_SUBPARTITIONS
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_name, partition_name, subpartition_name;
+
+-- USER_PART_KEY_COLUMNS
+SELECT
+ name,
+ object_type,
+ column_name,
+ column_position
+FROM USER_PART_KEY_COLUMNS
+WHERE name ILIKE 'test_%' OR name ILIKE 'user1_%' OR name ILIKE 'user2_%'
+ORDER BY name, column_position;
+
+-- USER_SUBPART_KEY_COLUMNS
+SELECT
+ name,
+ object_type,
+ column_name,
+ column_position
+FROM USER_SUBPART_KEY_COLUMNS
+WHERE name ILIKE 'test_%' OR name ILIKE 'user1_%' OR name ILIKE 'user2_%'
+ORDER BY name, column_position;
+
+-- USER_SUBPARTITION_TEMPLATES
+SELECT
+ table_name,
+ subpartition_name,
+ subpartition_position,
+ tablespace_name,
+ high_bound
+FROM USER_SUBPARTITION_TEMPLATES
+WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
+ORDER BY table_name, subpartition_position;
+
+-- Cleanup
+DROP TABLE IF EXISTS test_range_part;
+DROP TABLE IF EXISTS test_list_part;
+DROP TABLE IF EXISTS test_hash_part;
+DROP TABLE IF EXISTS test_subpart;
+SET ROLE part_test_user_1;
+DROP TABLE IF EXISTS user1_range_part;
+RESET ROLE;
+SET ROLE part_test_user_2;
+DROP TABLE IF EXISTS user2_list_part;
+RESET ROLE;
+DROP OWNED BY part_test_user_1 CASCADE;
+DROP OWNED BY part_test_user_2 CASCADE;
+DROP ROLE IF EXISTS part_test_user_1;
+DROP ROLE IF EXISTS part_test_user_2;
+
+--
+-- Oracle syntax partition tables
+--
+-- Simple partition table (RANGE with multiple partition keys)
+CREATE TABLE ora_simple_range(a INT, b INT, c INT)
+PARTITION BY RANGE(a, b)
+(
+    PARTITION p1 VALUES LESS THAN(10, 100),
+    PARTITION p2 VALUES LESS THAN(20, 200),
+    PARTITION p3 VALUES LESS THAN(30, 300)
+);
+
+-- Composite partition table with subpartition template (RANGE-RANGE, multiple partition keys)
+CREATE TABLE ora_composite_range_range(a INT, b INT, c INT, d INT)
+PARTITION BY RANGE(a, b) SUBPARTITION BY RANGE(c, d)
+SUBPARTITION TEMPLATE
+(
+    SUBPARTITION sp1 VALUES LESS THAN(100, 1000),
+    SUBPARTITION sp2 VALUES LESS THAN(200, 2000)
+)
+(
+    PARTITION p1 VALUES LESS THAN(10, 100),
+    PARTITION p2 VALUES LESS THAN(20, 200)
+);
+
+-- Composite partition table with subpartition template (LIST-HASH, LIST has 1 key due to PG limit)
+CREATE TABLE ora_composite_list_hash(a INT, b INT, c INT, d INT)
+PARTITION BY LIST(a) SUBPARTITION BY HASH(b, c) SUBPARTITIONS 3
+(
+    PARTITION p1 VALUES(1, 2, 3),
+    PARTITION p2 VALUES(4, 5, 6)
+);
+
+--
+-- PostgreSQL syntax partition tables
+--
+-- Simple partition table (RANGE with multiple partition keys)
+CREATE TABLE pg_simple_range(a INT, b INT, c INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_simple_range_p1 PARTITION OF pg_simple_range FOR VALUES FROM (0, 0) TO (10, 100);
+CREATE TABLE pg_simple_range_p2 PARTITION OF pg_simple_range FOR VALUES FROM (10, 100) TO (20, 200);
+CREATE TABLE pg_simple_range_p3 PARTITION OF pg_simple_range FOR VALUES FROM (20, 200) TO (30, 300);
+
+-- Composite partition table with different subpartition strategies
+-- p1 has RANGE subpartition, p2 has LIST subpartition
+CREATE TABLE pg_composite_diff_strategy(a INT, b INT, c INT, d INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_composite_diff_strategy_p1 PARTITION OF pg_composite_diff_strategy FOR VALUES FROM (0, 0) TO (10, 100) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_composite_diff_strategy_p2 PARTITION OF pg_composite_diff_strategy FOR VALUES FROM (10, 100) TO (20, 200) PARTITION BY LIST(c);
+CREATE TABLE pg_composite_diff_strategy_p1_sp1 PARTITION OF pg_composite_diff_strategy_p1 FOR VALUES FROM (0, 0) TO (100, 1000);
+CREATE TABLE pg_composite_diff_strategy_p1_sp2 PARTITION OF pg_composite_diff_strategy_p1 FOR VALUES FROM (100, 1000) TO (200, 2000);
+CREATE TABLE pg_composite_diff_strategy_p2_sp1 PARTITION OF pg_composite_diff_strategy_p2 FOR VALUES IN (1, 2, 3);
+CREATE TABLE pg_composite_diff_strategy_p2_sp2 PARTITION OF pg_composite_diff_strategy_p2 FOR VALUES IN (4, 5, 6);
+
+-- Composite partition table with same subpartition strategy
+CREATE TABLE pg_composite_same_strategy(a INT, b INT, c INT, d INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_composite_same_strategy_p1 PARTITION OF pg_composite_same_strategy FOR VALUES FROM (0, 0) TO (10, 100) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_composite_same_strategy_p2 PARTITION OF pg_composite_same_strategy FOR VALUES FROM (10, 100) TO (20, 200) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_composite_same_strategy_p1_sp1 PARTITION OF pg_composite_same_strategy_p1 FOR VALUES FROM (0, 0) TO (100, 1000);
+CREATE TABLE pg_composite_same_strategy_p1_sp2 PARTITION OF pg_composite_same_strategy_p1 FOR VALUES FROM (100, 1000) TO (200, 2000);
+CREATE TABLE pg_composite_same_strategy_p2_sp1 PARTITION OF pg_composite_same_strategy_p2 FOR VALUES FROM (0, 0) TO (100, 1000);
+CREATE TABLE pg_composite_same_strategy_p2_sp2 PARTITION OF pg_composite_same_strategy_p2 FOR VALUES FROM (100, 1000) TO (200, 2000);
+
+-- Multi-level partition table (3 levels)
+CREATE TABLE pg_multi_level(a INT, b INT, c INT, d INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_multi_level_p1 PARTITION OF pg_multi_level FOR VALUES FROM (0, 0) TO (10, 100) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_multi_level_p2 PARTITION OF pg_multi_level FOR VALUES FROM (10, 100) TO (20, 200) PARTITION BY RANGE(c);
+CREATE TABLE pg_multi_level_p1_sp1 PARTITION OF pg_multi_level_p1 FOR VALUES FROM (0, 0) TO (50, 500) PARTITION BY RANGE(d);
+CREATE TABLE pg_multi_level_p1_sp2 PARTITION OF pg_multi_level_p1 FOR VALUES FROM (50, 500) TO (100, 1000) PARTITION BY RANGE(d);
+CREATE TABLE pg_multi_level_p1_sp1_ssp1 PARTITION OF pg_multi_level_p1_sp1 FOR VALUES FROM (0) TO (500);
+CREATE TABLE pg_multi_level_p1_sp1_ssp2 PARTITION OF pg_multi_level_p1_sp1 FOR VALUES FROM (500) TO (1000);
+CREATE TABLE pg_multi_level_p1_sp2_ssp1 PARTITION OF pg_multi_level_p1_sp2 FOR VALUES FROM (0) TO (500);
+CREATE TABLE pg_multi_level_p2_sp1 PARTITION OF pg_multi_level_p2 FOR VALUES FROM (0) TO (50) PARTITION BY RANGE(d);
+CREATE TABLE pg_multi_level_p2_sp1_ssp1 PARTITION OF pg_multi_level_p2_sp1 FOR VALUES FROM (0) TO (500);
+
+-- Composite partition table with different subpartition key counts
+-- p1 has 1 subpartition key, p2 has 2 subpartition keys
+CREATE TABLE pg_diff_key_count(a INT, b INT, c INT, d INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_diff_key_count_p1 PARTITION OF pg_diff_key_count FOR VALUES FROM (0, 0) TO (10, 100) PARTITION BY RANGE(c);
+CREATE TABLE pg_diff_key_count_p2 PARTITION OF pg_diff_key_count FOR VALUES FROM (10, 100) TO (20, 200) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_diff_key_count_p1_sp1 PARTITION OF pg_diff_key_count_p1 FOR VALUES FROM (0) TO (100);
+CREATE TABLE pg_diff_key_count_p2_sp1 PARTITION OF pg_diff_key_count_p2 FOR VALUES FROM (0, 100) TO (100, 200);
+
+-- Composite partition table with same key count but different key columns
+-- p1 uses (c) as subpartition key, p2 uses (d) as subpartition key
+CREATE TABLE pg_diff_key_column(a INT, b INT, c INT, d INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_diff_key_column_p1 PARTITION OF pg_diff_key_column FOR VALUES FROM (0, 0) TO (10, 100) PARTITION BY RANGE(c);
+CREATE TABLE pg_diff_key_column_p2 PARTITION OF pg_diff_key_column FOR VALUES FROM (10, 100) TO (20, 200) PARTITION BY RANGE(d);
+CREATE TABLE pg_diff_key_column_p1_sp1 PARTITION OF pg_diff_key_column_p1 FOR VALUES FROM (0) TO (100);
+CREATE TABLE pg_diff_key_column_p2_sp1 PARTITION OF pg_diff_key_column_p2 FOR VALUES FROM (0) TO (100);
+
+-- Composite partition table with same subpartition keys
+-- Both p1 and p2 use (c, d) as subpartition keys with same strategy
+CREATE TABLE pg_same_key(a INT, b INT, c INT, d INT) PARTITION BY RANGE(a, b);
+CREATE TABLE pg_same_key_p1 PARTITION OF pg_same_key FOR VALUES FROM (0, 0) TO (10, 100) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_same_key_p2 PARTITION OF pg_same_key FOR VALUES FROM (10, 100) TO (20, 200) PARTITION BY RANGE(c, d);
+CREATE TABLE pg_same_key_p1_sp1 PARTITION OF pg_same_key_p1 FOR VALUES FROM (0, 0) TO (100, 1000);
+CREATE TABLE pg_same_key_p1_sp2 PARTITION OF pg_same_key_p1 FOR VALUES FROM (100, 1000) TO (200, 2000);
+CREATE TABLE pg_same_key_p2_sp1 PARTITION OF pg_same_key_p2 FOR VALUES FROM (0, 0) TO (100, 1000);
+CREATE TABLE pg_same_key_p2_sp2 PARTITION OF pg_same_key_p2 FOR VALUES FROM (100, 1000) TO (200, 2000);
+
+-- ALL_PART_TABLES
+SELECT table_name, partitioning_type, subpartitioning_type,
+       partition_count, def_subpartition_count,
+       partitioning_key_count, subpartitioning_key_count,
+       def_tablespace_name
+FROM all_part_tables
+WHERE table_name ILIKE 'ora_%' OR table_name ILIKE 'pg_%'
+ORDER BY table_name;
+
+-- ALL_TAB_PARTITIONS
+SELECT table_name, composite, partition_name,
+       subpartition_count, high_value, high_value_length,
+       partition_position, tablespace_name, pct_free, logging
+FROM all_tab_partitions
+WHERE table_name ILIKE 'ora_%' OR table_name ILIKE 'pg_%'
+ORDER BY table_name, partition_name;
+
+-- ALL_TAB_SUBPARTITIONS
+SELECT table_name, partition_name, subpartition_name,
+       high_value, high_value_length,
+       partition_position, subpartition_position, tablespace_name, pct_free, logging
+FROM all_tab_subpartitions
+WHERE table_name ILIKE 'ora_%' OR table_name ILIKE 'pg_%'
+ORDER BY table_name, partition_name, subpartition_name;
+
+-- ALL_PART_KEY_COLUMNS
+SELECT name, object_type, column_name, column_position
+FROM all_part_key_columns
+WHERE name ILIKE 'ora_%' OR name ILIKE 'pg_%'
+ORDER BY name, column_position;
+
+-- ALL_SUBPART_KEY_COLUMNS
+SELECT name, object_type, column_name, column_position
+FROM all_subpart_key_columns
+WHERE name ILIKE 'ora_%' OR name ILIKE 'pg_%'
+ORDER BY name, column_position;
+
+-- ALL_SUBPARTITION_TEMPLATES
+SELECT table_name, subpartition_name, subpartition_position, tablespace_name, high_bound
+FROM all_subpartition_templates
+WHERE table_name ILIKE 'ora_%' OR table_name ILIKE 'pg_%'
+ORDER BY table_name, subpartition_name;
+
+--
+-- Clean up
+--
+DROP TABLE IF EXISTS ora_simple_range;
+DROP TABLE IF EXISTS ora_composite_range_range;
+DROP TABLE IF EXISTS ora_composite_list_hash;
+DROP TABLE IF EXISTS pg_simple_range;
+DROP TABLE IF EXISTS pg_composite_diff_strategy;
+DROP TABLE IF EXISTS pg_composite_same_strategy;
+DROP TABLE IF EXISTS pg_multi_level;
+DROP TABLE IF EXISTS pg_diff_key_count;
+DROP TABLE IF EXISTS pg_diff_key_column;
+DROP TABLE IF EXISTS pg_same_key;
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */

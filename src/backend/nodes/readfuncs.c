@@ -3198,6 +3198,7 @@ _readOraPartSup(void)
 	READ_STRING_FIELD(partname);
 	READ_INT_FIELD(partlevel);
 	READ_INT_FIELD(seqno);
+	READ_BOOL_FIELD(autogen);
 
 	READ_DONE();
 }
