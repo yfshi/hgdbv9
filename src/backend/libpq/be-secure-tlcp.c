@@ -115,12 +115,63 @@ be_tlcp_open_server(Port *port)
 aloop:
 	if ((ret = tls_do_handshake(port->tlcp_conn)) != 1)
 	{
+		int			err;   // BUG Z7353
 		if (ret > 1)
 			goto aloop;
 
-		ereport(COMMERROR,
-				(errcode(ERRCODE_PROTOCOL_VIOLATION),
-				 errmsg(" TLCP handshake fail")));
+		/* Begin - BUG Z7353 */
+		err = tlcp_get_error();
+
+		switch (err)
+		{
+			case TLCP_protocol_version:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection:  unknown protocol")));
+				break;
+			case TLCP_unexpected_message:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection: read unexpected message!")));
+				break;
+			case TLCP_insufficient_security:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection: read insufficient security!")));
+				break;
+			case TLCP_internal_error:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection: internal error!")));
+			case TLCP_bad_certificate:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection: bad certificate!")));
+				break;
+			case TLCP_decrypt_error:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection: decrypt error!")));
+				break;
+			case TLCP_client_certificate_error:
+				ereport(COMMERROR,
+						(errcode(ERRCODE_PROTOCOL_VIOLATION),
+						 errmsg("could not accept TLCP connection: read client certificate error!")));
+				break;
+			case TLCP_close_notify:
+				goto aloop;
+				break;
+			case TLCP_handshake_success:
+				return 0;
+				break;
+			default:
+				ereport(COMMERROR,
+					(errcode(ERRCODE_PROTOCOL_VIOLATION),
+					 errmsg(" TLCP handshake fail, err=%d", err)));
+				break;
+		}
+		/* End - BUG Z7353 */
+
 		return -1;
 	}
 
