@@ -5,110 +5,127 @@
 #include "../include/server.h"
 #include "../include/mqformat.h"
 
-int next_seqid = 0;
+#define PACKET_MAX_LENGTH   0xffffff
 
-int
-mq_putmessage(const char *packet, size_t len)
+static uint8 next_seq = 0;
+
+static int
+mq_send_one_packet(const char *data, size_t len, uint8 seq)
 {
-    StringInfo  header;
-    uint16  status = ServerStatus();
+    StringInfoData buffer;
+    StringInfo buf = &buffer;
 
-    header = makeStringInfo();
-    mq_append_payload_len(header, len);
-    mq_append_sequence_id(header, next_seqid++);
+    initStringInfo(buf);
 
-	if (internal_putbytes(header->data, header->len))
+    Assert(len <= PACKET_MAX_LENGTH);
+
+    enlargeStringInfo(buf, PROTO_HEADER_LEN);
+
+    mq_append_payload_len(buf, len);
+    mq_append_sequence_id(buf, seq);
+
+    if (internal_putbytes(buf->data, PROTO_HEADER_LEN))
+        return EOF;
+
+    if (internal_putbytes(data, len))
+        return EOF;
+
+    return STATUS_OK;
+}
+
+void
+mq_putmessage(const char *data, size_t left)
+{
+    size_t  sent = 0;
+
+    /**
+     * If the length of the last packet sent is 0xffffff,
+     * an additional packet with a length of 0 needs to be sent.
+     */
+    while (left || sent == PACKET_MAX_LENGTH)
     {
-        status = EOF;
-        goto fail;
+        if (left < PACKET_MAX_LENGTH)
+            sent = left;
+        else
+            sent = PACKET_MAX_LENGTH;
+
+        mq_send_one_packet(data, sent, next_seq++);
+
+        data += sent;
+        left -= sent;
+    }
+}
+
+static int
+mq_recv_packet_header(uint32 *len, uint8 *seq)
+{
+    StringInfoData  buffer;
+    StringInfo      buf = &buffer;
+
+    initStringInfo(buf);
+
+    enlargeStringInfo(buf, PROTO_HEADER_LEN);
+
+    if (pq_getbytes(buf->data, PROTO_HEADER_LEN) == EOF)
+        return EOF;
+
+    buf->len += PROTO_HEADER_LEN;
+
+    mq_get_int3(buf, (void *) len);
+    mq_get_int1(buf, (void *) seq);
+
+    return 0;
+}
+
+static uint32
+mq_recv_one_packet(StringInfo buf)
+{
+    uint32  len;
+    uint8   seq;
+    
+    if (mq_recv_packet_header(&len, &seq) == EOF)
+        return EOF;
+
+    next_seq = seq + 1;
+
+    /**
+     * If the length of message is exactly 1, MySQL will
+     * send a packet with a length of 0 to mark the completion
+     * of the transmission.
+     */
+    if (len == 0)
+        return 0;
+
+    if (len > 0)
+    {
+        enlargeStringInfo(buf, len);
+
+        pq_getbytes(buf->data + buf->len, len);
+
+        buf->len += len;
     }
 
-    if (internal_putbytes(packet, len))
-    {
-        status = EOF;
-        goto fail;
-    }
-
-fail:
-    DestroyStringInfo(header);
-	return status;
+    return len;
 }
 
 int
-mq_getmessage(StringInfo buf, uint32 maxlen)
+mq_getmessage(StringInfo buf)
 {
-    uint32  len;
-    uint8   seq_id;
+    uint32 len = PACKET_MAX_LENGTH;
 
     pq_startmsgread();
 
     resetStringInfo(buf);
 
-    enlargeStringInfo(buf, PROTO_PAYLOAD_LEN);
-
-    // Read PROTO_PAYLOAD_LEN bytes from recvbuf
-    if (pq_getbytes(buf->data, PROTO_PAYLOAD_LEN) == EOF)
+    while (len == PACKET_MAX_LENGTH)
     {
-        return EOF;
-    }
+        len = mq_recv_one_packet(buf);
 
-    buf->len = PROTO_PAYLOAD_LEN;
-
-    // convert payload length bytes stream to uint32
-    mq_get_payload_len(buf, &len);
-
-    // read one byte sequence id
-    seq_id = pq_getbyte();
-    if (seq_id == EOF)
-    {
-        ereport(COMMERROR,
-                (errcode(ERRCODE_PROTOCOL_VIOLATION),
-                 errmsg("unexpected EOF within seq_id word")));
-        return EOF;
-    }
-
-    next_seqid = ++seq_id;
-
-    // Read rest of payload length bytes into buf
-    if (len > 0)
-    {
-        PG_TRY();
-        {
-            enlargeStringInfo(buf, len);
-        }
-        PG_CATCH();
-        {
-            if (pq_discardbytes(len) == EOF)
-            {
-                ereport(COMMERROR,
-                        (errcode(ERRCODE_PROTOCOL_VIOLATION),
-                         errmsg("incomplete message from client")));
-            }
-
-            pq_endmsgread();
-            PG_RE_THROW();
-        }
-        PG_END_TRY();
-
-        // read playload_lenght bytes into buf->data
-        if (pq_getbytes(buf->data, len) == EOF)
-        {
-            ereport(COMMERROR,
-                    (errcode(ERRCODE_PROTOCOL_VIOLATION),
-                     errmsg("incomplete message from client")));
+        if (len == EOF)
             return EOF;
-        }
-
-        buf->len = len;
-        buf->cursor = 0;
-        buf->data[len] = '\0';
-    }
-    else	/* receive a null package, set the buf to null */
-    {
-        resetStringInfo(buf);
     }
 
     pq_endmsgread();
 
-    return 0;
+    return STATUS_OK;
 }

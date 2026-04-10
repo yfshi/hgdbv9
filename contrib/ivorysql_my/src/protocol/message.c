@@ -1,15 +1,14 @@
 #include "postgres.h"
 
-#include "commands/prepare.h"
-/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
 #include "commands/copy.h"
 #include "commands/copyfrom_internal.h"
-/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+#include "commands/prepare.h"
 #include "executor/spi.h"
 #include "fmgr.h"
 #include "libpq/libpq.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
+#include "nodes/parsenodes.h"
 #include "optimizer/optimizer.h"
 #include "parser/parse_type.h"
 #include "parser/parse_coerce.h"
@@ -21,15 +20,12 @@
 #include "utils/lsyscache.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
-#include "utils/timestamp.h"
 
-#include "../include/server.h"
 #include "../include/message.h"
 #include "../include/mqformat.h"
 
 #define ERR_PACKET_SQLSTATE_LEN             5
 #define MAX_ERRMSG_LEN                      512
-#define PROTO_DATE_LEN                      4
 #define PROTO_DATETIME_LEN                  7
 #define PROTO_DATETIMESTAMP_LEN             11
 #define PROTO_TIME_LEN                      8
@@ -117,7 +113,7 @@ mysql_send_ready_for_query(CommandDest dest)
 int
 mysql_read_command(StringInfo buf)
 {
-    return mq_getmessage(buf, 0);
+    return mq_getmessage(buf);
 }
 
 void
@@ -287,7 +283,7 @@ make_column_definition_with_name(char *name, char *tableName)
     field->db = MyProcPort->database_name;
     field->table = tableName;
     field->org_table = tableName;
-    field->charset = 0x2d;
+    field->charset = COLLATE_UTF8MB4_GENERAL_CI;
 
     return field;
 }
@@ -639,10 +635,12 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
 }
 
 static void
-parse_com_stmt_execute_params(StringInfo buf, PreparedStatement *entry, com_stmt_exec_request_t *req)
+parse_com_stmt_execute_params(StringInfo buf, PreparedStatement *entry, com_stmt_exec_t *req)
 {
     int num_params = entry->plansource->num_params;
     int param_count = num_params;
+
+    start_xact_command();
 
     if (num_params == 0)
         return;
@@ -942,18 +940,18 @@ execute_com_stmt_prepare(const char *client_sql)
     return 0;
 }
 
-static com_stmt_exec_request_t *
+static com_stmt_exec_t *
 parse_com_stmt_exec_request(StringInfo buf)
 {
     Portal		        portal;
     PreparedStatement   *entry;
     char                stmt_name[NAMEDATALEN];
-    com_stmt_exec_request_t *req;
+    com_stmt_exec_t *req;
     
-    req = (com_stmt_exec_request_t *) palloc0(sizeof(com_stmt_exec_request_t));
+    req = (com_stmt_exec_t *) palloc0(sizeof(com_stmt_exec_t));
 
     mq_get_int4(buf, &req->statement_id);
-    mq_get_int1(buf, &req->open_cursor);
+    mq_get_int1(buf, &req->flags);
     mq_get_int4(buf, &req->iteration_count);    // always 1.
 
     snprintf(stmt_name, NAMEDATALEN, MYSQL_STMT_NAME_FMT, req->statement_id);
@@ -961,10 +959,14 @@ parse_com_stmt_exec_request(StringInfo buf)
     portal = prepare_portal_if_not_exist(req->statement_id);
     entry = FetchPreparedStatement(stmt_name, true);
 
+    /* This is not cursor open request */
+    if (!IS_CURSOR_OPEN_REQUEST(req))
+        req->num_rows = FETCH_ALL;
+
     if (entry == NULL ||
         (entry->plansource->num_params == 0 &&
          (!has_client_capabilities(CLIENT_QUERY_ATTRIBUTES) ||
-          !(req->open_cursor & PARAMETER_COUNT_AVAILABLE))))
+          !(req->flags & PARAMETER_COUNT_AVAILABLE))))
     {
         return req;
     }
@@ -976,8 +978,21 @@ parse_com_stmt_exec_request(StringInfo buf)
     return req;
 }
 
+static com_stmt_exec_t *
+parse_com_stmt_fetch_request(StringInfo buf)
+{
+    com_stmt_exec_t *req;
+    
+    req = (com_stmt_exec_t *) palloc0(sizeof(com_stmt_exec_t));
+
+    mq_get_int4(buf, &req->statement_id);
+    mq_get_int4(buf, (uint32 *) &req->num_rows);
+
+    return req;
+}
+
 static int
-execute_prepare_stmt(com_stmt_exec_request_t *req)
+execute_prepare_stmt(com_stmt_exec_t *req)
 {
     Portal      portal;
     char        portal_name[NAMEDATALEN];
@@ -993,9 +1008,30 @@ execute_prepare_stmt(com_stmt_exec_request_t *req)
 
     /* Set statement_timestamp() */
     SetCurrentStatementStartTimestamp();
-    
-    exec_execute_message(portal_name, -1);
 
+    /**
+     * The cursor can continue to be used after the transaction
+     * that created it successfully commits.
+     */
+    if (IS_CURSOR_OPEN_REQUEST(req))
+    {
+        portal->cursorOptions = CURSOR_OPT_HOLD;
+
+        if (req->flags & CURSOR_TYPE_SCROLLABLE)
+            portal->cursorOptions |= CURSOR_OPT_SCROLL;
+        else
+            portal->cursorOptions |= CURSOR_OPT_NO_SCROLL;
+    }
+
+    exec_execute_message(portal_name, req->num_rows);
+
+    /**
+     * If cursor open, must be send EOF packet with
+     * SERVER_STATUS_CURSOR_EXISTS status.
+     */
+    if (IS_CURSOR_OPEN_REQUEST(req))
+        send_eof(0, SERVER_STATUS_CURSOR_EXISTS);
+    
     /**
      * Finish current transaction and free portal malloced in COM_STMT_PREPARE.
      * It's same as pg's 'E' packet.
@@ -1166,9 +1202,17 @@ mysql_process_command(StringInfo buf)
             }
         case COM_STMT_EXECUTE:
             {
-                com_stmt_exec_request_t *req;
+                com_stmt_exec_t *req;
                 req = parse_com_stmt_exec_request(buf);
                 execute_prepare_stmt(req);
+                break;
+            }
+        case COM_STMT_FETCH:
+            {
+                com_stmt_exec_t *req;
+                req = parse_com_stmt_fetch_request(buf);
+                execute_prepare_stmt(req);
+                send_eof(0, 0);
                 break;
             }
         case COM_STMT_SEND_LONG_DATA:
@@ -1184,7 +1228,7 @@ mysql_process_command(StringInfo buf)
             // COM_CREATE_DB, COM_DROP_DB have deprecated by mysql-server
             ereport(ERROR,
                     (errcode(ERRCODE_INTERNAL_ERROR),
-                     errmsg("mysql server protocol not supported.")));
+                     errmsg("mysql server protocol not supported this packet type(%d).", current_packet_type)));
     }
 
     return 0;
@@ -1237,7 +1281,7 @@ mysql_receive_copy_begin(CopyFromState cstate)
 int
 mysql_receive_copy_data(StringInfo buf)
 {
-       return mq_getmessage(buf, 0);
+    return mq_getmessage(buf);
 }
 
 /*

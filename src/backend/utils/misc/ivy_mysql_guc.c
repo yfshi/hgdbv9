@@ -1126,6 +1126,9 @@ assign_regress_test_default_value(bool newval, void *extra)
 		 * linux and windows, which will affect a large number of regress case.
 		 */
 		SetConfigOption("lower_case_table_names", "0", PGC_USERSET, PGC_S_OVERRIDE);
+
+		/* bug#7415 */
+		SetConfigOption("max_allowed_packet", "1073741824", PGC_USERSET, PGC_S_OVERRIDE);
 	}
 }
 

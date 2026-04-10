@@ -68,6 +68,12 @@ ALTER USER proto_user WITH NOSUPERUSER;
 \du proto_user
 -- /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
+-- fetch
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcFetchTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+
+-- very long sql
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLInsertLongData 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

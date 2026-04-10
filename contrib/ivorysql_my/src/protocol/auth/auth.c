@@ -248,7 +248,7 @@ read_ssl_request(StringInfo buf, Port *port, mysql_handshake_response_t *auth)
     }
     
     // recv client response
-    if (mq_getmessage(buf, 0) != STATUS_OK)
+    if (mq_getmessage(buf) != STATUS_OK)
     {
         DestroyStringInfo(buf);
         return;
@@ -330,8 +330,6 @@ mysql_conn_handshake(Port *port)
     mysql_handshake_response_t  *handshakeResp;
     StringInfo buf = makeStringInfo();
 
-    next_seqid = 0;
-
     // send handshakev10 packet
     handshake = make_mysqld_handshakev10_packet(mysql_conn_info.scramble);
     send_handshakev10_packet(buf, handshake);
@@ -340,7 +338,7 @@ mysql_conn_handshake(Port *port)
     pq_flush();
 
     // read user login request packet
-    if (mq_getmessage(buf, 0) != STATUS_OK)
+    if (mq_getmessage(buf) != STATUS_OK)
     {
         DestroyStringInfo(buf);
         return EOF;
