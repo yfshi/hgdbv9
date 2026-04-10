@@ -421,6 +421,9 @@ static PLiSQL_row *read_bulk_collect_into_udt_list(char *initial_name,
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 %token			AS_LA
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+%token			VERSIONS_LA
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 /*
  * Other tokens recognized by plisql's lexer interface layer (pl_scanner.c).

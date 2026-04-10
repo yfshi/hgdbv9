@@ -94,7 +94,7 @@ BitmapHeapNext(BitmapHeapScanState *node)
 		shared_tbmiterator = node->shared_tbmiterator;
 	tbmres = node->tbmres;
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	ExecAsofTimestamp(&node->ss);
+	ExecFlashbackTimestamp(&node->ss);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	/*
@@ -829,6 +829,21 @@ ExecInitBitmapHeapScan(BitmapHeapScan *node, EState *estate, int eflags)
 	{
 		scanstate->ss.asofExpr = NULL;
 	}
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (node->scan.versionsLower_expr && node->scan.versionsUpper_expr)
+	{
+		scanstate->ss.versionsLowerExpr = ExecInitExpr((Expr *) node->scan.versionsLower_expr,
+										   				&scanstate->ss.ps);
+		scanstate->ss.versionsUpperExpr = ExecInitExpr((Expr *) node->scan.versionsUpper_expr,
+														&scanstate->ss.ps);
+		scanstate->ss.flashback_snapshot_set = false;
+	}
+	else
+	{
+		scanstate->ss.versionsLowerExpr = NULL;
+		scanstate->ss.versionsUpperExpr = NULL;
+	}
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	scanstate->ss.flashback_snapshot = InvalidSnapshot;
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
@@ -944,9 +959,20 @@ ExecBitmapHeapInitializeDSM(BitmapHeapScanState *node,
 		node->ss.asofExpr = ExecInitExpr((Expr *) scan->asof_expr,
 										 &node->ss.ps);
 		node->ss.flashback_snapshot_set = false;
-		ExecAsofTimestamp(&node->ss);
+		ExecFlashbackTimestamp(&node->ss);
 	}
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (scan->versionsLower_expr && scan->versionsUpper_expr)
+	{
+		node->ss.versionsLowerExpr = ExecInitExpr((Expr *) scan->versionsLower_expr,
+												&node->ss.ps);
+		node->ss.versionsUpperExpr = ExecInitExpr((Expr *) scan->versionsUpper_expr,
+												&node->ss.ps);
+		node->ss.flashback_snapshot_set = false;
+		ExecFlashbackTimestamp(&node->ss);
+	}
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	pstate = shm_toc_allocate(pcxt->toc, node->pscan_len);
 

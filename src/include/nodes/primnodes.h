@@ -52,6 +52,16 @@ typedef enum OnCommitAction
 	ONCOMMIT_DROP				/* ON COMMIT DROP */
 } OnCommitAction;
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+typedef struct FlashbackNode
+{
+	NodeTag		type;
+	Node       *asofTimestamp;  /* for AS OF queries */
+	Node	   *versionsLower;	/* transformed lower timestamp bound, or NULL */
+	Node	   *versionsUpper;	/* transformed upper timestamp bound, or NULL */
+} FlashbackNode;
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 /*
  * RangeVar - range variable, used in FROM clauses
  *
@@ -81,9 +91,9 @@ typedef struct RangeVar
 	List	   *colnamelist;
 	List	   *partitionnamelist;
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	Node       *asofTimestamp;  /* for flashback queries */
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	FlashbackNode *flashbackClause; /* for flashback queries */	
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 } RangeVar;
 
 /*

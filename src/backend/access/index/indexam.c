@@ -320,6 +320,12 @@ index_beginscan_internal(Relation indexRelation,
 	scan->parallel_scan = pscan;
 	scan->xs_temp_snap = temp_snap;
 
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (snapshot->snapshot_type == SNAPSHOT_FLASHBACK_MVCC ||
+		snapshot->snapshot_type == SNAPSHOT_HISTORIC_RANGE)
+		scan->ignore_killed_tuples = false;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 	return scan;
 }
 

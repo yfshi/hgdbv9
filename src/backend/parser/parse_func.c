@@ -3295,6 +3295,7 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 			break;
 		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 		case EXPR_KIND_ASOF:
+		case EXPR_KIND_VERSIONS_BETWEEN:
 			errkind = true;
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */

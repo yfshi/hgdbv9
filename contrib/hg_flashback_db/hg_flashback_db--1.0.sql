@@ -169,8 +169,8 @@ GRANT SELECT ON hg_flashback_db.v$flashback_database_log TO PUBLIC;
 CREATE VIEW hg_flashback_db.show_restore_point AS
 SELECT
     NULL::BIGINT AS "SCN",
-    NULL::TIMESTAMP AS "RSP Time",
-    'GUARANTED'::VARCHAR(10) AS "Type",
+    NULL::TIMESTAMPTZ AS "RSP Time",
+    'GUARANTED'::TEXT AS "Type",
     rsp_time AS "Time",
     name AS "Name"
 FROM hg_flashback_db.restore_points_base

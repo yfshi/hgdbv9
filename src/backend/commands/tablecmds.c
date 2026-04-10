@@ -22603,29 +22603,35 @@ check_rel_autoincrement(Oid relid)
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 /*
  * 	FLASHBACK :
- * 		FLASHBACK TABLE { table_name } TO TIMESTAMP expression
+ * 		FLASHBACK TABLE { table_name } TO TIMESTAMP expression [ [ENABLE | DISABLE] TRIGGERS ]
  * 		FLASHBACK TABLE { table_name } TO BEFORE DROP [RENAME TO new_tablename]
  * 		FLASHBACK TABLE { table_name } TO BEFORE TRUNCATE
  */
 void 
 ExecuteFlashback(FlashbackStmt *stmt)
 {
-	switch (stmt->kind)
+	int	length = list_length(stmt->relation_list);
+	int	nth;
+
+	for (nth = 0; nth < length; nth++)
 	{
-		case FLASHBACK_TIMEPOINT:
-			FlashbackToTimepoint(stmt);
-			break;
+		switch (stmt->kind)
+		{
+			case FLASHBACK_TIMEPOINT:
+				FlashbackToTimepoint(stmt, nth);
+				break;
 
-		case FLASHBACK_DROP:
-			FlashbackBeforeDrop(stmt);
-			break;
+			case FLASHBACK_DROP:
+				FlashbackBeforeDrop(stmt, nth);
+				break;
 
-		case FLASHBACK_TRUNCATE:
-			FlashbackBeforeTruncate(stmt);
-			break;
+			case FLASHBACK_TRUNCATE:
+				FlashbackBeforeTruncate(stmt, nth);
+				break;
 
-		default:
-			elog(ERROR, "unrecognized flashback type: %d", (int)stmt->kind);
+			default:
+				elog(ERROR, "unrecognized flashback type: %d", (int)stmt->kind);
+		}
 	}
 }
 

@@ -47,15 +47,15 @@ typedef enum RbOperMode {
     RB_OPER_RESTORE_TRUNCATE = 2,
 } RbOperMode;
 
-extern void FlashbackToTimepoint(FlashbackStmt *stmt);
+extern void FlashbackToTimepoint(FlashbackStmt *stmt, int nth);
 extern bool EnableRecycleBin(void);
 extern RbObjType RbGetObjType(Oid nspId, char relKind);
 extern void RbRenameClass(RbObjDesc *baseDesc, ObjectAddress *object, char relKind, const char *newName);
 extern void RbDescInit(Relation rel, RbObjDesc *desc, char operType, RbObjType objType);
-extern void FlashbackBeforeDrop(FlashbackStmt *stmt);
+extern void FlashbackBeforeDrop(FlashbackStmt *stmt, int nth);
 extern void RbTruncate(List *explicit_rels, List *relids, List *relids_logged, 
                             DropBehavior behavior, bool restart_seqs);
-extern void FlashbackBeforeTruncate(FlashbackStmt *stmt);
+extern void FlashbackBeforeTruncate(FlashbackStmt *stmt, int nth);
 
 extern void PurgeObject(RangeVar *rv);
 extern void PurgeAllObjects(void);

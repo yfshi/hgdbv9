@@ -1067,6 +1067,10 @@ build_index_paths(PlannerInfo *root, RelOptInfo *rel,
 	rte = planner_rt_fetch(rel->relid, root);
 	index_only_scan = (scantype != ST_BITMAPSCAN &&
 					   rte->asofTimestamp == NULL &&
+					   /* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+					   (rte->versionsLower == NULL &&
+					   rte->versionsUpper == NULL) &&
+					   /* End - ReqID:SRS-SECURITY-FLASHBACK */
 					   check_index_only(rel, index));
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 

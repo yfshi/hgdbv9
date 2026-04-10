@@ -2033,9 +2033,16 @@ addRangeTableEntry(ParseState *pstate,
 
 	rte->rtekind = RTE_RELATION;
 	rte->alias = alias;
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	rte->asofTimestamp = relation->asofTimestamp;
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (relation->flashbackClause)
+	{
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		rte->asofTimestamp = copyObject(relation->flashbackClause->asofTimestamp);
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		rte->versionsLower = copyObject(relation->flashbackClause->versionsLower);
+		rte->versionsUpper = copyObject(relation->flashbackClause->versionsUpper);
+	}
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	/*
 	 * Identify the type of lock we'll need on this relation.  It's not the

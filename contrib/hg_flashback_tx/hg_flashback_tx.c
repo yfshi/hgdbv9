@@ -236,7 +236,7 @@ _PG_init(void)
 							   "Comma-separated list of databases to monitor for flashback.",
 							   NULL,
 							   &flashback_databases,
-							   "postgres",
+							   "highgo",
 							   PGC_SIGHUP,
 							   GUC_LIST_INPUT,
 							   NULL,

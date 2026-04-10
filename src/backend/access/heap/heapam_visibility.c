@@ -76,7 +76,9 @@
 #include "utils/builtins.h"
 #include "utils/combocid.h"
 #include "utils/snapmgr.h"
-
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "access/commit_ts.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * HeapTupleSetHintBits --- exported version of SetHintBits()
@@ -912,7 +914,8 @@ HeapTupleSatisfiesMVCC(HeapTuple htup, Snapshot snapshot,
 	static void (*SetHintBits_function_ptr)(HeapTupleHeader, Buffer, uint16, TransactionId) = SetHintBits;
 	bool snapReadOnly = (snapshot->snapshot_type == SNAPSHOT_FLASHBACK_MVCC ||
 						snapshot->snapshot_type == SNAPSHOT_DELTA ||
-						snapshot->snapshot_type == SNAPSHOT_LOST);
+						snapshot->snapshot_type == SNAPSHOT_LOST ||
+						snapshot->snapshot_type == SNAPSHOT_HISTORIC_RANGE);
 
 #define SetHintBits(tuple, buffer, infomask, xid) \
 	do { \
@@ -1749,6 +1752,130 @@ HeapTupleSatisfiesLost(HeapTuple htup, Snapshot snapshot,
 }
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+static bool
+HeapTupleInsertedBeforeHistoricSnapshot(HeapTuple htup, Snapshot snapshot,
+									Buffer buffer)
+{
+	HeapTupleHeader tuple = htup->t_data;
+	TransactionId xmin = HeapTupleHeaderGetXmin(tuple);
+
+	/* inserting transaction aborted */
+	if (HeapTupleHeaderXminInvalid(tuple))
+	{
+		Assert(!TransactionIdDidCommit(xmin));
+		return false;
+	}
+	/* tuple inserted by the transaction currently being replayed */
+	else if (TransactionIdInArray(xmin, snapshot->subxip, snapshot->subxcnt))
+	{
+		bool		resolved;
+		CommandId	cmin = HeapTupleHeaderGetRawCommandId(tuple);
+		CommandId	cmax = InvalidCommandId;
+
+		resolved = ResolveCminCmaxDuringDecoding(HistoricSnapshotGetTupleCids(),
+											snapshot,
+											htup,
+											buffer,
+											&cmin,
+											&cmax);
+
+		if (!resolved)
+			return false;
+
+		Assert(cmin != InvalidCommandId);
+		return cmin < snapshot->curcid;
+	}
+	else if (TransactionIdPrecedes(xmin, snapshot->xmin))
+	{
+		if (HeapTupleHeaderXminCommitted(tuple))
+			return true;
+
+		return TransactionIdDidCommit(xmin);
+	}
+	else if (TransactionIdFollowsOrEquals(xmin, snapshot->xmax))
+		return false;
+	else if (TransactionIdInArray(xmin, snapshot->xip, snapshot->xcnt))
+		return true;
+
+	return false;
+}
+
+static bool
+HeapTupleDeletedBeforeHistoricSnapshot(HeapTuple htup, Snapshot snapshot,
+								   Buffer buffer)
+{
+	HeapTupleHeader tuple = htup->t_data;
+	TransactionId xmax = HeapTupleHeaderGetRawXmax(tuple);
+
+	if ((tuple->t_infomask & HEAP_XMAX_INVALID) ||
+		HEAP_XMAX_IS_LOCKED_ONLY(tuple->t_infomask) ||
+		HeapTupleHeaderIsOnlyLocked(tuple))
+		return false;
+
+	if (tuple->t_infomask & HEAP_XMAX_IS_MULTI)
+		xmax = HeapTupleGetUpdateXid(tuple);
+
+	if (!TransactionIdIsValid(xmax))
+		return false;
+
+	/* tuple deleted/updated by the transaction currently being replayed */
+	if (TransactionIdInArray(xmax, snapshot->subxip, snapshot->subxcnt))
+	{
+		bool		resolved;
+		CommandId	cmin;
+		CommandId	cmax = HeapTupleHeaderGetRawCommandId(tuple);
+
+		resolved = ResolveCminCmaxDuringDecoding(HistoricSnapshotGetTupleCids(),
+											snapshot,
+											htup,
+											buffer,
+											&cmin,
+											&cmax);
+
+		if (!resolved || cmax == InvalidCommandId)
+			return false;
+
+		return cmax < snapshot->curcid;
+	}
+	else if (TransactionIdPrecedes(xmax, snapshot->xmin))
+	{
+		if (tuple->t_infomask & HEAP_XMAX_COMMITTED)
+			return true;
+
+		return TransactionIdDidCommit(xmax);
+	}
+	else if (TransactionIdFollowsOrEquals(xmax, snapshot->xmax))
+		return false;
+	else if (TransactionIdInArray(xmax, snapshot->xip, snapshot->xcnt))
+		return true;
+
+	return false;
+}
+
+/*
+ * Return true when the tuple version existed at any point in the inclusive
+ * interval between the two historic snapshots.
+ */
+static bool
+HeapTupleSatisfiesHistoricRange(HeapTuple htup, Snapshot snapshot, Buffer buffer)
+{
+	Snapshot	start_snapshot = snapshot;
+	Snapshot	end_snapshot = (Snapshot)snapshot->extraPtr;
+
+	if (!end_snapshot)
+		return false;
+
+	/*
+	 * The tuple version overlaps the requested interval iff it had become
+	 * visible by the end snapshot and had not ceased to exist before the start
+	 * snapshot.
+	 */
+	return HeapTupleInsertedBeforeHistoricSnapshot(htup, end_snapshot, buffer) &&
+		!HeapTupleDeletedBeforeHistoricSnapshot(htup, start_snapshot, buffer);
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 /*
  * HeapTupleSatisfiesVisibility
  *		True iff heap tuple satisfies a time qual.
@@ -1796,6 +1923,11 @@ HeapTupleSatisfiesVisibility(HeapTuple tup, Snapshot snapshot, Buffer buffer)
 			return HeapTupleSatisfiesLost(tup, snapshot, buffer);
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		case SNAPSHOT_HISTORIC_RANGE:
+			return HeapTupleSatisfiesHistoricRange(tup, snapshot, buffer);
+			break;
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	}
 
 	return false;				/* keep compiler quiet */
@@ -1868,3 +2000,22 @@ heapTupleSatisfiesUpdateOnconflict(HeapTuple htup, CommandId curcid,
 	return TM_Invisible;
 }
 /* End - ReqID:SRS-MYSQL-SQL-INSERT */
+
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+bool
+HeapTuplePastUndoRetention(TransactionId xid, TimestampTz retention_cutoff_ts)
+{
+	TimestampTz ts;
+
+	if (retention_cutoff_ts == 0)
+		return true;
+
+	if (!TransactionIdIsValid(xid) || !TransactionIdIsNormal(xid))
+		return true;
+
+	if (!TransactionIdGetCommitTsData(xid, &ts, NULL))
+		return true;
+
+	return ts < retention_cutoff_ts;
+}
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */

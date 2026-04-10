@@ -79,6 +79,8 @@ select a, left(c, 10), length(c) from foo order by a limit 1;
 drop table foo;  -- more than one table.
 create table foo(a int primary key, b text, c int);
 insert into foo select generate_series(200,300), 'test456rnd' || string_agg(md5(random()::text || clock_timestamp()::text), ''), random() * 100 from generate_series(1, 5000);
+create table foo1(a int primary key, b text, c int);
+insert into foo1 select generate_series(200,300), 'test789rnd' || string_agg(md5(random()::text || clock_timestamp()::text), ''), random() * 100 from generate_series(1, 5000);
 create index on foo using btree(c);
 CREATE OR REPLACE FUNCTION handle_truncate()
 RETURNS TRIGGER AS $$
@@ -100,30 +102,49 @@ select a, left(b, 10), length(b) from foo order by a limit 1;
 (1 row)
 
 drop table foo;
+drop table foo1;
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  rcyoperation | rcytype 
 --------------+---------
  d            |       0
  d            |       0
+ d            |       0
+ d            |       1
  d            |       1
  d            |       1
  d            |       1
  d            |       1
  d            |       2
  d            |       2
+ d            |       2
  d            |       3
  d            |       3
-(10 rows)
+ d            |       3
+(14 rows)
 
-flashback table foo to before drop;
+DECLARE     -- more than one table, use rcyname
+    v_rcyname text;
+    sql_str   text;
+BEGIN
+    select rcyname into v_rcyname from pg_recyclebin where rcyoriginname = 'foo1' and rcytype = 0;
+    EXECUTE format('flashback table foo, %I to before drop;', v_rcyname);
+END;
+/
 select a, left(b, 10), length(b) from foo order by a limit 1;
   a  |    left    | length 
 -----+------------+--------
  200 | test456rnd | 160010
 (1 row)
 
+select a, left(b, 10), length(b) from foo1 order by a limit 1;
+  a  |    left    | length 
+-----+------------+--------
+ 200 | test789rnd | 160010
+(1 row)
+
 drop table foo;
 PURGE table foo;  -- purge table
+drop table foo1 purge;
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
  rcyoperation | rcytype 
 --------------+---------

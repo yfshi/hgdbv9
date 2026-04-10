@@ -2386,7 +2386,7 @@ XidInMVCCSnapshot(TransactionId xid, Snapshot snapshot)
  * construct it to a Snapshot.
  */
 Snapshot
-TimestampGetSnapshot(TimestampTz ts)
+TimestampGetSnapshot(TimestampTz ts, int32 snapshot_type, bool missing_ok)
 {
 	TransactionId xmin;
 	TransactionId xmax;
@@ -2396,7 +2396,7 @@ TimestampGetSnapshot(TimestampTz ts)
 	Snapshot activeSnap;
 
 	active_xlist = NULL;
-	if (!TimestampGetTransactinIds(ts, &xmin, &xmax, &active_xlist))
+	if (!TimestampGetTransactinIds(ts, &xmin, &xmax, &active_xlist, missing_ok))
 		elog(ERROR, "failed get the snapshot.");
 
 	/* We also need get active xids from current snapshot. */
@@ -2407,7 +2407,7 @@ TimestampGetSnapshot(TimestampTz ts)
 	 */
 	snapshot = (Snapshot)palloc0(sizeof(SnapshotData));
 
-	snapshot->snapshot_type = SNAPSHOT_FLASHBACK_MVCC;
+	snapshot->snapshot_type = snapshot_type;
 	snapshot->xmin = xmin;
 	snapshot->xmax = xmax;
 	snapshot->xcnt = list_length(active_xlist) + activeSnap->xcnt;

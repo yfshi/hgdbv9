@@ -632,8 +632,11 @@ typedef enum NodeTag
 	T_ProtocolMysql,
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	/* Begin - OA-REQ-2132 */
-	T_RatioToReportCall
+	T_RatioToReportCall,
 	/* End - OA-REQ-2132 */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	T_FlashbackNode
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 } NodeTag;
 
 /*

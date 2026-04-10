@@ -47,7 +47,9 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
 /* End - ReqID:SRS-MYSQL-UPDATE */
-
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+#include "parser/parse_expr.h"
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /*
  * Flag bits that can appear in the flags argument of create_plan_recurse().
@@ -805,8 +807,19 @@ create_scan_plan(PlannerInfo *root, Path *best_path, int flags)
 	if (plan != NULL && plan->type != T_Result)
 	{
 		rte = planner_rt_fetch(rel->relid, root);
-		if (rte != NULL && rte->asofTimestamp != NULL)
-			((Scan*)plan)->asof_expr = rte->asofTimestamp;
+		if (rte != NULL)
+		{
+			if (rte->asofTimestamp != NULL)
+				((Scan*)plan)->asof_expr = copyObject(rte->asofTimestamp);
+
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			if (rte->versionsLower && rte->versionsUpper)
+			{
+				((Scan*)plan)->versionsLower_expr = copyObject(rte->versionsLower);
+				((Scan*)plan)->versionsUpper_expr = copyObject(rte->versionsUpper);
+			}
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
+		}
 	}
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 

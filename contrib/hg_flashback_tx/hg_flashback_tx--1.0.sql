@@ -7,12 +7,12 @@ CREATE SCHEMA IF NOT EXISTS hg_flashback_tx;
 CREATE TABLE hg_flashback_tx.flashback_transaction_query
 (
 	xid					int8,
-	start_scn			numeric,
-	start_timestamp		timestamp,
-	commit_scn			numeric,
-	commit_timestamp	timestamp,
+	start_scn			int8,
+	start_timestamp		timestamptz,
+	commit_scn			int8,
+	commit_timestamp	timestamptz,
 	logon_user			varchar(128),
-	"undo_change#"		numeric,
+	"undo_change#"		int8,
 	operation			varchar(32),
 	table_name			varchar(256),
 	table_owner			varchar(386),

@@ -104,7 +104,7 @@ IndexNext(IndexScanState *node)
 	slot = node->ss.ss_ScanTupleSlot;
 
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	ExecAsofTimestamp(&node->ss);
+	ExecFlashbackTimestamp(&node->ss);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	if (scandesc == NULL)
@@ -989,6 +989,21 @@ ExecInitIndexScan(IndexScan *node, EState *estate, int eflags)
 	{
 		indexstate->ss.asofExpr = NULL;
 	}
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (node->scan.versionsLower_expr && node->scan.versionsUpper_expr)
+	{
+		indexstate->ss.versionsLowerExpr = ExecInitExpr((Expr *) node->scan.versionsLower_expr,
+										   				&indexstate->ss.ps);
+		indexstate->ss.versionsUpperExpr = ExecInitExpr((Expr *) node->scan.versionsUpper_expr,
+														&indexstate->ss.ps);
+		indexstate->ss.flashback_snapshot_set = false;
+	}
+	else
+	{
+		indexstate->ss.versionsLowerExpr = NULL;
+		indexstate->ss.versionsUpperExpr = NULL;
+	}
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	indexstate->ss.flashback_snapshot = InvalidSnapshot;
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
@@ -1722,9 +1737,20 @@ ExecIndexScanInitializeDSM(IndexScanState *node,
 		node->ss.asofExpr = ExecInitExpr((Expr *) scan->asof_expr,
 									  &node->ss.ps);
 		node->ss.flashback_snapshot_set = false;
-		ExecAsofTimestamp(&node->ss);
+		ExecFlashbackTimestamp(&node->ss);
 	}
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (scan->versionsLower_expr && scan->versionsUpper_expr)
+	{
+		node->ss.versionsLowerExpr = ExecInitExpr((Expr *) scan->versionsLower_expr,
+												&node->ss.ps);
+		node->ss.versionsUpperExpr = ExecInitExpr((Expr *) scan->versionsUpper_expr,
+												&node->ss.ps);
+		node->ss.flashback_snapshot_set = false;
+		ExecFlashbackTimestamp(&node->ss);
+	}
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	piscan = shm_toc_allocate(pcxt->toc, node->iss_PscanLen);
 	index_parallelscan_initialize(node->ss.ss_currentRelation,

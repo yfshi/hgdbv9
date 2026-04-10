@@ -238,6 +238,9 @@ extern int	vacuum_multixact_freeze_min_age;
 extern int	vacuum_multixact_freeze_table_age;
 extern int	vacuum_failsafe_age;
 extern int	vacuum_multixact_failsafe_age;
+/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+extern PGDLLIMPORT int undo_retention;
+/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 /* Variables for cost-based parallel vacuum */
 extern pg_atomic_uint32 *VacuumSharedCostBalance;

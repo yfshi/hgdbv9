@@ -687,7 +687,7 @@ extern ResultRelInfo *ExecLookupResultRelByOid(ModifyTableState *node,
 extern bool already_under_executor_run(void); /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-extern void ExecAsofTimestamp(ScanState* ss);
+extern void ExecFlashbackTimestamp(ScanState* ss);
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 #endif							/* EXECUTOR_H  */

@@ -1589,6 +1589,10 @@ typedef struct ScanState
 	bool        flashback_snapshot_set;
 	Snapshot	flashback_snapshot;
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	ExprState  *versionsLowerExpr;
+	ExprState  *versionsUpperExpr;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 } ScanState;
 
 /* ----------------

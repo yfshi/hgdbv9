@@ -136,8 +136,16 @@ typedef enum SnapshotType
 	 * is invalid for TransactionSnapshot. the pseudocode as follow:
 	 * TupleIsVisible(SNAPSHOT_MVCC) && !TupleIsVisible(GetTransactionSnapshot())
 	 */
-	SNAPSHOT_LOST
+	SNAPSHOT_LOST,
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	/*
+	 * A tuple existed at any point in the inclusive interval
+	 * between the two historic snapshots.
+	 */
+	SNAPSHOT_HISTORIC_RANGE
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 } SnapshotType;
 
 typedef struct SnapshotData *Snapshot;
@@ -236,6 +244,10 @@ typedef struct SnapshotData
 	 * transactions completed since the last GetSnapshotData().
 	 */
 	uint64		snapXactCompletionCount;
+
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	void	   *extraPtr;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 } SnapshotData;
 
 #endif							/* SNAPSHOT_H */

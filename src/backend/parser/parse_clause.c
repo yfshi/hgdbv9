@@ -696,21 +696,71 @@ transformTableEntry(ParseState *pstate, RangeVar *r)
 	/* addRangeTableEntry does all the work */
 	ParseNamespaceItem *nsitem = addRangeTableEntry(pstate, r, r->alias, r->inh, true);
 
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	if (nsitem->p_rte->asofTimestamp)
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (r->flashbackClause)
 	{
-		Relation rel;
-		Node* asof;
+		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+		if (r->flashbackClause->asofTimestamp)
+		{
+			Relation rel;
+			Node	*asof;
+			Oid		inputTypeId;
 
-		rel = table_openrv(r, NoLock);
-		if (rel->rd_rel->relkind != RELKIND_RELATION ||
-			rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT)
-			elog(ERROR, "Flashback only support simple table");
-		table_close(rel, NoLock);
-		asof = transformExpr(pstate, r->asofTimestamp, EXPR_KIND_ASOF);
-		nsitem->p_rte->asofTimestamp = coerce_to_specific_type(pstate, asof, TIMESTAMPTZOID, "AS OF");
+			rel = table_openrv(r, NoLock);
+			if (rel->rd_rel->relkind != RELKIND_RELATION ||
+				rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT)
+				elog(ERROR, "Flashback only support simple table");
+			table_close(rel, NoLock);
+			asof = transformExpr(pstate, r->flashbackClause->asofTimestamp, EXPR_KIND_ASOF);
+
+			/* cast oratimestamp to timestamptz automatically */
+			inputTypeId = exprType(asof);
+			if (inputTypeId == ORATIMESTAMPOID)
+			{
+				Node *raw_node = asof;
+				asof = coerce_type(pstate, raw_node, TIMESTAMPOID, TIMESTAMPTZOID,
+									-1, COERCION_ASSIGNMENT, COERCE_IMPLICIT_CAST, -1);
+			}
+			nsitem->p_rte->asofTimestamp = coerce_to_specific_type(pstate, asof, TIMESTAMPTZOID, "AS OF");
+		}
+		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		if (r->flashbackClause->versionsLower && r->flashbackClause->versionsUpper)
+		{
+			Relation rel;
+			Node *versionsLower, *versionsUpper;
+			Oid		inputTypeId;
+
+			rel = table_openrv(r, NoLock);
+			if (rel->rd_rel->relkind != RELKIND_RELATION ||
+				rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT)
+				elog(ERROR, "Flashback only support simple table");
+			table_close(rel, NoLock);
+
+			pstate->p_tryVersionsPseudoColumn = true;
+			versionsLower = transformExpr(pstate, r->flashbackClause->versionsLower, EXPR_KIND_VERSIONS_BETWEEN);
+			inputTypeId = exprType(versionsLower);
+			if (inputTypeId == ORATIMESTAMPOID)
+			{
+				Node *raw_node = versionsLower;
+				versionsLower = coerce_type(pstate, raw_node, TIMESTAMPOID, TIMESTAMPTZOID,
+									-1, COERCION_ASSIGNMENT, COERCE_IMPLICIT_CAST, -1);
+			}
+			nsitem->p_rte->versionsLower = coerce_to_specific_type(pstate, versionsLower,
+														TIMESTAMPTZOID, "VERSIONS BETWEEN");
+
+			versionsUpper = transformExpr(pstate, r->flashbackClause->versionsUpper, EXPR_KIND_VERSIONS_BETWEEN);
+			inputTypeId = exprType(versionsUpper);
+			if (inputTypeId == ORATIMESTAMPOID)
+			{
+				Node *raw_node = versionsUpper;
+				versionsUpper = coerce_type(pstate, raw_node, TIMESTAMPOID, TIMESTAMPTZOID,
+									-1, COERCION_ASSIGNMENT, COERCE_IMPLICIT_CAST, -1);
+			}
+			nsitem->p_rte->versionsUpper = coerce_to_specific_type(pstate, versionsUpper,
+														TIMESTAMPTZOID, "VERSIONS BETWEEN");
+		}
 	}
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	return nsitem;
 }

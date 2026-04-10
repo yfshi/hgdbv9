@@ -1395,6 +1395,10 @@ typedef struct RangeTblEntry
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	Node       *asofTimestamp;  /* for flashback queries */
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	Node	   *versionsLower;	/* transformed lower timestamp bound, or NULL */
+	Node	   *versionsUpper;	/* transformed upper timestamp bound, or NULL */
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 } RangeTblEntry;
 
 /*
@@ -4675,9 +4679,10 @@ typedef enum FlashbackKind {
 typedef struct FlashbackStmt {
     NodeTag type;
     FlashbackKind kind;
-    RangeVar *relation;
-    char *new_relname;
+	List *relation_list;
+	List *new_relname_list;
     Node *timepoint;
+	bool enable_triggers;
 } FlashbackStmt;
 
 typedef struct PurgeStmt {

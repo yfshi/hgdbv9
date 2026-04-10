@@ -624,6 +624,7 @@ check_agglevels_and_constraints(ParseState *pstate, Node *expr)
 		/* End: Req:SRS-SQL-NLSSORT */
 		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 		case EXPR_KIND_ASOF:
+		case EXPR_KIND_VERSIONS_BETWEEN:
 			errkind = true;
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
@@ -1085,6 +1086,7 @@ transformWindowFuncCall(ParseState *pstate, WindowFunc *wfunc,
 		/* End: Req:SRS-SQL-NLSSORT */
 		/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 		case EXPR_KIND_ASOF:
+		case EXPR_KIND_VERSIONS_BETWEEN:
 			errkind = true;
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */

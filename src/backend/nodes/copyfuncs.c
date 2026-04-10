@@ -1424,6 +1424,23 @@ _copyAlias(const Alias *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+/*
+ * _copyFlashbackNode
+ */
+static FlashbackNode *
+_copyFlashbackNode(const FlashbackNode *from)
+{
+	FlashbackNode	*newnode = makeNode(FlashbackNode);
+
+	COPY_NODE_FIELD(asofTimestamp);
+	COPY_NODE_FIELD(versionsLower);
+	COPY_NODE_FIELD(versionsUpper);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 /*
  * _copyRangeVar
  */
@@ -1447,9 +1464,9 @@ _copyRangeVar(const RangeVar *from)
 	COPY_NODE_FIELD(colnamelist);
 	COPY_NODE_FIELD(partitionnamelist);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	COPY_NODE_FIELD(asofTimestamp);
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	COPY_NODE_FIELD(flashbackClause);
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	return newnode;
 }
@@ -2616,6 +2633,10 @@ _copyRangeTblEntry(const RangeTblEntry *from)
 	COPY_NODE_FIELD(securityQuals);
 	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 	COPY_NODE_FIELD(asofTimestamp);
+	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
+	COPY_NODE_FIELD(versionsLower);
+	COPY_NODE_FIELD(versionsUpper);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	return newnode;
@@ -4987,9 +5008,10 @@ _copyFlashbackStmt(const FlashbackStmt * from)
 	FlashbackStmt *newnode = makeNode(FlashbackStmt);
 
 	COPY_SCALAR_FIELD(kind);
-    COPY_NODE_FIELD(relation);
-    COPY_STRING_FIELD(new_relname);
+    COPY_NODE_FIELD(relation_list);
+    COPY_NODE_FIELD(new_relname_list);
     COPY_NODE_FIELD(timepoint);
+	COPY_SCALAR_FIELD(enable_triggers);
 
 	return newnode;
 }
@@ -6094,6 +6116,11 @@ copyObjectImpl(const void *from)
 		case T_Alias:
 			retval = _copyAlias(from);
 			break;
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		case T_FlashbackNode:
+			retval = _copyFlashbackNode(from);
+			break;
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 		case T_RangeVar:
 			retval = _copyRangeVar(from);
 			break;

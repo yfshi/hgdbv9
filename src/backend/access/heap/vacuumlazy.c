@@ -80,7 +80,10 @@
 #include "utils/memutils.h"
 #include "utils/pg_rusage.h"
 #include "utils/timestamp.h"
-
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+#include "access/commit_ts.h"
+#include "access/htup.h"
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 /*
  * Space/time tradeoff parameters: do these need to be user-tunable?
@@ -332,6 +335,10 @@ typedef struct LVRelState
 
 	/* VACUUM operation's cutoff for pruning */
 	TransactionId OldestXmin;
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	/* Retention horizon used to keep recently-dead versions during VACUUM */
+	TimestampTz undo_cutoff_ts;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	/* VACUUM operation's cutoff for freezing XIDs and MultiXactIds */
 	TransactionId FreezeLimit;
 	MultiXactId MultiXactCutoff;
@@ -469,7 +476,11 @@ static void update_vacuum_error_info(LVRelState *vacrel,
 									 OffsetNumber offnum);
 static void restore_vacuum_error_info(LVRelState *vacrel,
 									  const LVSavedErrInfo *saved_vacrel);
-
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+static HTSV_Result lazy_vacuum_satisfies_vacuum(LVRelState *vacrel,
+												HeapTuple tuple,
+												Buffer buffer);
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 /*
  *	heap_vacuum_rel() -- perform VACUUM for one heap relation
@@ -600,6 +611,17 @@ heap_vacuum_rel(Relation rel, VacuumParams *params,
 
 	/* Set cutoffs for entire VACUUM */
 	vacrel->OldestXmin = OldestXmin;
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	if (undo_retention > 0 && !track_commit_timestamp)
+		ereport(LOG,
+				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+				 errmsg("undo_retention requires track_commit_timestamp to be enabled")));
+	if (undo_retention > 0 && track_commit_timestamp)
+		vacrel->undo_cutoff_ts = GetCurrentTimestamp() -
+			((int64) undo_retention * USECS_PER_SEC);
+	else
+		vacrel->undo_cutoff_ts = 0;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	vacrel->FreezeLimit = FreezeLimit;
 	vacrel->MultiXactCutoff = MultiXactCutoff;
 
@@ -1675,6 +1697,33 @@ lazy_scan_heap(LVRelState *vacrel, VacuumParams *params, bool aggressive)
 	pfree(buf.data);
 }
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+static HTSV_Result
+lazy_vacuum_satisfies_vacuum(LVRelState *vacrel, HeapTuple tuple, Buffer buffer)
+{
+	HTSV_Result res;
+
+	res = HeapTupleSatisfiesVacuum(tuple, vacrel->OldestXmin, buffer);
+
+	/*
+	 * undo_retention preserves tuple versions by making VACUUM treat an
+	 * otherwise removable tuple as recently dead until the updater/deleter's
+	 * commit timestamp ages past the retention window.
+	 */
+	if (res == HEAPTUPLE_DEAD && vacrel->undo_cutoff_ts != 0 &&
+		!HEAP_XMAX_IS_LOCKED_ONLY(tuple->t_data->t_infomask))
+	{
+		TransactionId xmax = HeapTupleHeaderGetUpdateXid(tuple->t_data);
+
+		if (TransactionIdIsValid(xmax) &&
+			!HeapTuplePastUndoRetention(xmax, vacrel->undo_cutoff_ts))
+			return HEAPTUPLE_RECENTLY_DEAD;
+	}
+
+	return res;
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 /*
  *	lazy_scan_prune() -- lazy_scan_heap() pruning and freezing.
  *
@@ -1814,7 +1863,9 @@ retry:
 		 * since heap_page_prune() looked.  Handle that here by restarting.
 		 * (See comments at the top of function for a full explanation.)
 		 */
-		res = HeapTupleSatisfiesVacuum(&tuple, vacrel->OldestXmin, buf);
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		res = lazy_vacuum_satisfies_vacuum(vacrel, &tuple, buf);
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 		if (unlikely(res == HEAPTUPLE_DEAD))
 			goto retry;
@@ -3671,7 +3722,8 @@ heap_page_is_all_visible(LVRelState *vacrel, Buffer buf,
 		tuple.t_len = ItemIdGetLength(itemid);
 		tuple.t_tableOid = RelationGetRelid(vacrel->rel);
 
-		switch (HeapTupleSatisfiesVacuum(&tuple, vacrel->OldestXmin, buf))
+		/* ReqID:SRS-SECURITY-FLASHBACK */
+		switch (lazy_vacuum_satisfies_vacuum(vacrel, &tuple, buf))
 		{
 			case HEAPTUPLE_LIVE:
 				{

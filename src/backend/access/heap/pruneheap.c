@@ -26,6 +26,10 @@
 #include "utils/snapmgr.h"
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+#include "access/commit_ts.h"
+#include "commands/vacuum.h"
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 #ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
 #include "hg_misc.h"
@@ -52,6 +56,10 @@ typedef struct
 	TimestampTz old_snap_ts;
 	TransactionId old_snap_xmin;
 	bool		old_snap_used;
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	/* Retention horizon used to keep recently-expired versions on the page */
+	TimestampTz undo_cutoff_ts;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	TransactionId new_prune_xid;	/* new prune hint value for page */
 	TransactionId latestRemovedXid; /* latest xid to be removed by this prune */
@@ -94,7 +102,10 @@ static void heap_prune_record_redirect(PruneState *prstate,
 									   OffsetNumber offnum, OffsetNumber rdoffnum);
 static void heap_prune_record_dead(PruneState *prstate, OffsetNumber offnum);
 static void heap_prune_record_unused(PruneState *prstate, OffsetNumber offnum);
-
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+static bool heap_prune_keep_due_to_undo_retention(PruneState *prstate,
+												  TransactionId dead_after);
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 /*
  * Optionally prune and repair fragmentation in the specified page.
@@ -284,6 +295,18 @@ heap_page_prune(Relation relation, Buffer buffer,
 	prstate.old_snap_xmin = old_snap_xmin;
 	prstate.old_snap_ts = old_snap_ts;
 	prstate.old_snap_used = false;
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	/*
+	 * Opportunistic pruning and VACUUM pruning both consult the same cutoff
+	 * so that tuple versions retained for flashback are preserved regardless
+	 * of which pruning path reaches the page first.
+	 */
+	if (undo_retention > 0 && track_commit_timestamp)
+		prstate.undo_cutoff_ts = GetCurrentTimestamp() -
+			((int64) undo_retention * USECS_PER_SEC);
+	else
+		prstate.undo_cutoff_ts = 0;
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	prstate.latestRemovedXid = InvalidTransactionId;
 	prstate.nredirected = prstate.ndead = prstate.nunused = 0;
 	memset(prstate.marked, 0, sizeof(prstate.marked));
@@ -525,7 +548,13 @@ heap_prune_satisfies_vacuum(PruneState *prstate, HeapTuple tup, Buffer buffer)
 		Assert(TransactionIdIsValid(prstate->old_snap_xmin));
 
 		if (TransactionIdPrecedes(dead_after, prstate->old_snap_xmin))
+		{
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			if (heap_prune_keep_due_to_undo_retention(prstate, dead_after))
+				return HEAPTUPLE_RECENTLY_DEAD;
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
 			res = HEAPTUPLE_DEAD;
+		}
 		return res;
 	}
 
@@ -537,7 +566,13 @@ heap_prune_satisfies_vacuum(PruneState *prstate, HeapTuple tup, Buffer buffer)
 	 */
 	if (TransactionIdIsValid(prstate->oldest_xmin) &&
 		NormalTransactionIdPrecedes(dead_after, prstate->oldest_xmin))
+	{
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		if (heap_prune_keep_due_to_undo_retention(prstate, dead_after))
+			return HEAPTUPLE_RECENTLY_DEAD;
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 		return HEAPTUPLE_DEAD;
+	}
 
 	/*
 	 * Determine whether or not the tuple is considered dead when compared
@@ -548,7 +583,13 @@ heap_prune_satisfies_vacuum(PruneState *prstate, HeapTuple tup, Buffer buffer)
 	 * the relation.
 	 */
 	if (GlobalVisTestIsRemovableXid(prstate->vistest, dead_after))
+	{
+		/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+		if (heap_prune_keep_due_to_undo_retention(prstate, dead_after))
+			return HEAPTUPLE_RECENTLY_DEAD;
+		/* End - ReqID:SRS-SECURITY-FLASHBACK */
 		return HEAPTUPLE_DEAD;
+	}
 
 	/*
 	 * If GlobalVisTestIsRemovableXid() is not sufficient to find the row dead
@@ -570,6 +611,11 @@ heap_prune_satisfies_vacuum(PruneState *prstate, HeapTuple tup, Buffer buffer)
 		if (TransactionIdIsValid(prstate->old_snap_xmin) &&
 			TransactionIdPrecedes(dead_after, prstate->old_snap_xmin))
 		{
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			if (heap_prune_keep_due_to_undo_retention(prstate, dead_after))
+				return HEAPTUPLE_RECENTLY_DEAD;
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 			/*
 			 * About to remove row based on snapshot_too_old. Need to raise
 			 * the threshold so problematic accesses would error.
@@ -584,6 +630,27 @@ heap_prune_satisfies_vacuum(PruneState *prstate, HeapTuple tup, Buffer buffer)
 
 	return res;
 }
+
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+/*
+ * Return true when undo_retention asks us to preserve a tuple version even
+ * though the visibility horizon would otherwise let pruning remove it.
+ */
+static bool
+heap_prune_keep_due_to_undo_retention(PruneState *prstate,
+									  TransactionId dead_after)
+{
+	if (prstate->undo_cutoff_ts == 0)
+		return false;
+
+	/*
+	 * dead_after is the updater/deleter XID that would make the tuple
+	 * removable.  Preserve the tuple while that transaction's commit
+	 * timestamp is still within the configured retention window.
+	 */
+	return !HeapTuplePastUndoRetention(dead_after, prstate->undo_cutoff_ts);
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 
 /*

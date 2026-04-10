@@ -611,6 +611,20 @@ _readAlias(void)
 	READ_DONE();
 }
 
+/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+static FlashbackNode *
+_readFlashbackNode(void)
+{
+	READ_LOCALS(FlashbackNode);
+
+	READ_NODE_FIELD(asofTimestamp);
+	READ_NODE_FIELD(versionsLower);
+	READ_NODE_FIELD(versionsUpper);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-SECURITY-FLASHBACK */
+
 static RangeVar *
 _readRangeVar(void)
 {
@@ -633,6 +647,9 @@ _readRangeVar(void)
 	READ_NODE_FIELD(colnamelist);
 	READ_NODE_FIELD(partitionnamelist);
 	/* End - ReqID:SRS-MYSQL-SQL-REPLACE */
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	READ_NODE_FIELD(flashbackClause);
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 
 	READ_DONE();
 }
@@ -1688,6 +1705,11 @@ _readRangeTblEntry(void)
 			READ_CHAR_FIELD(relkind);
 			READ_INT_FIELD(rellockmode);
 			READ_NODE_FIELD(tablesample);
+			/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+			READ_NODE_FIELD(asofTimestamp);
+			READ_NODE_FIELD(versionsLower);
+			READ_NODE_FIELD(versionsUpper);
+			/* End - ReqID:SRS-SECURITY-FLASHBACK */
 			break;
 		/* Begin - ReqID:SRS-SQL-DBLINK */
 		case RTE_DBLINK:
@@ -1771,9 +1793,6 @@ _readRangeTblEntry(void)
 	READ_BITMAPSET_FIELD(updatedCols);
 	READ_BITMAPSET_FIELD(extraUpdatedCols);
 	READ_NODE_FIELD(securityQuals);
-	/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
-	READ_NODE_FIELD(asofTimestamp);
-	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 
 	READ_DONE();
 }
@@ -3239,6 +3258,10 @@ parseNodeString(void)
 		return_value = _readSetOperationStmt();
 	else if (MATCH("ALIAS", 5))
 		return_value = _readAlias();
+	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
+	else if (MATCH("FLASHBACKNODE", 13))
+		return_value = _readFlashbackNode();
+	/* End - ReqID:SRS-SECURITY-FLASHBACK */
 	else if (MATCH("RANGEVAR", 8))
 		return_value = _readRangeVar();
 	else if (MATCH("INTOCLAUSE", 10))
