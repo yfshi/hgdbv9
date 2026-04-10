@@ -225,6 +225,14 @@ initialize_TLCP(PGconn *conn)
 			return -1;
 		}
 	}
+	/* Begin - BUG Z7353 */
+	else
+	{
+		appendPQExpBuffer(&conn->errorMessage,
+						  libpq_gettext("client TLCP get ca certificates suites fail:%s \n"), cacertfile);
+		return -1;
+	}
+	/* End - BUG Z7353 */
 
 	if (stat(certfile, &bufenc) == 0)
 	{
@@ -268,16 +276,53 @@ initialize_TLCP(PGconn *conn)
 static PostgresPollingStatusType
 open_client_TLCP(PGconn *conn)
 {
+	int err = 0;  // BUG Z7353
 	int ret = tls_do_handshake(conn->client_conn);
-	if (ret != 1) {
-		/* when ret == 1 handshake ok!
+	/* when ret == 1 handshake ok!
 			ret > 1 we want to read
 			else handshake error */
-		if (ret > 1)
-			return PGRES_POLLING_READING;
+	/* Begin - BUG Z7353 */
+	if (ret != 1) {
+		err = tlcp_get_error();
+		switch (err)
+		{
+			case TLCP_protocol_version:
+				appendPQExpBuffer(&conn->errorMessage,
+						libpq_gettext("TLCP connection: unknown protocol!\n"));
+				break;
+			case TLCP_unexpected_message:
+				appendPQExpBuffer(&conn->errorMessage,
+						libpq_gettext("TLCP connection: read unexpected message!\n"));
+				break;
+			case TLCP_insufficient_security:
+				appendPQExpBuffer(&conn->errorMessage,
+						libpq_gettext("TLCP connection: read insufficient security!\n"));
+				break;
+			case TLCP_internal_error:
+				appendPQExpBuffer(&conn->errorMessage,
+						libpq_gettext("TLCP connection: internal error!\n"));
+			case TLCP_bad_certificate:
+				appendPQExpBuffer(&conn->errorMessage,
+						libpq_gettext("TLCP connection: bad certificate!\n"));
+				break;
+			case TLCP_decrypt_error:
+				appendPQExpBuffer(&conn->errorMessage,
+						libpq_gettext("TLCP connection: decrypt error!\n"));
 
-		appendPQExpBuffer(&conn->errorMessage,
-				  libpq_gettext("shake hand error:\n"));
+			case TLCP_close_notify:
+				return PGRES_POLLING_READING;
+				break;
+			case TLCP_handshake_success:
+				return PGRES_POLLING_OK;
+				break;
+			default:
+				appendPQExpBuffer(&conn->errorMessage,
+						  libpq_gettext("TLCP connection fail: err=%d!\n"), err);
+				break;
+		}
+		pgtlcp_close(conn);
+		/* End - BUG Z7353 */
+
 		return PGRES_POLLING_FAILED;
 	}
 
