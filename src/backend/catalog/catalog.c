@@ -51,6 +51,11 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "catalog/pg_role_status.h" /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#include "catalog/pg_access_history.h"
+#include "catalog/pg_access_history_last.h"
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+
 #include "catalog/pg_mfaid.h"		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
 
 /*
@@ -293,9 +298,13 @@ IsSharedRelation(Oid relationId)
 		relationId == ResGroupCapabilityRelationId ||
 		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		relationId == ReplicationOriginRelationId ||
-                relationId == SubscriptionRelationId
-                || relationId == MfaIdRelationId        /* ReqID:SRS-SECURITY-IDENTITYAUTH */
-               )
+		relationId == SubscriptionRelationId ||
+		relationId == MfaIdRelationId ||		/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+		/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+		relationId == AccessHistoryId ||
+		relationId == AccessHistoryLastId
+		/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+	)
 
 		return true;
 	/* These are their indexes */
@@ -323,9 +332,13 @@ IsSharedRelation(Oid relationId)
 		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		relationId == RoleStatusOidIndexId || /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
 		relationId == SubscriptionObjectIndexId ||
-                relationId == SubscriptionNameIndexId
-                || relationId == MfaIdOidIndexId       /* ReqID:SRS-SECURITY-IDENTITYAUTH */
-                )
+		relationId == SubscriptionNameIndexId ||
+		relationId == MfaIdOidIndexId ||	/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+		/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+		relationId == AccessHistorySeqoidIndexId ||
+		relationId == AccessHistoryLastRolNameIndexId
+		/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+	)
 
 		return true;
 	/* These are their toast tables and toast indexes */

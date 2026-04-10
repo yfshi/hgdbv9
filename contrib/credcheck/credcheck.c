@@ -64,6 +64,13 @@
 #include "utils/formatting.h"
 
 #include "se_features_interface.h"
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#include "credcheck.h"
+#include "pg_contrib_audit.h"
+#include "executor/executor.h"
+#include "catalog/pg_access_history.h"
+#include "catalog/pg_access_history_last.h"
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 /* Default passord encryption */
 #define Password_encryption = PASSWORD_TYPE_SCRAM_SHA_256;
@@ -135,6 +142,12 @@ static shmem_request_hook_type prev_shmem_request_hook = NULL;
 static ClientAuthentication_hook_type prev_ClientAuthentication = NULL;
 /* Hold previous logging hook */
 static emit_log_hook_type prev_log_hook = NULL;
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+static user_login_history_info_hook prev_user_login_history_info = NULL;
+static ExecutorCheckPerms_hook_type prev_ExecutorCheckPermsLogin_hook = NULL;
+#endif
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 #ifdef _WIN32
 static char *strndup(const char *s, size_t n)
@@ -270,6 +283,9 @@ static int password_valid_max = 0;
 static int auth_delay_milliseconds = 0;
 static int password_force_set = 0;
 static int login_msg_display = 1;
+#ifdef ENABLE_DKY_BETA_FEATURE
+int login_msg_display_storage = 0;	/* ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#endif
 
 #if PG_VERSION_NUM >= 120000
 /*
@@ -989,6 +1005,16 @@ password_guc()
 							 NULL, &login_msg_display, true, guc_enum_entry,
 							 PGC_SIGHUP, 0,
 							 guc_enum_check, NULL, NULL);
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	DefineCustomEnumVariable("credcheck.login_msg_display_storage",
+							 gettext_noop("Allows the client to query the login status and storage"),
+							 NULL, &login_msg_display_storage, false, guc_enum_entry,
+							 PGC_SIGHUP, 0,
+							 guc_enum_check, NULL, NULL);
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 }
 
 #if PG_VERSION_NUM >= 120000
@@ -1596,6 +1622,15 @@ void _PG_init(void)
 
 	prev_ClientAuthentication = ClientAuthentication_hook;
 	ClientAuthentication_hook = credcheck_max_auth_failure;
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	prev_user_login_history_info = user_login_history_info;
+	user_login_history_info = login_info_print_and_stoage;
+	prev_ExecutorCheckPermsLogin_hook = ExecutorCheckPerms_hook;
+	ExecutorCheckPerms_hook = tb_pg_access_history_access_restrictions;
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 }
 
 void _PG_fini(void)
@@ -1609,12 +1644,25 @@ void _PG_fini(void)
 #endif
 	shmem_startup_hook = prev_shmem_startup_hook;
 	ClientAuthentication_hook = prev_ClientAuthentication;
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	user_login_history_info = prev_user_login_history_info;
+	ExecutorCheckPerms_hook = prev_ExecutorCheckPermsLogin_hook;
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 }
 
 static void
 cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO)
 {
 	Node *parsetree = pstmt->utilityStmt;
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	drop_user_delete_login_info(parsetree);
+#endif
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 	/* Execute the utility command before */
 	if (prev_ProcessUtility)
@@ -2463,9 +2511,28 @@ static void
 credcheck_max_auth_failure(Port *port, int status)
 {
 	TimestampTz lock_time = 0;
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	char	*user_name = "";
+	char	*application_name = "";
+	char	*remote_host="";
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+
 	/* Inject a short delay if authentication failed. */
 	if (is_enable && status != STATUS_OK)
 		pg_usleep(1000L * auth_delay_milliseconds);
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	if (port->user_name != NULL)
+		user_name = port->user_name;
+	if (port->application_name != NULL)
+		application_name = port->application_name;
+	if (port->remote_host != NULL)
+		remote_host = port->remote_host;
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 	/* check for max auth failure */
 	if (is_enable && fail_max > 0 && status != STATUS_EOF)
@@ -2514,6 +2581,13 @@ credcheck_max_auth_failure(Port *port, int status)
 
 		}
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	if (port->user_name != NULL)
+		clientauthentication_accesshistory(port, user_name , application_name, remote_host, GetCurrentTimestamp(), status, global_fail_num);
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 	if (prev_ClientAuthentication)
 		prev_ClientAuthentication(port, status);
@@ -2785,8 +2859,38 @@ login_message_display(const char *current_name)
 	const char *current_time = NULL;
 	char *current_time_no_ms = NULL;
 	TimestampTz vuntil_time = 0;
-
 	char vutime[128] = {0};
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	int64		fail_sum = 0;
+	int64		allfail_sum = 0;
+	int64		allloginfailed = 0;
+	char   *success_login_time = "";
+	char   *success_login_app = "";
+	char   *success_login_method = "";
+	char   *success_login_ip = "";
+	char   *fail_login_time = "";
+	char   *fail_login_app = "";
+	char   *fail_login_method = "";
+	char   *fail_login_ip = "";
+	Datum	datum_fail_sum;
+	Datum	datum_success_login_time;
+	Datum	datum_success_login_app;
+	Datum	datum_success_login_method;
+	Datum	datum_success_login_ip;
+	Datum	datum_fail_login_time;
+	Datum	datum_fail_login_app;
+	Datum	datum_fail_login_method;
+	Datum	datum_fail_login_ip;
+	HeapTuple	tuple;
+	acessResEntry  *ahEntry = NULL;
+	char *login_app = "";
+	char *login_ip = "";
+	char *login_method = "";
+	bool	lastsuccflg = false;
+	bool	lastfailedflg = false;
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 	if (!is_enable)
 		return;
@@ -2821,9 +2925,232 @@ login_message_display(const char *current_name)
 	current_time = timestamptz_to_str(GetCurrentTimestamp());
 	current_time_no_ms = remove_microseconds(current_time);
 
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	if (login_msg_display_storage)
+	{
+		NameData	userName;
+
+		/* Retrieve the current successful login information
+		 * and the last failed login information from the user's
+		 * login log file.
+		 */
+		ahEntry = get_login_info_from_login_file(current_name);
+		if (ahEntry != NULL)
+		{
+			current_time = pstrdup(ahEntry->login_time) ;
+			login_app = pstrdup(ahEntry->login_app);
+			login_method = pstrdup(ahEntry->login_method);
+			login_ip = pstrdup(ahEntry->login_ip);
+			if (global_fail_num > 0)
+				fail_sum = global_fail_num;
+			else
+				fail_sum = 0;
+
+			allloginfailed = ahEntry->allloginfailed;
+
+			if (strlen(ahEntry->loginfailed_app) > 0)
+				fail_login_app = pstrdup(ahEntry->loginfailed_app);
+			if (strlen(ahEntry->loginfailed_time) > 0)
+				fail_login_time = pstrdup(ahEntry->loginfailed_time);
+			if (strlen(ahEntry->loginfailed_ip) > 0)
+				fail_login_ip = pstrdup(ahEntry->loginfailed_ip);
+			if (strlen(ahEntry->loginfailed_method) > 0)
+				fail_login_method = pstrdup(ahEntry->loginfailed_method);
+
+			pfree(ahEntry);
+			ahEntry = NULL;
+		}
+
+		/* Query the data for the last successful
+		 * login from table pg_access_history_last.
+		 */
+		namestrcpy(&userName, current_name);
+		tuple = SearchSysCache1(ACCESSHISTORYLASTROLENAME, NameGetDatum(&userName));
+		if (HeapTupleIsValid(tuple))
+		{
+			/* failed number */
+			isnull = false;
+			datum_fail_sum = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+											 Anum_pg_access_history_last_fail_sum, &isnull);
+
+			if (!isnull)
+			{
+				allfail_sum = DatumGetInt64(datum_fail_sum);
+			}
+			else
+			{
+				allfail_sum = 0;
+			}
+
+			/* Time of Last successful login. */
+			datum_success_login_time = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+														Anum_pg_access_history_last_last_success_login_time, &isnull);
+			if (!isnull)
+			{
+				success_login_time = TextDatumGetCString(datum_success_login_time);
+				lastsuccflg = true;
+			}
+
+			/* Appliction of Last successful login. */
+			datum_success_login_app = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+													  Anum_pg_access_history_last_last_success_login_app, &isnull);
+			if (!isnull)
+			{
+				success_login_app = TextDatumGetCString(datum_success_login_app);
+			}
+
+			/* Method of Last successful login. */
+			datum_success_login_method = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+													  Anum_pg_access_history_last_last_success_login_method, &isnull);
+			if (!isnull)
+			{
+				success_login_method = TextDatumGetCString(datum_success_login_method);
+			}
+
+			/* Ip of Last successful login. */
+			datum_success_login_ip = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+													 Anum_pg_access_history_last_last_success_login_ip, &isnull);
+			if (!isnull)
+			{
+				success_login_ip = TextDatumGetCString(datum_success_login_ip);
+			}
+
+			/* If not failure information is found in the file,
+			 * retrieve the failure information from table
+			 * pg_access_history_last_last. */
+			if (strlen(fail_login_time) == 0)
+			{
+				datum_fail_login_time = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+														Anum_pg_access_history_last_last_fail_login_time, &isnull);
+				if (!isnull)
+				{
+					fail_login_time = TextDatumGetCString(datum_fail_login_time);
+					lastfailedflg = true;
+				}
+			}
+			else if (strlen(fail_login_time) > 0)
+			{
+				datum_fail_login_time = DirectFunctionCall3(timestamptz_in,
+												   CStringGetDatum(fail_login_time),
+												   ObjectIdGetDatum(InvalidOid),
+												   Int32GetDatum(-1));
+				lastfailedflg = true;
+			}
+
+			/* Find the application with the last failed login. */
+			if (strlen(fail_login_app) == 0)
+			{
+				datum_fail_login_app = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+													   Anum_pg_access_history_last_last_fail_login_app, &isnull);
+				if (!isnull)
+				{
+					fail_login_app = TextDatumGetCString(datum_fail_login_app);
+				}
+			}
+
+			/* Find the method with the last failed login. */
+			if (strlen(fail_login_method) == 0)
+			{
+				datum_fail_login_method = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+													   Anum_pg_access_history_last_last_fail_login_method, &isnull);
+				if (!isnull)
+				{
+					fail_login_method = TextDatumGetCString(datum_fail_login_method);
+				}
+			}
+
+			/* Find the ip with the last failed login. */
+			if (strlen(fail_login_ip) == 0)
+			{
+				datum_fail_login_ip = SysCacheGetAttr(ACCESSHISTORYLASTROLENAME, tuple,
+													  Anum_pg_access_history_last_last_fail_login_ip, &isnull);
+				if (!isnull)
+				{
+					fail_login_ip = TextDatumGetCString(datum_fail_login_ip);
+				}
+			}
+			ReleaseSysCache(tuple);
+		}
+
+		/* Determine whether the previous login
+		 * was successful or failed.
+		 */
+		if (lastsuccflg && lastfailedflg)
+		{
+			Datum succdatum;
+			Datum faileddatum;
+			int result;
+
+			succdatum = DirectFunctionCall3(timestamptz_in,
+											CStringGetDatum(success_login_time),
+											ObjectIdGetDatum(InvalidOid),
+											Int32GetDatum(-1));
+			faileddatum = DirectFunctionCall3(timestamptz_in,
+											CStringGetDatum(fail_login_time),
+											ObjectIdGetDatum(InvalidOid),
+											Int32GetDatum(-1));
+			result = DatumGetInt32(DirectFunctionCall2(timestamp_cmp,
+														   succdatum,
+														   faileddatum));
+
+			if (result >= 0)
+				status = "SUCCESS";
+			else
+				status = "FAILED";
+		}
+		else if (lastsuccflg)
+		{
+			status = "SUCCESS";
+		}
+		else if (lastfailedflg)
+		{
+			status = "FAILED";
+		}
+		else if (strlen(fail_login_time) > 0)
+		{
+			status = "FAILED";
+		}
+
+		allfail_sum = allfail_sum + allloginfailed;
+	}
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#endif
+
 	if (login_msg_display)
 	{
-		ereport(INFO,
+		/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+		if (login_msg_display_storage)
+		{
+			ereport(NOTICE,
+					(errmsg("\n-------------------------------------------\n" \
+							"Login User: %s \n" \
+							"Login Time: %s \n" \
+							"Login App: %s \n" \
+							"Login Method: %s \n" \
+							"Login Address: %s \n" \
+							"Last Login Status: %s \n" \
+							"Login Failures: %ld \n" \
+							"Last Login Success Time: %s \n" \
+							"Last Login Success App: %s \n" \
+							"Last Login Success Method: %s \n" \
+							"Last Login Success Address: %s \n" \
+							"Last Login Failure Time: %s \n" \
+							"Last Login Failure App: %s \n" \
+							"Last Login Failure Method: %s \n" \
+							"Last Login Failure Address: %s \n" \
+							"Fail Login Sum Since Last Login Success: %ld \n" \
+							"Valid Until: %s " \
+							"\n-------------------------------------------\n" \
+							,current_name, current_time, login_app,login_method, login_ip, status, allfail_sum,
+							success_login_time, success_login_app, success_login_method, success_login_ip,
+							fail_login_time, fail_login_app, fail_login_method, fail_login_ip, fail_sum, vutime)));
+		}
+		else
+		{
+#endif
+			ereport(INFO,
 				(errmsg("\n-------------------------------------------\n"
 						"%-21s: %s\n" // Login User
 						"%-21s: %s\n" // Login Address
@@ -2836,6 +3163,10 @@ login_message_display(const char *current_name)
 						"Last Login Status", status,
 						"Current Time", current_time_no_ms,
 						"User Valid Until", vutime)));
+#ifdef ENABLE_DKY_BETA_FEATURE
+		}
+#endif
+		/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 	}
 	global_fail_num = 0;
 }
@@ -3010,3 +3341,56 @@ Datum user_expiration_info(PG_FUNCTION_ARGS)
 	pg_user_validity_internal(fcinfo);
 	return (Datum)0;
 }
+
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY
+ * login_info_print_and_stoage
+ * print login information and storage history info to system table.
+ */
+ #ifdef ENABLE_DKY_BETA_FEATURE
+void login_info_print_and_stoage(void)
+{
+	char	*username;
+
+	StartTransactionCommand();
+
+	username = GetUserNameFromId(GetSessionUserId(), true);
+	login_message_display(username);
+	updateAccessHistory(username);
+
+	CommitTransactionCommand();
+}
+
+/* tb_pg_access_history_access_restrictions
+ *
+ * only user syssso can access table pg_access_history_access.
+ */
+bool
+tb_pg_access_history_access_restrictions(List *tbnames, bool flg)
+{
+	ListCell	*cell;
+	bool		errflg = true;
+
+	if (prev_ExecutorCheckPermsLogin_hook &&
+		!(*prev_ExecutorCheckPermsLogin_hook) (tbnames, flg))
+		errflg = false;
+
+	foreach(cell, tbnames)
+	{
+		RangeTblEntry *rte = lfirst(cell);
+		if (rte->rtekind == RTE_RELATION &&
+			(rte->relid == AccessHistoryId ||rte->relid == AccessHistoryLastId))
+		{
+			AclMode		requiredPerms;
+
+			requiredPerms = rte->requiredPerms;
+			if (!(IS_SYSSSO(GetUserId()) && (requiredPerms & ACL_SELECT) != 0))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("permission denied for table %s", "pg_access_history")));
+		}
+	}
+
+	return errflg;
+}
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#endif

@@ -392,7 +392,11 @@ main(int argc, char *argv[])
 	getDbCompatibleMode(pset.db);
 	/* END - SQL PARSER */
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifndef ENABLE_DKY_BETA_FEATURE
 	getLoginMessage(pset.db);
+#endif
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 	getExpirationAlarm(pset.db, PQuser(pset.db));
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	psql_setup_cancel_handler();

@@ -61,3 +61,5 @@ ResGroupLock						51
 SessionStateLock					52
 # ReqID:SRS-SECURITY-TDE 53
 KmgrFileLock					53
+# ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY
+PgAccessHistoryLock				54

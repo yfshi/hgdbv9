@@ -97,6 +97,10 @@
 #include "catalog/pg_resgroup.h"
 #include "catalog/pg_resgroupcapability.h"
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#include "catalog/pg_access_history.h"
+#include "catalog/pg_access_history_last.h"
+/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 #include "catalog/pg_role_status.h" /* ReqID:SRS-SECURITY-EAL4-ROLSTATUS */
 
@@ -159,6 +163,30 @@ struct cachedesc
 };
 
 static const struct cachedesc cacheinfo[] = {
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+	{AccessHistoryLastId, /* ACCESSHISTORYLASTROLENAME */
+		AccessHistoryLastRolNameIndexId,
+		1,
+		{
+			Anum_pg_access_history_last_rolename,
+			0,
+			0,
+			0
+		},
+		2
+	},
+	{AccessHistoryId, /* ACCESSHISTORYSEQOID */
+		AccessHistorySeqoidIndexId,
+		1,
+		{
+			Anum_pg_access_history_seqoid,
+			0,
+			0,
+			0
+		},
+		2
+	},
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 	{AggregateRelationId,		/* AGGFNOID */
 		AggregateFnoidIndexId,
 		1,

@@ -94,6 +94,8 @@ end$$;
 SELECT relname, attname, atttypid::regtype
 FROM pg_class c JOIN pg_attribute a ON c.oid = attrelid
 WHERE c.oid < 16384 AND
+	  c.oid != 6666 AND
+	  c.oid != 6670 AND
       reltoastrelid = 0 AND
       relkind = 'r' AND
       attstorage != 'p'
