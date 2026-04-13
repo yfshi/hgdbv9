@@ -61,12 +61,16 @@ ok( !-f "$primary_data/$segment_path_1_done",
 	".done file does not exist for WAL segment $segment_name_1 waiting to be archived"
 );
 
+# BUG#z7375
+# we already see the $segment_path_1_ready, but archiver may process multiple WAL files
+# and stop after NUM_ARCHIVE_RETRIES failures on the first file, so we cannot rely on
+# last_failed_wal being equal to $segment_name_1.
 is( $primary->safe_psql(
 		'postgres', q{
-		SELECT archived_count, last_failed_wal
+		SELECT archived_count
 		FROM pg_stat_archiver
 	}),
-	"0|$segment_name_1",
+	"0",
 	"pg_stat_archiver failed to archive $segment_name_1");
 
 # Crash the cluster for the next test in charge of checking that non-archived
@@ -96,9 +100,11 @@ $primary->safe_psql(
 
 # BUG#z7375
 # As development progressed, the number of WAL files generated after initdb
-# in Oracle mode increased, it may be unpredictable.
+# in Oracle mode increased, it may be unpredictable, so using archived_count
+# within poll_query_until is unsafe.
 $primary->poll_query_until('postgres',
-	q{SELECT archived_count >= 1 FROM pg_stat_archiver})
+	q{SELECT last_archived_wal FROM pg_stat_archiver},
+	$segment_name_1)
   or die "Timed out while waiting for archiving to finish";
 
 ok(!-f "$primary_data/$segment_path_1_ready",
