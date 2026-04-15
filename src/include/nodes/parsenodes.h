@@ -2542,6 +2542,13 @@ typedef struct AlterTableCmd	/* one subcommand of an ALTER TABLE */
 	List	*partitions;
 	List	*store_in;
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+	/*
+	 * OA-REQ-2127:
+	 * The index name of ALTER TABLE CLUSTER ON must using name field
+	 * since TimescaleDB depend on it.
+	 */
+	char	*indexnamespace;
 } AlterTableCmd;
 
 

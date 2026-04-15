@@ -323,7 +323,7 @@ create_toast_table(Relation rel, Oid toastOid, Oid toastIndexOid,
 	coloptions[1] = 0;
 
 	/* The toast objects has it own PG_TOAST_NAMESPACE, dont change it */
-	index_create(toast_rel, toast_idxname, InvalidOid, /* OA-REQ-2127 */ toastIndexOid, InvalidOid,
+	index_create(toast_rel, toast_idxname, toastIndexOid, InvalidOid,
 				 InvalidOid, InvalidOid,
 				 indexInfo,
 				 list_make2("chunk_id", "chunk_seq"),

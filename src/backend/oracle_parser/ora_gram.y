@@ -3437,11 +3437,14 @@ alter_table_cmd:
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> CLUSTER ON <indexname> */
-			| CLUSTER ON any_name /* OA-REQ-2127 */
+			| CLUSTER ON qualified_name /* OA-REQ-2127 */
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					n->subtype = AT_ClusterOn;
-					n->def = (Node *) $3; /* OA-REQ-2127 */
+					/* Begin - OA-REQ-2127 */
+					n->indexnamespace = $3->schemaname;
+					n->name = $3->relname;
+					/* End - OA-REQ-2127 */
 					$$ = (Node *)n;
 				}
 			/* ALTER TABLE <name> SET WITHOUT CLUSTER */

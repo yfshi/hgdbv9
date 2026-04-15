@@ -1246,7 +1246,7 @@ DefineIndex(Oid relationId,
 		constr_flags |= INDEX_CONSTR_CREATE_INIT_DEFERRED;
 
 	indexRelationId =
-		index_create(rel, indexRelationName, namespaceId, /* OA-REQ-2127 */ indexRelationId, parentIndexId,
+		ora_index_create(rel, indexRelationName, namespaceId, indexRelationId, parentIndexId,
 					 parentConstraintId,
 					 stmt->oldNode, indexInfo, indexColNames,
 					 accessMethodId, tablespaceId,
@@ -1254,7 +1254,7 @@ DefineIndex(Oid relationId,
 					 coloptions, reloptions,
 					 flags, constr_flags,
 					 allowSystemTableMods, !check_rights,
-					 &createdConstraintId);
+					 &createdConstraintId) ;  /* OA-REQ-2127 */
 
 	ObjectAddressSet(address, RelationRelationId, indexRelationId);
 
