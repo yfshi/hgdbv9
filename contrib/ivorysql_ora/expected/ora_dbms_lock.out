@@ -174,7 +174,7 @@ BEGIN
     END IF;
 END;
 /
-Request lock "dbms_lock_test_lock_2" failed, return code: 5
+Request lock "dbms_lock_test_lock_2" failed, return code: 3
 -- test release_on_commit parameter
 DECLARE
     v_lockhandle VARCHAR2(128);
@@ -290,7 +290,7 @@ BEGIN
 	v_result := DBMS_LOCK.RELEASE(v_lockhandle);
 END;
 /
-Release lock "dbms_lock_test_lock_3" failed, return code: 3
+Release lock "dbms_lock_test_lock_3" failed, return code: 5
 -- release lock failed due to NOT OWNER, return code: 4
 DECLARE
     v_lockhandle VARCHAR2(128);
@@ -333,7 +333,7 @@ BEGIN
 END;
 /
 Request lock "dbms_lock_test_lock_2" success
-Release lock "dbms_lock_test_lock_2" failed, return code: 5
+Release lock "dbms_lock_test_lock_2" failed, return code: 3
 -- test function: DBMS_LOCK.CONVERT
 SET SERVEROUTPUT ON;
 -- convert lock success
@@ -480,7 +480,7 @@ BEGIN
 END;
 /
 Request lock "dbms_lock_test_lock_4" by lockhandle success
-Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: 5
+Convert lock "dbms_lock_test_lock_4" from SS_MODE to X_MODE failed: 3
 DECLARE
     v_lockhandle VARCHAR2(128);
     v_result     NUMBER;

@@ -41,10 +41,11 @@
 #define DBMSLOCK_RET_INVALID_ARGS   3
 #define DBMSLOCK_RET_ALREADY_OWNER  4
 #define DBMSLOCK_RET_NOT_OWNER      4
-#define DBMSLOCK_RET_INVALID_HANDLE 5
+#define DBMSLOCK_RET_NO_SUCH_LOCK   5		// BUG #z7621
 #define MAXWAIT                     32767
 #define DBMS_LOCK_REL_NAME          "dbms_lock_allocated"
 #define DBMS_LOCK_IDX_NAME          "dbms_lock_allocated_pkey"
+#define LENGTH_OF_LOCKHANDLE        16		// BUG #z7621
 
 /* ************************************************************************
  * A hash table used by each backend, with each backend maintaining
@@ -109,7 +110,7 @@ Datum dbms_lock_request_by_id(PG_FUNCTION_ARGS)
 	waitTime = timeOut > MAXWAIT ? MAXWAIT : timeOut;
 
 	// 1. Validate the parameters
-	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0)
+	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0 || timeOut > MAXWAIT || lockId < 0)		// BUG #z7619
 	{
 		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_INVALID_ARGS));
 	}
@@ -117,7 +118,7 @@ Datum dbms_lock_request_by_id(PG_FUNCTION_ARGS)
 	// 2. Detected whether lock object is exist
 	if (!is_lock_exists(lockId))
 	{
-		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_INVALID_HANDLE));
+		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_NO_SUCH_LOCK));		// BUG #z7621
 	}
 
 	// 3. Verify whether the lock is already held by us
@@ -179,14 +180,9 @@ Datum dbms_lock_request_by_lockhandle(PG_FUNCTION_ARGS)
 	waitTime = timeOut > MAXWAIT ? MAXWAIT : timeOut;
 
 	// 1. Validate the parameters
-	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0)
+	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0 || timeOut > MAXWAIT || len != LENGTH_OF_LOCKHANDLE)		// BUG #z7619 #z7621
 	{
 		ret = DBMSLOCK_RET_INVALID_ARGS;
-		goto exit;
-	}
-	if ((len % 2) != 0)
-	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
 		goto exit;
 	}
 	/*
@@ -197,7 +193,7 @@ Datum dbms_lock_request_by_lockhandle(PG_FUNCTION_ARGS)
 	{
 		if ((name[i] != name[i + len / 2]))
 		{
-			ret = DBMSLOCK_RET_INVALID_HANDLE;
+			ret = DBMSLOCK_RET_INVALID_ARGS;
 			goto exit;
 		}
 		lockName[i] = name[i];
@@ -206,14 +202,14 @@ Datum dbms_lock_request_by_lockhandle(PG_FUNCTION_ARGS)
 	lockId  = (int)strtol(lockName, &endPtr, 16);
 	if (endPtr == lockName || *endPtr != '\0')
 	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
+		ret = DBMSLOCK_RET_INVALID_ARGS;
 		goto exit;
 	}
 
 	// 2. Detected whether lock object is exist
 	if (!is_lock_exists(lockId))
 	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
+		ret = DBMSLOCK_RET_NO_SUCH_LOCK;
 		goto exit;
 	}
 
@@ -279,14 +275,14 @@ Datum dbms_lock_release_by_id(PG_FUNCTION_ARGS)
 	session_lock_entry_t *entry;
 	bool held = false;
 	// 1. Validate the parameters
-	if (lockId <= FirstNormalObjectId)
+	if (lockId <= 0)
 	{
 		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_INVALID_ARGS));
 	}
 	// 2. Detected whether lock object is exist
 	if (!is_lock_exists(lockId))
 	{
-		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_INVALID_HANDLE));
+		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_NO_SUCH_LOCK));		// BUG #z7619 #z7621
 	}
 
 	// 3. trying to release lock
@@ -336,11 +332,16 @@ Datum dbms_lock_release_by_lockhandle(PG_FUNCTION_ARGS)
 	bool held = false;
 
 	// 1. Validate the parameters
+	if (len != LENGTH_OF_LOCKHANDLE)		// BUG #z7619 #z7621
+	{
+		ret = DBMSLOCK_RET_INVALID_ARGS;
+		goto exit;
+	}
 	for (int i = 0; i < len / 2; i ++)
 	{
 		if ((name[i] != name[i + len / 2]))
 		{
-			ret = DBMSLOCK_RET_INVALID_HANDLE;
+			ret = DBMSLOCK_RET_INVALID_ARGS;
 			goto exit;
 		}
 		lockName[i] = name[i];
@@ -349,14 +350,14 @@ Datum dbms_lock_release_by_lockhandle(PG_FUNCTION_ARGS)
 	lockId  = (int)strtol(lockName, &endPtr, 16);
 	if (endPtr == lockName || *endPtr != '\0')
 	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
+		ret = DBMSLOCK_RET_INVALID_ARGS;
 		goto exit;
 	}
 
 	// 2. Detected whether lock object is exist
 	if (!is_lock_exists(lockId))
 	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
+		ret = DBMSLOCK_RET_NO_SUCH_LOCK;
 		goto exit;
 	}
 
@@ -413,7 +414,7 @@ Datum dbms_lock_convert_by_id(PG_FUNCTION_ARGS)
 	bool held = false;
 
 	// 1. Validate the parameters
-	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0)
+	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0 || timeOut > MAXWAIT || lockId < 0)		// BUG #z7619 #z7621
 	{
 		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_INVALID_ARGS));
 	}
@@ -421,7 +422,7 @@ Datum dbms_lock_convert_by_id(PG_FUNCTION_ARGS)
 	// 2. Detected whether lock object is exist
 	if (!is_lock_exists(lockId))
 	{
-		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_INVALID_HANDLE));
+		PG_RETURN_DATUM(Int32GetDatum(DBMSLOCK_RET_NO_SUCH_LOCK));
 	}
 
 	waitTime = timeOut > MAXWAIT ? MAXWAIT : timeOut;
@@ -485,7 +486,7 @@ Datum dbms_lock_convert_by_lockhandle(PG_FUNCTION_ARGS)
 	bool held = false;
 
 	// 1. Validate the parameters
-	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0)
+	if (lockMode < OraNullLock || lockMode > OraExecusiveLock || timeOut < 0 || timeOut > MAXWAIT || len != LENGTH_OF_LOCKHANDLE)		// BUG #z7619 #z7621
 	{
 		ret = DBMSLOCK_RET_INVALID_ARGS;
 		goto exit;
@@ -495,7 +496,7 @@ Datum dbms_lock_convert_by_lockhandle(PG_FUNCTION_ARGS)
 	{
 		if ((name[i] != name[i + len / 2]))
 		{
-			ret = DBMSLOCK_RET_INVALID_HANDLE;
+			ret = DBMSLOCK_RET_INVALID_ARGS;
 			goto exit;
 		}
 		lockName[i] = name[i];
@@ -504,14 +505,14 @@ Datum dbms_lock_convert_by_lockhandle(PG_FUNCTION_ARGS)
 	lockId  = (int)strtol(lockName, &endPtr, 16);
 	if (endPtr == lockName || *endPtr != '\0')
 	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
+		ret = DBMSLOCK_RET_INVALID_ARGS;
 		goto exit;
 	}
 
 	// 2. Detected whether lock object is exist
 	if (!is_lock_exists(lockId))
 	{
-		ret = DBMSLOCK_RET_INVALID_HANDLE;
+		ret = DBMSLOCK_RET_NO_SUCH_LOCK;
 		goto exit;
 	}
 
