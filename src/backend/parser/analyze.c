@@ -2425,7 +2425,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	Query	   *qry = makeNode(Query);
 	Node	   *qual;
 	ListCell   *l;
-	
+
 	qry->commandType = CMD_SELECT;
 
 	/* process the WITH clause independently of all else */
@@ -2538,6 +2538,14 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 		stmt->whereClause = (*audit_privi_mode_hook)(stmt->whereClause, true);
 	/* End - ReqID:SRS-SECURITY-AUDIT */
 
+	/* Begin: Req:SRS-MYSQL-SQL-Select */
+	if (MYS_MODE == compatible_mode)
+	{
+		pstate->p_targetlist = &qry->targetList;
+		pstate->p_group_clauses = stmt->groupClause;
+	}
+	/* End: Req:SRS-MYSQL-SQL-Select */
+
 	/* transform WHERE */
 	qual = transformWhereClause(pstate, stmt->whereClause,
 								EXPR_KIND_WHERE, "WHERE");
@@ -2555,12 +2563,11 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 		 */
 		if (!pstate->p_hasAggs && !stmt->groupClause && stmt->havingClause)
 		{
-			if (stmt->whereClause)
-				stmt->whereClause = (Node *) makeAndExpr(stmt->whereClause, stmt->havingClause, -1);
+			if (qual == NULL)
+				qual = qry->havingQual;
 			else
-				stmt->whereClause = stmt->havingClause;
-			qual = transformWhereClause(pstate, stmt->whereClause,
-											EXPR_KIND_WHERE, "WHERE");
+				qual = (Node *)makeAndExpr(qual, qry->havingQual, -1);
+
 			qry->havingQual = NULL;
 		}
 

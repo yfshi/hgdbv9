@@ -1567,6 +1567,9 @@ typedef struct TargetEntry
 								 * to which this TLE belongs. */
 	AttrNumber	relattno;
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin: Req:SRS-MYSQL-SQL-Select */
+	bool		resname_is_alias;		/*Is resname an alias*/
+	/* End: Req:SRS-MYSQL-SQL-Select */
 } TargetEntry;
 
 

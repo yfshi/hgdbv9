@@ -346,21 +346,37 @@ select sum(b) s from t1 group by a;
 (6 rows)
 
 select sum(b) s from t1 group by a having s <> 0;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <> 0;
-                                                  ^
+            s            
+-------------------------
+  3.5868530368077245e-13
+ -2.2737367544323206e-13
+  -9.094947017729282e-13
+   5.684341886080802e-14
+                     100
+   3.108624468950438e-14
+(6 rows)
+
 select sum(b) s from t1 group by a having s <> 0 order by s;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <> 0 order by s;
-                                                  ^
+            s            
+-------------------------
+  -9.094947017729282e-13
+ -2.2737367544323206e-13
+   3.108624468950438e-14
+   5.684341886080802e-14
+  3.5868530368077245e-13
+                     100
+(6 rows)
+
 select sum(b) s from t1 group by a having s <=> 0;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <=> 0;
-                                                  ^
+ s 
+---
+(0 rows)
+
 select sum(b) s from t1 group by a having s <=> 0 order by s;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <=> 0 order by s...
-                                                  ^
+ s 
+---
+(0 rows)
+
 alter table t1 add k (a, b);
 ERROR:  syntax error at or near "("
 LINE 1: alter table t1 add k (a, b);
@@ -386,21 +402,37 @@ select sum(b) s from t1 group by a;
 (6 rows)
 
 select sum(b) s from t1 group by a having s <> 0;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <> 0;
-                                                  ^
+            s            
+-------------------------
+  3.5868530368077245e-13
+ -2.2737367544323206e-13
+  -9.094947017729282e-13
+   5.684341886080802e-14
+                     100
+   3.108624468950438e-14
+(6 rows)
+
 select sum(b) s from t1 group by a having s <> 0 order by s;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <> 0 order by s;
-                                                  ^
+            s            
+-------------------------
+  -9.094947017729282e-13
+ -2.2737367544323206e-13
+   3.108624468950438e-14
+   5.684341886080802e-14
+  3.5868530368077245e-13
+                     100
+(6 rows)
+
 select sum(b) s from t1 group by a having s <=> 0;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <=> 0;
-                                                  ^
+ s 
+---
+(0 rows)
+
 select sum(b) s from t1 group by a having s <=> 0 order by s;
-ERROR:  column "s" does not exist
-LINE 1: select sum(b) s from t1 group by a having s <=> 0 order by s...
-                                                  ^
+ s 
+---
+(0 rows)
+
 drop table t1;
 --echo End of 4.1 tests
 --error 1427

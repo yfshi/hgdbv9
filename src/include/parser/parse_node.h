@@ -84,6 +84,7 @@ typedef enum ParseExprKind
 	EXPR_KIND_GROUP_BY_DISTINCT,	/* Req: SRS-SQL-NLSSORT, used to distinguish `DISTINCT xx ORDER BY` xx when do pseudo collation replace */
 	EXPR_KIND_ASOF,				/* ReqID:SRS-RECOVERY-FLASHBACK */
 	EXPR_KIND_VERSIONS_BETWEEN,	/* ReqID:SRS-RECOVERY-FLASHBACK */
+	EXPR_KIND_HAVING_FUNCTION,	/* Req: SRS-MYSQL-SQL-Select, The function located in the having clause */
 } ParseExprKind;
 
 
@@ -317,6 +318,8 @@ struct ParseState
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 	bool		do_from_call;	/* ReqID:SRS-SQL-CALL */
 	List	   **p_targetlist;	/* BUG#M0000217 */
+	List	   *p_group_clauses;	/* ReqID:SRS-MYSQL-SQL-Select */
+
 	/* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 	/* For (+) outer join */
 	bool	p_hasAnsiJoinType;
