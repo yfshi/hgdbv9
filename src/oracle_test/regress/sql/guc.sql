@@ -317,3 +317,37 @@ reset check_function_bodies;
 set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
+
+/* Begin - bug#7622 */
+show ivorysql.allow_out_parameter_const;
+show ivorysql.result_first;
+show ivorysql.out_parameter_column_position;
+show ivorysql.where_from;
+show ivorysql.alter_database_set_special;
+show ivorysql.check_strong_cursor_assign;
+show ivorysql.compile_plisql_use_owner;
+show ivorysql.enable_cursor_as_column_type;
+show ivorysql.max_active_gtt;
+show ivorysql.vacuum_gtt_defer_check_age;
+show ivorysql.enable_store_nullterminator_char;
+show ivorysql.check_autontrans_deadlocks;
+show ivorysql.max_interval_partition_failures;
+
+-- 0 tuples
+select * from pg_settings
+where name in (
+'ivorysql.allow_out_parameter_const',
+'ivorysql.result_first',
+'ivorysql.out_parameter_column_position',
+'ivorysql.where_from',
+'ivorysql.alter_database_set_special',
+'ivorysql.check_strong_cursor_assign',
+'ivorysql.compile_plisql_use_owner',
+'ivorysql.enable_cursor_as_column_type',
+'ivorysql.max_active_gtt',
+'ivorysql.vacuum_gtt_defer_check_age',
+'ivorysql.enable_store_nullterminator_char',
+'ivorysql.check_autontrans_deadlocks',
+'ivorysql.max_interval_partition_failures'
+);
+/* End - bug#7622 */

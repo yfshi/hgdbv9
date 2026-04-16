@@ -707,7 +707,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.check_strong_cursor_assign", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to check assignment between strong cursor types."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&check_strong_cursor_assign,
 		true,
@@ -717,7 +717,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_cursor_as_column_type", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to enable cursor as a column type."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&enable_cursor_as_column_type,
 		false,
@@ -805,7 +805,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.compile_plisql_use_owner", PGC_POSTMASTER, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether comping plsqil use its owner."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&compile_plisql_use_owner,
 		true,
@@ -877,7 +877,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.alter_database_set_special", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether to allow ALTER DATABASE SET to set identifier_case_switch."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&alter_database_set_special,
 		false,
@@ -913,7 +913,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.enable_store_nullterminator_char", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Whether store null terminator as a char like oracle."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&enable_store_nullterminator_char,
 		false,
@@ -1041,7 +1041,7 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		{"ivorysql.check_autontrans_deadlocks", PGC_USERSET, DEVELOPER_OPTIONS,
 			gettext_noop("Whether check session deadlocks in autonomous transaction."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&AutonxCheckingDeadlocks,
 		true,
@@ -1145,7 +1145,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		{"ivorysql.max_active_gtt", PGC_POSTMASTER, UNGROUPED,
 			gettext_noop("max active global temporary table."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&max_active_gtt,
 		DEFAULT_NUM_ACTIVE_GTT, MIN_NUM_ACTIVE_GTT, MAX_NUM_ACTIVE_GTT,
@@ -1158,7 +1158,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		{"ivorysql.vacuum_gtt_defer_check_age", PGC_USERSET, CLIENT_CONN_STATEMENT,
 			gettext_noop("The defer check age of GTT, used to check expired data after vacuum."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&vacuum_gtt_defer_check_age,
 		10000, 0, 1000000,
@@ -1219,7 +1219,7 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		{"ivorysql.max_interval_partition_failures", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
 			gettext_noop("Set the maxinum number of failures allowed during creation an interval partition."),
 			NULL,
-			GUC_NOT_IN_SAMPLE
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL /* bug#7622 */
 		},
 		&max_interval_partition_failures,
 		10, -1, INT32_MAX,
