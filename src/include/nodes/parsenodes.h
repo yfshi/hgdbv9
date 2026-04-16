@@ -3421,6 +3421,7 @@ typedef struct DropRoleStmt
 	NodeTag		type;
 	List	   *roles;			/* List of roles to remove */
 	bool		missing_ok;		/* skip error if a role is missing? */
+	bool		cascade;		/* DROP USER ... CASCADE, OA-REQ-2126 */
 } DropRoleStmt;
 
 /* ----------------------

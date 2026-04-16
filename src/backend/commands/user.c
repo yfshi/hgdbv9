@@ -1573,6 +1573,26 @@ DropRole(DropRoleStmt *stmt)
 		 */
 		LockSharedObject(AuthIdRelationId, roleid, 0, AccessExclusiveLock);
 
+		/* Begin -OA-REQ-2126 */
+		/*
+		 * DROP USER ... CASCADE:
+		 * drop objects owned by the target role before dropping the role.
+		 */
+		if (ORA_MODE == compatible_mode && stmt->cascade)
+		{
+			List *role_ids = list_make1_oid(roleid);
+
+			/* Check privileges */
+			if (!has_privs_of_role(GetUserId(), roleid))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("permission denied to drop objects")));
+
+			shdepDropOwned(role_ids, DROP_CASCADE);
+			CommandCounterIncrement();
+		}
+		/* End -OA-REQ-2126 */
+
 		/* Check for pg_shdepend entries depending on this role */
 		if (checkSharedDependencies(AuthIdRelationId, roleid,
 									&detail, &detail_log))
@@ -1895,7 +1915,20 @@ GrantRole(GrantRoleStmt *stmt)
 					(errcode(ERRCODE_INVALID_GRANT_OPERATION),
 					 errmsg("column names cannot be included in GRANT/REVOKE ROLE")));
 
-		roleid = get_role_oid(rolename, false);
+		/* Begin - OA-REQ-2126 */
+		/*
+		 * "GRANT RESOURCE TO user" is accepted as
+		 * syntax-only compatibility when the RESOURCE role does not exist.
+		 */
+		if (ORA_MODE == compatible_mode && pg_strcasecmp(rolename, "resource") == 0)
+		{
+			roleid = get_role_oid(rolename, true);
+			if (!OidIsValid(roleid))
+				continue;
+		}
+		else
+			roleid = get_role_oid(rolename, false);
+		/* End - OA-REQ-2126 */
 
 		/* Begin - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
 		/* grant revoke role to user need role enable */

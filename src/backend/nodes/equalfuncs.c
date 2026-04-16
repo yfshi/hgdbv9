@@ -2613,6 +2613,7 @@ _equalDropRoleStmt(const DropRoleStmt *a, const DropRoleStmt *b)
 {
 	COMPARE_NODE_FIELD(roles);
 	COMPARE_SCALAR_FIELD(missing_ok);
+	COMPARE_SCALAR_FIELD(cascade);		/* OA-REQ-2126 */
 
 	return true;
 }

@@ -5170,6 +5170,7 @@ _copyDropRoleStmt(const DropRoleStmt *from)
 
 	COPY_NODE_FIELD(roles);
 	COPY_SCALAR_FIELD(missing_ok);
+	COPY_SCALAR_FIELD(cascade);		/* OA-REQ-2126 */
 
 	return newnode;
 }

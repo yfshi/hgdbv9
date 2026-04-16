@@ -291,3 +291,8 @@ test: user_casesensitive
 #/* Begin - ReqID:SRS-SQL-UNION */
 test: ora_setoperation_null
 #/* End - ReqID:SRS-SQL-UNION */
+
+#/* Begin - OA-REQ-2126 */
+test: ora_current_schema
+test: ora_user_grant_compat
+#/* End - OA-REQ-2126 */

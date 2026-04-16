@@ -1639,6 +1639,28 @@ CreateUserStmt:
 					n->options = $5;
 					$$ = (Node *)n;
 				}
+			/* Begin - OA-REQ-2126 */
+			| CREATE USER RoleId IDENTIFIED BY RoleId
+				{
+					CreateRoleStmt *n = makeNode(CreateRoleStmt);
+					DefElem *password = makeDefElem("password",
+									   (Node *) makeString($6), @4);
+					n->stmt_type = ROLESTMT_USER;
+					n->role = $3;
+					n->options = list_make1(password);
+					$$ = (Node *)n;
+				}
+			| CREATE USER RoleId IDENTIFIED BY Sconst
+				{
+					CreateRoleStmt *n = makeNode(CreateRoleStmt);
+					DefElem *password = makeDefElem("password",
+									   (Node *) makeString($6), @4);
+					n->stmt_type = ROLESTMT_USER;
+					n->role = $3;
+					n->options = list_make1(password);
+					$$ = (Node *)n;
+				}
+			/* End - OA-REQ-2126 */
 		;
 
 
@@ -1722,6 +1744,7 @@ DropRoleStmt:
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
+					n->cascade = false;		/* OA-REQ-2126 */
 					n->roles = $3;
 					$$ = (Node *)n;
 				}
@@ -1729,6 +1752,7 @@ DropRoleStmt:
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = true;
+					n->cascade = false;		/* OA-REQ-2126 */
 					n->roles = $5;
 					$$ = (Node *)n;
 				}
@@ -1736,6 +1760,7 @@ DropRoleStmt:
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
+					n->cascade = false;		/* OA-REQ-2126 */
 					n->roles = $3;
 					$$ = (Node *)n;
 				}
@@ -1744,12 +1769,32 @@ DropRoleStmt:
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->roles = $5;
 					n->missing_ok = true;
+					n->cascade = false;		/* OA-REQ-2126 */
 					$$ = (Node *)n;
 				}
+			/* Begin - OA-REQ-2126 */
+			| DROP USER role_list CASCADE
+				{
+					DropRoleStmt *n = makeNode(DropRoleStmt);
+					n->missing_ok = false;
+					n->cascade = true;
+					n->roles = $3;
+					$$ = (Node *)n;
+				}
+			| DROP USER IF_P EXISTS role_list CASCADE
+				{
+					DropRoleStmt *n = makeNode(DropRoleStmt);
+					n->roles = $5;
+					n->missing_ok = true;
+					n->cascade = true;
+					$$ = (Node *)n;
+				}
+			/* End - OA-REQ-2126 */
 			| DROP GROUP_P role_list
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = false;
+					n->cascade = false;		/* OA-REQ-2126 */
 					n->roles = $3;
 					$$ = (Node *)n;
 				}
@@ -1757,6 +1802,7 @@ DropRoleStmt:
 				{
 					DropRoleStmt *n = makeNode(DropRoleStmt);
 					n->missing_ok = true;
+					n->cascade = false;		/* OA-REQ-2126 */
 					n->roles = $5;
 					$$ = (Node *)n;
 				}
@@ -2035,6 +2081,16 @@ set_rest_more:	/* Generic SET syntaxes: */
 					n->args = list_make1(makeStringConst($2, @2));
 					$$ = n;
 				}
+			/* Begin - OA-REQ-2126 */
+			| CURRENT_SCHEMA '=' ColId
+				{
+					VariableSetStmt *n = makeNode(VariableSetStmt);
+					n->kind = VAR_SET_VALUE;
+					n->name = "search_path";
+					n->args = list_make1(makeStringConst($3, @3));
+					$$ = n;
+				}
+			/* End - OA-REQ-2126 */
 			| NAMES opt_encoding
 				{
 					VariableSetStmt *n = makeNode(VariableSetStmt);
@@ -10476,7 +10532,19 @@ opt_grant_grant_option:
  *****************************************************************************/
 
 GrantRoleStmt:
-			GRANT privilege_list TO role_list opt_grant_admin_option opt_granted_by
+			/* Begin - OA-REQ-2126 */
+			GRANT UNLIMITED TABLESPACE TO role_list
+				{
+					GrantRoleStmt *n = makeNode(GrantRoleStmt);
+					n->is_grant = true;
+					n->granted_roles = NIL;
+					n->grantee_roles = $5;
+					n->admin_opt = false;
+					n->grantor = NULL;
+					$$ = (Node*)n;
+				}
+			/* End - OA-REQ-2126 */
+			| GRANT privilege_list TO role_list opt_grant_admin_option opt_granted_by
 				{
 					GrantRoleStmt *n = makeNode(GrantRoleStmt);
 					n->is_grant = true;
@@ -24928,4 +24996,3 @@ isAconstNode(Node *node)
 		return false;
 }
 /* End - OA#00001559 */
-

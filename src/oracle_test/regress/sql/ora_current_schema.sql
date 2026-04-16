@@ -1,0 +1,88 @@
+/* Begin - OA-REQ-2126 */
+--
+-- test ALTER SESSION SET CURRENT_SCHEMA
+--
+CREATE USER system WITH superuser;
+
+SET ivorysql.enable_ora_user_schema = on;
+
+CREATE USER sc_cs_a;
+CREATE USER sc_cs_b;
+
+SET SESSION AUTHORIZATION sc_cs_a;
+CREATE TABLE t_cs(id int);
+RESET SESSION AUTHORIZATION;
+
+GRANT USAGE ON SCHEMA sc_cs_a TO sc_cs_b;
+GRANT SELECT, INSERT ON sc_cs_a.t_cs TO sc_cs_b;
+
+SET SESSION AUTHORIZATION sc_cs_b;
+SELECT SESSION_USER, CURRENT_USER;
+
+ALTER SESSION SET CURRENT_SCHEMA = sc_cs_a;
+SELECT SESSION_USER, CURRENT_USER;
+SHOW search_path;
+
+INSERT INTO t_cs VALUES (1);
+SELECT count(*) FROM t_cs;
+
+-- quoted identifier schema name
+\c - system
+SET ivorysql.enable_ora_user_schema = on;
+
+CREATE USER "sc_cs_Mix";
+SET SESSION AUTHORIZATION "sc_cs_Mix";
+CREATE TABLE t_mix(id int);
+RESET SESSION AUTHORIZATION;
+GRANT USAGE ON SCHEMA "sc_cs_Mix" TO sc_cs_b;
+GRANT SELECT, INSERT ON "sc_cs_Mix".t_mix TO sc_cs_b;
+SET SESSION AUTHORIZATION sc_cs_b;
+ALTER SESSION SET CURRENT_SCHEMA = "sc_cs_Mix";
+SHOW search_path;
+INSERT INTO t_mix VALUES (10);
+SELECT count(*) FROM t_mix;
+
+-- switch back to original user schema and verify unqualified name lookup changes
+ALTER SESSION SET CURRENT_SCHEMA = sc_cs_b;
+SHOW search_path;
+SELECT count(*) FROM t_mix;
+
+-- non-existent schema
+ALTER SESSION SET CURRENT_SCHEMA = sc_cs_not_exist;
+SHOW search_path;
+SELECT count(*) FROM t_ghost;
+
+-- schema exists but no table privilege
+\c - system
+SET ivorysql.enable_ora_user_schema = on;
+
+CREATE USER sc_cs_np;
+SET SESSION AUTHORIZATION sc_cs_np;
+CREATE TABLE t_np(id int);
+INSERT INTO t_np VALUES (100);
+RESET SESSION AUTHORIZATION;
+GRANT USAGE ON SCHEMA sc_cs_np TO sc_cs_b;
+SET SESSION AUTHORIZATION sc_cs_b;
+ALTER SESSION SET CURRENT_SCHEMA = sc_cs_np;
+SHOW search_path;
+SELECT count(*) FROM t_np;
+
+RESET SESSION AUTHORIZATION;
+
+\c - system
+
+DROP USER sc_cs_np CASCADE;
+DROP USER "sc_cs_Mix" CASCADE;
+DROP USER sc_cs_a CASCADE;
+DROP USER sc_cs_b CASCADE;
+
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;
+/* End - OA-REQ-2126 */
