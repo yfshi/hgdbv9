@@ -426,7 +426,6 @@ report_active_table_SmgrStat(SMgrRelation reln, ActiveType at)
 {
 	DiskQuotaActiveTableFileEntry *entry = NULL;
 	bool found = false;
-	LWLock	   *partitionLock = NULL;
 
 	if (diskquota_enable != AUOTA_ON)
 		return ;
@@ -435,17 +434,13 @@ report_active_table_SmgrStat(SMgrRelation reln, ActiveType at)
 	if (reln->smgr_rnode.node.relNode < FirstNormalObjectId)
 		return;
 	{
+		LWLockAcquire(diskquota_locks.active_table_lock, LW_EXCLUSIVE);
 		entry = hash_search(active_tables_map, &reln->smgr_rnode.node, HASH_ENTER_NULL, &found);
 
 		if (!found)
 		{
 			init_entry(entry, &reln->smgr_rnode.node);
 		}
-
-		partitionLock = QuotaHashPartitionLock(entry->hashcode);
-
-		if (found)
-			LWLockAcquire(partitionLock, LW_EXCLUSIVE);
 
 		if (entry && !entry->ispushedback)
 		{
@@ -517,8 +512,7 @@ report_active_table_SmgrStat(SMgrRelation reln, ActiveType at)
 			ereport(WARNING, (errmsg("Share memory is not enough for active tables.")));
 		}
 
-		if (found)
-			LWLockRelease(partitionLock);
+		LWLockRelease(diskquota_locks.active_table_lock);
 	}
 
 	if ((entry && !entry->ispushedback) ||
@@ -593,18 +587,7 @@ void diskquota_send_sig_to_proc(void)
 
 			ResetLatch(&MyProc->procLatch);
 		}
-		else
-		{
-			kill(pid, SIGUSR2);
-			pg_usleep(1000000);
-		}
 	}
-	else if (pid != 0 && diskquotasql)
-	{
-		kill(pid, SIGUSR2);
-		pg_usleep(1000000);
-	}
-
 }
 
 static DiskQuotaSessionPids *diskquota_alloc_node(void)

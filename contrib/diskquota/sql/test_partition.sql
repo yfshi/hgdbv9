@@ -29,3 +29,4 @@ insert into measurement select 1, '2006-03-03' ,1,1;
 drop table measurement;
 reset search_path;
 drop schema s8;
+drop extension diskquota;
