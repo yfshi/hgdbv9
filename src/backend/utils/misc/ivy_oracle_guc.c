@@ -136,6 +136,12 @@ bool sort_desc_nulls_last = false;		/* BUG#M0000197 */
 bool cast_int_like_oracle = false;		/* BUG#M0000194 */
 bool ora_views_index_scan = false;		/* BUG#M0000302 */
 
+/*
+ * control whether to convert unkonw to text type
+ * when performing union operations for null
+ */
+bool enable_setoperation_null = true;  /* ReqID:SRS-SQL-UNION */
+
 /* Begin - BUG#M0000183 */
 bool check_package_invalid_by_tuple = true;
 /* End - BUG#M0000183 */
@@ -1066,6 +1072,18 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 		NULL, NULL, NULL
 	},
 	/* End - SRS-SQL-MULTITABLEINSERT */
+	/* Begin - ReqID:SRS-SQL-UNION */
+	{
+        	{"ivorysql.enable_setoperation_null", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("whether convert null to unkonwn for oracle modele."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+        	},
+        	&enable_setoperation_null,
+        	true,
+        	NULL, NULL, NULL
+   	 },
+	/* End - ReqID:SRS-SQL-UNION */
 	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
 	/*
 	 * Theoretically, this is not allowed. it's a compromise made for pg_dump,

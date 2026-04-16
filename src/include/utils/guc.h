@@ -387,6 +387,14 @@ extern PGDLLIMPORT bool sort_desc_nulls_last;	/* BUG#M0000197 */
 extern PGDLLIMPORT bool cast_int_like_oracle;	/* BUG#M0000194 */
 extern PGDLLIMPORT bool ora_views_index_scan;	/* BUG#M0000302 */
 
+/* Begin - ReqID:SRS-SQL-UNION */
+/*
+ *control whether to convert unkonw to text type
+ * when performing union operations for null
+ */
+extern PGDLLIMPORT bool enable_setoperation_null;
+/* End - ReqID:SRS-SQL-UNION */
+
 /* Begin - BUG#M0000183 */
 extern PGDLLIMPORT bool check_package_invalid_by_tuple;
 /* End - BUG#M0000183 */

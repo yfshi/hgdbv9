@@ -2511,7 +2511,7 @@ coerce_type(ParseState *pstate, Node *node,
 					* We assume here that UNKNOWN's internal representation is the same
 					* as CSTRING.
 					*/
-					
+
 					if (!con->constisnull)
 						newcon->constvalue = stringTypeDatum(baseType,
 														DatumGetCString(con->constvalue),
@@ -2536,7 +2536,7 @@ coerce_type(ParseState *pstate, Node *node,
 				 * We assume here that UNKNOWN's internal representation is the same
 				 * as CSTRING.
 				 */
-				
+
 				if (!con->constisnull)
 					newcon->constvalue = stringTypeDatum(baseType,
 													DatumGetCString(con->constvalue),
@@ -2790,6 +2790,7 @@ coerce_type(ParseState *pstate, Node *node,
 		ref->rettype = targetTypeId;
 		return node;
 	}
+
 	/* End - ReqID:SRS-MYSQL-SET; End - BUG#Z6816 */
 
 	if (IsA(node, Param) &&
@@ -2900,6 +2901,18 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 		return result;
 	}
+	/* Begin - ReqID:SRS-SQL-UNION */
+	/*
+	 * select null union select null union select 1
+	 * select c1 from (select null as c1)
+	 */
+	else if (compatible_mode == ORA_MODE && enable_setoperation_null &&
+		 inputTypeId == UNKNOWNOID && IsA(node, Var))
+	{
+		return node;
+	}
+	/* End - ReqID:SRS-SQL-UNION */
+
 	if ((inputTypeId == RECORDOID ||
 		inputTypeId == ORARECORDOID) &&
 		ISCOMPLEX(targetTypeId))
@@ -3879,11 +3892,17 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 	TYPCATEGORY pcategory;
 	bool		pispreferred;
 	ListCell   *lc;
+	bool 		usetextoid = true; /* ReqID:SRS-SQL-UNION */
 	/* Begin - Bug#M0000331 */
 	bool		issetop = false;
-	if (context && (strcmp(context, "UNION") == 0 || strcmp(context, "INTERSECT") == 0 || strcmp(context, "EXCEPT") == 0))
+	if (context && (strcmp(context, "UNION") == 0 || strcmp(context, "INTERSECT") == 0
+					|| strcmp(context, "EXCEPT") == 0 || strcmp(context, "MINUS") == 0))
 		issetop = true;
 	/* End - Bug#M0000331 */
+	/* Begin - ReqID:SRS-SQL-UNION */
+	if (enable_setoperation_null && issetop)
+		usetextoid = false;
+	/* End - ReqID:SRS-SQL-UNION */
 
 	Assert(exprs != NIL);
 	pexpr = (Node *) linitial(exprs);
@@ -3987,7 +4006,7 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 			* it results in wrong results,make it same as oracle and dm.
 			*/
 			else if ( (issetop && ORA_MODE == compatible_mode && ncategory == TYPCATEGORY_STRING &&
-					   can_coerce_type(1, &ptype, &ntype, COERCION_IMPLICIT)) && 
+					   can_coerce_type(1, &ptype, &ntype, COERCION_IMPLICIT)) &&
 					   (ptype == ORACHARCHAROID || ptype == ORACHARBYTEOID || (!pispreferred && nispreferred)) )
 			{
 				pexpr = nexpr;
@@ -3997,6 +4016,25 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 			}
 			/* End - Bug#M0000331 */
 		}
+		/* Begin - ReqID:SRS-SQL-UNION */
+		/*
+		 * select null union select 'a'; a is unkonwn type,
+		 * but in oracle mode, need return varchar2.
+		 * so need set usetextoid to true
+		 */
+		else if (enable_setoperation_null && compatible_mode == ORA_MODE &&
+			 issetop &&
+			 IsA(nexpr, Const) &&
+			 !usetextoid)
+		{
+			if (ptype == UNKNOWNOID && ntype == UNKNOWNOID &&
+				(IsA(pexpr, Const) &&
+				((Const *) pexpr)->constisnull) && !((Const *) nexpr)->constisnull)
+			{
+				usetextoid = true;
+			}
+		}
+		/* End - ReqID:SRS-SQL-UNION */
 	}
 
 	/*
@@ -4021,7 +4059,23 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 		 */
 		if (context && strcmp(context, "ARRAY") && compatible_mode == ORA_MODE)
 		{
-			if (nls_length_semantics == NLS_LENGTH_BYTE)
+			/* Begin - ReqID:SRS-SQL-UNION */
+			/*
+			 * select 'a' union select null. need return varchar2.
+			 * so set usetextoid to true
+			 */
+			if (enable_setoperation_null && issetop && !usetextoid)
+			{
+				if (IsA(pexpr, Const) && !((Const *)pexpr)->constisnull)
+				{
+					usetextoid = true;
+				}
+			}
+
+			if (!usetextoid)
+			{}
+			/* End - ReqID:SRS-SQL-UNION */
+			else if (nls_length_semantics == NLS_LENGTH_BYTE)
 				ptype = ORAVARCHARBYTEOID;
 			else
 				ptype = ORAVARCHARCHAROID;
@@ -4336,8 +4390,10 @@ coerce_to_common_type(ParseState *pstate, Node *node,
 	if (inputTypeId == targetTypeId)
 		return node;			/* no work */
 	if (can_coerce_type(1, &inputTypeId, &targetTypeId, COERCION_IMPLICIT))
+	{
 		node = coerce_type(pstate, node, inputTypeId, targetTypeId, -1,
 						   COERCION_IMPLICIT, COERCE_IMPLICIT_CAST, -1);
+	}
 	else
 		ereport(ERROR,
 				(errcode(ERRCODE_CANNOT_COERCE),

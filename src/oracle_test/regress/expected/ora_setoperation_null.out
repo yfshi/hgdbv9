@@ -1,0 +1,709 @@
+set ivorysql.compatible_mode to oracle;
+set ivorysql.enable_setoperation_null=false;
+--test not set ivorysql.enable_setoperation_null
+select null as col from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select null as col from dual intersect select 'abc' from dual order by col;
+ col 
+-----
+(0 rows)
+
+select null as col from dual except select 'abc' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+select null as col from dual minus select 'abc' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+select 'abc' as col from dual union select null from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select 'abc' as col from dual intersect select null from dual order by col;
+ col 
+-----
+(0 rows)
+
+select 'abc' as col from dual except select null from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select 'abc' as col from dual minus select null from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select pg_typeof(value) from (select null from dual union select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+ varchar2
+(2 rows)
+
+select pg_typeof(value) from (select null from dual intersect select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select pg_typeof(value) from (select null from dual except select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select null from dual minus select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select 'abc' from dual union select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+ varchar2
+(2 rows)
+
+select pg_typeof(value) from (select 'abc' from dual intersect select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select pg_typeof(value) from (select 'abc' from dual except select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select 'abc' from dual minus select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select null from dual union select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select null from dual intersect select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select null from dual except select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select pg_typeof(value) from (select null from dual minus select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select null as col from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+    
+(2 rows)
+
+select null as col from dual intersect select 1 from dual order by col;
+ col 
+-----
+(0 rows)
+
+select null as col from dual except select 1 from dual order by col;
+ col 
+-----
+    
+(1 row)
+
+select null as col from dual minus select 1 from dual order by col;
+ col 
+-----
+    
+(1 row)
+
+select null as col from dual union select null from dual union select 1 from dual order by col;
+ERROR:  UNION types varchar2 and integer cannot be matched
+LINE 1: ...rom dual union select null from dual union select 1 from dua...
+                                                             ^
+select null as col from dual intersect select null from dual union select 1 from dual order by col;
+ERROR:  UNION types varchar2 and integer cannot be matched
+LINE 1: ...dual intersect select null from dual union select 1 from dua...
+                                                             ^
+select null as col from dual except select null from dual union select 1 from dual order by col;
+ERROR:  UNION types varchar2 and integer cannot be matched
+LINE 1: ...om dual except select null from dual union select 1 from dua...
+                                                             ^
+select null as col from dual minus select null from dual union select 1 from dual order by col;
+ERROR:  UNION types varchar2 and integer cannot be matched
+LINE 1: ...rom dual minus select null from dual union select 1 from dua...
+                                                             ^
+select null as col from dual union select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select null as col from dual intersect select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select null as col from dual except select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select null as col from dual minus select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select null as col from dual union select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual union select null from dual uni...
+          ^
+select null as col from dual intersect select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual intersect select null from dual...
+          ^
+select null as col from dual except select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual except select null from dual un...
+          ^
+select null as col from dual minus select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual minus select null from dual uni...
+          ^
+select null as col from dual union select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual union select 1 from dual union ...
+          ^
+select null as col from dual intersect select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual intersect select 1 from dual un...
+          ^
+select null as col from dual except select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual except select 1 from dual union...
+          ^
+select null as col from dual minus select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual minus select 1 from dual union ...
+          ^
+select null as col from dual union select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+ 2026-03-24
+ 
+(3 rows)
+
+select null as col from dual intersect select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+(1 row)
+
+select null as col from dual except select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+ 
+(2 rows)
+
+select null as col from dual minus select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+ 
+(2 rows)
+
+select null as col from dual union select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual union select 'abc' from dual un...
+          ^
+select null as col from dual intersect select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual intersect select 'abc' from dua...
+          ^
+select null as col from dual except select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual except select 'abc' from dual u...
+          ^
+select null as col from dual minus select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual minus select 'abc' from dual un...
+          ^
+select pg_typeof(value) from (select distinct null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ text
+(1 row)
+
+select null as col from dual union select DATE '2026-03-24' from dual union select 1 from dual order by col;
+ERROR:  UNION types date and integer cannot be matched
+LINE 1: ...n select DATE '2026-03-24' from dual union select 1 from dua...
+                                                             ^
+select null as col from dual intersect select DATE '2026-03-24' from dual intersect select 1 from dual order by col;
+ERROR:  INTERSECT types date and integer cannot be matched
+LINE 1: ...lect DATE '2026-03-24' from dual intersect select 1 from dua...
+                                                             ^
+select null as col from dual except select DATE '2026-03-24' from dual except select 1 from dual order by col;
+ERROR:  EXCEPT types date and integer cannot be matched
+LINE 1: ... select DATE '2026-03-24' from dual except select 1 from dua...
+                                                             ^
+select null as col from dual minus select DATE '2026-03-24' from dual minus select 1 from dual order by col;
+ERROR:  EXCEPT types date and integer cannot be matched
+LINE 1: ...s select DATE '2026-03-24' from dual minus select 1 from dua...
+                                                             ^
+select distinct null as col from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types text and timestamp with time zone cannot be matched
+LINE 1: select distinct null as col from dual union select TIMESTAMP...
+          ^
+select distinct null as col from dual intersect select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  INTERSECT types text and timestamp with time zone cannot be matched
+LINE 1: select distinct null as col from dual intersect select TIMES...
+          ^
+select distinct null as col from dual except select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  EXCEPT types text and timestamp with time zone cannot be matched
+LINE 1: select distinct null as col from dual except select TIMESTAM...
+          ^
+select distinct null as col from dual minus select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  EXCEPT types text and timestamp with time zone cannot be matched
+LINE 1: select distinct null as col from dual minus select TIMESTAMP...
+          ^
+select distinct null as col from dual union select 1 from dual order by col;
+ERROR:  UNION types text and integer cannot be matched
+LINE 1: ...elect distinct null as col from dual union select 1 from dua...
+                                                             ^
+select distinct null as col from dual intersect select 1 from dual order by col;
+ERROR:  INTERSECT types text and integer cannot be matched
+LINE 1: ...t distinct null as col from dual intersect select 1 from dua...
+                                                             ^
+select distinct null as col from dual except select 1 from dual order by col;
+ERROR:  EXCEPT types text and integer cannot be matched
+LINE 1: ...lect distinct null as col from dual except select 1 from dua...
+                                                             ^
+select distinct null as col from dual minus select 1 from dual order by col;
+ERROR:  EXCEPT types text and integer cannot be matched
+LINE 1: ...elect distinct null as col from dual minus select 1 from dua...
+                                                             ^
+select distinct null as col from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select distinct null as col from dual intersect select 'abc' from dual order by col;
+ col 
+-----
+(0 rows)
+
+select distinct null as col from dual except select 'abc' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+select distinct null as col from dual minus select 'abc' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+-- set ivorysql.enable_setoperation_null
+alter session set ivorysql.enable_setoperation_null to true;
+select as col null from dual union select 'abc' from dual order by col;
+ERROR:  syntax error at or near "as"
+LINE 1: select as col null from dual union select 'abc' from dual or...
+               ^
+select as col null from dual intersect select 'abc' from dual order by col;
+ERROR:  syntax error at or near "as"
+LINE 1: select as col null from dual intersect select 'abc' from dua...
+               ^
+select as col null from dual except select 'abc' from dual order by col;
+ERROR:  syntax error at or near "as"
+LINE 1: select as col null from dual except select 'abc' from dual o...
+               ^
+select as col null from dual minus select 'abc' from dual order by col;
+ERROR:  syntax error at or near "as"
+LINE 1: select as col null from dual minus select 'abc' from dual or...
+               ^
+select 'abc' as col from dual union select null from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select 'abc' as col from dual intersect select null from dual order by col;
+ col 
+-----
+(0 rows)
+
+select 'abc' as col from dual except select null from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select 'abc' as col from dual minus select null from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select pg_typeof(value) from (select null from dual union select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+ varchar2
+(2 rows)
+
+select pg_typeof(value) from (select null from dual intersect select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select pg_typeof(value) from (select null from dual except select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select null from dual minus select 'abc' from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select 'abc' from dual union select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+ varchar2
+(2 rows)
+
+select pg_typeof(value) from (select 'abc' from dual intersect select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select pg_typeof(value) from (select 'abc' from dual except select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select 'abc' from dual minus select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ varchar2
+(1 row)
+
+select pg_typeof(value) from (select null from dual union select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ unknown
+(1 row)
+
+select pg_typeof(value) from (select null from dual intersect select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ unknown
+(1 row)
+
+select pg_typeof(value) from (select null from dual except select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select pg_typeof(value) from (select null from dual minus select null from dual) as subquery(value);
+ pg_typeof 
+-----------
+(0 rows)
+
+select null as col from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+    
+(2 rows)
+
+select null as col from dual intersect select 1 from dual order by col;
+ col 
+-----
+(0 rows)
+
+select null as col from dual except select 1 from dual order by col;
+ col 
+-----
+    
+(1 row)
+
+select null as col from dual minus select 1 from dual order by col;
+ col 
+-----
+    
+(1 row)
+
+select null as col from dual union select null from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+    
+(2 rows)
+
+select null as col from dual intersect select null from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+    
+(2 rows)
+
+select null as col from dual except select null from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+(1 row)
+
+select null as col from dual minus select null from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+(1 row)
+
+select null as col from dual union select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select null as col from dual intersect select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select null as col from dual except select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select null as col from dual minus select null from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+(1 row)
+
+select null as col from dual union select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+                col                
+-----------------------------------
+ 2026-03-24 00:52:08.067033 -07:00
+ 
+(2 rows)
+
+select null as col from dual intersect select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+                col                
+-----------------------------------
+ 2026-03-24 00:52:08.067033 -07:00
+ 
+(2 rows)
+
+select null as col from dual except select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+                col                
+-----------------------------------
+ 2026-03-24 00:52:08.067033 -07:00
+(1 row)
+
+select null as col from dual minus select null from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+                col                
+-----------------------------------
+ 2026-03-24 00:52:08.067033 -07:00
+(1 row)
+
+select null as col from dual union select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual union select 1 from dual union ...
+          ^
+select null as col from dual intersect select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual intersect select 1 from dual un...
+          ^
+select null as col from dual except select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual except select 1 from dual union...
+          ^
+select null as col from dual minus select 1 from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types integer and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual minus select 1 from dual union ...
+          ^
+select null as col from dual union select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+ 2026-03-24
+ 
+(3 rows)
+
+select null as col from dual intersect select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+(1 row)
+
+select null as col from dual except select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+ 
+(2 rows)
+
+select null as col from dual minus select DATE '2026-03-24' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+    col     
+------------
+ 2026-03-24
+ 
+(2 rows)
+
+select null as col from dual union select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual union select 'abc' from dual un...
+          ^
+select null as col from dual intersect select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual intersect select 'abc' from dua...
+          ^
+select null as col from dual except select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual except select 'abc' from dual u...
+          ^
+select null as col from dual minus select 'abc' from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
+LINE 1: select null as col from dual minus select 'abc' from dual un...
+          ^
+select pg_typeof(value) from (select distinct null from dual) as subquery(value);
+ pg_typeof 
+-----------
+ unknown
+(1 row)
+
+select null as col from dual union select DATE '2026-03-24' from dual union select 1 from dual order by col;
+ERROR:  UNION types date and integer cannot be matched
+LINE 1: ...n select DATE '2026-03-24' from dual union select 1 from dua...
+                                                             ^
+select null as col from dual intersect select DATE '2026-03-24' from dual union select 1 from dual order by col;
+ERROR:  UNION types date and integer cannot be matched
+LINE 1: ...t select DATE '2026-03-24' from dual union select 1 from dua...
+                                                             ^
+select null as col from dual except select DATE '2026-03-24' from dual union select 1 from dual order by col;
+ERROR:  UNION types date and integer cannot be matched
+LINE 1: ...t select DATE '2026-03-24' from dual union select 1 from dua...
+                                                             ^
+select null as col from dual minus select DATE '2026-03-24' from dual union select 1 from dual order by col;
+ERROR:  UNION types date and integer cannot be matched
+LINE 1: ...s select DATE '2026-03-24' from dual union select 1 from dua...
+                                                             ^
+select distinct null as col from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+                col                
+-----------------------------------
+ 2026-03-24 00:52:08.067033 -07:00
+ 
+(2 rows)
+
+select distinct null as col from dual intersect select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ col 
+-----
+(0 rows)
+
+select distinct null as col from dual except select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+select distinct null as col from dual minus select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+select distinct null as col from dual union select 1 from dual order by col;
+ col 
+-----
+   1
+    
+(2 rows)
+
+select distinct null as col from dual intersect select 1 from dual order by col;
+ col 
+-----
+(0 rows)
+
+select distinct null as col from dual except select 1 from dual order by col;
+ col 
+-----
+    
+(1 row)
+
+select distinct null as col from dual minus select 1 from dual order by col;
+ col 
+-----
+    
+(1 row)
+
+select distinct null as col from dual union select 'abc' from dual order by col;
+ col 
+-----
+ abc
+ 
+(2 rows)
+
+select distinct null as col from dual intersect select 'abc' from dual order by col;
+ col 
+-----
+(0 rows)
+
+select distinct null as col from dual except select 'abc' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+
+select distinct null as col from dual minus select 'abc' from dual order by col;
+ col 
+-----
+ 
+(1 row)
+

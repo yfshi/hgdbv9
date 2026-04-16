@@ -287,3 +287,7 @@ test: ora_index_create_with_schema
 #/*Begin - OA-REQ-2125 */
 test: user_casesensitive
 #/* End -OA-REQ-2125 */
+
+#/* Begin - ReqID:SRS-SQL-UNION */
+test: ora_setoperation_null
+#/* End - ReqID:SRS-SQL-UNION */

@@ -5116,11 +5116,16 @@ addTargetToSortList(ParseState *pstate, TargetEntry *tle,
 	/* if tlist item is an UNKNOWN literal, change it to TEXT */
 	if (restype == UNKNOWNOID)
 	{
-		tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
-										 restype, TEXTOID, -1,
-										 COERCION_IMPLICIT,
-										 COERCE_IMPLICIT_CAST,
-										 -1);
+		/* Begin - ReqID:SRS-SQL-UNION */
+		if (!(enable_setoperation_null && compatible_mode == ORA_MODE))
+		{
+			tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
+											 restype, TEXTOID, -1,
+											 COERCION_IMPLICIT,
+											 COERCE_IMPLICIT_CAST,
+											 -1);
+		}
+		/* End - ReqID:SRS-SQL-UNION */
 		restype = TEXTOID;
 	}
 
@@ -5256,11 +5261,17 @@ addTargetToGroupList(ParseState *pstate, TargetEntry *tle,
 	/* if tlist item is an UNKNOWN literal, change it to TEXT */
 	if (restype == UNKNOWNOID)
 	{
-		tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
-										 restype, TEXTOID, -1,
-										 COERCION_IMPLICIT,
-										 COERCE_IMPLICIT_CAST,
-										 -1);
+		/* Begin - ReqID:SRS-SQL-UNION */
+		if (!(enable_setoperation_null && compatible_mode == ORA_MODE))
+		{
+			tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
+											restype, TEXTOID, -1,
+											COERCION_IMPLICIT,
+											COERCE_IMPLICIT_CAST,
+											-1);
+		}
+		// set distinct null to text
+		/* End - ReqID:SRS-SQL-UNION */
 		restype = TEXTOID;
 	}
 

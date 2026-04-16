@@ -3619,17 +3619,36 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			 * if something at a higher query level wants to use the column's
 			 * collation.)
 			 */
-			rescolcoll = select_common_collation(pstate,
-												 list_make2(lcolnode, rcolnode),
-												 (op->op == SETOP_UNION && op->all));
+			/* Begin - ReqID:SRS-SQL-UNION */
+			if (enable_setoperation_null &&	ORA_MODE == compatible_mode &&
+				lcoltype == UNKNOWNOID && rescoltype == UNKNOWNOID) {
+				if (IsA(lcolnode, Const))
+				{
+					((Const *) lcolnode)->constcollid = DEFAULT_COLLATION_OID;
+
+				}
+				if (IsA(rcolnode, Const))
+				{
+					((Const *) rcolnode)->constcollid = DEFAULT_COLLATION_OID;
+
+				}
+				rescolcoll = DEFAULT_COLLATION_OID;
+			}
+			else
+			{
+				rescolcoll = select_common_collation(pstate,
+								list_make2(lcolnode, rcolnode),
+								(op->op == SETOP_UNION && op->all));
+			}
+			/* End - ReqID:SRS-SQL-UNION */
 
 			/* emit results */
 			op->colTypes = lappend_oid(op->colTypes, rescoltype);
 			op->colTypmods = lappend_int(op->colTypmods, rescoltypmod);
 			op->colCollations = lappend_oid(op->colCollations, rescolcoll);
-			
+
 			/*
-			 * Begin - BUG#Z1461 
+			 * Begin - BUG#Z1461
 			 * Record targetlist's collation before do pseudo-collation replacement.
 			 */
 			op->rawcolCollations = lappend_oid(op->rawcolCollations, OidIsValid(rawcolcoll) ? rawcolcoll : rescolcoll);
@@ -3647,9 +3666,24 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 				setup_parser_errposition_callback(&pcbstate, pstate,
 												  bestlocation);
 
-				/* If it's a recursive union, we need to require hashing support. */
-				op->groupClauses = lappend(op->groupClauses,
-										   makeSortGroupClauseForSetOp(rescoltype, recursive));
+				/* Begin - ReqID:SRS-SQL-UNION */
+				/*
+				 * If it's a recursive union, we need to require hashing support.
+				 * for unkonw type, use text type for comparison
+				 */
+				if (enable_setoperation_null &&	ORA_MODE == compatible_mode &&
+					lcoltype == UNKNOWNOID && rescoltype == UNKNOWNOID &&
+					(op->op == SETOP_UNION || op->op == SETOP_INTERSECT || op->op == SETOP_EXCEPT))
+				{
+					op->groupClauses = lappend(op->groupClauses,
+								makeSortGroupClauseForSetOp(TEXTOID, recursive));
+				}
+				else
+				{
+					op->groupClauses = lappend(op->groupClauses,
+								makeSortGroupClauseForSetOp(rescoltype, recursive));
+				}
+				/* End - ReqID:SRS-SQL-UNION */
 
 				cancel_parser_errposition_callback(&pcbstate);
 			}
