@@ -10326,3 +10326,239 @@ exception
 end;
 /
 NOTICE:  this is invalid_cursor
+create table tb1(id number(4), name varchar2(30));
+insert into tb1 values (10, 'smith');
+insert into tb1 values (20, 'allen');
+insert into tb1 values (30, 'ward');
+create table tb2(t_id number(4), t_name varchar2(30));
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1;
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  dbms_output.put_line('row_count:' || c1%rowcount);
+  raise info 'row_count: %', c1%rowcount;
+  insert into tb2 values(v_id, 'v_name');
+  end loop;
+end;
+/
+INFO:  row_count: 1
+INFO:  row_count: 2
+INFO:  row_count: 3
+INFO:  row_count: 4
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1;
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  raise info 'a is: %', a;
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('row_count:' || c1%rowcount);
+  raise info 'row_count: %', c1%rowcount;
+  end loop;
+end;
+/
+INFO:  a is: {1,2,3,4}
+INFO:  row_count: 1
+INFO:  a is: {1,2,3,4}
+INFO:  row_count: 2
+INFO:  a is: {1,2,3,4}
+INFO:  row_count: 3
+INFO:  a is: {1,2,3,4}
+INFO:  row_count: 4
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1;
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  raise info 'a is: %', a[1];
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('row_count:' || c1%rowcount);
+  raise info 'row_count: %', c1%rowcount;
+  end loop;
+end;
+/
+INFO:  a is: 1
+INFO:  row_count: 1
+INFO:  a is: 1
+INFO:  row_count: 2
+INFO:  a is: 1
+INFO:  row_count: 3
+INFO:  a is: 1
+INFO:  row_count: 4
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1;
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('row_count:' || c1%rowcount);
+  raise info 'row_count: %', c1%rowcount;
+  raise info 'a is: %', a[2];
+  end loop;
+end;
+/
+INFO:  row_count: 1
+INFO:  a is: 2
+INFO:  row_count: 2
+INFO:  a is: 2
+INFO:  row_count: 3
+INFO:  a is: 2
+INFO:  row_count: 4
+INFO:  a is: 2
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 (minid integer , maxid integer = 2) is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1(1);
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('row_count:' || c1%rowcount);
+  raise info 'row_count: %', c1%rowcount;
+  raise info 'a is: %', a[2];
+  end loop;
+end;
+/
+INFO:  row_count: 1
+INFO:  a is: 2
+INFO:  row_count: 2
+INFO:  a is: 2
+INFO:  row_count: 3
+INFO:  a is: 2
+INFO:  row_count: 4
+INFO:  a is: 2
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 (minid integer , maxid integer = 2) is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1(1);
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('a[1]=' || a[1] || 'rowcount=' || c1%rowcount || 'a[2]=' || a[2]);
+  raise info 'a[1]=%, row_count=%, a[2]=%', a[1], c1%rowcount, a[2];
+  end loop;
+end;
+/
+INFO:  a[1]=1, row_count=1, a[2]=2
+INFO:  a[1]=1, row_count=2, a[2]=2
+INFO:  a[1]=1, row_count=3, a[2]=2
+INFO:  a[1]=1, row_count=4, a[2]=2
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 (minid integer , maxid integer = 2) is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1(1);
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('rowcount=' || c1%rowcount || 'a[1]=' || a[1] || 'a[2]=' || a[2]);
+  raise info 'row_count=%, a[1]=%, a[2]=%', c1%rowcount, a[1], a[2];
+  end loop;
+end;
+/
+INFO:  row_count=1, a[1]=1, a[2]=2
+INFO:  row_count=2, a[1]=1, a[2]=2
+INFO:  row_count=3, a[1]=1, a[2]=2
+INFO:  row_count=4, a[1]=1, a[2]=2
+declare
+  a int[] := array[1,2,3,4];
+  cursor c1 (minid integer , maxid integer = 2) is select * from unnest(a);
+  v_id tb1.id%type;
+begin
+  open c1(1);
+  loop
+  fetch c1 into v_id;
+  exit when c1%NOTfound;
+  insert into tb2 values(v_id, 'v_name');
+  dbms_output.put_line('a[1]=' || a[1] || 'a[2]=' || a[2] || 'rowcount=' || c1%rowcount);
+  raise info 'a[1]=%, a[2]=%, row_count=%', a[1], a[2], c1%rowcount;
+  end loop;
+end;
+/
+INFO:  a[1]=1, a[2]=2, row_count=1
+INFO:  a[1]=1, a[2]=2, row_count=2
+INFO:  a[1]=1, a[2]=2, row_count=3
+INFO:  a[1]=1, a[2]=2, row_count=4
+declare
+  TYPE first_type IS TABLE OF int;
+  TYPE second_type IS TABLE OF first_type;
+  a second_type;
+  b first_type := first_type(10);
+  c second_type;
+  d second_type;
+  type deptrectyp is record (
+  dept_id integer not null := 10,
+  dept_name varchar(30) not null := 'admins',
+  mgr_id     integer,
+  loc_id     integer
+  );
+  record_var deptrectyp;
+  arr int[] := array[1,2,3];
+  cursor c1 is select * from unnest(arr);
+  v_id tb1.id%type;
+begin
+  a := second_type(first_type(1), first_type(2), first_type(3));
+  c := second_type(first_type(21), first_type(22));
+  d := second_type(first_type(31));
+  a(1)(1) := 11;
+  a(1)(1) := b(1);
+  a(1)(1) := c(1)(1);
+  d := a;
+  raise notice '%,%,%', a(1)(1),a(2)(1),a(3)(1);
+  raise notice '%,%,%', d(1)(1),d(2)(1),d(3)(1);
+  open c1;
+  loop
+    fetch c1 into v_id;
+    exit when c1%NOTfound;
+    dbms_output.put_line('a(1)(1)=' || a(1)(1) || 'record_var.dept_id=' || record_var.dept_id || 'rowcount=' || c1%rowcount);
+    raise info 'a(1)(1):%, record_var.dept_id:%, rowcount:%', a(1)(1), record_var.dept_id, c1%rowcount;
+    dbms_output.put_line('rowcount=' || c1%rowcount || 'd(2)(1)=' || d(2)(1) || 'record_var.dept_id=' || record_var.dept_id);
+    raise info 'rowcount:%, d(2)(1):%, record_var.dept_id:%, ', c1%rowcount, d(2)(1), record_var.dept_id;
+    dbms_output.put_line('a=' || a(c1%rowcount)(1) || 'record_var.dept_id=' || record_var.dept_id || 'rowcount=' || c1%rowcount);
+    raise info 'a:%, record_var.dept_id:%, rowcount:%', a(c1%rowcount)(1), record_var.dept_id, c1%rowcount;
+    dbms_output.put_line('d=' || d(c1%rowcount)(1) || 'record_var.dept_id=' || record_var.dept_id);
+    raise info 'd:%, record_var.dept_id:%', d(c1%rowcount)(1), record_var.dept_id;
+  end loop;
+end;
+/
+NOTICE:  21,2,3
+NOTICE:  21,2,3
+INFO:  a(1)(1):21, record_var.dept_id:10, rowcount:1
+INFO:  rowcount:1, d(2)(1):2, record_var.dept_id:10, 
+INFO:  a:21, record_var.dept_id:10, rowcount:1
+INFO:  d:21, record_var.dept_id:10
+INFO:  a(1)(1):21, record_var.dept_id:10, rowcount:2
+INFO:  rowcount:2, d(2)(1):2, record_var.dept_id:10, 
+INFO:  a:2, record_var.dept_id:10, rowcount:2
+INFO:  d:2, record_var.dept_id:10
+INFO:  a(1)(1):21, record_var.dept_id:10, rowcount:3
+INFO:  rowcount:3, d(2)(1):2, record_var.dept_id:10, 
+INFO:  a:3, record_var.dept_id:10, rowcount:3
+INFO:  d:3, record_var.dept_id:10
+--clean data
+drop table tb2;
+drop table tb1;
