@@ -245,6 +245,7 @@ bool enable_strict_view_def = false; /* OA-REQ-1558 */
 
 /* Begin - OA#00001554 */
 bool enable_compatible_type_shippable = true;
+int	FirstNormalId = FirstNormalObjectId;
 /* End - OA#00001554 */
 
 /* Begin - RSR-SQL-Partition-interval */
@@ -1275,6 +1276,19 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SECURITY-FLASHBACK */
+	/* Begin - bug#5514 */
+	{
+		{"ivorysql.first_normal_object_id", PGC_USERSET, UNGROUPED,
+			gettext_noop("Sets the first normal object id. Currently, this is used by `postgres_fdw` to determine"
+			 " which operators with OIDs lower than this value can be pushed down remotely."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&FirstNormalId,
+		FirstNormalObjectId, 1, INT32_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - bug#5514 */
 #endif
 #if 0
 	/* End-of-list marker */

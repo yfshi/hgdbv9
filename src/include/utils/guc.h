@@ -156,6 +156,13 @@ extern bool ParseConfigDirectory(const char *includedir,
 extern void FreeConfigVariables(ConfigVariable *list);
 extern char *DeescapeQuotedString(const char *s);
 
+/* Begin - bug#5514 */
+extern void AppendVarConfInConfigFile(const char *config_file,
+								const char *calling_file,
+								const char *line);
+/* End - bug#5514 */
+
+
 /*
  * The possible values of an enum variable are specified by an array of
  * name-value pairs.  The "hidden" flag means the value is accepted but
@@ -488,6 +495,7 @@ extern PGDLLIMPORT bool enable_strict_view_def; /* OA-REQ-1558 */
 
 /* Begin - OA#00001554 */
 extern PGDLLIMPORT bool enable_compatible_type_shippable;
+extern PGDLLIMPORT int FirstNormalId;
 /* End - OA#00001554 */
 extern bool enable_flashback_recycle_bin;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 

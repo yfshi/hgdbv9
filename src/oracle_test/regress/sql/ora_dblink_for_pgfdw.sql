@@ -694,6 +694,24 @@ explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_
 explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
 --explain(costs off) select * from enrol11.test_text@tdblnk where standard.test_to_char(id) = '10000';
 
+
+--test bug#5514
+set ivorysql.enable_compatible_type_shippable = on;
+set ivorysql.first_normal_object_id = 1584;
+
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where int_id = '100000';
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_f(int_id) = '100000';
+explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
+
+set ivorysql.first_normal_object_id = 36384;
+
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where int_id = '100000';
+explain(costs off) select * from enrol11.RMS_BSSPORT@tdblnk where test_pkg.test_f(int_id) = '100000';
+explain(costs off) select * from enrol11.test_text@tdblnk where id = '100000';
+
+--failed
+select ora_set_first_normal_objectid();
+
 --clean data
 drop package test_pkg;
 drop public database link tdblnk;

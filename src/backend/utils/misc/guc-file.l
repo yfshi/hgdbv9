@@ -665,6 +665,78 @@ cleanup:
 	return OK;
 }
 
+
+/* Begin - bug#5514 */
+/*
+ * append line into config_file
+ */
+void
+AppendVarConfInConfigFile(const char *config_file, const char *calling_file, const char *line)
+{
+	char	   *abs_path;
+	FILE	   *fp;
+	int			count;
+
+	if (line == NULL || config_file == NULL)
+		return;
+
+	/*
+	 * Reject file name that is all-blank (including empty), as that leads to
+	 * confusion --- we'd try to read the containing directory as a file.
+	 */
+	if (strspn(config_file, " \t\r\n") == strlen(config_file))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("empty configuration file name: \"%s\"",
+						config_file)));
+		return;
+	}
+
+
+	abs_path = AbsoluteConfigLocation(config_file, calling_file);
+
+	/*
+	 * Reject direct recursion.  Indirect recursion is also possible, but it's
+	 * harder to detect and so doesn't seem worth the trouble.	(We test at
+	 * this step because the canonicalization done by AbsoluteConfigLocation
+	 * makes it more likely that a simple strcmp comparison will match.)
+	 */
+	if (calling_file && strcmp(abs_path, calling_file) == 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("configuration file recursion in \"%s\"",
+						calling_file)));
+		pfree(abs_path);
+		return;
+	}
+
+	fp = AllocateFile(abs_path, "a");
+	if (!fp)
+	{
+		ereport(ERROR,
+					(errcode_for_file_access(),
+					 errmsg("could not open configuration file \"%s\": %m",
+							abs_path)));
+		pfree(abs_path);
+		return;
+	}
+
+	count = fwrite(line, 1, strlen(line), fp);
+	if (count != strlen(line))
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				 errmsg("could not write file \"%s\": %m", config_file)));
+
+	FreeFile(fp);
+	pfree(abs_path);
+
+	return;
+}
+/* End - bug#5514 */
+
+
 /*
  * Capture an error message in the ConfigVariable list returned by
  * config file parsing.
