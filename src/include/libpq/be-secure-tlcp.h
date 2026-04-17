@@ -42,6 +42,9 @@ extern const char *
 be_tlcp_get_cipher(Port *port);
 extern const char *
 be_tlcp_get_version(Port *port, char *str, int len);
+extern void
+be_tlcp_get_issuer_and_serial(Port *port, char *serial, size_t serial_len,char *issuer_dn, size_t issuer_dn_len);
+extern void be_tlcp_get_subject_name(Port *port, char *client_dn, size_t client_dn_len);
 
 #endif
 /* End - ReqID:SRS-SECURITY-TLCP */
