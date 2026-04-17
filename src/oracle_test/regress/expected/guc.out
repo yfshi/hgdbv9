@@ -819,3 +819,104 @@ set default_with_oids to f;
 -- Should not allow to set it to true.
 set default_with_oids to t;
 ERROR:  tables declared WITH OIDS are not supported
+/* Begin - bug#7622 */
+show ivorysql.allow_out_parameter_const;
+ ivorysql.allow_out_parameter_const 
+------------------------------------
+ off
+(1 row)
+
+show ivorysql.result_first;
+ ivorysql.result_first 
+-----------------------
+ on
+(1 row)
+
+show ivorysql.out_parameter_column_position;
+ ivorysql.out_parameter_column_position 
+----------------------------------------
+ off
+(1 row)
+
+show ivorysql.where_from;
+ ivorysql.where_from 
+---------------------
+ unknown
+(1 row)
+
+show ivorysql.alter_database_set_special;
+ ivorysql.alter_database_set_special 
+-------------------------------------
+ off
+(1 row)
+
+show ivorysql.check_strong_cursor_assign;
+ ivorysql.check_strong_cursor_assign 
+-------------------------------------
+ on
+(1 row)
+
+show ivorysql.compile_plisql_use_owner;
+ ivorysql.compile_plisql_use_owner 
+-----------------------------------
+ on
+(1 row)
+
+show ivorysql.enable_cursor_as_column_type;
+ ivorysql.enable_cursor_as_column_type 
+---------------------------------------
+ off
+(1 row)
+
+show ivorysql.max_active_gtt;
+ ivorysql.max_active_gtt 
+-------------------------
+ 1000
+(1 row)
+
+show ivorysql.vacuum_gtt_defer_check_age;
+ ivorysql.vacuum_gtt_defer_check_age 
+-------------------------------------
+ 10000
+(1 row)
+
+show ivorysql.enable_store_nullterminator_char;
+ ivorysql.enable_store_nullterminator_char 
+-------------------------------------------
+ off
+(1 row)
+
+show ivorysql.check_autontrans_deadlocks;
+ ivorysql.check_autontrans_deadlocks 
+-------------------------------------
+ on
+(1 row)
+
+show ivorysql.max_interval_partition_failures;
+ ivorysql.max_interval_partition_failures 
+------------------------------------------
+ 10
+(1 row)
+
+-- 0 tuples
+select * from pg_settings
+where name in (
+'ivorysql.allow_out_parameter_const',
+'ivorysql.result_first',
+'ivorysql.out_parameter_column_position',
+'ivorysql.where_from',
+'ivorysql.alter_database_set_special',
+'ivorysql.check_strong_cursor_assign',
+'ivorysql.compile_plisql_use_owner',
+'ivorysql.enable_cursor_as_column_type',
+'ivorysql.max_active_gtt',
+'ivorysql.vacuum_gtt_defer_check_age',
+'ivorysql.enable_store_nullterminator_char',
+'ivorysql.check_autontrans_deadlocks',
+'ivorysql.max_interval_partition_failures'
+);
+ name | setting | unit | category | short_desc | extra_desc | context | vartype | source | min_val | max_val | enumvals | boot_val | reset_val | sourcefile | sourceline | pending_restart 
+------+---------+------+----------+------------+------------+---------+---------+--------+---------+---------+----------+----------+-----------+------------+------------+-----------------
+(0 rows)
+
+/* End - bug#7622 */
