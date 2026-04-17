@@ -2584,7 +2584,7 @@ credcheck_max_auth_failure(Port *port, int status)
 
 	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #ifdef ENABLE_DKY_BETA_FEATURE
-	if (port->user_name != NULL)
+	if (port->user_name != NULL && is_enable == 1 && login_msg_display == 1)	/* BUG#Z7629 */
 		clientauthentication_accesshistory(port, user_name , application_name, remote_host, GetCurrentTimestamp(), status, global_fail_num);
 #endif
 	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
@@ -2927,7 +2927,7 @@ login_message_display(const char *current_name)
 
 	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #ifdef ENABLE_DKY_BETA_FEATURE
-	if (login_msg_display_storage)
+	if (is_enable == 1 && login_msg_display == 1 && login_msg_display_storage == 1)		/* BUG#Z7629 */
 	{
 		NameData	userName;
 
@@ -3121,7 +3121,7 @@ login_message_display(const char *current_name)
 	{
 		/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #ifdef ENABLE_DKY_BETA_FEATURE
-		if (login_msg_display_storage)
+		if (is_enable == 1 && login_msg_display_storage == 1)	/* BUG#Z7629 */
 		{
 			ereport(NOTICE,
 					(errmsg("\n-------------------------------------------\n" \
@@ -3347,17 +3347,23 @@ Datum user_expiration_info(PG_FUNCTION_ARGS)
  * print login information and storage history info to system table.
  */
  #ifdef ENABLE_DKY_BETA_FEATURE
-void login_info_print_and_stoage(void)
+void
+login_info_print_and_stoage(void)
 {
 	char	*username;
 
-	StartTransactionCommand();
+	/* Begin - BUG#Z7629 */
+	if (is_enable == 1 && login_msg_display == 1 && login_msg_display_storage == 1)
+	{
+		StartTransactionCommand();
 
-	username = GetUserNameFromId(GetSessionUserId(), true);
-	login_message_display(username);
-	updateAccessHistory(username);
+		username = GetUserNameFromId(GetSessionUserId(), true);
+		login_message_display(username);
+		updateAccessHistory(username);
 
-	CommitTransactionCommand();
+		CommitTransactionCommand();
+	}
+	/* End - BUG#Z7629 */
 }
 
 /* tb_pg_access_history_access_restrictions
@@ -3378,15 +3384,33 @@ tb_pg_access_history_access_restrictions(List *tbnames, bool flg)
 	{
 		RangeTblEntry *rte = lfirst(cell);
 		if (rte->rtekind == RTE_RELATION &&
-			(rte->relid == AccessHistoryId ||rte->relid == AccessHistoryLastId))
+			(rte->relid == AccessHistoryId || rte->relid == AccessHistoryLastId))
 		{
 			AclMode		requiredPerms;
+			char	   *relname = "pg_access_history";	/* BUG#Z7630 */
+
+			/* Begin - BUG#Z7630 */
+			if (rte->relid == AccessHistoryLastId)
+				relname = "pg_access_history_last";
+			/* End - BUG#Z7630 */
 
 			requiredPerms = rte->requiredPerms;
-			if (!(IS_SYSSSO(GetUserId()) && (requiredPerms & ACL_SELECT) != 0))
-				ereport(ERROR,
-						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-						 errmsg("permission denied for table %s", "pg_access_history")));
+			/* Begin - BUG#Z7630 */
+			if (se_feature_mode)
+			{
+				if (!(IS_SYSSSO(GetUserId()) && (requiredPerms & ACL_SELECT) != 0))
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied for table %s", relname)));
+			}
+			else
+			{
+				if (!(IS_SYSDBA(GetUserId()) && (requiredPerms & ACL_SELECT) != 0))
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied for table %s", relname)));
+			}
+			/* End - BUG#Z7630 */
 		}
 	}
 
