@@ -51,6 +51,16 @@
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
 
+/* Begin - OA-REQ-2252 */
+
+/*
+ * Oracle nested-aggregate compatibility markers.
+ * aggtransno/aggno are temporarily reused before planning; analyze.c consumes
+ * and clears them when rewriting into two-stage aggregation.
+ */
+#define ORA_NESTED_AGG_MARK	(-810001)
+/* End - OA-REQ-2252 */
+
 SynnameGetFuncInfo_hook_type SynnameGetFuncInfo_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
 /* Possible error codes from LookupFuncNameInternal */
@@ -1268,10 +1278,72 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 					 errmsg("aggregates cannot use named arguments"),
 					 parser_errposition(pstate, location)));
 
-		/* parse_agg.c does additional aggregate-specific processing */
-		transformAggregateCall(pstate, aggref, fargs, agg_order, agg_distinct);
+		/* Begin - OA-REQ-2252 */
+		/*
+		 * fold outer(<aggregate>) into the inner
+		 * aggregate at parse time, then let analyze.c rewrite it into
+		 * two-stage aggregation.
+		 */
+		if (ORA_MODE == compatible_mode &&
+			!agg_star &&
+			!agg_distinct &&
+			!agg_within_group &&
+			agg_filter == NULL &&
+			agg_order == NIL &&
+			list_length(fargs) == 1)
+		{
+			Node	   *orig_arg = (Node *) linitial(fargs);
+			Node	   *arg = strip_implicit_coercions(orig_arg);
 
-		retval = (Node *) aggref;
+			if (IsA(arg, Aggref))
+			{
+				Aggref	   *inner_agg = (Aggref *) arg;
+
+				/*
+				 * Oracle-style two-stage rewrite only supports normal
+				 * aggregate nesting.
+				 */
+				if (aggkind == AGGKIND_NORMAL && inner_agg->aggkind == AGGKIND_NORMAL)
+				{
+					if (pstate->p_expr_kind == EXPR_KIND_HAVING)
+						ereport(ERROR,
+								(errcode(ERRCODE_GROUPING_ERROR),
+								 errmsg("aggregate function is nested too deeply"),
+								 parser_errposition(pstate, location)));
+
+					if (inner_agg->aggtransno == ORA_NESTED_AGG_MARK)
+						ereport(ERROR,
+								(errcode(ERRCODE_GROUPING_ERROR),
+								 errmsg("nested aggregate functions more than two levels are not supported"),
+								 parser_errposition(pstate, location)));
+
+					inner_agg->aggtransno = ORA_NESTED_AGG_MARK;
+					inner_agg->aggno = (int32) funcid;
+					inner_agg->aggtranstype = rettype;
+					retval = orig_arg;
+				}
+				else
+				{
+					/* parse_agg.c does additional aggregate-specific processing */
+					transformAggregateCall(pstate, aggref, fargs, agg_order, agg_distinct);
+					retval = (Node *) aggref;
+				}
+			}
+			else
+			{
+				/* parse_agg.c does additional aggregate-specific processing */
+				transformAggregateCall(pstate, aggref, fargs, agg_order, agg_distinct);
+
+				retval = (Node *) aggref;
+			}
+		}
+		else
+		{
+			/* parse_agg.c does additional aggregate-specific processing */
+			transformAggregateCall(pstate, aggref, fargs, agg_order, agg_distinct);
+			retval = (Node *) aggref;
+		}
+		/* End - OA-REQ-2252 */
 	}
 	else
 	{

@@ -190,6 +190,28 @@ static Query *transformSelectIntoUservarStmt(ParseState *pstate, SelectIntoUserV
 static List *transformSorbyfromGroupclause(List **grouplist);		/* ReqID:SRS-MYSQL-SELECT */
 static Node *makeAndExpr(Node *lexpr, Node *rexpr, int location);	/* ReqID:SRS-MYSQL-SELECT */
 
+/* Begin - OA-REQ-2252 */
+/*
+ * Keep these values aligned with parse_func.c.
+ * They mark folded inner aggregates that originally appeared as
+ * outer_aggregate(inner_aggregate) in Oracle compatibility mode.
+ */
+#define ORA_NESTED_AGG_MARK	(-810001)
+
+typedef struct OraNestedAggExprCtx
+{
+	ParseState *pstate;
+	Var		   *input_var;
+	bool		saw_agg;
+} OraNestedAggExprCtx;
+
+static bool ora_has_nested_agg_marker(Node *node, void *context);
+static bool ora_clear_nested_agg_marker(Node *node, void *context);
+static bool ora_find_marked_agg(Node *node, void *context);
+static Node *ora_build_nested_agg_outer_expr(Node *node, void *context);
+static Query *ora_rewrite_nested_agg_two_stage(ParseState *pstate, Query *inner_qry);
+/* End - OA-REQ-2252 */
+
 /*
  * parse_analyze
  *		Analyze a raw parse tree and transform it to Query form.
@@ -2672,8 +2694,313 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	if (pstate->p_hasAggs || qry->groupClause || qry->groupingSets || qry->havingQual)
 		parseCheckAggregates(pstate, qry);
 
+	/* Begin - OA-REQ-2252 */
+	if (ORA_MODE == compatible_mode)
+		qry = ora_rewrite_nested_agg_two_stage(pstate, qry);
+	/* End - OA-REQ-2252 */
+
 	return qry;
 }
+
+/* Begin - OA-REQ-2252 */
+/*
+ * ora_has_nested_agg_marker
+ *
+ *	Check whether an expression tree contains a marked nested Aggref.
+ */
+static bool
+ora_has_nested_agg_marker(Node *node, void *context)
+{
+	bool	   *found = (bool *) context;
+
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, Aggref))
+	{
+		Aggref	   *agg = (Aggref *) node;
+
+		if (agg->aggtransno == ORA_NESTED_AGG_MARK)
+		{
+			*found = true;
+			return true;
+		}
+	}
+
+	return expression_tree_walker(node, ora_has_nested_agg_marker, context);
+}
+
+/*
+ * ora_clear_nested_agg_marker
+ *
+ *	Clear temporary Oracle nested-aggregate markers from Aggres nodes.
+ */
+static bool
+ora_clear_nested_agg_marker(Node *node, void *context)
+{
+	(void) context;
+
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, Aggref))
+	{
+		Aggref	   *agg = (Aggref *) node;
+
+		if (agg->aggtransno == ORA_NESTED_AGG_MARK)
+		{
+			agg->aggtransno = -1;
+			agg->aggno = -1;
+			agg->aggtranstype = InvalidOid;
+		}
+	}
+
+	return expression_tree_walker(node, ora_clear_nested_agg_marker, context);
+}
+
+/*
+ * ora_find_marked_agg
+ *
+ *	Locate the first Aggref carrying an Oracle nested-aggregate marker.
+ */
+static bool
+ora_find_marked_agg(Node *node, void *context)
+{
+	Node	  **found = (Node **) context;
+
+	if (node == NULL || *found != NULL)
+		return false;
+
+	if (IsA(node, Aggref))
+	{
+		Aggref	   *agg = (Aggref *) node;
+
+		if (agg->aggtransno == ORA_NESTED_AGG_MARK)
+		{
+			*found = node;
+			return true;
+		}
+	}
+
+	return expression_tree_walker(node, ora_find_marked_agg, context);
+}
+
+/*
+ * ora_build_nested_agg_outer_expr
+ *
+ *	Build the outer-stage aggregate expression for a two-stage rewrite.
+ *
+ *	Every Aggref in the expression is rebuilt to aggregate over input_var
+ *	from the derived-table output. For marker-carrying Aggrefs, restore
+ *	the outer aggregate identity saved during parse_func.c processing.
+ */
+static Node *
+ora_build_nested_agg_outer_expr(Node *node, void *context)
+{
+	OraNestedAggExprCtx *ctx = (OraNestedAggExprCtx *) context;
+
+	if (node == NULL)
+		return NULL;
+
+	if (IsA(node, Aggref))
+	{
+		Aggref	   *agg = (Aggref *) node;
+		Aggref	   *newagg = makeNode(Aggref);
+		TargetEntry *tle;
+		Oid			outer_fnoid = agg->aggfnoid;
+		Oid			input_type = exprType((Node *) ctx->input_var);
+		Oid			outer_rettype = agg->aggtype;
+		Oid			outer_arg_type = input_type;
+		Node	   *outer_arg;
+
+		ctx->saw_agg = true;
+		if (agg->aggtransno == ORA_NESTED_AGG_MARK)
+		{
+			outer_fnoid = (Oid) agg->aggno;
+			outer_rettype = agg->aggtranstype;
+			outer_arg_type = input_type;
+		}
+
+		newagg->aggfnoid = outer_fnoid;
+		newagg->aggtype = outer_rettype;
+		newagg->aggcollid = agg->aggcollid;
+		newagg->inputcollid = agg->inputcollid;
+		newagg->aggtranstype = InvalidOid;
+		newagg->aggstar = false;
+		newagg->aggvariadic = false;
+		newagg->aggkind = agg->aggkind;
+		newagg->agglevelsup = 0;
+		newagg->aggsplit = AGGSPLIT_SIMPLE;
+		newagg->aggno = -1;
+		newagg->aggtransno = -1;
+		newagg->aggdirectargs = NIL;
+		newagg->aggorder = NIL;
+		newagg->aggdistinct = NIL;
+		newagg->aggfilter = NULL;
+		newagg->has_outer_join = false;
+		newagg->location = agg->location;
+
+		outer_arg = (Node *) copyObject(ctx->input_var);
+
+		tle = makeTargetEntry((Expr *) outer_arg, 1, NULL, false);
+		newagg->args = list_make1(tle);
+		newagg->aggargtypes = list_make1_oid(outer_arg_type);
+
+		return (Node *) newagg;
+	}
+
+	return expression_tree_mutator(node,
+								   ora_build_nested_agg_outer_expr,
+								   (void *) ctx);
+}
+
+/*
+ * ora_rewrite_nested_agg_two_stage
+ *
+ *	Rewrite Oracle-style nested aggregates into a two-stage query shape.
+ *
+ * The inner query computes grouped aggregate values, and the outer
+ * query re-aggregates those values, emulating expressions such as
+ * max(count(...)).
+ */
+static Query *
+ora_rewrite_nested_agg_two_stage(ParseState *pstate, Query *inner_qry)
+{
+	ParseState *outer_pstate;
+	ParseNamespaceItem *nsitem;
+	Query	   *outer_qry;
+	List	   *new_tlist = NIL;
+	List	   *orig_tlexprs = NIL;
+	ListCell   *lc;
+	ListCell   *lc_orig;
+	int			attno = 1;
+	bool		has_marker_tlist = false;
+	bool		has_marker_having = false;
+	bool		has_grouping = false;
+
+	if (inner_qry == NULL)
+		return inner_qry;
+
+	(void) ora_has_nested_agg_marker((Node *) inner_qry->targetList, &has_marker_tlist);
+	(void) ora_has_nested_agg_marker((Node *) inner_qry->havingQual, &has_marker_having);
+
+	if (has_marker_having)
+	{
+		(void) ora_clear_nested_agg_marker((Node *) inner_qry->targetList, NULL);
+		(void) ora_clear_nested_agg_marker((Node *) inner_qry->havingQual, NULL);
+		ereport(ERROR,
+				(errcode(ERRCODE_GROUPING_ERROR),
+				 errmsg("aggregate function is nested too deeply")));
+	}
+
+	if (!has_marker_tlist)
+	{
+		(void) ora_clear_nested_agg_marker((Node *) inner_qry->targetList, NULL);
+		(void) ora_clear_nested_agg_marker((Node *) inner_qry->havingQual, NULL);
+
+		return inner_qry;
+	}
+
+	has_grouping = (inner_qry->groupClause != NIL || inner_qry->groupingSets != NIL);
+	if (!has_grouping)
+	{
+		(void) ora_clear_nested_agg_marker((Node *) inner_qry->targetList, NULL);
+		ereport(ERROR,
+				(errcode(ERRCODE_GROUPING_ERROR),
+				 errmsg("nested aggregate functions require GROUP BY clause")));
+	}
+
+	if (inner_qry->hasDistinctOn)
+	{
+		(void) ora_clear_nested_agg_marker((Node *) inner_qry->targetList, NULL);
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("nested aggregate rewrite does not support DISTINCT ON")));
+	}
+
+	outer_pstate = make_parsestate(pstate);
+	outer_pstate->p_sourcetext = pstate->p_sourcetext;
+	outer_pstate->p_queryEnv = pstate->p_queryEnv;
+
+	foreach(lc, inner_qry->targetList)
+	{
+		TargetEntry *te = (TargetEntry *) lfirst(lc);
+		Node	   *marked_agg = NULL;
+
+		if (te->resjunk)
+			continue;
+
+		orig_tlexprs = lappend(orig_tlexprs, copyObject(te->expr));
+		(void) ora_find_marked_agg((Node *) te->expr, &marked_agg);
+		if (marked_agg != NULL)
+			te->expr = (Expr *) copyObject(marked_agg);
+	}
+
+	nsitem = addRangeTableEntryForSubquery(outer_pstate,
+										   inner_qry,
+										   makeAlias("ora_nested_agg_s", NIL),
+										   false,
+										   true);
+	addNSItemToQuery(outer_pstate, nsitem, true, true, true);
+
+	forboth(lc, inner_qry->targetList, lc_orig, orig_tlexprs)
+	{
+		TargetEntry *te = (TargetEntry *) lfirst(lc);
+		Node	   *orig_expr = (Node *) lfirst(lc_orig);
+		OraNestedAggExprCtx exprctx;
+		Var		   *input_var;
+		Node	   *new_expr;
+		TargetEntry *new_tle;
+
+		if (te->resjunk)
+			continue;
+
+		input_var = makeVar(nsitem->p_rtindex,
+							te->resno,
+							exprType((Node *) te->expr),
+							exprTypmod((Node *) te->expr),
+							exprCollation((Node *) te->expr),
+							0);
+		exprctx.pstate = outer_pstate;
+		exprctx.input_var = input_var;
+		exprctx.saw_agg = false;
+
+		new_expr = ora_build_nested_agg_outer_expr(orig_expr, &exprctx);
+		if (!exprctx.saw_agg)
+		{
+			if (contain_vars_of_level(orig_expr, 0))
+			{
+				free_parsestate(outer_pstate);
+				(void) ora_clear_nested_agg_marker((Node *) inner_qry->targetList, NULL);
+					ereport(ERROR,
+							(errcode(ERRCODE_GROUPING_ERROR),
+							 errmsg("columns are not allowed with nested aggregate rewrite")));
+
+			}
+			new_expr = copyObject(orig_expr);
+		}
+
+		new_tle = makeTargetEntry((Expr *) new_expr,
+								  attno++,
+								  pstrdup(te->resname),
+								  false);
+		new_tlist = lappend(new_tlist, new_tle);
+	}
+
+	(void) ora_clear_nested_agg_marker((Node *) inner_qry->targetList, NULL);
+
+	outer_qry = makeNode(Query);
+	outer_qry->commandType = CMD_SELECT;
+	outer_qry->targetList = new_tlist;
+	outer_qry->rtable = outer_pstate->p_rtable;
+	outer_qry->jointree = makeFromExpr(outer_pstate->p_joinlist, NULL);
+	outer_qry->hasAggs = true;
+	outer_qry->hasSubLinks = inner_qry->hasSubLinks;
+	free_parsestate(outer_pstate);
+
+	return outer_qry;
+}
+/* End - OA-REQ-2252 */
 
 /*
  * transformValuesClause -

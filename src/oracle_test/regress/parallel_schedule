@@ -296,3 +296,7 @@ test: ora_setoperation_null
 test: ora_current_schema
 test: ora_user_grant_compat
 #/* End - OA-REQ-2126 */
+
+#/* Begin - OA-REQ-2252 */
+test: ora_nested_agg
+#/* End - OA-REQ-2252 */
