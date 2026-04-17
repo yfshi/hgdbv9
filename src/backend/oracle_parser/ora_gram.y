@@ -19282,7 +19282,17 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, ">=", $1, $3, @2); }
 			| a_expr NOT_EQUALS a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $3, @2); }
-
+			/* Begin - OA-REQ-2252 */
+			| a_expr Op '=' a_expr					%prec NOT_EQUALS
+				{
+					if (strcmp($2, "!") != 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near \"=\""),
+								 parser_errposition(@3)));
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $4, @2);
+				}
+			/* End - OA-REQ-2252 */
 			| a_expr qual_Op a_expr				%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2); }
 			| qual_Op a_expr					%prec Op
@@ -19868,6 +19878,17 @@ b_expr:		c_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, ">=", $1, $3, @2); }
 			| b_expr NOT_EQUALS b_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $3, @2); }
+			/* Begin - OA-REQ-2252 */
+			| b_expr Op '=' b_expr					%prec NOT_EQUALS
+				{
+					if (strcmp($2, "!") != 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near \"=\""),
+								 parser_errposition(@3)));
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $4, @2);
+				}
+			/* End - OA-REQ-2252 */
 			| b_expr qual_Op b_expr				%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2); }
 			/* Begin - ReqID:SRS-SQL-PROC */
