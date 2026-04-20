@@ -154,6 +154,7 @@ typedef enum PLiSQL_stmt_type
 	PLISQL_STMT_FORS,
 	PLISQL_STMT_FORC,
 	PLISQL_STMT_FOREACH_A,
+	PLISQL_STMT_FORALL,	/* ReqID:SRS-PLSQL-FORALL */
 	PLISQL_STMT_EXIT,
 	PLISQL_STMT_RETURN,
 	PLISQL_STMT_RETURN_NEXT,
@@ -321,6 +322,11 @@ typedef struct PLiSQL_expr
 	char		info;	/* record the argument mode which may be IN, OUT or IN OUT */
 	int			datum_dno;	/* dno of referenced datum, or -1 if none */
 	/* End - ReqID:SRS-PLSQL-DSQL */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	ForallParams *forallparams;		/* parameters for FORALL statement */
+	bool		have_collect;		/* have collection? */
+	bool		is_collect_subscript;	/* is collection subscript? */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } PLiSQL_expr;
 
 /*
@@ -824,6 +830,31 @@ typedef struct PLiSQL_stmt_fori
 	List	   *body;			/* List of statements */
 } PLiSQL_stmt_fori;
 
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+typedef enum
+{
+	FORALL_RANGE,         		/* lower_bound .. upper_bound */
+	FORALL_INDICES,             /* INDICES OF collection */
+	FORALL_VALUES               /* VALUES OF collection */
+} PLiSQL_forall_type;
+
+/*
+ * FORALL statement
+ */
+typedef struct PLiSQL_stmt_forall
+{
+	int         cmd_type;
+	int         lineno;
+	char        *label;
+	PLiSQL_forall_type forall_type; /* PLiSQL_forall_type */
+	PLiSQL_var  *var;           	/* forall j in expr1..expr2, indicate var j */
+	int			collect_dno;		/* the collection dno in INDICES OF or VALUES OF clause */
+	PLiSQL_expr *lower_bound;   	/* forall index lower bound */
+	PLiSQL_expr *upper_bound;   	/* forall index uppper bound */
+	PLiSQL_stmt	*body;				/* DML or dynamic SQL statement */
+} PLiSQL_stmt_forall;
+/* End - ReqID:SRS-PLSQL-FORALL */
+
 /*
  * PLiSQL_stmt_forq represents a FOR statement running over a SQL query.
  * It is the common supertype of PLiSQL_stmt_fors, PLiSQL_stmt_forc
@@ -1061,6 +1092,9 @@ typedef struct PLiSQL_stmt_execsql
 	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
 	bool		bulk_collect_into;	/* BULK COLLECT INTO supplied? */
 	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	bool		have_collect;		/* have collection variable */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } PLiSQL_stmt_execsql;
 
 /*
@@ -1083,6 +1117,11 @@ typedef struct PLiSQL_stmt_dynexecute
 	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
 	bool		bulk_collect_into;	/* BULK COLLECT INTO supplied? */
 	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	bool		have_collect;		/* have collection variable */
+	bool		in_forall;			/* dynexecute sql in FORALL Statement */
+	Datum	 	bulk_params;		/* the BULK COLLECT INTO parameters in forall */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } PLiSQL_stmt_dynexecute;
 
 /*

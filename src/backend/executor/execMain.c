@@ -1775,68 +1775,198 @@ ExecutePlan(QueryDesc *queryDesc,
 		EnterParallelMode();
 	}
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
 	/*
-	 * Loop until we've processed the proper number of tuples from the plan.
+	 * If es_forall_params is present, execute a FORALL loop.
+	 * Each iteration executes the plan once with the current curr_idx.
 	 */
-	for (;;)
+	if (DB_ORACLE == database_mode && estate->es_forall_params != NULL)
 	{
-		/* Reset the per-output-tuple exprcontext */
-		ResetPerTupleExprContext(estate);
+		ForallParams *fps = estate->es_forall_params;
+		uint64	forall_total_processed = 0;
+		MemoryContext oldcontext;
 
-		/*
-		 * Execute the plan and obtain a tuple
-		 */
-		slot = ExecProcNode(planstate);
+		oldcontext = MemoryContextSwitchTo(estate->es_query_cxt);
+		estate->es_forall_processed = (uint64 *)palloc0(sizeof(uint64) * fps->total);
+		MemoryContextSwitchTo(oldcontext);
 
-		/*
-		 * if the tuple is null, then we assume there is nothing more to
-		 * process so we just end the loop...
-		 */
-		if (TupIsNull(slot))
-			break;
-
-		/*
-		 * If we have a junk filter, then project a new tuple with the junk
-		 * removed.
-		 *
-		 * Store this new "clean" tuple in the junkfilter's resultSlot.
-		 * (Formerly, we stored it back over the "dirty" tuple, which is WRONG
-		 * because that tuple slot has the wrong descriptor.)
-		 */
-		if (estate->es_junkFilter != NULL)
-			slot = ExecFilterJunk(estate->es_junkFilter, slot);
-
-		/*
-		 * If we are supposed to send the tuple somewhere, do so. (In
-		 * practice, this is probably always the case at this point.)
-		 */
-		if (sendTuples)
+		for (fps->curr_idx = 0; fps->curr_idx < fps->total; fps->curr_idx++)
 		{
 			/*
-			 * If we are not able to send the tuple, we assume the destination
-			 * has closed and no more tuples can be sent. If that's the case,
-			 * end the loop.
+			 * Reset es_processed for this iteration
 			 */
-			if (!dest->receiveSlot(slot, dest))
-				break;
+			estate->es_processed = 0;
+
+			/*
+			 * Inner loop: execute plan until done
+			 */
+			for (;;)
+			{
+				/* Reset the per-output-tuple exprcontext */
+				ResetPerTupleExprContext(estate);
+
+				/*
+				 * Execute the plan and obtain a tuple
+				 */
+				slot = ExecProcNode(planstate);
+
+				/*
+				 * if the tuple is null, then we assume there is nothing more to
+				 * process so we just end the loop...
+				 */
+				if (TupIsNull(slot))
+					break;
+
+				/*
+				 * If we have a junk filter, then project a new tuple with the junk
+				 * removed.
+				 *
+				 * Store this new "clean" tuple in the junkfilter's resultSlot.
+				 * (Formerly, we stored it back over the "dirty" tuple, which is WRONG
+				 * because that tuple slot has the wrong descriptor.)
+				 */
+				if (estate->es_junkFilter != NULL)
+					slot = ExecFilterJunk(estate->es_junkFilter, slot);
+
+				/*
+				 * If we are supposed to send the tuple somewhere, do so. (In
+				 * practice, this is probably always the case at this point.)
+				 */
+				if (sendTuples)
+				{
+					/*
+					 * If we are not able to send the tuple, we assume the destination
+					 * has closed and no more tuples can be sent. If that's the case,
+					 * end the loop.
+					 */
+					if (!dest->receiveSlot(slot, dest))
+						goto forall_done;
+				}
+
+				/*
+				 * Count tuples processed, if this is a SELECT.  (For other operation
+				 * types, the ModifyTable plan node must count the appropriate
+				 * events.)
+				 */
+				if (operation == CMD_SELECT)
+					(estate->es_processed)++;
+
+				/*
+				 * check our tuple count.. if we've processed the proper number then
+				 * quit, else loop again and process more tuples. Zero numberTuples
+				 * means no limit.
+				 */
+				current_tuple_count++;
+				if (numberTuples && numberTuples == current_tuple_count)
+					break;
+			}
+
+			/*
+			 * End of one FORALL iteration.
+			 * Accumulate processed count.
+			 */
+			forall_total_processed += estate->es_processed;
+			estate->es_forall_processed[fps->curr_idx] = estate->es_processed;
+
+
+			/*
+			 * For next FORALL iteration, rescan the plan if needed
+			 */
+			if (fps->curr_idx < fps->total - 1)
+			{
+				/*
+				 * Fire triggers for this iteration before moving to next.
+				 * This ensures each iteration's triggers are fired separately.
+				 */
+				if (!(estate->es_top_eflags & EXEC_FLAG_SKIP_TRIGGERS))
+					AfterTriggerEndQuery(estate);
+
+				/*
+				 * Begin a new query context for the next iteration's triggers.
+				 */
+				if (!(estate->es_top_eflags & EXEC_FLAG_SKIP_TRIGGERS))
+					AfterTriggerBeginQuery();
+
+				if (planstate->chgParam == NULL)
+					ExecReScan(planstate);
+			}
 		}
 
-		/*
-		 * Count tuples processed, if this is a SELECT.  (For other operation
-		 * types, the ModifyTable plan node must count the appropriate
-		 * events.)
-		 */
-		if (operation == CMD_SELECT)
-			(estate->es_processed)++;
+forall_done:
+		/* Update es_processed with total FORALL processed count */
+		estate->es_processed = forall_total_processed;
 
 		/*
-		 * check our tuple count.. if we've processed the proper number then
-		 * quit, else loop again and process more tuples.  Zero numberTuples
-		 * means no limit.
+		 * Cleanup ForallParams
 		 */
-		current_tuple_count++;
-		if (numberTuples && numberTuples == current_tuple_count)
-			break;
+		estate->es_forall_params = NULL;
+	}
+	else
+	{
+		/* End - ReqID:SRS-PLSQL-FORALL */
+		/*
+		 * Loop until we've processed the proper number of tuples from the plan.
+		 */
+		for (;;)
+		{
+			/* Reset the per-output-tuple exprcontext */
+			ResetPerTupleExprContext(estate);
+
+			/*
+			 * Execute the plan and obtain a tuple
+			 */
+			slot = ExecProcNode(planstate);
+
+			/*
+			 * if the tuple is null, then we assume there is nothing more to
+			 * process so we just end the loop...
+			 */
+			if (TupIsNull(slot))
+				break;
+
+			/*
+			 * If we have a junk filter, then project a new tuple with the junk
+			 * removed.
+			 *
+			 * Store this new "clean" tuple in the junkfilter's resultSlot.
+			 * (Formerly, we stored it back over the "dirty" tuple, which is WRONG
+			 * because that tuple slot has the wrong descriptor.)
+			 */
+			if (estate->es_junkFilter != NULL)
+				slot = ExecFilterJunk(estate->es_junkFilter, slot);
+
+			/*
+			 * If we are supposed to send the tuple somewhere, do so. (In
+			 * practice, this is probably always the case at this point.)
+			 */
+			if (sendTuples)
+			{
+				/*
+				 * If we are not able to send the tuple, we assume the destination
+				 * has closed and no more tuples can be sent. If that's the case,
+				 * end the loop.
+				 */
+				if (!dest->receiveSlot(slot, dest))
+					break;
+			}
+
+			/*
+			 * Count tuples processed, if this is a SELECT.  (For other operation
+			 * types, the ModifyTable plan node must count the appropriate
+			 * events.)
+			 */
+			if (operation == CMD_SELECT)
+				(estate->es_processed)++;
+
+			/*
+			 * check our tuple count.. if we've processed the proper number then
+			 * quit, else loop again and process more tuples.  Zero numberTuples
+			 * means no limit.
+			 */
+			current_tuple_count++;
+			if (numberTuples && numberTuples == current_tuple_count)
+				break;
+		}
 	}
 
 	/*

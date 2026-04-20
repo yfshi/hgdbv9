@@ -127,7 +127,8 @@ ORA_REGRESS = \
 	ora_dbms_ddl \
 	ora_dbms_rowid \
 	ora_dbms_lock \
-	ora_dbms_utility
+	ora_dbms_utility \
+	ora_forall
 
 #/* Begin - ReqID:SRS-PLSQL-Collection */
 PG_CPPFLAGS = -I$../src/tstl2cl/include -I$../src/tstl2cl -I$(srcdir) -I$../src/include

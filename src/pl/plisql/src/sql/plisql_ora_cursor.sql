@@ -9306,6 +9306,7 @@ exception
 end;
 /
 
+SET SERVEROUTPUT ON
 create table tb1(id number(4), name varchar2(30));
 insert into tb1 values (10, 'smith');
 insert into tb1 values (20, 'allen');
@@ -9407,7 +9408,7 @@ begin
   fetch c1 into v_id;
   exit when c1%NOTfound;
   insert into tb2 values(v_id, 'v_name');
-  dbms_output.put_line('a[1]=' || a[1] || 'rowcount=' || c1%rowcount || 'a[2]=' || a[2]);
+  dbms_output.put_line('a[1]=' || a[1] || ', rowcount=' || c1%rowcount || ', a[2]=' || a[2]);
   raise info 'a[1]=%, row_count=%, a[2]=%', a[1], c1%rowcount, a[2];
   end loop;
 end;
@@ -9423,7 +9424,7 @@ begin
   fetch c1 into v_id;
   exit when c1%NOTfound;
   insert into tb2 values(v_id, 'v_name');
-  dbms_output.put_line('rowcount=' || c1%rowcount || 'a[1]=' || a[1] || 'a[2]=' || a[2]);
+  dbms_output.put_line('rowcount=' || c1%rowcount || ', a[1]=' || a[1] || ', a[2]=' || a[2]);
   raise info 'row_count=%, a[1]=%, a[2]=%', c1%rowcount, a[1], a[2];
   end loop;
 end;
@@ -9439,7 +9440,7 @@ begin
   fetch c1 into v_id;
   exit when c1%NOTfound;
   insert into tb2 values(v_id, 'v_name');
-  dbms_output.put_line('a[1]=' || a[1] || 'a[2]=' || a[2] || 'rowcount=' || c1%rowcount);
+  dbms_output.put_line('a[1]=' || a[1] || ', a[2]=' || a[2] || ', rowcount=' || c1%rowcount);
   raise info 'a[1]=%, a[2]=%, row_count=%', a[1], a[2], c1%rowcount;
   end loop;
 end;
@@ -9479,17 +9480,18 @@ begin
   loop
     fetch c1 into v_id;
     exit when c1%NOTfound;
-    dbms_output.put_line('a(1)(1)=' || a(1)(1) || 'record_var.dept_id=' || record_var.dept_id || 'rowcount=' || c1%rowcount);
+    dbms_output.put_line('a(1)(1)=' || a(1)(1) || ', record_var.dept_id=' || record_var.dept_id || ', rowcount=' || c1%rowcount);
     raise info 'a(1)(1):%, record_var.dept_id:%, rowcount:%', a(1)(1), record_var.dept_id, c1%rowcount;
-    dbms_output.put_line('rowcount=' || c1%rowcount || 'd(2)(1)=' || d(2)(1) || 'record_var.dept_id=' || record_var.dept_id);
+    dbms_output.put_line('rowcount=' || c1%rowcount || ', d(2)(1)=' || d(2)(1) || ', record_var.dept_id=' || record_var.dept_id);
     raise info 'rowcount:%, d(2)(1):%, record_var.dept_id:%, ', c1%rowcount, d(2)(1), record_var.dept_id;
-    dbms_output.put_line('a=' || a(c1%rowcount)(1) || 'record_var.dept_id=' || record_var.dept_id || 'rowcount=' || c1%rowcount);
+    dbms_output.put_line('a=' || a(c1%rowcount)(1) || ', record_var.dept_id=' || record_var.dept_id || ', rowcount=' || c1%rowcount);
     raise info 'a:%, record_var.dept_id:%, rowcount:%', a(c1%rowcount)(1), record_var.dept_id, c1%rowcount;
-    dbms_output.put_line('d=' || d(c1%rowcount)(1) || 'record_var.dept_id=' || record_var.dept_id);
+    dbms_output.put_line('d=' || d(c1%rowcount)(1) || ', record_var.dept_id=' || record_var.dept_id);
     raise info 'd:%, record_var.dept_id:%', d(c1%rowcount)(1), record_var.dept_id;
   end loop;
 end;
 /
+SET SERVEROUTPUT OFF
 
 --clean data
 drop table tb2;

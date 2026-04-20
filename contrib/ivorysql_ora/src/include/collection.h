@@ -146,6 +146,9 @@ typedef struct
 {
 	DestReceiver	 		pub;			/* publicly-known function pointers */
 	BulkCollectIntoParams	*bulk_params;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	bool					in_forall;		/* in a FORALL statement? */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } DR_bulkcollect;
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 
@@ -205,5 +208,11 @@ extern Datum init_bulk_collect_params(int num, Datum *collect_data);
 extern void set_bulk_collect_destreceiver_params(Datum dest, Datum bulk_params);
 extern Datum create_bulk_collect_receiver(void);
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+extern void set_bulk_collect_destreceiver_inforall(Datum dest);
+extern List *get_collect_all_values(Datum collect_value);
+extern List *get_collect_all_key_values(Datum collect_value, bool has_between_and,
+						int lower_bound, int upper_bound);
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 #endif

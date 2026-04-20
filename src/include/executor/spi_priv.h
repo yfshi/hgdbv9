@@ -49,6 +49,14 @@ typedef struct
 	/* Begin - SRS-PLSQL-SUBPROC */
 	void		*current_func;	/* remember current invoke func */
 	/* End - SRS-PLSQL-SUBPROC */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	MemoryContext bulkrowcountcxt;	/* forall statment BULK_ROWCOUNT context */
+	uint64		*forall_processed;	/* by Executor, a array whose ith element
+									 * is the number of rows affected by the ith DML
+									 * statement in the most recently completed FORALL
+									 * statement
+									 */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } _SPI_connection;
 
 /*

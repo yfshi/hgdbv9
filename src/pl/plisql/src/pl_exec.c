@@ -140,6 +140,9 @@ static bool sql_found = false; /* found  */
 static int64 sql_rowcount = 0; /* rowcount */
 /* End - ReqID:SRS-PLSQL-CURSOR */
 
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static Datum sql_bulk_rowcount = 0; /* bulk_rowcount */
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * Memory management within a plisql function generally works with three
@@ -337,6 +340,10 @@ static int exec_stmt_forc(PLiSQL_execstate *estate,
 			   PLiSQL_stmt_forc *stmt);
 static int exec_stmt_foreach_a(PLiSQL_execstate *estate,
 					PLiSQL_stmt_foreach_a *stmt);
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static int exec_stmt_forall(PLiSQL_execstate *estate,
+			   PLiSQL_stmt_forall *stmt);
+/* End - ReqID:SRS-PLSQL-FORALL */
 static int exec_stmt_open(PLiSQL_execstate *estate,
 			   PLiSQL_stmt_open *stmt);
 static int exec_stmt_fetch(PLiSQL_execstate *estate,
@@ -466,7 +473,11 @@ static void exec_init_tuple_store(PLiSQL_execstate *estate);
 static void exec_set_found(PLiSQL_execstate *estate, bool state);
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 static void exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate,
-									uint64 rowcount);
+									uint64 rowcount,
+									/* Begin - ReqID:SRS-PLSQL-FORALL */
+									int32 forall_total,
+									uint64 *bulk_rowcount);
+									/* End - ReqID:SRS-PLSQL-FORALL */
 static void exec_set_cursor_attribute(PLiSQL_execstate *estate,
 									PLiSQL_var *cursor);
 static void assign_simple_attribute(PLiSQL_execstate *estate,
@@ -560,6 +571,10 @@ static Datum plisql_init_bulk_collect_params(PLiSQL_execstate *estate, PLiSQL_ro
 /* Begin - ReqID: OA-2124 */
 static void exec_set_plsql_var(PLiSQL_execstate *estate);
 /* End - ReqID: OA-2124 */
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static bool is_integer_type(Oid typoid);
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -2825,6 +2840,12 @@ exec_stmts_ext(PLiSQL_execstate *estate, List *stmts, bool in_exception, bool is
 				rc = exec_stmt_foreach_a(estate, (PLiSQL_stmt_foreach_a *) stmt);
 				break;
 
+			/* Begin - ReqID:SRS-PLSQL-FORALL */
+			case PLISQL_STMT_FORALL:
+				rc = exec_stmt_forall(estate, (PLiSQL_stmt_forall *) stmt);
+				break;
+			/* End - ReqID:SRS-PLSQL-FORALL */
+
 			case PLISQL_STMT_EXIT:
 				rc = exec_stmt_exit(estate, (PLiSQL_stmt_exit *) stmt);
 				break;
@@ -3005,7 +3026,11 @@ exec_stmt_perform(PLiSQL_execstate *estate, PLiSQL_stmt_perform *stmt)
 	(void) exec_run_select(estate, expr, 0, NULL);
 	exec_set_found(estate, (estate->eval_processed != 0));
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	exec_set_implicit_cursor_attribute(estate, estate->eval_processed);
+	exec_set_implicit_cursor_attribute(estate, estate->eval_processed,
+									/* Begin - ReqID:SRS-PLSQL-FORALL */
+									0,
+									NULL);
+									/* End - ReqID:SRS-PLSQL-FORALL */
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 	exec_eval_cleanup(estate);
 
@@ -4030,6 +4055,341 @@ exec_stmt_foreach_a(PLiSQL_execstate *estate, PLiSQL_stmt_foreach_a *stmt)
 	return rc;
 }
 
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/* ----------
+ * exec_stmt_forall 		Execute a FORALL statement
+ *
+ * Syntax: FORALL index IN bounds_clause dml_statement
+ * bounds_clause can be:
+ *	 - lower_bound .. upper_bound
+ *	 - INDICES OF collection [ BETWEEN lower_bound AND upper_bound ]
+ *	 - VALUES OF index_collection
+ */
+static int
+exec_stmt_forall(PLiSQL_execstate *estate, PLiSQL_stmt_forall *stmt)
+{
+	PLiSQL_var  *var;
+	Datum		value;
+	bool		lower_isnull;
+	bool		upper_isnull;
+	Oid 		lower_type;
+	Oid 		upper_type;
+	int32		lower_typmod;
+	int32		upper_typmod;
+	int32		lower_value;
+	int32		upper_value;
+	bool		found = false;
+	int 		rc = PLISQL_RC_OK;
+	ForallParams *forallparams;
+
+	var = (PLiSQL_var *) plisql_get_datum(estate, estate->datums[stmt->var->dno]);
+	forallparams = (ForallParams *) palloc0(sizeof(ForallParams));
+
+	switch (stmt->forall_type)
+	{
+		case FORALL_RANGE:
+			{
+				int32		i;
+
+  				/* get the value of the lower bound */
+				value = exec_eval_expr(estate, stmt->lower_bound,
+									   &lower_isnull, &lower_type, &lower_typmod);
+				if (lower_isnull)
+					ereport(ERROR,
+							(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+							 errmsg("lower bound of FORALL cannot be null")));
+
+				value = exec_cast_value(estate, value, &lower_isnull,
+										lower_type, lower_typmod,
+										var->datatype->typoid,
+										var->datatype->atttypmod);
+
+				lower_value = DatumGetInt32(value);
+				exec_eval_cleanup(estate);
+
+				if (lower_value <= 0)
+					ereport(ERROR,
+						(errcode(ERRCODE_NO_DATA_FOUND),
+						errmsg("element at index [%d] does not exis", lower_value)));
+
+				/* get the value of the upper bound */
+				value = exec_eval_expr(estate, stmt->upper_bound,
+									   &upper_isnull, &upper_type, &upper_typmod);
+				if (upper_isnull)
+					ereport(ERROR,
+							(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+							 errmsg("upper bound of FORALL cannot be null")));
+
+				value = exec_cast_value(estate, value, &upper_isnull,
+										upper_type, upper_typmod,
+										var->datatype->typoid,
+										var->datatype->atttypmod);
+
+				upper_value = DatumGetInt32(value);
+				exec_eval_cleanup(estate);
+
+				/*
+				 * validate range, if lower bound is larger than upper,
+				 * do nothing and return.
+				 */
+				if (lower_value > upper_value)
+				{
+					pfree(forallparams);
+					exec_set_found(estate, found);
+					exec_set_implicit_cursor_attribute(estate, 0,
+													0,
+													NULL);
+					return PLISQL_RC_OK;
+				}
+
+				/* the index value is from lower_value to upper_value */
+				for (i = lower_value; i <= upper_value; i++)
+					forallparams->subscripts = lappend_int(forallparams->subscripts, i);
+				assign_simple_var(estate, var, Int32GetDatum(lower_value), false, false);
+			}
+			break;
+
+		case FORALL_INDICES:
+		case FORALL_VALUES:
+			{
+				bool		need_free_datatype = false;
+				PLiSQL_ora_collection_type *collect_type = NULL;
+				bool		isnull;
+				Oid 		valtype;
+				int32		valtypmod;
+				Datum		collect_value;
+				PLiSQL_datum	*datum;
+
+				datum = estate->datums[stmt->collect_dno];
+
+				/* get the collection datatype */
+				if (datum->dtype == PLISQL_DTYPE_VAR)
+					collect_type = (PLiSQL_ora_collection_type *)(((PLiSQL_var *)datum)->datatype);
+				else if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
+				{
+					/* reference a package variable */
+					PLiSQL_pkg_datum *pkg_datum = (PLiSQL_pkg_datum *)datum;
+
+					collect_type = (PLiSQL_ora_collection_type *)(((PLiSQL_var *)pkg_datum->pkgvar)->datatype);
+				}
+				else if (datum->dtype == PLISQL_DTYPE_COLLECT_ARRAYELEM)
+					collect_type = (PLiSQL_ora_collection_type *)get_collect_elem_type(estate,
+																					estate->datums[stmt->collect_dno],
+																					&need_free_datatype);
+				else
+					ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("invalid variable")));
+
+				if (collect_type == NULL)
+					ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("invalid datatype")));
+
+				/* If collection is an associative array, it must be indexed by int. */
+				if (IS_PLSQL_ASSOCIATIVE_ARRAY(collect_type->type.typtype))
+				{
+					if (!is_integer_type(collect_type->typkey->typoid))
+						ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							errmsg("It must be indexed by integer.")));
+				}
+
+				/* The element datatype of collection should be int */
+				if (stmt->forall_type == FORALL_VALUES &&
+					!is_integer_type(collect_type->typdatatype->typoid))
+					ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						errmsg("Element type of collection should be integer.")));
+
+				/* evaluate collection */
+				 exec_eval_datum(estate, estate->datums[stmt->collect_dno],
+								&valtype, &valtypmod, &collect_value, &isnull);
+				if (isnull)
+					ereport(ERROR,
+						(errcode(ERRCODE_COLLECTION_IS_NULL),
+						errmsg("Reference to uninitialized collection")));
+
+
+				if (stmt->forall_type == FORALL_INDICES)
+				{
+					if (stmt->lower_bound != NULL &&
+						stmt->upper_bound != NULL)
+					{
+						/*
+						 * Get the value of the BETWEEN lower bound
+						 */
+						value = exec_eval_expr(estate, stmt->lower_bound,
+											   &lower_isnull, &lower_type, &lower_typmod);
+						if (lower_isnull)
+							ereport(ERROR,
+									(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+									 errmsg("lower bound of FOR loop cannot be null")));
+
+						value = exec_cast_value(estate, value, &lower_isnull,
+												lower_type, lower_typmod,
+												var->datatype->typoid,
+												var->datatype->atttypmod);
+
+						lower_value = DatumGetInt32(value);
+						exec_eval_cleanup(estate);
+
+						/*
+						 * Get the value of the BETWEEN upper bound
+						 */
+						value = exec_eval_expr(estate, stmt->upper_bound,
+											   &upper_isnull, &upper_type, &upper_typmod);
+						if (upper_isnull)
+							ereport(ERROR,
+									(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+									 errmsg("upper bound of FOR loop cannot be null")));
+
+						value = exec_cast_value(estate, value, &upper_isnull,
+												upper_type, upper_typmod,
+												var->datatype->typoid,
+												var->datatype->atttypmod);
+
+						upper_value = DatumGetInt32(value);
+						exec_eval_cleanup(estate);
+
+						/*
+						 * validate range, if lower bound is larger than upper,
+						 * do nothing and return.
+						 */
+						if (lower_value > upper_value ||
+							upper_value <= 0)
+						{
+							pfree(forallparams);
+							exec_set_found(estate, found);
+							exec_set_implicit_cursor_attribute(estate, 0,
+															0,
+															NULL);
+							return PLISQL_RC_OK;
+						}
+
+						/* get all the key values of the collection */
+						forallparams->subscripts = collection_funcs.GetCollectAllKeyValues(collect_value,
+																						true,
+																						lower_value,
+																						upper_value);
+					}
+					else
+					{
+						/* get all the key values of the collection */
+						forallparams->subscripts = collection_funcs.GetCollectAllKeyValues(collect_value,
+																						false,
+																						0,
+																						0);
+					}
+				}
+				else
+				{
+					/* get all the elements values of the collection */
+					forallparams->subscripts = collection_funcs.GetCollectAllValues(collect_value);
+				}
+
+				/* if the collection has no elements, return */
+				if (forallparams->subscripts == NIL)
+				{
+					pfree(forallparams);
+					exec_set_found(estate, found);
+					exec_set_implicit_cursor_attribute(estate, 0,
+													0,
+													NULL);
+					return PLISQL_RC_OK;
+				}
+				assign_simple_var(estate, var,
+							Int32GetDatum(list_nth_int(forallparams->subscripts, 0)),
+							false, false);
+			}
+			break;
+
+		default:
+			ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("unrecognized forall statment.")));
+	}
+
+	forallparams->indexdno = var->dno;
+	forallparams->total = list_length(forallparams->subscripts);
+	forallparams->curr_idx = 0;
+
+	if (stmt->body->cmd_type == PLISQL_STMT_EXECSQL)
+	{
+		((PLiSQL_stmt_execsql *)stmt->body)->sqlstmt->forallparams = forallparams;
+
+		/* execute the DML or dynamic SQL */
+		rc = exec_stmts(estate, list_make1(stmt->body));
+	}
+	else if (stmt->body->cmd_type == PLISQL_STMT_DYNEXECUTE)
+	{
+		ListCell 	*cell;
+		ListCell 	*lc;
+		uint64		total_processed = 0;
+		uint64		*forall_processed;
+		int			i = 0;
+		PLiSQL_stmt_dynexecute *stmt_dyn;
+
+		stmt_dyn = (PLiSQL_stmt_dynexecute *) stmt->body;
+		stmt_dyn->query->forallparams = forallparams;
+		forall_processed = (uint64 *)palloc0(sizeof(uint64) * forallparams->total);
+
+		/*
+		 * to check if the USING expressions reference the index of FORALL,
+		 * set forallparams to the USING expressions
+		 */
+		foreach(cell, stmt_dyn->params)
+		{
+			PLiSQL_expr *param = (PLiSQL_expr *) lfirst(cell);
+			param->forallparams = forallparams;
+		}
+
+		foreach(lc, forallparams->subscripts)
+		{
+			int64	curr_value = lfirst_int(lc);
+
+			found = true;			/* looped at least once */
+
+			/*
+			 * Assign current value to loop var
+			 */
+			assign_simple_var(estate, var, Int64GetDatum(curr_value), false, false);
+
+			if (i == 0 && stmt_dyn->bulk_collect_into)
+				stmt_dyn->bulk_params = plisql_init_bulk_collect_params(estate,
+															(PLiSQL_row *) stmt_dyn->target);
+
+			/* execute the dynamic SQL */
+			rc = exec_stmts(estate, list_make1(stmt->body));
+			LOOP_RC_PROCESSING(stmt->label, break);
+
+			if (rc < 0)
+				elog(ERROR, "SPI_execute_plan_with_paramlist failed executing query \"%s\": %s",
+					 stmt_dyn->query->query, SPI_result_code_string(rc));
+
+			total_processed += SPI_processed;
+			forall_processed[i++] = SPI_processed;
+		}
+
+		exec_set_implicit_cursor_attribute(estate, total_processed,
+										forallparams->total,
+										forall_processed);
+		pfree(forall_processed);
+	}
+
+	/*
+	 * Set the FOUND variable to indicate the result of executing the loop
+	 * (namely, whether we looped one or more times). This must be set here so
+	 * that it does not interfere with the value of the FOUND variable inside
+	 * the loop processing itself.
+	 */
+	exec_set_found(estate, found);
+
+	pfree(forallparams);
+
+	return rc;
+}
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /* ----------
  * exec_stmt_exit			Implements EXIT and CONTINUE
@@ -4682,7 +5042,11 @@ exec_stmt_return_query(PLiSQL_execstate *estate,
 	estate->eval_processed = processed;
 	exec_set_found(estate, processed != 0);
 	/* Begin - ReqID:SRS-PLSQL-CURSOR */
-	exec_set_implicit_cursor_attribute(estate, processed);
+	exec_set_implicit_cursor_attribute(estate, processed,
+									/* Begin - ReqID:SRS-PLSQL-FORALL */
+									0,
+									NULL);
+									/* End - ReqID:SRS-PLSQL-FORALL */
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 
 	return PLISQL_RC_OK;
@@ -5336,6 +5700,15 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 	if (expr->plan == NULL)
 		exec_prepare_plan(estate, expr, CURSOR_OPT_PARALLEL_OK);
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	if (expr->forallparams != NULL &&
+		(expr->paramnos == NULL ||
+		!bms_is_member(expr->forallparams->indexdno, expr->paramnos)))
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("DML statement without BULK In-BIND cannot be used inside FORALL")));
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	if (!stmt->mod_stmt_set)
 	{
 		ListCell   *l;
@@ -5404,16 +5777,26 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		 */
 		rc = SPI_execute_plan_with_paramlist_bulk_collect(expr->plan, paramLI,
 											 estate->readonly_func, tcount,
-											 bulk_params);
+											 bulk_params,
+											 expr->forallparams /* ReqID:SRS-PLSQL-FORALL */);
 	}
 	else
 	{
 	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
-		/*
-		 * Execute the plan
-		 */
-		rc = SPI_execute_plan_with_paramlist(expr->plan, paramLI,
-											 estate->readonly_func, tcount);
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		if (expr->forallparams != NULL)
+			rc = SPI_execute_plan_with_paramlist_forall(expr->plan, paramLI,
+												 estate->readonly_func, tcount,
+												 expr->forallparams);
+		else
+		{
+		/* End - ReqID:SRS-PLSQL-FORALL */
+			/*
+			 * Execute the plan
+			 */
+			rc = SPI_execute_plan_with_paramlist(expr->plan, paramLI,
+												 estate->readonly_func, tcount);
+		}
 	}
 
 	/*
@@ -5427,7 +5810,11 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 			Assert(!stmt->mod_stmt);
 			exec_set_found(estate, (SPI_processed != 0));
 			/* Begin - ReqID:SRS-PLSQL-CURSOR */
-			exec_set_implicit_cursor_attribute(estate, SPI_processed);
+			exec_set_implicit_cursor_attribute(estate, SPI_processed,
+											/* Begin - ReqID:SRS-PLSQL-FORALL */
+											(expr->forallparams != NULL) ? (expr->forallparams->total) :0,
+											SPI_forall_processed);
+											/* End - ReqID:SRS-PLSQL-FORALL */
 			/* End - ReqID:SRS-PLSQL-CURSOR */
 			break;
 
@@ -5442,7 +5829,11 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 			Assert(stmt->mod_stmt);
 			exec_set_found(estate, (SPI_processed != 0));
 			/* Begin - ReqID:SRS-PLSQL-CURSOR */
-			exec_set_implicit_cursor_attribute(estate, SPI_processed);
+			exec_set_implicit_cursor_attribute(estate, SPI_processed,
+											/* Begin - ReqID:SRS-PLSQL-FORALL */
+											(expr->forallparams != NULL) ? (expr->forallparams->total) :0,
+											SPI_forall_processed);
+											/* End - ReqID:SRS-PLSQL-FORALL */
 			/* End - ReqID:SRS-PLSQL-CURSOR */
 			break;
 
@@ -5546,7 +5937,11 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 				 * return 1
 				 */
 				if (errlevel == ERROR)
-					exec_set_implicit_cursor_attribute(estate, 1);
+					exec_set_implicit_cursor_attribute(estate, 1,
+													/* Begin - ReqID:SRS-PLSQL-FORALL */
+													(expr->forallparams != NULL) ? (expr->forallparams->total) :0,
+													SPI_forall_processed);
+													/* End - ReqID:SRS-PLSQL-FORALL */
 				/* End - BUG#Z00001349 */
 
 				ereport(errlevel,
@@ -5562,6 +5957,9 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		/* Clean up */
 		exec_eval_cleanup(estate);
 		SPI_freetuptable(SPI_tuptable);
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		SPI_free_bulkrowcount();
+		/* End - ReqID:SRS-PLSQL-FORALL */
 	}
 	/* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
 	/* If we have BULK COLLECT INTO, we need to free collections parameters */
@@ -5570,6 +5968,9 @@ exec_stmt_execsql(PLiSQL_execstate *estate,
 		/* Clean up */
 		exec_eval_cleanup(estate);
 		SPI_freetuptable(SPI_tuptable);
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		SPI_free_bulkrowcount();
+		/* End - ReqID:SRS-PLSQL-FORALL */
 	}
 	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
 	else
@@ -5671,13 +6072,30 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 	{
 		Datum	 bulk_params;
 
-		/* We need to get collections parameters for  BULK COLLECT target */
-		bulk_params = plisql_init_bulk_collect_params(estate, (PLiSQL_row *) stmt->target);
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		if (stmt->in_forall)
+			bulk_params = stmt->bulk_params;
+		else
+		/* End - ReqID:SRS-PLSQL-FORALL */
+		{
+			/* We need to get collections parameters for  BULK COLLECT target */
+			bulk_params = plisql_init_bulk_collect_params(estate, (PLiSQL_row *) stmt->target);
+		}
 
 		/*
 		 * Now we can create the destination receiver object.
 		 */
 		dest = CreateDestReceiver(DestBulkCollect);
+
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		/*
+		 * if the BULK COLLECT statement is in a FORALL statement,
+		 * set the DR_bulkcollect->in_forall tp true
+		 */
+		if (stmt->in_forall)
+			collection_funcs.SetBulkCollectDestReceiverInForall(PointerGetDatum(dest));
+		/* End - ReqID:SRS-PLSQL-FORALL */
+
 		collection_funcs.SetBulkCollectDestReceiverParams(PointerGetDatum(dest), bulk_params);
 	}
 	/* End ReqID:SRS-PLSQL-BULKCOLLECT */
@@ -5717,7 +6135,11 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 		case SPI_OK_UTILITY:
 		case SPI_OK_REWRITTEN:
 			/* Begin - BUG#Z00006496 */
-			exec_set_implicit_cursor_attribute(estate, SPI_processed);
+			exec_set_implicit_cursor_attribute(estate, SPI_processed,
+											/* Begin - ReqID:SRS-PLSQL-FORALL */
+											0,
+											NULL);
+											/* End - ReqID:SRS-PLSQL-FORALL */
 			/* End - BUG#Z00006496 */
 			break;
 
@@ -5811,7 +6233,10 @@ exec_stmt_dynexecute(PLiSQL_execstate *estate,
 		}
 		else
 		{
-			if (n > 1 && stmt->strict)
+			if ((n > 1 && stmt->strict)
+				/* Begin - ReqID:SRS-PLSQL-FORALL */
+				|| (stmt->in_forall && stmt->query->forallparams->total > 1))
+				/* End - ReqID:SRS-PLSQL-FORALL */
 			{
 				char	   *errdetail;
 
@@ -6968,6 +7393,11 @@ exec_assign_value(PLiSQL_execstate *estate,
 						case PLISQL_ATTRIBUTE_ROWCOUNT:
 							sql_rowcount = DatumGetInt64(newvalue);
 							break;
+						/* Begin - ReqID:SRS-PLSQL-FORALL */
+						case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+							sql_bulk_rowcount = newvalue;
+							break;
+						/* End - ReqID:SRS-PLSQL-FORALL */
 						default:
 							ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -7295,6 +7725,16 @@ exec_eval_datum(PLiSQL_execstate *estate,
 							*isnull = (!sql_cursor_init);
 							*value = Int64GetDatum(sql_rowcount);
 							break;
+						/* Begin - ReqID:SRS-PLSQL-FORALL */
+						case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+							if (sql_bulk_rowcount == (Datum) 0)
+								*isnull = true;
+							else
+								*isnull = false;
+
+							*value = sql_bulk_rowcount;
+							break;
+						/* End - ReqID:SRS-PLSQL-FORALL */
 						default:
 							ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -7352,6 +7792,16 @@ exec_eval_datum(PLiSQL_execstate *estate,
 							*isnull = attr->isnull;
 							*value = attr->value;
 							break;
+						/* Begin - ReqID:SRS-PLSQL-FORALL */
+						case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+							if (sql_bulk_rowcount == (Datum) 0)
+								*isnull = true;
+							else
+								*isnull = false;
+
+							*value = sql_bulk_rowcount;
+							break;
+						/* End - ReqID:SRS-PLSQL-FORALL */
 						default:
 							ereport(ERROR,
 								(errcode(ERRCODE_SYNTAX_ERROR),
@@ -11205,7 +11655,11 @@ exec_set_found(PLiSQL_execstate *estate, bool state)
  * ----------
  */
 static void
-exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate, uint64 rowcount)
+exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate, uint64 rowcount,
+								/* Begin - ReqID:SRS-PLSQL-FORALL */
+								int32 forall_total,
+								uint64 *bulk_rowcount)
+								/* End - ReqID:SRS-PLSQL-FORALL */
 {
 	PLiSQL_datum *attribute;
 	PLiSQL_var *cursor;
@@ -11237,6 +11691,41 @@ exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate, uint64 rowcount)
 							Int64GetDatum(rowcount),
 							false, INT8OID, -1);
 				break;
+			/* Begin - ReqID:SRS-PLSQL-FORALL */
+			case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+			{
+				if (bulk_rowcount != NULL && forall_total != 0)
+				{
+					Datum	*elems;
+					ArrayType *arr;
+					int16	typlen;
+					bool	typbyval;
+					char	typalign;
+					MemoryContext oldcxt;
+					uint64		i;
+
+					elems = palloc(sizeof(Datum) * forall_total);
+					for (i = 0; i < forall_total; i++)
+						elems[i] = UInt64GetDatum(bulk_rowcount[i]);
+
+					oldcxt = MemoryContextSwitchTo(get_eval_mcontext(estate));
+					get_typlenbyvalalign(INT8OID, &typlen, &typbyval, &typalign);
+					arr = construct_array(elems, forall_total, INT8OID, typlen, typbyval, typalign);
+
+					MemoryContextSwitchTo(oldcxt);
+					pfree(elems);
+
+					exec_assign_value(estate, attribute,
+								PointerGetDatum(arr),
+								false, INT8ARRAYOID, -1);
+				}
+				else
+					exec_assign_value(estate, attribute,
+								(Datum) 0,
+								true, INT8ARRAYOID, -1);
+			}
+			break;
+			/* End - ReqID:SRS-PLSQL-FORALL */
 			default:
 				elog(ERROR, "invalid attribute");
 				break;
@@ -13734,3 +14223,16 @@ exec_set_plsql_var(PLiSQL_execstate *estate)
 	assign_simple_var(estate, unit_type_var, CStringGetTextDatum(plsql_unit_type), false, false);
 }
 /* End - ReqID: OA-2124 */
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/*
+ * check input type whether is integer type
+ */
+static bool
+is_integer_type(Oid typoid)
+{
+	return (typoid == INT8OID ||
+			typoid == INT4OID ||
+			typoid == INT2OID);
+}
+/* End - ReqID:SRS-PLSQL-FORALL */

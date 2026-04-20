@@ -389,6 +389,10 @@ plisql_stmt_typename(PLiSQL_stmt *stmt)
 			return _("FOR over cursor");
 		case PLISQL_STMT_FOREACH_A:
 			return _("FOREACH over array");
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		case PLISQL_STMT_FORALL:
+			return _("FORALL");
+		/* End - ReqID:SRS-PLSQL-FORALL */
 		case PLISQL_STMT_EXIT:
 			return ((PLiSQL_stmt_exit *) stmt)->is_exit ? "EXIT" : "CONTINUE";
 		case PLISQL_STMT_RETURN:
@@ -493,6 +497,9 @@ static void free_fori(PLiSQL_stmt_fori *stmt);
 static void free_fors(PLiSQL_stmt_fors *stmt);
 static void free_forc(PLiSQL_stmt_forc *stmt);
 static void free_foreach_a(PLiSQL_stmt_foreach_a *stmt);
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static void free_forall(PLiSQL_stmt_forall *stmt);
+/* End - ReqID:SRS-PLSQL-FORALL */
 static void free_exit(PLiSQL_stmt_exit *stmt);
 static void free_return(PLiSQL_stmt_return *stmt);
 static void free_return_next(PLiSQL_stmt_return_next *stmt);
@@ -549,6 +556,11 @@ free_stmt(PLiSQL_stmt *stmt)
 		case PLISQL_STMT_FOREACH_A:
 			free_foreach_a((PLiSQL_stmt_foreach_a *) stmt);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		case PLISQL_STMT_FORALL:
+			free_forall((PLiSQL_stmt_forall *) stmt);
+			break;
+		/* End - ReqID:SRS-PLSQL-FORALL */
 		case PLISQL_STMT_EXIT:
 			free_exit((PLiSQL_stmt_exit *) stmt);
 			break;
@@ -722,6 +734,16 @@ free_foreach_a(PLiSQL_stmt_foreach_a *stmt)
 	free_expr(stmt->expr);
 	free_stmts(stmt->body);
 }
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static void
+free_forall(PLiSQL_stmt_forall *stmt)
+{
+	free_expr(stmt->lower_bound);
+	free_expr(stmt->upper_bound);
+	free_stmt(stmt->body);
+}
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 static void
 free_open(PLiSQL_stmt_open *stmt)

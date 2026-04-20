@@ -74,7 +74,7 @@ bool	enable_serveroutput = false;
 /* End - ReqID:SRS-PLSQL-DBMS_OUTPUT */
 /* Begin - ReqID:SRS-PLSQL-Collection */
 collection_funcs_call collection_funcs = {NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-NULL, NULL, NULL, NULL, NULL, UNLOADED};
+NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, UNLOADED};
 /* End - ReqID:SRS-PLSQL-Collection */
 
 
