@@ -352,3 +352,11 @@ update parted_trig set a = 2;
 drop table parted_trig2;
 drop table parted_trig;
 /* End - BUG#Z6561 */
+
+/* Begin - OA-REQ-2297 */
+create table poa2297(a int) partition by list(a) with rowid;
+create table poa2297_c1 partition of poa2297 for values in (2);
+\d+ poa2297_c1
+
+drop table poa2297;
+/* End - OA-REQ-2297 */
