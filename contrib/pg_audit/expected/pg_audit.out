@@ -1396,22 +1396,255 @@ select count(*) from hg_security.pg_audit_log;
 (1 row)
 
 select * from hg_security.show_audit_param();
-         name          |         setting          
------------------------+--------------------------
- audit.enable          | off
- audit.retentionpolicy | space
- audit.retentiondays   | 180
- audit.detectiontime   | 1
- audit.spacelimit      | 10GB
- audit.spacealarm      | 0.8
- audit.archdir         | 
- audit.remote_archdir  | 
- audit.monitoring      | off
- audit.mail            | 
- audit.privimode       | 1
- audit.systemopers     | off
- audit.sqlitedbpath    | pgaudit/sqlite/sqlite.db
- audit.track_settings  | off
- audit.logpolicy       | pause
-(15 rows)
+          name           |         setting          
+-------------------------+--------------------------
+ audit.enable            | off
+ audit.retentionpolicy   | space
+ audit.retentiondays     | 180
+ audit.detectiontime     | 1
+ audit.spacelimit        | 10GB
+ audit.spacealarm        | 0.8
+ audit.archdir           | 
+ audit.remote_archdir    | 
+ audit.monitoring        | off
+ audit.mail              | 
+ audit.privimode         | 1
+ audit.systemopers       | off
+ audit.sqlitedbpath      | pgaudit/sqlite/sqlite.db
+ audit.track_settings    | off
+ audit.logpolicy         | pause
+ audit.login_logout_only | off
+ audit.exclude_apps      | 
+ audit.exclude_users     | 
+ audit.exclude_time      | 
+ audit.exclude_ips       | 
+(20 rows)
+
+/* audit.app */
+truncate hg_security.pg_audit_log;
+alter system set audit.exclude_apps='psql,patroni';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_apps ;
+ audit.exclude_apps 
+--------------------
+ psql,patroni
+(1 row)
+
+select hg_security.pg_audit_switch_primary(1);
+ pg_audit_switch_primary 
+-------------------------
+ t
+(1 row)
+
+select * from hg_security.pg_audit_log;
+ confid | sessionoid | useroid | username | roleoid | rolename | audittime | result | namespaceid | namespacename | objectoid | objectname | colname | classid | objecttype | audittype | commandid | actionname | clientport | clientname | clientip | clientmac | clientappname | sqltext | errtext | authmethod | privlevel 
+--------+------------+---------+----------+---------+----------+-----------+--------+-------------+---------------+-----------+------------+---------+---------+------------+-----------+-----------+------------+------------+------------+----------+-----------+---------------+---------+---------+------------+-----------
+(0 rows)
+
+alter system set audit.exclude_apps='';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_apps ;
+ audit.exclude_apps 
+--------------------
+ 
+(1 row)
+
+/* audit.time */
+truncate hg_security.pg_audit_log;
+alter system set audit.exclude_time='22:00-3:00';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_time ;
+ audit.exclude_time 
+--------------------
+ 22:00-3:00
+(1 row)
+
+alter system set audit.exclude_time='';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_time ;
+ audit.exclude_time 
+--------------------
+ 
+(1 row)
+
+/* audit.ip */
+truncate hg_security.pg_audit_log;
+alter system set audit.exclude_ips='127.0.0.1/32';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_ips ;
+ audit.exclude_ips 
+-------------------
+ 127.0.0.1/32
+(1 row)
+
+alter system set audit.exclude_ips='';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_ips ;
+ audit.exclude_ips 
+-------------------
+ 
+(1 row)
+
+/* audit users */
+truncate hg_security.pg_audit_log;
+drop user if exists user1;
+create user user1 with superuser password '123456';
+alter system set audit.exclude_users = 'user1';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_users;
+ audit.exclude_users 
+---------------------
+ user1
+(1 row)
+
+\c - user1
+select * from hg_security.pg_audit_log ;
+ confid | sessionoid | useroid | username | roleoid | rolename | audittime | result | namespaceid | namespacename | objectoid | objectname | colname | classid | objecttype | audittype | commandid | actionname | clientport | clientname | clientip | clientmac | clientappname | sqltext | errtext | authmethod | privlevel 
+--------+------------+---------+----------+---------+----------+-----------+--------+-------------+---------------+-----------+------------+---------+---------+------------+-----------+-----------+------------+------------+------------+----------+-----------+---------------+---------+---------+------------+-----------
+(0 rows)
+
+alter system set audit.exclude_users='';
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.exclude_users ;
+ audit.exclude_users 
+---------------------
+ 
+(1 row)
+
+/* audit.login */
+alter system set audit.login_logout_only=on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.login_logout_only ;
+ audit.login_logout_only 
+-------------------------
+ on
+(1 row)
+
+drop user if exists user2;
+create user user2 with password '123456';
+truncate hg_security.pg_audit_log;
+\c - user2
+\c - user1
+select * from hg_security.pg_audit_log ;
+ confid | sessionoid | useroid | username | roleoid | rolename | audittime | result | namespaceid | namespacename | objectoid | objectname | colname | classid | objecttype | audittype | commandid | actionname | clientport | clientname | clientip | clientmac | clientappname | sqltext | errtext | authmethod | privlevel 
+--------+------------+---------+----------+---------+----------+-----------+--------+-------------+---------------+-----------+------------+---------+---------+------------+-----------+-----------+------------+------------+------------+----------+-----------+---------------+---------+---------+------------+-----------
+(0 rows)
+
+alter system set audit.login_logout_only=off;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show audit.login_logout_only ;
+ audit.login_logout_only 
+-------------------------
+ off
+(1 row)
 

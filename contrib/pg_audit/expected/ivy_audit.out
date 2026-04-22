@@ -1482,22 +1482,27 @@ select * from hg_security.pg_clean_audit_config();
 
 -- End bug#Z5807
 select * from hg_security.show_audit_param();
-         name          |         setting          
------------------------+--------------------------
- audit.enable          | off
- audit.retentionpolicy | space
- audit.retentiondays   | 180
- audit.detectiontime   | 1
- audit.spacelimit      | 10GB
- audit.spacealarm      | 0.8
- audit.archdir         | 
- audit.remote_archdir  | 
- audit.monitoring      | off
- audit.mail            | 
- audit.privimode       | 1
- audit.systemopers     | off
- audit.sqlitedbpath    | pgaudit/sqlite/sqlite.db
- audit.track_settings  | off
- audit.logpolicy       | pause
-(15 rows)
+          name           |         setting          
+-------------------------+--------------------------
+ audit.enable            | off
+ audit.retentionpolicy   | space
+ audit.retentiondays     | 180
+ audit.detectiontime     | 1
+ audit.spacelimit        | 10GB
+ audit.spacealarm        | 0.8
+ audit.archdir           | 
+ audit.remote_archdir    | 
+ audit.monitoring        | off
+ audit.mail              | 
+ audit.privimode         | 1
+ audit.systemopers       | off
+ audit.sqlitedbpath      | pgaudit/sqlite/sqlite.db
+ audit.track_settings    | off
+ audit.logpolicy         | pause
+ audit.login_logout_only | off
+ audit.exclude_apps      | 
+ audit.exclude_users     | 
+ audit.exclude_time      | 
+ audit.exclude_ips       | 
+(20 rows)
 

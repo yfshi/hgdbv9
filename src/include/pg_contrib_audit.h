@@ -463,6 +463,16 @@ typedef struct AduitSwitchGUC
 	AuditSwitch track_settings;
 	bool *audit_pause;    //use share buffer
 	AuditPolicy logpolicy;  //chioce log policy,when disk full
+	AuditSwitch login_logout_only;
+	char *exclude_apps;
+	List *exclude_apps_list;
+	char *exclude_users;
+	List *exclude_users_list;
+	char *exclude_time;
+	int audit_starttime;
+	int audit_endtime;
+	char *exclude_ips;
+	List *exclude_ips_list;
 }AduitSwitchGUC;
 
 extern bool receive_sighup;
