@@ -42,6 +42,10 @@
 	static bool check_default_week_format(int *newval, void **extra, GucSource source);
 	static void assign_default_week_format(int newval, void *extra);
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+ 	/* Begin - SRS-MYSQL-AutoCommit */
+	static bool check_autocommit(bool *newval, void **extra, GucSource source);
+	static void assign_autocommit(bool newval, void *extra);
+	/* End - SRS-MYSQL-AutoCommit */
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -315,7 +319,7 @@ int 		group_concat_max_len;	/* bug#7234 */
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-DO */
-	/* Begin - ReqID:SRS-MYSQL-PROTOCOL */
+	/* Begin - ReqID:SRS-MYSQL-AutoCommit */
 	{
 		{"autocommit", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
 				gettext_noop("This parameter is only used in mysql compatibility."),
@@ -324,9 +328,9 @@ int 		group_concat_max_len;	/* bug#7234 */
 		},
 		&mys_autocommit,
 		true,
-		NULL, NULL, NULL
+		check_autocommit, assign_autocommit, NULL
 	},
-	/* End - ReqID:SRS-MYSQL-PROTOCOL */
+	/* End - ReqID:SRS-MYSQL-AutoCommit */
 	/* Begin - SRS-MYSQL-HEX-LITERAL */
 	{
 		{"mysql.use_mysql_bit_literal", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
@@ -1338,5 +1342,55 @@ assign_default_week_format(int newval, void *extra)
 	default_week_format = newval;
 }
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - SRS-MYSQL-AutoCommit */
+/*
+ * check_autocommit
+ * Check hook for autocommit GUC parameter.
+ * Prevents setting autocommit inside stored procedures, functions, or anonymous blocks.
+ */
+static bool
+check_autocommit(bool *newval, void **extra, GucSource source)
+{
+	/*
+	 * Only check when the value is actually being changed (not during startup/reload)
+	 * and when we're in a normal processing mode (not during system initialization)
+	 */
+	if (IsNormalProcessingMode())
+	{
+		/* Check if we are inside a stored procedure, function, or anonymous block */
+		/* Method: Check SPI connection (for PL/pgSQL, PL/iSQL, etc.) */
+		if (SPI_get_connected() >= 0)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_ACTIVE_SQL_TRANSACTION),
+					errmsg("Not allowed to set autocommit from a stored procedure, function, or anonymous block")));
+			return false;
+		}
+	}
+	return true;
+}
+
+/*
+ * assign_autocommit - GUC assign hook for the autocommit parameter.
+ * This function is called whenever the autocommit GUC is set to a new value.
+ * In MySQL compatibility mode, when turning autocommit ON (from false to true),
+ * we automatically commit any pending transaction to align with MySQL behavior.
+ * If the commit fails, we roll back the transaction and issue a warning.
+ */
+static void
+assign_autocommit(bool newval, void *extra)
+{
+	if (!mys_autocommit && newval && IsTransactionState())
+	{
+		if (!EndTransactionBlock(false))
+		{
+			UserAbortTransactionBlock(false);
+			ereport(WARNING,
+					(errmsg("Could not commit transaction when change autocommit, rollback!")));
+		}
+	}
+}
+/* End - SRS-MYSQL-AutoCommit */
 
 #endif

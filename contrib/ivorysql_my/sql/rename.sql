@@ -31,6 +31,7 @@ create user u1;
 rename user u1 to u2, u1 to u2, u2 to u3;
 select usename from pg_user where usename = 'u1';
 drop role u2;
+drop role u1;
 
 -- rename table
 create table t1 (c int);

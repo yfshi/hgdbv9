@@ -537,4 +537,8 @@ extern const char *TransStateIntAsString(int state);
 extern int GetCurrTransState(void);
 /* End ReqID: SESSION-VIEWS */
 
+/* Begin ReqID: SRS-MYSQL-AutoCommit */
+extern void BlockStateBeginToInprogress(void);
+extern void AutocommitChangeBlockState(void);
+/* End ReqID: SRS-MYSQL-AutoCommit */
 #endif							/* XACT_H */

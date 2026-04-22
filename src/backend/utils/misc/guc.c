@@ -121,6 +121,7 @@
 #include "utils/varlena.h"
 #include "utils/xml.h"
 #include "utils/resource_manager.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */ 
+#include "executor/spi.h" /* ReqID: SRS-MYSQL-AutoCommit */
 
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
@@ -164,6 +165,7 @@
 /* End - BUG#Z1444 */
 
 #include "se_features_interface.h" /* ReqID: LOCK-SESSION */
+
 
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
@@ -8339,7 +8341,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault)
+					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8433,7 +8435,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault)
+					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8527,7 +8529,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault)
+					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8649,7 +8651,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault)
+					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8788,7 +8790,7 @@ set_config_option(const char *name, const char *value,
 					if (enable_tmp_backdoor)
 					{
 						/* Save old value to support transaction abort */
-						if (!makeDefault)
+						if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
 							push_old_value(&conf->gen, action);
 
 						if (conf->assign_hook)
@@ -8808,7 +8810,7 @@ set_config_option(const char *name, const char *value,
 					else
 					{
 						/* Save old value to support transaction abort */
-						if (!makeDefault)
+						if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
 							push_old_value(&conf->gen, action);
 
 						if (conf->assign_hook)
@@ -9773,6 +9775,28 @@ ExecSetVariableStmt(VariableSetStmt *stmt, bool isTopLevel)
 		ereport(ERROR,
 				(errcode(ERRCODE_INVALID_TRANSACTION_STATE),
 				 errmsg("cannot set parameters during a parallel operation")));
+
+	/*
+ 	 * Begin - ReqID: SRS-MYSQL-AutoCommit
+ 	 * Prevent setting autocommit inside stored procedures, functions, or anonymous blocks
+	 * When executing inside a function/procedure/block, isTopLevel will be false
+	 * TESTCASE:
+	 * CREATE FUNCTION test_set_autocommit_in_function() RETURNS void AS $$
+	 * SET autocommit TO on;
+	 * $$ LANGUAGE SQL;
+	 * This should fail with error about setting autocommit inside function
+ 	 */
+	if (!isTopLevel && MYS_MODE == compatible_mode &&
+		(stmt->kind == VAR_SET_VALUE || stmt->kind == VAR_SET_CURRENT ||
+		 stmt->kind == VAR_SET_DEFAULT) &&
+		stmt->name != NULL &&
+		pg_strcasecmp(stmt->name, "autocommit") == 0)
+	{
+			ereport(ERROR,
+					(errcode(ERRCODE_ACTIVE_SQL_TRANSACTION),
+					 errmsg("Not allowed to set autocommit from a stored procedure, function, or anonymous block")));
+	}
+	/* End - ReqID: SRS-MYSQL-AutoCommit */
 
 	switch (stmt->kind)
 	{

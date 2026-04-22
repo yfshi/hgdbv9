@@ -66,7 +66,7 @@ public class MySQLJdbcAutoCommitTest {
             statement.execute("drop table if exists autocommit_test4");
             statement.execute("drop table if exists autocommit_test5");
             statement.execute("drop table if exists autocommit_test6");
-
+			statement.execute("commit");
             statement.execute("create table autocommit_test1(a int)"); // not exists in \d
             statement.execute("rollback");
             statement.execute("create table autocommit_test2(a int)");
@@ -81,9 +81,8 @@ public class MySQLJdbcAutoCommitTest {
             connection.rollback();
             statement.execute("create table autocommit_test5(a int)");
             connection.commit();
-            statement.execute("create table autocommit_test6(a int)");
             connection.setAutoCommit(true);
-
+			statement.execute("create table autocommit_test6(a int)");
             connection.setAutoCommit(false);
             PreparedStatement preparedStatement = connection.prepareStatement("insert into autocommit_test6 values(?)");
             preparedStatement.setInt(1, 1);

@@ -4062,6 +4062,18 @@ BeginTransactionBlock(void)
 	}
 }
 
+/* Begin - ReqID:SRS-MYSQL-AutoCommit */
+void
+BlockStateBeginToInprogress(void)
+{
+	TransactionState s = CurrentTransactionState;
+	if (s->blockState == TBLOCK_STARTED)
+	{
+		s->blockState = TBLOCK_INPROGRESS;
+	}
+}
+/* End - ReqID:SRS-MYSQL-AutoCommit */
+
 /*
  *	PrepareTransactionBlock
  *		This executes a PREPARE command.
