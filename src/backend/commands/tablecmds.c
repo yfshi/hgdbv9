@@ -1744,7 +1744,9 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/*
 	 * Build a default types index on rowid column, if it exist
 	 */
-	if (!IsBinaryUpgrade && rel->rd_rel->relhasrowid && rel->rd_rel->relkind == RELKIND_RELATION && !rel->rd_rel->relispartition)/* BUG#M508 */
+	if (!IsBinaryUpgrade && rel->rd_rel->relhasrowid && inheritOids == NIL && /* BUG#M508 */
+		(rel->rd_rel->relkind == RELKIND_RELATION ||
+		rel->rd_rel->relkind == RELKIND_PARTITIONED_TABLE)) /* OA-REQ-2297 */
 	{
 		IndexElem   *iparam;
 		const FormData_pg_attribute *from;

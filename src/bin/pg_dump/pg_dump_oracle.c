@@ -7622,10 +7622,12 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 								"ON (oj.obj_oid = indexrelid AND oj.refclassid = 'pg_class'::regclass) "	/* BUG#M0000394 */
 								"WHERE i.indrelid = '%u'::pg_catalog.oid "
 								"AND (i.indisvalid OR t2.relkind = 'p') "
-								"AND (CASE WHEN t.relhasrowid THEN t.relname != '%s_%u_rowid_idx'  ELSE true END) " /* BUG #Z1675 */
+								"AND (CASE WHEN t.relhasrowid THEN "
+								"(t.relname != '%s_%u_rowid_idx' AND t.relname != '%s_rowid_idx') "			/* OA-REQ-2297 */
+								"ELSE true END) " /* BUG #Z1675 */
 								"AND i.indisready "
 								"ORDER BY indexname",
-								tbinfo->dobj.catId.oid, tbinfo->dobj.name, tbinfo->dobj.catId.oid); /* BUG #Z1675 */
+								tbinfo->dobj.catId.oid, tbinfo->dobj.name, tbinfo->dobj.catId.oid, tbinfo->dobj.name); /* BUG #Z1675 */
 			else
 			/* END - ReqID:SRS-CMD-PGDUMP */
 				appendPQExpBuffer(query,

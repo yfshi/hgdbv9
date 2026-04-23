@@ -548,3 +548,19 @@ update parted_trig set a = 2;
 drop table parted_trig2;
 drop table parted_trig;
 /* End - BUG#Z6561 */
+/* Begin - OA-REQ-2297 */
+create table poa2297(a int) partition by list(a) with rowid;
+create table poa2297_c1 partition of poa2297 for values in (2);
+\d+ poa2297_c1
+                                Table "public.poa2297_c1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+Partition of: poa2297 FOR VALUES IN (2)
+Partition constraint: ((a IS NOT NULL) AND (a = 2))
+Indexes:
+    "poa2297_c1_rowid_idx" btree (rowid)
+Has ROWID: yes
+
+drop table poa2297;
+/* End - OA-REQ-2297 */
