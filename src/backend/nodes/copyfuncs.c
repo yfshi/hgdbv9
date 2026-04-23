@@ -3775,6 +3775,7 @@ _copyAlterTableCmd(const AlterTableCmd *from)
 	COPY_NODE_FIELD(part_desc);
 	COPY_NODE_FIELD(partitions);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	COPY_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 
 	return newnode;
 }

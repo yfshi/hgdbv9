@@ -1358,6 +1358,7 @@ _equalAlterTableCmd(const AlterTableCmd *a, const AlterTableCmd *b)
 	COMPARE_NODE_FIELD(part_desc);
 	COMPARE_NODE_FIELD(partitions);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	COMPARE_STRING_FIELD(indexnamespace); /* OA-REQ-2127 */
 
 	return true;
 }

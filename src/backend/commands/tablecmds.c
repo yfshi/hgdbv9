@@ -619,8 +619,8 @@ static void change_owner_recurse_to_sequences(Oid relationOid,
 static void change_owner_rowid_sequences(char *relname, Oid relnamespace,
 											Oid newOwnerId, LOCKMODE lockmode);
 /* End - Bug#Z928 */
-static ObjectAddress ATExecClusterOn(Relation rel, List *indexName,
-									 LOCKMODE lockmode); /* OA-REQ-2127 */
+static ObjectAddress ATExecClusterOn(Relation rel, const char *indexName,
+									 const char *indexNamespace, LOCKMODE lockmode); /* OA-REQ-2127 */
 static void ATExecDropCluster(Relation rel, LOCKMODE lockmode);
 static bool ATPrepChangePersistence(Relation rel, bool toLogged);
 static void ATPrepSetTableSpace(AlteredTableInfo *tab, Relation rel,
@@ -6428,7 +6428,7 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 						false, lockmode);
 			break;
 		case AT_ClusterOn:		/* CLUSTER ON */
-			address = ATExecClusterOn(rel, (List *) cmd->def, lockmode); /* OA-REQ-2127 */
+			address = ATExecClusterOn(rel, cmd->name, cmd->indexnamespace/* OA-REQ-2127 */, lockmode);
 			break;
 		case AT_DropCluster:	/* SET WITHOUT CLUSTER */
 			ATExecDropCluster(rel, lockmode);
@@ -15399,13 +15399,13 @@ ATPostAlterTypeCleanup(List **wqueue, AlteredTableInfo *tab, LOCKMODE lockmode)
 		AlterTableCmd *cmd = makeNode(AlterTableCmd);
 
 		cmd->subtype = AT_ClusterOn;
+		cmd->name = tab->clusterOnIndex;
 
 		/* Begin - OA-REQ-2127 */
 		if (ORA_MODE == compatible_mode && tab->clusterOnIndexNamespace)
-			cmd->def = (Node *) list_make2(makeString(tab->clusterOnIndexNamespace),
-										   makeString(tab->clusterOnIndex));
+			cmd->indexnamespace = tab->clusterOnIndexNamespace;
 		else
-			cmd->def = (Node *) list_make1(makeString(tab->clusterOnIndex));
+			cmd->indexnamespace = NULL;
 		/* End - OA-REQ-2127 */
 
 		/* do it after indexes and constraints */
@@ -16286,25 +16286,23 @@ change_owner_rowid_sequences(char *relname, Oid relnamespace, Oid newOwnerId, LO
  * Return the address of the new clustering index.
  */
 static ObjectAddress
-ATExecClusterOn(Relation rel, List *indexName , LOCKMODE lockmode) /* OA-REQ-2127 */
+ATExecClusterOn(Relation rel, const char *indexName, const char *indexNamespace, LOCKMODE lockmode) /* OA-REQ-2127 */
 {
 	Oid			indexOid;
 	ObjectAddress address;
-	/* Begin - OA-REQ-2127 */
-	char		*indexNameStr = NameListToString(indexName);
-	RangeVar	*indexrv = makeRangeVarFromNameList(indexName);
 
-	if (list_length(indexName) == 1)
-		indexOid = get_relname_relid(indexrv->relname, rel->rd_rel->relnamespace);
+	/* Begin - OA-REQ-2127 */
+	if (ORA_MODE == compatible_mode && indexNamespace)
+		indexOid = get_relname_relid(indexName, get_namespace_oid(indexNamespace, false));
 	else
-		indexOid = RangeVarGetRelid(indexrv, AccessShareLock, false);
+		indexOid = get_relname_relid(indexName, rel->rd_rel->relnamespace);
 	/* End - OA-REQ-2127 */
 
 	if (!OidIsValid(indexOid))
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_OBJECT),
 				 errmsg("index \"%s\" for table \"%s\" does not exist",
-						indexNameStr, RelationGetRelationName(rel))));
+						indexName, RelationGetRelationName(rel))));
 
 	/* Check index is valid to cluster on */
 	check_index_is_clusterable(rel, indexOid, false, lockmode);

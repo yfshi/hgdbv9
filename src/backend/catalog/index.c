@@ -674,7 +674,7 @@ UpdateIndexRelation(Oid indexoid,
 	heap_freetuple(tuple);
 }
 
-
+/* Begin - OA-REQ-2127 */
 /*
  * index_create
  *
@@ -724,6 +724,41 @@ UpdateIndexRelation(Oid indexoid,
  */
 Oid
 index_create(Relation heapRelation,
+			 const char *indexRelationName,
+			 Oid indexRelationId,
+			 Oid parentIndexRelid,
+			 Oid parentConstraintId,
+			 Oid relFileNode,
+			 IndexInfo *indexInfo,
+			 List *indexColNames,
+			 Oid accessMethodObjectId,
+			 Oid tableSpaceId,
+			 Oid *collationObjectId,
+			 Oid *classObjectId,
+			 int16 *coloptions,
+			 Datum reloptions,
+			 bits16 flags,
+			 bits16 constr_flags,
+			 bool allow_system_table_mods,
+			 bool is_internal,
+			 Oid *constraintId)
+{
+	return ora_index_create(heapRelation, indexRelationName, InvalidOid,
+							indexRelationId, parentIndexRelid, parentConstraintId,
+							relFileNode, indexInfo, indexColNames,
+							accessMethodObjectId, tableSpaceId, collationObjectId,
+							classObjectId, coloptions, reloptions, flags,
+							constr_flags, allow_system_table_mods, is_internal,
+							constraintId);
+}
+
+/*
+ * ora_index_create
+ * This is a variant of index_create that allows specifying the index namespace,
+ * index_create is an exported function, we dont break its declaration.
+ */
+Oid
+ora_index_create(Relation heapRelation,
 			 const char *indexRelationName,
 			 Oid namespaceId, /* OA-REQ-2127 */
 			 Oid indexRelationId,
@@ -1320,6 +1355,8 @@ index_create(Relation heapRelation,
 	return indexRelationId;
 }
 
+/* End - OA-REQ-2127 */
+
 /*
  * index_concurrently_create_copy
  *
@@ -1461,9 +1498,9 @@ index_concurrently_create_copy(Relation heapRelation, Oid oldIndexId,
 	 * ensure a consistent state at all times.  That is why parentIndexRelid
 	 * is not set here.
 	 */
-	newIndexId = index_create(heapRelation,
+	newIndexId = ora_index_create(heapRelation,
 							  newName,
-							  RelationGetNamespace(indexRelation), /* OA-REQ-2127 */
+							  RelationGetNamespace(indexRelation),
 							  InvalidOid,	/* indexRelationId */
 							  InvalidOid,	/* parentIndexRelid */
 							  InvalidOid,	/* parentConstraintId */
@@ -1480,7 +1517,7 @@ index_concurrently_create_copy(Relation heapRelation, Oid oldIndexId,
 							  0,
 							  true, /* allow table to be a system catalog? */
 							  false,	/* is_internal? */
-							  NULL);
+							  NULL); /* OA-REQ-2127 */
 
 	/* Close the relations used and clean up */
 	index_close(indexRelation, NoLock);

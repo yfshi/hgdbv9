@@ -68,6 +68,27 @@ extern void index_check_primary_key(Relation heapRel,
 
 extern Oid	index_create(Relation heapRelation,
 						 const char *indexRelationName,
+						 Oid indexRelationId,
+						 Oid parentIndexRelid,
+						 Oid parentConstraintId,
+						 Oid relFileNode,
+						 IndexInfo *indexInfo,
+						 List *indexColNames,
+						 Oid accessMethodObjectId,
+						 Oid tableSpaceId,
+						 Oid *collationObjectId,
+						 Oid *classObjectId,
+						 int16 *coloptions,
+						 Datum reloptions,
+						 bits16 flags,
+						 bits16 constr_flags,
+						 bool allow_system_table_mods,
+						 bool is_internal,
+						 Oid *constraintId);
+
+/* Begin - OA-REQ-2127 */
+extern Oid	ora_index_create(Relation heapRelation,
+						 const char *indexRelationName,
 						 Oid namespaceId, /* OA-REQ-2127 */
 						 Oid indexRelationId,
 						 Oid parentIndexRelid,
@@ -86,6 +107,7 @@ extern Oid	index_create(Relation heapRelation,
 						 bool allow_system_table_mods,
 						 bool is_internal,
 						 Oid *constraintId);
+/* End - OA-REQ-2127 */
 
 #define	INDEX_CONSTR_CREATE_MARK_AS_PRIMARY	(1 << 0)
 #define	INDEX_CONSTR_CREATE_DEFERRABLE		(1 << 1)
