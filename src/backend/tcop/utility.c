@@ -4244,6 +4244,14 @@ GetCommandLogLevel(Node *parsetree)
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
 
+		/* Begin - Bug#Z7636 */
+		case T_CreateSynonymStmt:
+		case T_AlterSynonymStmt:
+		case T_DropSynStmt:
+			lev = LOGSTMT_DDL;
+			break;
+		/* End - Bug#Z7636 */
+
 		default:
 			elog(WARNING, "unrecognized node type: %d",
 				 (int) nodeTag(parsetree));

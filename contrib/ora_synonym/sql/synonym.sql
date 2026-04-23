@@ -283,3 +283,11 @@ create synonym a for b;
 drop synonym a;
 DROP EVENT TRIGGER trg_after_create_drop_synonym;
 DROP FUNCTION trg_on_create_drop_synonym;
+
+--/*Begin - Bug#Z7636 */
+-- fix warnings related to the ddl sql about synonym when log_statement is ddl
+set log_statement = 'DDL';
+create synonym test for test1;
+alter synonym test compile;
+drop synonym test;
+reset log_statement;
