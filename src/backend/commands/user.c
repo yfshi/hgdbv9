@@ -56,6 +56,10 @@
 #include "catalog/pg_resgroupcapability.h"
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+#include "utils/guc.h"
+/* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_pg_authid_oid = InvalidOid;
 
@@ -310,6 +314,16 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 					 errmsg("invalid connection limit: %d", connlimit)));
 	}
+
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	if (connlimit < 0)
+	{
+		connlimit = session_limit;
+	}
+#endif
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+
 	if (daddroleto)
 		addroleto = (List *) daddroleto->arg;
 	if (drolemembers)

@@ -228,6 +228,12 @@ static const struct config_enum_entry source_limit_mode_options[] = {
 };
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+int session_limit = -1;
+#endif
+/* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+
 static void do_serialize(char **destptr, Size *maxbytes, const char *fmt,...) pg_attribute_printf(3, 4);
 
 static void set_config_sourcefile(const char *name, char *sourcefile,
@@ -343,6 +349,12 @@ static const char *show_XactIsoLevel(void);
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 static bool check_sourcelimitmode(int *newval, void **extra, GucSource source);
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+static bool check_session_limit_user(int *newval, void **extra, GucSource source);
+#endif
+/* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DECLARE
@@ -4056,6 +4068,21 @@ static struct config_int ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
+	/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	{
+		{"session_limit", PGC_SIGHUP, DEVELOPER_OPTIONS,
+			gettext_noop("Multiple concurrent session limit."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&session_limit,
+		-1, -1, 1024,
+		check_session_limit_user, NULL, NULL
+	},
+#endif
+	/* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
 
 	/* Begin - ReqID:SRS-MISC-GUC */
 	#define IVY_GUC_INT_PARAMS
@@ -14046,6 +14073,44 @@ check_sourcelimitmode(int *newval, void **extra, GucSource source)
 	return true;
 }
 /* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+/* check_session_limit_user
+ *
+ * Check whether the current user has permission to
+ * set the session parameter.
+ */
+#ifdef ENABLE_DKY_BETA_FEATURE
+static bool
+check_session_limit_user(int *newval, void **extra, GucSource source)
+{
+	if(IsUnderPostmaster &&
+		IsTransactionState() && MyDatabaseId != InvalidOid)
+	{
+		if (se_feature_mode)
+		{
+			if (!(IS_SYSDBA(GetUserId())))
+			{
+				GUC_check_errmsg("permission denied, when the se_feature.mode is enabled, only users with sysdba_role privilege can set session_limit.when the se_feature.mode is disabled,only superusers can set session_limit.");
+
+				return false;
+			}
+		}
+		else
+		{
+			if (!(superuser()))
+			{
+				GUC_check_errmsg("permission denied, when the se_feature.mode is enabled, only users with sysdba_role privilege can set session_limit.when the se_feature.mode is disabled,only superusers can set session_limit.");
+
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+#endif
+/* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
 
 /* Begin - ReqID:SRS-MISC-GUC */
 #define IVY_GUC_FUNC_DEFINE

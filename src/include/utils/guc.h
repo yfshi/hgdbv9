@@ -597,6 +597,12 @@ extern PGDLLIMPORT int sqlcpu_usage;
 extern PGDLLIMPORT int source_limit_mode;
 /* End- ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+extern PGDLLIMPORT int session_limit;
+#endif
+/* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
+
 /*
  * Functions exported by guc.c
  */
