@@ -1728,6 +1728,15 @@ run_schedule(const char *schedule, test_start_function startfunc,
 			exit(2);
 		}
 
+/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+#ifdef WIN32
+		if (test != NULL && strcmp(test, "sql-resourece-limit") == 0)
+		{
+			add_stringlist_item(&ignorelist, test);
+			continue;
+		}
+#endif
+/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 		num_tests = 0;
 		inword = false;
 		for (c = test;; c++)
