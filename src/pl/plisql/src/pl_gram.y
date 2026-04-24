@@ -7393,6 +7393,12 @@ build_call_expr(int firsttoken,const char *str, int location)
 	bool is_process = false;
 	PLiSQL_stmt_call *callsql = NULL;
 	bool get_first_tok = true;
+	/* Begin - BUG#7556 */
+	bool				pre_token_isoracursor = false;
+	StringInfoData		ds_cursor;
+	int					append_startlocation = -1;
+	initStringInfo(&ds_cursor);
+	/* End - BUG#7556 */
 
 	initStringInfo(&ds);
 	initStringInfo(&ds_collect); /* BUG#Z7305 */
@@ -7514,6 +7520,29 @@ build_call_expr(int firsttoken,const char *str, int location)
 			read_into_target(&target, &have_strict);
 		}
 
+		/* Begin - BUG#7556 */
+		if (append_startlocation < 0)
+			append_startlocation = location;
+		if (tok == '%' && pre_token_isoracursor)
+		{
+			/* replace % to . */
+			plisql_append_source_text(&ds_cursor, append_startlocation, yylloc);
+			appendBinaryStringInfo(&ds_cursor, ".", 1);
+			append_startlocation = yylloc + 1;
+		}
+		if (tok == T_DATUM && yylval.wdatum.datum != NULL /* ReqID:SRS-PLSQL-Collection */)
+		{
+			PLiSQL_datum *datum = yylval.wdatum.datum;
+			if (is_oracursor_datum(datum))
+			{
+				pre_token_isoracursor = true;
+			}
+		}
+		else
+			pre_token_isoracursor = false;
+		/* End - BUG#7556 */
+
+
 		/* Begin - BUG#Z7305 */
 		if (tok == T_DATUM || tok == T_CWORD)
 		{
@@ -7554,6 +7583,11 @@ build_call_expr(int firsttoken,const char *str, int location)
 	}
 
 	plisql_IdentifierLookup = save_IdentifierLookup;
+
+	/* Begin - BUG#7556 */
+	if (append_startlocation >= yylloc) /* ReqID:SRS-PLSQL-CURSOR */
+		yyerror("missing SQL statement");
+	/* End - BUG#7556 */
 
 	if (have_into)
 	{
@@ -7605,14 +7639,47 @@ build_call_expr(int firsttoken,const char *str, int location)
 			/* Begin - BUG#Z7305 */
 			if (have_collect)
 			{
-				plisql_append_source_text(&ds, location, collect_start_loc);
-				appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
-				if (collect_end_loc != yylloc)
-					plisql_append_source_text(&ds, collect_end_loc, yylloc);
+				/* Begin - BUG#7556 */
+				if (ds_cursor.len > 0)
+				{
+					if (append_startlocation <= collect_start_loc)
+					{
+						appendBinaryStringInfo(&ds, ds_cursor.data, ds_cursor.len);
+						plisql_append_source_text(&ds, append_startlocation, collect_start_loc);
+						appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+						if (collect_end_loc != yylloc)
+							plisql_append_source_text(&ds, collect_end_loc, yylloc);
+					}
+					else if (append_startlocation >= collect_end_loc)
+					{
+						appendBinaryStringInfo(&ds, ds_cursor.data, collect_start_loc - location);
+						appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+						appendBinaryStringInfo(&ds, ds_cursor.data + collect_start_loc - location + ds_collect.len, append_startlocation - collect_end_loc + 1);
+						plisql_append_source_text(&ds, append_startlocation, yylloc);
+					}
+				}
+				else
+				{
+					plisql_append_source_text(&ds, location, collect_start_loc);
+					appendBinaryStringInfo(&ds, ds_collect.data, ds_collect.len);
+					if (collect_end_loc != yylloc)
+						plisql_append_source_text(&ds, collect_end_loc, yylloc);
+				}
+				/* End - BUG#7556 */
 			}
 			else
 			/* End - BUG#Z7305 */
-				plisql_append_source_text(&ds, location, yylloc);
+			{
+				/* Begin - BUG#7556 */
+				if (ds_cursor.len > 0)
+				{
+					appendBinaryStringInfo(&ds, ds_cursor.data, ds_cursor.len);
+					plisql_append_source_text(&ds, append_startlocation, yylloc);
+				}
+				else
+					plisql_append_source_text(&ds, location, yylloc);
+				/* End - BUG#7556 */
+			}
 
 			/* trim any trailing whitespace, for neatness */
 			while (ds.len > 0 && scanner_isspace(ds.data[ds.len - 1]))
