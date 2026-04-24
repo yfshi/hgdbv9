@@ -960,7 +960,14 @@ drop_user_drop_login_info_file(char *username)
 	char	   *filename = NULL;
 
 	/* Find the file path and construct the file name. */
-	useroid = get_role_oid(username, false);
+	/* Begin - BUG#Z7626 */
+	useroid = get_role_oid(username, true);
+	if (useroid == InvalidOid)
+	{
+		return;
+	}
+	/* End - BUG#Z7626 */
+
 	dirpath = get_dir_path();
 	if (dirpath == NULL)
 	{

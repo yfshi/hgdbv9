@@ -1,0 +1,5 @@
+--fix bug 7626
+drop user if exists usr_no_exist_usera;
+NOTICE:  role "usr_no_exist_usera" does not exist, skipping
+drop user if exists usr_no_exists_userb;
+NOTICE:  role "usr_no_exists_userb" does not exist, skipping
