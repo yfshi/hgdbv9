@@ -845,6 +845,7 @@
 #audit.exclude_users = ''						# forbidden system audit by audit.exclude_users
 #audit.exclude_time = ''						# forbidden system audit by audit.exclude_time
 #audit.exclude_ips = ''							# forbidden system audit by audit.exclude_ips
+#audit.ignore_sync_lsn=on                                              # ignore audit sync wal. when write audit log
 
 #------------------------------------------------------------------------------
 # se_feature parameters

@@ -248,6 +248,7 @@ audit_drop_pg_audit audit_drop_pg_audit_hook = NULL;
 audit_alter_pg_audit_log audit_alter_pg_audit_log_hook = NULL;
 audit_privi_model audit_privi_mode_hook = NULL;
 is_audit_enable_hook is_audit_enable = NULL;
+get_audit_transaction get_audit_transaction_hook;  // OA:2290
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 /* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */

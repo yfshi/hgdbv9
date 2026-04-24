@@ -85,6 +85,7 @@
 #include "tcop/tcopprot.h"
 #include "utils/builtins.h"
 #include "utils/ps_status.h"
+#include "pg_contrib_audit.h"
 
 /* User-settable parameters for sync rep */
 char	   *SyncRepStandbyNames;
@@ -184,6 +185,10 @@ SyncRepWaitForLSN(XLogRecPtr lsn, bool commit)
 		((((volatile WalSndCtlData *) WalSndCtl)->sync_standbys_status) &
 		 (SYNC_STANDBY_INIT | SYNC_STANDBY_DEFINED)) == SYNC_STANDBY_INIT)
 		return false;
+	/* Begin OA:2290 */
+	else if (get_audit_transaction_hook && get_audit_transaction_hook())
+		return false;
+	/* End OA:2290 */
 
 	/* Cap the level for anything other than commit to remote flush only. */
 	if (commit)
