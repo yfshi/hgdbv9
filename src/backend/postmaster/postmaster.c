@@ -1018,14 +1018,6 @@ PostmasterMain(int argc, char *argv[])
 	/* And switch working directory into it */
 	ChangeToDataDir();
 
-#ifdef ENABLE_DKY_BETA_FEATURE
-	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
-	if (ConfigFileCheckEnable != false)
-	{
-		checkOnlineFile();
-	}
-	/* End - ReqID:DKY-ONLINE-FILECHECK */
-#endif
 	/* Begin - BUG#Z00004645 */
 	/* set database_style here */
 	/*
@@ -1242,6 +1234,14 @@ PostmasterMain(int argc, char *argv[])
 	 */
 	SysLoggerPID = SysLogger_Start();
 
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin - ReqID:DKY-ONLINE-FILECHECK */
+	if (ConfigFileCheckEnable != false)
+	{
+		checkOnlineFile();
+	}
+	/* End - ReqID:DKY-ONLINE-FILECHECK */
+#endif
 	/*
 	 * Reset whereToSendOutput from DestDebug (its starting state) to
 	 * DestNone. This stops ereport from sending log messages to stderr unless

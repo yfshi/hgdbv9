@@ -147,7 +147,7 @@ static void set_sig(char *signame);
 static void do_init(void);
 static void do_start(void);
 static void do_stop(void);
-static void do_restart(void);
+static void do_restart(const char *argv0);
 static void do_reload(void);
 static void do_status(void);
 static void do_promote(void);
@@ -186,7 +186,11 @@ static void unlimit_core_size(void);
 #endif
 
 static DBState get_control_dbstate(void);
-
+#ifdef ENABLE_DKY_BETA_FEATURE
+#ifndef WIN32
+static void bin_consistency_check(const char *argv0);
+#endif
+#endif
 
 #ifdef WIN32
 static void
@@ -1186,7 +1190,7 @@ do_stop(void)
  */
 
 static void
-do_restart(void)
+do_restart(const char *argv0)
 {
 	pgpid_t		pid;
 	struct stat statbuf;
@@ -1199,6 +1203,16 @@ do_restart(void)
 					 progname, pid_file);
 		write_stderr(_("Is server running?\n"));
 		write_stderr(_("trying to start server anyway\n"));
+		/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+#ifndef WIN32
+		if (is_consistency_check)
+		{
+			bin_consistency_check(argv0);
+		}
+#endif
+#endif
+		/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 		do_start();
 		return;
 	}
@@ -1262,6 +1276,16 @@ do_restart(void)
 		write_stderr(_("starting server anyway\n"));
 	}
 
+	/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+#ifdef ENABLE_DKY_BETA_FEATURE
+#ifndef WIN32
+	if (is_consistency_check)
+	{
+		bin_consistency_check(argv0);
+	}
+#endif
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 	do_start();
 }
 
@@ -2425,10 +2449,12 @@ bin_consistency_check(const char *argv0)
 		*lastsep = '\0';
 	snprintf(command, MAXPGPATH, "bash %s/hg_funcheck.sh -c", my_exec_path);
 	return_sys = system(command);
-	if (return_sys == MD_CHECK_FILS)
+	if (WIFEXITED(return_sys) && WEXITSTATUS(return_sys) == MD_CHECK_FILS)
 	{
+		write_stderr(_("Bin file Consistency check failed : could not start server\n"));
 		exit(1);
 	}
+	write_stderr(_("Bin file Consistency check : successful\n"));
 #endif
 }
 #endif
@@ -2767,7 +2793,6 @@ main(int argc, char **argv)
 			do_status();
 			break;
 		case START_COMMAND:
-			do_start();
 			/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
 #ifdef ENABLE_DKY_BETA_FEATURE
 #ifndef WIN32
@@ -2778,22 +2803,13 @@ main(int argc, char **argv)
 #endif
 #endif
 			/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+			do_start();
 			break;
 		case STOP_COMMAND:
 			do_stop();
 			break;
 		case RESTART_COMMAND:
-			do_restart();
-			/* Begin - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
-#ifdef ENABLE_DKY_BETA_FEATURE
-#ifndef WIN32
-			if (is_consistency_check)
-			{
-				bin_consistency_check(argv[0]);
-			}
-#endif
-#endif
-			/* End - ReqID:SRS-SECURITY-EAL4-HG_FUNCHECK */
+			do_restart(argv[0]);
 			break;
 		case RELOAD_COMMAND:
 			do_reload();
