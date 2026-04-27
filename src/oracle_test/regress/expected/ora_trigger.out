@@ -1788,3 +1788,132 @@ end;
 /
 DROP USER system;
 /* End - OA-REQ-2244 */
+/* Begin - BUG#7657 */
+CREATE TABLE emp_7657 (
+    emp_id    NUMBER(10) PRIMARY KEY,
+    emp_name  VARCHAR2(50),
+    salary    NUMBER(10,2),
+    dept_no   NUMBER(10)
+);
+CREATE TABLE emp_logs_7657 (
+    op_type   VARCHAR2(30),
+    op_msg    VARCHAR2(100)
+);
+CREATE VIEW emp_v_7657 AS
+SELECT
+    e.emp_id,
+    e.emp_name,
+    e.salary,
+    e.dept_no
+FROM emp_7657 e;
+INSERT INTO emp_7657 VALUES (1, 'ZhangSan', 8000, 10);
+INSERT INTO emp_7657 VALUES (2, 'LiSi', 12000, 20);
+INSERT INTO emp_7657 VALUES (3, 'WangWu', 500, 10);
+INSERT INTO emp_7657 VALUES (4, 'HanWei', 700, 20);
+CREATE OR REPLACE TRIGGER trg_instead_col
+INSTEAD OF UPDATE ON emp_v_7657
+FOR EACH ROW
+BEGIN
+    IF UPDATING('dept_no') THEN
+        INSERT INTO emp_logs_7657(op_type, op_msg)
+        VALUES ('UPD_DEPTNO', 'Update emp_view -> dept_no');
+    END IF;
+    IF UPDATING('emp_name') THEN
+        INSERT INTO emp_logs_7657(op_type, op_msg)
+        VALUES ('UPD_EMPNAME', 'Update emp_view -> emp_name');
+    END IF;
+    UPDATE emp_7657
+    SET
+        emp_name = :NEW.emp_name,
+        salary = :NEW.salary
+    WHERE emp_id = :OLD.emp_id;
+    UPDATE emp_7657
+    SET
+        dept_no = :NEW.dept_no
+    WHERE emp_id = :OLD.emp_id;
+END;
+/
+select * from emp_7657;
+ emp_id | emp_name |  salary  | dept_no 
+--------+----------+----------+---------
+ 1      | ZhangSan | 8000.00  | 10
+ 2      | LiSi     | 12000.00 | 20
+ 3      | WangWu   | 500.00   | 10
+ 4      | HanWei   | 700.00   | 20
+(4 rows)
+
+UPDATE emp_v_7657 SET dept_no = 30 WHERE emp_id = 1;
+SELECT * FROM emp_logs_7657;
+  op_type   |           op_msg           
+------------+----------------------------
+ UPD_DEPTNO | Update emp_view -> dept_no
+(1 row)
+
+UPDATE emp_v_7657 SET emp_name = 'Robert' WHERE emp_id = 2;
+select * from emp_7657;
+ emp_id | emp_name |  salary  | dept_no 
+--------+----------+----------+---------
+ 3      | WangWu   | 500.00   | 10
+ 4      | HanWei   | 700.00   | 20
+ 1      | ZhangSan | 8000.00  | 30
+ 2      | Robert   | 12000.00 | 20
+(4 rows)
+
+SELECT * FROM emp_logs_7657;
+   op_type   |           op_msg            
+-------------+-----------------------------
+ UPD_DEPTNO  | Update emp_view -> dept_no
+ UPD_EMPNAME | Update emp_view -> emp_name
+(2 rows)
+
+UPDATE emp_v_7657 SET salary = 8500 WHERE emp_id = 3;
+select * from emp_7657;
+ emp_id | emp_name |  salary  | dept_no 
+--------+----------+----------+---------
+ 4      | HanWei   | 700.00   | 20
+ 1      | ZhangSan | 8000.00  | 30
+ 2      | Robert   | 12000.00 | 20
+ 3      | WangWu   | 8500.00  | 10
+(4 rows)
+
+SELECT * FROM emp_logs_7657;
+   op_type   |           op_msg            
+-------------+-----------------------------
+ UPD_DEPTNO  | Update emp_view -> dept_no
+ UPD_EMPNAME | Update emp_view -> emp_name
+(2 rows)
+
+UPDATE emp_v_7657 SET dept_no = 10,emp_name = 'Update' WHERE emp_id = 4;
+SELECT * FROM emp_logs_7657;
+   op_type   |           op_msg            
+-------------+-----------------------------
+ UPD_DEPTNO  | Update emp_view -> dept_no
+ UPD_EMPNAME | Update emp_view -> emp_name
+ UPD_DEPTNO  | Update emp_view -> dept_no
+ UPD_EMPNAME | Update emp_view -> emp_name
+(4 rows)
+
+select * from emp_7657;
+ emp_id | emp_name |  salary  | dept_no 
+--------+----------+----------+---------
+ 1      | ZhangSan | 8000.00  | 30
+ 2      | Robert   | 12000.00 | 20
+ 3      | WangWu   | 8500.00  | 10
+ 4      | Update   | 700.00   | 10
+(4 rows)
+
+select * from emp_v_7657;
+ emp_id | emp_name |  salary  | dept_no 
+--------+----------+----------+---------
+ 1      | ZhangSan | 8000.00  | 30
+ 2      | Robert   | 12000.00 | 20
+ 3      | WangWu   | 8500.00  | 10
+ 4      | Update   | 700.00   | 10
+(4 rows)
+
+--cleanup
+DROP TRIGGER trg_instead_col;
+DROP VIEW emp_v_7657;
+DROP TABLE emp_logs_7657;
+DROP TABLE emp_7657;
+/* End - BUG#7657 */
