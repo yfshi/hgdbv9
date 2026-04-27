@@ -70,6 +70,7 @@ main(int argc, char *argv[])
 	char	value[BUFSZ];
 	DatabaseInstance dbinstance[INSTANCEARRAYNUM];
 	int		intancenum = 0;
+	struct	stat st;	/* BUG#Z7635 */
 #endif
 	char	conffilepath[BUFSZ];
 	const char   *progname;
@@ -141,6 +142,41 @@ main(int argc, char *argv[])
 		MemSet(value, 0, BUFSZ); \
 		pgnum = 0; \
 	} while (0)
+
+	/* Begin - BUG#Z7635 */
+	/* The file must specify an absolute path. */
+	if (conffilepath[0] != '/')
+	{
+		fprintf(stderr, _("%s is not an absolute path.\n"), conffilepath);
+		exit(1);
+	}
+
+	/* Check if the file exists. */
+	if (stat(conffilepath, &st) != 0)
+	{
+		fprintf(stderr, _("Configure file %s does not exist.\n"), conffilepath);
+		exit(1);
+	}
+	else
+	{
+		/* Configuration file is ordinary file. */
+		if (!S_ISREG(st.st_mode))
+		{
+			fprintf(stderr, _("%s is not a configuration file.\n"), conffilepath);
+			exit(1);
+		}
+	}
+
+	/* If executed on the frontend, display a notification
+	 * information the user that the task can be performed
+	 * in the background.
+	 */
+	if (getpgrp() == tcgetpgrp(STDIN_FILENO))
+	{
+		printf(_("%d : hg_watchdog is currently runing! \n"), getpid());
+		printf(_("You can also run it in background using the command: hg_watchdog -f dir/hg_watchdog.conf &\n"));
+	}
+	/* End - BUG#Z7635 */
 
 	/* The program runs in an infniite loop to continuously
 	 * monitor the process, performing a check every 5
