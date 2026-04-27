@@ -275,13 +275,13 @@ ERROR:   ddd.t1 does not exists
 CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 26 at RAISE
 select hg_security.antitamper_hist_repair('ddd','t1');
 ERROR:   ddd.t1 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 34 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 44 at RAISE
 select hg_security.antitamper_gchain_check('ddd','t1');
 ERROR:   ddd.t1 does not exists 
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 25 at RAISE
 select hg_security.antitamper_gchain_repair('ddd','t1');
 ERROR:   ddd.t1 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 31 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 41 at RAISE
 drop schema ddd ;
 --==============================================================================================--
 -- test table antitamper
@@ -567,13 +567,13 @@ ERROR:   public.t2 does not exists
 CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 26 at RAISE
 select hg_security.antitamper_hist_repair('public','t2');
 ERROR:   public.t2 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 34 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 44 at RAISE
 select hg_security.antitamper_gchain_check('public','t2');
 ERROR:   public.t2 does not exists 
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 25 at RAISE
 select hg_security.antitamper_gchain_repair('public','t2');
 ERROR:   public.t2 does not exists 
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 31 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 41 at RAISE
 --==============================================================================================--
 -- test table partition
 --==============================================================================================--
@@ -1966,7 +1966,7 @@ select hg_security.antitamper_hist_check('ddd','t1');
 
 select hg_security.antitamper_hist_repair('ddd','t1');
 ERROR:  permission denied for function antitamper_hist_repair
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 18 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 27 at RAISE
 select hg_security.antitamper_gchain_check('ddd','t1');
  antitamper_gchain_check 
 -------------------------
@@ -1975,10 +1975,10 @@ select hg_security.antitamper_gchain_check('ddd','t1');
 
 select hg_security.antitamper_gchain_repair('ddd','t1');
 ERROR:  permission denied for function antitamper_gchain_repair
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 16 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 25 at RAISE
 select hg_security.antitamper_gchain_archive('ddd','t1');
 ERROR:  permission denied for function antitamper_gchain_archive
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 16 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 25 at RAISE
 reset role;
 drop table ddd.t1;
 drop schema ddd ;
@@ -2069,32 +2069,32 @@ ERROR:   public.normal_test is not antitamper table.
 CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 35 at RAISE
 select hg_security.antitamper_hist_repair('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 43 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 53 at RAISE
 select hg_security.antitamper_gchain_check('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 34 at RAISE
 select hg_security.antitamper_gchain_repair('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 40 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 50 at RAISE
 select hg_security.antitamper_gchain_archive('public','normal_test');
 ERROR:   public.normal_test is not antitamper table.
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 41 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 51 at RAISE
 insert into public.normal_test values(1, 'test');
 select hg_security.antitamper_hist_check('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
 CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 35 at RAISE
 select hg_security.antitamper_hist_repair('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 43 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 53 at RAISE
 select hg_security.antitamper_gchain_check('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 34 at RAISE
 select hg_security.antitamper_gchain_repair('public', 'normal_test');
 ERROR:   public.normal_test is not antitamper table.
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 40 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 50 at RAISE
 select hg_security.antitamper_gchain_archive('public','normal_test');
 ERROR:   public.normal_test is not antitamper table.
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 41 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 51 at RAISE
 drop table public.normal_test;
 create unlogged table test (id int, name text) with (antitamper=on);
 ERROR:  Only regular table support antitamper option
@@ -2137,10 +2137,10 @@ LINE 1: select hg_security.antitamper_hist_repair();
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select hg_security.antitamper_hist_repair('', '');
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 23 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 33 at RAISE
 select hg_security.antitamper_hist_repair(null,null);
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 23 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 33 at RAISE
 select hg_security.antitamper_hist_repair('secure_schema');
 ERROR:  function hg_security.antitamper_hist_repair(unknown) does not exist
 LINE 1: select hg_security.antitamper_hist_repair('secure_schema');
@@ -2153,10 +2153,10 @@ LINE 1: select hg_security.antitamper_gchain_archive();
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select hg_security.antitamper_gchain_archive('', '');
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 31 at RAISE
 select hg_security.antitamper_gchain_archive(null,null);
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 31 at RAISE
 select hg_security.antitamper_gchain_archive('secure_schema');
 ERROR:  function hg_security.antitamper_gchain_archive(unknown) does not exist
 LINE 1: select hg_security.antitamper_gchain_archive('secure_schema'...
@@ -2185,10 +2185,10 @@ LINE 1: select hg_security.antitamper_gchain_repair();
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select hg_security.antitamper_gchain_repair('', '');
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 31 at RAISE
 select hg_security.antitamper_gchain_repair(null,null);
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 31 at RAISE
 select hg_security.antitamper_gchain_repair('secure_schema');
 ERROR:  function hg_security.antitamper_gchain_repair(unknown) does not exist
 LINE 1: select hg_security.antitamper_gchain_repair('secure_schema')...
@@ -2201,10 +2201,10 @@ LINE 1: select hg_security.antitamper_gchain_archive();
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select hg_security.antitamper_gchain_archive('', '');
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 31 at RAISE
 select hg_security.antitamper_gchain_archive(null,null);
 ERROR:  Parameter schema_name and table_name cannot be NULL
-CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 21 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 31 at RAISE
 select hg_security.antitamper_gchain_archive('secure_schema');
 ERROR:  function hg_security.antitamper_gchain_archive(unknown) does not exist
 LINE 1: select hg_security.antitamper_gchain_archive('secure_schema'...
@@ -2279,3 +2279,288 @@ select nspname,isantitamper from hg_security.antitamper_namespace where nspname 
 ---------+--------------
 (0 rows)
 
+-- bug:7651
+create schema ddd with antitamper;
+create table ddd.t1(id int, name text);
+create table t2(id int, name text);
+create table t3(id int, name text) WITH(antitamper=true);
+create table t4(id int, name text) WITH(antitamper=false);
+select hg_security.antitamper_hist_check('ddd','t1');
+ antitamper_hist_check 
+-----------------------
+ t
+(1 row)
+
+select hg_security.antitamper_hist_check('ddd','t2');
+ERROR:   ddd.t2 does not exists 
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 26 at RAISE
+select hg_security.antitamper_hist_check('public','t2');
+ERROR:   public.t2 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 35 at RAISE
+select hg_security.antitamper_hist_check('public','t3');
+ antitamper_hist_check 
+-----------------------
+ t
+(1 row)
+
+select hg_security.antitamper_hist_check('public','t4');
+ERROR:   public.t4 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 35 at RAISE
+select hg_security.antitamper_hist_repair('ddd','t1');
+ antitamper_hist_repair 
+------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_hist_repair('ddd','t2');
+ERROR:   ddd.t2 does not exists 
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 44 at RAISE
+select hg_security.antitamper_hist_repair('public','t2');
+ERROR:   public.t2 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 53 at RAISE
+select hg_security.antitamper_hist_repair('public','t3');
+ antitamper_hist_repair 
+------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_hist_repair('public','t4');
+ERROR:   public.t4 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 53 at RAISE
+select hg_security.antitamper_gchain_check('ddd','t1');
+ antitamper_gchain_check 
+-------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_check('ddd','t2');
+ERROR:   ddd.t2 does not exists 
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 25 at RAISE
+select hg_security.antitamper_gchain_check('public','t2');
+ERROR:   public.t2 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 34 at RAISE
+select hg_security.antitamper_gchain_check('public','t3');
+ antitamper_gchain_check 
+-------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_check('public','t4');
+ERROR:   public.t4 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 34 at RAISE
+select hg_security.antitamper_gchain_repair('ddd','t1');
+ antitamper_gchain_repair 
+--------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_repair('ddd','t2');
+ERROR:   ddd.t2 does not exists 
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 41 at RAISE
+select hg_security.antitamper_gchain_repair('public','t2');
+ERROR:   public.t2 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 50 at RAISE
+select hg_security.antitamper_gchain_repair('public','t3');
+ antitamper_gchain_repair 
+--------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_repair('public','t4');
+ERROR:   public.t4 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 50 at RAISE
+select hg_security.antitamper_gchain_archive('ddd','t1');
+ antitamper_gchain_archive 
+---------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_archive('ddd','t2');
+ERROR:   ddd.t2 does not exists 
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 42 at RAISE
+select hg_security.antitamper_gchain_archive('public','t2');
+ERROR:   public.t2 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 51 at RAISE
+select hg_security.antitamper_gchain_archive('public','t3');
+ antitamper_gchain_archive 
+---------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_archive('public','t4');
+ERROR:   public.t4 is not antitamper table.
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 51 at RAISE
+drop table t2, t3, t4;
+drop table ddd.t1;
+drop schema ddd;
+----------------------------------------------------------------------
+select 1 from hg_security.antitamper_block;
+ ?column? 
+----------
+        1
+(1 row)
+
+drop EXTENSION hg_antitamper;
+select 1 from hg_security.antitamper_block;
+ERROR:  relation "hg_security.antitamper_block" does not exist
+LINE 1: select 1 from hg_security.antitamper_block;
+                      ^
+create EXTENSION hg_antitamper;
+select 1 from hg_security.antitamper_block;
+ ?column? 
+----------
+        1
+(1 row)
+
+--==============================================================================================--
+-- test se_feature.mode =on/off
+--==============================================================================================--
+create schema secure_schema with antitamper;
+create table  secure_schema.test (id int, name text);
+insert into secure_schema.test values(1, 'alex'), (2, 'bob'), (3, 'peter');
+create user user11;
+create user normal_user;
+create user antitamper_spuser with superuser password 'Hello@123';
+--------------------------------------------------------------------------
+grant usage on schema secure_schema to syssso;
+grant all privileges on all tables in schema secure_schema to syssso;
+grant usage on schema hg_security to syssso;
+grant all privileges on all tables in schema hg_security to syssso;
+grant usage on schema secure_schema to user11;
+grant all privileges on all tables in schema secure_schema to user11;
+grant usage on schema hg_security to user11;
+grant all privileges on all tables in schema hg_security to user11;
+grant usage on schema secure_schema to normal_user;
+grant all privileges on all tables in schema secure_schema to normal_user;
+grant usage on schema hg_security to normal_user;
+grant all privileges on all tables in schema hg_security to normal_user;
+--------------------------------------------------------------------------
+grant syssso_role to user11;
+-- test se_feature.mode =off
+set role syssso;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_hist_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 27 at RAISE
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 25 at RAISE
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_archive
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 25 at RAISE
+set role user11;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_hist_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 27 at RAISE
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 25 at RAISE
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_archive
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 25 at RAISE
+set role normal_user;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_hist_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 27 at RAISE
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_repair
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 25 at RAISE
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_archive
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 25 at RAISE
+-- test se_feature.mode =on
+\c - antitamper_spuser
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ antitamper_hist_repair 
+------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ antitamper_gchain_repair 
+--------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ antitamper_gchain_archive 
+---------------------------
+ t
+(1 row)
+
+alter system set se_feature.mode =on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+\c - syssso;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ antitamper_hist_repair 
+------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ antitamper_gchain_repair 
+--------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ antitamper_gchain_archive 
+---------------------------
+ t
+(1 row)
+
+\c - syssao;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_hist_repair
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_repair
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_archive
+\c - user11;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ antitamper_hist_repair 
+------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ antitamper_gchain_repair 
+--------------------------
+ t
+(1 row)
+
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ antitamper_gchain_archive 
+---------------------------
+ t
+(1 row)
+
+\c - antitamper_spuser
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_hist_repair
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_repair
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_archive
+\c - syssso;
+alter system set hg_rolstatus.enable=off;
+alter system set se_feature.mode=off;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+\c - antitamper_spuser
+drop table  secure_schema.test;
+drop schema secure_schema;
+revoke all privileges on all tables in schema hg_security from normal_user;
+revoke usage on schema hg_security from normal_user;
+revoke all privileges on all tables in schema hg_security from user11;
+revoke usage on schema hg_security from user11;
+drop user user11;
+drop user normal_user;

@@ -11,7 +11,7 @@ EXTENSION = hg_antitamper
 DATA = hg_antitamper--1.0.sql
 PGFILEDESC = "hg_antitamper"
 
-REGRESS = hg_antitamper
+REGRESS = hg_antitamper hg_antitamper_pg
 MYS_REGRESS = hg_antitamper
 ORA_REGRESS = hg_antitamper
 
