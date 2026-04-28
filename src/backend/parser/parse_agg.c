@@ -628,6 +628,10 @@ check_agglevels_and_constraints(ParseState *pstate, Node *expr)
 			errkind = true;
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case EXPR_KIND_HAVING_FUNCTION:
+			break;
+		/* End: Req:SRS-MYSQL-SQL-Select */
 	}
 
 	if (err)
@@ -1090,6 +1094,11 @@ transformWindowFuncCall(ParseState *pstate, WindowFunc *wfunc,
 			errkind = true;
 			break;
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case EXPR_KIND_HAVING_FUNCTION:
+			/* okay */
+			break;
+		/* End: Req:SRS-MYSQL-SQL-Select */
 	}
 	if (err)
 		ereport(ERROR,

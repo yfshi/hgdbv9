@@ -3385,6 +3385,11 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 			pstate->p_hasTargetSRFs = true;
 			break;
 		/* End: Req:SRS-SQL-NLSSORT */
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case EXPR_KIND_HAVING_FUNCTION:
+			errkind = true;
+			break;
+		/* End: Req:SRS-MYSQL-SQL-Select */
 	}
 	if (err)
 		ereport(ERROR,

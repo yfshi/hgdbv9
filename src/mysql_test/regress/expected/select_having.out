@@ -68,18 +68,10 @@ ERROR:  column "test_having.a" must appear in the GROUP BY clause or be used in 
 LINE 1: SELECT a FROM test_having HAVING min(a) < max(a);
                ^
 SELECT 1 AS one FROM test_having HAVING a > 1;
- one 
------
-   1
-   1
-   1
-   1
-   1
-   1
-   1
-   1
-(8 rows)
-
+ERROR:  column "a" does not exist
+LINE 1: SELECT 1 AS one FROM test_having HAVING a > 1;
+                                                ^
+HINT:  There is a column named "a" in table "test_having", but it cannot be referenced from this part of the query.
 -- the really degenerate case: need not scan table at all
 SELECT 1 AS one FROM test_having HAVING 1 > 2;
  one 

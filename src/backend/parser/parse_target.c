@@ -224,6 +224,17 @@ transformTargetList(ParseState *pstate, List *targetlist,
 												exprKind,
 												res->name,
 												false));
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		if (compatible_mode == MYS_MODE)
+		{
+			// if tle has alias
+			if (res->name != NULL)
+			{
+				TargetEntry *tle = llast(p_target);
+				tle->resname_is_alias = true;
+			}
+		}
+		/* End: Req:SRS-MYSQL-SQL-Select */
 	}
 
 	/*

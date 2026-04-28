@@ -1,0 +1,2189 @@
+set mysql.at_or_atat = on;
+
+CREATE TABLE t1 (
+  id INT,
+  table_type VARCHAR(30),
+  table_name1 VARCHAR(30),
+  flag INT
+);
+CREATE TABLE t2 (
+  id INT,
+  table_type VARCHAR(30),
+  table_name2 VARCHAR(30),
+  flag INT
+);
+CREATE TABLE t3 (
+  id INT,
+  table_type VARCHAR(30),
+  table_name3 VARCHAR(30),
+  flag INT
+);
+INSERT INTO t1 VALUES(1, 'BASE TABLE1', 't1', 1);
+INSERT INTO t2 VALUES(2, 'BASE TABLE2', 't2', 2);
+INSERT INTO t3 VALUES(3, 'BASE TABLE3', 't3', 3);
+
+-- grouped HAVING blocks source-column lookup from the same subquery level
+select flag from t1
+having (
+  select flag from t2 group by flag
+  having (
+    select count(table_name3) from t3 having table_name3 = 't3'
+  ) != 0
+) > 0;
+
+-- correlated lookup still works through WHERE
+select flag from t1
+where (
+  select flag from t2
+  where (
+    select count(table_name3) from t3 having id = 3
+  ) != 0
+) > 0;
+
+select flag from t1
+where (
+  select flag from t2
+  where (
+    select count(table_name3) from t3 having id = 2
+  ) != 0
+) > 0;
+
+-- non-grouped HAVING still allows correlated lookup
+select flag from t1
+having (
+  select flag from t2
+  having (
+    select count(table_name3) from t3 having id = 2
+  ) != 0
+) > 0;
+
+-- grouped outer HAVING blocks lookup into that level too
+select flag from t1 group by flag
+having (
+  select flag from t2 group by flag
+  having (
+    select count(table_name3) from t3 having id = 2
+  ) != 0
+) > 0;
+
+select flag from t1
+having (
+  select flag from t2 group by flag
+  having (
+    select count(table_name3) from t3 having id = 2
+  ) != 0
+) > 0;
+
+select flag from t1
+having (
+  select flag from t2 group by flag
+  having (
+    select count(table_name3) from t3 having id = 1
+  ) != 0
+) > 0;
+
+select flag from t1 group by flag
+having (
+  select flag from t2
+  having (
+    select count(table_name3) from t3 having id = 1
+  ) != 0
+) > 0;
+
+select flag from t1 group by flag
+having (
+  select flag from t2
+  having (
+    select count(table_name3) from t3 having id = 2
+  ) != 0
+) > 0;
+
+DROP TABLE t1;
+DROP TABLE t2;
+DROP TABLE t3;
+
+
+
+
+
+-- # test of problems with having (Reported by Mark Rogers)
+-- #
+
+--disable_warnings
+drop table if exists t1,t2,t3;
+--enable_warnings
+
+create table t1 (a int);
+select count(a) as b from t1 where a=0 having b > 0;
+insert into t1 values (null);
+select count(a) as b from t1 where a=0 having b > 0;
+select count(a) as b from t1 where a=0 having b >=0;
+drop table t1; 
+
+-- #
+-- # Test of problem with HAVING and AVG()
+-- #
+
+CREATE TABLE t1 (
+  raw_id int(10) NOT NULL default '0',
+  chr_start int(10) NOT NULL default '0',
+  chr_end int(10) NOT NULL default '0',
+  raw_start int(10) NOT NULL default '0',
+  raw_end int(10) NOT NULL default '0',
+  raw_ori int(2) NOT NULL default '0'
+);
+
+INSERT INTO t1 VALUES (469713,1,164123,1,164123,1),(317330,164124,317193,101,153170,1),(469434,317194,375620,101,58527,1),(591816,375621,484273,1,108653,1),(591807,484274,534671,91,50488,1),(318885,534672,649362,101,114791,1),(318728,649363,775520,102,126259,1),(336829,775521,813997,101,38577,1),(317740,813998,953227,101,139330,1),(1,813998,953227,101,139330,1);
+
+CREATE TABLE t2 (
+  id int(10) unsigned NOT NULL default '0',
+  contig_id int(10) unsigned NOT NULL default '0',
+  seq_start int(10) NOT NULL default '0',
+  seq_end int(10) NOT NULL default '0',
+  strand int(2) NOT NULL default '0',
+  KEY id (id)
+);
+INSERT INTO t2 VALUES (133195,469713,61327,61384,1),(133196,469713,64113,64387,1),(133197,1,1,1,0),(133197,1,1,1,-2);
+SELECT e.id,
+   MIN( IF(sgp.raw_ori=1,
+          (e.seq_start+sgp.chr_start-sgp.raw_start),  
+          (sgp.chr_start+sgp.raw_end-e.seq_end))) as alias1, 
+   MAX( IF(sgp.raw_ori=1,
+           (e.seq_end+sgp.chr_start-sgp.raw_start),  
+           (sgp.chr_start+sgp.raw_end-e.seq_start))) as alias2, 
+   AVG(IF (sgp.raw_ori=1,e.strand,(-e.strand))) as chr_strand 
+FROM  t1 sgp,
+      t2 e  
+WHERE sgp.raw_id=e.contig_id 
+GROUP BY e.id 
+HAVING chr_strand= -1 and alias2 >= 0 
+  AND alias1 <= 999660;
+drop table t1,t2;
+
+-- #
+-- # Test problem with having and MAX() IS NOT NULL
+-- #
+
+CREATE TABLE t1 (Fld1 int(11) default NULL,Fld2 int(11) default NULL);
+INSERT INTO t1 VALUES (1,10),(1,20),(2,NULL),(2,NULL),(3,50);
+select Fld1, max(Fld2) as q from t1 group by Fld1 having q is not null;
+select Fld1, max(Fld2) from t1 group by Fld1 having max(Fld2) is not null;
+select Fld1, max(Fld2) from t1 group by Fld1 having avg(Fld2) is not null;
+select Fld1, max(Fld2) from t1 group by Fld1 having std(Fld2) is not null;
+-----bug 7532
+select Fld1, max(Fld2) from t1 group by Fld1 having variance(Fld2) is not null;
+drop table t1;
+
+-- #
+-- # Test problem with count(distinct) in having
+-- #
+create table t1 (id int not null, qty int not null);
+insert into t1 values (1,2),(1,3),(2,4),(2,5);
+select id, sum(qty) as sqty from t1 group by id having sqty>2;
+select sum(qty) as sqty from t1 group by id having count(id) > 0;
+select sum(qty) as sqty from t1 group by id having count(distinct id) > 0;
+drop table t1;
+
+-- #
+-- # Test case for MYSQL_Bug  4358 Problem with HAVING clause that uses alias from the
+-- #              select list and TEXT field 
+-- #
+
+CREATE TABLE t1 (
+  `id` bigint(20) NOT NULL default '0',
+  `description` text
+) ENGINE=MyISAM;
+
+CREATE TABLE t2 (
+  `id` bigint(20) NOT NULL default '0',
+  `description` varchar(20)
+) ENGINE=MyISAM;
+
+INSERT INTO t1  VALUES (1, 'test');
+INSERT INTO t2 VALUES (1, 'test');
+
+CREATE TABLE t3 (
+  `id`       bigint(20) NOT NULL default '0',
+  `order_id` bigint(20) NOT NULL default '0'
+) ENGINE=MyISAM;
+
+select
+	a.id, a.description,
+	count(b.id) as c 
+from t1 a left join t3 b on a.id=b.order_id 
+group by a.id, a.description 
+having (a.description is not null) and (c=0);
+
+select
+	a.*, 
+	count(b.id) as c 
+from t2 a left join t3 b on a.id=b.order_id 
+group by a.id, a.description
+having (a.description is not null) and (c=0);
+
+INSERT INTO t1  VALUES (2, 'test2');
+
+select
+	a.id, a.description,
+	count(b.id) as c 
+from t1 a left join t3 b on a.id=b.order_id 
+group by a.id, a.description 
+having (a.description is not null) and (c=0);
+drop table t1,t2,t3;
+
+-- #
+-- # MYSQL_Bug  14274: HAVING clause containing only set function
+-- #
+
+CREATE TABLE t1 (a int);
+INSERT INTO t1 VALUES (3), (4), (1), (3), (1);
+
+SELECT SUM(a) FROM t1 GROUP BY a HAVING SUM(a)>0;
+SELECT SUM(a) FROM t1 GROUP BY a HAVING SUM(a);
+
+DROP TABLE t1;
+
+-- #
+-- # MYSQL_Bug  14927: HAVING clause containing constant false conjunct
+-- #
+
+CREATE TABLE t1 (a int);
+INSERT INTO t1 VALUES (1), (2), (1), (3), (2), (1);
+
+SELECT a FROM t1 GROUP BY a HAVING a > 1;
+SELECT a FROM t1 GROUP BY a HAVING 1 != 1 AND a > 1;
+--@@@@@@@@@@@@@@@@@@@@
+SELECT 0 AS x, a FROM t1 GROUP BY x,a HAVING x=1 AND a > 1;
+
+DROP table t1;  
+
+-- #
+-- # MYSQL_Bug  29911: HAVING clause depending on constant table and evaluated to false
+-- #
+
+CREATE TABLE t1 (a int PRIMARY KEY);
+CREATE TABLE t2 (b int PRIMARY KEY, a int);
+CREATE TABLE t3 (b int, flag int);
+
+INSERT INTO t1 VALUES (1);
+INSERT INTO t2 VALUES (1,1), (2,1), (3,1);
+INSERT INTO t3(b,flag) VALUES (2, 1);
+
+SELECT t1.a
+  FROM t1 INNER JOIN t2 ON t1.a=t2.a LEFT JOIN t3 ON t2.b=t3.b
+    GROUP BY t1.a, t2.b HAVING MAX(t3.flag)=0;
+
+SELECT DISTINCT t1.a, MAX(t3.flag)
+  FROM t1 INNER JOIN t2 ON t1.a=t2.a LEFT JOIN t3 ON t2.b=t3.b
+    GROUP BY t1.a, t2.b HAVING MAX(t3.flag)=0;
+
+SELECT DISTINCT t1.a
+  FROM t1 INNER JOIN t2 ON t1.a=t2.a LEFT JOIN t3 ON t2.b=t3.b
+    GROUP BY t1.a, t2.b HAVING MAX(t3.flag)=0;
+
+DROP TABLE t1,t2,t3;
+
+-- # End of 4.1 tests
+
+-- #
+-- # Tests for WL#1972 CORRECT EVALUATION OF COLUMN REFERENCES IN THE HAVING CLAUSE
+-- # Per the SAP VERI tests and WL#1972, MySQL must ensure that HAVING can
+-- # correctly evaluate column references from the GROUP BY clause, even if the
+-- # same references are not also found in the select list.
+-- #
+
+-- # set global sql_mode='ansi';
+
+create table t1 (col1 int, col2 varchar(5), col_t1 int);
+create table t2 (col1 int, col2 varchar(5), col_t2 int);
+create table t3 (col1 int, col2 varchar(5), col_t3 int);
+
+insert into t1 values(10,'hello',10);
+insert into t1 values(20,'hello',20);
+insert into t1 values(30,'hello',30);
+insert into t1 values(10,'bye',10);
+insert into t1 values(10,'sam',10);
+insert into t1 values(10,'bob',10);
+
+insert into t2 select * from t1;
+insert into t3 select * from t1;
+
+select count(*) from t1 group by col1 having col1 = 10;
+select count(*) as count_col1 from t1 group by col1 having col1 = 10;
+select count(*) as count_col1 from t1 as tmp1 group by col1 having col1 = 10;
+select count(*) from t1 group by col2 having col2 = 'hello';
+--error 1054
+select count(*) from t1 group by col2 having col1 = 10;
+select col1 as count_col1 from t1 as tmp1 group by col1 having col1 = 10;
+select col1 as count_col1 from t1 as tmp1 group by col1 having count_col1 = 10;
+--@@@########
+select col1 as count_col1 from t1 as tmp1 group by count_col1 having col1 = 10;
+-- # ANSI: should return SQLSTATE 42000 Syntax error or access violation 
+-- # MySQL: returns 10 - because of GROUP BY name resolution
+
+-- # both having columns are resolved in the GROUP clause of the outer query
+--source include/turn_off_only_full_group_by.inc
+----@#########
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+
+select t1.col1 from t1
+where t1.col2 in 
+      (select t2.col2 from t2 
+       group by t2.col1, t2.col2 having col_t1 <= 10)
+group by col_t1
+having col_t1 <= 20;
+set sql_mode = DEFAULT;
+--source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
+
+
+--@@@@@@@@@@@@@@@@@@
+select col1 as count_col1 from t1 as tmp1 group by count_col1 having count_col1 = 10;
+-- # ANSI: should return SQLSTATE 42000 Syntax error or access violation 
+-- # MySQL: returns 10 - because of GROUP BY name resolution
+select col1 as count_col1,col2 from t1 as tmp1 group by col1,col2 having col1 = 10;
+select col1 as count_col1,col2 from t1 as tmp1 group by col1,col2 having count_col1 = 10;
+select col1 as count_col1,col2 from t1 as tmp1 group by col1,col2 having col2 = 'hello';
+select col1 as count_col1,col2 as group_col2 from t1 as tmp1 group by col1,col2 having group_col2 = 'hello';
+--error 1064
+select sum(col1) as co12 from t1 group by col2 having col2 10; 
+select sum(col1) as co2, count(col2) as cc from t1 group by col1 having col1 =10; 
+--error 1054
+select t2.col2 from t2 group by t2.col1, t2.col2 having t1.col1 <= 10;
+
+
+-- #
+-- # queries with nested sub-queries
+-- #
+
+-- # the having column is resolved in the same query
+select t1.col1 from t1
+where t1.col2 in 
+      (select t2.col2 from t2 
+       group by t2.col1, t2.col2 having t2.col1 <= 10);
+
+select t1.col1 from t1
+where t1.col2 in 
+      (select t2.col2 from t2
+       group by t2.col1, t2.col2
+       having t2.col1 <=
+              (select min(t3.col1) from t3));
+
+-- # the having column is resolved in the SELECT clause of the outer query -
+-- # works in ANSI
+select t1.col1 from t1
+where t1.col2 in
+      (select t2.col2 from t2 
+       group by t2.col1, t2.col2 having t1.col1 <= 10);
+
+-- # the having column is resolved in the FROM clause of the outer query -
+-- # works in ANSI
+select t1.col1 from t1
+where t1.col2 in 
+      (select t2.col2 from t2 
+       group by t2.col1, t2.col2 having col_t1 <= 10);
+
+-- # Item_field must be resolved in the same way as Item_ref
+select sum(col1) from t1
+group by col_t1
+having (select col_t1 from t2 where col_t1 = col_t2 order by col_t2 limit 1);
+
+-- # nested queries with HAVING, inner having column resolved in outer FROM clause
+-- # the outer having column is not referenced in GROUP BY which results in an error
+--error 1054
+--@@@@@@@@@@@@@@
+select t1.col1 from t1
+where t1.col2 in 
+      (select t2.col2 from t2 
+       group by t2.col1, t2.col2 having col_t1 <= 10)
+having col_t1 <= 20;
+
+select t1.col1 from t1
+where t1.col2 in 
+      ('hello' )
+having col_t1 <= 20;
+
+
+-- #
+-- # nested HAVING clauses
+-- #
+
+-- # non-correlated subqueries
+select col_t1, sum(col1) from t1
+group by col_t1
+having col_t1 > 10 and
+       exists (select sum(t2.col1) from t2
+               group by t2.col2 having t2.col2 > 'b');
+
+-- # correlated subqueries - inner having column 't1.col2' resolves to
+-- # the outer FROM clause, which cannot be used because the outer query
+-- # is grouped
+--error 1054
+--@@@@@@@@@@@@@@@@@@
+select sum(col1) from t1
+group by col_t1
+having col_t1 in (select sum(t2.col1) from t2
+                  group by t2.col2, t2.col1 having t2.col1 = t1.col1);
+
+-- # correlated subqueries - inner having column 'col_t1' resolves to
+-- # the outer GROUP clause
+select sum(col1) from t1
+group by col_t1
+having col_t1 in (select sum(t2.col1) from t2
+                  group by t2.col2, t2.col1 having t2.col1 = col_t1);
+
+-- #
+-- # queries with joins and ambiguous column names
+-- #
+--error 1052
+select t1.col1, t2.col1 from t1, t2 where t1.col1 = t2.col1
+group by t1.col1, t2.col1 having col1 = 2;
+
+--error 1052
+select t1.col1*10+t2.col1 from t1,t2 where t1.col1=t2.col1
+group by t1.col1, t2.col1 having col1 = 2;
+
+drop table t1, t2, t3;
+
+-- # More queries to test ANSI compatibility
+create table t1 (s1 int);
+insert into t1 values (1),(2),(3);
+
+select count(*) from t1 group by s1 having s1 is null;
+
+-- # prepared statements prints warnings too early
+--disable_ps_protocol
+select s1*0 as s1 from t1 group by s1 having s1 <> 0;
+--enable_ps_protocol
+
+-- # ANSI requires: 3 rows
+-- # MySQL returns: 0 rows - because of GROUP BY name resolution
+
+select s1*0 from t1 group by s1 having s1 = 0;
+
+select s1 from t1 group by 1 having 1 = 0;
+
+select count(s1) from t1 group by s1 having count(1+1)=2;
+-- # ANSI requires: 3 rows
+-- # MySQL returns: 0 rows - because of GROUP BY name resolution
+
+select count(s1) from t1 group by s1 having s1*0=0;
+
+-- error 1052
+select * from t1 a, t1 b group by a.s1 having s1 is null;
+-- # ANSI requires: 0 rows
+-- # MySQL returns:
+-- # "ERROR 1052 (23000): Column 's1' in having clause is ambiguous"
+-- # I think the column is ambiguous in ANSI too.
+-- # It is the same as:
+-- #   select a.s1, b.s1 from t1 a, t1 b group by a.s1 having s1 is null;
+-- # currently we first check SELECT, thus s1 is ambiguous.
+
+drop table t1;
+
+create table t1 (s1 char character set latin1 );
+insert ignore into t1 values ('ü'),('y');
+
+--source include/turn_off_only_full_group_by.inc
+select s1,count(s1) from t1
+group by s1  having s1 = 'y';
+-- # ANSI requires: 1 row, with count(s1) = 2
+-- # MySQL returns: 1 row, with count(s1) = 1
+--source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
+
+drop table t1;
+
+
+-- #
+-- # MYSQL_Bug  15917: unexpected complain for a name in having clause
+-- # when the server is run on Windows or with --lower-case-table-names=1
+-- #
+
+--disable_warnings
+DROP SCHEMA  HU;
+--enable_warnings
+CREATE SCHEMA HU ;
+USE HU ;
+
+CREATE TABLE STAFF
+ (EMPNUM   CHAR(3) NOT NULL UNIQUE,
+  EMPNAME  CHAR(20),
+  GRADE    DECIMAL(4),
+  CITY     CHAR(15));
+
+CREATE TABLE PROJ
+ (PNUM     CHAR(3) NOT NULL UNIQUE,
+  PNAME    CHAR(20),
+  PTYPE    CHAR(6),
+  BUDGET   DECIMAL(9),
+  CITY     CHAR(15));
+
+INSERT INTO STAFF VALUES ('E1','Alice',12,'Deale');
+INSERT INTO STAFF VALUES ('E2','Betty',10,'Vienna');
+INSERT INTO STAFF VALUES ('E3','Carmen',13,'Vienna');
+INSERT INTO STAFF VALUES ('E4','Don',12,'Deale');
+INSERT INTO STAFF VALUES ('E5','Ed',13,'Akron');
+
+INSERT INTO PROJ VALUES  ('P1','MXSS','Design',10000,'Deale');
+INSERT INTO PROJ VALUES  ('P2','CALM','Code',30000,'Vienna');
+INSERT INTO PROJ VALUES  ('P3','SDP','Test',30000,'Tampa');
+INSERT INTO PROJ VALUES  ('P4','SDP','Design',20000,'Deale');
+INSERT INTO PROJ VALUES  ('P5','IRM','Test',10000,'Vienna');
+INSERT INTO PROJ VALUES  ('P6','PAYR','Design',50000,'Deale');
+
+SELECT EMPNUM, GRADE*1000
+  FROM HU.STAFF WHERE GRADE * 1000 > 
+                  ANY (SELECT SUM(BUDGET) FROM HU.PROJ
+                         GROUP BY CITY, PTYPE
+                           HAVING HU.PROJ.CITY = HU.STAFF.CITY);
+drop table PROJ,STAFF;
+DROP SCHEMA HU;
+CREATE SCHEMA TEST ;
+USE TEST;
+-- #
+-- # MYSQL_Bug  18739: non-standard HAVING extension was allowed in strict ANSI sql mode.
+-- #
+create table t1(f1 int);
+
+--source include/turn_off_only_full_group_by.inc
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+select f1 from t1 having max(f1)=f1;
+set sql_mode = default;
+--source include/restore_sql_mode_after_turn_off_only_full_group_by.inc
+select f1 from t1 group by f1 having max(f1)=f1;
+set session sql_mode='ONLY_FULL_GROUP_BY';
+--error ER_MIX_OF_GROUP_FUNC_AND_FIELDS
+select f1 from t1 having max(f1)=f1;
+select f1 from t1 group by f1 having max(f1)=f1;
+set session sql_mode= default;
+drop table t1;
+
+
+-- #
+-- # MYSQL_Bug  38637: COUNT DISTINCT prevents NULL testing in HAVING clause
+-- #
+CREATE TABLE t1 ( a INT, b INT);
+INSERT INTO t1 VALUES (1, 1), (2,2), (3, NULL);
+SELECT b, COUNT(DISTINCT a) FROM t1 GROUP BY b HAVING b is NULL;
+DROP TABLE t1;
+
+
+--echo #
+--echo # MYSQL_Bug  50995 Having clause on subquery result produces incorrect results.
+--echo #
+
+CREATE TABLE t1
+(
+ id1 INT,
+ id2 INT NOT NULL,
+ INDEX id1(id2)
+);
+
+INSERT INTO t1 SET id1=1, id2=1;
+INSERT INTO t1 SET id1=2, id2=1;
+INSERT INTO t1 SET id1=3, id2=1;
+
+--@@@@@@@@@@
+SELECT t1.id1,
+(SELECT 0 ) AS amount FROM t1
+WHERE t1.id2 = 1
+HAVING amount > 0
+ORDER BY t1.id1;
+
+DROP TABLE t1;
+
+--echo #
+--echo # MYSQL_Bug  48916 Server incorrectly processing HAVING clauses with an ORDER BY clause
+--echo #
+CREATE TABLE t1 (f1 INT PRIMARY KEY, f2 INT, f3 INT);
+INSERT INTO t1 VALUES (2,7,9), (4,7,9), (6,2,9), (17,0,9);
+
+SELECT table1.f1, table2.f2
+FROM t1 AS table1
+JOIN t1 AS table2 ON table1.f3 = table2.f3
+WHERE table2.f1 = 2
+GROUP BY table1.f1, table2.f2
+HAVING (table2.f2 = 8 AND table1.f1 >= 6);
+
+SELECT table1.f1, table2.f2
+FROM t1 AS table1
+JOIN t1 AS table2 ON table1.f3 = table2.f3
+WHERE table2.f1 = 2
+GROUP BY table1.f1, table2.f2
+HAVING (table2.f2 = 8);
+
+DROP TABLE t1;
+
+--echo #
+--echo # MYSQL_Bug  52336 Segfault / crash in 5.1 copy_fields (param=0x9872980) at sql_select.cc:15355
+--echo #
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+CREATE TABLE t1(f1 INT, f2 INT);
+INSERT INTO t1 VALUES (10,8);
+CREATE TABLE t2 (f1 INT);
+INSERT INTO t2 VALUES (5);
+
+SELECT  COUNT(f1) FROM t2
+HAVING (7, 9)  IN (SELECT f1, MIN(f2) FROM t1);
+
+DROP TABLE t1, t2;
+
+CREATE TABLE t1 (f1 INT, f2 VARCHAR(1));
+INSERT INTO t1 VALUES (16,'f');
+INSERT INTO t1 VALUES (16,'f');
+CREATE TABLE t2 (f1 INT, f2 VARCHAR(1));
+INSERT INTO t2 VALUES (13,'f');
+INSERT INTO t2 VALUES (20,'f');
+CREATE TABLE t3 (f1 INT, f2 VARCHAR(1));
+INSERT INTO t3 VALUES (7,'f');
+
+
+SELECT t1.f2 FROM t1
+JOIN (t2 JOIN t3 ON t3.f2  = t2.f2  ) ON t3 .f2  = t2 .f2
+HAVING ('v', 'i') NOT IN (SELECT f2, MIN(f2) FROM t1)
+ORDER BY f2;
+set sql_mode = default;
+
+DROP TABLE t1,t2,t3;
+
+--echo #
+--echo # MYSQL_Bug  52340 Segfault: read_cached_record (tab=0x94a2634) at sql_select.cc:14411
+--echo #
+CREATE TABLE t1 (f1 INT, f2 VARCHAR(1));
+INSERT INTO t1 VALUES (16,'d');
+CREATE TABLE t2 (f1 INT, f2 VARCHAR(1));
+INSERT INTO t2 VALUES (13,'e');
+INSERT INTO t2 VALUES (20,'d');
+
+SELECT MAX(t2.f2) FROM t2 JOIN t1 ON t1.f2
+HAVING ('e' , 'd') IN
+(SELECT ts1.f2, ts2.f2 FROM t2 ts1 JOIN t2 ts2 ON ts1.f1)
+ORDER BY t1.f2;
+
+DROP TABLE t1,t2;
+
+set  sql_mode = default;
+--echo End of 5.0 tests
+
+--echo #
+--echo # MYSQL_Bug  54416 MAX from JOIN with HAVING returning NULL with 5.1 and Empty set
+--echo #
+
+CREATE TABLE t1 (f1 INT(11), f2 VARCHAR(1), PRIMARY KEY (f1));
+INSERT INTO t1 VALUES (1,'f');
+
+CREATE TABLE t2 (f1 INT(11), f2 VARCHAR(1));
+INSERT INTO t2 VALUES (2,'m');
+INSERT INTO t2 VALUES (3,'m');
+INSERT INTO t2 VALUES (11,NULL);
+INSERT INTO t2 VALUES (12,'k');
+
+SELECT MAX(t1.f1) field1
+FROM t1 JOIN t2 ON t2.f2 LIKE 'x'
+HAVING field1 < 7;
+
+DROP TABLE t1,t2;
+
+--echo #
+--echo # MYSQL_Bug  48916 Server incorrectly processing HAVING clauses with an ORDER BY clause
+--echo #
+
+CREATE TABLE t1 (f1 INT, f2 INT);
+INSERT INTO t1 VALUES (1, 0), (2, 1), (3, 2);
+CREATE TABLE t2 (f1 INT, f2 INT);
+
+SELECT t1.f1
+FROM t1
+HAVING (3, 2) IN (SELECT f1, f2 FROM t2) AND t1.f1  >= 0
+ORDER BY t1.f1;
+
+SELECT t1.f1
+FROM t1
+HAVING (3, 2) IN (SELECT 4, 2) AND t1.f1  >= 0
+ORDER BY t1.f1;
+
+SELECT t1.f1
+FROM t1
+HAVING 2 IN (SELECT f2 FROM t2) AND t1.f1  >= 0
+ORDER BY t1.f1;
+
+DROP TABLE t1,t2;
+
+
+--echo End of 5.1 tests
+
+--echo #
+--echo # MYSQL_Bug  46077 "wrong result: HAVING + ORDER BY + MyISAM + ICP
+--echo # returns extra rows"
+--echo #
+
+CREATE TABLE `t1` (
+  `pk` int(11) NOT NULL AUTO_INCREMENT,
+  `int_key` int(11) NOT NULL,
+  PRIMARY KEY (`pk`),
+  KEY `int_key` (`int_key`)
+) AUTO_INCREMENT=3 DEFAULT CHARSET=latin1;
+
+INSERT INTO `t1` VALUES (1,7),(2,9);
+
+--@@@@@@@@@@
+SELECT `pk`, `int_key` as field1 
+FROM  t1 WHERE  `pk`  <  3
+HAVING  field1  <  8
+ORDER  BY field1;
+
+drop table `t1`;
+
+--echo End of 5.5 tests
+
+--echo #
+--echo # MYSQL_Bug  12402590 ASSERT AT PROTOCOL::END_STATEMENT ON MYSQL-TRUNK
+--echo #              RUNNING RQG_OPT_SUBQUERY TEST
+--echo #
+
+CREATE TABLE t2 (
+  f1 INT,
+  PRIMARY KEY (f1)
+);
+INSERT INTO t2 VALUES (1), (2);
+
+CREATE TABLE t1 (
+  f1 INT,
+  f2 VARCHAR(1),
+  f3 VARCHAR(1),
+  PRIMARY KEY (f1),
+  KEY (f2, f1)
+);
+INSERT INTO t1 VALUES (8, 'g', 'g'), (11, 'a', 'a');
+
+SELECT t1.f1 FROM t1 JOIN t2 ON t2.f1 = t1.f1
+WHERE t1.f3 AND t1.f2 IN ('f')
+HAVING (1 ,6) IN (SELECT 3, 6)
+ORDER BY t1.f1;
+
+DROP TABLE t1, t2;
+
+--echo #
+--echo # MYSQL_Bug  13406172: HAVING CLAUSE ON AGGREGATED COLUMN RETURNS
+--echo #               WRONG RESULT WITH MYISAM
+--echo #
+
+CREATE TABLE ot (i int) ENGINE=MyISAM;
+INSERT INTO ot VALUES (1);
+
+CREATE TABLE it (i int) ENGINE=MyISAM;
+INSERT INTO it VALUES (7), (8);
+
+SELECT COUNT(i) AS x 
+FROM ot 
+WHERE (i) IN (SELECT i FROM it WHERE it.i <= 4) OR i IS NULL 
+HAVING x > 1;
+
+CREATE FUNCTION f(a INTEGER) RETURNS INTEGER  RETURN a*a;
+SELECT BIT_AND(i) AS x
+FROM ot
+WHERE f(2) < 2
+HAVING x < 2;
+
+DROP TABLE it,ot;
+DROP FUNCTION f;
+
+--echo #
+--echo # MYSQL_Bug  11760517: MIN/MAX FAILS TO EVALUATE HAVING CONDITION, 
+--echo #               RETURNS INCORRECT NULL RESULT
+--echo #
+CREATE TABLE t1 (pk INT PRIMARY KEY, i4 INT);
+INSERT INTO t1 VALUES (2,7), (4,7), (6,2), (17,0);
+
+--echo
+SELECT MIN(table1.i4), MIN(table2.pk) as min_pk
+FROM t1 as table1, t1 as table2
+WHERE table1.pk = 1;
+
+--echo
+SELECT MIN(table1.i4), MIN(table2.pk) as min_pk
+FROM t1 as table1, t1 as table2
+WHERE table1.pk = 1
+HAVING min_pk <= 10;
+
+--echo
+DROP TABLE t1;
+
+--echo End of 5.6 tests
+
+--echo
+--echo ONLY_FULL_GROUP_BY now allows using an alias in HAVING
+SET @old_sql_mode = @@sql_mode;
+SET @@sql_mode='ONLY_FULL_GROUP_BY';
+CREATE TABLE t1 (a INT, b INT);
+insert into t1 values(1,10),(2,20),(3,30);
+select a from t1 having a=3;
+select a as x from t1 having x=3;
+select avg(a) as x from t1 having x=2;
+select a as foo, sum(b) as bar from t1 group by a having foo<10;
+--@@@@@@@@@@@@@@@@order by not support alais
+select a as foo, sum(b) as bar from t1
+ group by a
+ having bar>10
+ order by foo+10;
+select a as foo,
+  (select t1_inner.b from t1 as t1_inner where
+   t1_inner.a=t1_outer.a+1)
+ as bar from t1 as t1_outer
+ group by a
+ having bar<30
+ order by bar+5;
+select a as foo,
+  (select t1_inner.b from t1 as t1_inner where
+   t1_inner.a=t1_outer.a+1)
+ as bar from t1 as t1_outer
+ group by foo
+ having bar<30
+ order by bar+5;
+DROP TABLE t1;
+
+-- #
+-- # MYSQL_Bug  19811896 ASSERTION FAILED: CURR_TABLE->TABLE_REF ||
+-- #              !(HAVING_COND->USED_TABLES() & ~(1 |    
+-- #
+set sql_mode='';
+CREATE TABLE t1 (a INT) ;
+SELECT a FROM (SELECT 1 FROM t1 AS From1) AS From2 
+  NATURAL RIGHT OUTER JOIN t1 AS Outjoin3 
+GROUP BY 1 HAVING (
+  SELECT 1 FROM t1 AS Grouphaving4 GROUP BY 1 HAVING a);
+SELECT a FROM (SELECT 1 FROM t1 AS From1) AS From2
+  NATURAL RIGHT OUTER JOIN t1 AS Outjoin3
+GROUP BY 1 HAVING
+  sin((SELECT 1 FROM t1 AS Grouphaving4 GROUP BY 1 HAVING a));
+
+CREATE TABLE t2 (a INT) ;
+SELECT Outjoin3.a FROM (SELECT 1 FROM t1 AS From1) AS From2 
+NATURAL RIGHT OUTER JOIN t2 AS Outjoin3 
+GROUP BY 1 HAVING (
+SELECT 1 FROM t1 AS GroupHaving4 GROUP BY 1 HAVING a);
+
+DROP TABLE t1, t2;
+
+SET @@sql_mode = @old_sql_mode;
+
+
+--echo #
+--echo #  MYSQL_Bug  21243772: NOT IN SUBQUERY RETURNS INCORRECT RESULTS WHEN INNER
+--echo #                QUERY HAS COUNT DISTINCT.
+--echo #
+
+CREATE TABLE t1 (t TEXT NOT NULL, u TEXT);
+INSERT INTO t1 VALUES('2', '1'), ('3', '1'), ('4', '1');
+\d t1;
+SELECT * FROM t1 WHERE (t, u) in (SELECT a.t,  COUNT(DISTINCT a.u)
+                                                       FROM t1 a, t1 b
+                                                       GROUP BY a.t);
+SELECT * FROM t1 WHERE (t, u) not in (SELECT a.t,  COUNT(DISTINCT a.u)
+                                                       FROM t1 a, t1 b
+                                                       GROUP BY a.t);
+DROP TABLE t1;
+
+
+--echo #
+--echo #  MYSQL_Bug  21507072: SIG 11 IN TABLE_LIST::MAP AT SQL/TABLE.H:2463.
+--echo #
+
+CREATE TABLE t1 (col_varchar_key varchar(1) DEFAULT NULL,
+                                 KEY col_varchar_key (col_varchar_key));
+
+INSERT INTO t1 VALUES ('a'), ('b'), ('c'), ('h'), ('i'), ('i'), ('j');
+
+--@@@@@@@@@@@
+SELECT  col_varchar_key AS field1
+  FROM t1 AS table1
+  GROUP BY field1
+  HAVING field1 = 'a';
+
+DROP TABLE t1;
+
+--echo # MYSQL_Bug  21613422: Assertion failed: !thd->is_error() in ::prepare()
+
+-- CREATE TABLE a(f INTEGER, g INTEGER);
+
+-- --error ER_NON_UNIQ_ERROR
+-- SELECT (SELECT 1 FROM a HAVING g)
+-- FROM (SELECT 1) AS e
+--      JOIN a AS t on TRUE
+--      JOIN a USING (f)
+--      JOIN a AS h on TRUE;
+
+-- DROP TABLE a;
+
+--echo # MYSQL_Bug  21067109: Assert 'join == __NULL' failed in ::optimize()
+
+CREATE TABLE t1 (
+  col_int_key INT,
+  pk INT NOT NULL,
+  PRIMARY KEY (pk),
+  KEY col_int_key (col_int_key)
+) ;
+
+INSERT INTO t1 VALUES (6, 1);
+
+CREATE TABLE t2 (
+  pk INT NOT NULL,
+  PRIMARY KEY (pk)
+);
+
+INSERT INTO t2 VALUES (5), (6), (7), (8);
+
+--error ER_SUBQUERY_NO_1_ROW
+SELECT col_int_key
+FROM t1 AS alias1
+HAVING (2, 7) NOT IN
+ (SELECT pk, SUM(pk)
+  FROM t1
+  WHERE pk <> (SELECT t2_alias1 .pk
+               FROM t2 AS t2_alias1 JOIN t2 AS t2_alias2
+              )
+  GROUP BY pk
+ );
+
+DROP TABLE t1, t2;
+
+--echo #
+--echo # MYSQL_Bug  22655856: COLUMN NAME IN HAVING, WHICH IS CONTAINED IN SELECT
+--echo #                LIST '*', PRODUCES ERROR
+--echo #
+
+CREATE TABLE t1(c1 INT) ;
+CREATE TABLE t2(c2 INT) ;
+
+SELECT c1 FROM t1 WHERE EXISTS(SELECT * FROM t2 HAVING c2>0);
+
+INSERT INTO t1 VALUES(1);
+INSERT INTO t2 VALUES(2);
+
+SELECT c1 FROM t1 WHERE EXISTS(SELECT * FROM t2 HAVING c2>0);
+
+DROP TABLE t1, t2;
+
+
+
+
+-- /home/highgo/mysql/mysql-server/mysql-test/r/binary.result
+create table t1 (b char(8));
+insert into t1 values(NULL);
+select b from t1 where binary b like '';
+
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+select b from t1 group by binary b like '';
+set sql_mode = default;
+select b from t1 having binary b like '';
+
+drop table t1;
+
+
+
+-- /home/highgo/mysql/mysql-server/mysql-test/r/derived.result
+SELECT a FROM (SELECT 1 FROM (SELECT 1) a HAVING a=1) b;
+SELECT a,b as a FROM (SELECT '1' as a,'2' as b) b  HAVING a=1;
+SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=2;
+SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=1;
+SELECT 1 FROM (SELECT 1) a WHERE a=2;
+SELECT (SELECT 1) as a FROM (SELECT 1 FROM t1  HAVING a=1) as a;
+
+
+
+
+
+-- other
+-- MySQL 允许 HAVING 引用 SELECT 列表中的列，甚至允许引用外层子查询的列  
+drop table test_id;
+create table test_id(id text,name text);
+insert into test_id values('aaa','aaa');
+--@@@@@@????
+select id  ids ,name  from test_id group by id, name having (select name from test_id where ids = name ) = 'aaa';
+drop table test_id;
+
+-- alias和column name冲突
+CREATE TABLE test_table (
+    id INT,
+    table_type VARCHAR(30),
+    table_name VARCHAR(30),
+    flag VARCHAR(10)
+);
+INSERT INTO test_table VALUES
+(1, 'BASE TABLE', 't1', 'Y'),
+(2, 'VIEW',       't2', 'Y'),
+(3, 'TEMPORARY',  't3', 'N'),
+(4, 'BASE TABLE', 't4', 'N');
+--@@@@@@
+SELECT
+    id,
+    table_name AS table_type
+FROM test_table
+HAVING table_type = 't1';
+
+
+SELECT
+ id,
+table_type,
+ table_name AS table_type
+FROM test_table
+HAVING table_type ='t1';
+
+drop table test_table;
+
+
+--  各层没有别名，引用外层查询的列
+
+CREATE TABLE t1 (
+    id INT,
+    table_type VARCHAR(30),
+    table_name1 VARCHAR(30),
+    flag INT
+);
+CREATE TABLE t2 (
+    id INT,
+    table_type VARCHAR(30),
+    table_name2 VARCHAR(30),
+    flag INT
+);
+CREATE TABLE t3 (
+    id INT,
+    table_type VARCHAR(30),
+    table_name3 VARCHAR(30),
+    flag INT
+);
+INSERT INTO t1 VALUES(1, 'BASE TABLE1', 't1', 1);
+INSERT INTO t2 VALUES(2, 'BASE TABLE2', 't2', 2);
+INSERT INTO t3 VALUES(3, 'BASE TABLE3', 't3', 3);
+
+-----无结果集返回，说明id不是t3的表列
+select flag  from t1
+where (
+    select flag  from t2
+    where (
+        select count(table_name3) from t3 having id = 3
+    ) != 0
+) > 0;
+
+-----有结果集，且id=2，说明id是t2的表列
+select flag  from t1
+where (
+    select flag  from t2
+    where (
+        select count(table_name3) from t3 having id = 2
+    ) != 0
+) > 0;
+
+
+--having->where->alias   在having子句中的where可以往最外层查找
+select id as ids  from t1
+having (
+    select flag  from t2
+    where (
+        select count(table_name3) from t3 where ids = 2
+    ) != 0
+) > 0;
+
+drop table t1,t2,t3;
+
+
+CREATE TABLE t1 (
+    id INT,
+    table_type VARCHAR(30),
+    table_name1 VARCHAR(30),
+    flag INT
+);
+CREATE TABLE t2 (
+    ids INT,
+    table_type VARCHAR(30),
+    table_name2 VARCHAR(30),
+    flag INT
+);
+CREATE TABLE t3 (
+    id INT,
+    table_type VARCHAR(30),
+    table_name3 VARCHAR(30),
+    flag INT
+);
+INSERT INTO t1 VALUES(1, 'BASE TABLE1', 't1', 1);
+INSERT INTO t2 VALUES(2, 'BASE TABLE2', 't2', 2);
+INSERT INTO t3 VALUES(3, 'BASE TABLE3', 't3', 3);
+--empty
+select id as ids  from t1
+having (
+    select  ids  from t2
+    where (
+        select count(table_name3) from t3 where ids = 1
+    ) != 0
+) > 0;
+--1
+select id as ids  from t1
+having (
+    select  ids  from t2
+    where (
+        select count(table_name3) from t3 where ids = 2
+    ) != 0
+) > 0;
+--empty
+select id as ids  from t1
+having (
+    select flag  from t2
+    where (
+        select count(table_name3) from t3 where ids = 1
+    ) != 0
+) > 0;
+--1
+select id as ids  from t1
+having (
+    select flag  from t2
+    where (
+        select count(table_name3) from t3 where ids = 2
+    ) != 0
+) > 0;
+drop table t1,t2,t3;
+
+
+
+
+
+CREATE TABLE t1 (
+    id INT,
+    table_type VARCHAR(30),
+    table_name1 VARCHAR(30),
+    flag INT
+);
+CREATE TABLE t2 (
+    ids INT,
+    table_type VARCHAR(30),
+    table_name2 VARCHAR(30),
+    flag INT
+);
+CREATE TABLE t3 (
+    ids INT,
+    table_type VARCHAR(30),
+    table_name3 VARCHAR(30),
+    flag INT
+);
+INSERT INTO t1 VALUES(1, 'BASE TABLE1', 't1', 1);
+INSERT INTO t2 VALUES(2, 'BASE TABLE2', 't2', 2);
+INSERT INTO t3 VALUES(3, 'BASE TABLE3', 't3', 3);
+
+--empty
+select id as ids  from t1
+having (
+    select ids  from t2
+    where (
+        select ids from t3 where ids = 2
+    ) != 0
+) > 0;
+--1
+select id as ids  from t1
+having (
+    select ids  from t2
+    where (
+        select ids from t3 where ids = 3
+    ) != 0
+) > 0;
+
+--1
+select id as ids  from t1
+having (
+    select flag  from t2
+    where (
+        select flag from t3 where ids = 3
+    ) != 0
+) > 0;
+drop table t1,t2,t3;
+
+
+
+
+
+
+
+
+
+create table t1(col1 int);
+create table t2(col2 int);
+create table t3(col3 int);
+insert into t1 values (1);
+insert into t2 values (2);
+insert into t3 values (3);
+--@@@@@@@@
+select col1 as TABLE_TYPE from t1
+having (
+    select col2 as TABLE_TYPE from t2
+    having (
+        select count(col3) from t3 having TABLE_TYPE = 2
+    ) != 0
+) > 0;
+
+
+
+select col1 as TABLE_TYPE from t1
+having (
+    select col2 as TABLE_TYPE from t2
+    having (
+        select count(col3) from t3 having TABLE_TYPE = 1
+    ) != 0
+) > 0;
+
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+select col1 as TABLE_TYPE from t1
+having (
+    select col2 as col1 from t2
+    having (
+        select count(col1) from t3 having col1 = 2
+    ) != 0
+) > 0;
+set sql_mode = default;
+
+drop table t1,t2,t3;
+
+
+
+CREATE TABLE t1 (
+    id INT,
+    name VARCHAR(10)
+);
+
+INSERT INTO t1 VALUES
+(1,'a'),
+(2,'b'),
+(3,'c');
+
+SELECT id AS name
+FROM t1
+GROUP BY id
+HAVING name = 2;
+
+SELECT id AS name
+FROM t1
+GROUP BY id
+HAVING (
+    SELECT name
+    FROM t1
+    WHERE id = 1
+) = 'a';
+
+DROP TABLE t1;
+
+-- =====================================================================
+-- [B] Subquery + HAVING execution path
+-- Source: mysql-test/t/subselect_innodb.test
+-- =====================================================================
+
+CREATE TABLE t1 (a INT, b INT) ;
+INSERT INTO t1 VALUES (1,2),(1,3),(2,3),(2,4),(2,5),(3,4),(4,5),(4,100);
+CREATE TABLE t2 (a INT) ;
+INSERT INTO t2 VALUES (1),(2),(3),(4);
+SELECT a, SUM(b) AS b FROM t1 GROUP BY a HAVING b > (SELECT MAX(a) FROM t2);
+DROP TABLE t1, t2;
+
+CREATE TABLE t1 (a CHAR(3) NOT NULL, b CHAR(3) NOT NULL, c CHAR(3) NOT NULL,
+                 PRIMARY KEY (a,b,c)) ;
+CREATE TABLE t2 LIKE t1;
+INSERT INTO t1 VALUES ('1','1','1');
+INSERT INTO t2 VALUES ('1','1','1');
+PREPARE my_stmt as
+SELECT t1.b, COUNT(*) FROM t1 GROUP BY t1.b
+ HAVING COUNT(*) > ALL (SELECT COUNT(*) FROM t2 WHERE t2.a='1' GROUP BY t2.b);
+EXECUTE my_stmt;
+EXECUTE my_stmt;
+DEALLOCATE PREPARE my_stmt;
+DROP TABLE t1,t2;
+
+-- =====================================================================
+-- [C] Derived table / view interactions with HAVING
+-- Source: mysql-test/t/derived.test, mysql-test/t/view.test
+-- =====================================================================
+
+DROP TABLE IF EXISTS t1;
+CREATE TABLE t1 (a INT);
+-- Expected in upstream tests: Unknown column error context for nested HAVING
+SELECT a FROM (SELECT 1 FROM (SELECT 1) x HAVING a=1) b;
+DROP TABLE t1;
+
+CREATE TABLE t1 (N INT, M INT);
+INSERT INTO t1 VALUES (1,1),(1,2),(2,1),(3,1),(3,1);
+UPDATE t1 AS P1
+INNER JOIN (SELECT N FROM t1 GROUP BY N HAVING COUNT(M) > 1) AS P2
+ON P1.N = P2.N
+SET P1.M = 2;
+DROP TABLE t1;
+
+CREATE TABLE t1(a INT);
+INSERT INTO t1 VALUES (1),(2),(3);
+CREATE OR REPLACE VIEW v1 AS SELECT a FROM t1;
+SELECT t1.a FROM t1 GROUP BY t1.a HAVING a > 1;
+SELECT v1.a FROM v1 GROUP BY v1.a HAVING a > 1;
+SELECT t1.a FROM t1 GROUP BY t1.a HAVING t1.a > 1;
+SELECT v1.a FROM v1 GROUP BY v1.a HAVING v1.a > 1;
+DROP VIEW v1;
+DROP TABLE t1;
+
+-- =====================================================================
+-- [D] Group-min-max and DISTINCT related HAVING checks
+-- Source: mysql-test/t/group_min_max.test, mysql-test/t/distinct.test
+-- =====================================================================
+
+CREATE TABLE t1 (a INT, b INT, c INT);
+INSERT INTO t1 VALUES (1,10,1),(1,20,2),(2,30,3),(2,40,4);
+SELECT COUNT(DISTINCT a) FROM t1 HAVING COUNT(DISTINCT b) < 20;
+SELECT 1 FROM t1 GROUP BY a HAVING COUNT(DISTINCT b) > 1;
+DROP TABLE t1;
+
+CREATE TABLE t1 (a INT, b INT, c INT);
+INSERT INTO t1 VALUES (1,1,9),(2,2,9),(3,2,8),(4,3,7);
+SELECT DISTINCT a FROM t1 GROUP BY b,a HAVING a > 2 ORDER BY a DESC;
+SELECT DISTINCT a,c FROM t1 GROUP BY b,c,a HAVING a > 2 ORDER BY a DESC;
+DROP TABLE t1;
+
+-- =====================================================================
+-- [E] Optimizer-switch dependent HAVING subquery
+-- Source: mysql-test/t/optimizer_switch.test
+-- =====================================================================
+
+CREATE TABLE t1(a INT, b INT);
+CREATE TABLE t2(c INT, d INT);
+CREATE TABLE t4(f INT, g INT);
+INSERT INTO t1 VALUES (1,1),(2,2);
+INSERT INTO t2 VALUES (1,10),(2,20);
+INSERT INTO t4 VALUES (1,10),(1,11),(2,20);
+
+SELECT * FROM t1 AS ta
+WHERE ta.a IN (SELECT c FROM t2 AS tb
+               WHERE tb.d >= SOME(SELECT SUM(g) FROM t4 AS tc
+                                  GROUP BY f
+                                  HAVING ta.a = tc.f));
+SELECT * FROM t1 AS ta
+WHERE ta.a IN (SELECT c FROM t2 AS tb
+               WHERE tb.d >= SOME(SELECT SUM(g) FROM t4 AS tc
+                                  GROUP BY f
+                                  HAVING ta.a = tc.f));
+
+DROP TABLE t1,t2,t4;
+
+-- =====================================================================
+-- [F] Prepared statement path with HAVING subtree update
+-- Source: mysql-test/t/ps.test
+-- =====================================================================
+
+CREATE TABLE t1(pnum VARCHAR(10));
+CREATE TABLE t2(pnum VARCHAR(10));
+INSERT INTO t1 VALUES ('p1'),('p2');
+INSERT INTO t2 VALUES ('p1'),('p3');
+PREPARE stmt as SELECT pnum FROM t2 HAVING pnum IN (SELECT 'p1' FROM t1);
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+DROP TABLE t1,t2;
+
+-- End of organized HAVING cases
+
+
+
+--------------905 test
+CREATE TABLE orders (
+    user_id INT,
+    amount DECIMAL(10, 2), 
+    category VARCHAR(20),  
+    is_vip BOOLEAN         
+);
+
+SELECT 
+    user_id,
+    SUM(
+        (amount * CASE WHEN is_vip THEN 1.5 ELSE 1.0 END) 
+        + 
+        (CASE WHEN category = 'A' THEN 50 WHEN category = 'B' THEN 20 ELSE 0 END)
+    ) AS complex_score_alias
+FROM orders
+GROUP BY user_id
+HAVING complex_score_alias > 400; 
+drop table orders;
+
+-- case 1
+CREATE TABLE assets (
+    id INT PRIMARY KEY,
+    status INT DEFAULT 1
+);
+
+CREATE TABLE assets_extend (
+    assets_id INT PRIMARY KEY,
+    position VARCHAR(50)
+);
+
+CREATE TABLE business (
+    id INT PRIMARY KEY,
+    critical INT DEFAULT 0
+);
+
+CREATE TABLE business_assets (
+    assets_id INT,
+    port INT,
+    business_id INT
+);
+
+CREATE TABLE vul (
+    id INT PRIMARY KEY,
+    type INT DEFAULT 0
+);
+
+CREATE TABLE loophole (
+    id INT PRIMARY KEY
+);
+
+CREATE TABLE vul_verify (
+    loophole_id INT,
+    loophole_status INT
+);
+
+CREATE TABLE loophole_white (
+    id INT PRIMARY KEY
+);
+
+CREATE TABLE loophole_flow (
+    id INT PRIMARY KEY,
+    user_id INT
+);
+
+CREATE TABLE user (
+    id INT PRIMARY KEY,
+    status INT DEFAULT 1
+);
+
+CREATE TABLE current_threat_info (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    vul_id INT,
+    loophole_id INT,
+    port INT,
+    scan_type INT,
+    severity INT,
+    vul_type INT
+);
+
+
+
+select count(1) from (
+    select count(id), assets_id, port, vul_id from (
+        select x.id, x.assets_id, x.port, x.category, x.vul_id
+        from (
+            SELECT
+                cti.id, cti.assets_id, cti.vul_id, cti.port,
+                if (cti.scan_type = 3, 3, if (vul.type = 0, 1, 2)) as category
+            FROM current_threat_info AS cti 
+                inner join loophole lh on lh.id=cti.loophole_id
+                left join vul_verify vy on vy.loophole_id=cti.loophole_id and vy.loophole_status=1
+                LEFT JOIN ( select a.*, ae.position
+                            from assets a 
+                            inner join assets_extend ae on a.id = ae.assets_id 
+                            where a.status = 1 ) assets ON assets.id = cti.assets_id 
+                LEFT JOIN vul ON vul.id = cti.vul_id 
+                LEFT JOIN loophole_white AS lw ON lw.id = cti.loophole_id 
+                LEFT JOIN loophole_flow AS lf ON lf.id = cti.loophole_id 
+                LEFT JOIN user ON user.id = lf.user_id and user.status = 1
+                left join business_assets on cti.assets_id = business_assets.assets_id and (cti.`port` = business_assets.port OR business_assets.`port` = 0)
+                left join business b on b.id=business_assets.business_id
+            WHERE 
+                lw.id IS NULL and 
+                assets.status = 1 AND 
+                cti.severity IN (3) AND 
+                cti.vul_type IN (0, 1) and 
+                b.critical = 1
+            HAVING 
+                1 = 1 AND 
+                category IN (3)) x) t
+        group by assets_id, port, vul_id) tt;
+
+-- case2
+DROP TABLE IF EXISTS assets_icon_relation;
+DROP TABLE IF EXISTS icon;
+DROP TABLE IF EXISTS assets_user;
+DROP TABLE IF EXISTS v_dictionary_compatible;
+DROP TABLE IF EXISTS current_threat_info;
+DROP TABLE IF EXISTS loophole_white;
+DROP TABLE IF EXISTS res_url_finger_scan;
+DROP TABLE IF EXISTS assets_tag_relation;
+DROP TABLE IF EXISTS tag;
+DROP TABLE IF EXISTS assets_group_relation;
+DROP TABLE IF EXISTS assets_group;
+DROP TABLE IF EXISTS business_assets;
+DROP TABLE IF EXISTS business;
+DROP TABLE IF EXISTS assets_provider;
+DROP TABLE IF EXISTS assets_extend;
+DROP TABLE IF EXISTS assets;
+DROP TABLE IF EXISTS user;
+
+CREATE TABLE assets (
+    id INT PRIMARY KEY,
+    company_id INT,
+    type INT,
+    value DECIMAL(10,2),
+    name VARCHAR(100),
+    domain VARCHAR(100),
+    ip_num INT,
+    status INT,
+    remark VARCHAR(255),
+    offline INT,
+    important INT,
+    cst_create DATETIME,
+    cst_modified DATETIME,
+    relative_value INT,
+    out_in INT,
+    source INT,
+    assets_type INT,
+    ip_type INT,
+    ai_flag INT,
+    ai_assembly VARCHAR(255)
+);
+
+CREATE TABLE assets_extend (
+    assets_id INT PRIMARY KEY,
+    level INT,
+    weight INT,
+    worth INT,
+    position VARCHAR(100),
+    room VARCHAR(100),
+    operator VARCHAR(100),
+    bandwidth INT,
+    longitude VARCHAR(50),
+    device_model VARCHAR(100),
+    device_type VARCHAR(100),
+    mac VARCHAR(50),
+    operate_system VARCHAR(100),
+    system VARCHAR(100),
+    system_version VARCHAR(50),
+    title VARCHAR(255),
+    device_supplier INT,
+    info_device VARCHAR(100),
+    snapshot_id INT,
+    certificate TEXT,
+    is_login INT,
+    captcha INT,
+    res_code INT,
+    output_msg TEXT,
+    excol_1 VARCHAR(50), excol_2 VARCHAR(50), excol_3 VARCHAR(50),
+    excol_4 VARCHAR(50), excol_5 VARCHAR(50), excol_6 VARCHAR(50),
+    excol_7 VARCHAR(50), excol_8 VARCHAR(50), excol_9 VARCHAR(50),
+    excol_10 VARCHAR(50)
+);
+
+CREATE TABLE assets_provider (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE business (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE business_assets (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    business_id INT
+);
+
+CREATE TABLE assets_group (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE assets_group_relation (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    group_id INT
+);
+
+CREATE TABLE tag (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE assets_tag_relation (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    tag_id INT
+);
+
+CREATE TABLE res_url_finger_scan (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    name VARCHAR(100),
+    version VARCHAR(50),
+    isnew INT
+);
+
+CREATE TABLE loophole_white (
+    id INT PRIMARY KEY
+);
+
+CREATE TABLE current_threat_info (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    severity INT,
+    vul_type INT,
+    loophole_id INT
+);
+
+CREATE TABLE user (
+    id INT PRIMARY KEY,
+    nick_name VARCHAR(100),
+    status INT
+);
+
+CREATE TABLE v_dictionary_compatible (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE assets_user (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    user_id INT,
+    type INT
+);
+
+CREATE TABLE icon (
+    id INT PRIMARY KEY,
+    icon_content VARCHAR(255)
+);
+
+CREATE TABLE assets_icon_relation (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    icon_id INT
+);
+
+SELECT
+    assets.id,
+    assets.company_id,
+    assets.type,
+    assets.`value`,
+    assets.`name`,
+    assets.`domain`,
+    assets.ip_num,
+    assets.`status`,
+    assets.remark,
+    assets.offline,
+    assets.important,
+    assets.cst_create,
+    assets.cst_modified,
+    assets.relative_value,
+    assets.out_in,
+    assets.source,
+    assets.assets_type,
+    assets.ip_type,
+    assets.ai_flag,
+    assets.ai_assembly,
+    assets_extend.`level`,
+    assets_extend.weight,
+    assets_extend.worth,
+    assets_extend.position,
+    assets_extend.room,
+    assets_extend.operator,
+    assets_extend.bandwidth,
+    assets_extend.longitude,
+    assets_extend.device_model,
+    assets_extend.device_type,
+    assets_extend.mac,
+    assets_extend.operate_system,
+    assets_extend.system,
+    assets_extend.system_version,
+    assets_extend.title,
+    assets_extend.device_supplier,
+    assets_extend.info_device,
+    assets_extend.snapshot_id,
+    assets_extend.certificate,
+    assets_extend.is_login as login,
+    assets_extend.captcha,
+    assets_extend.res_code,
+    CASE
+        WHEN assets_extend.output_msg IS NULL OR assets_extend.output_msg = '' THEN 0
+    ELSE 1
+    END AS res_flag,
+    (select assets_provider.name from  assets_provider
+    where assets_provider.id = assets_extend.device_supplier ) device_supplier_name,
+
+    (
+        select GROUP_CONCAT(distinct business_assets.id)
+        from business_assets
+        left join business on business_assets.business_id = business.id
+        where business_assets.assets_id = assets.id
+        and business.id is not null
+    ) businessId,
+    (
+        select GROUP_CONCAT(distinct business.`name`)
+        from business_assets
+        left join business on business_assets.business_id = business.id
+        where business_assets.assets_id = assets.id
+        and business.id is not null
+    ) businessName,
+    (
+        select GROUP_CONCAT(distinct assets_group_relation.id)
+        from assets_group_relation
+        left join assets_group on assets_group_relation.group_id = assets_group.id
+        where assets_group_relation.assets_id = assets.id
+        and assets_group.id is not null
+    ) groupId,
+    (
+        select GROUP_CONCAT(distinct assets_group.`name`)
+        from assets_group_relation
+        left join assets_group on assets_group_relation.group_id = assets_group.id
+        where assets_group_relation.assets_id = assets.id
+        and assets_group.id is not null
+    ) groupName,
+    (
+        select GROUP_CONCAT(distinct tag.`name`)
+        from assets_tag_relation
+        left join tag on assets_tag_relation.tag_id = tag.id
+        where assets_tag_relation.assets_id = assets.id
+        and tag.id is not null
+    ) tags,
+    (
+        select GROUP_CONCAT(distinct tag.id)
+        from assets_tag_relation
+        left join tag on assets_tag_relation.tag_id = tag.id
+        where assets_tag_relation.assets_id = assets.id
+        and tag.id is not null
+    ) tagIds,
+    assets_extend.excol_1,
+    assets_extend.excol_2,
+    assets_extend.excol_3,
+    assets_extend.excol_4,
+    assets_extend.excol_5,
+    assets_extend.excol_6,
+    assets_extend.excol_7,
+    assets_extend.excol_8,
+    assets_extend.excol_9,
+    assets_extend.excol_10,
+    (select GROUP_CONCAT(DISTINCT rufs.`name`,'(', ifnull(rufs.version, '1'), ')') from res_url_finger_scan rufs where rufs.assets_id = assets.id and isnew = 2) assembly_version,
+    (select GROUP_CONCAT(DISTINCT rufs.`name`) from res_url_finger_scan rufs where rufs.assets_id = assets.id and isnew = 2) assembly,
+    (select if(count(1) > 0,1,2) from current_threat_info cti where assets_id=assets.id AND cti.severity=3 and cti.vul_type in (0,1) AND cti.loophole_id NOT IN (select id from  loophole_white)) as high,
+    (
+    SELECT GROUP_CONCAT(v.name, '[', v.name, ']') AS name
+    FROM assets_user AS au
+    LEFT JOIN `user` AS u ON u.id = au.user_id
+    LEFT JOIN v_dictionary_compatible AS v ON v.id = au.type
+    WHERE au.assets_id = assets.id
+    ) AS username,
+    (
+        select GROUP_CONCAT(u.id) as name from assets_user as au
+        left join user as u on u.id = au.user_id
+        where au.assets_id = assets.id
+    ) as usernamefind,
+    (
+        select icon.icon_content from icon
+        where icon.id = (select icon_id from assets_icon_relation where assets_icon_relation.assets_id = assets.id)
+    ) as icon
+    from  assets
+    LEFT JOIN assets_extend on assets.id = assets_extend.assets_id
+    WHERE assets.`status` = 1
+    having 1=1
+        and  exists(
+        select * from  assets_provider ap where ap.id = assets_extend.device_supplier
+        and ap.name like  '1'
+        )
+        and assets_extend.info_device  = '1' ;
+
+
+DROP TABLE IF EXISTS assets_sub_url_tag;
+DROP TABLE IF EXISTS assets_sub_url_tag_relation;
+DROP TABLE IF EXISTS feature_risk;
+DROP TABLE IF EXISTS assets_feature_risk_relation;
+DROP TABLE IF EXISTS assembly;
+DROP TABLE IF EXISTS assets_sub_url_assembly;
+DROP TABLE IF EXISTS assets_sub_url;
+DROP TABLE IF EXISTS assets;
+
+CREATE TABLE assets (
+    id INT PRIMARY KEY,
+    value VARCHAR(255),
+    status INT DEFAULT 1
+);
+
+CREATE TABLE assets_sub_url (
+    id INT PRIMARY KEY,
+    assets_id INT,
+    url_tpl VARCHAR(500),
+    pro VARCHAR(50),
+    source INT,
+    external_link_flag INT,
+    res_code VARCHAR(10),
+    method VARCHAR(10),
+    cst_create DATETIME,
+    cst_modified DATETIME,
+    important INT
+);
+
+CREATE TABLE assembly (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE assets_sub_url_assembly (
+    id INT PRIMARY KEY,
+    assets_sub_url_id INT,
+    assembly_id INT
+);
+
+CREATE TABLE feature_risk (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE assets_feature_risk_relation (
+    id INT PRIMARY KEY,
+    sub_url_id INT,
+    feature_risk_id INT,
+    del_flag INT DEFAULT 0
+);
+
+CREATE TABLE assets_sub_url_tag (
+    id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+
+CREATE TABLE assets_sub_url_tag_relation (
+    id INT PRIMARY KEY,
+    suburl_id INT,
+    tag_id INT
+);
+
+set sql_mode = '';
+
+SELECT
+  au.id,
+  a.id AS assetsId,
+  au.assets_id,
+  au.url_tpl,
+  a.VALUE,
+  au.pro,
+  au.source,
+  au.external_link_flag,
+  au.res_code,
+  au.method,
+  au.cst_create,
+  au.cst_modified,
+  GROUP_CONCAT( DISTINCT an.assembly_name ORDER BY an.assembly_name ASC SEPARATOR ',' ) AS `assembly`,
+  GROUP_CONCAT( DISTINCT frn.feature_risk_name ORDER BY frn.feature_risk_name ASC SEPARATOR ',' ) AS `feature_risk`,
+  GROUP_CONCAT( DISTINCT tag.NAME SEPARATOR ',' ) AS `tag_name`,
+  GROUP_CONCAT( DISTINCT tag.id SEPARATOR ',' ) AS `tag_ids`,
+  au.important,
+  frn.feature_risk_name
+FROM
+  assets_sub_url au
+  INNER JOIN assets a ON au.assets_id = a.id 
+  AND a.STATUS = 1
+  LEFT JOIN (
+  SELECT
+    assets_sub_url_id,
+    GROUP_CONCAT( assembly.NAME ORDER BY assembly.NAME ASC SEPARATOR ',' ) AS assembly_name 
+  FROM
+    assets_sub_url_assembly
+    JOIN assembly ON assets_sub_url_assembly.assembly_id = assembly.id 
+  GROUP BY
+    assets_sub_url_id 
+  ) AS an ON au.id = an.assets_sub_url_id
+  LEFT JOIN (
+  SELECT
+    sub_url_id,
+    GROUP_CONCAT( feature_risk.NAME ORDER BY feature_risk.NAME ASC SEPARATOR ',' ) AS feature_risk_name 
+  FROM
+    assets_feature_risk_relation
+    JOIN feature_risk ON assets_feature_risk_relation.feature_risk_id = feature_risk.id 
+    AND assets_feature_risk_relation.del_flag = 0 
+  GROUP BY
+    sub_url_id 
+  ) AS frn ON au.id = frn.sub_url_id
+  LEFT JOIN assets_sub_url_tag_relation tagre ON au.id = tagre.suburl_id
+  LEFT JOIN assets_sub_url_tag tag ON tagre.tag_id = tag.id 
+GROUP BY
+  au.id 
+HAVING
+  1 = 1 
+  AND au.res_code IS NOT NULL 
+  AND (SUBSTR( au.res_code, 1, 1 ) NOT IN ( '4', '5' )) 
+  AND au.source IN ( 1 ) 
+  AND (
+    a.VALUE LIKE CONCAT( '%', 'test', '%' ) 
+    OR au.url_tpl LIKE CONCAT( '%', 'attation', '%' ) 
+    OR frn.feature_risk_name LIKE CONCAT( '%', 'test', '%' ) 
+  ) 
+ORDER BY
+  cst_create DESC 
+LIMIT 0, 10;
+
+
+--@@@@@@@@@@@@@@@
+select * from (SELECT if (1, 1, 2) as category HAVING category IN (3)) x;
+
+-- test priority
+create table prio_t(table_type text, table_schema text);
+
+insert into prio_t values('BASE TABLE', 'public');
+
+select 
+    case
+        when table_type = 'BASE TABLE' then 'TABLE'
+        else table_type
+    end as table_type
+from
+    prio_t
+where
+    table_schema = 'public'
+having
+    -- table_type is alias
+    table_type in ('TABLE');
+
+drop table prio_t;
+
+-- test principle of proximity reference
+create table alias_t1(unused int, col int2);
+create table alias_t2(unused int, col int4);
+create table alias_t3(col int4);
+
+insert into alias_t1(col) values (1);
+insert into alias_t2(col) values (2);
+insert into alias_t3(col) values (3);
+
+--@@@@@@@@@@
+select col as alias_col from alias_t1
+having (
+    select col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is t2.col
+        having alias_col = 1
+    ) != 0
+) > 0;
+
+explain (costs off)
+select col as alias_col from alias_t1
+having (
+    select col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is t2.col
+        having alias_col = 1
+    ) != 0
+) > 0;
+
+select col as alias_col from alias_t1
+having (
+    select col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is t2.col
+        having alias_col = 2
+    ) != 0
+) > 0;
+
+explain (costs off)
+select col as alias_col from alias_t1
+having (
+    select col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is t2.col
+        having alias_col = 2
+    ) != 0
+) > 0;
+
+select col as alias_col from alias_t1
+having (
+    select col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is t2.col
+        where alias_col = (select count(col) + 1 from alias_t2)
+    ) != 0
+) > 0;
+
+explain (costs off)
+select col as alias_col from alias_t1
+having (
+    select col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is t2.col
+        where alias_col = (select count(col) + 1 from alias_t2)
+    ) != 0
+) > 0;
+
+select col as alias_col from alias_t1
+having (
+    select alias_t1.col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is alias_t1.col
+        having alias_col = 1
+    ) != 0
+) > 0;
+
+explain (costs off)
+select col as alias_col from alias_t1
+having (
+    select alias_t1.col as alias_col from alias_t2
+    having (
+        select count(col) from alias_t3
+        -- alias_col is alias_t1.col
+        having alias_col = 1
+    ) != 0
+) > 0;
+
+drop table alias_t1;
+drop table alias_t2;
+drop table alias_t3;
+
+-- test ambiguous
+create table having_ambiguous(id int, name text);
+select id, name as id from having_ambiguous having id = 1;
+select id as alias, name as alias from having_ambiguous having alias = 1;
+drop table having_ambiguous;
+
+
+drop table test_id;
+drop table test_id_2;
+drop table test_id_3;
+
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+
+
+create table test_id(name int, ids int, id int);
+create table test_id_2(name int, ids int, id int);
+create table test_id_3(name int,  id int);
+
+
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  ids from test_id_2 where ids = name -- ids from test_id_2
+) = 1;
+
+
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  ids from test_id_2 having ids = name -- ids from test_id_2
+) = 1;
+
+
+
+
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_2 having ids = name -- ids from test_id_2
+) = 1;
+
+
+
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_3 having ids = name -- ids from alias
+) = 1;
+
+
+-- succse
+drop table test_id;
+drop table test_id_2;
+drop table test_id_3;
+create table test_id(name int, ids int, id int);
+create table test_id_3(name int,  id int);
+select id as ids ,name  from test_id
+having (
+select  name  from test_id_3 where ids = name 
+) = 1;
+
+drop table test_id, test_id_3;
+
+
+-- Mysql distinguishes alias and original name for item,
+-- and only matches the origin name during second parsing
+-- error  
+create table test_id(name int, ids int, id int);
+create table test_id_3(name int,  id int);
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_3 where ids = name 
+) = 1;
+
+drop table test_id, test_id_3;
+
+-- error
+create table test_id(name int, ids int, id int, C int);
+create table test_id_3(name int,  id int);
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_3 where C = name 
+) = 1;
+
+drop table test_id, test_id_3;
+
+
+create table test_id(name int, ids int, id int);
+create table test_id_3(name int,ids int,  id int);
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_3 where ids = name 
+) = 1;
+drop table test_id, test_id_3;
+
+
+create table test_id(name int, id int);
+create table test_id_3(name int,  id int);
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_3 where ids = name 
+) = 1;
+drop table test_id, test_id_3;
+
+
+--mysql support,but pg not support table.colname be colname
+create table test_id(name int, test_id.ids  int, id int);
+create table test_id_3(name int,ids int,  id int);
+select id as ids ,name  from test_id
+group by id, name
+having (
+select  name  from test_id_3 where ids = name 
+) = 1;
+drop table test_id, test_id_3;
+
+
+-- error
+drop table test_id;
+create table test_id(name int, ids int, id int);
+select name  from test_id 
+ having ids = 1;
+
+
+create table t1(a int, b int);
+insert into t1 values (1,10),(1,20),(2,30);
+select a, b as bb from t1 group by a, b  having sum(bb) > 10;
+drop table t1;
+
+
+
+--2 warning
+--| Warning | 1052 | Column 'b' in group statement is ambiguous                                                           |
+--| Warning | 1052 | Column 'b' in having clause is ambiguous   
+drop table t;
+create table t (a int, b int);
+
+select a as b from t group by b having b = 1; 	
+select min(a) as b from t group by b having b = 1;
+select min(a) + 1 as b from t group by b having b = 1;
+
+
+
+set sql_mode = default;
+set mysql.at_or_atat = off;
+
+
+

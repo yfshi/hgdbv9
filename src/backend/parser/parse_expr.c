@@ -57,6 +57,11 @@
 /* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 #include "catalog/pg_class.h"
 /* End - ReqID:SRS-SECURITY-FLASHBACK */
+/* Begin - ReqID:SRS-MYSQL-SQL-Select */
+#include "rewrite/rewriteManip.h"
+/* End - ReqID:SRS-MYSQL-SQL-Select */
+
+
 
 /* GUC parameters */
 bool		Transform_null_equals = false;
@@ -96,6 +101,20 @@ static Node *transformXmlSerialize(ParseState *pstate, XmlSerialize *xs);
 static Node *transformBooleanTest(ParseState *pstate, BooleanTest *b);
 static Node *transformCurrentOfExpr(ParseState *pstate, CurrentOfExpr *cexpr);
 static Node *transformColumnRef(ParseState *pstate, ColumnRef *cref);
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static char *get_var_namespace_aliasname(ParseState *pstate, Var *var);
+static bool can_find_targetList_and_groupList(ParseState *pstate);
+static bool current_in_having_clause(ParseState *pstate);
+static Node *resolve_having_ref(ParseState *pstate, ColumnRef *cref);
+static Node *resolve_having_field(ParseState *pstate, ColumnRef *cref);
+
+static Node *search_targetList_and_groupList(ParseState *orig_pstate,
+											 ParseState *level_pstate,
+											 ColumnRef *cref,
+											 int location,
+											 int sublevels_up,
+											 bool second_parsing);
+/* End: Req:SRS-MYSQL-SQL-Select */
 static Node *transformWholeRowRef(ParseState *pstate,
 								  ParseNamespaceItem *nsitem,
 								  int sublevels_up, int location);
@@ -1138,6 +1157,9 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		case EXPR_KIND_ASOF:
 		case EXPR_KIND_VERSIONS_BETWEEN:
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case EXPR_KIND_HAVING_FUNCTION:
+		/* End: Req:SRS-MYSQL-SQL-Select */
 			/* okay */
 			break;
 
@@ -1259,6 +1281,19 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 					else
 						node = colNameToVar(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
+				/* Begin: Req:SRS-MYSQL-SQL-Select */
+				else if (compatible_mode == MYS_MODE)
+				{
+					/**
+					 * If MySQL constructs Item_field, enter resolve_having_field parsing,
+					 * else if Item_ref, enter resolve_having_ref parsing.
+					 */
+					if (pstate->p_expr_kind == EXPR_KIND_HAVING)
+						node = resolve_having_ref(pstate, cref);
+					else
+						node = resolve_having_field(pstate, cref);
+				}
+				/* End: Req:SRS-MYSQL-SQL-Select */
 				else
 				/* End - BUG#M0000217 */
 				{
@@ -1401,6 +1436,52 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* Try to identify as a column of the nsitem */
 				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 										   cref->location);
+
+				/* Begin: Req:SRS-MYSQL-SQL-Select */
+				/**
+				 * If the table.colname constructed by having is
+				 * parsed and cannot be found in the upper level table column,
+				 * return CRERR_NO_COLUMN
+				 */
+				if (compatible_mode == MYS_MODE)
+				{
+					if (levels_up != 0)
+					{
+						ParseState *field_pstate = pstate;
+
+						for (int i = 0; i < levels_up; i++)
+							field_pstate = field_pstate->parentParseState;
+
+						if (field_pstate->p_expr_kind == EXPR_KIND_HAVING)
+						{
+							/**
+							 * Under condition having clause,threr are two situations where an error
+							 * needs to be reported.
+							 * 1. not aggregation ,not group ,the node still hasn`t been found.
+							 * 2. have group and  no agg, not found in targetlist and grouplist
+							 */
+							if (!field_pstate->p_hasAggs)
+							{
+								if (!field_pstate->p_group_clauses && !node)
+								{
+									crerr = CRERR_NO_COLUMN;
+									break;
+								}
+								if (field_pstate->p_group_clauses)
+								{
+									if (can_find_targetList_and_groupList(field_pstate) &&
+										!search_targetList_and_groupList(pstate, field_pstate, cref, cref->location, levels_up, true))
+									{
+										node = NULL;
+										crerr = CRERR_NO_COLUMN;
+										break;
+									}
+								}
+							}
+						}
+					}
+				}
+				/* End: Req:SRS-MYSQL-SQL-Select */
 
 				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
@@ -1765,6 +1846,299 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 	return node;
 }
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+/*
+ * get_var_namespace_aliasname
+ *		Find the namespace alias name that exposed a Var.
+ *
+ * This is the inverse lookup for ordinary column Vars produced by
+ * colNameToVar(): given a Var and the ParseState where it was seen, locate
+ * the visible ParseNamespaceItem at varlevelsup and return its p_names
+ * aliasname.  The returned string is owned by the ParseState.
+ */
+static char *
+get_var_namespace_aliasname(ParseState *pstate, Var *var)
+{
+	ParseState *level_pstate = pstate;
+	ListCell   *lc;
+
+	if (pstate == NULL || var == NULL)
+		return NULL;
+
+	foreach(lc, level_pstate->p_namespace)
+	{
+		ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(lc);
+		int			i;
+		int			ncols;
+
+		if (!nsitem->p_cols_visible)
+			continue;
+		if (nsitem->p_lateral_only && !level_pstate->p_lateral_active)
+			continue;
+
+		ncols = list_length(nsitem->p_names->colnames);
+		for (i = 0; i < ncols; i++)
+		{
+			ParseNamespaceColumn *nscol = &nsitem->p_nscolumns[i];
+			/*deleted col*/
+			if (nscol->p_varno == 0)
+				continue;
+
+			if (nscol->p_varnosyn == var->varnosyn &&
+				nscol->p_varattnosyn == var->varattnosyn)
+				return nsitem->p_names->aliasname;
+		}
+	}
+
+	return NULL;
+}
+
+static Node *
+search_targetList_and_groupList(ParseState *orig_pstate,
+								ParseState *level_pstate,
+								ColumnRef *cref,
+								int location,
+								int sublevels_up,
+								bool second_parsing)
+{
+	/* Per-level rule: prefer targetList alias, then try GROUP BY name. */
+	Node *target_result = NULL;
+	Node *group_result = NULL;
+	ListCell *lc;
+	const char *name = strVal(llast(cref->fields));
+
+	if (level_pstate->p_targetlist)
+	{
+		foreach (lc, *(level_pstate->p_targetlist))
+		{
+			TargetEntry *tle = (TargetEntry *)lfirst(lc);
+			/**
+			 * invisible to users
+			 * tle->resname == NULL --> strcmp(tle->resname, name) != 0  origin colname not equal to name
+			 * if is second parsing. only comparing the original colname is the same,and not alias
+			*/
+			if (tle->resjunk || tle->resname == NULL ||
+				strcmp(tle->resname, name) != 0)
+			{
+					continue;
+			}
+			else if(tle->resname != NULL && strcmp(tle->resname, name) == 0)
+			{
+				if (second_parsing && tle->resname_is_alias)
+				{
+					continue;
+				}
+			}
+
+			if (target_result != NULL)
+			{
+				if (!equal(target_result, (Node *)tle->expr))
+					ereport(ERROR,
+							(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+							errmsg("%s \"%s\" is ambiguous",
+									ParseExprKindName(orig_pstate->p_expr_kind),
+									name),
+							parser_errposition(orig_pstate, location)));
+				continue;
+			}
+
+			target_result = copyObject((Node *)tle->expr);
+			IncrementVarSublevelsUp(target_result, sublevels_up, 0);
+		}
+	}
+
+	foreach (lc, level_pstate->p_group_clauses)
+	{
+		Node *gexpr = (Node *)lfirst(lc);
+		Node *group_expr;
+
+		if (!IsA(gexpr, ColumnRef) ||
+			list_length(((ColumnRef *)gexpr)->fields) != 1 ||
+			strcmp(strVal(linitial(((ColumnRef *)gexpr)->fields)), name) != 0)
+			continue;
+
+		group_expr = colNameToVar(level_pstate, name, false, cref->has_outer_join, location);
+		if (group_expr == NULL)
+			continue;
+		IncrementVarSublevelsUp(group_expr, sublevels_up, 0);
+
+		group_result = group_expr;
+		break;
+	}
+
+	/*
+	 * if the same name matches both a SELECT alias and a GROUP BY item,
+	 * first check whether they are the same expression.
+	 * If they differ, treat it as ambiguous; on the HAVING-fix path, prefer GROUP BY.
+	 */
+	if (target_result != NULL && group_result != NULL)
+	{
+		if (!equal(target_result, group_result))
+		{
+			ereport(WARNING,
+					(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+					 errmsg("column reference \"%s\" in HAVING is ambiguous", name),
+					 parser_errposition(orig_pstate, location)));
+
+			if (orig_pstate->p_expr_kind == EXPR_KIND_HAVING)
+				return group_result;
+		}
+	}
+
+	if (target_result != NULL)
+		return target_result;
+
+	return group_result;
+}
+
+static bool
+can_find_targetList_and_groupList(ParseState *pstate)
+{
+	return 	pstate->p_expr_kind == EXPR_KIND_GROUP_BY ||
+			pstate->p_expr_kind == EXPR_KIND_HAVING ||
+			pstate->p_expr_kind == EXPR_KIND_ORDER_BY ||
+			pstate->p_expr_kind == EXPR_KIND_HAVING_FUNCTION;
+}
+
+static bool
+current_in_having_clause(ParseState *pstate)
+{
+	ParseState *parent = pstate;
+
+	while (parent != NULL)
+	{
+		if (parent->p_expr_kind == EXPR_KIND_HAVING)
+		{
+			return true;
+		}
+		parent = parent->parentParseState;
+	}
+
+	return false;
+}
+static Node *
+resolve_having_ref(ParseState *pstate, ColumnRef *cref)
+{
+	char *name;
+	Node *result;
+	ParseState *level_pstate;
+	int sublevels_up;
+
+	name = strVal(llast(cref->fields));
+
+	result = search_targetList_and_groupList(pstate, pstate, cref,
+											 cref->location, 0, false);
+	if (result != NULL)
+		return result;
+
+	/*
+	 * walk outward level by level, first trying targetList/GROUP BY,
+	 * then deciding by context whether base-table column lookup is allowed.
+	 */
+	level_pstate = pstate->parentParseState;
+	sublevels_up = 1;
+	while (level_pstate != NULL)
+	{
+		/*
+		 *  these contexts allow lookup
+		 * in outer SELECT targetList / GROUP BY names first.
+		 */
+		if (can_find_targetList_and_groupList(level_pstate))
+		{
+			result = search_targetList_and_groupList(pstate, level_pstate,
+													 cref, cref->location,
+													 sublevels_up, false);
+			if (result != NULL)
+				return result;
+		}
+
+		/*
+		 * In HAVING, base-table lookup is allowed only when this level has
+		 * neither aggregate nor GROUP BY; other expression contexts stay allowed.
+		 */
+		if (level_pstate->p_expr_kind != EXPR_KIND_HAVING ||
+			(!level_pstate->p_hasAggs &&
+			 level_pstate->p_group_clauses == NIL))
+		{
+			result = colNameToVar(level_pstate, name, true, cref->has_outer_join, cref->location);
+			IncrementVarSublevelsUp(result, sublevels_up, 0);
+			if (result != NULL)
+				return result;
+		}
+
+		level_pstate = level_pstate->parentParseState;
+		sublevels_up++;
+	}
+
+	return NULL;
+}
+
+static Node *
+resolve_having_field(ParseState *pstate, ColumnRef *cref)
+{
+	char *name;
+	Node *result;
+	ParseState *level_pstate;
+	int sublevels_up;
+
+	name = strVal(llast(cref->fields));
+
+	/*
+	 * walk outward level by level, first trying FROM table,
+	 * then deciding by context whether targetList lookup is allowed.
+	 */
+	level_pstate = pstate;
+	sublevels_up = 0;
+	while (level_pstate != NULL)
+	{
+
+		/**
+		 * fix_outer_field() wraps an outer field found while having clause
+		 * as a qualified Item_ref, and then fixes that new ref again.
+		 * Re-enter with table.colname so the second pass cannot match a same-named SELECT alias.
+		 */
+
+		char *matched_refname = NULL;
+		result = colNameToVar(level_pstate, name, true, cref->has_outer_join, cref->location);
+		IncrementVarSublevelsUp(result, sublevels_up, 0);
+
+		if (result != NULL)
+		{
+			if (sublevels_up > 0)
+			{
+				matched_refname = get_var_namespace_aliasname(level_pstate, (Var *)result);
+				if (level_pstate->p_expr_kind == EXPR_KIND_HAVING && matched_refname != NULL)
+				{
+					ColumnRef *qualified_cref = makeNode(ColumnRef);
+					qualified_cref->fields = list_make2(makeString(pstrdup(matched_refname)),
+														makeString(pstrdup(name)));
+					qualified_cref->location = cref->location;
+					return transformColumnRefInternal(pstate, qualified_cref, false);
+				}
+			}
+			return result;
+		}
+		/*
+		 *  these contexts allow lookup
+		 * in outer SELECT targetList / GROUP BY names first.
+		 */
+		if (can_find_targetList_and_groupList(level_pstate))
+		{
+			result = search_targetList_and_groupList(pstate, level_pstate,
+													 cref, cref->location,
+													 sublevels_up, false);
+			if (result != NULL)
+				return result;
+		}
+
+		level_pstate = level_pstate->parentParseState;
+		sublevels_up++;
+	}
+
+	return NULL;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */
 
 /*
  * Transform a ColumnRef.
@@ -2600,8 +2974,14 @@ transformFuncCall(ParseState *pstate, FuncCall *fn)
 	targs = NIL;
 	foreach(args, fn->args)
 	{
-		targs = lappend(targs, transformExprRecurse(pstate,
-													(Node *) lfirst(args)));
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		if (current_in_having_clause(pstate))
+			targs = lappend(targs, transformExpr(pstate,
+												 (Node *)lfirst(args), EXPR_KIND_HAVING_FUNCTION));
+		else
+			/* End: Req:SRS-MYSQL-SQL-Select */
+			targs = lappend(targs, transformExprRecurse(pstate,
+														(Node *) lfirst(args)));
 	}
 
 	/* Begin - BUG #Z5517 #Z5518 */
@@ -3695,6 +4075,9 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		case EXPR_KIND_ASOF:
 		case EXPR_KIND_VERSIONS_BETWEEN:
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin - ReqID:SRS-MYSQL-SQL-Select */
+		case EXPR_KIND_HAVING_FUNCTION:
+		/* End - ReqID:SRS-MYSQL-SQL-Select */
 			/* okay */
 			break;
 		case EXPR_KIND_CHECK_CONSTRAINT:
@@ -5245,6 +5628,10 @@ ParseExprKindName(ParseExprKind exprKind)
 		case EXPR_KIND_VERSIONS_BETWEEN:
 			return "VERSIONS BETWEEN";
 		/* End - ReqID:SRS-RECOVERY-FLASHBACK */
+		/* Begin - ReqID:SRS-MYSQL-SQL-Select */
+		case EXPR_KIND_HAVING_FUNCTION:
+			return "HAVING FUNCTION()";
+		/* End - ReqID:SRS-MYSQL-SQL-Select */
 			/*
 			 * There is intentionally no default: case here, so that the
 			 * compiler will warn if we add a new ParseExprKind without

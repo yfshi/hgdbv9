@@ -2946,9 +2946,40 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			 * breaks no cases that are legal per spec, and it seems a more
 			 * self-consistent behavior.
 			 */
-			if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-				name = NULL;
+			/* Begin: Req:SRS-MYSQL-SQL-Select */
+			if (compatible_mode == MYS_MODE)
+			{
+				if (colNameToVar(pstate, name, true, false, location) != NULL)
+				{
+					/**
+					 * Name conflicts only occur when targetList exist alias.
+					 * After searched for the table, only determine whether it exists in the targetList.
+					*/
+					foreach (tl, *tlist)
+					{
+						TargetEntry *select_tle = (TargetEntry *)lfirst(tl);
+
+						/*is alias and  visible*/
+						if (!select_tle->resjunk && select_tle->resname_is_alias && select_tle->resname != NULL &&
+							strcmp(select_tle->resname, name) == 0)
+						{
+							ereport(WARNING,
+									(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+									 errmsg("Column '%s' in group statement is ambiguous",
+											name),
+									 parser_errposition(pstate, location)));
+							break;
+						}
+					}
+					name = NULL;
+				}
+			}
+			/* End: Req:SRS-MYSQL-SQL-Select */
+			else
+				if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					name = NULL;
 		}
+
 
 		if (name != NULL)
 		{
