@@ -352,3 +352,10 @@ insert into test_id values(1);
 select id year,id month,id day,id hour,id minute,id second from test_id;
 
 drop table test_id;
+
+/* Begin - OA-REQ-2310 */
+select greatest(0,1,2) from dual;	-- 2
+select greatest(0,1,null,2) from dual;	-- null
+select least(0,1,2) from dual;	-- 0
+select least(0,1,null,2) from dual;	-- null
+/* End - OA-REQ-2310 */

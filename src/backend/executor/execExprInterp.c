@@ -3210,7 +3210,8 @@ ExecEvalMinMax(ExprState *state, ExprEvalStep *op)
 	for (int off = 0; off < op->d.minmax.nelems; off++)
 	{
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-		if (compatible_mode == MYS_MODE && nulls[off])
+		if ((compatible_mode == MYS_MODE || compatible_mode == ORA_MODE /* OA-REQ-2310 */)
+			&& nulls[off])
 		{
 			/* return NULL if any one is NULL. */
 			*op->resvalue = values[off];
