@@ -3787,12 +3787,18 @@ ExecIRUpdateTriggers(EState *estate, ResultRelInfo *relinfo,
 	bool		should_free;
 	TriggerData LocTriggerData = {0};
 	int			i;
+	Bitmapset	*updatedCols = NULL;	/* BUG#Z7657 */
 
 	LocTriggerData.type = T_TriggerData;
 	LocTriggerData.tg_event = TRIGGER_EVENT_UPDATE |
 		TRIGGER_EVENT_ROW |
 		TRIGGER_EVENT_INSTEAD;
 	LocTriggerData.tg_relation = relinfo->ri_RelationDesc;
+
+	/* Begin - BUG#7657 */
+	updatedCols = ExecGetAllUpdatedCols(relinfo, estate);
+	LocTriggerData.tg_updatedcols = updatedCols;
+	/* End - BUG#7657 */
 
 	ExecForceStoreHeapTuple(trigtuple, oldslot, false);
 
@@ -3807,7 +3813,7 @@ ExecIRUpdateTriggers(EState *estate, ResultRelInfo *relinfo,
 								  TRIGGER_TYPE_UPDATE))
 			continue;
 		if (!TriggerEnabled(estate, relinfo, trigger, LocTriggerData.tg_event,
-							NULL, oldslot, newslot))
+							updatedCols, oldslot, newslot))	/* BUG#Z7657 */
 			continue;
 
 		if (!newtuple)
