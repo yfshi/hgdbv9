@@ -3889,6 +3889,7 @@ _equalOraPartSup(const OraPartSup *a, const OraPartSup *b)
 	COMPARE_STRING_FIELD(partname);
 	COMPARE_SCALAR_FIELD(partlevel);
 	COMPARE_SCALAR_FIELD(seqno);
+	COMPARE_SCALAR_FIELD(autogen);
 
 	return true;
 }

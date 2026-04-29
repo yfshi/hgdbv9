@@ -14137,7 +14137,7 @@ mysquote_qualified_identifierrestrict(const char *qualifier,
  * the given relation.
  */
 char *
-pg_get_partinterval_def_string(Oid relid)
+pg_get_partinterval_def_string(Oid relid, bool full /* ReqID:SRS-SQL-PARTITION-TABLE */)
 {
 	List			   *context;
 	char			   *consrc;
@@ -14166,7 +14166,8 @@ pg_get_partinterval_def_string(Oid relid)
 	}
 
 	context = deparse_context_for(get_relation_name(relid), relid);
-	consrc = deparse_expression_pretty((Node *) pinterval, context, false, false, false, 0);
+	consrc = deparse_expression_pretty(full ? (Node *) pinterval : (Node *) pinterval->interval, /* ReqID:SRS-SQL-PARTITION-TABLE */
+									   context, false, false, 0, 0);
 
 	return consrc;
 }
@@ -14472,5 +14473,321 @@ ora_get_subpartkeydef_worker(Oid relid, int prettyFlags, bool attrsOnly, bool mi
 	ReleaseSysCache(tuple);
 
 	return buf.data;
+}
+
+/*
+ * Get high value of the (sub)partition bounds.
+ */
+Datum
+ora_get_partition_highvalue(PG_FUNCTION_ARGS)
+{
+	Oid			childOid = PG_GETARG_OID(0);
+	HeapTuple	tuple;
+	Datum		datum;
+	bool		isnull;
+	bool		is_oracle_part;
+	StringInfo	buf = makeStringInfo();
+	ListCell	*cell;
+	char		*sep;
+	PartitionBoundSpec	*spec;
+	deparse_context		context;
+
+	if (!get_rel_relispartition(childOid))
+		PG_RETURN_NULL();
+
+	if (is_oracle_partition(childOid) || is_oracle_subpartition(childOid))
+		is_oracle_part = true;
+	else
+		is_oracle_part = false;
+
+	tuple = SearchSysCache1(RELOID, childOid);
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", childOid);
+
+	datum = SysCacheGetAttr(RELOID, tuple,
+							Anum_pg_class_relpartbound,
+							&isnull);
+	if (isnull)
+		elog(ERROR, "null relpartbound for relation %u", childOid);
+
+	spec = (PartitionBoundSpec *)
+		stringToNode(TextDatumGetCString(datum));
+
+	if (!IsA(spec, PartitionBoundSpec))
+		elog(ERROR, "expected PartitionBoundSpec");
+
+	ReleaseSysCache(tuple);
+	memset(&context, 0, sizeof(deparse_context));
+	context.buf = buf;
+
+	switch (spec->strategy)
+	{
+		case PARTITION_STRATEGY_LIST:
+			if (spec->is_default)
+				appendStringInfoString(buf, "DEFAULT");
+			else
+			{
+				Assert(spec->listdatums != NIL);
+				sep = "";
+				foreach(cell, spec->listdatums)
+				{
+					Const	*val = castNode(Const, lfirst(cell));
+
+					appendStringInfoString(buf, sep);
+					get_const_expr(val, &context, -1);
+					sep = ", ";
+				}
+			}
+			break;
+
+		case PARTITION_STRATEGY_RANGE:
+			if (spec->is_default)
+			{
+				if (is_oracle_part)
+					elog(ERROR, "Oracle RANGE partition no default partition");
+				else
+					appendStringInfoString(buf, "DEFAULT");
+			}
+			else
+			{
+				Assert(spec->lowerdatums != NIL &&
+					   spec->upperdatums != NIL &&
+					   list_length(spec->lowerdatums) ==
+					   list_length(spec->upperdatums));
+
+				sep = "";
+				foreach(cell, spec->upperdatums)
+				{
+					PartitionRangeDatum *datum =
+					castNode(PartitionRangeDatum, lfirst(cell));
+
+					appendStringInfoString(buf, sep);
+					if (datum->kind == PARTITION_RANGE_DATUM_MINVALUE)
+						appendStringInfoString(buf, "MINVALUE");
+					else if (datum->kind == PARTITION_RANGE_DATUM_MAXVALUE)
+						appendStringInfoString(buf, "MAXVALUE");
+					else
+					{
+						Const	   *val = castNode(Const, datum->value);
+
+						get_const_expr(val, &context, -1);
+					}
+					sep = ", ";
+				}
+			}
+			break;
+
+		case PARTITION_STRATEGY_HASH:
+			if (!is_oracle_part)
+				appendStringInfo(buf, "MODULUS %d, REMAINDER %d",
+								 spec->modulus, spec->remainder);
+			break;
+
+		default:
+			elog(ERROR, "unrecognized partition strategy: %d",
+				 (int) spec->strategy);
+			break;
+	}
+
+	if (buf->len > 0)
+		PG_RETURN_TEXT_P(cstring_to_text(buf->data));
+	else
+		PG_RETURN_NULL();
+}
+
+/*
+ * Returns detailed information about the subpartition templates
+ * of an Oracle partitioned table, including the subpartition name,
+ * location, tablespace, and high value. HASH subpartition template
+ * specified by quantity return NULL.
+ */
+Datum
+ora_get_subpartition_templates(PG_FUNCTION_ARGS)
+{
+	Oid		rootrelid = PG_GETARG_OID(0);
+	List	*subpartition_list;
+	FuncCallContext	*funcctx;
+	OraSubPartitionTemplateSpec	*subptemplate = NULL;
+
+	/* stuff done only on the first call of the function */
+	if (SRF_IS_FIRSTCALL())
+	{
+		MemoryContext	oldcxt;
+		TupleDesc		tupdesc;
+
+		/* create a function context for cross-call persistence */
+		funcctx = SRF_FIRSTCALL_INIT();
+
+		if (!is_oracle_partitioned_table(rootrelid))
+			SRF_RETURN_DONE(funcctx);
+
+		/* switch to memory context appropriate for multiple function calls */
+		oldcxt = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+		subptemplate = ora_get_subpartition_template(rootrelid);
+
+		/* Only consider subpartition templates with subpartition names */
+		if (!subptemplate ||
+			subptemplate->subpartitons_desc == NIL)
+		{
+			MemoryContextSwitchTo(oldcxt);
+			SRF_RETURN_DONE(funcctx);
+		}
+
+		tupdesc = CreateTemplateTupleDesc(4, false);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
+						   TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "position",
+						   INT4OID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "tablespace",
+						   TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 4, "highbound",
+						   TEXTOID, -1, 0);
+
+		funcctx->tuple_desc = BlessTupleDesc(tupdesc);
+		funcctx->user_fctx = (void *) subptemplate->subpartitons_desc;
+
+		MemoryContextSwitchTo(oldcxt);
+	}
+
+	/* stuff done on every call of the function */
+	funcctx = SRF_PERCALL_SETUP();
+	subpartition_list = (List *) funcctx->user_fctx;
+
+	if (funcctx->call_cntr < list_length(subpartition_list))
+	{
+		Datum		result;
+		Datum		values[4];
+		bool		nulls[4];
+		HeapTuple	tuple;
+		OraPartitionBoundSpec	*pd = (OraPartitionBoundSpec *) list_nth(subpartition_list, funcctx->call_cntr);
+
+		/*
+		 * Form tuple with appropriate data.
+		 */
+		MemSet(nulls, 0, sizeof(nulls));
+		MemSet(values, 0, sizeof(values));
+
+		/* name */
+		if (pd->partition_name)
+			values[0] = CStringGetTextDatum(pd->partition_name);
+		else
+			nulls[1] = true;
+
+		/* position */
+		values[1] = Int32GetDatum(funcctx->call_cntr + 1);
+
+		/* tablespace */
+		if (pd->tablespace_name)
+			values[2] = CStringGetTextDatum(pd->tablespace_name);
+		else
+			nulls[2] = true;
+
+		/* highbound */
+		if (pd->bound)
+		{
+			StringInfo	buf = makeStringInfo();
+			ListCell	*cell;
+			char		*sep;
+			PartitionBoundSpec	*spec = pd->bound;
+			deparse_context		context;
+
+			memset(&context, 0, sizeof(deparse_context));
+			context.buf = buf;
+
+			switch (spec->strategy)
+			{
+				case PARTITION_STRATEGY_LIST:
+					if (spec->is_default)
+						appendStringInfoString(buf, "DEFAULT");
+					else
+					{
+						Assert(spec->listdatums != NIL);
+						sep = "";
+						foreach(cell, spec->listdatums)
+						{
+							Const	*val = castNode(Const, lfirst(cell));
+
+							appendStringInfoString(buf, sep);
+							get_const_expr(val, &context, -1);
+							sep = ", ";
+						}
+					}
+					break;
+
+				case PARTITION_STRATEGY_RANGE:
+					if (spec->is_default)
+						elog(ERROR, "Oracle RANGE partition no default partition");
+					else
+					{
+						Assert(spec->upperdatums != NIL);
+
+						sep = "";
+						foreach(cell, spec->upperdatums)
+						{
+							PartitionRangeDatum *datum =
+							castNode(PartitionRangeDatum, lfirst(cell));
+
+							appendStringInfoString(buf, sep);
+							if (datum->kind == PARTITION_RANGE_DATUM_MINVALUE)
+								appendStringInfoString(buf, "MINVALUE");
+							else if (datum->kind == PARTITION_RANGE_DATUM_MAXVALUE)
+								appendStringInfoString(buf, "MAXVALUE");
+							else
+							{
+								Const	   *val = castNode(Const, datum->value);
+
+								get_const_expr(val, &context, -1);
+							}
+							sep = ", ";
+						}
+					}
+					break;
+
+				case PARTITION_STRATEGY_HASH:
+					break;
+
+				default:
+					elog(ERROR, "unrecognized partition strategy: %d",
+						 (int) spec->strategy);
+					break;
+			}
+
+			if (buf->len > 0)
+			{
+				values[3] = CStringGetTextDatum(buf->data);
+				pfree(buf->data);
+				pfree(buf);
+			}
+			else
+				nulls[3] = true;
+		}
+		else
+			nulls[3] = true;
+
+		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
+		result = HeapTupleGetDatum(tuple);
+		SRF_RETURN_NEXT(funcctx, result);
+	}
+
+	SRF_RETURN_DONE(funcctx);
+}
+
+/*
+ * like pg_get_partinterval_def, but we are only interested in the const value
+ * of interval expr, this function is mainly used in system views.
+ */
+Datum
+pg_get_partinterval_string(PG_FUNCTION_ARGS)
+{
+	Oid 	relid = PG_GETARG_OID(0);
+	char   *res;
+
+	res = pg_get_partinterval_def_string(relid, false);
+
+	if (res == NULL)
+		PG_RETURN_NULL();
+
+	PG_RETURN_TEXT_P(CStringGetTextDatum(res));
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */

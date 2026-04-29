@@ -46,6 +46,9 @@ CATALOG(pg_ora_tab_partitions,4810,OraTabPartitionsId)
 
 	/* partitioning level, partitions 1, subpartitions 2 */
 	int16		partlevel;
+
+	/* auto generated interval partitions? */
+	bool		autogen BKI_DEFAULT(f);
 } FormData_pg_ora_tab_partitions;
 
 /* ----------------

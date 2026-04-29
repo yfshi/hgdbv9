@@ -4362,6 +4362,7 @@ _outOraPartSup(StringInfo str, const OraPartSup *node)
 	WRITE_STRING_FIELD(partname);
 	WRITE_INT_FIELD(partlevel);
 	WRITE_INT_FIELD(seqno);
+	WRITE_BOOL_FIELD(autogen);
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 

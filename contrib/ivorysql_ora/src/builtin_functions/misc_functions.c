@@ -150,7 +150,7 @@ pg_get_partinterval_def(PG_FUNCTION_ARGS)
 	Oid		relid = PG_GETARG_OID(0);
 	char   *res;
 
-	res = pg_get_partinterval_def_string(relid);
+	res = pg_get_partinterval_def_string(relid, true /* ReqID:SRS-SQL-PARTITION-TABLE */);
 
 	if (res == NULL)
 		PG_RETURN_NULL();

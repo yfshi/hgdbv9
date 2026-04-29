@@ -5944,6 +5944,7 @@ _copyOraPartSup(const OraPartSup *from)
 	COPY_STRING_FIELD(partname);
 	COPY_SCALAR_FIELD(partlevel);
 	COPY_SCALAR_FIELD(seqno);
+	COPY_SCALAR_FIELD(autogen);
 
 	return newnode;
 }
