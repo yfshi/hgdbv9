@@ -719,7 +719,7 @@ static Oid get_rel_oid(Oid reltablespace, Oid relfilenode)
 	{
 		SPITupleTable *spi_tuptable = SPI_tuptable;
 		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
-		reloid = atooid(SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1));
+		reloid = atooid(SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1));
 	}
 
 	if (SPI_finish() != SPI_OK_FINISH)
