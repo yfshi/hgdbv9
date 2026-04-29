@@ -15,7 +15,8 @@ BEGIN
 			schemaoid  Oid,
 			antitamper bool
 			);
-			grant select on hg_security.schema_antitamper to public;
+			GRANT SELECT on hg_security.schema_antitamper to public;
+			GRANT all on hg_security.schema_antitamper to syssso_role;
 		';
 	END IF;
 END $$;
@@ -28,9 +29,12 @@ BEGIN
 	) THEN
 		-- If the tablespace does not exist, do not specify the tablespace when creating the table (use the default tablespace)
 		EXECUTE '
-			CREATE SEQUENCE antitamper_block as bigint;
+			CREATE SEQUENCE hg_security.antitamper_block as bigint;
+			GRANT all on sequence hg_security.antitamper_block to syssso_role;
+			GRANT all on sequence hg_security.antitamper_block to public;
+
 			CREATE TABLE hg_security.hg_global_antitamper(
-				blocknum int8 default nextval(''antitamper_block'') primary key,
+				blocknum int8 default nextval(''hg_security.antitamper_block'') primary key,
 				username name,
 				dbname name,
 				schemaoid Oid,
@@ -40,7 +44,8 @@ BEGIN
 				starttime timestamp without time zone,
 				sqlcommand text
 			);
-			grant select on hg_security.hg_global_antitamper to public;
+			GRANT select,insert on hg_security.hg_global_antitamper to public;
+			GRANT all ON hg_security.hg_global_antitamper to syssso_role;
 		';
 	END IF;
 END $$;
@@ -63,7 +68,8 @@ BEGIN
 				starttime timestamp without time zone,
 				sqlcommand text
 			);
-			grant select on hg_security.hg_global_antitamper_backup to public;
+			GRANT SELECT on hg_security.hg_global_antitamper_backup to public;
+			GRANT all ON hg_security.hg_global_antitamper_backup to syssso_role;
 		';
 	END IF;
 END $$;
@@ -266,6 +272,7 @@ END;
 $$;
 
 ALTER FUNCTION hg_security.set_generic_hash() owner to syssso_role;
+GRANT EXECUTE ON FUNCTION hg_security.set_generic_hash to PUBLIC;
 
 -- get table hash value
 CREATE OR REPLACE FUNCTION hg_security.get_table_hash_sum(
@@ -373,7 +380,7 @@ BEGIN
 		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
 	) as opt WHERE opt.option_name = 'antitamper';
 
-	IF opt_val is null THEN
+	IF opt_val is null or lower(opt_val) not in('true', 'on', 'yes', '1') THEN
 		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
 	END IF;
 
@@ -438,10 +445,20 @@ DECLARE
 	query text;
 	nextblocknum BIGINT;
 	opt_val text;
+	se_feature_mode_val text;
+	is_superuser_val text;
 BEGIN
 	--check user permissions
-	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'permission denied for function antitamper_hist_repair';
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF NOT hg_security.is_syssso(get_current_userid()) THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_hist_repair';
+		END IF;
+	ELSE
+		IF NOT is_superuser_val IN('on', 'true', '1') THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_hist_repair';
+		END IF;
 	END IF;
 
 	-- check function para
@@ -465,7 +482,7 @@ BEGIN
 		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
 	) as opt WHERE opt.option_name = 'antitamper';
 
-	IF opt_val is null THEN
+	IF opt_val is null or lower(opt_val) not in('true', 'on', 'yes', '1') THEN
 		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
 	END IF;
 
@@ -577,7 +594,7 @@ BEGIN
 		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
 	) as opt WHERE opt.option_name = 'antitamper';
 
-	IF opt_val is null THEN
+	IF opt_val is null or lower(opt_val) not in('true', 'on', 'yes', '1') THEN
 		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
 	END IF;
 
@@ -638,10 +655,20 @@ DECLARE
 	table_oid oid;
 	query text;
 	opt_val text;
+	se_feature_mode_val text;
+	is_superuser_val text;
 BEGIN
 	--check user permissions
-	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'permission denied for function antitamper_gchain_repair';
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF NOT hg_security.is_syssso(get_current_userid()) THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_gchain_repair';
+		END IF;
+	ELSE
+		IF NOT is_superuser_val IN('on', 'true', '1') THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_gchain_repair';
+		END IF;
 	END IF;
 
 	-- check function para
@@ -664,7 +691,7 @@ BEGIN
 		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
 	) as opt WHERE opt.option_name = 'antitamper';
 
-	IF opt_val is null THEN
+	IF opt_val is null or lower(opt_val) not in('true', 'on', 'yes', '1') THEN
 		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
 	END IF;
 
@@ -778,10 +805,20 @@ DECLARE
 	schema_oid oid;
 	query text;
 	opt_val text;
+	se_feature_mode_val text;
+	is_superuser_val text;
 BEGIN
 	--check user permissions
-	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'permission denied for function antitamper_gchain_archive';
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF NOT hg_security.is_syssso(get_current_userid()) THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_gchain_archive';
+		END IF;
+	ELSE
+		IF NOT is_superuser_val IN('on', 'true', '1') THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_gchain_archive';
+		END IF;
 	END IF;
 
 	-- check function para
@@ -805,7 +842,7 @@ BEGIN
 		(SELECT reloptions FROM pg_class WHERE oid = table_oid)
 	) as opt WHERE opt.option_name = 'antitamper';
 
-	IF opt_val is null THEN
+	IF opt_val is null or lower(opt_val) not in('true', 'on', 'yes', '1') THEN
 		RAISE EXCEPTION ' %.% is not antitamper table.', schema_name, table_name;
 	END IF;
 

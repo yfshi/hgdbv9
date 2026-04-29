@@ -1061,3 +1061,138 @@ drop table test5,test6;
 drop schema secure_schema1,secure_schema2,secure_schema3;
 select relname from hg_security.antitamper_class order by relname;
 select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;
+
+-- bug:7651
+create schema ddd with antitamper;
+create table ddd.t1(id int, name text);
+create table t2(id int, name text);
+create table t3(id int, name text) WITH(antitamper=true);
+create table t4(id int, name text) WITH(antitamper=false);
+
+select hg_security.antitamper_hist_check('ddd','t1');
+select hg_security.antitamper_hist_check('ddd','t2');
+select hg_security.antitamper_hist_check('public','t2');
+select hg_security.antitamper_hist_check('public','t3');
+select hg_security.antitamper_hist_check('public','t4');
+
+select hg_security.antitamper_hist_repair('ddd','t1');
+select hg_security.antitamper_hist_repair('ddd','t2');
+select hg_security.antitamper_hist_repair('public','t2');
+select hg_security.antitamper_hist_repair('public','t3');
+select hg_security.antitamper_hist_repair('public','t4');
+
+select hg_security.antitamper_gchain_check('ddd','t1');
+select hg_security.antitamper_gchain_check('ddd','t2');
+select hg_security.antitamper_gchain_check('public','t2');
+select hg_security.antitamper_gchain_check('public','t3');
+select hg_security.antitamper_gchain_check('public','t4');
+
+select hg_security.antitamper_gchain_repair('ddd','t1');
+select hg_security.antitamper_gchain_repair('ddd','t2');
+select hg_security.antitamper_gchain_repair('public','t2');
+select hg_security.antitamper_gchain_repair('public','t3');
+select hg_security.antitamper_gchain_repair('public','t4');
+
+select hg_security.antitamper_gchain_archive('ddd','t1');
+select hg_security.antitamper_gchain_archive('ddd','t2');
+select hg_security.antitamper_gchain_archive('public','t2');
+select hg_security.antitamper_gchain_archive('public','t3');
+select hg_security.antitamper_gchain_archive('public','t4');
+
+drop table t2, t3, t4;
+drop table ddd.t1;
+drop schema ddd;
+----------------------------------------------------------------------
+select 1 from hg_security.antitamper_block;
+drop EXTENSION hg_antitamper;
+select 1 from hg_security.antitamper_block;
+create EXTENSION hg_antitamper;
+select 1 from hg_security.antitamper_block;
+--==============================================================================================--
+-- test se_feature.mode =on/off
+--==============================================================================================--
+create schema secure_schema with antitamper;
+create table  secure_schema.test (id int, name text);
+insert into secure_schema.test values(1, 'alex'), (2, 'bob'), (3, 'peter');
+
+create user user11;
+create user normal_user;
+create user antitamper_spuser with superuser password 'Hello@123';
+--------------------------------------------------------------------------
+grant usage on schema secure_schema to syssso;
+grant all privileges on all tables in schema secure_schema to syssso;
+grant usage on schema hg_security to syssso;
+grant all privileges on all tables in schema hg_security to syssso;
+
+grant usage on schema secure_schema to user11;
+grant all privileges on all tables in schema secure_schema to user11;
+grant usage on schema hg_security to user11;
+grant all privileges on all tables in schema hg_security to user11;
+
+grant usage on schema secure_schema to normal_user;
+grant all privileges on all tables in schema secure_schema to normal_user;
+grant usage on schema hg_security to normal_user;
+grant all privileges on all tables in schema hg_security to normal_user;
+--------------------------------------------------------------------------
+
+grant syssso_role to user11;
+-- test se_feature.mode =off
+set role syssso;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+set role user11;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+set role normal_user;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+-- test se_feature.mode =on
+\c - antitamper_spuser
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+alter system set se_feature.mode =on;
+select pg_reload_conf();
+
+\c - syssso;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+\c - syssao;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+\c - user11;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+\c - antitamper_spuser
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+\c - syssso;
+alter system set hg_rolstatus.enable=off;
+alter system set se_feature.mode=off;
+select pg_reload_conf();
+
+\c - antitamper_spuser
+drop table  secure_schema.test;
+drop schema secure_schema;
+
+revoke all privileges on all tables in schema hg_security from normal_user;
+revoke usage on schema hg_security from normal_user;
+revoke all privileges on all tables in schema hg_security from user11;
+revoke usage on schema hg_security from user11;
+drop user user11;
+drop user normal_user;
