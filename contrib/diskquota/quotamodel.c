@@ -447,12 +447,12 @@ static void check_disk_quota_by_oid(Oid targetOid, int64 current_usage, QuotaTyp
 		keyitem.databaseoid = MyDatabaseId;
 		keyitem.targettype = (uint32)type;
 		if (type == NAMESPACE_QUOTA)
-		{
+		{
 			elog(WARNING,"namespace:Put object %u to blacklist with quota limit:%d, current usage:%d",
 					targetOid, quota_limit_mb, current_usage_mb);
 		}
 		else
-		{
+		{
 			elog(WARNING,"role:Put object %u to blacklist with quota limit:%d, current usage:%d",
 					targetOid, quota_limit_mb, current_usage_mb);
 		}
