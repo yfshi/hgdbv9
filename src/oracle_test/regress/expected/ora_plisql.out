@@ -1375,7 +1375,7 @@ ERROR:  wrong number or types of arguments in call to "square"
 LINE 1: square(3.14)
         ^
 QUERY:  square(3.14)
-CONTEXT:  PL/iSQL function test_subproc_func(integer) line 15 at RAISE
+CONTEXT:  PL/iSQL function public.test_subproc_func(integer) line 15 at RAISE
 select test_subproc_func(3.14) from dual;	-- error
 ERROR:  function test_subproc_func(numeric) does not exist
 LINE 1: select test_subproc_func(3.14) from dual;
@@ -1433,7 +1433,7 @@ ERROR:  wrong number or types of arguments in call to "square"
 LINE 1: square(3.14)
         ^
 QUERY:  square(3.14)
-CONTEXT:  PL/iSQL function test_subproc_proc(integer) line 15 at RAISE
+CONTEXT:  PL/iSQL function public.test_subproc_proc(integer) line 15 at RAISE
 call test_subproc_proc(3.14);	-- error
 ERROR:  procedure test_subproc_proc(numeric) does not exist
 LINE 1: call test_subproc_proc(3.14);
@@ -1532,7 +1532,7 @@ NOTICE:  abc
 NOTICE:  abc
 ERROR:  value too long for type char(3 byte)
 CONTEXT:  PL/iSQL assignment "var := '12345'"
-PL/iSQL function ora_fbug79(char) line 6 at assignment
+PL/iSQL function public.ora_fbug79(char) line 6 at assignment
 select pg_fbug79('abc');
 NOTICE:  abc
 NOTICE:  abc
@@ -1566,7 +1566,7 @@ NOTICE:  abc
 NOTICE:  abc
 ERROR:  value too long for type char(3 byte)
 CONTEXT:  PL/iSQL assignment "var := '12345'"
-PL/iSQL function ora_pbug79(char) line 6 at assignment
+PL/iSQL function public.ora_pbug79(char) line 6 at assignment
 call pg_pbug79('abc');
 NOTICE:  abc
 NOTICE:  abc

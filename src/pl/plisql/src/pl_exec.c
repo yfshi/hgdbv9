@@ -71,6 +71,10 @@
 #include "parser/pg_object_hook.h"
 #include "catalog/pg_trigger.h"
 /* End - ReqID:SRS-SQL-TRIGGER */
+/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+#include "commands/packagecmds.h"
+#include "utils/lsyscache.h"
+/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 /*
  * All plisql function executions within a single transaction share the same
@@ -1610,6 +1614,24 @@ static void
 plisql_exec_error_callback(void *arg)
 {
 	PLiSQL_execstate *estate = (PLiSQL_execstate *) arg;
+	/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+	char *schName = NULL;
+	char *pkgName = NULL;
+	PLiSQL_package *pkg = estate->func->item != NULL ? (PLiSQL_package*)estate->func->item->source : NULL;
+	if (IsTransactionState())
+	{
+		Oid schemaId;
+		if (pkg != NULL)
+		{
+			get_package_nameinfo(pkg->source.fn_oid, &pkgName, &schName);
+		}
+		else
+		{
+			schemaId = get_func_namespace(estate->func->fn_oid);
+			schName = get_namespace_name(schemaId);
+		}
+	}
+	/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 	if (estate->err_text != NULL)
 	{
@@ -1630,10 +1652,30 @@ plisql_exec_error_callback(void *arg)
 			 * translator: last %s is a phrase such as "during statement block
 			 * local variable initialization"
 			 */
-			errcontext("PL/iSQL function %s line %d %s",
-					   estate->func->fn_signature,
-					   estate->err_stmt->lineno,
-					   _(estate->err_text));
+			/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+			if (estate->func->item != NULL)
+			{
+				errcontext("PL/iSQL function %s.%s.%s line %d at %s",
+						schName,
+						pkg->source.fn_signature,
+						estate->func->fn_signature,
+						estate->err_stmt->lineno,
+						_(estate->err_text));
+			}
+			else if (schName != NULL)
+			{
+				errcontext("PL/iSQL function %s.%s line %d %s",
+						schName,
+						estate->func->fn_signature,
+						estate->err_stmt->lineno,
+						_(estate->err_text));
+			}
+			else
+				errcontext("PL/iSQL function %s line %d %s",
+						estate->func->fn_signature,
+						estate->err_stmt->lineno,
+						_(estate->err_text));
+			/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 		}
 		else
 		{
@@ -1649,10 +1691,30 @@ plisql_exec_error_callback(void *arg)
 	else if (estate->err_stmt != NULL)
 	{
 		/* translator: last %s is a plisql statement type name */
-		errcontext("PL/iSQL function %s line %d at %s",
-				   estate->func->fn_signature,
-				   estate->err_stmt->lineno,
-				   plisql_stmt_typename(estate->err_stmt));
+		/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+		if (estate->func->item != NULL)
+		{
+			errcontext("PL/iSQL function %s.%s.%s line %d at %s",
+					schName,
+					pkg->source.fn_signature,
+					estate->func->fn_signature,
+					estate->err_stmt->lineno,
+					plisql_stmt_typename(estate->err_stmt));
+		}
+		else if (schName != NULL)
+		{
+			errcontext("PL/iSQL function %s.%s line %d at %s",
+					schName,
+					estate->func->fn_signature,
+					estate->err_stmt->lineno,
+					plisql_stmt_typename(estate->err_stmt));
+		}
+		else
+			errcontext("PL/iSQL function %s line %d at %s",
+					estate->func->fn_signature,
+					estate->err_stmt->lineno,
+					plisql_stmt_typename(estate->err_stmt));
+		/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 	}
 	else
 		errcontext("PL/iSQL function %s",
@@ -2510,9 +2572,19 @@ exec_stmt_block(PLiSQL_execstate *estate, PLiSQL_stmt_block *block)
 					 */
 					estate->cur_error = edata;
 
+					/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+					if (collect_error_msg_inc_depth_hook != NULL)
+						collect_error_msg_inc_depth_hook();
+					/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
+
 					estate->err_text = NULL;
 
 					rc = exec_stmts_ext(estate, exception->action, true, rc == PLISQL_RC_GOTO);	/* ReqID:SRS-PLSQL-GOTO */
+
+					/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+					if (collect_error_msg_dec_depth_hook != NULL)
+						collect_error_msg_dec_depth_hook();
+					/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 					/* Begin - ReqID:SRS-PLSQL-EXCEPTION */
 					if (edata->nokeeperrorstack)

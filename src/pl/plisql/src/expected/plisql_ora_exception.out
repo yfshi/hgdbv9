@@ -491,7 +491,7 @@ end;
 /
 ERROR:  IVY-20000: Account past due.
 CONTEXT:  SQL statement "CALL plisql_raise_application_error(num, msg, keeperrorstack)"
-PL/iSQL function raise_application_error line 8 at CALL
+PL/iSQL function sys.dbms_standard.raise_application_error line 8 at CALL
 SQL statement "CALL RAISE_APPLICATION_ERROR(-20000, 'Account past due.')"
 PL/iSQL function test_f line 7 at CALL
 PL/iSQL function inline_code_block line 11 at assignment
@@ -1714,7 +1714,7 @@ end;
 /
 ERROR:  IVY-21000: IVY-21000: error number argument to raise_application_error of -21000 is out of range
 CONTEXT:  SQL statement "CALL plisql_raise_application_error(-21000, 'IVY-21000: error number argument to raise_application_error of ' || num || ' is out of range', false)"
-PL/iSQL function raise_application_error line 6 at CALL
+PL/iSQL function sys.dbms_standard.raise_application_error line 6 at CALL
 SQL statement "CALL raise_application_error(-21000,'test error')"
 PL/iSQL function inline_code_block line 2 at CALL
 BEGIN
@@ -1864,7 +1864,7 @@ END;
 /
 ERROR:  IVY20000:
 CONTEXT:  PLi/SQL function account_status(date,date) line 5
-PL/iSQL function account_status(date,date) line 5 at RAISE
+PL/iSQL function public.account_status(date,date) line 5 at RAISE
 SQL statement "CALL account_status (TO_DATE('01-JUL-2010', 'DD-MON-YYYY'),
                   TO_DATE('09-JUL-2010', 'DD-MON-YYYY'))"
 PL/iSQL function inline_code_block line 2 at CALL
@@ -1879,7 +1879,7 @@ END;
 /
 ERROR:  IVY20000:
 CONTEXT:  PLi/SQL function account_status(date,date) line 5
-PL/iSQL function account_status(date,date) line 5 at RAISE
+PL/iSQL function public.account_status(date,date) line 5 at RAISE
 SQL statement "CALL account_status (TO_DATE('01-JUL-2010', 'DD-MON-YYYY'),
                   TO_DATE('09-JUL-2010', 'DD-MON-YYYY'))"
 PL/iSQL function inline_code_block line 2 at CALL
@@ -2118,7 +2118,7 @@ INFO:  divide zero
  /
 ERROR:  IVY-20001: divide zero error.
 CONTEXT:  SQL statement "CALL plisql_raise_application_error(num, msg, keeperrorstack)"
-PL/iSQL function raise_application_error line 8 at CALL
+PL/iSQL function sys.dbms_standard.raise_application_error line 8 at CALL
 SQL statement "CALL RAISE_APPLICATION_ERROR(-20001, 'divide zero error.')"
 PL/iSQL function inline_code_block line 6 at CALL
 --failed
@@ -2210,7 +2210,7 @@ end;
 select test_exception(23) FROM dual;
 ERROR:  User-Defined Exception
 CONTEXT:  PLi/SQL function test_exception(integer) line 2
-PL/iSQL function test_exception(integer) line 2 at RAISE
+PL/iSQL function public.test_exception(integer) line 2 at RAISE
 declare
   id integer;
 begin
@@ -2219,7 +2219,7 @@ end;
 /
 ERROR:  User-Defined Exception
 CONTEXT:  PLi/SQL function test_exception(integer) line 2
-PL/iSQL function test_exception(integer) line 2 at RAISE
+PL/iSQL function public.test_exception(integer) line 2 at RAISE
 PL/iSQL function inline_code_block line 4 at assignment
 declare
  id integer;

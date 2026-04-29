@@ -1739,7 +1739,7 @@ drop view my_locks;
 create or replace view my_locks as
 select case when c.relname like 'pg_toast%' then 'pg_toast' else c.relname end, max(mode::lockmodes) as max_lockmode
 from pg_locks l join pg_class c on l.relation = c.oid
-where virtualtransaction = (
+where virtualtransaction in (       -- /* ReqID: SRS-PLSQL-DBMS_UTILITY */
         select virtualtransaction
         from pg_locks
         where transactionid = pg_current_xact_id()::xid)
@@ -1827,7 +1827,7 @@ rollback;
 create or replace view my_locks as
 select case when c.relname like 'pg_toast%' then 'pg_toast' else c.relname end, max(mode::lockmodes) as max_lockmode
 from pg_locks l join pg_class c on l.relation = c.oid
-where virtualtransaction = (
+where virtualtransaction in (       -- /* ReqID: SRS-PLSQL-DBMS_UTILITY */
         select virtualtransaction
         from pg_locks
         where transactionid = pg_current_xact_id()::xid)

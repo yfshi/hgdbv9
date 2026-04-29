@@ -501,7 +501,7 @@ end$$;
 select returnssetofholes();
 ERROR:  record "r" is not assigned yet
 DETAIL:  The tuple structure of a not-yet-assigned record is indeterminate.
-CONTEXT:  PL/iSQL function returnssetofholes() line 4 at RETURN NEXT
+CONTEXT:  PL/iSQL function public.returnssetofholes() line 4 at RETURN NEXT
 create or replace function returnssetofholes() returns setof has_hole language plisql as
 $$
 begin
@@ -511,7 +511,7 @@ end$$;
 select returnssetofholes();
 ERROR:  returned record type does not match expected record type
 DETAIL:  Number of returned columns (3) does not match expected column count (2).
-CONTEXT:  PL/iSQL function returnssetofholes() line 3 at RETURN NEXT
+CONTEXT:  PL/iSQL function public.returnssetofholes() line 3 at RETURN NEXT
 -- check behavior with changes of a named rowtype
 create table mutable(f1 int, f2 text);
 create function sillyaddone(int) returns int language plisql as
@@ -537,7 +537,7 @@ $$ begin return x.f3; end $$;
 select getf3(null::mutable);  -- doesn't work yet
 ERROR:  record "x" has no field "f3"
 CONTEXT:  SQL expression "x.f3"
-PL/iSQL function getf3(mutable) line 1 at RETURN
+PL/iSQL function public.getf3(mutable) line 1 at RETURN
 alter table mutable add column f3 int;
 select getf3(null::mutable);  -- now it works
  getf3 
@@ -711,7 +711,7 @@ select build_ordered_int8s_4(1,2);
 
 select build_ordered_int8s_4(2,1);  -- fail
 ERROR:  value for domain ordered_int8s violates check constraint "ordered_int8s_check"
-CONTEXT:  PL/iSQL function build_ordered_int8s_4(bigint,bigint) line 2 at assignment
+CONTEXT:  PL/iSQL function public.build_ordered_int8s_4(bigint,bigint) line 2 at assignment
 create function build_ordered_int8s_a(i int8, j int8) returns ordered_int8s[] as $$
 begin return array[row(i,j), row(i,j+1)]; end
 $$ language plisql;

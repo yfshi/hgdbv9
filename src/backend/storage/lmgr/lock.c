@@ -48,6 +48,7 @@
 #include "utils/memutils.h"
 #include "utils/ps_status.h"
 #include "utils/resowner_private.h"
+#include "utils/guc.h" /* ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 
 /* This configuration variable is used to set the lock table size */
@@ -3808,6 +3809,12 @@ GetLockStatusData(void)
 			 * conflicting locks.
 			 */
 			instance->waitStart = 0;
+			/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+			if (compatible_mode == ORA_MODE)
+			{
+				instance->xid = proc->xid;
+			}
+			/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 			el++;
 		}
@@ -3837,6 +3844,12 @@ GetLockStatusData(void)
 			instance->leaderPid = proc->pid;
 			instance->fastpath = true;
 			instance->waitStart = 0;
+			/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+			if (compatible_mode == ORA_MODE)
+			{
+				instance->xid = proc->xid;
+			}
+			/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 			el++;
 		}
@@ -3890,6 +3903,12 @@ GetLockStatusData(void)
 		instance->leaderPid = proclock->groupLeader->pid;
 		instance->fastpath = false;
 		instance->waitStart = (TimestampTz) pg_atomic_read_u64(&proc->waitStart);
+		/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+		if (compatible_mode == ORA_MODE)
+		{
+			instance->xid = proc->xid;
+		}
+		/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 
 		el++;
 	}

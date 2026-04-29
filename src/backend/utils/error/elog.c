@@ -636,6 +636,12 @@ errfinish(const char *filename, int lineno, const char *funcname)
 				audit_system_event_hook(false, edata->sqlerrcode);
 		/* End - ReqID:SRS-SECURITY-AUDIT */
 
+		/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+		if (collect_error_msg_hook)
+		{
+			collect_error_msg_hook(edata);
+		}
+		/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 		PG_RE_THROW();
 	}
 

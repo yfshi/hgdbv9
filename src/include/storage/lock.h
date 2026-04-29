@@ -465,6 +465,7 @@ typedef struct LockInstanceData
 	int			pid;			/* pid of this PGPROC */
 	int			leaderPid;		/* pid of group leader; = pid if no group */
 	bool		fastpath;		/* taken via fastpath? */
+	TransactionId xid;          /* ReqID:SRS-PLSQL-DBMS_UTILITY  transaction id of this proc */
 } LockInstanceData;
 
 typedef struct LockData

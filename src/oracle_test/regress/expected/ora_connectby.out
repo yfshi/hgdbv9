@@ -336,7 +336,7 @@ select tree.*,level,connect_by_isleaf from tree start with father='lqc' connect 
 insert into tree values('lqc','lyd');
 select tree.*,level,connect_by_isleaf from tree start with father='lqc' connect by prior son = father;
 ERROR:  CONNECT BY loop in user data.
-CONTEXT:  PL/iSQL function cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
+CONTEXT:  PL/iSQL function sys.cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
 select tree.*,level,connect_by_isleaf from tree start with father='lqc' connect by NOCYCLE prior son = father;
   son  | father | level | connect_by_isleaf 
 -------+--------+-------+-------------------
@@ -829,7 +829,7 @@ select parents, child ,level,sys_connect_by_path(child,'->') path,connect_by_roo
 insert into hier values('Asia','Earth');
 select parents, child ,level,sys_connect_by_path(child,'->') path,connect_by_root(parents) root from hier connect by prior child = parents;
 ERROR:  CONNECT BY loop in user data.
-CONTEXT:  PL/iSQL function cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
+CONTEXT:  PL/iSQL function sys.cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
 select parents, child ,level,sys_connect_by_path(child,'->') path,connect_by_root(parents) root from hier connect by NOCYCLE prior child = parents;
      parents     |      child      | level |                             path                              |      root       
 -----------------+-----------------+-------+---------------------------------------------------------------+-----------------
@@ -1231,7 +1231,7 @@ SELECT last_name "Employee",
    START WITH last_name = 'Kochhar'
    CONNECT BY PRIOR employee_id = manager_id;
 ERROR:  CONNECT BY loop in user data.
-CONTEXT:  PL/iSQL function cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
+CONTEXT:  PL/iSQL function sys.cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
 --doesn't support connect_by_iscycle
 SELECT last_name "Employee", CONNECT_BY_ISCYCLE "Cycle",
    LEVEL, SYS_CONNECT_BY_PATH(last_name, '/') "Path"
@@ -2366,7 +2366,7 @@ insert into employee values('2',4,'tigers','25000.00','002');
 --test failed --loop failed
 select level, prior emp_name as lead_name, emp_name from employee connect by level < 100 and prior emp_id = lead_id start with emp_id = 1;
 ERROR:  CONNECT BY loop in user data.
-CONTEXT:  PL/iSQL function cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
+CONTEXT:  PL/iSQL function sys.cycle_check(anyarray,anyelement,boolean) line 7 at RAISE
 delete from employee where emp_id = 2 and lead_id = 4;
 --test ok
 select level, prior emp_name as lead_name, emp_name from employee connect by level < 100 and  emp_id = lead_id start with emp_id = 1;

@@ -67,6 +67,10 @@
 #include "utils/varlena.h"
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
+/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+#include "builtin_packages/dbms_utility/dbms_utility.h"
+/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
+
 /* Only include it once in any C file */
 PG_MODULE_MAGIC;
 
@@ -365,6 +369,14 @@ _PG_init(void)
 	/* Begin - ReqID:SRS-PLSQL-Collection */
 	collection_init_internal();
 	/* End - ReqID:SRS-PLSQL-Collection */
+
+	/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+	collect_error_msg_start_hook = collect_error_message_start;
+	collect_error_msg_hook = collect_error_message;
+	collect_error_msg_finish_hook = collect_error_message_finish;
+	collect_error_msg_inc_depth_hook = collect_error_message_inc_depth;
+	collect_error_msg_dec_depth_hook = collect_error_message_dec_depth;
+	/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 }
 
 /*
@@ -405,7 +417,16 @@ _PG_fini(void)
 	server_listen_hook = pre_server_listen_hook;
 	get_protocol_config_hook = pre_get_protocol_config_hook; /* bug#6805 */
 	/* End - Req: SRS-MYSQL-PROTOCOL */
+
 	/* Begin - ReqID:SRS-PLSQL-Collection */
 	collection_funcs.loadstate = UNLOADED;
 	/* End - ReqID:SRS-PLSQL-Collection */
+
+	/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+	collect_error_msg_start_hook = NULL;
+	collect_error_msg_hook = NULL;
+	collect_error_msg_finish_hook = NULL;
+	collect_error_msg_inc_depth_hook = NULL;
+	collect_error_msg_dec_depth_hook = NULL;
+	/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 }

@@ -528,7 +528,7 @@ NOTICE:  90
 NOTICE:  90
 NOTICE:  100
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function nm_cross() line 11 at ROLLBACK
+CONTEXT:  PL/iSQL function public.nm_cross() line 11 at ROLLBACK
 select * from ax_employees;
  id | salary 
 ----+--------
@@ -672,37 +672,37 @@ truncate ax_log;
 call ax_recursive(1, 17);
 ERROR:  nesting levels of autonomous transaction (16) exeeded
 CONTEXT:  SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 select count(*) from ax_log;
  count 
 -------
@@ -740,22 +740,22 @@ select count(*) from ax_log;
 truncate ax_log;
 select ax_recursive_func(1, 17);
 ERROR:  nesting levels of autonomous transaction (16) exeeded
-CONTEXT:  PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
+CONTEXT:  PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
 select count(*) from ax_log;
  count 
 -------
@@ -790,37 +790,37 @@ truncate ax_log;
 call ax_recursive_pack.subproc(1, 17);
 ERROR:  nesting levels of autonomous transaction (16) exeeded
 CONTEXT:  SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function subproc line 8 at CALL
+PL/iSQL function public.ax_recursive_pack.subproc line 8 at CALL
 select count(*) from ax_log;
  count 
 -------
@@ -858,22 +858,22 @@ select count(*) from ax_log;
 truncate ax_log;
 select ax_recursive_pack.subfunc(1, 17);
 ERROR:  nesting levels of autonomous transaction (16) exeeded
-CONTEXT:  PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function subfunc line 22 at assignment
+CONTEXT:  PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_pack.subfunc line 22 at assignment
 select count(*) from ax_log;
  count 
 -------
@@ -885,25 +885,25 @@ truncate ax_log;
 call ax_recursive(1, 11);
 ERROR:  nesting levels of autonomous transaction (10) exeeded
 CONTEXT:  SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 select count(*) from ax_log;
  count 
 -------
@@ -913,16 +913,16 @@ select count(*) from ax_log;
 truncate ax_log;
 select ax_recursive_func(1, 11);
 ERROR:  nesting levels of autonomous transaction (10) exeeded
-CONTEXT:  PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
+CONTEXT:  PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
 select count(*) from ax_log;
  count 
 -------
@@ -933,25 +933,25 @@ truncate ax_log;
 call ax_recursive_pack.subproc(1, 11);
 ERROR:  nesting levels of autonomous transaction (10) exeeded
 CONTEXT:  SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function ax_recursive(number,number) line 7 at CALL
+PL/iSQL function public.ax_recursive(number,number) line 7 at CALL
 SQL statement "CALL ax_recursive(start_level + 1, end_level)"
-PL/iSQL function subproc line 8 at CALL
+PL/iSQL function public.ax_recursive_pack.subproc line 8 at CALL
 select count(*) from ax_log;
  count 
 -------
@@ -961,16 +961,16 @@ select count(*) from ax_log;
 truncate ax_log;
 select ax_recursive_pack.subfunc(1, 11);
 ERROR:  nesting levels of autonomous transaction (10) exeeded
-CONTEXT:  PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function ax_recursive_func(number,number) line 8 at assignment
-PL/iSQL function subfunc line 22 at assignment
+CONTEXT:  PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_func(number,number) line 8 at assignment
+PL/iSQL function public.ax_recursive_pack.subfunc line 22 at assignment
 select count(*) from ax_log;
  count 
 -------
@@ -1217,17 +1217,17 @@ set ivorysql.autontrans_nesting_level = 5;
 call ax_nest();
 ERROR:  nesting levels of autonomous transaction (5) exeeded
 CONTEXT:  SQL statement "CALL subproc()"
-PL/iSQL function subproc line 24 at CALL
+PL/iSQL function public.subproc line 24 at CALL
 SQL statement "CALL subproc()"
-PL/iSQL function subproc line 30 at CALL
+PL/iSQL function public.subproc line 30 at CALL
 SQL statement "CALL subproc()"
-PL/iSQL function subproc line 36 at CALL
+PL/iSQL function public.subproc line 36 at CALL
 SQL statement "CALL subproc()"
-PL/iSQL function subproc line 42 at CALL
+PL/iSQL function public.subproc line 42 at CALL
 SQL statement "CALL subproc()"
-PL/iSQL function subproc line 48 at CALL
+PL/iSQL function public.subproc line 48 at CALL
 SQL statement "CALL subproc()"
-PL/iSQL function ax_nest() line 54 at CALL
+PL/iSQL function public.ax_nest() line 54 at CALL
 select count(*) from ax_log;
  count 
 -------
@@ -1630,7 +1630,7 @@ call nm_except();
 NOTICE:  exception and do nothing
 call nm_except_commit();
 ERROR:  invalid transaction termination
-CONTEXT:  PL/iSQL function nm_except_commit() line 7 at COMMIT
+CONTEXT:  PL/iSQL function public.nm_except_commit() line 7 at COMMIT
 call nm_except_rollback();
 ERROR:  current transaction is aborted, commands ignored until end of transaction block
 rollback;

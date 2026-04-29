@@ -211,7 +211,7 @@ ERROR:  view "public.v1" has errors
 select ftest193(1);		-- err
 ERROR:  view "public.v1" has errors
 CONTEXT:  SQL statement "SELECT *          FROM v1"
-PL/iSQL function ftest193(integer) line 3 at SQL statement
+PL/iSQL function public.ftest193(integer) line 3 at SQL statement
 create table test_193(a int);
 insert into test_193 values(2024);
 select * from v1;

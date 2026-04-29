@@ -6216,7 +6216,7 @@ BEGIN
 END;
 /
 ERROR:  Reference to uninitialized collection
-CONTEXT:  PL/iSQL function f1 line 3 at RAISE
+CONTEXT:  PL/iSQL function public.pkg2.f1 line 3 at RAISE
 PL/iSQL function inline_code_block line 6 at assignment
 DROP PACKAGE pkg2;
 DECLARE

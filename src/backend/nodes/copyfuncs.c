@@ -5587,6 +5587,7 @@ _copyCompileFunctionStmt(const CompileFunctionStmt *from)
 	COPY_SCALAR_FIELD(is_compile);
 	COPY_SCALAR_FIELD(editable);
 	COPY_NODE_FIELD(parameters);
+	COPY_SCALAR_FIELD(is_validate);		// ReqID: SRS-PLSQL-DBMS_UTILITY
 
 	return newnode;
 }

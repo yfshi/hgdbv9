@@ -914,7 +914,7 @@ static bool isAconstNode(Node *node);
 				opt_streaming_clause compiler_parameter_item
 %token <keyword> EDITIONABLE NONEDITIONABLE IVYSQL NOCOPY SHARING METADATA AUTHID ACCESSIBLE
 				 PACKAGE DETERMINISTIC RESULT_CACHE RELIES_ON SQL_MACRO SCALAR
-				 PIPELINED POLYMORPHIC PARALLEL_ENABLE HASH_P COMPILE DEBUG_P REUSE SETTINGS
+				 PIPELINED POLYMORPHIC PARALLEL_ENABLE HASH_P COMPILE DEBUG_P REUSE SETTINGS INVALIDATE
 /* End - ReqID:SRS-SQL-PROC */
 
 /*Begin - BUGID:0000649*/
@@ -12008,6 +12008,7 @@ AlterFunctionStmt:
 					stmt->is_compile = false;
 					stmt->editable = $4;
 					stmt->parameters = NIL;
+					stmt->is_validate = false;		// ReqID: SRS-PLSQL-DBMS_UTILITY
 
 					$$ = (Node *) stmt;
 				}
@@ -12021,6 +12022,7 @@ AlterFunctionStmt:
 					/* End - BUG#Z106 */
 					stmt->is_compile = true;
 					stmt->parameters = $6;
+					stmt->is_validate = true;		// ReqID: SRS-PLSQL-DBMS_UTILITY
 
 					$$ = (Node *) stmt;
 				}
@@ -12035,6 +12037,7 @@ AlterFunctionStmt:
 					stmt->is_compile = false;
 					stmt->editable = $4;
 					stmt->parameters = NIL;
+					stmt->is_validate = false;		// ReqID: SRS-PLSQL-DBMS_UTILITY
 
 					$$ = (Node *) stmt;
 				}
@@ -12048,10 +12051,34 @@ AlterFunctionStmt:
 					/* End - BUG#Z106 */
 					stmt->is_compile = true;
 					stmt->parameters = $6;
+					stmt->is_validate = true;		// ReqID: SRS-PLSQL-DBMS_UTILITY
 
 					$$ = (Node *) stmt;
 				}
 			/* End - ReqID:SRS-SQL-PROC */
+
+			/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+			|  ALTER PROCEDURE function_with_argtypes INVALIDATE
+				{
+					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
+					stmt->func = $3;
+					stmt->objtype = OBJECT_PROCEDURE;
+					stmt->is_compile = false;
+					stmt->is_validate = false;
+
+					$$ = (Node *) stmt;
+				}
+			|  ALTER FUNCTION function_with_argtypes INVALIDATE
+				{
+					CompileFunctionStmt *stmt = makeNode(CompileFunctionStmt);
+					stmt->func = $3;
+					stmt->objtype = OBJECT_FUNCTION;
+					stmt->is_compile = false;
+					stmt->is_validate = false;
+
+					$$ = (Node *) stmt;
+				}
+			/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 		;
 
 /* Begin - ReqID:SRS-SQL-PROC */
@@ -22935,6 +22962,7 @@ unreserved_keyword:
 			| INSENSITIVE
 			| INSERT
 			| INSTEAD
+			| INVALIDATE /* RedIQ: SRS-PLSQL-DBMS_UTILITY */
 			| INVOKER
 			| ISOLATION
 			| IVYSQL /* ReqID:SRS-SQL-PROC */
@@ -23646,6 +23674,7 @@ bare_label_keyword:
 			| INT_P
 			| INTEGER
 			| INTERVAL
+			| INVALIDATE /* RedIQ: SRS-PLSQL-DBMS_UTILITY */
 			| INVISIBLE	/* ReqID:SRS-SQL-INVISIBLECOL */
 			| INVOKER
 			| IS

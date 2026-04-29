@@ -4581,6 +4581,9 @@ typedef struct CompileFunctionStmt
 	/* End - BUG#Z106 */
 	editionable_flag		editable;	/* BUG#Z206 Z208 */
 	/* End - BUG#M0000257 */
+	/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+	bool		is_validate;
+	/* End- ReqID: SRS-PLSQL-DBMS_UTILITY */
 } CompileFunctionStmt;
 
 typedef struct ColumnRefOrFuncCall

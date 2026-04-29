@@ -637,6 +637,12 @@ PortalStart(Portal portal, ParamListInfo params,
 
 				break;
 		}
+		/* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
+		if (collect_error_msg_start_hook != NULL)
+		{
+			collect_error_msg_start_hook();
+		}
+		/* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
 	}
 	PG_CATCH();
 	{
