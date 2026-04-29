@@ -909,7 +909,8 @@ static const char * const audit_parameters[] = {
 	"audit.exclude_apps",
 	"audit.exclude_users",
 	"audit.exclude_time",
-	"audit.exclude_ips"
+	"audit.exclude_ips",
+	"audit.ignore_sync_lsn"
 };
 /* End - BUG#Z6092 */
 

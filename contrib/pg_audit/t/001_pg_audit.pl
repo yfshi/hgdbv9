@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use PostgresNode;
 use TestLib;
-use Test::More tests => 100;
+use Test::More tests => 101;
 
 my $node = get_new_node('test');
 $node->init;
@@ -326,6 +326,15 @@ my $clean_audit_config = $node->safe_psql('postgres', "select * from hg_security
 is($clean_audit_config, 't', 'pg_clean_audit_config');
 my $delete_audit_config = $node->safe_psql('postgres', "select * from hg_security.pg_delete_audit_config(1);");
 is($delete_audit_config, 'f', 'pg_delete_audit_config');
+
+$node->safe_psql('postgres', "alter system set audit.systemopers = 'all';");
+$node->safe_psql('postgres', "alter system set synchronous_standby_names = '*';");
+
+$node->stop;
+$node->start;
+
+my $audit_ignore_lsn = $node->safe_psql('postgres', "select 1;");
+is($audit_ignore_lsn, '1', 'SELECT 1 returns 1');
 
 $node->stop;
 

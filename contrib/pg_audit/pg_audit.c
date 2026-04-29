@@ -248,6 +248,7 @@ typedef enum AuditParameter
         AUDIT_USER,
         AUDIT_TIME,
         AUDIT_IP,
+        AUDIT_IGNORE_SYNC_LSN,
         NUM_AUDIT_PARAMS
 } AuditParameter;
 /* End - BUG#Z6092 */
@@ -259,6 +260,16 @@ typedef struct ip_node
 	int			masklen;
 } ip_node;
 
+/* Begin OA:2290 */
+static bool audit_transaction = false;
+
+#define AUDIT_SET_IGNORE_SYNC(flag)                         \
+			do                                              \
+			{                                               \
+				if (audit_GUC.ignore_sync_lsn == AUDIT_ON)                  \
+					audit_transaction = flag;                   \
+			}while(0);
+/* End OA:2290 */
 
 /* audit using independent memory context */
 static MemoryContext AuditContext = NULL;
@@ -478,6 +489,7 @@ static bool audit_time_check_hook(char **newvalue, void **extra, GucSource sourc
 static bool audit_check_ip_hook(char **newvalue, void **extra, GucSource source);
 static bool check_ip(SockAddr *raddr, struct sockaddr *addr, struct sockaddr *mask);
 static bool audit_app_check_hook(char **newvalue, void **extra, GucSource source);
+static bool audit_is_in_transaction(void);  // OA:2290
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -1170,6 +1182,21 @@ static void audit_define_GUC(void)
 					 audit_check_ip_hook,
 					 NULL,
 					 NULL);
+
+	/* Begin OA:2290 */
+	DefineCustomEnumVariable(audit_parameters[AUDIT_IGNORE_SYNC_LSN],
+					 "turn on or off",
+					 NULL,
+					 (int *)&(audit_GUC.ignore_sync_lsn),
+					 AUDIT_ON,
+					 audit_turn_options,
+					 PGC_SIGHUP,
+					 0,
+					 NULL,
+					 NULL,
+					 NULL);
+	 /* End OA:2290 */
+
 
 	MemoryContextSwitchTo(oldContext);
 }
@@ -2048,6 +2075,7 @@ audit_WriteRecord(void)
 		/* only write audit logs on the primary node */
 		if (!RecoveryInProgress())
 		{
+			AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 			audit_write_record_list();
 		}
 		/* do not write audit logs on the standby node */
@@ -2057,6 +2085,8 @@ audit_WriteRecord(void)
 			auditlist = NIL;
 		}
 	}
+
+	AUDIT_SET_IGNORE_SYNC (false);  // OA:2290
 }
 
 
@@ -3644,7 +3674,10 @@ execute_snapshot(void)
 
 	SPI_finish();
 	PopActiveSnapshot();
+
+	AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 	CommitTransactionCommand();
+	AUDIT_SET_IGNORE_SYNC (false);  // OA:2290
 
 	internalStatement = false;
 
@@ -3737,8 +3770,14 @@ audit_alter_set_guc(List *parsetreeList)
 		internalStatement = true;
 
 	#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+
+		AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 		if (!check_disk_size())
+		{
+			AUDIT_SET_IGNORE_SYNC (false);	// OA:2290
 			return ;
+		}
+		AUDIT_SET_IGNORE_SYNC (false);	// OA:2290
 	#endif
 
 		StartTransactionCommand();
@@ -3846,11 +3885,12 @@ audit_alter_set_guc(List *parsetreeList)
 		SPI_finish();
 
 		PopActiveSnapshot();
+		AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 		CommitTransactionCommand();
+		AUDIT_SET_IGNORE_SYNC (false);  // OA:2290
 
 		internalStatement = false;
 	}
-	
 	return;
 }
 	
@@ -5565,7 +5605,12 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 		if (auditevent)
 		{
 			if (!RecoveryInProgress())
+			{
+				AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 				audit_write_record_system(auditevent);
+				AUDIT_SET_IGNORE_SYNC (false);	// OA:2290
+			}
+
 			pfree(auditevent);
 		}
 
@@ -5580,7 +5625,12 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 	if (auditevent)
 	{
 		if (!RecoveryInProgress())
+		{
+			AUDIT_SET_IGNORE_SYNC (true);	// OA:2290
 			audit_write_record_system(auditevent);
+			AUDIT_SET_IGNORE_SYNC (false);	// OA:2290
+		}
+
 		pfree(auditevent);
 	}
 
@@ -5783,6 +5833,7 @@ audit_append_hook(void)
 	shmem_startup_hook = AuditShememInit;
 
 	is_audit_enable = is_enable_audit;
+	get_audit_transaction_hook = audit_is_in_transaction;  // OA:2290
 }
 
 static void
@@ -7150,6 +7201,8 @@ pg_audit_launch(void)
 	/* We can now handle ereport(ERROR) */
 	PG_exception_stack = &local_sigjmp_buf;
 	/* End - BUG#Z7404 */
+
+	AUDIT_SET_IGNORE_SYNC (true);   // OA:2290
 
 	/* We're now ready to receive signals */
 	BackgroundWorkerUnblockSignals();
@@ -12088,6 +12141,7 @@ audit_WriteThrHistory(void)
 		/* only write audit logs on the primary node */
 		if (!RecoveryInProgress())
 		{
+			AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 			audit_secmon_threshold_check();
 		}
 		/* do not write audit logs on the standby node */
@@ -12097,6 +12151,8 @@ audit_WriteThrHistory(void)
 			rulelist = NIL;
 		}
 	}
+
+	AUDIT_SET_IGNORE_SYNC (false);  // OA:2290
 }
 
 /* Begin BUG#z6137 */
@@ -13861,6 +13917,8 @@ void pg_audit_launch_create_table(Datum main_arg)
 	/* Connect to our database. */
 	BackgroundWorkerInitializeConnectionByOid(dbid, InvalidOid, 0);
 
+	AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
+
 	/* create partition table */
 	audit_create_table_partition(GetCurrentTimestamp());
 	audit_create_table_partition(GetCurrentTimestamp() + USECS_PER_DAY);
@@ -13879,6 +13937,8 @@ void pg_audit_launch_drop_table(Datum main_arg)
 
 	/* Connect to our database. */
 	BackgroundWorkerInitializeConnectionByOid(dbid, InvalidOid, 0);
+
+	AUDIT_SET_IGNORE_SYNC (true);  // OA:2290
 
 	/* drop partiton table */
 	audit_drop_table_partition();
@@ -14583,3 +14643,12 @@ static bool audit_check_ip_hook(char **newvalue, void **extra, GucSource source)
 	return true;
 }
 
+/* Begin OA:2290 */
+static bool audit_is_in_transaction(void)
+{
+	if (audit_GUC.ignore_sync_lsn == AUDIT_ON)
+		return audit_transaction;
+	else
+		return false;
+}
+/* End OA:2290 */

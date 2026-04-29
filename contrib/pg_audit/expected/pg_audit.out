@@ -1418,7 +1418,8 @@ select * from hg_security.show_audit_param();
  audit.exclude_users     | 
  audit.exclude_time      | 
  audit.exclude_ips       | 
-(20 rows)
+ audit.ignore_sync_lsn   | on
+(21 rows)
 
 /* audit.app */
 truncate hg_security.pg_audit_log;

@@ -3,6 +3,8 @@
 MODULE_big = pg_audit
 OBJS = pg_audit.o  $(WIN32RES)
 
+TAP_TESTS = 1
+
 EXTENSION = pg_audit
 
 PGFILEDESC = "pg_audit - hgdb audit control"

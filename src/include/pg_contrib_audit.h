@@ -473,6 +473,7 @@ typedef struct AduitSwitchGUC
 	int audit_endtime;
 	char *exclude_ips;
 	List *exclude_ips_list;
+	AuditSwitch ignore_sync_lsn;
 }AduitSwitchGUC;
 
 extern bool receive_sighup;
@@ -542,5 +543,10 @@ extern PGDLLIMPORT user_login_history_info_hook user_login_history_info;
 /* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
 extern void deal_with_system_event_temp(AuditSystemEvent event,AuditResult result);
+
+/* Begin OA:2290 */
+typedef bool (*get_audit_transaction) (void);
+extern PGDLLIMPORT get_audit_transaction get_audit_transaction_hook;
+/* End OA:2290 */
 
 #endif
