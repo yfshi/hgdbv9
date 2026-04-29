@@ -24,14 +24,35 @@
 #include "utils/guc.h"
 #include "libpq/be-secure-tlcp.h"
 #include "utils/elog.h"
+/* Begin - BUG#Z7577 */
+#include <gmssl/asn1.h>
+#include <gmssl/oid.h>
+#include <gmssl/x509.h>
+/* End - BUG#Z7577 */
 
 static TLS_CTX tlcp_ctx;
 static TLS_CONNECT tlcp_conn;
 
 static bool ssl_is_server_start;
 
-static int
-tlcp_get_pass(const char *tlcp_pass_file, bool isServerStart);
+static int tlcp_get_pass(const char *tlcp_pass_file, bool isServerStart);
+/* Begin - BUG#Z7577 */
+static int x509_get_directory_name(char *str,int str_len, int fmt, int ind, const char *label,
+						int tag, const uint8_t *d, size_t dlen);
+static int tlcp_format_print(char *buffer, int buff_len, int format,
+			int indent, const char *str, const char *label, const char *name);
+static void x509_get_object_identifier(char *str,int str_len, int format, int indent,
+							const char *label, const char *name,
+							const uint32_t *nodes, size_t nodes_cnt);
+static void tlcp_format_string(char *str,int str_len, int fmt, int ind,
+					const char *label, const uint8_t *d, size_t dlen);
+static int x509_get_attr_type_and_value(char *str,int str_len, int fmt, int ind, const char *label,
+										const uint8_t *d, size_t dlen);
+static int x509_get_rdn(char *str,int str_len, int fmt, int ind,
+						const char *label, const uint8_t *d, size_t dlen);
+static int x509_get_name(char *str,int str_len, int fmt, int ind, const char *label,
+						const uint8_t *d, size_t dlen);
+/* End - BUG#Z7577 */
 
 int
 be_tlcp_init(bool isServerStart)
@@ -309,6 +330,339 @@ tlcp_get_pass(const char *tlcp_pass_file, bool isServerStart)
 
 	return 1;
 }
+
+/* Begin - BUG#Z7577 */
+static int
+x509_get_directory_name(char *str,int str_len, int fmt, int ind, const char *label,
+						int tag, const uint8_t *d, size_t dlen)
+{
+	const uint8_t *ptr = d;
+	size_t tmp_dlen = dlen;
+	int use_len = 0;
+	int remaind_len = 0;
+	int i = 0;
+
+	if (label == NULL)
+		return 1;
+
+	use_len = strlen(str);
+
+	remaind_len = str_len - use_len - 1;
+	if (strcmp("countryName", label) == 0)
+	{
+		snprintf(str + use_len, remaind_len, "/C=");
+	}
+	else if (strcmp("stateOrProvinceName", label) == 0)
+	{
+		snprintf(str + use_len, remaind_len, "/ST=");
+	}
+	else if (strcmp("localityName", label) == 0)
+	{
+		snprintf(str + use_len, remaind_len, "/L=");
+	}
+	else if (strcmp("organizationName", label) == 0)
+	{
+		snprintf(str + use_len, remaind_len, "/O=");
+	}
+	else if (strcmp("organizationalUnitName", label) == 0)
+	{
+		snprintf(str + use_len, remaind_len, "/OU=");
+	}
+	else if (strcmp("commonName", label) == 0)
+	{
+		snprintf(str + use_len, remaind_len, "/CN=");
+	}
+	else
+	{
+		while (tmp_dlen--)
+		{
+			ptr++;
+		}
+		return 1;
+	}
+
+	use_len = strlen(str);
+	remaind_len = str_len - use_len - tmp_dlen;
+	if (use_len + tmp_dlen > str_len)
+		remaind_len = str_len - use_len;
+
+	for (i = 0; i < tmp_dlen; i++)
+	{
+		snprintf(str + use_len + i, remaind_len - i, "%c", *ptr++);
+	}
+
+	return 1;
+}
+
+static int
+tlcp_format_print(char *buffer, int buff_len, int format,
+			int indent, const char *str, const char *label, const char *name)
+{
+	int i;
+	int len = 0;
+
+	/* check buffer is enough */
+	len = strlen(buffer);
+	if (len + indent > buff_len)
+	{
+		return 1;
+	}
+
+	for (i = 0; i < indent; i++)
+	{
+		snprintf(buffer + len + i, buff_len - len - i, " ");
+	}
+
+	len = strlen(buffer);
+	snprintf(buffer + len, buff_len - len, "%s%s", label, name);
+
+	return 1;
+}
+
+static void
+x509_get_object_identifier(char *str,int str_len, int format, int indent,
+							const char *label, const char *name,
+							const uint32_t *nodes, size_t nodes_cnt)
+{
+	size_t i;
+	int len = 0;
+
+	tlcp_format_print(str, str_len, format, indent, "%s: %s", label, name ? name : "(unknown)");
+	if (nodes)
+	{
+		len = strlen(str);
+		snprintf(str + len, str_len - len, " (");
+		len = strlen(str);
+		for (i = 0; i < nodes_cnt - 1; i++)
+		{
+			snprintf(str + len + i, str_len - len - i, "%d.", (int)nodes[i]);
+		}
+
+		len = strlen(str);
+		snprintf(str + len, str_len - len, "%d)", nodes[i]);
+	}
+
+	return;
+}
+
+
+static void
+tlcp_format_string(char *str,int str_len, int fmt, int ind, const char *label, const uint8_t *d, size_t dlen)
+{
+	int len = 0;
+	int i = 0;
+
+	/* check buffer is enough */
+	len = strlen(str);
+	if (len + ind + dlen > str_len)
+	{
+		while (dlen--)
+		{
+			d++;
+		}
+
+		return;
+	}
+
+	/* print "   " */
+	for (i = 0; i < ind; i++)
+	{
+		snprintf(str + len + i, str_len - len - i, " ");
+	}
+
+	/* print key */
+	len = strlen(str);
+	snprintf(str + len, str_len - len, "/%s=", label);
+
+	/* print value */
+	for (i = 0; i < dlen; i++)
+	{
+		snprintf(str + len + i, str_len - len - i, "%c", *d++);
+	}
+
+	return;
+}
+
+/* get type and value */
+static int
+x509_get_attr_type_and_value(char *str,int str_len, int fmt, int ind, const char *label,
+										const uint8_t *d, size_t dlen)
+{
+	int oid, tag;
+	const uint8_t *val;
+	size_t vlen;
+
+	if (fmt & ASN1_FMT_FULL)
+	{
+		ind += 4;
+
+		if (x509_name_type_from_der(&oid, &d, &dlen) != 1)
+			goto err;
+
+		x509_get_object_identifier(str, str_len, fmt, ind, "type", x509_name_type_name(oid), NULL, 0);
+
+		if (oid == OID_email_address)
+		{
+			if (asn1_ia5_string_from_der((const char **)&val, &vlen, &d, &dlen) != 1)
+				goto err;
+
+			tlcp_format_string(str, str_len, fmt, ind, "value", val, vlen);
+		}
+		else
+		{
+			if (x509_directory_name_from_der(&tag, &val, &vlen, &d, &dlen) != 1)
+				goto err;
+
+			x509_get_directory_name(str, str_len, fmt, ind, "value", tag, val, vlen);
+		}
+	}
+	else
+	{
+		if (x509_name_type_from_der(&oid, &d, &dlen) != 1)
+		{
+			goto err;
+		}
+
+		if (oid == OID_email_address)
+		{
+			if (asn1_ia5_string_from_der((const char **)&val, &vlen, &d, &dlen) != 1)
+				goto err;
+			tlcp_format_string(str, str_len, fmt, ind, "emailAddress", val, vlen);
+		}
+		else
+		{
+			if (x509_directory_name_from_der(&tag, &val, &vlen, &d, &dlen) != 1)
+				goto err;
+
+			x509_get_directory_name(str, str_len, fmt, ind, x509_name_type_name(oid), tag, val, vlen);
+		}
+	}
+
+	if (asn1_length_is_zero(dlen) != 1)
+		goto err;
+
+	return 1;
+err:
+	ereport(WARNING, errmsg("Get ssl_client_dn or ssl_issuer_dn info fail"));
+	return -1;
+}
+
+/* get and parser rnd info */
+static int x509_get_rdn(char *str,int str_len, int fmt, int ind,
+						const char *label, const uint8_t *d, size_t dlen)
+{
+	const uint8_t *p = NULL;
+	size_t len;
+	int cur_len = 0;
+
+	if (fmt & ASN1_FMT_FULL)
+	{
+		cur_len = strlen(str);
+		snprintf(str + strlen(str), str_len - cur_len, "%s\n", label);
+		ind += 4;
+	}
+
+	if (asn1_sequence_from_der(&p, &len, &d, &dlen) != 1)
+	{
+		return -1;
+	}
+	x509_get_attr_type_and_value(str, str_len, fmt, ind, "AttributeTypeAndValue", p, len);
+
+	while (dlen)
+	{
+		if (asn1_sequence_from_der(&p, &len, &d, &dlen) != 1)
+		{
+			return -1;
+		}
+		x509_get_attr_type_and_value(str, str_len, fmt, ind + 4, "AttributeTypeAndValue", p, len);
+	}
+
+	return 1;
+}
+
+/* public function :get subject or issuer name */
+static int
+x509_get_name(char *str,int str_len, int fmt, int ind, const char *label, const uint8_t *d, size_t dlen)
+{
+	const uint8_t *p;
+	size_t len;
+
+	if (label)
+	{
+		ind += 4;
+	}
+
+	while (dlen)
+	{
+		if (asn1_set_from_der(&p, &len, &d, &dlen) != 1)
+		{
+			return -1;
+		}
+
+		x509_get_rdn(str, str_len, fmt, ind, "RelativeDistinguishedName", p, len);
+	}
+	return 1;
+}
+
+/* get issuer name and serial number */
+void
+be_tlcp_get_issuer_and_serial(Port *port, char *serial, size_t serial_len,
+											 char *issuer_dn, size_t issuer_dn_len)
+{
+	const uint8_t *serial_number;
+	size_t serial_number_len;
+	const uint8_t *issuer;
+	size_t issuer_len;
+
+	char *cur_serial = serial;
+
+	if (port && port->tlcp_conn && port->tlcp_conn->client_certs_len != 0)
+	{
+		x509_cert_get_issuer_and_serial_number(port->tlcp_conn->client_certs,
+											port->tlcp_conn->client_certs_len,
+											&issuer, &issuer_len, &serial_number, &serial_number_len);
+		memset(cur_serial, '\0', serial_len);
+		for (int i = 0; i < serial_number_len; i++)
+		{
+			if (serial_len - i <= 0)
+				break;
+
+			snprintf(cur_serial + i, serial_len - i, "%d", serial_number[i]);
+		}
+
+		x509_get_name(issuer_dn, issuer_dn_len, 0, 4, "issuer", issuer, issuer_len);
+	}
+	else
+	{
+		serial[0] = '\0';
+		issuer_dn[0] = '\0';
+	}
+
+	return;
+}
+
+/* get subject name */
+void
+be_tlcp_get_subject_name(Port *port, char *client_dn, size_t client_dn_len)
+{
+	const uint8_t *subject = NULL;
+	size_t subject_len;
+
+	if (port && port->tlcp_conn && port->tlcp_conn->client_certs_len != 0)
+	{
+		x509_cert_get_subject(port->tlcp_conn->client_certs, port->tlcp_conn->client_certs_len,
+			&subject, &subject_len);
+
+		x509_get_name(client_dn, client_dn_len, 0, 4, "subject", subject, subject_len);
+	}
+	else
+	{
+		client_dn[0] = '\0';
+	}
+
+	return;
+}
+/* End - BUG#Z7577 */
 
 #endif
 /* End - ReqID:SRS-SECURITY-TLCP */

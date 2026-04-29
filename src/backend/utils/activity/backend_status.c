@@ -464,9 +464,11 @@ pgstat_bestart(void)
 			else
 				lsslstatus.ssl_cipher[0]='\0';
 
-			lsslstatus.ssl_client_dn[0] = '\0';
-			lsslstatus.ssl_client_serial[0] = '\0';
-			lsslstatus.ssl_issuer_dn[0] = '\0';
+			/* Begin - BUG#Z7577 */
+			be_tlcp_get_subject_name(MyProcPort, lsslstatus.ssl_client_dn, NAMEDATALEN);
+			be_tlcp_get_issuer_and_serial(MyProcPort, lsslstatus.ssl_client_serial, NAMEDATALEN,
+											lsslstatus.ssl_issuer_dn, NAMEDATALEN);
+			/* End - BUG#Z7577 */
 		}
 		else
 #endif
