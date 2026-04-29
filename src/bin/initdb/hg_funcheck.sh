@@ -6,7 +6,7 @@ echo "$SCRIPT_DIR"
 function initmd5 {
 	if ! command -v md5sum > /dev/null 2>&1; then
 		echo "md5sum command not found!"
-		exit 1
+		exit 2
 	fi
 	md5=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` `find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | md5sum | awk '{print $1}')
 	echo ${md5} > $SCRIPT_DIR/etc/.md5
@@ -16,7 +16,7 @@ function initmd5 {
 function checkmd5 {
 	if ! command -v md5sum > /dev/null 2>&1; then
 		echo "md5sum command not found!"
-		exit 1
+		exit 2
 	fi
 	oldmd5=$(cat $SCRIPT_DIR/etc/.md5)
 	newmd5=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` `find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | md5sum | awk '{print $1}')
