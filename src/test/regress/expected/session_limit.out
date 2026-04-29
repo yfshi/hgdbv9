@@ -1,0 +1,192 @@
+show session_limit;
+ session_limit 
+---------------
+ -1
+(1 row)
+
+create user testuser1;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser1';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser1 |           -1
+(1 row)
+
+create user testuser2;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser2';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser2 |           -1
+(1 row)
+
+create user testuser3;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser3';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser3 |           -1
+(1 row)
+
+alter system set session_limit to 0;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show session_limit;
+ session_limit 
+---------------
+ 0
+(1 row)
+
+create user testuser4;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser4';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser4 |            0
+(1 row)
+
+alter system set session_limit to 100;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show session_limit;
+ session_limit 
+---------------
+ 100
+(1 row)
+
+create user testuser5;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser5';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser5 |          100
+(1 row)
+
+alter system set session_limit to 10;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+create user testuser6;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser6';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser6 |           10
+(1 row)
+
+alter system set session_limit to -1;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+show session_limit;
+ session_limit 
+---------------
+ -1
+(1 row)
+
+create user testuser7;
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser7';
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser7 |           -1
+(1 row)
+
+select rolname, rolconnlimit from pg_authid where rolname = 'testuser1' or rolname = 'testuser2' or rolname = 'testuser3' or rolname = 'testuser4' or rolname = 'testuser5' or rolname = 'testuser6' or rolname = 'testuser7' order by rolname;
+  rolname  | rolconnlimit 
+-----------+--------------
+ testuser1 |           -1
+ testuser2 |           -1
+ testuser3 |           -1
+ testuser4 |            0
+ testuser5 |          100
+ testuser6 |           10
+ testuser7 |           -1
+(7 rows)
+
+drop user testuser1;
+drop user testuser2;
+drop user testuser3;
+drop user testuser4;
+drop user testuser5;
+drop user testuser6;
+drop user testuser7;
+alter system set session_limit to -2;
+ERROR:  -2 is outside the valid range for parameter "session_limit" (-1 .. 1024)
+alter system set session_limit to 1025;
+ERROR:  1025 is outside the valid range for parameter "session_limit" (-1 .. 1024)
+--privilege test
+create user usr1;
+create user session_limit_super superuser;
+create user dba_user;
+create user sso_user;
+create user sao_user;
+grant sysdba_role to dba_user;
+grant syssso_role to sso_user;
+grant syssao_role to sao_user;
+\c - usr1
+alter system set session_limit to -1; --error
+ERROR:  permission denied
+\c - session_limit_super
+alter system set session_limit to -1;
+\c - dba_user
+alter system set session_limit to -1;
+\c - sso_user
+alter system set session_limit to -1; --error
+ERROR:  permission denied
+\c - sao_user
+alter system set session_limit to -1; --error
+ERROR:  permission denied
+--three privilege enable
+\c - session_limit_super
+set se_feature.mode to on;
+alter system set session_limit to -1; --error
+ERROR:  permission denied
+\c - dba_user
+set se_feature.mode to on;
+alter system set session_limit to -1;
+\c - sso_user
+set se_feature.mode to on;
+alter system set session_limit to -1; --error
+ERROR:  permission denied
+\c - sao_user
+set se_feature.mode to on;
+ERROR:  Only syssso users can set this value
+alter system set session_limit to -1; --error
+ERROR:  permission denied
+\c - session_limit_super
+drop user usr1;
+drop user dba_user;
+drop user sso_user;
+drop user sao_user;
