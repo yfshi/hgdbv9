@@ -44,6 +44,7 @@
 #include "catalog/heap.h"
 #include "access/tableam.h"
 #include "commands/extension.h"
+#include "pg_contrib_audit.h"  // ReqID:SRS-SECURITY-AUDIT
 
 /* cluster level max size of black list */
 #define MAX_DISK_QUOTA_BLACK_ENTRIES (1024 * 1024)
@@ -920,6 +921,12 @@ quota_check_common(Oid ownerOid, Oid nsOid)
 		if (found)
 		{
 			LWLockRelease(diskquota_locks.black_map_lock);
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 			ereport(ERROR,
 					(errcode(ERRCODE_DISK_FULL),
 					 errmsg("schema's disk space quota exceeded")));
@@ -938,6 +945,13 @@ quota_check_common(Oid ownerOid, Oid nsOid)
 		if (found)
 		{
 			LWLockRelease(diskquota_locks.black_map_lock);
+
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 			ereport(ERROR,
 					(errcode(ERRCODE_DISK_FULL),
 					 errmsg("role's disk space quota exceeded")));

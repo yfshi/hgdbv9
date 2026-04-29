@@ -62,6 +62,7 @@
 #include "utils/varlena.h"
 #include "utils/ora_compatible.h"
 #include "access/xact.h"
+#include "pg_contrib_audit.h" //  Begin - ReqID:SRS-SECURITY-AUDIT
 
 #ifdef ENABLE_DKY_BETA_FEATURE
 /* Begin - ReqID:DKY-ONLINE-FILECHECK */
@@ -451,6 +452,12 @@ checkOnlineFile(void)
 	/* open old file PG_AUTOCONF_FILENAME */
 	FILE	   *infile;
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+	bool flag = true;
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 	snprintf(checkfilepath, MAXPGPATH, "%s/%s", DataDir, CONFIG_CHECK_FILENAME);
 
 	infile = AllocateFile(checkfilepath, "r");
@@ -480,10 +487,31 @@ checkOnlineFile(void)
 					(errmsg("\"%s\" is \"%s\" ---- check ok",
 							item->name, item->value)));
 		else
+		{
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+			flag = false;
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 			ereport(WARNING,
 					(errmsg("\"%s\" is \"%s\" , system set is \"%s\" ---- check warrning",
 							item->name, item->value, getval)));
+		}
 	}
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+	if (sqlite_open_db_for_audit_hook)
+	{
+		if (flag)
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC, AUDIT_SUCCESS, NULL, NULL);
+		else
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC, AUDIT_FAIL, NULL, NULL);
+	}
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 }
 /* End - ReqID:DKY-ONLINE-FILECHECK */
 #endif

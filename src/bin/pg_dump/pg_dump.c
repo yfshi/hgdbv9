@@ -129,6 +129,8 @@ char role_catalog[ROLE_CATALOG_LENGTH];
 int	no_role_passwords = 0;
 /* END - ReqID:SRS-MISC-USER */
 
+#define PG_DUMP_PRE "pg_dump pre"  // ReqID:SRS-SECURITY-AUDIT
+
 /* global decls */
 bool dosync = true;		/* Issue fsync() to make dump durable on disk. */
 
@@ -1276,7 +1278,7 @@ ConnectDatabasefordatabase_mode(const ConnParams *cparams, bool isReconnect, cha
 			values[i++] = cparams->override_dbname;
 		}
 		keywords[i] = "fallback_application_name";
-		values[i++] = progname;
+		values[i++] = PG_DUMP_PRE;  // ReqID:SRS-SECURITY-AUDIT
 		keywords[i] = NULL;
 		values[i++] = NULL;
 		Assert(i <= lengthof(keywords));

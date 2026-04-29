@@ -72,6 +72,10 @@
 #include "catalog/pg_access_history_last.h"
 /* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 /* Default passord encryption */
 #define Password_encryption = PASSWORD_TYPE_SCRAM_SHA_256;
 /* Name of external file to store password history in the PGDATA */
@@ -2546,7 +2550,17 @@ credcheck_max_auth_failure(Port *port, int status)
 			global_fail_num = fail_num;
 			/* register the auth failure if we not reach allowed max failure */
 			if (status == STATUS_ERROR && fail_num < fail_max)
-				save_auth_failure(port->user_name, &key);
+			{
+				if (save_auth_failure(port->user_name, &key) >= fail_max)
+				{
+					/* Begin - ReqID:SRS-SECURITY-AUDIT */
+					#ifdef USE_SQLITE
+						if (sqlite_open_db_for_audit_hook)
+							sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOCK_USER, AUDIT_SUCCESS, port->user_name, NULL);
+					#endif
+					/* End - ReqID:SRS-SECURITY-AUDIT */
+				}
+			}
 
 			/* reject, this account has been banned */
 			if (fail_num >= fail_max)
@@ -2567,10 +2581,17 @@ credcheck_max_auth_failure(Port *port, int status)
 					if (reset_time > 0 && result > reset_time * 60)
 					{
 						remove_auth_failure(port->user_name, &key);
+						/* Begin - ReqID:SRS-SECURITY-AUDIT */
+						#ifdef USE_SQLITE
+							if (sqlite_open_db_for_audit_hook)
+								sqlite_open_db_for_audit_hook(SYSTEMAUDIT_TIMEOUT_UNLOCK_USER,
+															AUDIT_SUCCESS, port->user_name, NULL);
+						#endif
+						/* End - ReqID:SRS-SECURITY-AUDIT */
 					}
 					else
 					{
-						ereport(FATAL, (errmsg("rejecting connection, user \"%s\" has been banned", port->user_name)));
+						ereport(FATAL, (errcode(ERRCODE_CONNECTION_FAILURE), errmsg("rejecting connection, user \"%s\" has been banned", port->user_name)));
 					}
 				}
 			}
@@ -2740,6 +2761,13 @@ Datum pg_banned_role_reset(PG_FUNCTION_ARGS)
 	}
 
 	LWLockRelease(pgaf->lock);
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef USE_SQLITE
+	if (sqlite_open_db_for_audit_hook)
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_UNLOCK_USER, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	PG_RETURN_INT32(num_removed);
 }

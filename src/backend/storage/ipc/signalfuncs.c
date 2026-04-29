@@ -264,7 +264,7 @@ pg_reload_conf(PG_FUNCTION_ARGS)
 		if (sqlite_open_db_for_audit_hook)
 		{
 			char *errstr = "failed to send signal to postmaster";
-			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, MyProcPort != NULL ? MyProcPort->user_name:NULL, errstr);
 		}
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */

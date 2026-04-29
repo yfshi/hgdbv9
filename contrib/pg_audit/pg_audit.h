@@ -127,6 +127,9 @@
 #define DROP_SYNONYM_S  "DROP SYNONYM"
 /* End - BUG#Z5807 */
 
+#define CREATE_GROUP_S "CREATE GROUP"
+#define ALTER_GROUP_S "ALTER GROUP"
+#define DROP_GROUP_S "DROP GROUP"
 
 #define ALL_S			"ALL"
 
@@ -140,9 +143,8 @@
 #define PG_SECMON_HISTORY_INDEX "pg_secmon_history_audttime_ruleoid_idx"
 #define	PG_SECMON_THRESHOLD_HISTORY "pg_secmon_thrhis"
 
-/*
-…Ûº∆”Ôæ‰¿‡–Õ
-*/
+#define SYSTEM_USER "system"
+#define SYSSAO_USER "syssao"
 
 #define AUDIT_TYPE_SYSYEM_S "system"
 #define AUDIT_TYPE_STATEMENT_S "statement"

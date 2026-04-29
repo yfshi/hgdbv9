@@ -2442,6 +2442,11 @@ bin_consistency_check(const char *argv0)
 	if (find_my_exec(argv0, my_exec_path) < 0)
 	{
 		fprintf(stderr, _("%s: could not find own program executable\n"), progname);
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
+			audit_tools(pg_data, "pg_ctl", 'f', 'y', "INTEGRITY CHECK BIN", "pg_ctl: bin consistemcy check fail");
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 		exit(1);
 	}
 	lastsep = strrchr(my_exec_path, '/');
@@ -2451,9 +2456,20 @@ bin_consistency_check(const char *argv0)
 	return_sys = system(command);
 	if (WIFEXITED(return_sys) && WEXITSTATUS(return_sys) == MD_CHECK_FILS)
 	{
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
+			audit_tools(pg_data, "pg_ctl", 'f', 'y', "INTEGRITY CHECK BIN", "pg_ctl: bin consistemcy check fail");
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 		write_stderr(_("Bin file Consistency check failed : could not start server\n"));
 		exit(1);
 	}
+
+	/* Begin - ReqID:SRS-SECURITY-AUDIT */
+	#if defined (ENABLE_DKY_BETA_FEATURE) && defined (USE_SQLITE)
+		audit_tools(pg_data, "pg_ctl", 's', 'y', "INTEGRITY CHECK BIN", "");
+	#endif
+	/* End - ReqID:SRS-SECURITY-AUDIT */
 	write_stderr(_("Bin file Consistency check : successful\n"));
 #endif
 }
