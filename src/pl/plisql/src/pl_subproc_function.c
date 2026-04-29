@@ -137,7 +137,8 @@ static subprocFuncCandidateList plisql_func_select_candidate(int nargs,
 static List *plisql_expand_and_reorder_functionargs(ParseState *pstate,
 																	PLiSQL_subproc_function *subprocfunc,
 																	int funcnarg, List *fargs,
-																	List *defaultnumber, List **argdefaults);
+																	List *defaultnumber, List **argdefaults,
+																	bool parse_package); /* OA#00002227 */
 static TypeFuncClass internal_get_subprocfunc_result_type(PLiSQL_subproc_function *subprocfunc,
 																		Node *call_expr,
 																		ReturnSetInfo *rsinfo,
@@ -148,7 +149,8 @@ static void plisql_subprocfunc_HashTableInsert(HTAB *hashp,
 						PLiSQL_function *function,
 						PLiSQL_func_hashkey *func_key);
 static Node *plisql_get_subprocfunc_argdefaults(ParseState *pstate,
-											PLiSQL_subproc_function *subprocfunc, int argno);
+											PLiSQL_subproc_function *subprocfunc, int argno,
+											bool parse_package); /* OA#00002227 */
 static void plisql_init_subprocfunc_compile(PLiSQL_subproc_function *subprocfunc);
 static void plsql_init_glovalvar_from_stack(PLiSQL_execstate *estate, int dno,
 														int *start_level);
@@ -167,6 +169,10 @@ static void plisql_pop_datums(void);
 static void plisql_push_label(void);
 static void plisql_pop_label(void);
 /* End - ReqID:SRS-PLSQL-GOTO */
+
+/* Begin - OA#00002227 */
+static Node *plisql_get_argitem_default_node(ParseState *pstate, char *arg_query);
+/* End - OA#00002227*/
 
 
 /*
@@ -345,6 +351,39 @@ plisql_pop_label(void)
 
 	plisql_set_label_compile_context(plisql_saved_label_context[cur_compile_func_level]);
 }
+
+/* Begin - OA#00002227 */
+static Node*
+plisql_get_argitem_default_node(ParseState *pstate, char *arg_query)
+{
+	RawStmt *rawnode;
+	List *rawlist;
+	SelectStmt *selectnode;
+	ResTarget *res;
+	Node *sql_expr;
+
+	rawlist = raw_parser(arg_query, RAW_PARSE_PLISQL_EXPR); /* BUG:M0000079 */
+	if (list_length(rawlist) != 1)
+		elog(ERROR, "invalid argitem default expr '%s'", arg_query);
+
+	rawnode = (RawStmt *) linitial(rawlist);
+
+	selectnode = (SelectStmt *) rawnode->stmt;
+
+	Assert(nodeTag(selectnode) == T_SelectStmt);
+
+	if (list_length(selectnode->targetList) != 1)
+		elog(ERROR, "more than one target for argitem default expr '%s'", arg_query);
+
+	res = (ResTarget*) linitial(selectnode->targetList);
+
+	sql_expr = transformExpr(pstate, res->val, EXPR_KIND_FUNCTION_DEFAULT);
+	Assert(sql_expr != NULL);
+
+	return sql_expr;
+}
+/* End - OA#00002227*/
+
 
 
 /*
@@ -1189,6 +1228,10 @@ plisql_register_internal_func(void)
 	/* Begin - BUG#M0000432 */
 	plisql_internal_funcs.get_subproc_deterministic = plisql_get_subproc_deterministic;
 	/* End - BUG#M0000432 */
+	/* Begin - OA#00002227 */
+	plisql_internal_funcs.build_gparam_from_package = plisql_build_gparam_from_package;
+	plisql_internal_funcs.get_package_globalvar_value = plisql_get_package_globalvar_value;
+	/* End - OA#00002227*/
 
 	plisql_internal_funcs.isload = true;
 }
@@ -1770,8 +1813,11 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 											Oid **true_typeids, /* return value */
 											List **argdefaults, /* return value */
 											/* Begin - ReqID:SRS-PLSQL-RECORD */
-											bool has_udt_type)
+											bool has_udt_type,
 											/* End - ReqID:SRS-PLSQL-RECORD */
+											/* Begin - OA#00002227 */
+											bool parse_package)
+											/* End - OA#00002227*/
 {
 	subprocFuncCandidateList raw_candidates;
 	subprocFuncCandidateList best_candidate = NULL;
@@ -1916,7 +1962,7 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 			/* End - BUG#M0000307 */
 
 			*fargs = plisql_expand_and_reorder_functionargs(pstate, subprocfunc, best_candidate->nargs,
-									*fargs, defaultnumber, argdefaults);
+									*fargs, defaultnumber, argdefaults, parse_package); /* OA#00002227 */
 			/* Begin - BUG#M0000307 */
 			/* reorder true_types */
 			newoid = palloc(sizeof(Oid) * list_length(subprocfunc->arg));
@@ -3015,7 +3061,8 @@ plisql_func_select_candidate(int nargs,
 static List *
 plisql_expand_and_reorder_functionargs(ParseState *pstate, PLiSQL_subproc_function *subprocfunc,
 													int funcnarg, List *fargs,
-													List *defaultnumber, List **argdefaults)
+													List *defaultnumber, List **argdefaults,
+													bool parse_package) /* OA#00002227 */
 {
 	Node	   *argarray[FUNC_MAX_ARGS];
 	int i;
@@ -3061,7 +3108,8 @@ plisql_expand_and_reorder_functionargs(ParseState *pstate, PLiSQL_subproc_functi
 
 			Assert(argarray[argno] == NULL);
 
-			argdefault = plisql_get_subprocfunc_argdefaults(pstate, subprocfunc, argno);
+			argdefault = plisql_get_subprocfunc_argdefaults(pstate, subprocfunc,
+										argno, parse_package); /* OA#00002227 */
 			argarray[argno] = (Node *) copyObject(argdefault);
 			if (argdefaults != NULL)
 				*argdefaults = lappend(*argdefaults, argdefault);
@@ -3414,49 +3462,82 @@ plisql_subprocfunc_HashTableInsert(HTAB *hashp, PLiSQL_function *function,
  * default expr
  */
 static Node *
-plisql_get_subprocfunc_argdefaults(ParseState *pstate, PLiSQL_subproc_function *subprocfunc, int argno)
+plisql_get_subprocfunc_argdefaults(ParseState *pstate, PLiSQL_subproc_function *subprocfunc,
+							int argno, bool parse_package) /* OA#00002227 */
 {
 	Node *default_node;
 	PLiSQL_function_argitem *argitem = list_nth(subprocfunc->arg, argno);
 
 	Assert(argitem != NULL && argitem->defexpr != NULL);
 
-	if (argitem->default_sql_expr == NULL)
+	/* Begin - OA#00002227 */
+	/*
+	 * This scenario requires special handling: if
+	 * global variable whith an associated package servers
+	 * as default value, which default value should
+	 * generates a 'PkgGlobalVarParam struct` and calling it
+	 * other generates a 'Param`
+	 */
+	if (parse_package)
 	{
-		RawStmt *rawnode;
-		List *rawlist;
-		SelectStmt *selectnode;
-		ResTarget *res;
-		Node *sql_expr;
-		MemoryContext oldctx;
+		PackageCacheItem *item;
+		PLiSQL_package *psource;
+		char	*save_pkgname = pstate->p_pkgname;
+		Oid 		define_userid = InvalidOid;
+		Oid 		save_userid;
+		int 		save_sec_context;
+		Oid			current_user = GetUserId();
+		PreParseColumnRefHook p_pre_columnref_hook = pstate->p_pre_columnref_hook;
+		PostParseColumnRefHook p_post_columnref_hook = pstate->p_post_columnref_hook;
+		HeapTuple pkgTup;
+		Form_pg_package pkgStruct;
 
-		Assert(argitem->defexpr->query != NULL);
+		if (subprocfunc->function->item == NULL)
+			elog(ERROR, "not package func");
 
-		rawlist = raw_parser(argitem->defexpr->query, RAW_PARSE_PLISQL_EXPR); /* BUG:M0000079 */
-		if (list_length(rawlist) != 1)
-			elog(ERROR, "invalid argitem default expr '%s'", argitem->defexpr->query);
-
-		rawnode = (RawStmt *) linitial(rawlist);
-
-		selectnode = (SelectStmt *) rawnode->stmt;
-
-		Assert(nodeTag(selectnode) == T_SelectStmt);
-
-		if (list_length(selectnode->targetList) != 1)
-			elog(ERROR, "more than one target for argitem default expr '%s'", argitem->defexpr->query);
-
-		res = (ResTarget*) linitial(selectnode->targetList);
-
-		sql_expr = transformExpr(pstate, res->val, EXPR_KIND_FUNCTION_DEFAULT);
-		Assert(sql_expr != NULL);
-
-		/* saved in function memory context */
-		oldctx = MemoryContextSwitchTo(subprocfunc->function->fn_cxt);
-		argitem->default_sql_expr = (Node *) copyObject(sql_expr);
-		MemoryContextSwitchTo(oldctx);
+		item = subprocfunc->function->item;
+		psource = (PLiSQL_package *) item->source;
+		/* ingore local function datum */
+		pstate->p_pre_columnref_hook = NULL;
+		pstate->p_post_columnref_hook = NULL;
+		pstate->p_pkgname = psource->source.fn_signature;
+		/* check owner like do_compile */
+		pkgTup = SearchSysCacheCopy1(PKGOID, ObjectIdGetDatum(item->pkey));
+		if (!HeapTupleIsValid(pkgTup))
+			elog(ERROR, "cache lookup failed for package %u", item->pkey);
+		pkgStruct = (Form_pg_package) GETSTRUCT(pkgTup);
+		define_userid = pkgStruct->pkgowner;
+		heap_freetuple(pkgTup);
+		if (define_userid != current_user)
+		{
+			GetUserIdAndSecContext(&save_userid, &save_sec_context);
+			SetUserIdAndSecContext(define_userid,
+									save_sec_context | SECURITY_LOCAL_USERID_CHANGE);
+		}
+		default_node = plisql_get_argitem_default_node(pstate, argitem->defexpr->query);
+		/* recover */
+		pstate->p_pre_columnref_hook = p_pre_columnref_hook;
+		pstate->p_post_columnref_hook = p_post_columnref_hook;
+		pstate->p_pkgname = save_pkgname;
+		if (define_userid != current_user)
+			SetUserIdAndSecContext(save_userid, save_sec_context);
 	}
+	else
+	{
+		if (argitem->default_sql_expr == NULL)
+		{
+			Node *sql_expr;
+			MemoryContext oldctx;
 
-	default_node = (Node *) copyObject(argitem->default_sql_expr);
+			sql_expr = plisql_get_argitem_default_node(pstate, argitem->defexpr->query);
+
+			/* saved in function memory context */
+			oldctx = MemoryContextSwitchTo(subprocfunc->function->fn_cxt);
+			argitem->default_sql_expr = (Node *) copyObject(sql_expr);
+			MemoryContextSwitchTo(oldctx);
+		}
+		default_node = (Node *) copyObject(argitem->default_sql_expr);
+	}
 
 	return default_node;
 }
@@ -3858,8 +3939,11 @@ plisql_subprocfunc_ref(ParseState *pstate, List *funcname,
 											true_typeids, /* return value */
 											argdefaults,  /* return value */
 											/* Begin - ReqID:SRS-PLSQL-RECORD */
-											has_udt_type);
+											has_udt_type,
 											/* End - ReqID:SRS-PLSQL-RECORD */
+											/* Begin - OA#00002227 */
+											false);
+											/* End - OA#00002227*/
 	if (detail != FUNCDETAIL_NORMAL &&
 		detail != FUNCDETAIL_PROCEDURE)
 		elog(ERROR, "wrong number or types of arguments in call to \"%s\"", func_name);

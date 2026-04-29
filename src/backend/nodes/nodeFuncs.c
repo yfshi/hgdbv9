@@ -74,6 +74,11 @@ exprType(const Node *expr)
 		case T_Param:
 			type = ((const Param *) expr)->paramtype;
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			type = ((const PkgGlobalVarParam *) expr)->vartype;
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			type = ((const Aggref *) expr)->aggtype;
 			break;
@@ -338,6 +343,10 @@ exprTypmod(const Node *expr)
 			return ((const Const *) expr)->consttypmod;
 		case T_Param:
 			return ((const Param *) expr)->paramtypmod;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			return ((const PkgGlobalVarParam *) expr)->vartypmod;
+		/* End - OA#00002227*/
 		case T_SubscriptingRef:
 			return ((const SubscriptingRef *) expr)->reftypmod;
 		case T_FuncExpr:
@@ -861,6 +870,11 @@ exprCollation(const Node *expr)
 		case T_Param:
 			coll = ((const Param *) expr)->paramcollid;
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			coll = ((const PkgGlobalVarParam *) expr)->varcollid;
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			coll = ((const Aggref *) expr)->aggcollid;
 			break;
@@ -1124,6 +1138,11 @@ exprSetCollation(Node *expr, Oid collation)
 		case T_Param:
 			((Param *) expr)->paramcollid = collation;
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			((PkgGlobalVarParam *) expr)->varcollid = collation;
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			((Aggref *) expr)->aggcollid = collation;
 			break;
@@ -1371,6 +1390,11 @@ exprLocation(const Node *expr)
 		case T_Param:
 			loc = ((const Param *) expr)->location;
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			loc = -1;
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			/* function name should always be the first thing */
 			loc = ((const Aggref *) expr)->location;
@@ -2066,6 +2090,9 @@ expression_tree_walker(Node *node,
 		case T_PseudoColVar:	/* ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 		case T_Param:
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+		/* End - OA#00002227*/
 		case T_CaseTestExpr:
 		case T_SQLValueFunction:
 		case T_CoerceToDomainValue:
@@ -2876,6 +2903,9 @@ expression_tree_mutator(Node *node,
 			}
 			break;
 		case T_Param:
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+		/* End - OA#00002227*/
 		case T_CaseTestExpr:
 		case T_SQLValueFunction:
 		case T_CoerceToDomainValue:

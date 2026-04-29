@@ -669,6 +669,19 @@ interpret_function_parameter_list(ParseState *pstate,
 						(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
 						 errmsg("cannot use table references in parameter default value")));
 
+			/* Begin - OA#00002227 */
+			/*
+			 * Make sure only plisql function can referred
+			 * to PkgGlobalVarParam
+			 */
+			if (!isplisql &&
+				contain_package_globalvar_clause(def))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+						 errmsg("only plisql language function or procedure can use package"
+						 " var in parameter default value")));
+			/* End - OA#00002227*/
+
 			/*
 			 * transformExpr() should have already rejected subqueries,
 			 * aggregates, and window functions, based on the EXPR_KIND_ for a

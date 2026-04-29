@@ -795,6 +795,28 @@ _readParam(void)
 	READ_DONE();
 }
 
+/* Begin - OA#00002227 */
+
+/*
+ * _readPkgGlobalVarParam,
+ */
+static PkgGlobalVarParam*
+_readPkgGlobalVarParam(void)
+{
+	READ_LOCALS(PkgGlobalVarParam);
+
+	READ_NODE_FIELD(varnames);
+	READ_OID_FIELD(pkgoid);
+	READ_OID_FIELD(vartype);
+	READ_INT_FIELD(vartypmod);
+	READ_OID_FIELD(varcollid);
+	READ_INT_FIELD(dno);
+
+	READ_DONE();
+}
+/* End - OA#00002227*/
+
+
 /*
  * _readAggref
  */
@@ -3550,6 +3572,8 @@ parseNodeString(void)
 	else if (MATCH("ORAPARTSUP", 10))
 		return_value = _readOraPartSup();
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	else if (MATCH("PKGGLOBALVARPARAM", 17))
+		return_value = _readPkgGlobalVarParam();
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

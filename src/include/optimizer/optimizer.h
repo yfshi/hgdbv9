@@ -201,5 +201,8 @@ extern bool contain_vars_of_level(Node *node, int levelsup);
 extern int	locate_var_of_level(Node *node, int levelsup);
 extern List *pull_var_clause(Node *node, int flags);
 extern Node *flatten_join_alias_vars(Query *query, Node *node);
+/* Begin - OA#00002227 */
+extern bool contain_package_globalvar_clause(Node *node);
+/* End - OA#00002227*/
 
 #endif							/* OPTIMIZER_H */

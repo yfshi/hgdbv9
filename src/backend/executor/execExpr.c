@@ -1291,6 +1291,19 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				break;
 			}
 
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			{
+				PkgGlobalVarParam	   *gparam = (PkgGlobalVarParam *) node;
+
+				scratch.opcode = EEOP_PKGGLOBAL_VARREF;
+				scratch.d.pkgglobalvar.gparam = gparam;
+
+				ExprEvalPushStep(state, &scratch);
+				break;
+			}
+		/* End - OA#00002227*/
+
 		case T_Aggref:
 			{
 				Aggref	   *aggref = (Aggref *) node;

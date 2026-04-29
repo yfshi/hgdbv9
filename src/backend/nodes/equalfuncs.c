@@ -255,6 +255,27 @@ _equalParam(const Param *a, const Param *b)
 	return true;
 }
 
+
+/* Begin - OA#00002227 */
+
+/*
+ * _equalPkgGlobalVarParam,
+ */
+static bool
+_equalPkgGlobalVarParam(const PkgGlobalVarParam *a, const PkgGlobalVarParam *b)
+{
+	COMPARE_NODE_FIELD(varnames);
+	COMPARE_SCALAR_FIELD(pkgoid);
+	COMPARE_SCALAR_FIELD(vartype);
+	COMPARE_SCALAR_FIELD(vartypmod);
+	COMPARE_SCALAR_FIELD(varcollid);
+	COMPARE_SCALAR_FIELD(dno);
+
+	return true;
+}
+/* End - OA#00002227*/
+
+
 static bool
 _equalAggref(const Aggref *a, const Aggref *b)
 {
@@ -3935,6 +3956,11 @@ equal(const void *a, const void *b)
 		case T_Param:
 			retval = _equalParam(a, b);
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			retval = _equalPkgGlobalVarParam(a, b);
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			retval = _equalAggref(a, b);
 			break;

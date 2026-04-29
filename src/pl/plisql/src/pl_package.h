@@ -242,6 +242,14 @@ extern char plisql_get_subproc_parallel_enable(FuncExpr *fexpr);
 extern char plisql_get_subproc_deterministic(FuncExpr *fexpr);
 /* End - BUG#M0000432 */
 
+/* Begin - OA#00002227 */
+extern PkgGlobalVarParam *plisql_build_gparam_from_package(PkgVar *var);
+extern void plisql_get_package_globalvar_value(PkgGlobalVarParam *gparam,
+												Datum *datum,
+												bool *isnull);
+/* End - OA#00002227*/
+
+
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 extern void plisql_push_compile_global_proper(void);
 extern void plisql_pop_compile_global_proper(void);

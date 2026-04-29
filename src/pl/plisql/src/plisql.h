@@ -1688,6 +1688,11 @@ extern void do_transform_for_anonyblock_expr(PLiSQL_expr *expr);
 extern PLiSQL_type *get_row_field_type(PLiSQL_type *data_type, char *name);
 /* End - ReqID:SRS-PLSQL-Collection */
 
+/* Begin - OA#00002227 */
+extern void instantiate_empty_package_record_variable(MemoryContext pkgctx, PLiSQL_rec *rec);
+/* End - OA#00002227*/
+
+
 /*
  * Functions for namespace handling in pl_funcs.c
  */

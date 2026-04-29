@@ -416,6 +416,9 @@ struct ParseState
 	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 	bool	p_tryVersionsPseudoColumn;
 	/* End - ReqID:SRS-SECURITY-FLASHBACK */
+	/* Begin - OA#00002227 */
+	char	*p_pkgname;		/* transform package function which has default value */
+	/* End - OA#00002227*/
 };
 
 /*

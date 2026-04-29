@@ -1448,6 +1448,9 @@ contain_leaked_vars_walker(Node *node, void *context)
 		case T_Var:
 		case T_Const:
 		case T_Param:
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+		/* End - OA#00002227*/
 		case T_ArrayExpr:
 		case T_FieldSelect:
 		case T_FieldStore:
@@ -2599,6 +2602,44 @@ eval_const_expressions_mutator(Node *node,
 				 */
 				return (Node *) copyObject(param);
 			}
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			{
+				PkgGlobalVarParam *gparam = (PkgGlobalVarParam *) node;
+				Node *newnode;
+				PkgGlobalVarParam *newgparam = ParsePkgGlobalVarBynames(gparam->varnames, false);
+
+				if (newgparam == NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							errmsg("package var \"%s\"  does not exists",
+								NameListToString(gparam->varnames))));
+
+				/* check type is match */
+				if (gparam->vartype != newgparam->vartype)
+				{
+					if (!can_coerce_type(1, &newgparam->vartype, &gparam->vartype, COERCION_IMPLICIT))
+						ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							errmsg("package var \"%s\" type (%s) does not match that when creating (%s)",
+								NameListToString(gparam->varnames),
+								format_type_be(newgparam->vartype),
+								format_type_be(gparam->vartype))));
+
+					newnode = coerce_type(NULL,
+							   (Node *) newgparam,
+							   newgparam->vartype,
+							   gparam->vartype,
+							   -1,
+							   COERCION_IMPLICIT,
+							   COERCE_IMPLICIT_CAST,
+							   -1);
+				}
+				else
+					newnode = (Node *) copyObject(newgparam);
+				return newnode;
+			}
+		/* End - OA#00002227*/
 		case T_WindowFunc:
 			{
 				WindowFunc *expr = (WindowFunc *) node;

@@ -84,6 +84,9 @@ static bool pull_var_clause_walker(Node *node,
 static Node *flatten_join_alias_vars_mutator(Node *node,
 											 flatten_join_alias_vars_context *context);
 static Relids alias_relid_set(Query *query, Relids relids);
+/* Begin - OA#00002227 */
+static bool contain_package_globalvar_clause_walker(Node *node, void *context);
+/* End - OA#00002227*/
 
 
 /*
@@ -918,3 +921,27 @@ alias_relid_set(Query *query, Relids relids)
 	}
 	return result;
 }
+
+/* Begin - OA#00002227 */
+static bool
+contain_package_globalvar_clause_walker(Node *node, void *context)
+{
+	if (node == NULL)
+		return false;
+
+	if (IsA(node, PkgGlobalVarParam))
+		return true;
+
+	return expression_tree_walker(node, contain_package_globalvar_clause_walker, context);
+}
+
+/*
+ * check node wether reference package global var
+ */
+bool
+contain_package_globalvar_clause(Node *node)
+{
+	return contain_package_globalvar_clause_walker(node, NULL);
+}
+/* End - OA#00002227*/
+

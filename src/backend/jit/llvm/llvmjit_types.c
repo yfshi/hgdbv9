@@ -50,6 +50,9 @@ size_t		TypeSizeT;
 bool		TypeStorageBool;
 
 ExecEvalSubroutine TypeExecEvalSubroutine;
+/* Begin - OA#00002227 */
+ExecEvalOutParamSubroutine TypeExecOutSubroutine;
+/* End - OA#00002227*/
 ExecEvalBoolSubroutine TypeExecEvalBoolSubroutine;
 
 NullableDatum StructNullableDatum;
@@ -173,4 +176,10 @@ void	   *referenced_functions[] =
 	strlen,
 	varsize_any,
 	ExecInterpExprStillValid,
+	/* Begin - OA#00002227 */
+	ExecEvalOraRownumExec,
+	ExecEvalNvlFetchExec,
+	ExecEvalVarRefExec,
+	ExecEvalPkgGlobalVarExec,
+	/* End - OA#00002227*/
 };

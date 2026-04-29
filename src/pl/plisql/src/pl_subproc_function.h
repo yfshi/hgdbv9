@@ -253,8 +253,11 @@ extern FuncDetailCode plisql_get_subprocfunc_detail(ParseState *pstate,
 											Oid **true_typeids, /* return value */
 											List **argdefaults,
 											/* Begin - ReqID:SRS-PLSQL-RECORD */
-											bool has_udt_type);
+											bool has_udt_type,
 											/* End - ReqID:SRS-PLSQL-RECORD */
+											/* Begin - OA#00002227 */
+											bool parse_package);
+											/* End - OA#00002227*/
 
 extern int get_subprocfunc_arg_info_from_arguments(List *args, Oid **p_argtypes,
 								char ***p_argnames, char **p_argmodes);

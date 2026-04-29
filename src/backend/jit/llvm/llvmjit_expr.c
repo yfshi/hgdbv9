@@ -2454,6 +2454,52 @@ llvm_compile_expr(ExprState *state)
 				LLVMBuildBr(b, opblocks[opno + 1]);
 				break;
 
+			/* Begin - OA#00002227 */
+			case EEOP_OUT_PARAM_CALLBACK:
+				{
+					LLVMValueRef v_func;
+					LLVMValueRef v_params[2];
+
+					v_func = l_ptr_const(op->d.out_params.outparam_func,
+										 llvm_pg_var_type("TypeExecOutSubroutine"));
+
+					v_params[0] = v_state;
+					v_params[1] = l_ptr_const(op, l_ptr(StructExprEvalStep));
+					l_call(b,
+						   LLVMGetFunctionType(ExecEvalSubroutineTemplate),
+						   v_func,
+						   v_params, lengthof(v_params), "");
+
+					LLVMBuildBr(b, opblocks[opno + 1]);
+					break;
+				}
+			case EEOP_ORA_ROWNUM:
+				build_EvalXFunc(b, mod, "ExecEvalOraRownumExec",
+							v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			case EEOP_NVL_FETCH:
+				build_EvalXFunc(b, mod, "ExecEvalNvlFetchExec",
+								v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			case EEOP_VARREF:
+				build_EvalXFunc(b, mod, "ExecEvalVarRefExec",
+								v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			case EEOP_COLLECTYPEREF_SUBSCRIPTS:
+				build_EvalXFunc(b, mod, "ExecEvalCollectionSubscriptingRefFetch",
+								v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			case EEOP_PKGGLOBAL_VARREF:
+				build_EvalXFunc(b, mod, "ExecEvalPkgGlobalVarExec",
+								v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			/* End - OA#00002227*/
+
 			case EEOP_LAST:
 				Assert(false);
 				break;

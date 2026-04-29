@@ -36,6 +36,7 @@
 #include "parser/parse_relation.h"
 #include "parser/parse_target.h"
 #include "parser/parse_type.h"
+#include "parser/parse_package.h" /* OA#00002227 */
 #include "utils/builtins.h"
 #include "utils/date.h"
 #include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
@@ -1808,6 +1809,36 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 						 parser_errposition(pstate, cref->location)));
 		}
 	}
+
+	/* Begin - OA#00002227 */
+	/*
+	 * maybe function argitem default is a package'var
+	 */
+	if (compatible_mode == ORA_MODE &&
+		node == NULL &&
+		pstate->p_expr_kind == EXPR_KIND_FUNCTION_DEFAULT)
+	{
+		Node *newnode;
+
+		/* append pkgname to check */
+		if (pstate->p_pkgname != NULL)
+		{
+			List *names = lcons(makeString(pstate->p_pkgname), (List *) copyObject(cref->fields));
+
+			newnode = (Node *)  ParsePkgGlobalVarBynames(names, true);
+
+			list_free_deep(names);
+
+			if (newnode != NULL)
+				return newnode;
+		}
+
+		newnode = (Node *) ParsePkgGlobalVarBynames(cref->fields, true);
+
+		if (newnode != NULL)
+			return newnode;
+	}
+	/* End - OA#00002227*/
 
 	/*
 	 * Throw error if no translation found.

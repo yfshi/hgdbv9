@@ -1604,6 +1604,29 @@ _copyParam(const Param *from)
 	return newnode;
 }
 
+
+/* Begin - OA#00002227 */
+
+/*
+ * _copyPkgGlobalVarParam,
+ */
+static PkgGlobalVarParam *
+_copyPkgGlobalVarParam(const PkgGlobalVarParam *from)
+{
+	PkgGlobalVarParam	   *newnode = makeNode(PkgGlobalVarParam);
+
+	COPY_NODE_FIELD(varnames);
+	COPY_SCALAR_FIELD(pkgoid);
+	COPY_SCALAR_FIELD(vartype);
+	COPY_SCALAR_FIELD(vartypmod);
+	COPY_SCALAR_FIELD(varcollid);
+	COPY_SCALAR_FIELD(dno);
+
+	return newnode;
+}
+/* End - OA#00002227*/
+
+
 /*
  * _copyAggref
  */
@@ -6146,6 +6169,11 @@ copyObjectImpl(const void *from)
 		case T_Param:
 			retval = _copyParam(from);
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			retval = _copyPkgGlobalVarParam(from);
+			break;
+		/* End - OA#00002227*/
 		case T_Aggref:
 			retval = _copyAggref(from);
 			break;

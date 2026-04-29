@@ -1251,6 +1251,26 @@ _outParam(StringInfo str, const Param *node)
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 }
 
+/* Begin - OA#00002227 */
+
+/*
+ * _readPkgGlobalVarParam,
+ */
+static void
+_outPkgGlobalVarParam(StringInfo str, const PkgGlobalVarParam *node)
+{
+	WRITE_NODE_TYPE("PKGGLOBALVARPARAM");
+
+	WRITE_NODE_FIELD(varnames);
+	WRITE_OID_FIELD(pkgoid);
+	WRITE_OID_FIELD(vartype);
+	WRITE_INT_FIELD(vartypmod);
+	WRITE_OID_FIELD(varcollid);
+	WRITE_INT_FIELD(dno);
+}
+/* End - OA#00002227*/
+
+
 static void
 _outAggref(StringInfo str, const Aggref *node)
 {
@@ -4567,6 +4587,11 @@ outNode(StringInfo str, const void *obj)
 			case T_Param:
 				_outParam(str, obj);
 				break;
+			/* Begin - OA#00002227 */
+			case T_PkgGlobalVarParam:
+				_outPkgGlobalVarParam(str, obj);
+				break;
+			/* End - OA#00002227*/
 			case T_Aggref:
 				_outAggref(str, obj);
 				break;

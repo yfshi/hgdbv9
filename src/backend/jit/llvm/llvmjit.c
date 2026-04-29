@@ -47,6 +47,7 @@
 #include "storage/ipc.h"
 #include "utils/memutils.h"
 #include "utils/resowner_private.h"
+#include "nodes/primnodes.h" /* OA#00002227 */
 
 #define LLVMJIT_LLVM_CONTEXT_REUSE_MAX 100
 
@@ -591,10 +592,32 @@ llvm_function_reference(LLVMJitContext *context,
 	char	   *modname;
 	char	   *basename;
 	char	   *funcname;
+	/* Begin - OA#00002227 */
+	bool	is_sub_proc = false;
+	/* End - OA#00002227*/
 
 	LLVMValueRef v_fn;
 
-	fmgr_symbol(fcinfo->flinfo->fn_oid, &modname, &basename);
+	/* Begin - OA#00002227 */
+	/*
+	 * maybe a package or subproc function
+	 */
+	if (fcinfo->flinfo->fn_expr != NULL &&
+		nodeTag(fcinfo->flinfo->fn_expr) == T_FuncExpr)
+	{
+		FuncExpr *funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
+
+		if (!FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
+			is_sub_proc = true;
+	}
+	if (!is_sub_proc)
+		fmgr_symbol(fcinfo->flinfo->fn_oid, &modname, &basename);
+	else
+	{
+		modname = NULL;
+		basename = NULL;
+	}
+	/* End - OA#00002227*/
 
 	if (modname != NULL && basename != NULL)
 	{
@@ -615,8 +638,18 @@ llvm_function_reference(LLVMJitContext *context,
 		 */
 		LLVMValueRef v_fn_addr;
 
-		funcname = psprintf("pgoidextern.%u",
+		/* Begin - OA#00002227 */
+		if (!is_sub_proc)
+			funcname = psprintf("pgoidextern.%u",
 							fcinfo->flinfo->fn_oid);
+		else
+		{
+			FuncExpr *funcexpr = (FuncExpr *) fcinfo->flinfo->fn_expr;
+			funcname = psprintf("pgoidextern.%p.%u",
+							funcexpr->parent_func,
+							fcinfo->flinfo->fn_oid);
+		}
+		/* End - OA#00002227*/
 		v_fn = LLVMGetNamedGlobal(mod, funcname);
 		if (v_fn != 0)
 			return l_load(builder, TypePGFunction, v_fn, "");

@@ -94,6 +94,15 @@ static PLiSQL_variable *plisql_build_package_local_variable(const char *refname,
 					List *idents,
 					bool add2namespace,
 					bool missing_ok);
+/* Begin - bug#5514 */
+static void get_package_datum_type_info(PLiSQL_function *function,
+								PLiSQL_datum *datum, Oid *typeId,
+								int32 *typMod, Oid *collation);
+static bool is_package_const_datum(PLiSQL_package *psource, PLiSQL_datum *datum);
+static void get_package_datum_value(PLiSQL_function *function,
+					PLiSQL_datum *datum, Oid *typeid,
+					Datum *value, bool *isnull);
+/* End - bug#5514 */
 
 
 /*
@@ -288,9 +297,11 @@ plisql_package_parse(ParseState *parsestate, PackageCacheItem *item, List *names
 														true_typeids, /* return value */
 														argdefaults,  /* return value */
 														/* Begin - ReqID:SRS-PLSQL-RECORD */
-														has_udt_type);
+														has_udt_type,
 														/* Begin - ReqID:SRS-PLSQL-RECORD */
-
+														/* Begin - OA#00002227 */
+														true);
+														/* End - OA#00002227*/
 					if (detail != FUNCDETAIL_NORMAL &&
 						detail != FUNCDETAIL_PROCEDURE)
 						elog(ERROR, "wrong number or types of arguments in call to \"%s\"", parse_first_name);
@@ -2249,6 +2260,361 @@ plisql_build_package_local_variable(const char *refname, int lineno,
 	return (PLiSQL_variable *) pkg_datum;
 }
 
+/* Begin - OA#00002227 */
+/*
+ * like plisql_exec_get_datum_type_info
+ * but we no PLiSQL_execstate
+ */
+static void
+get_package_datum_type_info(PLiSQL_function *function,
+				PLiSQL_datum *datum, Oid *typeId,
+				int32 *typMod, Oid *collation)
+{
+	switch (datum->dtype)
+	{
+		case PLISQL_DTYPE_VAR:
+			{
+				PLiSQL_var *var = (PLiSQL_var *) datum;
+
+				*typeId = var->datatype->typoid;
+				*typMod = var->datatype->atttypmod;
+				*collation = var->datatype->collation;
+				break;
+			}
+
+		case PLISQL_DTYPE_REC:
+			{
+				PLiSQL_rec *rec = (PLiSQL_rec *) datum;
+
+				if (rec->erh == NULL || rec->rectypeid != RECORDOID)
+				{
+					/* Report variable's declared type */
+					*typeId = rec->rectypeid;
+					*typMod = -1;
+				}
+				else
+				{
+					/* Report record's actual type if declared RECORD */
+					*typeId = rec->erh->er_typeid;
+					/* do NOT return the mutable typmod of a RECORD variable */
+					*typMod = -1;
+				}
+				/* composite types are never collatable */
+				*collation = InvalidOid;
+				break;
+			}
+
+		case PLISQL_DTYPE_RECFIELD:
+			{
+				PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
+				PLiSQL_rec *rec;
+
+				rec = (PLiSQL_rec *) (function->datums[recfield->recparentno]);
+
+				/*
+				 * If record variable is NULL, instantiate it if it has a
+				 * named composite type, else complain.  (This won't change
+				 * the logical state of the record: it's still NULL.)
+				 */
+				if (rec->erh == NULL)
+				{
+					instantiate_empty_package_record_variable(function->fn_cxt,
+														rec);
+				}
+
+				/*
+				 * Look up the field's properties if we have not already, or
+				 * if the tuple descriptor ID changed since last time.
+				 */
+				if (unlikely(recfield->rectupledescid != rec->erh->er_tupdesc_id))
+				{
+					if (!expanded_record_lookup_field(rec->erh,
+													  recfield->fieldname,
+													  &recfield->finfo))
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_COLUMN),
+								 errmsg("record \"%s\" has no field \"%s\"",
+										rec->refname, recfield->fieldname)));
+					recfield->rectupledescid = rec->erh->er_tupdesc_id;
+				}
+
+				*typeId = recfield->finfo.ftypeid;
+				*typMod = recfield->finfo.ftypmod;
+				*collation = recfield->finfo.fcollation;
+				break;
+			}
+
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *ora_rec = (PLiSQL_row *) datum;
+
+				if (ora_rec->datatype != NULL)
+				{
+					*typeId = ora_rec->datatype->typoid;
+					*typMod = ora_rec->datatype->atttypmod;
+				}
+				else
+				{
+					*typeId = InvalidOid;
+					*typMod = -1;
+				}
+				/* composite types are never collatable */
+				*collation = InvalidOid;
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-RECORD */
+		default:
+			elog(ERROR, "unsupport this dtype: %d", datum->dtype);
+			*typeId = InvalidOid;	/* keep compiler quiet */
+			*typMod = -1;
+			*collation = InvalidOid;
+			break;
+	}
+	return;
+}
+
+
+/*
+ * get package dataum value
+ */
+static void
+get_package_datum_value(PLiSQL_function *function,
+					PLiSQL_datum *datum, Oid *typeid,
+					Datum *value, bool *isnull)
+{
+	switch (datum->dtype)
+	{
+		case PLISQL_DTYPE_VAR:
+			{
+				PLiSQL_var *var = (PLiSQL_var *) datum;
+
+				*typeid = var->datatype->typoid;
+				*value = var->value;
+				*isnull = var->isnull;
+				break;
+			}
+
+		case PLISQL_DTYPE_REC:
+			{
+				PLiSQL_rec *rec = (PLiSQL_rec *) datum;
+
+				if (rec->erh == NULL)
+				{
+					/* Treat uninstantiated record as a simple NULL */
+					*value = (Datum) 0;
+					*isnull = true;
+					/* Report variable's declared type */
+					*typeid = rec->rectypeid;
+				}
+				else
+				{
+					if (ExpandedRecordIsEmpty(rec->erh))
+					{
+						/* Empty record is also a NULL */
+						*value = (Datum) 0;
+						*isnull = true;
+					}
+					else
+					{
+						*value = ExpandedRecordGetDatum(rec->erh);
+						*isnull = false;
+					}
+					if (rec->rectypeid != RECORDOID)
+					{
+						/* Report variable's declared type, if not RECORD */
+						*typeid = rec->rectypeid;
+					}
+					else
+					{
+						/* Report record's actual type if declared RECORD */
+						*typeid = rec->erh->er_typeid;
+					}
+				}
+				break;
+			}
+
+		case PLISQL_DTYPE_RECFIELD:
+			{
+				PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
+				PLiSQL_rec *rec;
+				ExpandedRecordHeader *erh;
+
+				rec = (PLiSQL_rec *) (function->datums[recfield->recparentno]);
+				erh = rec->erh;
+
+				/*
+				 * If record variable is NULL, instantiate it if it has a
+				 * named composite type, else complain.  (This won't change
+				 * the logical state of the record: it's still NULL.)
+				 */
+				if (erh == NULL)
+				{
+					instantiate_empty_package_record_variable(function->fn_cxt, rec);
+					erh = rec->erh;
+				}
+
+				/*
+				 * Look up the field's properties if we have not already, or
+				 * if the tuple descriptor ID changed since last time.
+				 */
+				if (unlikely(recfield->rectupledescid != erh->er_tupdesc_id))
+				{
+					if (!expanded_record_lookup_field(erh,
+													  recfield->fieldname,
+													  &recfield->finfo))
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_COLUMN),
+								 errmsg("record \"%s\" has no field \"%s\"",
+										rec->refname, recfield->fieldname)));
+					recfield->rectupledescid = erh->er_tupdesc_id;
+				}
+
+				/* Report type data. */
+				*typeid = recfield->finfo.ftypeid;
+
+				/* And fetch the field value. */
+				*value = expanded_record_get_field(erh,
+												   recfield->finfo.fnumber,
+												   isnull);
+				break;
+			}
+
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *row = (PLiSQL_row *) datum;
+				HeapTuple	tup;
+				int			natts;
+				Datum	   *dvalues;
+				bool	   *nulls;
+				int			i;
+
+				/* We get here if there are multiple OUT parameters */
+				if (!row->rowtupdesc)	/* should not happen */
+					elog(ERROR, "row variable has no tupdesc");
+				/* Make sure we have a valid type/typmod setting */
+				BlessTupleDesc(row->rowtupdesc);
+				natts = row->rowtupdesc->natts;
+				if (natts != row->nfields)
+					elog(ERROR, "row not compatible with its own tupdesc");
+
+				dvalues = (Datum *) palloc(natts * sizeof(Datum));
+				nulls = (bool *) palloc(natts * sizeof(bool));
+
+				for (i = 0; i < natts; i++)
+				{
+					Oid			fieldtypeid;
+
+					if (TupleDescAttr(row->rowtupdesc, i)->attisdropped)
+					{
+						nulls[i] = true;	/* leave the column as null */
+						continue;
+					}
+
+					get_package_datum_value(function,
+									function->datums[row->varnos[i]],
+									&fieldtypeid,
+									&dvalues[i],
+									&nulls[i]);
+					if (fieldtypeid != TupleDescAttr(row->rowtupdesc, i)->atttypid)
+						elog(ERROR, "row not compatible with its own tupdesc");
+					/* XXX should we insist on typmod match, too? */
+				}
+
+				tup = heap_form_tuple(row->rowtupdesc, dvalues, nulls);
+				pfree(dvalues);
+				pfree(nulls);
+
+				if (tup == NULL)	/* should not happen */
+					elog(ERROR, "row not compatible with its own tupdesc");
+				*typeid = row->rowtupdesc->tdtypeid;
+				*value = HeapTupleGetDatum(tup);
+				*isnull = false;
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-RECORD */
+
+		default:
+			elog(ERROR, "unsupport dtype: %d", datum->dtype);
+			break;
+	}
+	return;
+}
+
+
+/*
+ * is const var from package
+ */
+static bool
+is_package_const_datum(PLiSQL_package *psource, PLiSQL_datum *datum)
+{
+	bool isconst = false;
+
+	switch (datum->dtype)
+	{
+		case PLISQL_DTYPE_VAR:
+			{
+				PLiSQL_var *var = (PLiSQL_var *) datum;
+
+				isconst = var->isconst;
+			}
+			break;
+		case PLISQL_DTYPE_ROW:
+			{
+				PLiSQL_row *row = (PLiSQL_row *) datum;
+
+				isconst = row->isconst;
+			}
+			break;
+		case PLISQL_DTYPE_REC:
+			{
+				PLiSQL_rec *rec = (PLiSQL_rec *) datum;
+
+				isconst = rec->isconst;
+			}
+			break;
+		case PLISQL_DTYPE_RECFIELD:
+			{
+				PLiSQL_recfield *recfield = (PLiSQL_recfield *) datum;
+				PLiSQL_rec *rec;
+
+				rec = (PLiSQL_rec *) psource->source.datums[recfield->recparentno];
+				isconst = rec->isconst;
+			}
+			break;
+		case PLISQL_DTYPE_PACKAGE_DATUM:
+			{
+				PLiSQL_pkg_datum *pkgdatum = (PLiSQL_pkg_datum *) datum;
+				PLiSQL_package *ppsource = (PLiSQL_package *) (pkgdatum->item->source);
+
+				isconst = is_package_const_datum(ppsource, pkgdatum->pkgvar);
+			}
+			break;
+		/* Begin - ReqID:SRS-PLSQL-CURSOR */
+		case PLISQL_DTYPE_ATTRIBUTE:
+			isconst = false;
+			break;
+		/* End - ReqID:SRS-PLSQL-CURSOR */
+		/* Begin - ReqID:SRS-PLSQL-RECORD */
+		case PLISQL_DTYPE_TYPE:
+			isconst = false;
+			break;
+		case PLISQL_DTYPE_ORA_RECORD:
+			{
+				PLiSQL_row *ora_rec = (PLiSQL_row *) datum;
+
+				isconst = ora_rec->isconst;
+			}
+			break;
+		/* End - ReqID:SRS-PLSQL-RECORD */
+		default:
+			elog(ERROR, "unsupport dtype: %d", datum->dtype);
+			break;
+	}
+	return isconst;
+}
+/* End - OA#00002227*/
 
 /*
  * may be we will compile a package during compile a function or package
@@ -4326,4 +4692,162 @@ plisql_get_subproc_deterministic(FuncExpr *fexpr)
 	return PROVOLATILE_VOLATILE;
 }
 /* End - BUG#M0000432 */
+
+
+/* Begin - OA#00002227 */
+/*
+ * build param from pkg globalvar
+ */
+PkgGlobalVarParam *
+plisql_build_gparam_from_package(PkgVar *var)
+{
+	PkgGlobalVarParam *gparam = makeNode(PkgGlobalVarParam);
+	PLiSQL_datum *datum;
+	PLiSQL_package *newpsource;
+
+	if (var->item == NULL)
+		elog(ERROR, "package %u cache is not found", gparam->pkgoid);
+
+	newpsource = (PLiSQL_package *) var->item->source;
+
+	if (gparam->dno < 0 || gparam->dno > newpsource->last_globaldno)
+		elog(ERROR, "varname \"%s\" is not global var",
+			NameListToString(gparam->varnames));
+
+	datum = (PLiSQL_datum *) var->value;
+
+	get_package_datum_type_info(&newpsource->source,
+					datum,
+					&gparam->vartype,
+					&gparam->vartypmod,
+					&gparam->varcollid);
+	gparam->dno = datum->dno;
+	gparam->pkgoid = var->pkgoid;
+
+	return gparam;
+}
+
+
+/*
+ * get package global var value
+ */
+void
+plisql_get_package_globalvar_value(PkgGlobalVarParam *gparam,
+												Datum *datum,
+												bool *isnull)
+{
+	PackageCacheItem *item;
+	bool isconst = false;
+	PLiSQL_package *newpsource;
+	PLiSQL_datum *pkgdatum;
+	Oid newtypeid;
+
+	item = PackageCacheLookup(&gparam->pkgoid);
+	if (item == NULL)
+		elog(ERROR, "package %u cache is not found", gparam->pkgoid);
+
+	newpsource = (PLiSQL_package *) item->source;
+
+	if (gparam->dno < 0 || gparam->dno > newpsource->last_globaldno)
+		elog(ERROR, "varname \"%s\" is not global var",
+			NameListToString(gparam->varnames));
+
+	pkgdatum = newpsource->source.datums[gparam->dno];
+	isconst = is_package_const_datum(newpsource, pkgdatum);
+
+	/*
+	 * there, if package no valid or has no body
+	 * we should compile package body
+	 */
+	if (!isconst &&
+		(!PackageCacheIsValid(&item->pkey, false) ||
+		!PACKAGE_HAS_BODY(item->cachestatus)))
+	{
+		/*
+		 * we should build package body
+		 */
+		PackageCacheItem *newitem;
+		Oid bodyoid = get_package_bodyid(item->pkey, true);
+
+		if (OidIsValid(bodyoid))
+			newitem = plisql_package_body_compile(bodyoid, false, true);
+		else
+			newitem = plisql_package_compile(item->pkey, false, true);
+
+		newpsource = (PLiSQL_package *) newitem->source;
+
+		if (newpsource->status == PLISQL_PACKAGE_REBUILD ||
+			newpsource->status  == PLISQL_PACKAGE_REBUILD_INIT)
+		{
+			newpsource->status = PLISQL_PACKAGE_NO_INIT;
+			elog(ERROR, "existing state of packages has been discarded");
+		}
+	}
+
+	if (newpsource->status == PLISQL_PACKAGE_NO_INIT ||
+		newpsource->status == PLISQL_PACKAGE_NO_STATUS ||
+		newpsource->status == PLISQL_PACKAGE_REBUILD)
+	{
+		LOCAL_FCINFO(fake_fcinfo, 0);
+		FmgrInfo	flinfo;
+
+		/*
+		 * Set up a fake fcinfo with just enough info to satisfy
+		 * plisql_compile().
+		 */
+		MemSet(fake_fcinfo, 0, SizeForFunctionCallInfo(0));
+		MemSet(&flinfo, 0, sizeof(flinfo));
+		fake_fcinfo->flinfo = &flinfo;
+		flinfo.fn_oid = InvalidOid;
+		flinfo.fn_mcxt = CurrentMemoryContext;
+
+		plisql_exec_package_init(fake_fcinfo, &newpsource->source);
+		if (newpsource->status == PLISQL_PACKAGE_NO_INIT)
+			newpsource->status = PLISQL_PACKAGE_INIT;
+		else if (newpsource->status == PLISQL_PACKAGE_NO_STATUS)
+			newpsource->status = PLISQL_PACKAGE_NO_STATUS_INIT;
+		else
+			newpsource->status = PLISQL_PACKAGE_REBUILD_INIT;
+	}
+
+	/*
+	 * accessed by var not const
+	 */
+	if (!isconst && newpsource->status == PLISQL_PACKAGE_INIT)
+		newpsource->status = PLISQL_PACKAGE_STATUSED;
+
+	get_package_datum_value(&newpsource->source,
+					pkgdatum, &newtypeid,
+					datum, isnull);
+
+	/* safety check in case hook did something unexpected */
+	if (unlikely(newtypeid != gparam->vartype))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATATYPE_MISMATCH),
+				errmsg("package var \"%s\" type (%s) does not match that when preparing the plan (%s)",
+				NameListToString(gparam->varnames),
+				format_type_be(newtypeid),
+				format_type_be(gparam->vartype))));
+
+	/*
+	 * If it's a read/write expanded datum, convert reference to read-only.
+	 * (There's little point in trying to optimize read/write parameters,
+	 * given the cases in which this function is used.)
+	 */
+	if (pkgdatum->dtype == PLISQL_DTYPE_VAR)
+	{
+		*datum = MakeExpandedObjectReadOnly(*datum,
+											*isnull,
+											((PLiSQL_var *) pkgdatum)->datatype->typlen);
+	}
+	else if (pkgdatum->dtype == PLISQL_DTYPE_REC)
+		*datum = MakeExpandedObjectReadOnly(*datum,
+											*isnull,
+											-1);
+
+	return;
+}
+
+/* End - OA#00002227*/
+
 

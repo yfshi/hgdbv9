@@ -332,6 +332,23 @@ typedef struct Param
 	/* End - ReqID:SRS-PLSQL-CURSOR */
 } Param;
 
+/* Begin - OA#00002227 */
+/*
+ * this struct use for package global var
+ * as function default value
+ */
+typedef struct PkgGlobalVarParam
+{
+	Expr		xpr;
+	List		*varnames;			/* refnames like schema.package.var.xxx */
+	Oid			pkgoid;				/* package oid */
+	Oid			vartype;			/* var type oid */
+	int32		vartypmod;			/* var typemod */
+	Oid			varcollid;			/* OID of collation */
+	int			dno;				/* var'dno */
+} PkgGlobalVarParam;
+/* End - OA#00002227*/
+
 /*
  * Aggref
  *

@@ -9230,6 +9230,9 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 		case T_PseudoColVar: /* ReqID:SRS-SQL-ROWNUM */
 		case T_Const:
 		case T_Param:
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+		/* End - OA#00002227*/
 		case T_CoerceToDomainValue:
 		case T_SetToDefault:
 		case T_CurrentOfExpr:
@@ -9594,6 +9597,12 @@ get_rule_expr(Node *node, deparse_context *context,
 		case T_Param:
 			get_parameter((Param *) node, context);
 			break;
+
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			appendStringInfoString(buf, NameListToString(((PkgGlobalVarParam *) node)->varnames));
+			break;
+		/* End - OA#00002227*/
 
 		case T_Aggref:
 			get_agg_expr((Aggref *) node, context, (Aggref *) node);

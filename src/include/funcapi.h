@@ -24,6 +24,7 @@
 #include "utils/packagecache.h"
 #include "parser/parse_node.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+#include "parser/parse_package.h" /* OA#00002227 */
 #include "fmgr.h"
 
 /*-------------------------------------------------------------------------
@@ -228,6 +229,12 @@ typedef struct
 	/* Begin - BUG#M0000432 */
 	char (*get_subproc_deterministic) (FuncExpr *expr);
 	/* ENd - BUG#M0000432 */
+	/* Begin - OA#00002227 */
+	PkgGlobalVarParam* (*build_gparam_from_package) (PkgVar *pvar);
+	void (*get_package_globalvar_value) (PkgGlobalVarParam *gparam,
+										Datum *resvalue,
+										bool *isnull);
+	/* End - OA#00002227*/
 	bool isload;
 } PLiSQL_funcs_call;
 

@@ -288,6 +288,10 @@ typedef enum ExprEvalOp
 	EEOP_COLLECTYPEREF_SUBSCRIPTS,
 	/* End - ReqID:SRS-PLSQL-Collection */
 
+	/* Begin - OA#00002227 */
+	EEOP_PKGGLOBAL_VARREF,
+	/* End - OA#00002227*/
+
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
 } ExprEvalOp;
@@ -748,6 +752,12 @@ typedef struct ExprEvalStep
 			Oid			rettype;
 		}			varref;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - OA#00002227 */
+		struct
+		{
+			PkgGlobalVarParam *gparam;
+		} pkgglobalvar;
+		/* End - OA#00002227*/
 	}			d;
 } ExprEvalStep;
 
@@ -867,5 +877,12 @@ extern void ExecEvalAggOrderedTransTuple(ExprState *state, ExprEvalStep *op,
 typedef xmltype *(*ora_updatexml_hook_type)(List *args);
 extern PGDLLIMPORT ora_updatexml_hook_type ora_updatexml_hook;
 /* End - ReqID:SRS-SQL-XML */
+
+/* Begin - OA#00002227 */
+extern void ExecEvalOraRownumExec(ExprState *state, ExprEvalStep *op);
+extern void ExecEvalNvlFetchExec(ExprState *state, ExprEvalStep *op);
+extern void ExecEvalVarRefExec(ExprState *state, ExprEvalStep *op);
+extern void ExecEvalPkgGlobalVarExec(ExprState *state, ExprEvalStep *op);
+/* End - OA#00002227*/
 
 #endif							/* EXEC_EXPR_H */

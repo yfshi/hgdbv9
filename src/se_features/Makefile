@@ -15,7 +15,6 @@ subdir = src/se_features
 top_builddir = ../..
 
 include $(top_builddir)/src/Makefile.global
-include $(top_srcdir)/src/backend/common.mk
 
 # PGFILEDESC = "Security Enhancement Features"
 # NAME = se_features
@@ -58,6 +57,9 @@ OBJS = \
 # 	rm -f '$(DESTDIR)$(includedir_server)/se_features.h'
 
 # .PHONY: install-data install-headers uninstall-data uninstall-headers
+
+# OA#00002227 jit used
+include $(top_srcdir)/src/backend/common.mk
 
 all: libse_features.a
 

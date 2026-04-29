@@ -320,6 +320,10 @@ sqlite_is_foreign_param(PlannerInfo *root,
 		case T_Param:
 			/* Params always have to be sent to the foreign server */
 			return true;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			return false;
+		/* End - OA#00002227*/
 		default:
 			break;
 	}
@@ -570,6 +574,26 @@ sqlite_foreign_expr_walker(Node *node,
 					state = FDW_COLLATE_UNSAFE;
 			}
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			{
+				PkgGlobalVarParam	   *p = (PkgGlobalVarParam *) node;
+
+				if (!sqlite_is_valid_type(p->vartype))
+					return false;
+
+				/*
+				 * Collation rule is same as for Consts and non-foreign Vars.
+				 */
+				collation = p->varcollid;
+				if (collation == InvalidOid ||
+					collation == DEFAULT_COLLATION_OID)
+					state = FDW_COLLATE_NONE;
+				else
+					state = FDW_COLLATE_UNSAFE;
+			}
+			break;
+		/* End - OA#00002227*/
 		case T_FuncExpr:
 			{
 				FuncExpr   *func = (FuncExpr *) node;
@@ -2217,6 +2241,11 @@ sqlite_deparse_expr(Expr *node, deparse_expr_cxt *context)
 		case T_Param:
 			sqlite_deparse_param((Param *) node, context);
 			break;
+		/* Begin - OA#00002227 */
+		case T_PkgGlobalVarParam:
+			appendStringInfoString(context->buf, NameListToString(((PkgGlobalVarParam *) node)->varnames));
+			break;
+		/* End - OA#00002227*/
 		case T_FuncExpr:
 			sqlite_deparse_func_expr((FuncExpr *) node, context);
 			break;
