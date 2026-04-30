@@ -698,3 +698,29 @@ select id year,id month,id day,id hour,id minute,id second from test_id;
 (1 row)
 
 drop table test_id;
+/* Begin - OA-REQ-2310 */
+select greatest(0,1,2) from dual;	-- 2
+ greatest 
+----------
+        2
+(1 row)
+
+select greatest(0,1,null,2) from dual;	-- null
+ greatest 
+----------
+         
+(1 row)
+
+select least(0,1,2) from dual;	-- 0
+ least 
+-------
+     0
+(1 row)
+
+select least(0,1,null,2) from dual;	-- null
+ least 
+-------
+      
+(1 row)
+
+/* End - OA-REQ-2310 */

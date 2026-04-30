@@ -3481,16 +3481,16 @@ select c2, least_agg(c1) from ft1 where c2 < 100 group by c2 order by c2;
 select c2, least_agg(c1) from ft1 where c2 < 100 group by c2 order by c2;
  c2 | least_agg 
 ----+-----------
- 0  | 10
- 1  | 1
- 2  | 2
- 3  | 3
- 4  | 4
- 5  | 5
- 6  | 6
- 7  | 7
- 8  | 8
- 9  | 9
+ 0  | 
+ 1  | 
+ 2  | 
+ 3  | 
+ 4  | 
+ 5  | 
+ 6  | 
+ 7  | 
+ 8  | 
+ 9  | 
 (10 rows)
 
 -- Remove function and aggregate from extension
