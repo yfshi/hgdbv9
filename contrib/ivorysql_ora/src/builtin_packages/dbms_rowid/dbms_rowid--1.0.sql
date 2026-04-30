@@ -49,13 +49,21 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 			RAISE EXCEPTION 'invalid ROWID';
 		END IF;
 
-		IF object_number < 0 AND object_number != floor(object_number) THEN
+		--Begin BUG#Z7666
+		IF object_number < 0 OR object_number != floor(object_number) THEN
 			RAISE EXCEPTION 'invalid ROWID';
 		END IF;
 
-		IF row_number < 0 AND row_number != floor(row_number) THEN
+		IF row_number < 0 OR row_number != floor(row_number) THEN
 			RAISE EXCEPTION 'invalid ROWID';
 		END IF;
+		--End Bug#Z7666
+
+		--Begin BUG#Z7667
+		IF object_number IS NULL OR row_number IS NULL THEN
+			RAISE EXCEPTION 'invalid ROWID';
+		END IF;
+		--End Bug#Z7667
 
 		return_rowid.rowoid = object_number;
 		return_rowid.rowno = row_number;
@@ -104,10 +112,6 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 	function rowid_type(row_id in rowid) return number
 	AS
 	BEGIN
-		IF row_id IS NULL OR row_id = '' THEN
-			RETURN 0;
-		END IF;
-
 		RETURN 1;
 	END;
 
@@ -158,6 +162,12 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 	function rowid_row_number(row_id in rowid)return number
 	AS
 	BEGIN
+		--Begin Bug#Z7671
+		IF row_id IS NULL OR row_id = '' THEN
+			RETURN 0;
+		END IF;
+		--End Bug#Z7671
+
 		RETURN row_id.rowno;
 	END;
 
@@ -169,17 +179,11 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 		v_obj_id number;
 		schemename varchar2 := ora_case_trans(schema_name);
 		objectname varchar2 := ora_case_trans(object_name);
+		query text;
+		result record;
 	BEGIN
 		--validate input parameters
-		IF schemename IS NOT NULL AND objectname IS NULL THEN
-			RAISE EXCEPTION 'table or view does not exist';
-		END IF;
-
-		IF schemename IS NULL AND objectname IS NOT NULL THEN
-			RAISE EXCEPTION 'table or view does not exist';
-		END IF;
-
-		IF schemename IS NULL AND objectname IS NULL THEN
+		IF schemename IS NULL OR objectname IS NULL THEN
 			RAISE EXCEPTION 'table or view does not exist';
 		END IF;
 
@@ -201,17 +205,28 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 			RAISE EXCEPTION 'invalid ROWID';
 		END IF;
 
-		--check whether the rowid matches the object_name 
-		select c.oid into v_obj_id from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relname = objectname  and n.nspname= schemename;
-		IF v_obj_id != row_id.rowoid THEN
-			RAISE EXCEPTION 'table or view does not exist';
-		END IF;
-
-		select c.relfilenode into relative_fno from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relname = objectname  and n.nspname= schemename;
-		RETURN relative_fno;
+		--Begin Bug#Z7679
+		query := format('SELECT 1 FROM %I.%I WHERE rowid = row(%L, %L);', schemename, objectname, row_id.rowoid, row_id.rowno);
+		BEGIN
+			EXECUTE query into result;
 		EXCEPTION
-			WHEN OTHERS THEN
-				RAISE EXCEPTION 'table or view does not exist';
+			WHEN NO_DATA_FOUND THEN
+				RAISE EXCEPTION 'invalid ROWID';
+		END;
+		--End Bug#Z7679
+		begin
+			select c.relfilenode into relative_fno from pg_class c join pg_namespace n on n.oid = c.relnamespace where c.relname = objectname  and n.nspname= schemename;
+			--Begin Bug#Z7692
+			IF relative_fno = 0 THEN
+				RAISE EXCEPTION 'invalid ROWID';
+			END IF;
+			--End Bug#Z7692
+
+			RETURN relative_fno;
+			EXCEPTION
+				WHEN NO_DATA_FOUND THEN
+					RAISE EXCEPTION 'table or view does not exist';
+		end;
 	END;
 
 	function rowid_to_extended(old_rowid in rowid,schema_name in varchar2,object_name in varchar2,conversion_type in integer) return rowid
@@ -220,7 +235,17 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 		table_exists BOOLEAN := FALSE;
 		schemename varchar2 := ora_case_trans(schema_name);
 		objectname varchar2 := ora_case_trans(object_name);
+		query text;
+		result record;
 	BEGIN
+		IF  schemename IS NULL AND objectname IS NULL THEN
+			RETURN old_rowid;
+		END IF;
+
+		IF old_rowid IS NULL OR old_rowid = '' THEN
+			RETURN NULL;
+		END IF;
+
 		--validate input parameters
 		IF schemename IS NOT NULL AND objectname IS NULL THEN
 			RAISE EXCEPTION 'invalid table name';
@@ -239,10 +264,15 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 			END IF;
 		END IF;
 
-		IF old_rowid IS NULL OR old_rowid = '' THEN
-			RAISE EXCEPTION 'invalid ROWID';
-		END IF;
-
+		--Begin Bug#Z7668
+		query := format('SELECT 1 FROM %I.%I WHERE rowid = row(%L, %L);', schemename, objectname, old_rowid.rowoid, old_rowid.rowno);
+		BEGIN
+			EXECUTE query into result;
+		EXCEPTION
+			WHEN NO_DATA_FOUND THEN
+				RAISE EXCEPTION 'invalid ROWID';
+		--End Bug#Z7668
+		END;
 		--check whether the schemaname and objectname are enclosed in quotes
 		IF left(schemename, 1) = '"'  OR left(objectname, 1) = '"' THEN
 			RAISE EXCEPTION 'table or view does not exist';
@@ -256,7 +286,7 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 	BEGIN
 		RAISE NOTICE 'There only has extended rowid';
 		IF old_rowid IS NULL OR old_rowid = '' THEN
-			RETURN 0;
+			RETURN NULL;--Bug#Z7669
 		END IF;
 
 		return old_rowid;
@@ -271,7 +301,21 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 		row_exists BOOLEAN := FALSE;
 		schemename varchar2 := ora_case_trans(schema_name);
 		objectname varchar2 := ora_case_trans(object_name);
+		query text;
+		result record;
 	BEGIN
+		--Beign Bug#Z7676
+		--IF schema_name AND object_name both NULL OR '',return 0
+		IF schemename IS NULL AND objectname IS NULL THEN
+			return 0;
+		ELSIF schemename = '' AND objectname = '' THEN
+			return 0;
+		ELSIF (schemename IS NOT NULL AND schemename = '' AND objectname IS NULL)
+			OR (schemename IS NULL AND objectname IS NOT NULL AND objectname = '') THEN
+			return 0;
+		END IF;
+		--End Bug#Z7676
+
 		--validate input parameters
 		IF schemename IS NOT NULL AND objectname IS NULL THEN
 			RAISE EXCEPTION 'invalid table name';
@@ -281,7 +325,7 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 			RAISE EXCEPTION 'invalid table name';
 		END IF;
 
-		IF schema_schemenamename IS NOT NULL AND objectname IS NOT NULL THEN
+		IF schemename IS NOT NULL AND objectname IS NOT NULL THEN
 			SELECT EXISTS (SELECT 1 FROM information_schema.tables
 				WHERE table_schema = schemename AND table_name = objectname)
 				INTO table_exists;
@@ -295,6 +339,12 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 			RAISE EXCEPTION 'table or view does not exist';
 		END IF;
 
+		--Begin Bug#Z7674
+		IF rowid_in IS NULL OR rowid_in = '' THEN
+			RETURN 0;
+		END IF;
+		--End Bug#Z7674
+
 		SELECT EXISTS(
 			SELECT 1 FROM pg_class WHERE oid = rowid_in.rowoid AND relkind = 'r'
 			) INTO exists_flag;
@@ -302,15 +352,16 @@ CREATE OR REPLACE NONEDITIONABLE PACKAGE BODY SYS.DBMS_ROWID IS
 			RETURN 1;
 		END IF;
 
-		SELECT relname INTO tbl_name FROM pg_class WHERE oid = rowid_in.rowoid;
-
-		EXECUTE FORMAT('SELECT EXISTS (
-			SELECT 1 FROM %s where rowid = (%s,%s))', quote_ident(tbl_name), rowid_in.rowoid, rowid_in.rowno
-		)INTO row_exists;
+		--Begin Bug#7672&7673&7675&7677
+		query := format('SELECT 1 FROM %I.%I WHERE rowid = row(%L, %L);', schemename, objectname, rowid_in.rowoid, rowid_in.rowno);
+		BEGIN
+			EXECUTE query into result;
 		EXCEPTION
 			WHEN OTHERS THEN
 				RETURN 1;
+		END;
+		--End Bug#7672&7673&7675&7677
 
-		RETURN CASE WHEN row_exists THEN 0 ELSE 1 END;
+		RETURN 0;
 	END;
 END;
