@@ -1473,3 +1473,19 @@ SELECT COUNT(*) AS total_rows, MIN(m1) AS min_value, MAX(m1) AS max_value FROM t
 SELECT AVG(m1) AS avg_value FROM t1;
 SELECT SUM(m1) AS sum_value FROM t1;
 DROP TABLE t1;
+
+set sql_mode='';
+create table t1(a timestamp);
+insert into t1 values ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+insert into t1 values ('2008-02-23 09:23:45'), ('2010-03-05 11:08:02');
+insert into t1 values (' ');
+select * from t1 order by a;
+DROP TABLE t1;
+
+create table t1(a timestamp(6));
+insert into t1 values ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+insert into t1 values ('2008-02-23 09:23:45'), ('2010-03-05 11:08:02');
+insert into t1 values (' ');
+select * from t1 order by a;
+DROP TABLE t1;
+set sql_mode=default;

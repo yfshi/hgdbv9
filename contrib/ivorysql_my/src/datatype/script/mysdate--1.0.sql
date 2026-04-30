@@ -122,127 +122,6 @@ LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
-
-----function add
-CREATE FUNCTION ivymy.mysdate_add(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_adddate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function sub
-CREATE FUNCTION ivymy.mysdate_sub(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_subdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function multiply
-CREATE FUNCTION ivymy.mysdate_mul(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_muldate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function divide
-CREATE FUNCTION ivymy.mysdate_div(ivymy.mysdate, ivymy.mysdate)
-RETURNS float8
-AS 'MODULE_PATHNAME','mysdate_divdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function exact division
-CREATE FUNCTION ivymy.mys_div(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_exact_divdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function mod
-CREATE FUNCTION ivymy.mysdate_mod(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_moddate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function &
-CREATE FUNCTION ivymy.mysdate_bitand(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_bitanddate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function |
-CREATE FUNCTION ivymy.mysdate_bitor(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_bitordate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function ~
-CREATE FUNCTION ivymy.mysdate_nega(ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_negadate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function ^
-CREATE FUNCTION ivymy.mysdate_bitxor(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_bitxordate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function >>
-CREATE FUNCTION ivymy.mysdate_rightmov(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_rightmovdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function <<
-CREATE FUNCTION ivymy.mysdate_leftmov(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_leftmovdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
 --  "bit_count"
 CREATE FUNCTION ivymy.bit_count(ivymy.mysdate)
 RETURNS pg_catalog.int8
@@ -251,17 +130,6 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-
-
-----function &&
-CREATE FUNCTION ivymy.mysdate_and(ivymy.mysdate, ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_anddate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
 
 ----function or
 CREATE FUNCTION ivymy.mysdate_cat(ivymy.mysdate, ivymy.mysdate)
@@ -272,19 +140,6 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
-
-----operator invert !
-CREATE FUNCTION ivymy.mysdate_invert(ivymy.mysdate)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mysdate_invertmysdate'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
---operator xor or and
-
 ----operator =
 CREATE OPERATOR = (
 	procedure = ivymy.mysdate_eq,
@@ -360,99 +215,6 @@ CREATE OPERATOR <=> (
 	leftarg = ivymy.mysdate,
 	rightarg = ivymy.mysdate
 );
-
---operator +
-CREATE OPERATOR + (
-	procedure = ivymy.mysdate_add,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate,
-	commutator = +
-);
-
---operator -
-CREATE OPERATOR - (
-	procedure = ivymy.mysdate_sub,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator *
-CREATE OPERATOR * (
-	procedure = ivymy.mysdate_mul,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator /
-CREATE OPERATOR / (
-	procedure = ivymy.mysdate_div,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator //
-CREATE OPERATOR // (
-	procedure = ivymy.mys_div,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator %
-CREATE OPERATOR % (
-	procedure = ivymy.mysdate_mod,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator &
-CREATE OPERATOR & (
-	procedure = ivymy.mysdate_bitand,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator |
-CREATE OPERATOR | (
-	procedure = ivymy.mysdate_bitor,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator ~
-CREATE OPERATOR ~ (
-	procedure = ivymy.mysdate_nega,
-	rightarg = ivymy.mysdate
-);
-
-
---operator ^
-CREATE OPERATOR ^ (
-	procedure = ivymy.mysdate_bitxor,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator >>
-CREATE OPERATOR >> (
-	procedure = ivymy.mysdate_rightmov,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator <<
-CREATE OPERATOR << (
-	procedure = ivymy.mysdate_leftmov,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
---operator &&
-CREATE OPERATOR && (
-	procedure = ivymy.mysdate_and,
-	leftarg = ivymy.mysdate,
-	rightarg = ivymy.mysdate
-);
-
 --operator ||
 CREATE OPERATOR || (
 	procedure = ivymy.mysdate_cat,
@@ -460,11 +222,6 @@ CREATE OPERATOR || (
 	rightarg = ivymy.mysdate
 );
 
---operator !
-CREATE OPERATOR ! (
-	procedure = ivymy.mysdate_invert,
-	rightarg = ivymy.mysdate
-);
 -- eq: date = numeric
 CREATE FUNCTION ivymy.mysdate_eq(ivymy.mysdate, numeric)
 RETURNS bool
@@ -747,7 +504,9 @@ LANGUAGE C
 STABLE
 STRICT
 PARALLEL SAFE;
-CREATE CAST (ivymy.mysdate as bigint) WITH FUNCTION mysdate_int8(ivymy.mysdate) AS IMPLICIT;
+CREATE CAST (ivymy.mysdate as bigint) WITH FUNCTION mysdate_int8(ivymy.mysdate) AS ASSIGNMENT;
+
+CREATE CAST (ivymy.mysdate as int) WITHOUT FUNCTION AS IMPLICIT;
 
 CREATE FUNCTION ivymy.mysdate_numeric(ivymy.mysdate)
 RETURNS pg_catalog.numeric

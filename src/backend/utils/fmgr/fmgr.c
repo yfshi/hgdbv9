@@ -1803,7 +1803,7 @@ InputFunctionCall(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod)
  * in an INSERT context.
  */
 Datum
-InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int64 flag)
+InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int64 flag, bool *isnull)
 {
 	LOCAL_FCINFO(fcinfo, 4);
 	Datum		result;
@@ -1842,6 +1842,10 @@ InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmo
 
 	}
 
+	if (isnull)
+	{
+		*isnull = fcinfo->isnull;
+	}
 	return result;
 }
 /* End - SRS-MYSQL-HEX-LITERAL */
@@ -1987,12 +1991,12 @@ OidInputFunctionCall(Oid functionId, char *str, Oid typioparam, int32 typmod)
 
 /* Begin - SRS-MYSQL-HEX-LITERAL */
 Datum
-OidInputFunctionCall_mysql(Oid functionId, char *str, Oid typioparam, int32 typmod, int64 flag)
+OidInputFunctionCall_mysql(Oid functionId, char *str, Oid typioparam, int32 typmod, int64 flag, bool *isnull)
 {
 	FmgrInfo	flinfo;
 
 	fmgr_info(functionId, &flinfo);
-	return InputFunctionCall_mysql(&flinfo, str, typioparam, typmod, flag);
+	return InputFunctionCall_mysql(&flinfo, str, typioparam, typmod, flag, isnull);
 }
 /* End - SRS-MYSQL-HEX-LITERAL */
 

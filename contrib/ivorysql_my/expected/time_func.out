@@ -1819,6 +1819,7 @@ select to_days(950501);--728779
 (1 row)
 
 select to_days(0);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
@@ -2639,6 +2640,7 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select week(0);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -2824,6 +2826,7 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select week(0, 2);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -3006,6 +3009,7 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select yearweek(0);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -3186,6 +3190,7 @@ WARNING:  Incorrect datetime value: '1.2'
 (1 row)
 
 select yearweek(0, 4);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -4561,6 +4566,7 @@ WARNING:  Incorrect datetime value: '0000-00-00'
 (1 row)
 
 select to_days(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
@@ -4574,6 +4580,7 @@ WARNING:  Incorrect datetime value: '0000-00-00'
 (1 row)
 
 select dayname(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  dayname 
 ---------
  
@@ -4587,6 +4594,7 @@ WARNING:  Incorrect datetime value: '0000-00-00'
 (1 row)
 
 select week(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
@@ -4600,6 +4608,7 @@ WARNING:  Incorrect datetime value: '0000-00-00'
 (1 row)
 
 select yearweek(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -4652,48 +4661,56 @@ select monthname('0000-00-00');--NULL
 (1 row)
 
 select to_days(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
 (1 row)
 
 select to_days('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0'
  to_days 
 ---------
         
 (1 row)
 
 select dayname(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  dayname 
 ---------
  
 (1 row)
 
 select dayname('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0'
  dayname 
 ---------
  
 (1 row)
 
 select week(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
 (1 row)
 
 select week('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0'
  week 
 ------
      
 (1 row)
 
 select yearweek(00000000);--NULL warning
+WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
 (1 row)
 
 select yearweek('0000-00-00');--NULL warning
+WARNING:  Incorrect datetime value: '0'
  yearweek 
 ----------
          
@@ -4865,9 +4882,9 @@ WARNING:  Incorrect datetime value: '09:30:17a' for function str_to_date
 
 set sql_mode = '' ;
 SELECT STR_TO_DATE('abc','abc');
- STR_TO_DATE 
--------------
- 
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 00:00:00
 (1 row)
 
 set sql_mode = traditional;
@@ -4895,9 +4912,9 @@ WARNING:  Incorrect datetime value: '9' for function str_to_date
 
 set sql_mode = '';
 SELECT STR_TO_DATE('00/00/0000', '%m/%d/%Y'); --error
- STR_TO_DATE 
--------------
- 
+     STR_TO_DATE     
+---------------------
+ 0000-00-00 00:00:00
 (1 row)
 
 set sql_mode = NO_ZERO_DATE;

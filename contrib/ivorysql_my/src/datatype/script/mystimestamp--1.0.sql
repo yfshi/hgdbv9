@@ -124,120 +124,10 @@ PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-----function add
-CREATE FUNCTION ivymy.mystimestamp_add(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_addtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function sub
-CREATE FUNCTION ivymy.mystimestamp_sub(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_subtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function multiply
-CREATE FUNCTION ivymy.mystimestamp_mul(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_multimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function divide
-CREATE FUNCTION ivymy.mystimestamp_div(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS float8
-AS 'MODULE_PATHNAME','mystimestamp_divtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function exact division
-CREATE FUNCTION ivymy.mys_div(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_exact_divtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function mod
-CREATE FUNCTION ivymy.mystimestamp_mod(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_modtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function &
-CREATE FUNCTION ivymy.mystimestamp_bitand(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_bitandtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function |
-CREATE FUNCTION ivymy.mystimestamp_bitor(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_bitortimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
 ----function ~
 CREATE FUNCTION ivymy.mystimestamp_nega(ivymy.mystimestamp)
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME','mystimestamp_negatimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function ^
-CREATE FUNCTION ivymy.mystimestamp_bitxor(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_bitxortimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function >>
-CREATE FUNCTION ivymy.mystimestamp_rightmov(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_rightmovtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function <<
-CREATE FUNCTION ivymy.mystimestamp_leftmov(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_leftmovtimestamp'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -252,16 +142,6 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-
-----function &&
-CREATE FUNCTION ivymy.mystimestamp_and(ivymy.mystimestamp, ivymy.mystimestamp)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamp_andtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
 
 -- || ,string cat ,need "set sql_mode = 'pipes_as_concat';"
 CREATE FUNCTION ivymy.mystimestamp_cat(mystimestamp, mystimestamp)
@@ -281,8 +161,6 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
-
---operator xor or and
 
 ----operator =
 CREATE OPERATOR = (
@@ -359,95 +237,9 @@ CREATE OPERATOR <=> (
 	rightarg = ivymy.mystimestamp
 );
 
---operator +
-CREATE OPERATOR + (
-	procedure = ivymy.mystimestamp_add,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp,
-	commutator = +
-);
-
---operator -
-CREATE OPERATOR - (
-	procedure = ivymy.mystimestamp_sub,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator *
-CREATE OPERATOR * (
-	procedure = ivymy.mystimestamp_mul,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator /
-CREATE OPERATOR / (
-	procedure = ivymy.mystimestamp_div,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator //
-CREATE OPERATOR // (
-	procedure = ivymy.mys_div,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator %
-CREATE OPERATOR % (
-	procedure = ivymy.mystimestamp_mod,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator &
-CREATE OPERATOR & (
-	procedure = ivymy.mystimestamp_bitand,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator |
-CREATE OPERATOR | (
-	procedure = ivymy.mystimestamp_bitor,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
 --operator ~
 CREATE OPERATOR ~ (
 	procedure = ivymy.mystimestamp_nega,
-	rightarg = ivymy.mystimestamp
-);
-
-
---operator ^
-CREATE OPERATOR ^ (
-	procedure = ivymy.mystimestamp_bitxor,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator >>
-CREATE OPERATOR >> (
-	procedure = ivymy.mystimestamp_rightmov,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator <<
-CREATE OPERATOR << (
-	procedure = ivymy.mystimestamp_leftmov,
-	leftarg = ivymy.mystimestamp,
-	rightarg = ivymy.mystimestamp
-);
-
---operator &&
-CREATE OPERATOR && (
-	procedure = ivymy.mystimestamp_and,
-	leftarg = ivymy.mystimestamp,
 	rightarg = ivymy.mystimestamp
 );
 
@@ -567,7 +359,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mystimestamp_sortsupport(internal)
 RETURNS void
-AS 'date_sortsupport'
+AS 'btint8sortsupport'
 LANGUAGE internal
 PARALLEL SAFE
 STRICT
@@ -754,14 +546,7 @@ AS ASSIGNMENT;
 --CREATE CAST (ivymy.mystimestamp AS pg_catalog.numeric) WITH FUNCTION ivymy.mystimestamp_numeric(ivymy.mystimestamp) AS ASSIGNMENT;
 
 -- to int8
-CREATE OR REPLACE FUNCTION ivymy.mystimestamp_int8(ivymy.mystimestamp)
-RETURNS int8
-AS 'MODULE_PATHNAME', 'mysdatetime_int8'
-LANGUAGE C 
-STABLE
-STRICT
-PARALLEL SAFE;
-CREATE CAST (ivymy.mystimestamp as bigint) WITH FUNCTION mystimestamp_int8(ivymy.mystimestamp) AS IMPLICIT;
+CREATE CAST (ivymy.mystimestamp as bigint) WITHOUT FUNCTION AS IMPLICIT;
 
 ---- to numeric
 CREATE FUNCTION ivymy.mystimestamp_numeric(ivymy.mystimestamp)

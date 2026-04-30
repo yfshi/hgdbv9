@@ -1486,7 +1486,8 @@ NextCopyFrom(CopyFromState cstate, ExprContext *econtext,
 													string,
 													typioparams[m],
 													att->atttypmod,
-													TRANSFORM_FLAG_IN_INSERT);
+													TRANSFORM_FLAG_IN_INSERT,
+													NULL);
 			}
 			/* End - SRS-MYSQL-HEX-LITERAL */
 			else 

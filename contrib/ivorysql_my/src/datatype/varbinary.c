@@ -483,6 +483,11 @@ anybinary2date(PG_FUNCTION_ARGS)
 	result = DirectFunctionCall1(mysdate_in, 
 							     CStringGetDatum(data));
 
+	if (result == MYSQL_ZERO_DATE)
+	{
+		PG_RETURN_NULL();
+	}
+
 	pfree(data);
 	
 	return result;
@@ -518,6 +523,10 @@ anybinary2datetime(PG_FUNCTION_ARGS)
 	
 	result = DirectFunctionCall1(mysdatetime_in, 
 							     CStringGetDatum(data));
+	if (result == MYSQL_ZERO_DATE)
+	{
+		PG_RETURN_NULL();
+	}
 
 	pfree(data);
 	
