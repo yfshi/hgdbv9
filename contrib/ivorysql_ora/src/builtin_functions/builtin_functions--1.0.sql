@@ -635,15 +635,6 @@ STRICT
 STABLE;
 /* End - OA-REQ-2131 */
 
-CREATE FUNCTION sys.to_char(sys.oradate)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','oradate_to_char1'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-IMMUTABLE;
-
-
 CREATE FUNCTION sys.to_char(sys.oradate, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradate_to_char2'
@@ -655,14 +646,6 @@ IMMUTABLE;
 CREATE FUNCTION sys.to_char(sys.oradate, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradate_to_char3'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-IMMUTABLE;
-
-CREATE FUNCTION sys.to_char(sys.oratimestamp)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','oratimestamp_to_char1'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
@@ -684,14 +667,6 @@ PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION sys.to_char(sys.oratimestamptz)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','oratimestamptz_to_char1'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-IMMUTABLE;
-
 CREATE FUNCTION sys.to_char(sys.oratimestamptz, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamptz_to_char2'
@@ -703,14 +678,6 @@ IMMUTABLE;
 CREATE FUNCTION sys.to_char(sys.oratimestamptz, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oratimestamptz_to_char3'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-IMMUTABLE;
-
-CREATE FUNCTION sys.to_char(sys.oratimestampltz)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','oratimestampltz_to_char1'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
@@ -732,14 +699,6 @@ PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION sys.to_char(sys.dsinterval)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','oradsinterval_to_char1'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-IMMUTABLE;
-
 CREATE FUNCTION sys.to_char(sys.dsinterval, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradsinterval_to_char1'
@@ -751,14 +710,6 @@ IMMUTABLE;
 CREATE FUNCTION sys.to_char(sys.dsinterval, text, text)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','oradsinterval_to_char1'
-LANGUAGE C
-PARALLEL SAFE	-- BUG#M0000422
-STRICT
-IMMUTABLE;
-
-CREATE FUNCTION sys.to_char(sys.yminterval)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','orayminterval_to_char1'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
@@ -779,6 +730,16 @@ LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
+
+/* Begin - OA-REQ-2128 */
+CREATE OR REPLACE FUNCTION sys.to_char(sys.oravarcharchar)
+RETURNS sys.oravarcharchar AS
+$$
+	SELECT $1;
+$$
+PARALLEL SAFE
+LANGUAGE SQL IMMUTABLE;
+/* End - OA-REQ-2128 */
 
 CREATE FUNCTION sys.to_yminterval(text)
 RETURNS sys.yminterval
@@ -1157,12 +1118,6 @@ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 CREATE OR REPLACE FUNCTION sys.trunc(double precision, integer)
 RETURNS sys.number
 AS 'select pg_catalog.trunc($1::pg_catalog.numeric, $2)'
-LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
-
---to_char
-CREATE OR REPLACE FUNCTION sys.to_char(number)
-RETURNS sys.oravarcharchar
-AS 'select sys.to_char($1::text)'
 LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 /* End - ReqID:SRS-SQL-SYSFUNC */
 

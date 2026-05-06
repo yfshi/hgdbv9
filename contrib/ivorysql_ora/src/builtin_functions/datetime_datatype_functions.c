@@ -53,16 +53,12 @@ PG_FUNCTION_INFO_V1(to_oradate);
 PG_FUNCTION_INFO_V1(to_oratimestamp);
 PG_FUNCTION_INFO_V1(to_oratimestamptz);
 /* End - OA-REQ-2131 */
-PG_FUNCTION_INFO_V1(oradate_to_char1);
 PG_FUNCTION_INFO_V1(oradate_to_char2);
 PG_FUNCTION_INFO_V1(oradate_to_char3);
-PG_FUNCTION_INFO_V1(oratimestamp_to_char1);
 PG_FUNCTION_INFO_V1(oratimestamp_to_char2);
 PG_FUNCTION_INFO_V1(oratimestamp_to_char3);
-PG_FUNCTION_INFO_V1(oratimestamptz_to_char1);
 PG_FUNCTION_INFO_V1(oratimestamptz_to_char2);
 PG_FUNCTION_INFO_V1(oratimestamptz_to_char3);
-PG_FUNCTION_INFO_V1(oratimestampltz_to_char1);
 PG_FUNCTION_INFO_V1(oratimestampltz_to_char2);
 PG_FUNCTION_INFO_V1(oratimestampltz_to_char3);
 PG_FUNCTION_INFO_V1(oradsinterval_to_char1);
@@ -938,19 +934,6 @@ to_oratimestamptz(PG_FUNCTION_ARGS)
  * type in the format specified by the date format fmt.
  */
 Datum
-oradate_to_char1(PG_FUNCTION_ARGS)
-{
-	Timestamp	dt = PG_GETARG_TIMESTAMP(0);
-	VarChar	*res;
-
-	res = DatumGetVarCharP(DirectFunctionCall2(timestamp_to_char,
-													  TimestampGetDatum(dt),
-													  PointerGetDatum(cstring_to_text(nls_date_format))));
-
-	PG_RETURN_VARCHAR_P(res);
-}
-
-Datum
 oradate_to_char2(PG_FUNCTION_ARGS)
 {
 	Timestamp	dt = PG_GETARG_TIMESTAMP(0);
@@ -982,39 +965,6 @@ oradate_to_char3(PG_FUNCTION_ARGS)
 													  PointerGetDatum(fmt)));
 
 	PG_RETURN_VARCHAR_P(res);
-}
-
-Datum
-oratimestamp_to_char1(PG_FUNCTION_ARGS)
-{
-	Timestamp	dt = PG_GETARG_TIMESTAMP(0);
-	text	   *fmt = cstring_to_text(nls_timestamp_format),
-			   *res;
-	TmToChar	tmtc;
-	struct pg_tm *tm;
-	int			thisdate;
-	VarChar	   *vres;
-
-	if ((VARSIZE(fmt) - VARHDRSZ) <= 0 || TIMESTAMP_NOT_FINITE(dt))
-		PG_RETURN_NULL();
-	
-	ORA_ZERO_tmtc(&tmtc);
-	tm = tmtcTm(&tmtc);
-
-	if (timestamp2tm(dt, NULL, tm, &tmtcFsec(&tmtc), NULL, NULL) != 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("timestamp out of range")));
-
-	thisdate = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday);
-	tm->tm_wday = (thisdate + 1) % 7;
-	tm->tm_yday = thisdate - date2j(tm->tm_year, 1, 1) + 1;
-
-	if (!(res = datetime_to_char_body(&tmtc, fmt, false, PG_GET_COLLATION())))
-		PG_RETURN_NULL();
-
-	vres = (VarChar *)res;
-	PG_RETURN_VARCHAR_P(vres);
 }
 
 Datum
@@ -1090,19 +1040,6 @@ oratimestamp_to_char3(PG_FUNCTION_ARGS)
 }
 
 Datum
-oratimestamptz_to_char1(PG_FUNCTION_ARGS)
-{
-	TimestampTz dt = PG_GETARG_TIMESTAMP(0);
-	VarChar	*res;
-
-	res = DatumGetVarCharP(DirectFunctionCall2(timestamptz_to_char,
-												  TimestampGetDatum(dt),
-											      PointerGetDatum(cstring_to_text(nls_timestamp_tz_format))));
-
-	PG_RETURN_VARCHAR_P(res);
-}
-
-Datum
 oratimestamptz_to_char2(PG_FUNCTION_ARGS)
 {
 	TimestampTz dt = PG_GETARG_TIMESTAMP(0);
@@ -1130,19 +1067,6 @@ oratimestamptz_to_char3(PG_FUNCTION_ARGS)
 	res = DatumGetVarCharP(DirectFunctionCall2(timestamptz_to_char,
 													  TimestampGetDatum(dt),
 													  PointerGetDatum(fmt)));
-	PG_RETURN_VARCHAR_P(res);
-}
-
-Datum
-oratimestampltz_to_char1(PG_FUNCTION_ARGS)
-{
-	TimestampTz dt = PG_GETARG_TIMESTAMP(0);
-	text	*res;
-	
-	res = DatumGetTextP(DirectFunctionCall2(timestamptz_to_char,
-												  TimestampGetDatum(dt),
-											      PointerGetDatum(cstring_to_text(nls_timestamp_format))));
-	
 	PG_RETURN_VARCHAR_P(res);
 }
 
