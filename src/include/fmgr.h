@@ -806,8 +806,8 @@ extern PGDLLIMPORT fmgr_hook_type fmgr_hook;
 
 #define CALL_IN_INSERT()	(PG_NARGS() > 3 ? (PG_GETARG_INT64(3) & TRANSFORM_FLAG_IN_INSERT) : false)
 
-extern Datum InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int64 flag);
-extern Datum OidInputFunctionCall_mysql(Oid functionId, char *str, Oid typioparam, int32 typmod, int64 flag);
+extern Datum InputFunctionCall_mysql(FmgrInfo *flinfo, char *str, Oid typioparam, int32 typmod, int64 flag, bool *isnull);
+extern Datum OidInputFunctionCall_mysql(Oid functionId, char *str, Oid typioparam, int32 typmod, int64 flag, bool *isnull);
 /* End - SRS-MYSQL-HEX-LITERAL */
 
 #endif							/* FMGR_H */

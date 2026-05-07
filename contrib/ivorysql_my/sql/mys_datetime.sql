@@ -2716,3 +2716,21 @@ SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
 
 SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
 drop TABLE tb_test;
+
+set sql_mode='';
+create table t1(a datetime);
+insert into t1 values ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+insert into t1 values ('2008-02-23 09:23:45'), ('2010-03-05 11:08:02');
+insert into t1 values (' ');
+insert into t1 values (NULL);
+select * from t1 order by a;
+DROP TABLE t1;
+
+create table t1(a datetime(6));
+insert into t1 values ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+insert into t1 values ('2008-02-23 09:23:45'), ('2010-03-05 11:08:02');
+insert into t1 values (' ');
+insert into t1 values (NULL);
+select * from t1 order by a;
+DROP TABLE t1;
+set sql_mode=default;

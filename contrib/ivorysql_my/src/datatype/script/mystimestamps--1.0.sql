@@ -163,86 +163,6 @@ PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-----function add
-CREATE FUNCTION ivymy.mystimestamps_add(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mystimestamps_addtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function sub
-CREATE FUNCTION ivymy.mystimestamps_sub(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mystimestamps_subtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function multiply
-CREATE FUNCTION ivymy.mystimestamps_mul(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mystimestamps_multimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function divide
-CREATE FUNCTION ivymy.mystimestamps_div(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mystimestamps_divtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function exact division
-CREATE FUNCTION ivymy.mys_div(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_exact_divtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function mod
-CREATE FUNCTION ivymy.mystimestamps_mod(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mystimestamps_modtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function &
-CREATE FUNCTION ivymy.mystimestamps_bitand(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_bitandtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function |
-CREATE FUNCTION ivymy.mystimestamps_bitor(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_bitortimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
 ----function ~
 CREATE FUNCTION ivymy.mystimestamps_nega(ivymy.mystimestamps)
 RETURNS pg_catalog.int8
@@ -335,26 +255,6 @@ STRICT
 IMMUTABLE
 LEAKPROOF;
 
-----function >>
-CREATE FUNCTION ivymy.mystimestamps_rightmov(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_rightmovtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function <<
-CREATE FUNCTION ivymy.mystimestamps_leftmov(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_leftmovtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
 --  "bit_count"
 CREATE FUNCTION ivymy.bit_count(ivymy.mystimestamps)
 RETURNS pg_catalog.int8
@@ -363,16 +263,6 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-
-----function &&
-CREATE FUNCTION ivymy.mystimestamps_and(ivymy.mystimestamps, ivymy.mystimestamps)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystimestamps_andtimestamp'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
 
 ----function or
 CREATE FUNCTION ivymy.mystimestamps_cat(ivymy.mystimestamps, ivymy.mystimestamps)
@@ -469,63 +359,6 @@ CREATE OPERATOR <=> (
 	rightarg = ivymy.mystimestamps
 );
 
---operator +
-CREATE OPERATOR + (
-	procedure = ivymy.mystimestamps_add,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps,
-	commutator = +
-);
-
---operator -
-CREATE OPERATOR - (
-	procedure = ivymy.mystimestamps_sub,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator *
-CREATE OPERATOR * (
-	procedure = ivymy.mystimestamps_mul,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator /
-CREATE OPERATOR / (
-	procedure = ivymy.mystimestamps_div,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator //
-CREATE OPERATOR // (
-	procedure = ivymy.mys_div,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator %
-CREATE OPERATOR % (
-	procedure = ivymy.mystimestamps_mod,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator &
-CREATE OPERATOR & (
-	procedure = ivymy.mystimestamps_bitand,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator |
-CREATE OPERATOR | (
-	procedure = ivymy.mystimestamps_bitor,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
 --operator ~
 CREATE OPERATOR ~ (
 	procedure = ivymy.mystimestamps_nega,
@@ -584,27 +417,6 @@ CREATE OPERATOR ^ (
 CREATE OPERATOR ^ (
 	procedure = ivymy.mystimestamps_bitxor,
 	leftarg = pg_catalog.numeric,
-	rightarg = ivymy.mystimestamps
-);
-
---operator >>
-CREATE OPERATOR >> (
-	procedure = ivymy.mystimestamps_rightmov,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator <<
-CREATE OPERATOR << (
-	procedure = ivymy.mystimestamps_leftmov,
-	leftarg = ivymy.mystimestamps,
-	rightarg = ivymy.mystimestamps
-);
-
---operator &&
-CREATE OPERATOR && (
-	procedure = ivymy.mystimestamps_and,
-	leftarg = ivymy.mystimestamps,
 	rightarg = ivymy.mystimestamps
 );
 
@@ -752,7 +564,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mystimestamps_sortsupport(internal)
 RETURNS void
-AS 'date_sortsupport'
+AS 'numeric_sortsupport'
 LANGUAGE internal
 PARALLEL SAFE
 STRICT
@@ -978,14 +790,5 @@ WITH FUNCTION mystimestamps_int8(ivymy.mystimestamps)
 AS ASSIGNMENT;
 
 -- to numeric
-CREATE FUNCTION ivymy.mystimestamps_numeric(ivymy.mystimestamps, integer)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mysdatetimes_numeric'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-STABLE;
-CREATE CAST (ivymy.mystimestamps AS pg_catalog.numeric)
-WITH FUNCTION ivymy.mystimestamps_numeric(ivymy.mystimestamps, integer)
-AS IMPLICIT;
+CREATE CAST (ivymy.mystimestamps AS pg_catalog.numeric) WITHOUT FUNCTION AS IMPLICIT;
 -- End - ReqID:SRS-MYSQL-TIMESTAMPTYPE 

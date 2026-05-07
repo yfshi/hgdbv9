@@ -754,27 +754,23 @@ null_date:
 Datum
 str_to_date(PG_FUNCTION_ARGS)
 {
-	text	*arg0 = PG_GETARG_TEXT_PP(0);
-	text	*arg1 = PG_GETARG_TEXT_PP(1);
-	
-	char	*str = text_to_cstring(arg0);
-	char	*str_format = text_to_cstring(arg1);
-
-	int32	typmod = 0;
-	
-	TimeADT		datetime = -1;
-	fsec_t		fsec = 0;
+	text *arg0 = PG_GETARG_TEXT_PP(0);
+	text *arg1 = PG_GETARG_TEXT_PP(1);
+	char *str = text_to_cstring(arg0);
+	char *str_format = text_to_cstring(arg1);
+	int32 typmod = 0;
+	TimeADT datetime = MYSQL_INVAILD_DATE;
+	fsec_t fsec = 0;
 	struct pg_tm tt,
-				*tm = &tt;
-	TimeOffset	time = 0;
-	int64 		datetemp = 0;
-	char		buf[MAXDATELEN + 1] = {0};
-
-	Datum	result;
+		*tm = &tt;
+	TimeOffset time = 0;
+	int64 datetemp = 0;
+	char buf[MAXDATELEN + 1] = {0};
+	Datum result;
 
 	mysql_dttype cached_timestamp_type = MYSQL_TIMESTAMP_NONE;
 	cached_timestamp_type = fix_from_format(str_format, sizeof(str_format));
-	
+
 	if (!valid_datetime(str, str_format, tm, TIME_FUZZY_DATE, cached_timestamp_type, &fsec))
 	{
 		PG_RETURN_NULL();
@@ -786,22 +782,22 @@ str_to_date(PG_FUNCTION_ARGS)
 	}
 
 	snprintf(buf, MAXDATELEN, "%04d-%02d-%02d %02d:%02d:%02d.%06d",
-				tm->tm_year, tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
+			 tm->tm_year, tm->tm_mon, tm->tm_mday, tm->tm_hour, tm->tm_min, tm->tm_sec, fsec);
 
 	result = DirectFunctionCall3(mysdatetimes_in,
-										CStringGetDatum(buf),
-										ObjectIdGetDatum(InvalidOid),
-										Int32GetDatum(typmod));
+								 CStringGetDatum(buf),
+								 ObjectIdGetDatum(InvalidOid),
+								 Int32GetDatum(typmod));
 	if (result)
 	{
 		TimeADT dtcheck = 0;
-		int64	part1, part2;
-		int		year, mon, day;
-		DateADT		date;
-		
+		int64 part1, part2;
+		int year, mon, day;
+		DateADT date;
+
 		dtcheck = DatumGetInt64(DirectFunctionCall1(numeric_int8, result));
 
-		date = dtcheck/1000000;
+		date = dtcheck / 1000000;
 		part1 = (date / 10000);
 		part2 = (date - part1 * 10000);
 
@@ -813,8 +809,7 @@ str_to_date(PG_FUNCTION_ARGS)
 		 * if param not 0000-00-00 and result not 1000-01-01,
 		 * can return by mysdatetimes.
 		 */
-		if (tm->tm_year || tm->tm_mon || tm->tm_mday
-			|| year != 1000 || mon != 1 || day != 1)
+		if (tm->tm_year || tm->tm_mon || tm->tm_mday || year != 1000 || mon != 1 || day != 1)
 		{
 			PG_RETURN_DATUM(result);
 		}
@@ -825,7 +820,7 @@ str_to_date(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	datetime = datetemp + time;
 
-	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) datetime, fsec);
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long)datetime, fsec);
 
 	PG_RETURN_DATUM(DirectFunctionCall3(numeric_in,
 										CStringGetDatum(buf),
@@ -840,14 +835,8 @@ ivymy_dayof_date(FunctionCallInfo fcinfo, int datekind)
     struct pg_tm tt, *tm = &tt;
     int64 intresult = 0;
     int64 part1, part2;
-
-    /* Begin - bug#z5083 */
-    if (mysdate == 0)
-        PG_RETURN_NULL();
-
-    if (mysdate == MYSQL_ZERO_DATE)
-        PG_RETURN_INT32(intresult);
-    /* End - bug#z5083 */
+	if (mysdate == MYSQL_ZERO_DATE)
+		PG_RETURN_INT32(intresult);
 
     MYS_ZERO_tm(tm); /* bug#5127 */
 
@@ -948,11 +937,16 @@ static Datum
 GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part)
 {
     struct pg_tm tt, *tm = &tt;
-    Numeric num = PG_GETARG_NUMERIC(0);
+    Numeric num;
     Numeric tempfsec;
     int64 fsec = 0;
     int64 time = 0;
 
+	if (PG_ARGISNULL(0))
+	{
+		PG_RETURN_NULL();
+	}
+	num = PG_GETARG_NUMERIC(0);
     MYS_ZERO_tm(tm); /* bug#5127 */
 
     time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(num)));
@@ -964,9 +958,6 @@ GetSpecificPartOfTime(FunctionCallInfo fcinfo, int part)
 
     if (fsec >= 500000)
         time--;
-
-    if (time == MYSQL_NULL_TIME)
-        PG_RETURN_NULL();
 
     if (time < 0)
     {
@@ -1012,9 +1003,6 @@ weekday(PG_FUNCTION_ARGS)
     int64 intresult = 0;
     int64 part1, part2;
 
-    if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
-        PG_RETURN_NULL();
-
     MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
@@ -1039,9 +1027,6 @@ weekofyear(PG_FUNCTION_ARGS)
     int64 intresult = 0;
     int64 part1, part2;
 
-    if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
-        PG_RETURN_NULL();
-
     MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
@@ -1062,10 +1047,10 @@ year(PG_FUNCTION_ARGS)
     struct pg_tm tt, *tm = &tt;
     int64 part1, part2;
 
-    if (mysdate == 0 || mysdate == MYSQL_ZERO_DATE)
+	if (mysdate == MYSQL_ZERO_DATE)
         PG_RETURN_NULL();
-
-    MYS_ZERO_tm(tm); /* bug#5127 */
+    
+	MYS_ZERO_tm(tm); /* bug#5127 */
 
     part1 = (mysdate / 10000);
     part2 = (mysdate - part1 * 10000);
@@ -1154,7 +1139,7 @@ now(PG_FUNCTION_ARGS)
     int typmod = PG_GETARG_INT32(0);
     TimestampTz state_start_timestamp;
     fsec_t fsec;
-    int64 datetime = -1;
+    int64 datetime = MYSQL_INVAILD_DATE;
     int64 temp = 0;
     int64 time = 0;
     struct pg_tm tt, *tm = &tt;
@@ -1191,7 +1176,7 @@ now(PG_FUNCTION_ARGS)
     if (!warn)
     {
         if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
-            datetime = MYSQL_ZERO_TIMESTAMP;
+            datetime = MYSQL_ZERO_DATE;
     }
     else
     {
@@ -1202,11 +1187,11 @@ now(PG_FUNCTION_ARGS)
         if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
         {
             ereport(WARNING, (errmsg("Out of range value.")));
-            datetime = MYSQL_ZERO_TIMESTAMP;
+            datetime = MYSQL_ZERO_DATE;
         }
     }
 
-    if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+    if (datetime != MYSQL_ZERO_DATE)
     {
         temp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
         temp = temp * 1000000;
@@ -1267,7 +1252,7 @@ sysdate(PG_FUNCTION_ARGS)
     if (!warn)
     {
         if (tm->tm_year == 0 && tm->tm_mon == 0 && tm->tm_mday == 0)
-            datetime = MYSQL_ZERO_TIMESTAMP;
+            datetime = MYSQL_ZERO_DATE;
     }
     else
     {
@@ -1278,11 +1263,11 @@ sysdate(PG_FUNCTION_ARGS)
         if (warn & (MYSQL_TIME_WARN_ZERO_IN_DATE | MYSQL_TIME_WARN_OUT_OF_RANGE))
         {
             ereport(WARNING, (errmsg("Out of range value.")));
-            datetime = MYSQL_ZERO_TIMESTAMP;
+            datetime = MYSQL_ZERO_DATE;
         }
     }
 
-    if (datetime != 0 && datetime != MYSQL_ZERO_TIMESTAMP)
+    if (datetime != MYSQL_ZERO_DATE)
     {
         temp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
         temp = temp * 1000000;
@@ -3070,11 +3055,6 @@ get_time_from_num(Numeric num, struct pg_tm *tm, fsec_t *fsec, int flag, int *de
 	}
 	timetemp = (neg != 1 ? timetemp : -timetemp);
 
-	/* Begin - BUG#Z5566 */
-	if (timetemp == MYSQL_NULL_TIME)
-		return false;
-	/* End - BUG#Z5566 */
-
 	/* First obtain nanosecond accuracy, then obtain dec accuracy */
 	dterr = number_to_time(timetemp, tm, fsec, &ftype, &neg, &warn);
 	*fsec = (nanofsec + 500) / 1000;
@@ -3378,16 +3358,6 @@ to_days(PG_FUNCTION_ARGS)
 
 	DateADT	date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	/* When the parameter is the value 0 or the character '0000-00-00',and 
-	 * sql_mode is default or empty, the conversion calls the int_mysdate function
-	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
-	 * appears because the original input parameter cannot be obtained.
-	 * Therefore,ensur the result is correct and omit the warning message.
-	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
-	 */
-	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
-		PG_RETURN_NULL();
-
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);
@@ -3546,16 +3516,6 @@ dayname(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	/* When the parameter is the value 0 or the character '0000-00-00',and 
-	 * sql_mode is default or empty, the conversion calls the int_mysdate function
-	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
-	 * appears because the original input parameter cannot be obtained.
-	 * Therefore,ensur the result is correct and omit the warning message.
-	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
-	 */
-	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
-		PG_RETURN_NULL();
-
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);
@@ -3583,19 +3543,8 @@ monthname(PG_FUNCTION_ARGS)
 	struct	pg_tm tt, *tm = &tt;
 	fsec_t		fsec = 0;
 	int			flag = TIME_FUZZY_DATE;
-
 	DateADT		date = PG_GETARG_DATEADT(0);
-	/* Begin - BUG#Z5578 */
-	/* When the parameter is the value 0 or the character '0000-00-00',and 
-	 * sql_mode is default or empty, the conversion calls the int_mysdate function
-	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
-	 * appears because the original input parameter cannot be obtained.
-	 * Therefore,ensur the result is correct and omit the warning message.
-	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
-	 */
-	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
-		PG_RETURN_NULL();
-	/* End - BUG#Z5578 */
+
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
 
@@ -3640,12 +3589,6 @@ mys_month(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 
-	/* Begin - BUG#Z5571 */
-	if (date == 0)
-		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-		PG_RETURN_INT32(0);
-	/* End - BUG#Z5571 */
 	if (!get_date_from_int(date, tm, &fsec, flag))
 		PG_RETURN_NULL();
 
@@ -3660,15 +3603,8 @@ mys_date(PG_FUNCTION_ARGS)
 	fsec_t	fsec = 0;
 	DateADT	result = 0;
 	int		flag = TIME_FUZZY_DATE | TIME_NO_DATE_FRAC_WARN;
-
 	DateADT	date = PG_GETARG_DATEADT(0);
 
-	/* Begin - BUG#Z5571 */
-	if (date == 0)
-		PG_RETURN_NULL();
-	else if (date == MYSQL_ZERO_DATE)
-		PG_RETURN_INT32(MYSQL_ZERO_DATE);
-	/* End - BUG#Z5571 */
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm); /* BUG#Z5578 */
@@ -3693,16 +3629,6 @@ mys_week(PG_FUNCTION_ARGS)
 
 	DateADT		date = PG_GETARG_DATEADT(0);
 	/* Begin - BUG#Z5578 */
-	/* When the parameter is the value 0 or the character '0000-00-00',and 
-	 * sql_mode is default or empty, the conversion calls the int_mysdate function
-	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
-	 * appears because the original input parameter cannot be obtained.
-	 * Therefore,ensur the result is correct and omit the warning message.
-	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
-	 */
-	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
-		PG_RETURN_NULL();
-
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);
@@ -3733,15 +3659,6 @@ mys_week_mode(PG_FUNCTION_ARGS)
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5528 */
 	/* Begin - BUG#Z5578 */
-	/* When the parameter is the value 0 or the character '0000-00-00',and 
-	 * sql_mode is default or empty, the conversion calls the int_mysdate function
-	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
-	 * appears because the original input parameter cannot be obtained.
-	 * Therefore,ensur the result is correct and omit the warning message.
-	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
-	 */
-	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
-		PG_RETURN_NULL();
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);
@@ -3771,16 +3688,6 @@ yearweek(PG_FUNCTION_ARGS)
 	date = PG_GETARG_DATEADT(0);
 	/* End - BUG#Z5530 */
 	/* Begin - BUG#Z5578 */
-	/* When the parameter is the value 0 or the character '0000-00-00',and 
-	 * sql_mode is default or empty, the conversion calls the int_mysdate function
-	 * or the mysdate_in function to obtain MYSQL_ZERO_DATE. A warning message
-	 * appears because the original input parameter cannot be obtained.
-	 * Therefore,ensur the result is correct and omit the warning message.
-	 * eg: value 0 or 00 or 0000 or 00000000 -> 0
-	 */
-	if (date == 0 || date == MYSQL_ZERO_DATE) /* BUG#Z5604 */
-		PG_RETURN_NULL();
-
 	if (!get_date_from_int(date, tm1, &fsec, flag))
 		PG_RETURN_NULL();
 	mys_date2tm(date, tm);

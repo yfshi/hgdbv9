@@ -3000,3 +3000,9 @@ SELECT TIME_TO_SEC(cast('abc19:30:10' as time));
 SELECT TIME_TO_SEC(cast('%19:30:10' as time));
 SELECT TIME_TO_SEC(cast('abc19:30:10' as time(3)));
 SELECT TIME_TO_SEC(cast('%19:30:10' as time(3)));
+
+create table t(a time);
+insert into t values (-1);
+insert into t values (-100);
+select * from t;
+drop table t;

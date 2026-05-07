@@ -11,8 +11,6 @@ INSERT INTO test_date VALUES
 	( '2004-10-28' )
 ;
 CREATE INDEX idx_date ON test_date USING gin (i);
-ERROR:  data type date has no default operator class for access method "gin"
-HINT:  You must specify an operator class for the index or define a default operator class for the data type.
 SELECT * FROM test_date WHERE i<'2004-10-26'::date ORDER BY i;
      i      
 ------------

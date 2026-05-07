@@ -5901,7 +5901,7 @@ select cast('221222222222' as datetime) - cast('221222222220' as datetime); --2
 (1 row)
 
 select cast('221222222222' as datetime) * cast('221222222220' as datetime); --ERROR
-ERROR:  BIGINT value is out of range
+ERROR:  bigint out of range
 select cast('221222222222' as datetime) * 111; --2244555666666642
      ?column?     
 ------------------
@@ -5931,9 +5931,9 @@ ERROR:  bigint out of range
 -- /
 -- Need to be modified: mysql takes the last 4 digits !!!!!!!
 select cast('221222222222' as datetime) / cast('221222222220' as datetime); --1.0000
-      ?column?      
---------------------
- 1.0000000000000988
+ ?column? 
+----------
+   1.0000
 (1 row)
 
 select cast('221222222222' as datetime) / 111; --182173173173.1712
@@ -6257,7 +6257,7 @@ select ~cast('111111111111' as datetime) ;--18446723962598440504
 select cast('111111111111' as datetime) ^ cast('111111111110' as datetime); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111111111' as datetime) ^ 111; --20111111111080
@@ -6310,10 +6310,9 @@ select cast('221222222222' as datetime) ^ 1.5; --20221222222220
 
 -- >>
 select cast('111111111111' as datetime) >> cast('111111111110' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20111111111110'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime) >> 111; --0
@@ -6366,10 +6365,9 @@ select cast('221222222222' as datetime) >> 1.5; --5055305555555
 
 -- <<
 select cast('111111111111' as datetime) << cast('111111111110' as datetime); --0
-WARNING:  Truncated incorrect DECIMAL value:'20111111111110'
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime) << 111; --0
@@ -6455,7 +6453,7 @@ select bit_count(cast('111111111111.5' as datetime));  --19
 select cast('111111111111' as datetime) && cast('111111111110' as datetime); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111111111' as datetime) && 111; --1
@@ -11688,7 +11686,7 @@ select cast('221222222222' as datetime(3)) ^ 1.5; --20221222222220
 select cast('111111111111' as datetime(3)) >> cast('111111111110' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime(3)) >> 111; --0
@@ -11743,7 +11741,7 @@ select cast('221222222222' as datetime(3)) >> 1.5; --5055305555555
 select cast('111111111111' as datetime(3)) << cast('111111111110' as datetime(3)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111111111' as datetime(3)) << 111; --0
@@ -11829,7 +11827,7 @@ select bit_count(cast('111111111111.5' as datetime(3)));  --19
 select cast('111111111111' as datetime(3)) && cast('111111111110' as datetime(3)); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111111111' as datetime(3)) && 111; --1
@@ -12517,3 +12515,47 @@ SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
 (4 rows)
 
 drop TABLE tb_test;
+set sql_mode='';
+create table t1(a datetime);
+insert into t1 values ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+insert into t1 values ('2008-02-23 09:23:45'), ('2010-03-05 11:08:02');
+insert into t1 values (' ');
+WARNING:  Truncated incorrect datetime value: ' '
+LINE 1: insert into t1 values (' ');
+                               ^
+insert into t1 values (NULL);
+select * from t1 order by a;
+          a          
+---------------------
+ 0000-00-00 00:00:00
+ 2001-04-10 01:01:01
+ 2001-05-09 02:01:01
+ 2001-06-10 04:01:01
+ 2008-02-23 09:23:45
+ 2010-03-05 11:08:02
+ 
+(7 rows)
+
+DROP TABLE t1;
+create table t1(a datetime(6));
+insert into t1 values ('2001-04-10 01:01:01'),('2001-05-09 02:01:01'),('2001-06-10 04:01:01');
+insert into t1 values ('2008-02-23 09:23:45'), ('2010-03-05 11:08:02');
+insert into t1 values (' ');
+WARNING:  Truncated incorrect datetime value: ' '
+LINE 1: insert into t1 values (' ');
+                               ^
+insert into t1 values (NULL);
+select * from t1 order by a;
+             a              
+----------------------------
+ 0000-00-00 00:00:00.000000
+ 2001-04-10 01:01:01.000000
+ 2001-05-09 02:01:01.000000
+ 2001-06-10 04:01:01.000000
+ 2008-02-23 09:23:45.000000
+ 2010-03-05 11:08:02.000000
+ 
+(7 rows)
+
+DROP TABLE t1;
+set sql_mode=default;

@@ -226,120 +226,10 @@ PARALLEL SAFE
 IMMUTABLE
 LEAKPROOF;
 
-----function add
-CREATE FUNCTION ivymy.mystime_add(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_add'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function sub
-CREATE FUNCTION ivymy.mystime_sub(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_sub'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function multiply
-CREATE FUNCTION ivymy.mystime_mul(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_mul'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function divide
-CREATE FUNCTION ivymy.mystime_div(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.numeric
-AS 'MODULE_PATHNAME','mystime_div'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function exact division
-CREATE FUNCTION ivymy.mys_div(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_exact_divtime'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function mod
-CREATE FUNCTION ivymy.mystime_mod(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_mod'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function &
-CREATE FUNCTION ivymy.mystime_bitand(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_bitand'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function |
-CREATE FUNCTION ivymy.mystime_bitor(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_bitor'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
 ----function ~
 CREATE FUNCTION ivymy.mystime_nega(ivymy.mystime)
 RETURNS pg_catalog.int8
 AS 'MODULE_PATHNAME','mystime_neg'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function ^
-CREATE FUNCTION ivymy.mystime_bitxor(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_bitxor'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function >>
-CREATE FUNCTION ivymy.mystime_rightmov(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_rightmov'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
-
-----function <<
-CREATE FUNCTION ivymy.mystime_leftmov(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_leftmov'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
@@ -354,16 +244,6 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
-
-----function &&
-CREATE FUNCTION ivymy.mystime_and(ivymy.mystime, ivymy.mystime)
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME','mystime_and'
-LANGUAGE C
-PARALLEL SAFE
-STRICT
-IMMUTABLE
-LEAKPROOF;
 
 ----function or
 CREATE FUNCTION ivymy.mystime_cat(ivymy.mystime, ivymy.mystime)
@@ -473,95 +353,9 @@ CREATE OPERATOR <=> (
 	rightarg = ivymy.mystime
 );
 
---operator +
-CREATE OPERATOR + (
-	procedure = ivymy.mystime_add,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime,
-	commutator = +
-);
-
---operator -
-CREATE OPERATOR - (
-	procedure = ivymy.mystime_sub,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator *
-CREATE OPERATOR * (
-	procedure = ivymy.mystime_mul,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator /
-CREATE OPERATOR / (
-	procedure = ivymy.mystime_div,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator //
-CREATE OPERATOR // (
-	procedure = ivymy.mys_div,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator %
-CREATE OPERATOR % (
-	procedure = ivymy.mystime_mod,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator &
-CREATE OPERATOR & (
-	procedure = ivymy.mystime_bitand,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator |
-CREATE OPERATOR | (
-	procedure = ivymy.mystime_bitor,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
 --operator ~
 CREATE OPERATOR ~ (
 	procedure = ivymy.mystime_nega,
-	rightarg = ivymy.mystime
-);
-
---operator ^
-CREATE OPERATOR ^ (
-	procedure = ivymy.mystime_bitxor,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator >>
-CREATE OPERATOR >> (
-	procedure = ivymy.mystime_rightmov,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
---operator <<
-CREATE OPERATOR << (
-	procedure = ivymy.mystime_leftmov,
-	leftarg = ivymy.mystime,
-	rightarg = ivymy.mystime
-);
-
-
---operator &&
-CREATE OPERATOR && (
-	procedure = ivymy.mystime_and,
-	leftarg = ivymy.mystime,
 	rightarg = ivymy.mystime
 );
 
@@ -577,7 +371,6 @@ CREATE OPERATOR ! (
 	procedure = ivymy.mystime_invert,
 	rightarg = ivymy.mystime
 );
-
 
 ----operator ~~ like
 CREATE  OR REPLACE FUNCTION ivymy.mystime_like(ivymy.mystime, pg_catalog.text)
@@ -722,7 +515,7 @@ LEAKPROOF;
 
 CREATE FUNCTION ivymy.mystime_sortsupport(internal)
 RETURNS void
-AS 'date_sortsupport'
+AS 'btint8sortsupport'
 LANGUAGE internal
 PARALLEL SAFE
 STRICT
@@ -821,14 +614,4 @@ IMMUTABLE
 LEAKPROOF;
 CREATE CAST (ivymy.mystime as float8) WITH FUNCTION mystime_float8(ivymy.mystime) AS ASSIGNMENT;
 
-CREATE OR REPLACE FUNCTION ivymy.mystime_int8(ivymy.mystime)
-RETURNS int8
-AS 'MODULE_PATHNAME', 'mystime_int8'
-LANGUAGE C 
-STABLE
-STRICT
-PARALLEL SAFE;
-
-CREATE CAST (ivymy.mystime as bigint)
-WITH FUNCTION mystime_int8(ivymy.mystime)
-AS IMPLICIT;
+CREATE CAST (ivymy.mystime as bigint) WITHOUT FUNCTION AS IMPLICIT;

@@ -79,6 +79,6 @@ extern PGDLLIMPORT SynnameGettype_hook_type SynnameGettype_hook;
 /* End - ReqID:SRS-SQL-SYNONYM */
 
 /* Begin - SRS-MYSQL-HEX-LITERAL */
-extern Datum stringTypeDatum_mysql(Type tp, char *string, int32 atttypmod, int64 flag);
+extern Datum stringTypeDatum_mysql(Type tp, char *string, int32 atttypmod, int64 flag, bool *isnull);
 /* End - SRS-MYSQL-HEX-LITERAL */
 #endif							/* PARSE_TYPE_H */

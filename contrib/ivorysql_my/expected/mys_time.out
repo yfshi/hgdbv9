@@ -4935,7 +4935,7 @@ select 220121.01 <=> cast('22:01:21' as time);--0
 select NULL <=> cast('22:01:21' as time);--0
  ?column? 
 ----------
- 
+ f
 (1 row)
 
 select 220121.5 <=> cast('22:01:21' as time);--0
@@ -5698,7 +5698,7 @@ select cast('111111.66' as time(1)) MOD cast('111110.22222' as time(2));--1.48
 select cast('111111' as time) & cast('111110' as time); --111110
  ?column? 
 ----------
-   111110
+ 111110
 (1 row)
 
 select cast('111111' as time) & 111; --7
@@ -5825,7 +5825,7 @@ select cast('222222' as time) | 1.5; --222222
 select cast('111111.77777' as time(3)) | cast('111110.4444' as time(2)); --111118
  ?column? 
 ----------
-   111118
+ 111118
 (1 row)
 
 -- ~
@@ -5840,7 +5840,7 @@ select ~cast('111111' as time) ;--18446744073709440504
 select cast('111111' as time) ^ cast('111110' as time); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111' as time) ^ 111; --111208
@@ -5895,7 +5895,7 @@ select cast('222222' as time) ^ 1.5; --222220
 select cast('111111' as time) >> cast('111110' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time) >> 111; --0
@@ -5956,7 +5956,7 @@ select cast('111111.7777' as time(3)) >> 2;--27778
 select cast('111111' as time) << cast('111110' as time); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time) << 111; --0
@@ -6054,7 +6054,7 @@ select bit_count(cast('111111.5' as time(4))); --6
 select cast('111111' as time) && cast('111110' as time); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111' as time) && 111; --1
@@ -11689,7 +11689,7 @@ select cast('111111.66' as time(1)) MOD cast('111110.22222' as time(2));--1.48
 select cast('111111.5555555' as time(5)) & cast('111110' as time(5)); --111104
  ?column? 
 ----------
-   111104
+ 111104
 (1 row)
 
 select cast('111111' as time(5)) & 111; --7
@@ -11762,7 +11762,7 @@ select cast('1.9' as time(5)) & 3;--2
 select cast('111111.5555555' as time(5)) | cast('111110' as time(5)); --111118
  ?column? 
 ----------
-   111118
+ 111118
 (1 row)
 
 select cast('111111' as time(5)) | 111; --111215
@@ -11816,7 +11816,7 @@ select cast('222222' as time(5)) | 1.5; --222222
 select cast('111111.77777' as time(3)) | cast('111110.4444' as time(2)); --111118
  ?column? 
 ----------
-   111118
+ 111118
 (1 row)
 
 -- ~
@@ -11892,7 +11892,7 @@ select cast('111111.7777' as time(3)) ^ cast('111110' as time(5));--14
 select cast('111111.5555555' as time(5)) >> cast('111110' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time(5)) >> 111; --0
@@ -11953,7 +11953,7 @@ select cast('111111.7777' as time(3)) >> 2;--27778
 select cast('111111.5555555' as time(5)) << cast('111110' as time(5)); --0
  ?column? 
 ----------
-        0
+ 0
 (1 row)
 
 select cast('111111' as time(5)) << 111; --0
@@ -12051,7 +12051,7 @@ select bit_count(cast('111111.5' as time(5))); --6
 select cast('111111.5555555' as time(5)) && cast('111110' as time(5)); --1
  ?column? 
 ----------
-        1
+ 1
 (1 row)
 
 select cast('111111' as time(5)) && 111; --1
@@ -13247,3 +13247,14 @@ LINE 1: SELECT TIME_TO_SEC(cast('%19:30:10' as time(3)));
            0
 (1 row)
 
+create table t(a time);
+insert into t values (-1);
+insert into t values (-100);
+select * from t;
+     a     
+-----------
+ -00:00:01
+ -00:01:00
+(2 rows)
+
+drop table t;
