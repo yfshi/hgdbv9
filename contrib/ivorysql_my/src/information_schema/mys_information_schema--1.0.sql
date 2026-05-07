@@ -5,6 +5,32 @@
  */
 
 --
+-- Function: mys_information_schema.mys_format_type (internal)
+-- Maps a PostgreSQL type OID to a MySQL-compatible DATA_TYPE string.
+--
+CREATE OR REPLACE FUNCTION mys_information_schema.mys_format_type(type_oid oid)
+RETURNS varchar(64)
+LANGUAGE sql 
+STABLE 
+PARALLEL SAFE
+RETURNS NULL ON NULL INPUT
+AS $$
+	SELECT CASE
+		WHEN t.typname = 'mysbit'  THEN 'bit'
+		WHEN t.typname = 'bpchar'  THEN 'char'
+		WHEN t.typname = 'float8'  THEN 'double'
+		WHEN t.typname = 'float4'  THEN 'float'
+		WHEN t.typname = 'int4'    THEN 'int'
+		WHEN t.typname = 'numeric' THEN 'decimal'
+		WHEN t.typname = 'varchar' THEN 'varchar'
+		WHEN t.typname = 'year'    THEN 'year'
+		WHEN t.typtype = 'e'       THEN 'enum'
+		ELSE format_type(type_oid, null)
+	END
+	FROM pg_type t WHERE t.oid = type_oid
+$$;
+
+--
 -- View: mys_information_schema.tables
 --
 
@@ -1651,6 +1677,335 @@ SELECT
 LIMIT 0;
 
 GRANT SELECT ON mys_information_schema.events TO PUBLIC;
+
+--
+-- View: mys_information_schema.keywords
+--
+CREATE OR REPLACE VIEW mys_information_schema.keywords AS
+SELECT	
+	-- keyword text(uppercase)
+	upper(word)::varchar(128) AS "WORD",
+
+	-- reserved flag
+	(catcode = 'R')::int AS "RESERVED"
+
+FROM pg_get_keywords();
+
+GRANT SELECT ON mys_information_schema.keywords TO PUBLIC;
+
+--
+-- View: mys_information_schema.referential_constraints
+--
+
+CREATE OR REPLACE VIEW mys_information_schema.referential_constraints AS
+SELECT
+	-- Catalog of the foreign key constraint (always 'def')
+	'def'::varchar(512) AS "CONSTRAINT_CATALOG",
+
+	-- Schema of the foreign key constraint
+	nc.nspname::varchar(64) AS "CONSTRAINT_SCHEMA",
+
+	-- Name of the foreign key constraint
+	c.conname::varchar(64) AS "CONSTRAINT_NAME",
+
+	-- Catalog of the referenced unique/primary key constraint (always 'def')
+	'def'::varchar(512) AS "UNIQUE_CONSTRAINT_CATALOG",
+
+	-- Schema of the referenced unique/primary key constraint
+	nr.nspname::varchar(64) AS "UNIQUE_CONSTRAINT_SCHEMA",
+
+	-- Name of the referenced constraint: 'PRIMARY' for primary keys, else the constraint name
+	CASE uc.contype
+		WHEN 'p'::"char" THEN 'PRIMARY'
+		ELSE uc.conname
+	END::varchar(64) AS "UNIQUE_CONSTRAINT_NAME",
+
+	-- Match strategy: FULL, PARTIAL, or NONE
+	CASE c.confmatchtype
+		WHEN 'f'::"char" THEN 'FULL'
+		WHEN 'p'::"char" THEN 'PARTIAL'
+		ELSE 'NONE'
+	END::varchar(64) AS "MATCH_OPTION",
+
+	-- ON UPDATE rule
+	CASE c.confupdtype
+		WHEN 'a'::"char" THEN 'NO ACTION'
+		WHEN 'r'::"char" THEN 'RESTRICT'
+		WHEN 'c'::"char" THEN 'CASCADE'
+		WHEN 'n'::"char" THEN 'SET NULL'
+		WHEN 'd'::"char" THEN 'SET DEFAULT'
+		ELSE 'NO ACTION'
+	END::varchar(64) AS "UPDATE_RULE",
+
+	-- ON DELETE rule
+	CASE c.confdeltype
+		WHEN 'a'::"char" THEN 'NO ACTION'
+		WHEN 'r'::"char" THEN 'RESTRICT'
+		WHEN 'c'::"char" THEN 'CASCADE'
+		WHEN 'n'::"char" THEN 'SET NULL'
+		WHEN 'd'::"char" THEN 'SET DEFAULT'
+		ELSE 'NO ACTION'
+	END::varchar(64) AS "DELETE_RULE",
+
+	-- Table that holds the foreign key
+	r.relname::varchar(64) AS "TABLE_NAME",
+
+	-- Referenced table
+	rr.relname::varchar(64) AS "REFERENCED_TABLE_NAME"
+
+FROM
+	pg_constraint c
+JOIN pg_namespace nc ON nc.oid = c.connamespace
+JOIN pg_class r ON r.oid = c.conrelid
+JOIN pg_class rr ON rr.oid = c.confrelid
+JOIN pg_namespace nr ON nr.oid = rr.relnamespace
+-- Find the unique/primary key constraint on the referenced table via its supporting index
+LEFT JOIN pg_constraint uc ON uc.conindid = c.conindid
+	AND uc.conrelid = c.confrelid
+	AND uc.contype = ANY (ARRAY['p'::"char", 'u'::"char"])
+WHERE
+	c.contype = 'f'::"char"
+	AND r.relkind = ANY (ARRAY['r'::"char", 'p'::"char"])
+	AND NOT pg_is_other_temp_schema(nc.oid)
+	AND (
+		pg_has_role(r.relowner, 'USAGE'::text)
+		OR has_table_privilege(r.oid, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER'::text)
+		OR has_any_column_privilege(r.oid, 'INSERT, UPDATE, REFERENCES'::text)
+	);
+
+GRANT SELECT ON mys_information_schema.referential_constraints TO PUBLIC;
+
+--
+-- View: mys_information_schema.parameters
+--
+CREATE OR REPLACE VIEW mys_information_schema.parameters AS
+-- Return values for functions (ORDINAL_POSITION = 0)
+SELECT
+	-- Catalog name (MySQL-compatible constant: always 'def')
+	'def'::varchar(512)                                                       AS "SPECIFIC_CATALOG",
+
+	-- Schema containing the routine
+	n.nspname::varchar(64)                                                    AS "SPECIFIC_SCHEMA",
+
+	-- Specific (routine) name
+	p.proname::varchar(64)                                                    AS "SPECIFIC_NAME",
+
+	-- 0 indicates return value (not an input/output parameter)
+	0::int                                                                    AS "ORDINAL_POSITION",
+
+	-- NULL for return value (no IN/OUT/INOUT)
+	NULL::varchar(5)                                                          AS "PARAMETER_MODE",
+
+	-- Return value has no parameter name
+	NULL::varchar(64)                                                         AS "PARAMETER_NAME",
+
+	-- Data type of the function parameter
+	mys_information_schema.mys_format_type(t.oid)::varchar(64)                AS "DATA_TYPE",
+
+	-- Max character length (for string types only)
+	CASE
+	    WHEN t.typname IN ('bpchar', 'binary') THEN 255
+	    WHEN t.typname IN ('varchar', 'varbinary') THEN 65535
+	    WHEN t.typname IN ('tinytext', 'tinyblob') THEN 255
+	    WHEN t.typname IN ('text', 'myblob') THEN 65535
+	    WHEN t.typname IN ('mediumtext', 'mediumblob') THEN 16777215
+	    WHEN t.typname IN ('longtext', 'longblob') THEN 2147483647
+		WHEN t.typtype = 'e' THEN 765
+	    ELSE NULL
+	END::int                                                                  AS "CHARACTER_MAXIMUM_LENGTH",
+
+	-- Max byte length
+	CASE
+	    WHEN t.typname IN ('bpchar', 'binary') THEN 255
+	    WHEN t.typname IN ('varchar', 'varbinary') THEN 65535
+	    WHEN t.typname IN ('tinytext', 'tinyblob') THEN 255
+	    WHEN t.typname IN ('text', 'myblob') THEN 65535
+	    WHEN t.typname IN ('mediumtext', 'mediumblob') THEN 16777215
+	    WHEN t.typname IN ('longtext', 'longblob') THEN 2147483647
+		WHEN t.typtype = 'e' THEN 2295
+	    ELSE NULL
+	END::int                                                                  AS "CHARACTER_OCTET_LENGTH",
+
+	-- Precision for numeric types
+	CAST(CASE
+	    WHEN t.typname IN ('tinyint', 'uint1') THEN 3
+	    WHEN t.typname IN ('int2', 'uint2') THEN 5
+	    WHEN t.typname IN ('mediumint', 'uint3') THEN 7
+	    WHEN t.typname IN ('int4', 'uint4') THEN 10
+	    WHEN t.typname = 'int8' THEN 19
+	    WHEN t.typname = 'uint8' THEN 20
+	    WHEN t.typname = 'float4' THEN 12
+	    WHEN t.typname = 'float8' THEN 22
+	    WHEN t.typname = 'numeric' THEN 65
+		WHEN t.typname = 'mysbit' THEN 64
+	    ELSE NULL
+	END AS UNSIGNED)                                                          AS "NUMERIC_PRECISION",
+
+	-- Scale for numeric types
+	CASE
+	    WHEN t.typname IN ('tinyint','int2','mediumint','int4','int8','uint1','uint2','uint3','uint4','uint8') THEN 0
+	    WHEN t.typname = 'numeric' THEN 30
+	    ELSE NULL
+	END::int                                                                  AS "NUMERIC_SCALE",
+
+	-- Precision for datetime types
+	CAST(CASE
+	    WHEN t.typname IN ('mystime', 'mystimes',
+	                       'mysdatetime', 'mysdatetimes',
+	                       'mystimestamp', 'mystimestamps') THEN 6
+	    ELSE NULL
+	END AS UNSIGNED)                                                          AS "DATETIME_PRECISION",
+
+	-- Character set name
+	CASE WHEN t.typcategory IN('S', 'E') AND t.typname <> 'varbinary'
+		 THEN pg_catalog.getdatabaseencoding()
+	     ELSE NULL
+	END::varchar(64)                                                          AS "CHARACTER_SET_NAME",
+
+	-- Collation name
+	CASE WHEN t.typcategory IN('S', 'E') AND t.typname <> 'varbinary'
+		 THEN
+	         (SELECT "Default collation" FROM show_mysql_charsets()
+	          WHERE lower("Charset") = lower(pg_catalog.getdatabaseencoding()))
+	     ELSE NULL
+	END::varchar(64)                                                          AS "COLLATION_NAME",
+
+	-- Full parameter data_type descriptor
+	mys_information_schema.mys_format_type(t.oid)::varchar(64)                AS "DTD_IDENTIFIER",
+
+	-- Type of routine: FUNCTION or PROCEDURE
+	'FUNCTION'::varchar(9)                                                    AS "ROUTINE_TYPE"
+FROM pg_proc p
+JOIN pg_namespace n ON n.oid = p.pronamespace
+JOIN pg_type t ON t.oid = p.prorettype
+JOIN pg_namespace nt ON nt.oid = t.typnamespace
+LEFT JOIN pg_collation co ON co.oid = t.typcollation
+WHERE p.prokind = 'f'
+  AND p.prorettype <> 2278
+  AND (pg_has_role(p.proowner, 'USAGE') OR has_function_privilege(p.oid, 'EXECUTE'))
+
+UNION ALL
+
+-- Regular parameters (ORDINAL_POSITION >= 1)
+SELECT
+	-- Catalog name (MySQL-compatible constant: always 'def')
+	'def'::varchar(512)                                                       AS "SPECIFIC_CATALOG",
+
+	-- Schema containing the routine
+	ss.n_nspname::varchar(64)                                                 AS "SPECIFIC_SCHEMA",
+
+	-- Specific (routine) name
+	ss.proname::varchar(64)                                                   AS "SPECIFIC_NAME",
+
+	-- Parameter ordinal position (1-based)
+	CAST(ss.n AS int)                                                         AS "ORDINAL_POSITION",
+
+	-- Parameter direction: IN, OUT, or INOUT
+	CASE WHEN ss.proargmodes IS NULL THEN 'IN'
+	     WHEN ss.proargmodes[ss.n] = 'i' THEN 'IN'
+	     WHEN ss.proargmodes[ss.n] = 'o' THEN 'OUT'
+	     WHEN ss.proargmodes[ss.n] = 'b' THEN 'INOUT'
+	     WHEN ss.proargmodes[ss.n] = 'v' THEN 'IN'
+	     WHEN ss.proargmodes[ss.n] = 't' THEN 'OUT'
+	END::varchar(5)                                                           AS "PARAMETER_MODE",
+
+	-- Parameter name (NULL if unnamed)
+	NULLIF(ss.proargnames[ss.n], '')::varchar(64)                             AS "PARAMETER_NAME",
+
+	-- Data type of the parameter
+	mys_information_schema.mys_format_type(t.oid)::varchar(64)                AS "DATA_TYPE",
+
+	-- Max character length (for string types only)
+	CASE
+	    WHEN t.typname IN ('bpchar', 'binary') THEN 255
+	    WHEN t.typname IN ('varchar', 'varbinary') THEN 65535
+	    WHEN t.typname IN ('tinytext', 'tinyblob') THEN 255
+	    WHEN t.typname IN ('text', 'myblob') THEN 65535
+	    WHEN t.typname IN ('mediumtext', 'mediumblob') THEN 16777215
+	    WHEN t.typname IN ('longtext', 'longblob') THEN 2147483647
+		WHEN t.typtype = 'e' THEN 765
+	    ELSE NULL
+	END::int                                                                  AS "CHARACTER_MAXIMUM_LENGTH",
+
+	-- Max byte length
+	CASE
+	    WHEN t.typname IN ('bpchar', 'binary') THEN 255
+	    WHEN t.typname IN ('varchar', 'varbinary') THEN 65535
+	    WHEN t.typname IN ('tinytext', 'tinyblob') THEN 255
+	    WHEN t.typname IN ('text', 'myblob') THEN 65535
+	    WHEN t.typname IN ('mediumtext', 'mediumblob') THEN 16777215
+	    WHEN t.typname IN ('longtext', 'longblob') THEN 2147483647
+		WHEN t.typtype = 'e' THEN 2295
+	    ELSE NULL
+	END::int                                                                  AS "CHARACTER_OCTET_LENGTH",
+
+	-- Precision for numeric types
+	CAST(CASE
+	    WHEN t.typname IN ('tinyint', 'uint1') THEN 3
+	    WHEN t.typname IN ('int2', 'uint2') THEN 5
+	    WHEN t.typname IN ('mediumint', 'uint3') THEN 7
+	    WHEN t.typname IN ('int4', 'uint4') THEN 10
+	    WHEN t.typname = 'int8' THEN 19
+	    WHEN t.typname = 'uint8' THEN 20
+	    WHEN t.typname = 'float4' THEN 12
+	    WHEN t.typname = 'float8' THEN 22
+	    WHEN t.typname = 'numeric' THEN 65
+		WHEN t.typname = 'mysbit' THEN 64
+	    ELSE NULL
+	END AS UNSIGNED)                                                          AS "NUMERIC_PRECISION",
+
+	-- Scale for numeric types
+	CASE
+	    WHEN t.typname IN ('tinyint','int2','mediumint','int4','int8','uint1','uint2','uint3','uint4','uint8') THEN 0
+	    WHEN t.typname = 'numeric' THEN 30
+	    ELSE NULL
+	END::int                                                                  AS "NUMERIC_SCALE",
+
+	-- Precision for datetime types
+	CAST(CASE
+	    WHEN t.typname IN ('mystime', 'mystimes',
+	                       'mysdatetime', 'mysdatetimes',
+	                       'mystimestamp', 'mystimestamps') THEN 6
+	    ELSE NULL
+	END AS UNSIGNED)                                                          AS "DATETIME_PRECISION",
+
+	-- Character set name
+	CASE WHEN t.typcategory IN('S', 'E') AND t.typname <> 'varbinary'
+		 THEN pg_catalog.getdatabaseencoding()
+	     ELSE NULL
+	END::varchar(64)                                                          AS "CHARACTER_SET_NAME",
+
+	-- Collation name
+	CASE WHEN t.typcategory IN('S', 'E') AND t.typname <> 'varbinary'
+		 THEN
+	         (SELECT "Default collation" FROM show_mysql_charsets()
+	          WHERE lower("Charset") = lower(pg_catalog.getdatabaseencoding()))
+	     ELSE NULL
+	END::varchar(64)                                                          AS "COLLATION_NAME",
+
+	-- Full parameter data_type descriptor
+	mys_information_schema.mys_format_type(t.oid)::varchar(64)                AS "DTD_IDENTIFIER",
+
+	-- Type of routine: FUNCTION or PROCEDURE
+	CASE ss.prokind
+	    WHEN 'f' THEN 'FUNCTION'
+	    WHEN 'p' THEN 'PROCEDURE'
+	    ELSE NULL
+	END::varchar(9)                                                           AS "ROUTINE_TYPE"
+FROM pg_type t
+JOIN pg_namespace nt ON nt.oid = t.typnamespace
+LEFT JOIN pg_collation co ON co.oid = t.typcollation
+JOIN (
+	SELECT n.nspname AS n_nspname, p.proname, p.oid AS p_oid, p.proowner,
+	       p.proargnames, p.proargmodes, p.prokind,
+	       u.typoid, u.n::integer AS n
+	FROM pg_namespace n, pg_proc p,
+	     unnest(coalesce(p.proallargtypes, p.proargtypes::oid[])) WITH ORDINALITY AS u(typoid, n)
+	WHERE n.oid = p.pronamespace
+	      AND (pg_has_role(p.proowner, 'USAGE') OR has_function_privilege(p.oid, 'EXECUTE'))
+) AS ss ON t.oid = ss.typoid;
+
+GRANT SELECT ON mys_information_schema.parameters TO PUBLIC;
 
 --
 -- View: performance_schema.global_status

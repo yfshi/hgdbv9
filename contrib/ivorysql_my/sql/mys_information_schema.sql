@@ -311,13 +311,137 @@ FROM information_schema.statistics
 WHERE table_schema = 'test_schema_stats'
 ORDER BY index_name, seq_in_index;
 
-SET mysql.enable_mysql_information_schema TO off;
-
 ------------------------------------------------------------
 -- 14. Test for mysql.user
 ------------------------------------------------------------
 CREATE USER testuser WITH CONNECTION LIMIT 20;
 SELECT * FROM mysql.user WHERE "User" = 'testuser';
+
+------------------------------------------------------------
+-- 15. Test for mys_information_schema.keywords
+------------------------------------------------------------
+SELECT "WORD", "RESERVED"
+FROM information_schema.keywords
+WHERE "WORD" IN ('SELECT', 'FROM', 'COLUMN', 'SHOW')
+ORDER BY "WORD";
+
+------------------------------------------------------------
+-- 16. Test for mys_information_schema.referential_constraints
+------------------------------------------------------------
+CREATE SCHEMA test_schema_refcons;
+CREATE TABLE test_schema_refcons.parent (
+    id INT PRIMARY KEY,
+    email VARCHAR(100),
+    CONSTRAINT uk_email UNIQUE (email)
+);
+CREATE TABLE test_schema_refcons.child (
+    id INT PRIMARY KEY,
+    parent_id INT,
+    user_email VARCHAR(100),
+    CONSTRAINT fk_parent FOREIGN KEY (parent_id)
+        REFERENCES test_schema_refcons.parent(id)
+        ON UPDATE CASCADE ON DELETE SET NULL,
+    CONSTRAINT fk_uemail FOREIGN KEY (user_email)
+        REFERENCES test_schema_refcons.parent(email)
+);
+SELECT *
+FROM information_schema.referential_constraints
+WHERE "CONSTRAINT_SCHEMA" = 'test_schema_refcons'
+ORDER BY "CONSTRAINT_NAME";
+
+DROP SCHEMA test_schema_refcons CASCADE;
+
+------------------------------------------------------------
+-- 17. Test for mys_information_schema.parameters
+------------------------------------------------------------
+CREATE SCHEMA test_schema_params;
+
+CREATE OR REPLACE FUNCTION test_schema_params.f_all_types(
+    p_char        CHAR(10),
+    p_varchar     VARCHAR(20),
+    p_binary      BINARY(8),
+    p_varbinary   VARBINARY(16),
+    p_tinytext    TINYTEXT,
+    p_text        TEXT,
+    p_mediumtext  MEDIUMTEXT,
+    p_longtext    LONGTEXT,
+    p_tinyblob    TINYBLOB,
+    p_blob        BLOB,
+    p_mediumblob  MEDIUMBLOB,
+    p_longblob    LONGBLOB,
+    p_enum        ENUM('a','b','c'),
+    p_json        JSON,
+    p_tinyint     TINYINT,
+    p_smallint    SMALLINT,
+    p_int         INT,
+    p_bigint      BIGINT,
+    p_decimal     DECIMAL(10,2),
+    p_float       FLOAT,
+    p_double      DOUBLE,
+    p_date        DATE,
+    p_datetime    DATETIME,
+    p_timestamp   TIMESTAMP,
+    p_time        TIME,
+    p_year        YEAR,
+    p_bit         BIT(8),
+    p_point       POINT
+)
+RETURNS INT
+LANGUAGE sql
+AS $$
+    SELECT 1;
+$$;
+
+SELECT "SPECIFIC_CATALOG", "SPECIFIC_SCHEMA", "SPECIFIC_NAME", "ORDINAL_POSITION",
+       "PARAMETER_MODE", "PARAMETER_NAME", "DATA_TYPE",
+       "CHARACTER_MAXIMUM_LENGTH", "CHARACTER_OCTET_LENGTH", "NUMERIC_PRECISION", 
+	   "NUMERIC_SCALE", "DATETIME_PRECISION", "DTD_IDENTIFIER", "ROUTINE_TYPE"
+FROM information_schema.parameters
+WHERE "SPECIFIC_SCHEMA" = 'test_schema_params'
+  AND "SPECIFIC_NAME"   = 'f_all_types'
+ORDER BY "ORDINAL_POSITION";
+
+SELECT
+    "PARAMETER_NAME",
+    "CHARACTER_SET_NAME" = pg_catalog.getdatabaseencoding() AS charset_matches_db,
+    "COLLATION_NAME" =
+    (
+        SELECT "Default collation"
+        FROM show_mysql_charsets()
+        WHERE lower("Charset") =
+              lower(pg_catalog.getdatabaseencoding())
+    ) AS has_collation
+FROM information_schema.parameters
+WHERE "SPECIFIC_SCHEMA" = 'test_schema_params'
+  AND"SPECIFIC_NAME" = 'f_all_types'
+ORDER BY "ORDINAL_POSITION";
+
+-- Test PROCEDURE: verify IN/OUT/INOUT modes and no ORDINAL_POSITION=0 row
+CREATE OR REPLACE PROCEDURE test_schema_params.p_modes(
+    IN    p_in_int       INT,
+    IN    p_in_varchar   VARCHAR(50),
+    OUT   p_out_text     TEXT,
+    OUT   p_out_decimal  DECIMAL(10,2),
+    INOUT p_inout_bigint BIGINT
+)
+LANGUAGE plpgsql
+AS $$
+BEGIN
+    p_out_text := 'done';
+    p_out_decimal := 0;
+END;
+$$;
+
+SELECT "SPECIFIC_CATALOG", "SPECIFIC_SCHEMA", "SPECIFIC_NAME", "ORDINAL_POSITION",
+       "PARAMETER_MODE", "PARAMETER_NAME", "DATA_TYPE",
+       "CHARACTER_MAXIMUM_LENGTH", "CHARACTER_OCTET_LENGTH", "NUMERIC_PRECISION", 
+	   "NUMERIC_SCALE", "DATETIME_PRECISION", "DTD_IDENTIFIER", "ROUTINE_TYPE"
+FROM information_schema.parameters
+WHERE "SPECIFIC_SCHEMA" = 'test_schema_params'
+  AND "SPECIFIC_NAME"   = 'p_modes'
+ORDER BY "ORDINAL_POSITION";
+
+SET mysql.enable_mysql_information_schema TO off;
 
 ------------------------------------------------------------
 -- clean
@@ -336,3 +460,4 @@ DROP ROLE IF EXISTS user_a;
 DROP ROLE IF EXISTS user_b;
 DROP ROLE IF EXISTS schema_user;
 DROP ROLE IF EXISTS testuser;
+DROP SCHEMA test_schema_params CASCADE;

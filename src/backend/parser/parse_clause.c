@@ -1520,25 +1520,19 @@ transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref)
 static bool
 IsMysInformationSchemaView(char *view_name)
 {
-	static char *mys_views[] = {"tables", "table_privileges", "partitions", "column_privileges", "columns", "views",
-								"key_column_usage", "routines", "triggers", "table_constraints", "schemata",
-								"schema_privileges", "tablespaces", "statistics", "collations", "character_sets",
-								"plugins", "engines", "events", "processlist"};
-	size_t	count = sizeof(mys_views) / sizeof(mys_views[0]);
+	Oid		nspoid;
+	char   *lower_name;
 
 	if (!view_name)
 		return false;
 
-	for (int i = 0; i < count; i++)
-	{
-		int len1 = strlen(view_name),
-			len2 = strlen(mys_views[i]);
+	nspoid = get_namespace_oid("mys_information_schema", true);
+	if (!OidIsValid(nspoid))
+		return false;
 
-		if (len1 == len2 && pg_strncasecmp(view_name, mys_views[i], len1) == 0)
-			return true;
-	}
+	lower_name = downcase_identifier(view_name, strlen(view_name), false, false);
 
-	return false;
+	return OidIsValid(get_relname_relid(lower_name, nspoid));
 }
 /* End - ReqID:SRS-MYSQL-INFORMATION_SCHEMA */
 
@@ -1606,7 +1600,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 				nspname = name->data;
 			}
 			
-			// When in SPI context, nspname may be null.
+			/* When in SPI context, nspname may be null. */
 			if (nspname && pg_strncasecmp(nspname, "information_schema", 18) == 0)
 			{
 				if (IsMysInformationSchemaView(rv->relname))
