@@ -540,13 +540,23 @@ varchar_input(const char *s, size_t len, int32 atttypmod)
 		size_t		mbmaxlen = pg_mbcharcliplen(s, len, maxlen);
 		size_t		j;
 
-		for (j = mbmaxlen; j < len; j++)
+		/* Begin - bug#z7540 */
+		/* for load data or copy from, using varcharin() --> varchar_input() */
+		if (compatible_mode == MYS_MODE && !is_strict_mode())
 		{
-			if (s[j] != ' ')
-				ereport(ERROR,
-						(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-						 errmsg("value too long for type character varying(%d)",
-								(int) maxlen)));
+			/* no check, just copy the needed length */
+		}
+		/* End - bug#z7540 */
+		else
+		{
+			for (j = mbmaxlen; j < len; j++)
+			{
+				if (s[j] != ' ')
+					ereport(ERROR,
+							(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
+							 errmsg("value too long for type character varying(%d)",
+									(int) maxlen)));
+			}
 		}
 
 		len = mbmaxlen;

@@ -65,6 +65,17 @@ set local_infile = off;
 alter system set local_infile = off;
 select pg_reload_conf();
 
+-- test bug7540
+create table test_7540(a int, b varchar(10), c int);
+load data infile '@abs_srcdir@/data/test_load_data_7540.csv' into table test_7540 COLUMNS terminated by ',';
+
+set sql_mode='';
+load data infile '@abs_srcdir@/data/test_load_data_7540.csv' into table test_7540 COLUMNS terminated by ',';
+
+select * from test_7540;
+drop table test_7540;
+reset sql_mode;
+
 -- clean up
 \c contrib_regression
 drop database gbk_copy;

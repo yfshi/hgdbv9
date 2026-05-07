@@ -440,6 +440,7 @@ transformOptionalSelectInto(ParseState *pstate, Node *parseTree)
 
 				stmt->intoClause = NULL;
 				copys->query = parseTree;
+				copys->select_into = true;	/* bug#z7477 */
 
 				parseTree = (Node *) copys;
 

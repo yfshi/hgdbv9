@@ -83,6 +83,16 @@ delete from test_check;
 -- test select from into for update -- error
 select * from test_select_into into OUTFILE '@abs_builddir@/results/test_select_into_11.csv' for update;
 
+-- test case: 7477
+create table test_7477(id int primary key auto_increment, name varchar(50) not null, age tinyint, city varchar(100));
+insert into test_7477(name, age, city) values('Alice', 25, 'Atlanta'), ('Bob', 30, 'Boston'), ('Charlie', 28, 'Chicago');
+-- succ
+select * from test_7477 into OUTFILE '@abs_builddir@/results/test_select_into_7477.csv';
+-- error, file exist
+select * from test_7477 into OUTFILE '@abs_builddir@/results/test_select_into_7477.csv';
+drop table test_7477;
+\! rm @abs_builddir@/results/test_select_into_7477.csv
+
 -- test character set
 create database select_into_gbk encoding='gbk' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
 \c select_into_gbk
@@ -103,3 +113,4 @@ select * from test_check_gbk;
 drop database select_into_gbk;
 drop table test_check;
 drop table test_select_into;
+\! rm -f @abs_builddir@/results/test_select_into*
