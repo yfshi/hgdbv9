@@ -279,6 +279,7 @@ sub mkvcbuild
 	$postgres->AddLibrary('ws2_32.lib');
 	$postgres->AddLibrary('wldap32.lib') if ($solution->{options}->{ldap});
 	$postgres->FullExportDLL('postgres.lib');
+	$postgres->AddFiles('src/backend/utils/resgroup', 'io_limit_scanner.c', 'io_limit_gram.y');
 
 	# The OBJS scraper doesn't know about ifdefs, so remove appropriate files
 	# if building without OpenSSL.

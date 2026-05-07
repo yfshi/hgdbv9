@@ -43,4 +43,4 @@ include $(top_srcdir)/src/backend/common.mk
 endif
 
 clean distclean maintainer-clean:
-	rm -f lex.backup
+	rm -f lex.backup io_limit_gram.h io_limit_gram.c
