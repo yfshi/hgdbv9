@@ -17,6 +17,7 @@
  *		ReqID:SRS-MISC-LICENSE-ENCODING
  *		ReqID:SRS-MISC-LICENSE-TECC
  *		ReqID:SRS-MISC-LICENSE-STYLECONFIG
+ *		ReqID:SRS-MISC-LICENSE-MultiMode
  *------------------------------------------------------------------
  */
 #include <stdio.h>
@@ -219,7 +220,7 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("licchk DB V1.5.6");
+			puts("licchk DB V1.5.7");
 			exit(0);
 		}
 	}
