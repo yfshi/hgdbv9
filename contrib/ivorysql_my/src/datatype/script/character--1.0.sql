@@ -296,3 +296,19 @@ CREATE OPERATOR <=> (
 	leftarg = text,
 	rightarg = text
 );
+
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+--
+-- cast (varchar as float4)
+--
+CREATE CAST (varchar AS float4)
+WITH FUNCTION ivymy.text_float4(text, integer, boolean, int8)
+AS ASSIGNMENT;
+
+--
+-- cast (varchar as float8)
+--
+CREATE CAST (varchar AS float8)
+WITH FUNCTION ivymy.text_float8(text, integer, boolean, int8)
+AS ASSIGNMENT;
+/* End - ReqID:SRS-MYSQL-SQL-Alter */

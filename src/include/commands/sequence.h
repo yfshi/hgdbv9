@@ -99,4 +99,9 @@ extern uint64 get_show_autoinc(Oid tableoid);
 extern Datum show_next_autoinc(PG_FUNCTION_ARGS);
 /* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
+/* Begin - SRS-MYSQL-SQL-Alter */
+extern void setval_oid_modify(Oid seq_relid, uint64 nextval);
+extern void mys_modify_set_auto_increment(Oid seq_relid, Datum valuenum);
+/* End - SRS-MYSQL-SQL-Alter */
+
 #endif							/* SEQUENCE_H */

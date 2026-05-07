@@ -186,7 +186,9 @@ MYS_REGRESS = numeric_to_times \
 			  select_regexp_rlike \
 			  autocommit \
 			  autocommit2 \
-			  having_alias
+			  having_alias \
+			  mys_alter_modify \
+			  mys_alter_modify_multi
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28
