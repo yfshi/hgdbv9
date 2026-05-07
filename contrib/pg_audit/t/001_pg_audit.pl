@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use PostgresNode;
 use TestLib;
-use Test::More tests => 101;
+use Test::More tests => 103;
 
 my $node = get_new_node('test');
 $node->init;
@@ -335,6 +335,38 @@ $node->start;
 
 my $audit_ignore_lsn = $node->safe_psql('postgres', "select 1;");
 is($audit_ignore_lsn, '1', 'SELECT 1 returns 1');
+
+$node->safe_psql('postgres', "alter system set audit.systemopers = 'off';");
+$node->safe_psql('postgres', "alter system set hg_rolstatus.enable = on;");
+
+$node->stop;
+$node->start;
+
+# audit group
+$node->safe_psql('postgres', "select hg_security.pg_audit_privilege('CREATE group', 'all');");
+$node->safe_psql('postgres', "select hg_security.pg_audit_privilege('ALTER group', 'all');");
+$node->safe_psql('postgres', "select hg_security.pg_audit_privilege('DROP group', 'all');");
+
+$node->safe_psql('postgres', "truncate hg_security.pg_audit_log;");
+$node->safe_psql('postgres', "create group u2;");
+$node->safe_psql('postgres', "alter group u2 rename to u3;");
+$node->safe_psql('postgres', "drop group u3;");
+
+my $audit_group = $node->safe_psql('postgres', "select count(*) from hg_security.pg_audit_log;");
+is($audit_group, '3', 'count');
+
+#audit role on/off
+$node->safe_psql('postgres', "create role u2;");
+$node->safe_psql('postgres', "select hg_security.pg_audit_object('select', 'function','set_role_status', 'hg_security','all');");
+$node->safe_psql('postgres', "truncate hg_security.pg_audit_log;");
+
+$node->safe_psql('postgres', "select hg_security.set_role_status('u2',true);");
+
+my $audit_group_fun = $node->safe_psql('postgres', "select count(*) from hg_security.pg_audit_log;");
+is($audit_group_fun, '1', 'count');
+
+$node->safe_psql('postgres', "drop role u2;");
+
 
 $node->stop;
 

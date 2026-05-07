@@ -1055,7 +1055,7 @@ exec_simple_query(const char *query_string)
 				else if (strcasestr(query_string_tmp, "lock_current_session") && sqlite_open_db_for_audit_hook)
 				{
 							char	*errtext="The current session has been locked, no need to re-lock";
-							sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_FAIL, NULL, errtext);
+							sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_FAIL, MyProcPort->user_name, errtext);
 							elog(WARNING, "The current session has been locked, no need to re-lock");
 							return;
 				}
@@ -3470,6 +3470,8 @@ die(SIGNAL_ARGS)
 	int			save_errno = errno;
 
 #ifdef ENABLE_DKY_BETA_FEATURE
+	snprintf(audit_msg, MAXPGPATH, "rollback transaction");
+
 	if (audit_aborted_hook)
 		(*audit_aborted_hook)();
 
@@ -3951,7 +3953,7 @@ ProcessInterrupts(void)
 #ifdef USE_SQLITE
 			/* add audit event */
 			if (sqlite_open_db_for_audit_hook)
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_SUCCESS, NULL, NULL);
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_LOCK_SESSION, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
 #endif
 /* End - BUG#Z6168 */
 			/* Bug 6185 Update the lock state of the process */
@@ -5715,6 +5717,24 @@ PostgresMain(int argc, char *argv[],
 					whereToSendOutput = DestNone;
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+
+				if (is_audit_enable && (*is_audit_enable)() && IsTransactionOrTransactionBlock())
+				{
+					memcpy(audit_msg, "rollback transaction", strlen("rollback transaction") + 1);
+
+					if (audit_aborted_hook)
+						(*audit_aborted_hook)();
+
+						AbortCurrentTransaction();
+						StartTransactionCommand();
+						UserAbortTransactionBlock(false);
+						CommitTransactionCommand();
+
+					if (audit_WriteRecord_hook)
+						(*audit_WriteRecord_hook)();
+				}
+#endif
 				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
 					audit_system_event_hook(true, SYSTEM_EVENT_LOGOUT_SUCC);
 #ifdef USE_SQLITE

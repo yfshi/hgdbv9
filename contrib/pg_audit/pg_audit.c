@@ -220,6 +220,11 @@ char *audit_space_alarm = NULL;
 
 #define CHECK_LIMIT_TIMES 200
 
+#define PG_DUMP_CMD "pg_dump"
+#define PG_DUMP_RESTORE_CMD "pg_restore"
+#define PG_BASEBACKUP_CMD "pg_basebackup"
+#define PG_DUMPALL_CMD "pg_dumpall"
+
 #define TIME_LENGTH 2
 #define FTYPE_NUM 1
 
@@ -490,6 +495,8 @@ static bool audit_check_ip_hook(char **newvalue, void **extra, GucSource source)
 static bool check_ip(SockAddr *raddr, struct sockaddr *addr, struct sockaddr *mask);
 static bool audit_app_check_hook(char **newvalue, void **extra, GucSource source);
 static bool audit_is_in_transaction(void);  // OA:2290
+static bool audit_insert_user_or_group(Relation audit_log, AuditEvent *auditevent, char *alter_action);
+static bool audit_drop_user_or_group(Relation audit_log, AuditEvent *auditevent, char *drop_action);
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -547,9 +554,6 @@ current_is_superuser(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(result);
 }
-
-
-
 
 /*
  * Test to see if a directory exists and is empty or not.
@@ -1339,6 +1343,9 @@ audit_get_privilege_from_type(char *type)
 		/* Begin - BUG#00004719 */
 		pg_strcasecmp(type, ALTER_USER_S) == 0 ||
 		/* End - BUG#00004719 */
+		pg_strcasecmp(type, CREATE_GROUP_S) == 0 ||
+		pg_strcasecmp(type, ALTER_GROUP_S) == 0 ||
+		pg_strcasecmp(type, DROP_GROUP_S) == 0 ||
 		pg_strcasecmp(type, DROP_ROLE_S) == 0 ||
 		pg_strcasecmp(type, DROP_SCHEMA_S) == 0 ||
 		pg_strcasecmp(type, DROP_USER_S) == 0 ||
@@ -1514,8 +1521,7 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 	}
 	else
 	{
-		values[3] = (Datum)0;
-		nulls[3] = true;
+		values[3] = PointerGetDatum(cstring_to_text(SYSTEM_USER));
 	}
 
 	if (event->useroid)
@@ -1544,27 +1550,21 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		if (tmp)
 		{
 			values[5] = PointerGetDatum(cstring_to_text(tmp));
-
 			
 		}
 		else
 		{
-			values[5] = (Datum)0;
-			nulls[5] = true;
+			values[5] = PointerGetDatum(cstring_to_text(SYSTEM_USER));
 		}
 	}
 	else
 	{
-		values[4] = (Datum)0;
-		nulls[4] = true;
-		values[5] = (Datum)0;
-		nulls[5] = true;
+		values[4] = Int32GetDatum(0);
+		values[5] = PointerGetDatum(cstring_to_text(SYSTEM_USER));
 	}
 		
 	values[6] = TimestampTzGetDatum(event->audittime);
-	//values[7] = CharGetDatum(event->result);
 	values[7] = PointerGetDatum(cstring_to_text(AuditResultToString(event->result)));
-	
 
 	if (object && event->conftypes[i] == AUDIT_TYPE_OBJECT)
 	{
@@ -1782,6 +1782,80 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 	return ;
 }
 
+static bool
+audit_insert_user_or_group(Relation	audit_log, AuditEvent *auditevent, char *alter_action)
+{
+
+	CatCList   *catlistr;
+	int 	i;
+	Form_pg_audit_config audit_form;
+	bool flag = false;
+
+	catlistr = SearchSysCacheList1(AUDITACTIONNAMEAUDITTYPEID, CStringGetDatum(alter_action));
+
+	for (i = 0; i < catlistr->n_members; i++)
+	{
+		HeapTuple	tuple = &catlistr->members[i]->tuple;
+		audit_form = (Form_pg_audit_config) GETSTRUCT(tuple);
+
+		if (!audit_form->enable)
+			continue;
+
+		if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
+			continue;
+
+		strcpy(auditevent->actionname, alter_action);
+		auditevent->confoids[i] = audit_form->confid;
+		auditevent->conftypes[i] = audit_form->audittype;
+
+		audit_insert_all_log(audit_log, auditevent, NULL, i);
+		flag = true;
+
+		if (audit_GUC.audit_monitoring == AUDIT_ON)
+			audit_check_secmon_rule(i, audit_form->confid, auditevent);
+	}
+	ReleaseSysCacheList(catlistr);
+
+	return flag;
+}
+
+static bool
+audit_drop_user_or_group(Relation	audit_log, AuditEvent *auditevent, char *drop_action)
+{
+	CatCList   *catlistr;
+	int 	i;
+	Form_pg_audit_config audit_form;
+	bool flag = false;
+
+	catlistr = SearchSysCacheList1(AUDITACTIONNAMEAUDITTYPEID, CStringGetDatum(drop_action));
+
+	for (i = 0; i < catlistr->n_members; i++)
+	{
+		HeapTuple	tuple = &catlistr->members[i]->tuple;
+
+		audit_form = (Form_pg_audit_config) GETSTRUCT(tuple);
+		audit_check_secmon_rule(i, audit_form->confid, auditevent);
+
+		if (!audit_form->enable)
+			continue;
+
+		if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
+			continue;
+
+		strcpy(auditevent->actionname, drop_action);
+		auditevent->confoids[i] = audit_form->confid;
+		auditevent->conftypes[i] = audit_form->audittype;
+
+		audit_insert_all_log(audit_log, auditevent, NULL, i);
+		flag = true;
+
+		if (audit_GUC.audit_monitoring == AUDIT_ON)
+			audit_check_secmon_rule(i, audit_form->confid, auditevent);
+	}
+	ReleaseSysCacheList(catlistr);
+
+	return flag;
+}
 
 /*
  * Function: audit_write_record_list()
@@ -1925,79 +1999,29 @@ audit_write_record_list(void)
 				audit_check_secmon_rule(i, audit_form->confid, auditevent);
 		}
 
-		/* For the same information on the parse tree as ALTER USER and ALTER ROLE, 
+		/* For the same information on the parse tree as ALTER USER and ALTER ROLE and ALTER GROUP, 
 		 * further processing is required 
 		 */
 		if (((strcmp(auditevent->actionname, ALTER_ROLE_S) == 0) && n_members == 0) || need_check_alteruser)
 		{
-			CatCList   *catlistr;
+			bool flag = audit_insert_user_or_group(audit_log, auditevent, ALTER_USER_S);
 
-			catlistr = SearchSysCacheList1(AUDITACTIONNAMEAUDITTYPEID, CStringGetDatum(ALTER_USER_S));
-		
-			for (i = 0; i < catlistr->n_members; i++)
-			{
-				HeapTuple	tuple = &catlistr->members[i]->tuple;
-				
-				audit_form = (Form_pg_audit_config) GETSTRUCT(tuple);
-				
-				if (!audit_form->enable)
-					continue;
-			
-				if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
-					continue;
-
-				strcpy(auditevent->actionname, ALTER_USER_S);
-				
-				auditevent->confoids[i] = audit_form->confid;
-				auditevent->conftypes[i] = audit_form->audittype;
-				
-				audit_insert_all_log(audit_log, auditevent, NULL, i);
-
-				if (audit_GUC.audit_monitoring == AUDIT_ON)
-					audit_check_secmon_rule(i, audit_form->confid, auditevent);
-			}
-			ReleaseSysCacheList(catlistr);
+			if (!flag)
+				flag = audit_insert_user_or_group(audit_log, auditevent, ALTER_GROUP_S);
 		}
 		/* For the same information on the parse tree as DROP USER and DROP ROLE, 
 		 * further processing is required 
 		 */
 		else if (((strcmp(auditevent->actionname, DROP_ROLE_S) == 0) && n_members == 0) || need_check_dropuser)
 		{
-			CatCList * catlistr;
+			bool flag = audit_drop_user_or_group(audit_log, auditevent, DROP_USER_S);
 
-			catlistr = SearchSysCacheList1(AUDITACTIONNAMEAUDITTYPEID, CStringGetDatum(DROP_USER_S));
-
-			for (i = 0; i < catlistr->n_members; i++)
-			{
-				HeapTuple	tuple = &catlistr->members[i]->tuple;
-				
-				audit_form = (Form_pg_audit_config) GETSTRUCT(tuple);
-
-				audit_check_secmon_rule(i, audit_form->confid, auditevent);
-				
-				if (!audit_form->enable)
-					continue;
-							
-				if (audit_form->auditmode != auditevent->result && audit_form->auditmode != AUDIT_ALL)
-					continue;
-				
-				strcpy(auditevent->actionname, DROP_USER_S);
-
-				auditevent->confoids[i] = audit_form->confid;
-				auditevent->conftypes[i] = audit_form->audittype;
-				
-				audit_insert_all_log(audit_log, auditevent, NULL, i);
-
-				if (audit_GUC.audit_monitoring == AUDIT_ON)
-					audit_check_secmon_rule(i, audit_form->confid, auditevent);
-			}
-
-			ReleaseSysCacheList(catlistr);
+			if (!flag)
+				flag = audit_drop_user_or_group(audit_log, auditevent, DROP_GROUP_S);
 		}
-		
-		ReleaseSysCacheList(catlist);
 
-		MemoryContextDelete(auditevent->auditContext);	
+		ReleaseSysCacheList(catlist);
+		MemoryContextDelete(auditevent->auditContext);
 	}
 	
 	table_close(audit_log, RowExclusiveLock);
@@ -2129,7 +2153,6 @@ stack_pop_to_list(AuditResult result)
 	if (audit_msg[0] != '\0')
 	{
 		auditEventStack->auditEvent->errtext = pstrdup(audit_msg);
-		memset(audit_msg, '\0', MAXPGPATH);
 	}
 
 	audit_list_append(auditEventStack->auditEvent);
@@ -2992,6 +3015,8 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 		case T_CreateRoleStmt:
 			if (((CreateRoleStmt *)parsetree)->stmt_type == ROLESTMT_ROLE)
 				strcpy(buf, CREATE_ROLE_S);
+			else if (((CreateRoleStmt *)parsetree)->stmt_type == ROLESTMT_GROUP)
+				strcpy(buf, CREATE_GROUP_S);
 			else
 				strcpy(buf, CREATE_USER_S);
 			break;
@@ -4837,7 +4862,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	/* End - BUG#00004776 */
 	int32		sessionid;
 	char		inserttext[MAXPGPATH] = {0};
-	char	   *tmp = NULL;
+	char	   *system_name = NULL;
 	char	   *timestr = NULL;
 
 	if ((audit_GUC.audit_enable != AUDIT_ON || audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
@@ -5007,7 +5032,7 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 			break;
 
 		case SYSTEMAUDIT_OPEN_FILE_FAIL:
-			strcpy(actionname, OPEN_FIEL_FAIL_S);
+			strcpy(actionname, OPEN_FILE_FAIL_S);
 			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
 			break;
 
@@ -5066,6 +5091,41 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
 			break;
 
+		case SYSTEMAUDIT_TIMEOUT_UNLOCK_USER:
+			strcpy(actionname, SYSTEMAUDIT_TIMEOUT_UNLOCK_USER_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_WRITE_IO_LIMIT:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_WRITE_IO_LIMIT_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_READ_IO_LIMIT:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_READ_IO_LIMIT_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_MEM_LIMIT:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_MEM_LIMIT_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC_S);
+			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
+			break;
+
 		case SYSTEMAUDIT_CERT_VERIFY:
 			strcpy(actionname, SYSTEMAUDIT_CERT_VERIFY_S);
 			strcpy(privilege, AUDIT_PRIVILEGE_SYSTEM_S);
@@ -5085,6 +5145,10 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	timestr = pstrdup(timestamptz_to_str(audittime));
 	useroid = GetUserId_audit();
 	if (IsTransactionState() && !OidIsValid(useroid) && strcmp(actionname, LOGIN_S) == 0 && result == AUDIT_FAIL)
+	{
+		useroid = get_role_oid(MyProcPort->user_name, true);
+	}
+	else if (!OidIsValid(useroid) && (event == SYSTEMAUDIT_LOCK_USER || event == SYSTEMAUDIT_TIMEOUT_UNLOCK_USER))
 	{
 		useroid = get_role_oid(MyProcPort->user_name, true);
 	}
@@ -5108,9 +5172,10 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 	if (username == NULL)
 	{
 		if (useroid != InvalidOid && event != SYSTEMAUDIT_AUDIT_LOCK_SESSION)
-			tmp = GetUserNameFromId(useroid, true);
-		else if (event == SYSTEMAUDIT_AUDIT_LOCK_SESSION)
-			tmp = pstrdup("");
+			system_name = GetUserNameFromId(useroid, true);
+
+		if (system_name == NULL || event == SYSTEMAUDIT_AUDIT_LOCK_SESSION)
+			system_name = pstrdup(SYSTEM_USER);
 	}
 
 	/* Begin - BUG#00004776 */
@@ -5138,10 +5203,9 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 		}
 	}
 	/* End - BUG#00004776 */
-	
-	
+
 	sprintf(inserttext, "insert into pg_sqlite_audit_log(sessionoid, useroid, username, roleoid, rolename, audittime, result, audittype, commandid, actionname, clientport, clientname, clientip, clientmac, clientappname, errtext, authmethod, privlevel) values(%d, %d, \'%s\', %d, \'%s\', \'%s\', \'%s\', \'%s\', 0, \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\', \'%s\')", 
-						sessionid, useroid, username != NULL ? username : tmp, roleoid, rolename, timestr, AuditResultToString(result), AUDIT_TYPE_SYSYEM_S, actionname,
+						sessionid, useroid, username != NULL ? username : system_name, roleoid, rolename != NULL ? rolename : system_name, timestr, AuditResultToString(result), AUDIT_TYPE_SYSYEM_S, actionname,
 						clientInfo.port, clientInfo.clientname, clientInfo.ip, clientInfo.mac,
 						clientInfo.appname, errtext, clientInfo.authmethod, privilege);
 	rc = sqlite3_exec(conn, inserttext, NULL, NULL, &err);
@@ -5158,6 +5222,31 @@ sqlite_open_db_for_audit(AuditSystemEvent event, AuditResult result, char *usern
 }
 #endif
 
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static void
+audit_save_cmd_info(Port *port)
+{
+	if (port->application_name == NULL)
+		return;
+
+	if (strcmp(port->application_name, PG_DUMP_CMD) == 0)
+	{
+		clientInfo.pg_dump_restore = CMD_PG_DUMP_SUC;
+	}
+	else if (strcmp(port->application_name, PG_DUMP_RESTORE_CMD) == 0)
+	{
+		clientInfo.pg_dump_restore = CMD_PG_RESTORE_SUC;
+	}
+	else if (strcmp(port->application_name, PG_DUMPALL_CMD) == 0)
+	{
+		clientInfo.pg_dump_restore = CMD_PG_DUMPALL_SUC;
+	}
+	else if (strcmp(port->application_name, PG_BASEBACKUP_CMD) == 0)
+	{
+		clientInfo.pg_dump_restore = CMD_PG_BASEBACK_SUC;
+	}
+}
+#endif
 
 /*
  * Function: audit_SaveConnectInfo
@@ -5193,6 +5282,9 @@ audit_save_connectinfo(Port *port)
 	if (port->application_name != NULL)
 	{
 		memcpy(&(clientInfo.appname), port->application_name, strlen(port->application_name) + 1);
+	#if defined(ENABLE_DKY_BETA_FEATURE)
+		audit_save_cmd_info(port);
+	#endif
 	}
 
 	if (strlen(host_name) != 0)
@@ -5240,6 +5332,8 @@ audit_aborted(void)
 		stack_pop_to_list(AUDIT_FAIL);
 	}
 
+	memset(audit_msg, '\0', MAXPGPATH);
+
 	internalStatement = false;
 }
 
@@ -5263,6 +5357,8 @@ audit_commited(void)
 		stack_pop_to_list(AUDIT_SUCCESS);
 	}
 
+	memset(audit_msg, '\0', MAXPGPATH);
+
 	internalStatement = false;
 }
 
@@ -5272,7 +5368,7 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 {
 	int			 record_len;
 	AuditEvent *newAuditEvent;
-	char	   actionname[32];
+	char	   actionname[32] = {'\0'};
 	AuditEvent *auditEvent = NULL;
 	char *query_string_tmp = NULL;
 	int cmdlen = 0;
@@ -5417,9 +5513,39 @@ generateSystemEvent(AuditSystemEvent event, AuditResult result)
 		case SYSTEMAUDIT_LOCK_USER:
 			strcpy(actionname, SYSTEMAUDIT_LOCK_USER_S);
 			break;
+
 		case SYSTEMAUDIT_UNLOCK_USER:
 			strcpy(actionname, SYSTEMAUDIT_UNLOCK_USER_S);
 			break;
+
+		case SYSTEMAUDIT_TIMEOUT_UNLOCK_USER:
+			strcpy(actionname, SYSTEMAUDIT_TIMEOUT_UNLOCK_USER_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_WRITE_IO_LIMIT:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_WRITE_IO_LIMIT_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_READ_IO_LIMIT:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_READ_IO_LIMIT_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_MEM_LIMIT:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_MEM_LIMIT_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE_S);
+			break;
+
+		case SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC:
+			strcpy(actionname, SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC_S);
+			break;
+
 
 		default:
 			break;
@@ -5512,10 +5638,20 @@ deal_with_system_event(AuditSystemEvent event, AuditResult result)
 #ifdef USE_SQLITE
 	if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
 	{
-		if (MyProcPort && MyProcPort->user_name)
-			sqlite_open_db_for_audit_hook(event, result, MyProcPort->user_name, NULL);
+		if (result == AUDIT_FAIL && strlen(audit_msg) != 0)
+		{
+			if (MyProcPort && MyProcPort->user_name)
+				sqlite_open_db_for_audit_hook(event, result, MyProcPort->user_name, audit_msg);
+			else
+				sqlite_open_db_for_audit_hook(event, result, NULL, audit_msg);
+		}
 		else
-			sqlite_open_db_for_audit_hook(event, result, NULL, NULL);
+		{
+			if (MyProcPort && MyProcPort->user_name)
+				sqlite_open_db_for_audit_hook(event, result, MyProcPort->user_name, NULL);
+			else
+				sqlite_open_db_for_audit_hook(event, result, NULL, NULL);
+		}
 
 		return ;
 	}
@@ -5744,6 +5880,50 @@ audit_system_event_info(bool flag, SystemEventType sqlerrcode)
 
 			case SYSTEM_EVENT_CHANEL:
 				deal_with_system_event(SYSTEMAUDIT_CHANNEL, AUDIT_FAIL);
+				break;
+
+			case SYSTEM_EVENT_LOCK_USER:
+				deal_with_system_event(SYSTEMAUDIT_LOCK_USER, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_UNLOCK_USER:
+				deal_with_system_event(SYSTEMAUDIT_UNLOCK_USER, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_TIMEOUT_UNLOCK_USER:
+				deal_with_system_event(SYSTEMAUDIT_TIMEOUT_UNLOCK_USER, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_WRITE_IO_LIMIT:
+				deal_with_system_event(SYSTEMAUDIT_EVENT_WRITE_IO_LIMIT, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_READ_IO_LIMIT:
+				deal_with_system_event(SYSTEMAUDIT_EVENT_READ_IO_LIMIT, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_MEM_LIMIT:
+				deal_with_system_event(SYSTEMAUDIT_EVENT_MEM_LIMIT, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_DISK_LIMIT_SCHEMA:
+				deal_with_system_event(SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_DISK_LIMIT_ROLE:
+				deal_with_system_event(SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_CMD_FAIL:
+				if (clientInfo.pg_dump_restore > CMD_COMMON)
+				{
+					audit_cmd();
+				}
+				deal_with_system_event(SYSTEMAUDIT_LOGOUT, AUDIT_SUCCESS);
+				break;
+
+			case SYSTEM_EVENT_INTEGRITY_CHECK_GUC:
+				deal_with_system_event(SYSTEMAUDIT_EVENT_INTEGRITY_CHECK_GUC, AUDIT_SUCCESS);
 				break;
 
 			default:
@@ -6155,14 +6335,17 @@ audit_pgagent_job(char *user)
 			{
 #ifdef USE_SQLITE
 				if (sqlite_open_db_for_audit_hook)
-					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_FAIL, NULL, NULL);
+				{
+					char *errstr = "cannot start pgagent service";
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_FAIL, SYSSAO_USER, errstr);
+				}
 #endif
 				elog(WARNING, "cannot start pgagent service");
 				continue;
 			}
 #ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook)
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_SUCCESS, NULL, NULL);
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START_PGAGENT, AUDIT_SUCCESS, SYSSAO_USER, NULL);
 #endif
 		}
 	}
@@ -6496,7 +6679,8 @@ audit_set_sqlite_path(void)
 }
 #endif
 
-static void audit_delete_log(TimestampTz del_time)
+static void
+audit_delete_log_from_pg(TimestampTz del_time)
 {
 	StringInfoData query;
 	char *time;
@@ -6510,11 +6694,12 @@ static void audit_delete_log(TimestampTz del_time)
 
 	time = DatumGetCString(DirectFunctionCall1(timestamptz_out, TimestampTzGetDatum(del_time)));
 	initStringInfo(&query);
+
 	appendStringInfo(&query, "delete from hg_security.pg_audit_log where audittime <\' %s\'", time);
 
 	if (se_feature_mode)
 	{
-		syssao_oid = get_role_oid("syssao", false);
+		syssao_oid = get_role_oid(SYSSAO_USER, false);
 		GetUserIdAndSecContext(&save_userid, &save_sec_context);
 
 		SetUserIdAndSecContext(syssao_oid,
@@ -6529,8 +6714,10 @@ static void audit_delete_log(TimestampTz del_time)
 
 		ereport(ERROR,
 				(errcode(ERRCODE_DATA_EXCEPTION),
-				errmsg("invalid query")));
+				errmsg("invalid query:%s", query.data)));
 	}
+
+	pfree(query.data);
 
 	/* Restore userid and security context */
 	if (se_feature_mode)
@@ -6538,6 +6725,7 @@ static void audit_delete_log(TimestampTz del_time)
 
 	if (SPI_finish() != SPI_OK_FINISH)
 		elog(ERROR, "SPI_finish failed");
+
 
 	return;
 }
@@ -6703,7 +6891,7 @@ static void audit_disk_full(void)
 #ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook && (audit_GUC.logpolicy== AUDIT_PAUSE || (!disk_full && audit_GUC.logpolicy== AUDIT_CYCLE)))
 			{
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_DISK_FULL, AUDIT_SUCCESS, NULL, NULL);
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_AUDIT_DISK_FULL, AUDIT_SUCCESS, SYSSAO_USER, NULL);
 			}
 #endif
 			if (audit_GUC.logpolicy == AUDIT_PAUSE)
@@ -7148,6 +7336,7 @@ void
 pg_audit_launch(void)
 {
 	sigjmp_buf local_sigjmp_buf;  // Begin - BUG#Z7404
+	bool old_se_feature_mode = se_feature_mode;
 
 	/* Establish signal handlers before unblocking signals. */
 	pqsignal(SIGHUP, pg_audit_sighup);//wakeup latch
@@ -7189,6 +7378,7 @@ pg_audit_launch(void)
 
 		/* Now we can allow interrupts again */
 		RESUME_INTERRUPTS();
+		se_feature_mode = old_se_feature_mode;
 
 		/*
 		 * Sleep at least 1 second after any error.  We don't want to be
@@ -7283,6 +7473,7 @@ pg_audit_launch(void)
 				{
 					audit_postmaster_sighup_guc("sighup");
 				}
+				old_se_feature_mode = se_feature_mode;
 			}
 
 /* Begin - BUG#Z7404 */
@@ -8303,6 +8494,16 @@ audit_stmttype_to_string(AuditStmtType type)
 		case SWITCHOVER:
 			tag = SWITCHOVER_S;
 			break;
+		case CREATE_GROUP:
+			tag = CREATE_GROUP_S;
+			break;
+		case ALTER_GROUP:
+			tag = ALTER_GROUP_S;
+			break;
+		case DROP_GROUP:
+			tag = DROP_GROUP_S;
+			break;
+
 		default:
 			break;
 	}
@@ -8358,6 +8559,12 @@ audit_get_privi_type(char *statment)
 		type = GRANT_ROLE;
 	else if (pg_strcasecmp(statment, REVOKE_ROLE_S) == 0)
 		type = REVOKE_ROLE;
+	else if (pg_strcasecmp(statment, CREATE_GROUP_S) == 0)
+		type = CREATE_GROUP;
+	else if (pg_strcasecmp(statment, ALTER_GROUP_S) == 0)
+		type = ALTER_GROUP;
+	else if (pg_strcasecmp(statment, DROP_GROUP_S) == 0)
+		type = DROP_GROUP;
 	else if (pg_strcasecmp(statment, ALL_S) == 0)
 		type = ALL_T;
 	else
@@ -8546,6 +8753,12 @@ audit_get_stmt_type(char *statment, bool is_obj, ObjectType objtype)
 		type = LOCK_ACCCOUNT;
 	else if (pg_strcasecmp(statment, SWITCHOVER_S) == 0)
 		type = SWITCHOVER;
+	else if (pg_strcasecmp(statment, CREATE_GROUP_S) == 0)
+		type = CREATE_GROUP;
+	else if (pg_strcasecmp(statment, ALTER_GROUP_S) == 0)
+		type = ALTER_GROUP;
+	else if (pg_strcasecmp(statment, DROP_GROUP_S) == 0)
+		type = DROP_GROUP;
 	else if (pg_strcasecmp(statment, ALL_S) == 0)
 		type = ALL_T;
 	else
@@ -13313,10 +13526,13 @@ static void audit_drop_table_partition(void)
 	StartTransactionCommand();
 	PushActiveSnapshot(GetTransactionSnapshot());
 
-	syssao_oid = get_role_oid("syssao", false);
-	GetUserIdAndSecContext(&save_userid, &save_sec_context);
-	SetUserIdAndSecContext(syssao_oid,
-						save_sec_context | SECURITY_RESTRICTED_OPERATION);
+	if (se_feature_mode)
+	{
+		syssao_oid = get_role_oid(SYSSAO_USER, false);
+		GetUserIdAndSecContext(&save_userid, &save_sec_context);
+		SetUserIdAndSecContext(syssao_oid,
+							save_sec_context | SECURITY_RESTRICTED_OPERATION);
+	}
 
 	if (SPI_connect() != SPI_OK_CONNECT)
 	{
@@ -13441,7 +13657,8 @@ static void audit_drop_table_partition(void)
 		ereport(ERROR, errmsg("SPI_finish failed"));
 	}
 	/* Restore userid and security context */
-	SetUserIdAndSecContext(save_userid, save_sec_context);
+	if (se_feature_mode)
+		SetUserIdAndSecContext(save_userid, save_sec_context);
 
 	PopActiveSnapshot();
 	CommitTransactionCommand();
@@ -14108,7 +14325,66 @@ is_pgagent_live(char *cmd)
 #endif
 /* End - BUG#Z7404 */
 
-static bool audit_filter_events_loginout(AuditSystemEvent event)
+#ifdef USE_SQLITE
+static void
+audit_delete_log_from_sqlite(TimestampTz del_time)
+{
+	sqlite3    *conn = NULL;
+	int rc;
+	char   *err = NULL;
+	StringInfoData query;
+	char *time = NULL;
+
+	time = DatumGetCString(DirectFunctionCall1(timestamptz_out, TimestampTzGetDatum(del_time)));
+	initStringInfo(&query);
+
+	appendStringInfo(&query, "delete from pg_sqlite_audit_log where audittime <\'%s\'", time);
+
+	rc = sqlite3_open(audit_GUC.audit_sqlitedbpath, &conn);
+	if (rc != SQLITE_OK)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+				errmsg("Failed to open SQLite DB, file '%s', result code %d", audit_GUC.audit_sqlitedbpath, rc)));
+		pfree(query.data);
+		sqlite3_close(conn);
+		return;
+	}
+	sqlite3_busy_timeout(conn, 5000);
+
+	rc = sqlite3_exec(conn, query.data, NULL, NULL, &err);
+	if (rc != SQLITE_OK)
+	{
+		ereport(WARNING,
+				(errcode(ERRCODE_FDW_UNABLE_TO_ESTABLISH_CONNECTION),
+				errmsg("Failed to delete in SQLite DB, file '%s', SQLite error '%s', result code %d,SQL:%s", audit_GUC.audit_sqlitedbpath, err, rc, query.data)));
+		sqlite3_free(err);
+		pfree(query.data);
+		sqlite3_close(conn);
+		return;
+	}
+
+	pfree(query.data);
+	sqlite3_close(conn);
+	conn = NULL;
+	return;
+}
+#endif
+
+static void
+audit_delete_log(TimestampTz del_time)
+{
+	/* delete pg_audit_log */
+	audit_delete_log_from_pg(del_time);
+
+#ifdef USE_SQLITE
+	/* delete pg_sqlite_audit_log */
+	audit_delete_log_from_sqlite(del_time);
+#endif
+}
+
+static bool
+audit_filter_events_loginout(AuditSystemEvent event)
 {
 	/* only audit login/logout */
 	if (audit_GUC.login_logout_only == AUDIT_ON &&
@@ -14120,7 +14396,8 @@ static bool audit_filter_events_loginout(AuditSystemEvent event)
 	return false;
 }
 
-static bool audit_filter_events_app(AuditSystemEvent event)
+static bool
+audit_filter_events_app(AuditSystemEvent event)
 {
 	ListCell *l = NULL;
 	List *elemlist = NULL;
@@ -14146,7 +14423,8 @@ static bool audit_filter_events_app(AuditSystemEvent event)
 	return false;
 }
 
-static bool audit_filter_events_users(AuditSystemEvent event)
+static bool
+audit_filter_events_users(AuditSystemEvent event)
 {
 	ListCell *l = NULL;
 	List *elemlist = NULL;
@@ -14205,7 +14483,8 @@ static bool audit_filter_events_users(AuditSystemEvent event)
 	return false;
 }
 
-static bool audit_filter_events_time(AuditSystemEvent event)
+static bool
+audit_filter_events_time(AuditSystemEvent event)
 {
 	if (audit_GUC.exclude_time != NULL && audit_GUC.exclude_time[0] != '\0')
 	{
@@ -14248,7 +14527,8 @@ static bool audit_filter_events_time(AuditSystemEvent event)
 	return false;
 }
 
-static bool audit_filter_events_ip(AuditSystemEvent event)
+static bool
+audit_filter_events_ip(AuditSystemEvent event)
 {
 	ListCell *l = NULL;
 	List *elemlist = NULL;
@@ -14286,7 +14566,8 @@ static bool audit_filter_events_ip(AuditSystemEvent event)
 	return false;
 }
 
-static bool audit_filter_events(AuditSystemEvent event)
+static bool
+audit_filter_events(AuditSystemEvent event)
 {
 	if (audit_GUC.audit_systemopers == AUDIT_OPER_OFF)
 		return false;

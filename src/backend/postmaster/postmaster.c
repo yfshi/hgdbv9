@@ -3106,7 +3106,7 @@ SIGHUP_handler(SIGNAL_ARGS)
 			if (sqlite_open_db_for_audit_hook)
 			{
 				char *errstr = "pg_hba.conf was not reloaded";
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, MyProcPort != NULL ? MyProcPort->user_name:NULL, errstr);
 			}
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
@@ -3121,7 +3121,7 @@ SIGHUP_handler(SIGNAL_ARGS)
 			if (sqlite_open_db_for_audit_hook)
 			{
 				char *errstr = "pg_ident.conf was not reloaded";
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, MyProcPort != NULL ? MyProcPort->user_name:NULL, errstr);
 			}
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
@@ -3142,7 +3142,7 @@ SIGHUP_handler(SIGNAL_ARGS)
 				if (sqlite_open_db_for_audit_hook)
 				{
 					char *errstr = "SSL configuration was not reloaded";
-					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, NULL, errstr);
+					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_FAIL, MyProcPort != NULL ? MyProcPort->user_name:NULL, errstr);
 				}
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
@@ -3163,7 +3163,7 @@ SIGHUP_handler(SIGNAL_ARGS)
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #ifdef USE_SQLITE
 	if (sqlite_open_db_for_audit_hook)
-		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_SUCCESS, NULL, NULL);
+		sqlite_open_db_for_audit_hook(SYSTEMAUDIT_RELOAD, AUDIT_SUCCESS, MyProcPort != NULL ? MyProcPort->user_name:NULL, NULL);
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
@@ -5745,7 +5745,7 @@ sigusr1_handler(SIGNAL_ARGS)
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #ifdef USE_SQLITE
 		if (sqlite_open_db_for_audit_hook)
-			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_SUCCESS, NULL, NULL);
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_START, AUDIT_SUCCESS, MyProcPort != NULL ? MyProcPort->user_name:NULL, NULL);
 #endif
 /* End - ReqID:SRS-SECURITY-AUDIT */		
 		pmState = PM_HOT_STANDBY;

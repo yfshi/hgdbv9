@@ -17,6 +17,7 @@
 #include "utils/sqlresourcelimit.h"
 #include "utils/resgroup.h"
 #include "storage/proc.h"
+#include "pg_contrib_audit.h"  // Begin - ReqID:SRS-SECURITY-AUDIT
 
 #define SQLRESOURCELIMITIO_I sqlread_buffer * 1024LL * 1024
 #define SQLRESOURCELIMITIO_O sqlwrite_buffer * 1024LL * 1024
@@ -69,6 +70,13 @@ sql_resource_limit_check_io_read(void)
 	if (SQLRESOURCELIMITIO_I < sqlread_buffercount && !sqlIO_O_warning)
 	{
 		sqlIO_O_warning = true;
+
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#ifdef USE_SQLITE
+		if (sqlite_open_db_for_audit_hook)
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_READ_IO_LIMIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 		ereport(elevel,
 			(errcode(ERRCODE_INVALID_LIMIT_VALUE),
 			 errmsg("The SQL resource limit has exceeded the maximum allowed IO input value, please check sqlread_buffer")));
@@ -102,6 +110,13 @@ sql_resource_limit_check_io_write()
 	if (SQLRESOURCELIMITIO_O < sqlwrite_buffercount && !sqlIO_I_warning)
 	{
 		sqlIO_I_warning = true;
+
+		/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		#ifdef USE_SQLITE
+		if (sqlite_open_db_for_audit_hook)
+			sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_WRITE_IO_LIMIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+		#endif
+		/* End - ReqID:SRS-SECURITY-AUDIT */
 		ereport(elevel,
 			(errcode(ERRCODE_INVALID_LIMIT_VALUE),
 			 errmsg("The SQL resource limit has exceeded the maximum allowed IO output value, please check sqlwrite_buffer")));
@@ -143,6 +158,13 @@ sql_resource_limit_check_memory(Size size, MemCountOpt opt)
 		{
 			sqlallocatedmem_warning = true;
 			elevel = (source_limit_mode == RESOURCE_LIMIT_STRICT) ? ERROR : WARNING;
+
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_MEM_LIMIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 			ereport(elevel,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 					 errmsg("The SQL resource limit has exceeded the maximum allowed memory value, please check sqlallocated_memory")));
@@ -185,6 +207,13 @@ sql_resource_limit_check_memory(Size size, MemCountOpt opt)
 			group_memory < sqlallocated_memorycount)
 		{
 			sqlallocatedmem_warning = true;
+
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_MEM_LIMIT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
 					 errmsg("SQL resource limit-maxmum memory allocation is \"%lld\", now memory is \"%lld\"",

@@ -82,6 +82,10 @@
 #include "storage/ipc.h"
 #include "utils/guc.h"
 #include "utils/memutils.h"
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#include "pg_contrib_audit.h"
+#include "access/xact.h"
+/* End - ReqID:SRS-SECURITY-AUDIT */
 
 /*
  * Cope with the various platform-specific ways to spell TCP keepalive socket
@@ -1395,6 +1399,19 @@ internal_flush(void)
 			if (errno != last_reported_send_errno)
 			{
 				last_reported_send_errno = errno;
+
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+#ifdef ENABLE_DKY_BETA_FEATURE
+				AbortCurrentTransaction();
+				StartTransactionCommand();
+				UserAbortTransactionBlock(false);
+				CommitTransactionCommand();
+
+				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
+					audit_system_event_hook(true, SYSTEM_EVENT_CMD_FAIL);
+#endif
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 				ereport(COMMERROR,
 						(errcode_for_socket_access(),
 						 errmsg("could not send data to client: %m")));
