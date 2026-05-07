@@ -188,6 +188,10 @@ CreateExecutorState(void)
 	/* End - ReqID:SRS-MISC-BULKLOAD */
 	estate->skipbad_fk = false;	/* BUG#Z1616 */
 	estate->es_multi_insert_usecte = false; /* SRS-SQL-MULTITABLEINSERT */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	estate->es_forall_params = NULL;
+	estate->es_forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/*
 	 * Return the executor state structure

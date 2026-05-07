@@ -43,6 +43,7 @@ PG_KEYWORD("assert", K_ASSERT)
 PG_KEYWORD("authid", K_AUTHID)
 /* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("backward", K_BACKWARD)
+PG_KEYWORD("between", K_BETWEEN)	/* ReqID:SRS-PLSQL-FORALL */
 /* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
 PG_KEYWORD("bulk", K_BULK)
 /* End - ReqID:SRS-PLSQL-BULKCOLLECTt */
@@ -74,6 +75,7 @@ PG_KEYWORD("debug", K_DEBUG)
 PG_KEYWORD("default", K_DEFAULT)
 /* Begin - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("definer", K_DEFINER)
+PG_KEYWORD("delete", K_DELETE)	/* ReqID:SRS-PLSQL-FORALL */
 /* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("detail", K_DETAIL)
 /* Begin - SRS-PLSQL-SUBPROC */
@@ -95,6 +97,7 @@ PG_KEYWORD("exit", K_EXIT)
 PG_KEYWORD("extend", K_EXTEND)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("fetch", K_FETCH)
 PG_KEYWORD("first", K_FIRST)
+PG_KEYWORD("forall", K_FORALL)	/* ReqID:SRS-PLSQL-FORALL */
 PG_KEYWORD("forward", K_FORWARD)
 PG_KEYWORD("get", K_GET)
 PG_KEYWORD("goto", K_GOTO)      /* ReqID:SRS-PLSQL-GOTO */
@@ -102,6 +105,7 @@ PG_KEYWORD("hint", K_HINT)
 PG_KEYWORD("immediate", K_IMMEDIATE)	/* BUG#Z1438 */
 PG_KEYWORD("import", K_IMPORT)
 PG_KEYWORD("index", K_INDEX)	/* ReqID:SRS-PLSQL-Collection */
+PG_KEYWORD("indices", K_INDICES)	/* ReqID:SRS-PLSQL-FORALL */
 PG_KEYWORD("info", K_INFO)
 PG_KEYWORD("insert", K_INSERT)
 PG_KEYWORD("is", K_IS)
@@ -185,11 +189,13 @@ PG_KEYWORD("trigger", K_TRIGGER)
 /* End - SRS-PLSQL-SUBPROC */
 PG_KEYWORD("trim", K_TRIM)	/* ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("type", K_TYPE)
+PG_KEYWORD("update", K_UPDATE)	/* ReqID:SRS-PLSQL-FORALL */
 PG_KEYWORD("use_column", K_USE_COLUMN)
 PG_KEYWORD("use_variable", K_USE_VARIABLE)
 /* Begin - SRS-PLSQL-SUBPROC*/
 PG_KEYWORD("using_nls_comp", K_USING_NLS_COMP)
 /* End - SRS-PLSQL-SUBPROC */
+PG_KEYWORD("values", K_VALUES)	/* ReqID:SRS-PLSQL-FORALL */
 PG_KEYWORD("variable_conflict", K_VARIABLE_CONFLICT)
 /* Begin - ReqID:SRS-PLSQL-Collection */
 PG_KEYWORD("varray", K_VARRAY)

@@ -630,6 +630,22 @@ typedef struct AsyncRequest
 								 * tuples) */
 } AsyncRequest;
 
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/* ----------------
+ *	  ForallParams
+ *
+ * Working state for an forall parameters
+ * ----------------
+ */
+typedef struct ForallParams
+{
+	List		*subscripts;	/* the values of forall index */
+	int32		indexdno;		/* the forall index variable dno */
+	int32		total;			/* the total number of forall index values */
+	int			curr_idx;		/* the sequence number in the subscripts list */
+} ForallParams;
+/* End - ReqID:SRS-PLSQL-FORALL */
+
 /* ----------------
  *	  EState information
  *
@@ -773,6 +789,14 @@ typedef struct EState
 	/* Begin - SRS-SQL-MULTITABLEINSERT */
 	bool	es_multi_insert_usecte;	/* is multi insert convert to cte */
 	/* End - SRS-SQL-MULTITABLEINSERT */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	struct ForallParams *es_forall_params;
+	uint64	*es_forall_processed;	/* a array whose ith element
+									 * is the number of rows affected by the ith DML
+									 * statement in the most recently completed FORALL
+									 * statement
+									 */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } EState;
 
 

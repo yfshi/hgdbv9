@@ -52,6 +52,9 @@ typedef struct SPIExecuteOptions
 	uint64		tcount;
 	DestReceiver *dest;
 	ResourceOwner owner;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	ForallParams *forallparams;	/* FORALL context for PLiSQL FORALL statement */
+	/* End - ReqID:SRS-PLSQL-FORALL */
 } SPIExecuteOptions;
 
 /* Optional arguments for SPI_cursor_parse_open */
@@ -114,6 +117,10 @@ typedef struct _SPI_plan *SPIPlanPtr;
 extern PGDLLIMPORT uint64 SPI_processed;
 extern PGDLLIMPORT SPITupleTable *SPI_tuptable;
 extern PGDLLIMPORT int SPI_result;
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+extern PGDLLIMPORT uint64 *SPI_forall_processed;
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 extern int	SPI_connect(void);
 extern int	SPI_connect_ext(int options);
@@ -241,11 +248,18 @@ extern void SPI_switch_atomic(bool atomic);
 /* Begin - ReqID:SRS-PLSQL-BULKCOLLECT */
 extern int SPI_execute_plan_with_paramlist_bulk_collect(SPIPlanPtr plan, ParamListInfo params,
 								bool read_only, long tcount,
-								Datum bulk_params);
+								Datum bulk_params,
+								ForallParams *forallparams /* ReqID:SRS-PLSQL-FORALL */);
 extern void SPI_scroll_cursor_fetch_bulk_collect(Portal portal,
 									FetchDirection direction,
 									long count,
 									Datum bulk_params);
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+extern int SPI_execute_plan_with_paramlist_forall(SPIPlanPtr plan, ParamListInfo params,
+								bool read_only, long tcount,
+								ForallParams *forallparams);
+extern void SPI_free_bulkrowcount(void);
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 #endif							/* SPI_H */

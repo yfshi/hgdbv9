@@ -170,6 +170,9 @@ extern PGDLLIMPORT SynnameGetPkgoid_recursive_hook_type SynnameGetPkgoid_recursi
 extern PGDLLIMPORT SynIdGetname_hook_type SynIdGetname_hook;
 /* End - ReqID:SRS-SQL-SYNONYM */
 
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+typedef Node *(*ParseForallExprHook) (ParseState *pstate);
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * State information used during parse analysis

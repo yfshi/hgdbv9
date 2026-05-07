@@ -309,6 +309,12 @@ typedef struct
 	void (*SetBulkCollectDestReceiverParams)(Datum dest, Datum bulk_params);
 	Datum (*CreateBulkCollectReceiver)(void);
 	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	void (*SetBulkCollectDestReceiverInForall)(Datum dest);
+	List* (*GetCollectAllValues)(Datum collect_value);
+	List* (*GetCollectAllKeyValues)(Datum collect_value, bool has_between_and,
+						int lower_bound, int upper_bound);
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	UdtExtensionLoadState loadstate;	/* collection type functions loading state */
 } collection_funcs_call;

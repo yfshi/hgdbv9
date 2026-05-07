@@ -6196,9 +6196,64 @@ ExecEndModifyTable(ModifyTableState *node)
 void
 ExecReScanModifyTable(ModifyTableState *node)
 {
-	/*
-	 * Currently, we don't need to support rescan on ModifyTable nodes. The
-	 * semantics of that would be a bit debatable anyway.
-	 */
-	elog(ERROR, "ExecReScanModifyTable is not implemented");
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	if (DB_ORACLE == database_mode && node->ps.state->es_forall_params != NULL)
+	{
+		PlanState  *outerPlan;
+
+		/*
+		 * Allow rescan of ModifyTable for FORALL iteration.
+		 * This resets the node state for a new FORALL iteration.
+		 */
+		node->mt_done = false;
+		node->mt_lastResultIndex = 0;
+
+		/*
+		 * Reset trigger firing flags for new iteration
+		 */
+		node->fireBSTriggers = true;
+
+		/*
+		 * Reset merge pending state and counters
+		 */
+		node->mt_merge_inserted = 0;
+		node->mt_merge_updated = 0;
+		node->mt_merge_deleted = 0;
+		node->mt_multi_inserted = 0;
+
+		/*
+		 * Reset transition capture state
+		 */
+		if (node->mt_transition_capture)
+			node->mt_transition_capture->tcs_original_insert_tuple = NULL;
+		if (node->mt_oc_transition_capture)
+			node->mt_oc_transition_capture->tcs_original_insert_tuple = NULL;
+
+		/*
+		 * Reset epqstate
+		 */
+		EvalPlanQualEnd(&node->mt_epqstate);
+
+		/*
+		 * Rescan subplan if present
+		 */
+		outerPlan = outerPlanState(node);
+		if (outerPlan != NULL)
+		{
+			/*
+			 * For subplans with no parameter changes, rescan them.
+			 */
+			if (outerPlan->chgParam == NULL)
+				ExecReScan(outerPlan);
+		}
+	}
+	else
+	/* End - ReqID:SRS-PLSQL-FORALL */
+	{
+		/*
+		 * Currently, we don't need to support rescan on ModifyTable nodes. The
+		 * semantics of that would be a bit debatable anyway.
+		 */
+		elog(ERROR, "ExecReScanModifyTable is not implemented");
+	}
 }

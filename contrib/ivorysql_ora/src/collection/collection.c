@@ -144,6 +144,11 @@ collection_init_internal(void)
 	collection_funcs.SetBulkCollectDestReceiverParams = set_bulk_collect_destreceiver_params;
 	collection_funcs.CreateBulkCollectReceiver = create_bulk_collect_receiver;
 	/* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	collection_funcs.SetBulkCollectDestReceiverInForall = set_bulk_collect_destreceiver_inforall;
+	collection_funcs.GetCollectAllValues = get_collect_all_values;
+	collection_funcs.GetCollectAllKeyValues = get_collect_all_key_values;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	collection_funcs.loadstate = LOADED;
 }
@@ -2108,7 +2113,16 @@ collection_exists(PG_FUNCTION_ARGS)
 		if (ITER_EQUAL(iter, iter_end))
 			PG_RETURN_BOOL(false);
 		else
-			PG_RETURN_BOOL(true);
+		{
+			CollecTypeValue *elem_val;
+
+			elem_val = (CollecTypeValue *) PointerGetDatum(GET_COLLECT_ELEMENT_VALUE(iter));
+
+			if (elem_val->placeholder)
+				PG_RETURN_BOOL(false);
+			else
+				PG_RETURN_BOOL(true);
+		}
 	}
 	else
 	{
@@ -3450,9 +3464,25 @@ create_bulk_collect_receiver(void)
 	self->pub.rDestroy = bulk_collect_into_destroy;
 	self->pub.mydest = DestBulkCollect;
 	self->bulk_params = NULL;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	self->in_forall = false;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	return PointerGetDatum(self);
 }
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/*
+ * set_bulk_collect_destreceiver_inforall -- set in_forall to true
+ */
+void
+set_bulk_collect_destreceiver_inforall(Datum dest)
+{
+	DR_bulkcollect *self = (DR_bulkcollect *)DatumGetPointer(dest);
+
+	self->in_forall = true;
+}
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * Check whether the numbers of the bulk collect target
@@ -3745,7 +3775,7 @@ bulk_collect_into_shutdown(DestReceiver *self)
 {
 	BulkCollectIntoParams *bulk_params = ((DR_bulkcollect *)self)->bulk_params;
 
-	if (bulk_params != NULL)
+	if (bulk_params != NULL && !((DR_bulkcollect *)self)->in_forall/* ReqID:SRS-PLSQL-FORALL */)
 	{
 		int i = 0;
 
@@ -3806,3 +3836,166 @@ datum_type_cast(Datum value,
 	return retult;
 }
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/*
+ * get_collect_all_values - get all the collect element values
+ */
+List *
+get_collect_all_values(Datum collect_value)
+{
+	List 			*values_list = NIL;
+	CollectType		val = (CollectType)PointerGetDatum(collect_value);
+
+	CHECK_COLLECTION_IS_NULL(val);
+	Assert(val->valCxt != NULL);
+
+	if (!IS_VARRAY(val))
+	{
+		c_map			*map;
+		c_iterator		iter;
+		c_iterator		end;
+
+		map = (c_map*) DatumGetPointer(val->values);
+
+		if (c_map_empty(map))
+			return values_list;
+
+		iter = c_map_begin(map);
+		end = c_map_end(map);
+
+		/* loop each elements of associate array or nested table */
+		for(; !ITER_EQUAL(iter, end); ITER_INC(iter))
+		{
+			CollecTypeValue 	*elem_val;
+
+			elem_val = (CollecTypeValue *) GET_COLLECT_ELEMENT_VALUE(iter);
+
+			if (!elem_val->placeholder)
+				values_list= lappend_int(values_list, DatumGetInt64(elem_val->value));
+		}
+	}
+	else
+	{
+		CollectVarrayValue	*varray;
+		int		i = 0;
+
+		varray = (CollectVarrayValue *) DatumGetPointer(val->values);
+
+		for (i = 0; i < varray->current_used; i++)
+		{
+			CollecTypeValue 	*elem_val;
+
+			elem_val = (CollecTypeValue *) DatumGetPointer(varray->value[i]);
+			values_list= lappend_int(values_list, DatumGetInt64(elem_val->value));
+		}
+	}
+
+	return values_list;
+}
+
+/*
+ * get_collect_all_key_values - get all the collect key values
+ */
+List *
+get_collect_all_key_values(Datum collect_value, bool has_between_and,
+						int lower_bound, int upper_bound)
+{
+	List 			*keys_list = NIL;
+	CollectType		val = (CollectType)PointerGetDatum(collect_value);
+
+	CHECK_COLLECTION_IS_NULL(val);
+	Assert(val->valCxt != NULL);
+
+	if (!IS_VARRAY(val))
+	{
+		c_map			*map;
+		c_iterator		iter;
+		c_iterator		begin;
+		c_iterator		end;
+
+		map = (c_map*) DatumGetPointer(val->values);
+
+		if (c_map_empty(map))
+			return keys_list;
+
+		begin = c_map_begin(map);
+		end = c_map_end(map);
+
+		if (has_between_and)
+		{
+			CollecTypeKey	*lowerbound_key;
+			CollecTypeKey	*upperbound_key;
+			c_iterator		iter_lowerbound;
+			c_iterator		iter_upperbound;
+
+			/* construct the key according the lower_bound value */
+			lowerbound_key = (CollecTypeKey *) palloc0(sizeof(CollecTypeKey));
+			lowerbound_key->value = lower_bound;
+
+			iter_lowerbound = c_map_find(map, lowerbound_key);
+
+			pfree(lowerbound_key);
+			if (!ITER_EQUAL(iter_lowerbound, end))
+				begin = iter_lowerbound;
+
+			/* construct the key according the upper_bound value */
+			upperbound_key = (CollecTypeKey *) palloc0(sizeof(CollecTypeKey));
+			upperbound_key->value = upper_bound;
+
+			iter_upperbound = c_map_find(map, upperbound_key);
+
+			pfree(upperbound_key);
+			if (!ITER_EQUAL(iter_upperbound, end))
+			{
+				end = iter_upperbound;
+				ITER_INC(end);
+			}
+		}
+
+		/* loop each keys of associate array or nested table */
+		for(iter = begin; !ITER_EQUAL(iter, end); ITER_INC(iter))
+		{
+			CollecTypeValue 	*elem_val;
+
+			elem_val = (CollecTypeValue *) GET_COLLECT_ELEMENT_VALUE(iter);
+
+			if (!elem_val->placeholder)
+			{
+				CollecTypeKey	*key;
+
+				key = (CollecTypeKey *) GET_COLLECT_ELEMENT_KEY(iter);
+				keys_list = lappend_int(keys_list, DatumGetInt64(key->value));
+			}
+		}
+	}
+	else
+	{
+		CollectVarrayValue	*varray;
+		int		i = 0;
+		int		begin;
+		int		end;
+
+		varray = (CollectVarrayValue *) DatumGetPointer(val->values);
+
+		begin = 0;
+		end = varray->current_used;
+
+		if (has_between_and)
+		{
+			if (lower_bound > 0)
+				begin = lower_bound;
+
+			if (upper_bound > varray->current_used)
+				end = varray->current_used;
+			else
+				end = upper_bound;
+		}
+
+		for (i = begin; i < end; i++)
+			keys_list = lappend_int(keys_list, DatumGetInt64(i + 1));
+	}
+
+	return keys_list;
+}
+/* End - ReqID:SRS-PLSQL-FORALL */

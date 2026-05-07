@@ -110,6 +110,10 @@ static void ExecBuildAggTransCall(ExprState *state, AggState *aggstate,
 static void ExecInitFuncOutParams(Expr *node, ExprState *state,
 					Datum *resvalue, bool *resnull);
 /* End - ReqID:SRS-SQL-FUNCOUT */
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static void ExecInitForallExpr(ExprEvalStep *scratch, ForallExpr *forallexpr,
+				ExprState *state);
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 
 /*
@@ -1405,6 +1409,17 @@ ExecInitExprRec(Expr *node, ExprState *state,
 				ExecInitSubscriptingRef(&scratch, sbsref, state, resv, resnull);
 				break;
 			}
+
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		case T_ForallExpr:
+			{
+				ForallExpr *forallexpr = (ForallExpr *) node;
+
+				ExecInitForallExpr(&scratch, forallexpr, state);
+				ExprEvalPushStep(state, &scratch);
+				break;
+			}
+		/* End - ReqID:SRS-PLSQL-FORALL */
 
 		case T_FuncExpr:
 			{
@@ -3540,6 +3555,22 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 								   state->steps_len - 1);
 	}
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	if (DB_ORACLE == database_mode && sbsref->forallexpr != NULL)
+	{
+		Node	*last_index;
+
+		last_index = (Node *) llast(sbsref->refupperindexpr);
+
+		/* check if the last subscript dno is the forall index variable dno */
+		if (last_index->type == T_Param &&
+			((Param *)last_index)->paramid == sbsref->forallexpr->indexdno + 1)
+			ExecInitExprRec((Expr *) sbsref->forallexpr, state,
+					&sbsrefstate->ctindex[sbsrefstate->numctindex - 1],
+					&sbsrefstate->upperindexnull[sbsrefstate->numctindex - 1]);
+	}
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	if (isAssignment)
 	{
 		Datum	   *save_innermost_caseval;
@@ -3630,6 +3661,22 @@ ExecInitSubscriptingRef(ExprEvalStep *scratch, SubscriptingRef *sbsref,
 		}
 	}
 }
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/*
+ * Prepare evaluation of a ForallExpr expression.
+ */
+static void
+ExecInitForallExpr(ExprEvalStep *scratch, ForallExpr *forallexpr,
+				ExprState *state)
+{
+	scratch->opcode = EEOP_FORALLEXPR_FETCH;
+	if (forallexpr->subscripts != NIL)
+		scratch->d.forallexpr.subscripts = list_copy(forallexpr->subscripts);
+	else
+		scratch->d.forallexpr.subscripts = NIL;
+}
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * Helper for preparing SubscriptingRef expressions for evaluation: is expr

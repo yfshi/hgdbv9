@@ -46,6 +46,22 @@ plisql_build_ora_collection_type(char *refname, int lineno,
 	PLiSQL_ora_collection_type *ora_collect;
 	Oid		pkgoid;
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	/* the index datatype supports PLS_INTEGER */
+	if (pg_strcasecmp(keytype->typname, "PLS_INTEGER") == 0)
+	{
+		pfree(keytype);
+		keytype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
+	}
+
+	/* the element datatype supports PLS_INTEGER */
+	if (pg_strcasecmp(valuetype->typname, "PLS_INTEGER") == 0)
+	{
+		pfree(valuetype);
+		valuetype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
+	}
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	if (keytype->typoid != INT8OID &&
 		keytype->typoid != INT4OID &&
 		keytype->typoid != INT2OID &&

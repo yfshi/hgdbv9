@@ -69,6 +69,9 @@
 #include "parser/pg_object_hook.h"
 #include "catalog/pg_trigger.h"
 #include "utils/ruleutils.h"
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+#include "nodes/primnodes.h"
+/* Begin - ReqID:SRS-PLSQL-FORALL */
 
 /* ----------
  * Our own local and global variables
@@ -170,6 +173,9 @@ static SubscriptingRef *transformCollectionSubscripts(ParseState *pstate,
 							 Node *rhs,
 							 int location);
 /* End - ReqID:SRS-PLSQL-Collection */
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+static ForallExpr *plisql_parse_forallexpr(ParseState *pstate, List *indexpr);
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 /* ----------
  * plisql_compile		Make an execution tree for a PL/iSQL function.
@@ -2554,6 +2560,16 @@ make_datum_param(PLiSQL_expr *expr, int dno, int location)
 	estate = expr->func->cur_estate;
 	Assert(dno >= 0 && dno < estate->ndatums);
 	datum = estate->datums[dno];
+
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	if (expr->forallparams != NULL &&
+		!expr->is_collect_subscript &&
+		dno == expr->forallparams->indexdno)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("FORALL iteration variable %s is not allowed in this context",
+					((PLiSQL_var *)datum)->refname)));
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/*
 	 * Bitmapset must be allocated in function's permanent memory context
@@ -6081,6 +6097,9 @@ transformCollectionSubscripts(ParseState *pstate,
 	ListCell			*idx;
 	List				*indexpr = NIL;
 	SubscriptingRef 	*sbsref;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	A_Indices			*last_index = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	if (datatype != NULL && *datatype != NULL)
 		type_info = *datatype;
@@ -6093,6 +6112,10 @@ transformCollectionSubscripts(ParseState *pstate,
 		ereport(ERROR,
 			(errcode(ERRCODE_VALUE_ERROR),
 			errmsg("can't get the collection type infomation")));
+
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	last_index = (A_Indices *) llast(indirection);
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/* Transform the subscript expressions.*/
 	foreach(idx, indirection)
@@ -6111,7 +6134,33 @@ transformCollectionSubscripts(ParseState *pstate,
 
 		if (ai->uidx)
 		{
+			/* Begin - ReqID:SRS-PLSQL-FORALL */
+			bool	saved_is_collect_subscript = false;
+
+			if (ai == last_index &&
+				pstate->p_ref_hook_state != NULL &&
+				((PLiSQL_expr *) pstate->p_ref_hook_state)->forallparams != NULL)
+			{
+				PLiSQL_expr 	*expr = (PLiSQL_expr *) pstate->p_ref_hook_state;
+
+				saved_is_collect_subscript = expr->is_collect_subscript;
+				expr->is_collect_subscript = true;
+			}
+			/* End - ReqID:SRS-PLSQL-FORALL */
+
 			subexpr = transformExpr(pstate, ai->uidx, pstate->p_expr_kind);
+
+			/* Begin - ReqID:SRS-PLSQL-FORALL */
+			if (ai == last_index &&
+				pstate->p_ref_hook_state != NULL &&
+				((PLiSQL_expr *) pstate->p_ref_hook_state)->forallparams != NULL)
+			{
+				PLiSQL_expr 	*expr = (PLiSQL_expr *) pstate->p_ref_hook_state;
+
+				expr->is_collect_subscript = saved_is_collect_subscript;
+			}
+			/* End - ReqID:SRS-PLSQL-FORALL */
+
 			new_expr = coerce_to_target_type(pstate,
 											subexpr, exprType(subexpr),
 											collect_type->typkey->typoid,
@@ -6157,6 +6206,11 @@ transformCollectionSubscripts(ParseState *pstate,
 	sbsref->refexpr = (Expr *) containerBase;
 	sbsref->refupperindexpr = indexpr;
 	sbsref->refassgnexpr = NULL;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	/* check if the last subscript is the forall index */
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	sbsref->forallexpr = plisql_parse_forallexpr(pstate, indexpr);
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	*datatype = type_info;
 	return sbsref;
@@ -6187,3 +6241,63 @@ get_row_field_type(PLiSQL_type *data_type, char *name)
 	return type;
 }
 /* End - ReqID:SRS-PLSQL-Collection */
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/*
+ * plisql_parse_forallexpr		parser callback for a ForallExpr
+ */
+static ForallExpr *
+plisql_parse_forallexpr(ParseState *pstate, List *indexpr)
+{
+	PLiSQL_expr		*expr;
+	ForallExpr		*forall_expr = NULL;
+	Node			*last_index;
+	ListCell		*lc;
+	bool			found_forall_index = false;
+
+	if (indexpr == NIL)
+		return NULL;
+
+	if (pstate->p_ref_hook_state == NULL)
+		return NULL;
+
+	expr = (PLiSQL_expr *) pstate->p_ref_hook_state;
+
+	if (expr->forallparams == NULL)
+		return NULL;
+
+	last_index = (Node *) llast(indexpr);
+
+	if (last_index == NULL)
+		return NULL;
+
+	foreach(lc, indexpr)
+	{
+		Node *cur_expr = (Node *) lfirst(lc);
+
+		if (cur_expr == last_index)
+		{
+			/* paramid's are 1-based, but dnos are 0-based */
+			if (cur_expr->type == T_Param &&
+				((Param *)cur_expr)->paramid == expr->forallparams->indexdno + 1)
+				found_forall_index = true;
+		}
+		else if (cur_expr->type == T_Param &&
+				((Param *)cur_expr)->paramid == expr->forallparams->indexdno + 1)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("bulk SQL attributes must use a single index")));
+	}
+
+	if (found_forall_index)
+	{
+		forall_expr = makeNode(ForallExpr);
+		forall_expr->subscripts = list_copy(expr->forallparams->subscripts);
+		forall_expr->indexdno = expr->forallparams->indexdno;
+
+		return forall_expr;
+	}
+	else
+		return NULL;
+}
+/* End - ReqID:SRS-PLSQL-FORALL */

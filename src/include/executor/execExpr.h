@@ -292,6 +292,10 @@ typedef enum ExprEvalOp
 	EEOP_PKGGLOBAL_VARREF,
 	/* End - OA#00002227*/
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	EEOP_FORALLEXPR_FETCH,
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
 } ExprEvalOp;
@@ -752,12 +756,20 @@ typedef struct ExprEvalStep
 			Oid			rettype;
 		}			varref;
 		/* End - ReqID:SRS-MYSQL-SET */
+
 		/* Begin - OA#00002227 */
 		struct
 		{
 			PkgGlobalVarParam *gparam;
 		} pkgglobalvar;
 		/* End - OA#00002227*/
+
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		struct
+		{
+			List	   *subscripts; 	/* the values of forall index */
+		} forallexpr;
+		/* End - ReqID:SRS-PLSQL-FORALL */
 	}			d;
 } ExprEvalStep;
 

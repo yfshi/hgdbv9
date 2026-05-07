@@ -50,6 +50,9 @@
 uint64		SPI_processed = 0;
 SPITupleTable *SPI_tuptable = NULL;
 int			SPI_result = 0;
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+uint64		*SPI_forall_processed = NULL;
+/* End - ReqID:SRS-PLSQL-FORALL */
 
 static _SPI_connection *_SPI_stack = NULL;
 static _SPI_connection *_SPI_current = NULL;
@@ -76,7 +79,8 @@ static int	_SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 static ParamListInfo _SPI_convert_params(int nargs, Oid *argtypes,
 										 Datum *Values, const char *Nulls);
 
-static int	_SPI_pquery(QueryDesc *queryDesc, bool fire_triggers, uint64 tcount);
+static int	_SPI_pquery(QueryDesc *queryDesc, bool fire_triggers, uint64 tcount,
+					ForallParams *forallparams /* ReqID:SRS-PLSQL-FORALL */);
 
 static void _SPI_error_callback(void *arg);
 
@@ -177,6 +181,11 @@ SPI_connect_ext(int options)
 	_SPI_current->current_func = NULL;
 	/* End - SRS-PLSQL-SUBPROC */
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	_SPI_current->bulkrowcountcxt = NULL;
+	_SPI_current->forall_processed = (Datum) 0;
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	/*
 	 * Reset API global variables so that current caller cannot accidentally
 	 * depend on state of an outer caller.
@@ -184,6 +193,9 @@ SPI_connect_ext(int options)
 	SPI_processed = 0;
 	SPI_tuptable = NULL;
 	SPI_result = 0;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	SPI_forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	return SPI_OK_CONNECT;
 }
@@ -601,6 +613,11 @@ AtEOSubXact_SPI(bool isCommit, SubTransactionId mySubid)
 				MemoryContextDelete(tuptable->tuptabcxt);
 			}
 		}
+
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		if (_SPI_current->forall_processed != NULL)
+			SPI_free_bulkrowcount();
+		/* End - ReqID:SRS-PLSQL-FORALL */
 	}
 }
 
@@ -1747,8 +1764,15 @@ SPI_cursor_open_internal(const char *name, SPIPlanPtr plan,
 	/* Reset SPI result (note we deliberately don't touch lastoid) */
 	SPI_processed = 0;
 	SPI_tuptable = NULL;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	SPI_forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 	_SPI_current->processed = 0;
 	_SPI_current->tuptable = NULL;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	_SPI_current->bulkrowcountcxt = NULL;
+	_SPI_current->forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/* Create the portal */
 	if (name == NULL || name[0] == '\0')
@@ -2537,6 +2561,9 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 	ErrorContextCallback spierrcontext;
 	CachedPlan *cplan = NULL;
 	ListCell   *lc1;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	uint64		*my_forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	if (ORA_MODE == compatible_mode && 
@@ -2834,7 +2861,8 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 										_SPI_current->queryEnv,
 										0);
 				res = _SPI_pquery(qdesc, fire_triggers,
-								  canSetTag ? options->tcount : 0);
+								  canSetTag ? options->tcount : 0,
+								  options->forallparams /* ReqID:SRS-PLSQL-FORALL */);
 				FreeQueryDesc(qdesc);
 			}
 			else
@@ -2920,6 +2948,9 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 				SPI_freetuptable(my_tuptable);
 				my_tuptable = _SPI_current->tuptable;
 				my_res = res;
+				/* Begin - ReqID:SRS-PLSQL-FORALL */
+				my_forall_processed = _SPI_current->forall_processed;
+				/* End - ReqID:SRS-PLSQL-FORALL */
 			}
 			else
 			{
@@ -2975,6 +3006,12 @@ fail:
 	/* tuptable now is caller's responsibility, not SPI's */
 	_SPI_current->tuptable = NULL;
 
+
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	SPI_forall_processed = my_forall_processed;
+	_SPI_current->forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	/*
 	 * If none of the queries had canSetTag, return SPI_OK_REWRITTEN. Prior to
 	 * 8.4, we used return the last query's result code, but not its auxiliary
@@ -3015,7 +3052,8 @@ _SPI_convert_params(int nargs, Oid *argtypes,
 }
 
 static int
-_SPI_pquery(QueryDesc *queryDesc, bool fire_triggers, uint64 tcount)
+_SPI_pquery(QueryDesc *queryDesc, bool fire_triggers, uint64 tcount,
+			ForallParams *forallparams /* ReqID:SRS-PLSQL-FORALL */)
 {
 	int			operation = queryDesc->operation;
 	int			eflags;
@@ -3075,9 +3113,44 @@ _SPI_pquery(QueryDesc *queryDesc, bool fire_triggers, uint64 tcount)
 
 	ExecutorStart(queryDesc, eflags);
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	/*
+	 * Set FORALL context if provided.
+	 * This is used by PLiSQL FORALL statement.
+	 */
+	if (DB_ORACLE == database_mode && forallparams != NULL)
+		queryDesc->estate->es_forall_params = forallparams;
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	ExecutorRun(queryDesc, ForwardScanDirection, tcount, true);
 
 	_SPI_current->processed = queryDesc->estate->es_processed;
+
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	if (DB_ORACLE == database_mode && forallparams != NULL)
+	{
+		MemoryContext oldcxt;
+		MemoryContext bulkrowcount_cxt;
+
+		if (_SPI_current == NULL)
+			elog(ERROR, "not connected to SPI");
+
+		/* We create the forall context as a child of procCxt */
+		oldcxt = _SPI_procmem();	/* switch to procedure memory context */
+		bulkrowcount_cxt = AllocSetContextCreate(CurrentMemoryContext,
+										  "FORALL BULK_ROWCOUNT",
+										  ALLOCSET_DEFAULT_SIZES);
+		MemoryContextSwitchTo(bulkrowcount_cxt);
+
+		_SPI_current->forall_processed = (uint64 *)palloc0(sizeof(uint64) * forallparams->total);
+		memcpy(_SPI_current->forall_processed,
+			queryDesc->estate->es_forall_processed,
+			forallparams->total * sizeof(uint64));
+
+		_SPI_current->bulkrowcountcxt = bulkrowcount_cxt;
+		MemoryContextSwitchTo(oldcxt);
+	}
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	if ((res == SPI_OK_SELECT || queryDesc->plannedstmt->hasReturning) &&
 		queryDesc->dest->mydest == DestSPI)
@@ -3177,8 +3250,15 @@ _SPI_cursor_operation(Portal portal, FetchDirection direction, long count,
 	/* Reset the SPI result (note we deliberately don't touch lastoid) */
 	SPI_processed = 0;
 	SPI_tuptable = NULL;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	SPI_forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 	_SPI_current->processed = 0;
 	_SPI_current->tuptable = NULL;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	_SPI_current->bulkrowcountcxt = NULL;
+	_SPI_current->forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/* Run the cursor */
 	nfetched = PortalRunFetch(portal,
@@ -3202,6 +3282,10 @@ _SPI_cursor_operation(Portal portal, FetchDirection direction, long count,
 	/* Put the result into place for access by caller */
 	SPI_processed = _SPI_current->processed;
 	SPI_tuptable = _SPI_current->tuptable;
+
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	SPI_forall_processed = NULL;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	/* tuptable now is caller's responsibility, not SPI's */
 	_SPI_current->tuptable = NULL;
@@ -3665,7 +3749,8 @@ SPI_switch_atomic(bool atomic)
 int
 SPI_execute_plan_with_paramlist_bulk_collect(SPIPlanPtr plan, ParamListInfo params,
 								bool read_only, long tcount,
-								Datum bulk_params)
+								Datum bulk_params,
+								ForallParams *forallparams /* ReqID:SRS-PLSQL-FORALL */)
 {
 	SPIExecuteOptions options;
 	int			res;
@@ -3689,6 +3774,9 @@ SPI_execute_plan_with_paramlist_bulk_collect(SPIPlanPtr plan, ParamListInfo para
 	options.read_only = read_only;
 	options.tcount = tcount;
 	options.dest = dest;
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	options.forallparams = forallparams;
+	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	PG_TRY();
 	{
@@ -3740,3 +3828,53 @@ SPI_scroll_cursor_fetch_bulk_collect(Portal portal,
 	PG_END_TRY();
 }
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+
+/* Begin - ReqID:SRS-PLSQL-FORALL */
+/*
+ * Execute a previously prepared plan, also include forall context
+ */
+int
+SPI_execute_plan_with_paramlist_forall(SPIPlanPtr plan, ParamListInfo params,
+								bool read_only, long tcount,
+								ForallParams *forallparams)
+{
+	SPIExecuteOptions options;
+	int			res;
+
+	if (plan == NULL || plan->magic != _SPI_PLAN_MAGIC || tcount < 0)
+		return SPI_ERROR_ARGUMENT;
+
+	res = _SPI_begin_call(true);
+	if (res < 0)
+		return res;
+
+	memset(&options, 0, sizeof(options));
+	options.params = params;
+	options.read_only = read_only;
+	options.tcount = tcount;
+	options.forallparams = forallparams;
+
+	res = _SPI_execute_plan(plan, &options,
+							InvalidSnapshot, InvalidSnapshot,
+							true);
+
+	_SPI_end_call(true);
+	return res;
+}
+
+/*
+ * free memorycontext for FORALL
+ */
+void
+SPI_free_bulkrowcount(void)
+{
+	/* ignore call if NULL pointer */
+	if (_SPI_current == NULL || _SPI_current->bulkrowcountcxt == NULL)
+		return;
+
+	/* release all memory belonging to bulkrowcountcxt */
+	MemoryContextDelete(_SPI_current->bulkrowcountcxt);
+	_SPI_current->bulkrowcountcxt = NULL;
+	_SPI_current->forall_processed = 0;
+}
+/* End - ReqID:SRS-PLSQL-FORALL */

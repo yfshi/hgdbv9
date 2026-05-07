@@ -662,8 +662,20 @@ plisql_build_cursor_attribute(PLiSQL_var *cursor)
 	attr->pkgoid = pkgoid;
 	plisql_adddatum((PLiSQL_datum *) attr);
 
+	/* Begin - ReqID:SRS-PLSQL-FORALL */
+	/* build bulk_rowcount attribute */
+	attr = palloc0(sizeof(PLiSQL_attribute));
+	attr->datatype = plisql_build_datatype(INT8ARRAYOID, -1, InvalidOid, NULL);
+	attr->attributeparentno = cursor->dno;
+	attr->dtype = PLISQL_DTYPE_ATTRIBUTE;
+	attr->fieldname = pstrdup("bulk_rowcount");
+	attr->get_from_portal = true;
+	attr->pkgoid = pkgoid;
+	plisql_adddatum((PLiSQL_datum *) attr);
+	/* End - ReqID:SRS-PLSQL-FORALL */
+
 	/*
-	 * TODO for BULK_ROWCOUNT and BULK_EXCEPTIONS for
+	 * TODO for BULK_EXCEPTIONS for
 	 * sql cursor
 	 */
 
@@ -722,6 +734,11 @@ plisql_build_package_local_cursor_attribute(PLiSQL_var *cursor,
 			case PLISQL_ATTRIBUTE_ROWCOUNT:
 				attribute_name = "rowcount";
 				break;
+			/* Begin - ReqID:SRS-PLSQL-FORALL */
+			case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+				attribute_name = "bulk_rowcount";
+				break;
+			/* End - ReqID:SRS-PLSQL-FORALL */
 			default:
 				elog(ERROR, "invalid attribute");
 				break;
@@ -860,6 +877,11 @@ plisql_get_cursor_attribute(PLiSQL_execstate *estate,
 			*isnull = false;
 			retval = Int64GetDatum(portal->portalPos);
 			break;
+		/* Begin - ReqID:SRS-PLSQL-FORALL */
+		case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+			elog(ERROR, "wrong to get bulk_rowcount value");
+			break;
+		/* End - ReqID:SRS-PLSQL-FORALL */
 		default:
 			elog(ERROR, "invalid cursor attribute dtype %u", attr_type);
 			break;

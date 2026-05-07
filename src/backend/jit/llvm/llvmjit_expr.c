@@ -2499,6 +2499,13 @@ llvm_compile_expr(ExprState *state)
 				LLVMBuildBr(b, opblocks[opno + 1]);
 				break;
 			/* End - OA#00002227*/
+			/* Begin - ReqID:SRS-PLSQL-FORALL */
+			case EEOP_FORALLEXPR_FETCH:
+				build_EvalXFunc(b, mod, "ExecEvalForallExprFetch",
+								v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			/* End - ReqID:SRS-PLSQL-FORALL */
 
 			case EEOP_LAST:
 				Assert(false);

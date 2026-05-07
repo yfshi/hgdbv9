@@ -89,6 +89,7 @@ make_parsestate(ParseState *parentParseState)
 		/* Begin - SRS-SQL-MULTITABLEINSERT */
 		pstate->p_stmt_kind = parentParseState->p_stmt_kind;
 		/* End - SRS-SQL-MULTITABLEINSERT */
+		pstate->p_indirection_hook = parentParseState->p_indirection_hook;	/* ReqID:SRS-PLSQL-Collection */
 	}
 
 	pstate->p_check_column_auto_increment = true; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
