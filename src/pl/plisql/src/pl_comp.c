@@ -3805,7 +3805,16 @@ plisql_parse_cwordtype(List *idents)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		if (nse != NULL && nse->itemtype == PLISQL_NSTYPE_REC)
 		{
-			dtype = ((PLiSQL_rec *) (plisql_Datums[nse->itemno]))->datatype;
+			/* Begin - BUG#Z7698 */
+			if (nnames == list_length(idents))
+			/* End - BUG#Z7698 */
+				dtype = ((PLiSQL_rec *) (plisql_Datums[nse->itemno]))->datatype;
+			/* Begin - BUG#Z7698 */
+			else if (nnames == 1)
+				dtype = get_row_field_type(((PLiSQL_rec *)(plisql_Datums[nse->itemno]))->datatype,
+									strVal(lsecond(idents)));
+			/* End - BUG#Z7698 */
+
 			goto done;
 		}
 		/* maybe type comes from package */

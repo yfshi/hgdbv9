@@ -19,6 +19,8 @@ INSERT INTO t1 VALUES(2, 22);
 CREATE TABLE t2(i int, j date);
 INSERT INTO t2 VALUES(1, date '2017-04-21');
 
+SET SERVEROUTPUT ON
+
 --1 Associative Array
 --Declaring Associative Array
 --The data type of index can be either a string type (VARCHAR2, VARCHAR, TEXT) or int type
@@ -6682,6 +6684,463 @@ END;
 DROP PACKAGE pkg_dsql;
 DROP TABLE tb_dsql;
 /* End - BUG#Z7311 */
+
+--/* Begin - BUG#Z7698 */
+CREATE TABLE dept (
+  deptno INTEGER,
+  dname VARCHAR2(14),
+  loc VARCHAR2(13)
+);
+INSERT INTO dept (deptno, dname, loc)
+VALUES (10, 'ACCOUNTING', 'NEW YORK');
+INSERT INTO dept (deptno, dname, loc)
+VALUES (20, 'RESEARCH', 'DALLAS');
+
+DECLARE
+  v_dept_row dept%ROWTYPE;
+  TYPE dept_name_arr IS TABLE OF VARCHAR2(14)
+    INDEX BY v_dept_row.deptno%TYPE;
+
+  dept_names dept_name_arr;
+BEGIN
+  dept_names(10) := 'ACCOUNTING';
+  dept_names(20) := 'RESEARCH';
+  DBMS_OUTPUT.PUT_LINE('10 deptno is ' || dept_names(10));
+  DBMS_OUTPUT.PUT_LINE('20 deptno is ' || dept_names(20));
+END;
+/
+
+DROP TABLE dept;
+--/* End - BUG#Z7698 */
+
+--/* Begin - BUG#Z7699 */
+CREATE TABLE dept (
+  deptno INTEGER,
+  dname VARCHAR2(14),
+  loc VARCHAR2(13)
+);
+INSERT INTO dept (deptno, dname, loc)
+VALUES (10, 'ACCOUNTING', 'NEW YORK');
+INSERT INTO dept (deptno, dname, loc)
+VALUES (20, 'RESEARCH', 'DALLAS');
+
+DECLARE
+  v_dept_row dept%ROWTYPE;
+  TYPE dept_loc_arr IS TABLE OF VARCHAR2(13)
+    INDEX BY v_dept_row.dname%TYPE;
+  dept_locs dept_loc_arr;
+BEGIN
+  dept_locs('ACCOUNTING') := 'NEW YORK';
+  dept_locs('RESEARCH') := 'DALLAS';
+  DBMS_OUTPUT.PUT_LINE('ACCOUNTING dept loc is ' || dept_locs('ACCOUNTING'));
+  DBMS_OUTPUT.PUT_LINE('RESEARCH dept loc is ' || dept_locs('RESEARCH'));
+END;
+/
+
+DROP TABLE dept;
+--/* End - BUG#Z7699 */
+
+--/* Begin - BUG#7701 */
+DECLARE
+  TYPE AssoType IS TABLE OF INTEGER INDEX BY INTEGER;
+  as_test1 AssoType := NULL;
+BEGIN
+END;
+/
+
+DECLARE
+  TYPE AssoType IS TABLE OF INTEGER INDEX BY INTEGER;
+  as_test2 AssoType;
+BEGIN
+  as_test2 := NULL;
+END;
+/
+--/* End - BUG#7701 */
+
+--/* Begin - BUG#7706 */
+DECLARE
+  TYPE NestedTableType IS TABLE OF INTEGER;
+  nt_test1 NestedTableType := NULL;
+  nt_test2 NestedTableType;
+BEGIN
+  nt_test2 := NULL;
+  DBMS_OUTPUT.PUT_LINE('success');
+END;
+/
+
+DECLARE
+  TYPE NestedTableType IS TABLE OF INTEGER;
+  nt_test1 NestedTableType := NULL;
+  nt_test2 NestedTableType;
+BEGIN
+  nt_test2 := NULL;
+  DBMS_OUTPUT.PUT_LINE(nt_test2.count());
+END;
+/
+--/* End - BUG#7706 */
+
+--/* Begin - BUG#7713 */
+DECLARE
+  TYPE VarrayType IS VARRAY(10) OF INTEGER;
+  va_test1 VarrayType := NULL;
+  va_test2 VarrayType;
+BEGIN
+  va_test2 := NULL;
+  DBMS_OUTPUT.PUT_LINE('success');
+END;
+/
+
+DECLARE
+  TYPE VarrayType IS VARRAY(10) OF INTEGER;
+  va_test1 VarrayType := NULL;
+BEGIN
+  DBMS_OUTPUT.PUT_LINE(va_test1.count());
+END;
+/
+--/* End - BUG#7713 */
+
+--/* Begin - BUG#7702 */
+DECLARE
+  TYPE NumList IS TABLE OF INTEGER INDEX BY INTEGER;
+  n NumList;
+  v_null_idx INTEGER := NULL;
+BEGIN
+  n(10) := 10;
+  n(20) := 20;
+  n(30) := 30;
+
+  DBMS_OUTPUT.PUT_LINE('NEXT(NULL) = ' || NVL(TO_CHAR(n.NEXT(v_null_idx)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('NEXT(15) = ' || NVL(TO_CHAR(n.NEXT(15)), 'NULL'));
+
+  DECLARE
+    TYPE EmptyList IS TABLE OF INTEGER INDEX BY INTEGER;
+    e EmptyList;
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('NEXT(10) = ' || NVL(TO_CHAR(e.NEXT(10)), 'NULL'));
+  END;
+END;
+/
+--NEXT(NULL) = NULL
+--NEXT(15) = 20
+--NEXT(10) = NULL
+
+DECLARE
+  TYPE NumList IS TABLE OF INTEGER INDEX BY INTEGER;
+  n NumList;
+  v_null_idx INTEGER := NULL;
+BEGIN
+  n(10) := 10;
+  n(20) := 20;
+  n(30) := 30;
+
+  DBMS_OUTPUT.PUT_LINE('n.NEXT(v_null_idx) = ' || n.NEXT(v_null_idx));
+  DBMS_OUTPUT.PUT_LINE('n.NEXT(15) = ' || n.NEXT(15));
+  DBMS_OUTPUT.PUT_LINE('NEXT(NULL) = ' || NVL(TO_CHAR(n.NEXT(v_null_idx)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('NEXT(15) = ' || NVL(TO_CHAR(n.NEXT(15)), 'NULL'));
+END;
+/
+
+DECLARE
+  TYPE NumList IS TABLE OF INTEGER INDEX BY INTEGER;
+  n NumList;
+  v_null_idx INTEGER := NULL;
+BEGIN
+  n(10) := 10;
+  n(20) := 20;
+  n(30) := 30;
+
+  DBMS_OUTPUT.PUT_LINE('n.NEXT(v_null_idx) = ' || n.NEXT(v_null_idx));
+  DBMS_OUTPUT.PUT_LINE('n.NEXT(15) = ' || n.NEXT(15));
+  DBMS_OUTPUT.PUT_LINE('NEXT(NULL) = ' || NVL(TO_CHAR(n.NEXT(v_null_idx)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('NEXT(15) = ' || NVL(TO_CHAR(n.NEXT(15)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('NEXT(25) = ' || NVL(TO_CHAR(n.NEXT(25)), 'NULL'));
+END;
+/
+--n.NEXT(v_null_idx) =
+--n.NEXT(15) = 20
+--NEXT(NULL) = NULL
+--NEXT(15) = 20
+--NEXT(25) = 30
+
+DECLARE
+  TYPE NumList IS TABLE OF INTEGER INDEX BY INTEGER;
+  n NumList;
+  v_null_idx INTEGER := NULL;
+BEGIN
+  n(10) := 10;
+  n(20) := 20;
+  n(26) := 26;
+  n.delete(26);
+  n(30) := 30;
+
+  DBMS_OUTPUT.PUT_LINE('n.NEXT(v_null_idx) = ' || n.NEXT(v_null_idx));
+  DBMS_OUTPUT.PUT_LINE('n.NEXT(15) = ' || n.NEXT(15));
+  DBMS_OUTPUT.PUT_LINE('NEXT(NULL) = ' || NVL(TO_CHAR(n.NEXT(v_null_idx)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('NEXT(15) = ' || NVL(TO_CHAR(n.NEXT(15)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('NEXT(25) = ' || NVL(TO_CHAR(n.NEXT(25)), 'NULL'));
+END;
+/
+--n.NEXT(v_null_idx) =
+--n.NEXT(15) = 20
+--NEXT(NULL) = NULL
+--NEXT(15) = 20
+--NEXT(25) = 30
+
+--prior
+DECLARE
+  TYPE NumList IS TABLE OF INTEGER INDEX BY INTEGER;
+  n NumList;
+  v_null_idx INTEGER := NULL;
+BEGIN
+  n(10) := 10;
+  n(20) := 20;
+  n(30) := 30;
+
+  DBMS_OUTPUT.PUT_LINE('n.prior(v_null_idx) = ' || n.prior(v_null_idx));
+  DBMS_OUTPUT.PUT_LINE('n.prior(15) = ' || n.prior(15));
+  DBMS_OUTPUT.PUT_LINE('prior(NULL) = ' || NVL(TO_CHAR(n.prior(v_null_idx)), 'NULL'));
+  DBMS_OUTPUT.PUT_LINE('prior(15) = ' || NVL(TO_CHAR(n.prior(15)), 'NULL'));
+END;
+/
+--n.prior(v_null_idx) =
+--n.prior(15) = 10
+--prior(NULL) = NULL
+--prior(15) = 10
+--/* End - BUG#7702 */
+
+
+--/* Begin - BUG#7705 */
+DECLARE
+  TYPE num_table IS TABLE OF NUMBER;
+  nums num_table := num_table(1, 2, 3, 4);
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('init count = ' || nums.COUNT);
+  DBMS_OUTPUT.PUT_LINE('nums(2) = ' || nums(2));
+  nums.DELETE(2);
+  DBMS_OUTPUT.PUT_LINE('after delete 2, the count = ' || nums.COUNT);
+  IF nums.EXISTS(2) THEN
+    DBMS_OUTPUT.PUT_LINE('2 exists, nums(2) = ' || nums(2));
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('2 not exists');
+  END IF;
+  DBMS_OUTPUT.PUT_LINE('3 exists, nums(3) = ' || nums(3));
+END;
+/
+--init count = 4
+--nums(2) = 2
+--after delete 2, the count = 3
+--2 not exists
+--3 exists, nums(3) = 3
+--/* End - BUG#7705 */
+
+--/* Begin - BUG#7707 */
+DECLARE
+  TYPE num_table IS TABLE OF NUMBER;
+  source_num num_table := num_table(10, 20, 30, 40);
+  target_num num_table;
+BEGIN
+  source_num.DELETE(2);
+  DBMS_OUTPUT.PUT_LINE('source_num.COUNT = ' || source_num.COUNT);
+  DBMS_OUTPUT.PUT_LINE('source_num(3) = ' || source_num(3));
+
+  target_num := source_num;
+
+  DBMS_OUTPUT.PUT_LINE('target_num.COUNT = ' || target_num.COUNT);
+  IF target_num.EXISTS(2) THEN
+    DBMS_OUTPUT.PUT_LINE('target_num(2) exist, target_num(2) = ' || target_num(2));
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('target_num(2) is not exist');
+  END IF;
+END;
+/
+--source_num.COUNT = 3
+--source_num(3) = 30
+--target_num.COUNT = 3
+--target_num(2) is not exist
+--/* End - BUG#7707 */
+
+--/* Begin - BUG#7710 */
+DECLARE
+  TYPE num_tab1 IS TABLE OF NUMBER;
+  TYPE num_tab2 IS TABLE OF NUMBER;
+  tab1 num_tab1 := num_tab1(1, 2, 3);
+  tab2 num_tab2 := num_tab2(1, 2, 3);
+BEGIN
+  IF tab1 = tab2 THEN
+    DBMS_OUTPUT.PUT_LINE('=');
+  END IF;
+END;
+/
+
+DECLARE
+  TYPE num_tab1 IS TABLE OF NUMBER;
+  TYPE num_tab2 IS TABLE OF NUMBER;
+  tab1 num_tab1 := num_tab1(1, 2, 3);
+  tab2 num_tab2 := num_tab2(1, 2, 3);
+BEGIN
+  IF tab1 = tab1 THEN
+    DBMS_OUTPUT.PUT_LINE('=');
+  END IF;
+END;
+/
+
+DECLARE
+  TYPE num_tab1 IS TABLE OF NUMBER;
+  TYPE num_tab2 IS TABLE OF NUMBER;
+  tab1 num_tab1 := num_tab1(1, 2, 3);
+  tab2 num_tab2 := num_tab2(1, 2, 3);
+BEGIN
+  IF tab1 != tab2 THEN
+    DBMS_OUTPUT.PUT_LINE('!=');
+  END IF;
+END;
+/
+--/* End - BUG#7710 */
+
+--/* Begin - BUG#7711 */
+DECLARE
+  TYPE varray_min IS VARRAY(1) OF NUMBER;
+  TYPE varray_large IS VARRAY(2147483647) OF NUMBER;
+  v_min varray_min := varray_min(100);
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('v_min(1) = ' || v_min(1));
+  DBMS_OUTPUT.PUT_LINE('v_min.LIMIT = ' || v_min.LIMIT);
+END;
+/
+--v_min(1) = 100
+--v_min.LIMIT = 1
+
+DECLARE
+  TYPE varray_invalid0 IS VARRAY(0) OF NUMBER;
+  v_invalid varray_invalid0;
+BEGIN
+  NULL;
+END;
+/
+
+DECLARE
+  TYPE varray_invalid_neg IS VARRAY(-5) OF NUMBER;
+  v_invalid varray_invalid_neg;
+BEGIN
+  NULL;
+END;
+/
+
+DECLARE
+  TYPE varray_invalid_neg IS VARRAY(2147483648) OF NUMBER;
+  v_invalid varray_invalid_neg;
+BEGIN
+  NULL;
+END;
+/
+--/* End - BUG#7711 */
+
+--/* Begin - BUG#7714 */
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF VARCHAR2(20);
+  strs str_varray := str_varray('A', 'B');
+BEGIN
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(3) = ' || strs(3));
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('reference strs(3) error :' || SQLERRM);
+  END;
+
+  BEGIN
+    strs.EXTEND(2);
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('extend error: ' || SQLERRM);
+  END;
+
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(0) = ' || strs(0));
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('reference strs(0) error:' || SQLERRM);
+  END;
+END;
+/
+
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF VARCHAR2(20);
+  strs str_varray := str_varray('A', 'B');
+BEGIN
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(0) = ' || strs(0));
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('reference strs(0) error:' || SQLERRM);
+  END;
+END;
+/
+
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF VARCHAR2(20);
+  strs str_varray := str_varray('A', 'B');
+BEGIN
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(0) = ' || strs(0));
+  END;
+END;
+/
+--ORA-06532: Subscript outside of limit
+
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF VARCHAR2(20);
+  strs str_varray := str_varray('A', 'B');
+BEGIN
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(-1) = ' || strs(-1));
+  END;
+END;
+/
+
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF INT;
+  strs str_varray := str_varray(1, 2);
+BEGIN
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(-1) = ' || strs(-1));
+  END;
+END;
+/
+
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF INT;
+  strs str_varray := str_varray(1, 2);
+BEGIN
+  BEGIN
+    DBMS_OUTPUT.PUT_LINE('strs(5) = ' || strs(5));
+  END;
+END;
+/
+
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF VARCHAR2(20);
+  strs str_varray := str_varray('A', 'B');
+BEGIN
+  raise notice 'strs(0) = %', strs(0);
+END;
+/
+DECLARE
+  TYPE str_varray IS VARRAY(3) OF VARCHAR2(20);
+  strs str_varray := str_varray('A', 'B');
+BEGIN
+  raise notice 'strs(-1) = %', strs(-1);
+END;
+/
+DECLARE
+  TYPE str_asso IS TABLE OF VARCHAR2 INDEX BY INTEGER;
+  strs str_asso;
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('strs(-1) = ' || strs(-1));
+END;
+/
+--/* End - BUG#7714 */
+
+SET SERVEROUTPUT OFF
 
 DROP TABLE t1;
 DROP TABLE t2;
