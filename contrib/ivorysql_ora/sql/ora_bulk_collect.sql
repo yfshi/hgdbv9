@@ -1200,6 +1200,20 @@ END;
 SET SERVEROUTPUT OFF
 --/* End - BUG#Z7305 */
 
+--/* Begin - BUG#7603 */
+DECLARE
+  TYPE emp_rec IS RECORD(id int);
+  TYPE emp_rec_t IS TABLE OF emp_rec;
+  v_emp_recs1 emp_rec_t;
+  v_emp_recs2 emp_rec_t;
+BEGIN
+  SELECT empno, departno
+  BULK COLLECT INTO v_emp_recs1, v_emp_recs2
+  FROM employee;
+END;
+/
+--/* End - BUG#7603 */
+
 --clean
 DROP TABLE tmp;
 DROP TABLE tmp2;

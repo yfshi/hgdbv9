@@ -7091,6 +7091,15 @@ exec_assign_value(PLiSQL_execstate *estate,
 				}
 				/* End - ReqID:SRS-PLSQL-CURSOR */
 
+				/* Begin - BUG#Z7701 */
+				/* can't assign null value to a associate array variable */
+				if (isNull && IS_PLSQL_ASSOCIATIVE_ARRAY(var->datatype->typtype))
+					ereport(ERROR,
+							(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+							 errmsg("null value cannot be assigned to a associate array variable \"%s\" ",
+									var->refname)));
+				/* End - BUG#Z7701 */
+
 				/*
 				 * If type is by-reference, copy the new value (which is
 				 * probably in the eval_mcontext) into the procedure's main
@@ -11061,6 +11070,17 @@ do_cast_value(PLiSQL_execstate *estate,
 		if (collection_funcs.CollectypeCastCheck(value, reqtypmod))
 			return value;
 	}
+	/* Begin - BUG#Z7706 */
+	else if (IS_COLLECTOID(reqtype))
+	{
+		if (*isnull)
+			return value;
+		else
+			ereport(ERROR,
+				(errcode(ERRCODE_CANNOT_COERCE),
+				errmsg("can not cast from %u to %u", valtype, reqtype)));
+	}
+	/* End - BUG#Z7706 */
 	else
 	{
 	/* End - ReqID:SRS-PLSQL-Collection */

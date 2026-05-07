@@ -1210,6 +1210,13 @@ get_collect_value(Datum datum,
 			key_val = DatumGetInt32(subscriptvals[i]);
 			varray = (CollectVarrayValue *) DatumGetPointer(val->values);
 
+			/* Begin - BUG#Z7714 */
+			if (key_val <= 0 || key_val > varray->current_used)
+				ereport(ERROR,
+					(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+					errmsg("subscript outside limit")));
+			/* End - BUG#Z7714 */
+
 			elem_val = (CollecTypeValue *) DatumGetPointer(varray->value[key_val - 1]);
 		}
 
@@ -1536,7 +1543,13 @@ get_collectype_value(Datum collect_datum,
 		varray = (CollectVarrayValue*) DatumGetPointer(collect_data->values);
 		int_key_val = DatumGetInt32(key_value);
 
-		if (int_key_val <= varray->current_used)
+		/* Begin - BUG#Z7714 */
+		if (int_key_val <= 0 || int_key_val > varray->current_used)
+			ereport(ERROR,
+				(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+				errmsg("subscript outside limit")));
+		else
+		/* End - BUG#Z7714 */
 		{
 			CollecTypeValue		*element;
 
@@ -2912,7 +2925,6 @@ collection_value_compare(Datum value1, Datum value2)
 	CollectTypeData	*collect_data1 = (CollectTypeData *)PointerGetDatum(value1);
 	CollectTypeData	*collect_data2 = (CollectTypeData *)PointerGetDatum(value2);
 	CollectTypeInfo	*datatype1;
-	CollectTypeInfo	*datatype2;
 	int32			size1;
 	int32			size2;
 	c_iterator		iter1;
@@ -2932,13 +2944,17 @@ collection_value_compare(Datum value1, Datum value2)
 				errmsg("unsupported operation")));
 
 	datatype1 = collect_data1->type->typdatatype;
-	datatype2 = collect_data2->type->typdatatype;
 
-	if (datatype1->typoid != datatype2->typoid)
-		return false;
-
-	if (pg_strcasecmp(datatype1->typname, datatype2->typname) != 0)
-		return false;
+	/* Begin - BUG#Z7710 */
+	if (collect_data1->type->typoid != collect_data2->type->typoid)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("wrong number or types of arguments")));
+	else if (pg_strcasecmp(collect_data1->type->typname, collect_data2->type->typname) != 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("wrong number or types of arguments")));
+	/* End - BUG#Z7710 */
 
 	map1 = (c_map *) DatumGetPointer((c_map *) collect_data1->values);
 	map2 = (c_map *) DatumGetPointer((c_map *) collect_data2->values);
@@ -3282,6 +3298,13 @@ get_collect_value2(Datum datum,
 			key_val = DatumGetInt32(subscriptvals[i]);
 			varray = (CollectVarrayValue *) DatumGetPointer(val->values);
 
+			/* Begin - BUG#Z7714 */
+			if (key_val <= 0 || key_val > varray->current_used)
+				ereport(ERROR,
+					(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+					errmsg("subscript outside limit")));
+			/* End - BUG#Z7714 */
+
 			elem_val = (CollecTypeValue *) DatumGetPointer(varray->value[key_val - 1]);
 		}
 
@@ -3563,7 +3586,7 @@ bulk_collect_into_receive(TupleTableSlot *slot, DestReceiver *self)
 			if (bulk_params->collect_num > 1)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
-						errmsg("too many values")));
+						errmsg("coercion into multiple record targets not supported")));/* BUG#Z7603 */
 
 			/* get the numbers of row type's field */
 			if (value_typoid == ORARECORDOID)

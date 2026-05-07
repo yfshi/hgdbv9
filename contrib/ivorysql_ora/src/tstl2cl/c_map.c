@@ -141,14 +141,15 @@ key_type c_map_collection_next(c_pmap thiz, key_type key)
 {
 	c_iterator iter = c_map_lower_bound(thiz, key);
 	c_iterator end = c_map_end(thiz);
-	c_iterator begin = c_map_begin(thiz);
 
 	if(ITER_EQUAL(iter, end))
 		return NULL;
 
 	if (((c_prb_tree)thiz->_l)->_A_key_compare(key,
 							   ((c_ppair)ITER_REF(iter))->first) < 0)
-		return ((c_ppair)ITER_REF(begin))->first;
+		/* Begin - BUG#Z7702 */
+		return ((c_ppair)ITER_REF(iter))->first;
+		/* End - BUG#Z7702 */
 
 	/* next */
 	ITER_INC(iter);
@@ -192,10 +193,6 @@ key_type c_map_collection_prior(c_pmap thiz, key_type key)
 		ITER_DEC(iter);
 		return ((c_ppair)ITER_REF(iter))->first;
 	}
-
-	if(((c_prb_tree)thiz->_l)->_A_key_compare(key,
-							   ((c_ppair)ITER_REF(iter))->first) < 0)
-		return NULL;	/* difference between STL */
 
 	/* prior */
 	if (ITER_EQUAL(iter, begin))

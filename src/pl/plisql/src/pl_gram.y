@@ -1489,8 +1489,25 @@ varray_or_varying_array: K_VARRAY				{ $$ = $1; }
 						;
 varray_limit	: ICONST
 					{
+						/* Begin - BUG#Z7711 */
+						if ($1 == 0)
+							ereport(ERROR,
+									(errcode(ERRCODE_UNDEFINED_OBJECT),
+									 errmsg("A VARRAY must have a positive limit"),
+									 parser_errposition(@1)));
+						/* End - BUG#Z7711 */
+
 						$$ = $1;
 					}
+					/* Begin - BUG#Z7711 */
+					| '-' ICONST
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_UNDEFINED_OBJECT),
+									 errmsg("A VARRAY must have a positive limit"),
+									 parser_errposition(@1)));
+						}
+					/* End - BUG#Z7711 */
 					;
 /* End - ReqID:SRS-PLSQL-Collection */
 
