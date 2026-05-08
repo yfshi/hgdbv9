@@ -6340,6 +6340,8 @@ Datum pgtime_mystimes(PG_FUNCTION_ARGS)
 		(has_sql_mode(MODE_STRICT_ALL_TABLES)))
 		is_strict_mode = true;
 
+	MYS_ZERO_tm(tm); /* bug#7734 */
+
 	time2tm(pgtime, tm, &fsec);
 
 	(void)time_add_nanoseconds_with_round(tm, &fsec, msec_round_add[dec], &warn);
