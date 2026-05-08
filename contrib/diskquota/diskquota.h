@@ -120,8 +120,14 @@ extern bool quota_check_common_backlist(Relation reln);
 extern void init_disk_quota_hook(void);
 extern void delete_pid_from_queue(DiskQuotaSessionPids *node);
 
+extern int64 get_current_usage_bytes(Oid targetoid, QuotaType type);
+extern void reconcile_min_quota_reserve_files(void);
+extern void clear_min_quota_reserve_files(void);
+extern void resize_min_quota_reserve_file(QuotaType type, Oid targetoid, int64 target_bytes);
+
 extern int   diskquota_naptime;
 extern int   diskquota_max_active_tables;
+extern int   diskquota_min_quota_free_space;
 
 void
 refresh_disk_quota_usage(bool force);

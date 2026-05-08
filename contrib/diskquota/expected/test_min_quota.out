@@ -1,0 +1,217 @@
+create extension diskquota;
+-- Test min quota reserve file behavior
+-- Create test principals for schema-level and role-level min quota checks.
+create schema smin;
+create role rminq nologin;
+select oid as dbid from pg_database where datname = current_database() \gset
+select oid as smin_oid from pg_namespace where nspname = 'smin' \gset
+select oid as rmin_oid from pg_roles where rolname = 'rminq' \gset
+-- Enable min quota for both schema and role, then verify the metadata views.
+select hg_security.set_schema_quota('smin', '4 MB', true);
+ set_schema_quota 
+------------------
+ 
+(1 row)
+
+select hg_security.set_role_quota('rminq', '3 MB', true);
+ set_role_quota 
+----------------
+ 
+(1 row)
+
+select type, name, quotalimitmb, minlimitmb
+from hg_security.diskquota_config_info
+where name = 'smin';
+  type  | name | quotalimitmb | minlimitmb 
+--------+------+--------------+------------
+ schema | smin |            0 |          4
+(1 row)
+
+select type, name, quotalimitmb, minlimitmb
+from hg_security.diskquota_config_info
+where name = 'rminq';
+ type | name  | quotalimitmb | minlimitmb 
+------+-------+--------------+------------
+ role | rminq |            0 |          3
+(1 row)
+
+-- Wait for the worker to materialize reserve files.
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+-- Reserve files should match the configured min quota before any data is written.
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+  size   
+---------
+ 4194304
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+  size   
+---------
+ 3145728
+(1 row)
+
+create table smin.tmin(v text);
+alter table smin.tmin owner to rminq;
+-- Insert enough incompressible text to consume more than the reserved quota.
+insert into smin.tmin
+select (select string_agg(md5((i * 1000 + g)::text), '')
+        from generate_series(1, 64) as g)
+from generate_series(1, 5000) as i;
+-- After usage reaches the min quota, the reserve files should shrink to zero.
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+ size 
+------
+    0
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+ size 
+------
+    0
+(1 row)
+
+-- Truncating the table should release used space and restore the reserve files.
+truncate table smin.tmin;
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+  size   
+---------
+ 4186112
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+  size   
+---------
+ 3137536
+(1 row)
+
+-- Lowering min quota should shrink the reserve files to the new target size.
+select hg_security.set_schema_quota('smin', '2 MB', true);
+ set_schema_quota 
+------------------
+ 
+(1 row)
+
+select hg_security.set_role_quota('rminq', '1 MB', true);
+ set_role_quota 
+----------------
+ 
+(1 row)
+
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+  size   
+---------
+ 2088960
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+  size   
+---------
+ 1040384
+(1 row)
+
+-- Disabling min quota should remove the configuration from views and clear reserves.
+select hg_security.set_schema_quota('smin', '-1 MB', true);
+ERROR:  min quota limit must be >= (0 MB)
+select hg_security.set_role_quota('rminq', '-1 MB', true);
+ERROR:  min quota limit must be >= (0 MB)
+select hg_security.set_schema_quota('smin', '0 MB', true);
+ set_schema_quota 
+------------------
+ 
+(1 row)
+
+select hg_security.set_role_quota('rminq', '0 MB', true);
+ set_role_quota 
+----------------
+ 
+(1 row)
+
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+ERROR:  could not stat file "diskquota_min_reserve/nsp_32772_32866.reserve": No such file or directory
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+ERROR:  could not stat file "diskquota_min_reserve/rol_32772_32867.reserve": No such file or directory
+select type, name, quotalimitmb, minlimitmb
+from hg_security.diskquota_config_info
+where name = 'smin';
+  type  | name | quotalimitmb | minlimitmb 
+--------+------+--------------+------------
+ schema | smin |            0 |          0
+(1 row)
+
+select type, name, quotalimitmb, minlimitmb
+from hg_security.diskquota_config_info
+where name = 'rminq';
+ type | name  | quotalimitmb | minlimitmb 
+------+-------+--------------+------------
+ role | rminq |            0 |          0
+(1 row)
+
+select hg_security.delete_schema_quota('smin');
+ delete_schema_quota 
+---------------------
+ 
+(1 row)
+
+select hg_security.delete_role_quota('rminq');
+ delete_role_quota 
+-------------------
+ 
+(1 row)
+
+select type, name, quotalimitmb, minlimitmb
+from hg_security.diskquota_config_info
+where name = 'smin';
+ type | name | quotalimitmb | minlimitmb 
+------+------+--------------+------------
+(0 rows)
+
+select type, name, quotalimitmb, minlimitmb
+from hg_security.diskquota_config_info
+where name = 'rminq';
+ type | name | quotalimitmb | minlimitmb 
+------+------+--------------+------------
+(0 rows)
+
+drop table smin.tmin;
+drop schema smin;
+drop role rminq;
+drop extension diskquota;

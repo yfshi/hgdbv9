@@ -6,18 +6,34 @@
 /*CREATE SCHEMA diskquota;*/
 
 -- Configuration table
-create table hg_security.quota_config (targetOid oid, quotatype int, quotalimitMB int8, PRIMARY KEY(targetOid, quotatype));
+create table hg_security.quota_config (
+	targetOid oid,
+	quotatype int,
+	quotalimitMB int8 default 0,
+	minlimitMB int8 default 0,
+	PRIMARY KEY(targetOid, quotatype)
+);
 
 SELECT pg_catalog.pg_extension_config_dump('hg_security.quota_config', '');
 
-CREATE FUNCTION hg_security.set_schema_quota(text, text)
+CREATE FUNCTION hg_security.set_schema_quota(nspname text, size text)
 RETURNS void STRICT
-AS 'MODULE_PATHNAME'
+AS 'MODULE_PATHNAME', 'set_schema_quota'
 LANGUAGE C;
 
-CREATE FUNCTION hg_security.set_role_quota(text, text)
+CREATE FUNCTION hg_security.set_schema_quota(nspname text, size text, min_quota bool)
 RETURNS void STRICT
-AS 'MODULE_PATHNAME'
+AS 'MODULE_PATHNAME', 'set_schema_quota'
+LANGUAGE C;
+
+CREATE FUNCTION hg_security.set_role_quota(username text, size text)
+RETURNS void STRICT
+AS 'MODULE_PATHNAME', 'set_role_quota'
+LANGUAGE C;
+
+CREATE FUNCTION hg_security.set_role_quota(username text, size text, min_quota bool)
+RETURNS void STRICT
+AS 'MODULE_PATHNAME', 'set_role_quota'
 LANGUAGE C;
 
 CREATE FUNCTION hg_security.delete_role_quota(username text)
@@ -42,16 +58,24 @@ AS 'MODULE_PATHNAME'
 LANGUAGE C;
 
 CREATE VIEW hg_security.show_schema_quota_view AS
-SELECT pg_namespace.nspname as schema_name, pg_class.relnamespace as schema_oid, quota.quotalimitMB as quota_in_mb, sum(pg_total_relation_size(pg_class.oid)) as nspsize_in_bytes
-FROM pg_namespace, pg_class, hg_security.quota_config as quota
-WHERE pg_class.relnamespace = quota.targetoid and pg_class.relnamespace = pg_namespace.oid and quota.quotatype=0 and pg_class.relkind='r'
-GROUP BY pg_class.relnamespace, pg_namespace.nspname, quota.quotalimitMB;
+	SELECT pg_namespace.nspname as schema_name, pg_class.relnamespace as schema_oid,
+		quota.quotalimitMB as quota_in_mb, quota.minlimitMB as min_quota_in_mb,
+		sum(pg_total_relation_size(pg_class.oid)) as nspsize_in_bytes
+	FROM pg_namespace, pg_class, hg_security.quota_config as quota
+	WHERE pg_class.relnamespace = quota.targetoid and
+		pg_class.relnamespace = pg_namespace.oid and
+		quota.quotatype=0 and pg_class.relkind='r'
+	GROUP BY pg_class.relnamespace, pg_namespace.nspname, quota.quotalimitMB, quota.minlimitMB;
 
 CREATE VIEW hg_security.show_role_quota_view AS
-SELECT pg_roles.rolname as role_name, pg_class.relowner as role_oid, quota.quotalimitMB as quota_in_mb, sum(pg_total_relation_size(pg_class.oid)) as rolsize_in_bytes
-FROM pg_roles, pg_class, hg_security.quota_config as quota
-WHERE pg_class.relowner = quota.targetoid and pg_class.relowner = pg_roles.oid and quota.quotatype=1 and pg_class.relkind='r'
-GROUP BY pg_class.relowner, pg_roles.rolname, quota.quotalimitMB;
+	SELECT pg_roles.rolname as role_name, pg_class.relowner as role_oid,
+		quota.quotalimitMB as quota_in_mb, quota.minlimitMB as min_quota_in_mb,
+		sum(pg_total_relation_size(pg_class.oid)) as rolsize_in_bytes
+	FROM pg_roles, pg_class, hg_security.quota_config as quota
+	WHERE pg_class.relowner = quota.targetoid and
+		pg_class.relowner = pg_roles.oid and
+		quota.quotatype=1 and pg_class.relkind='r'
+	GROUP BY pg_class.relowner, pg_roles.rolname, quota.quotalimitMB, quota.minlimitMB;
 
 /* show quota_config info */
 CREATE VIEW hg_security.diskquota_config_info AS
@@ -71,7 +95,8 @@ SELECT
 		WHEN dq.quotatype = 0 THEN n.nspname
 		ELSE 'unknown'
 	END AS name,
-	dq.quotalimitmb AS quotalimitmb
+	dq.quotalimitmb AS quotalimitmb,
+	dq.minlimitmb AS minlimitmb
 FROM
 	hg_security.quota_config dq
 	LEFT JOIN pg_namespace n ON dq.quotatype = 0 AND dq.targetoid = n.oid
@@ -84,6 +109,7 @@ SELECT
 	role_name AS name,
 	role_oid AS oid,
 	quota_in_mb,
+	min_quota_in_mb,
 	rolsize_in_bytes AS use_size
 from hg_security.show_role_quota_view
 	LEFT JOIN hg_security.quota_config dq ON dq.quotatype = 1 AND dq.targetoid = role_oid
@@ -93,6 +119,7 @@ SELECT
 	schema_name AS name,
 	schema_oid AS oid,
 	quota_in_mb,
+	min_quota_in_mb,
 	nspsize_in_bytes AS use_size
 FROM hg_security.show_schema_quota_view
 	LEFT JOIN hg_security.quota_config dq ON dq.quotatype = 0 AND dq.targetoid = schema_oid;
@@ -104,6 +131,7 @@ SELECT
 	di.oid as oid,
 	di.name as name,
 	di.quotalimitmb as quotalimitmb,
+	di.minlimitmb AS minlimitmb,
 	CASE 
 		WHEN rg.use_size IS NOT NULL THEN rg.use_size
 		ELSE 0
@@ -124,8 +152,10 @@ alter view hg_security.show_schema_quota_view owner to sysdba_role;
 
 GRANT ALL ON FUNCTION hg_security.delete_schema_quota TO sysdba_role;
 GRANT ALL ON FUNCTION hg_security.delete_role_quota TO sysdba_role;
-GRANT ALL ON FUNCTION hg_security.set_role_quota TO sysdba_role;
-GRANT ALL ON FUNCTION hg_security.set_schema_quota TO sysdba_role;
+GRANT ALL ON FUNCTION hg_security.set_role_quota(text, text) TO sysdba_role;
+GRANT ALL ON FUNCTION hg_security.set_role_quota(text, text, bool) TO sysdba_role;
+GRANT ALL ON FUNCTION hg_security.set_schema_quota(text, text) TO sysdba_role;
+GRANT ALL ON FUNCTION hg_security.set_schema_quota(text, text, bool) TO sysdba_role;
 
 GRANT ALL ON TABLE hg_security.quota_config TO sysdba_role;
 

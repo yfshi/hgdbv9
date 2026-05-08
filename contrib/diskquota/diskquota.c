@@ -16,6 +16,12 @@
 #include <unistd.h>
 #include "postgres.h"
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <sys/statvfs.h>
+#endif
+
 #include "access/tupdesc.h"
 #include "access/xact.h"
 #include "catalog/indexing.h"
@@ -74,6 +80,7 @@ static volatile sig_atomic_t got_sigusr1 = false;
 int	diskquota_naptime = 1;
 char *diskquota_monitored_database_list = NULL;
 int diskquota_max_active_tables = MAX_DISK_QUOTA_ACTIVE_ENTRIES;
+int diskquota_min_quota_free_space = 1024;
 quotaSwitch diskquota_enable = AUOTA_OFF;
 quotaSwitch diskquota_strict = AUOTA_ON;
 
@@ -110,6 +117,7 @@ static void disk_quota_sigterm(SIGNAL_ARGS);
 static void disk_quota_sighup(SIGNAL_ARGS);
 static int64 get_size_in_mb(char *str);
 static void set_quota_internal(Oid targetoid, int64 quota_limit_mb, QuotaType type);
+static void set_min_quota_internal(Oid targetoid, int64 min_limit_mb, QuotaType type);
 static int start_worker_by_dboid(Oid dbid);
 static void create_monitor_db_table();
 static inline void exec_simple_utility(const char *sql);
@@ -210,6 +218,18 @@ _PG_init(void)
 						 NULL,
 						 NULL);
 
+	DefineCustomIntVariable("diskquota.min_quota_free_space",
+							"Minimum free disk space to keep after min quota reserve files are expanded.",
+							NULL,
+							&diskquota_min_quota_free_space,
+							1024,
+							0,
+							INT_MAX,
+							PGC_SUSET,
+							GUC_UNIT_MB,
+							NULL,
+							NULL,
+							NULL);
 
 	/* Add dq_object_access_hook to handle drop extension event.*/
 	next_object_access_hook = object_access_hook;
@@ -371,6 +391,8 @@ disk_quota_worker_main(Datum main_arg)
 		}
 	}
 
+	/* Release on-disk reservations before the worker exits. */
+	clear_min_quota_reserve_files();
 	diskquota_invalidate_db(MyDatabaseId);
 	diskquota_send_sig_to_session();
 	init_box_message();
@@ -743,6 +765,7 @@ set_role_quota(PG_FUNCTION_ARGS)
 	char *rolname;
 	char *sizestr;
 	int64 quota_limit_mb;
+	bool min_quota = false;
 
 	if (!superuser())
 	{
@@ -759,8 +782,14 @@ set_role_quota(PG_FUNCTION_ARGS)
 	sizestr = str_tolower(sizestr, strlen(sizestr), DEFAULT_COLLATION_OID);
 	quota_limit_mb = get_size_in_mb(sizestr);
 
+	if (PG_NARGS() == 3)
+		min_quota = PG_GETARG_BOOL(2);
+
 	diskquotasql = true;
-	set_quota_internal(roleoid, quota_limit_mb, ROLE_QUOTA);
+	if (min_quota)
+		set_min_quota_internal(roleoid, quota_limit_mb, ROLE_QUOTA);
+	else
+		set_quota_internal(roleoid, quota_limit_mb, ROLE_QUOTA);
 	diskquotasql = false;
 	PG_RETURN_VOID();
 }
@@ -775,6 +804,8 @@ set_schema_quota(PG_FUNCTION_ARGS)
 	char *nspname;
 	char *sizestr;
 	int64 quota_limit_mb;
+	bool min_quota = false;
+
 	if (!superuser())
 	{
 		ereport(ERROR,
@@ -790,11 +821,50 @@ set_schema_quota(PG_FUNCTION_ARGS)
 	sizestr = str_tolower(sizestr, strlen(sizestr),  DEFAULT_COLLATION_OID);
 	quota_limit_mb = get_size_in_mb(sizestr);
 
+	if (PG_NARGS() == 3)
+		min_quota = PG_GETARG_BOOL(2);
+
 	diskquotasql = true;
-	set_quota_internal(namespaceoid, quota_limit_mb, NAMESPACE_QUOTA);
+	if (min_quota)
+		set_min_quota_internal(namespaceoid, quota_limit_mb, NAMESPACE_QUOTA);
+	else
+		set_quota_internal(namespaceoid, quota_limit_mb, NAMESPACE_QUOTA);
 	diskquotasql = false;
 
 	PG_RETURN_VOID();
+}
+
+static void get_disk_space(const char *path, uint64 *total, uint64 *free)
+{
+#ifdef _WIN32
+	ULARGE_INTEGER free_bytes, total_bytes, total_free_bytes;
+	if (path == NULL || total == NULL || free == NULL)
+		return ;
+
+	if (GetDiskFreeSpaceExA(path, &free_bytes, &total_bytes, &total_free_bytes))
+	{
+		*total = (uint64)total_bytes.QuadPart;
+		*free = (uint64)total_free_bytes.QuadPart;
+	}
+	else
+	{
+		ereport(ERROR, errmsg("call system function \"statvfs\" fail:error code:%lu\n", GetLastError()));
+	}
+#else
+	struct statvfs vfs;
+	if (path == NULL || total == NULL || free == NULL)
+		return ;
+
+	if (statvfs(path, &vfs) == 0)
+	{
+		*total = (unsigned long long)vfs.f_blocks * vfs.f_frsize;
+		*free = (unsigned long long)vfs.f_bfree * vfs.f_frsize;
+	}
+	else
+	{
+		ereport(ERROR, errmsg("call system function \"statvfs\" fail"));
+	}
+#endif
 }
 
 /*
@@ -805,7 +875,13 @@ static void
 set_quota_internal(Oid targetoid, int64 quota_limit_mb, QuotaType type)
 {
 	int ret;
+	int64 current_min_limit_mb = -1;
 	StringInfoData buf;
+
+	/* Begin - BUG#Z7633 */
+	if (quota_limit_mb < 0)
+		elog(ERROR, "quota limit must be >= (0 MB)");
+	/* End - BUG#Z7633 */
 
 	initStringInfo(&buf);
 	appendStringInfo(&buf,
@@ -819,6 +895,23 @@ set_quota_internal(Oid targetoid, int64 quota_limit_mb, QuotaType type)
 	if (ret != SPI_OK_SELECT)
 		elog(ERROR, "cannot select quota setting table: error code %d", ret);
 
+	if (SPI_processed > 0)
+	{
+		bool isnull;
+		Datum dat;
+		HeapTuple tup = SPI_tuptable->vals[0];
+		TupleDesc tupdesc = SPI_tuptable->tupdesc;
+		if (tupdesc->natts >= 4)
+		{
+			dat = SPI_getbinval(tup, tupdesc, 4, &isnull);
+			if (!isnull)
+				current_min_limit_mb = DatumGetInt64(dat);
+		}
+	}
+
+	if (current_min_limit_mb > 0 && quota_limit_mb < current_min_limit_mb)
+		elog(ERROR, "quota limit (%ld MB) must be >= min quota (%ld MB)", quota_limit_mb, current_min_limit_mb);
+
 	/* if the schema or role's quota has been set before*/
 	if (SPI_processed == 0 && quota_limit_mb > 0)
 	{
@@ -831,19 +924,7 @@ set_quota_internal(Oid targetoid, int64 quota_limit_mb, QuotaType type)
 		if (ret != SPI_OK_INSERT)
 			elog(ERROR, "cannot insert into quota setting table, error code %d", ret);
 	}
-	else if (SPI_processed > 0 && quota_limit_mb <= 0)
-	{
-		resetStringInfo(&buf);
-		initStringInfo(&buf);
-		appendStringInfo(&buf,
-					"delete from hg_security.quota_config where targetoid=%u"
-					" and quotatype=%d;",
-					targetoid, type);
-		ret = SPI_execute(buf.data, false, 0);
-		if (ret != SPI_OK_DELETE)
-			elog(ERROR, "cannot delete item from quota setting table, error code %d", ret);
-	}
-	else if(SPI_processed > 0 && quota_limit_mb > 0)
+	else if(SPI_processed > 0 && quota_limit_mb >= 0)
 	{
 		resetStringInfo(&buf);
 		initStringInfo(&buf);
@@ -860,6 +941,144 @@ set_quota_internal(Oid targetoid, int64 quota_limit_mb, QuotaType type)
 	 */
 	SPI_finish();
 	return;
+}
+
+/*
+ * Persist a min quota and resize its reserve file to match current usage.
+ */
+static void
+set_min_quota_internal(Oid targetoid, int64 min_limit_mb, QuotaType type)
+{
+	int ret;
+	int64 current_quota_limit_mb = -1;
+	int64 used_bytes = 0;
+	int64 reserve_bytes = 0;
+	uint64 total = 0;
+	uint64 free = 0;
+	StringInfoData buf;
+
+	/* Begin - BUG#Z7633 */
+	if (min_limit_mb < 0)
+		elog(ERROR, "min quota limit must be >= (0 MB)");
+	/* End - BUG#Z7633 */
+
+	get_disk_space(DataDir, &total, &free);
+	if ((uint64)(min_limit_mb + diskquota_min_quota_free_space) * 1024 * 1024 > free)
+		elog(ERROR,
+			"The current available disk space is %ld MB,"
+			"required remaining free space is %d MB,"
+			"cannot set `min quota` to %ld MB.",
+			free / (1024 * 1024), diskquota_min_quota_free_space, min_limit_mb);
+
+	initStringInfo(&buf);
+	appendStringInfo(&buf,
+					"select * from hg_security.quota_config where targetoid = %u"
+					" and quotatype =%d",
+					targetoid, type);
+
+	SPI_connect();
+	ret = SPI_execute(buf.data, false, 0);
+	if (ret != SPI_OK_SELECT)
+		elog(ERROR, "cannot select quota setting table: error code %d", ret);
+
+	if (SPI_processed > 0)
+	{
+		bool isnull;
+		Datum dat;
+		HeapTuple tup = SPI_tuptable->vals[0];
+		TupleDesc tupdesc = SPI_tuptable->tupdesc;
+
+		if (tupdesc->natts >= 3)
+		{
+			dat = SPI_getbinval(tup, tupdesc, 3, &isnull);
+			if (!isnull)
+				current_quota_limit_mb = DatumGetInt64(dat);
+		}
+	}
+
+	if (current_quota_limit_mb > 0 && min_limit_mb > current_quota_limit_mb)
+		elog(ERROR, "min quota (%ld MB) must be <= quota limit (%ld MB)", min_limit_mb, current_quota_limit_mb);
+
+	if (SPI_processed == 0 && min_limit_mb > 0)
+	{
+		resetStringInfo(&buf);
+		initStringInfo(&buf);
+		appendStringInfo(&buf,
+					"insert into hg_security.quota_config(targetoid, quotatype, quotalimitMB, minlimitMB)"
+					" values(%u,%d,%d,%ld);",
+					targetoid, type, 0, min_limit_mb);
+		ret = SPI_execute(buf.data, false, 0);
+		pfree(buf.data);
+		if (ret != SPI_OK_INSERT)
+			elog(ERROR, "cannot insert min quota setting table, error code %d", ret);
+	}
+	else if (SPI_processed > 0 && min_limit_mb >= 0)
+	{
+		resetStringInfo(&buf);
+		initStringInfo(&buf);
+		appendStringInfo(&buf,
+					"update hg_security.quota_config set minlimitMB = %ld where targetoid=%u"
+					" and quotatype=%d;",
+					min_limit_mb > 0 ? min_limit_mb : 0, targetoid, type);
+		ret = SPI_execute(buf.data, false, 0);
+		pfree(buf.data);
+		if (ret != SPI_OK_UPDATE)
+			elog(ERROR, "cannot update min quota setting table, error code %d", ret);
+	}
+
+	if (min_limit_mb > 0)
+	{
+		/* Reserve only the bytes needed to reach the requested minimum. */
+		used_bytes = get_current_usage_bytes(targetoid, type);
+		reserve_bytes = min_limit_mb * 1024 * 1024 - used_bytes;
+		if (reserve_bytes < 0)
+			reserve_bytes = 0;
+	}
+
+	SPI_finish();
+
+	resize_min_quota_reserve_file(type, targetoid, reserve_bytes);
+}
+
+/*
+ * Calculate current disk usage for one schema or role quota target.
+ */
+int64
+get_current_usage_bytes(Oid targetoid, QuotaType type)
+{
+	StringInfoData buf;
+	int ret;
+	int64 used_bytes = 0;
+	bool isnull;
+
+	initStringInfo(&buf);
+	if (type == NAMESPACE_QUOTA)
+		appendStringInfo(&buf,
+						 "select coalesce(sum(pg_total_relation_size(oid)), 0)::bigint "
+						 "from pg_class where relnamespace = %u and relkind in ('r', 'm')",
+						 targetoid);
+	else
+		appendStringInfo(&buf,
+						 "select coalesce(sum(pg_total_relation_size(oid)), 0)::bigint "
+						 "from pg_class where relowner = %u and relkind in ('r', 'm')",
+						 targetoid);
+
+	ret = SPI_execute(buf.data, true, 1);
+	pfree(buf.data);
+	if (ret != SPI_OK_SELECT)
+		elog(ERROR, "cannot calculate current quota usage: error code %d", ret);
+
+	if (SPI_processed > 0)
+	{
+		Datum dat = SPI_getbinval(SPI_tuptable->vals[0],
+								  SPI_tuptable->tupdesc,
+								  1,
+								  &isnull);
+		if (!isnull)
+			used_bytes = DatumGetInt64(dat);
+	}
+
+	return used_bytes;
 }
 
 /*
@@ -1010,6 +1229,11 @@ Datum
 diskquota_start_worker(PG_FUNCTION_ARGS)
 {
 	int rc;
+
+	/* Begin - BUG#Z7631 */
+	if (diskquota_enable != AUOTA_ON)
+		elog(ERROR, "diskquota extension creation requires diskquota switch to be on.");
+	/* End - BUG#Z7631 */
 
 	LWLockAcquire(diskquota_locks.message_box_lock, LW_EXCLUSIVE);
 	message_box->req_pid = MyProcPid;
@@ -1280,9 +1504,16 @@ static void diskquota_send_sig_to_session(void)
 	if (tail == NULL || tail == message_box->session_pid_list)
 		return;
 
+	/* Begin - BUG#Z7634 */
+	if (!message_box ||
+		!message_box->session_pid_list ||
+		!message_box->session_pid_list->use_next)
+		return;
+	/* End - BUG#Z7634 */
+
 	session_cur = message_box->session_pid_list->use_next;
 
-	while(session_cur != tail->use_next)
+	while (session_cur && session_cur != tail->use_next) /* BUG#Z7634 */
 	{
 		session_next = session_cur->use_next;
 

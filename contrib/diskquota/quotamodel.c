@@ -10,8 +10,11 @@
  *
  * -------------------------------------------------------------------------
  */
-#include <stdbool.h>
+
 #include "postgres.h"
+
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "access/heapam.h"
 #include "access/htup_details.h"
@@ -32,11 +35,13 @@
 #include "storage/latch.h"
 #include "storage/lwlock.h"
 #include "storage/shmem.h"
+#include "storage/fd.h"
 #include "utils/builtins.h"
 #include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
+#include "utils/wait_event.h"
 
 #include "activetable.h"
 #include "diskquota.h"
@@ -52,6 +57,8 @@
 #define INIT_DISK_QUOTA_BLACK_ENTRIES 8192
 /* per database level max size of black list */
 #define MAX_LOCAL_DISK_QUOTA_BLACK_ENTRIES 8192
+
+#define MIN_QUOTA_RESERVE_DIR "diskquota_min_reserve"
 
 typedef struct TableSizeEntry TableSizeEntry;
 typedef struct NamespaceSizeEntry NamespaceSizeEntry;
@@ -90,6 +97,7 @@ struct QuotaLimitEntry
 {
 	Oid			targetoid;
 	int64		limitsize;
+	int64		minlimitsize;
 };
 
 /* global blacklist for which exceed their quota limit */
@@ -136,6 +144,8 @@ static Size DiskQuotaShmemSize(void);
 static void disk_quota_shmem_startup(void);
 static void init_sessionlist_pid(void);
 static bool quota_check_common(Oid ownerOid, Oid nsOid);
+
+static char *get_min_quota_reserve_dir(void);
 
 /*
  * DiskQuotaShmemSize
@@ -334,6 +344,7 @@ refresh_disk_quota_usage(bool force)
 	calculate_table_disk_usage(force);
 	calculate_schema_disk_usage();
 	calculate_role_disk_usage();
+	reconcile_min_quota_reserve_files();
 	/* copy local black map back to shared black map */
 	flush_local_black_map();
 }
@@ -441,7 +452,7 @@ static void check_disk_quota_by_oid(Oid targetOid, int64 current_usage, QuotaTyp
 
 	quota_limit_mb = quota_entry->limitsize * (1024 *1024) - BLCKSZ;
 	current_usage_mb = current_usage;
-	if(current_usage_mb >= quota_limit_mb)
+	if (quota_limit_mb > 0 && current_usage_mb >= quota_limit_mb)
 	{
 		memset(&keyitem, 0, sizeof(BlackMapEntry));
 		keyitem.targetoid = targetOid;
@@ -462,6 +473,17 @@ static void check_disk_quota_by_oid(Oid targetOid, int64 current_usage, QuotaTyp
 					&keyitem,
 					HASH_ENTER, &found);
 		localblackentry->isexceeded = true;
+	}
+	else
+	{
+		memset(&keyitem, 0, sizeof(BlackMapEntry));
+		keyitem.targetoid = targetOid;
+		keyitem.databaseoid = MyDatabaseId;
+		keyitem.targettype = (uint32)type;
+		localblackentry = (LocalBlackMapEntry*) hash_search(local_disk_quota_black_map,
+					&keyitem,
+					HASH_ENTER, &found);
+		localblackentry->isexceeded = false;
 	}
 
 }
@@ -684,7 +706,7 @@ calculate_table_disk_usage(bool force)
 			tsentry->totalsize = active_table_entry->tablesize;
 
 			update_namespace_map(tsentry->namespaceoid, tsentry->totalsize);
-			update_role_map(tsentry->reloid, tsentry->totalsize);
+			update_role_map(tsentry->owneroid, tsentry->totalsize);
 
 			ereport(LOG, (errmsg("An active relfilenode %d:%d is added into local cache",
 								active_table_entry->node.relNode, active_table_entry->node.spcNode)));
@@ -819,15 +841,16 @@ load_quotas(void)
 				HASH_REMOVE, NULL);
 	}
 
-	ret = SPI_execute("select targetoid, quotatype, quotalimitMB from hg_security.quota_config", true, 0);
+	ret = SPI_execute("select targetoid, quotatype, quotalimitMB, minlimitMB from hg_security.quota_config", true, 0);
 	if (ret != SPI_OK_SELECT)
 		elog(FATAL, "SPI_execute failed: error code %d", ret);
 
 	tupdesc = SPI_tuptable->tupdesc;
-	if (tupdesc->natts != 3 ||
+	if (tupdesc->natts != 4 ||
 		TupleDescAttr(tupdesc, 0)->atttypid != OIDOID ||
 		TupleDescAttr(tupdesc, 1)->atttypid != INT4OID ||
-		TupleDescAttr(tupdesc, 2)->atttypid != INT8OID)
+		TupleDescAttr(tupdesc, 2)->atttypid != INT8OID ||
+		TupleDescAttr(tupdesc, 3)->atttypid != INT8OID)
 	{
 		elog(LOG, "configuration table \"quota_config\" is corruptted in database \"%s\"," 
 				" please recreate diskquota extension",
@@ -840,7 +863,8 @@ load_quotas(void)
 		HeapTuple	tup = SPI_tuptable->vals[i];
 		Datum		dat;
 		Oid			targetOid;
-		int64		quota_limit_mb;
+		int64		quota_limit_mb = 0;
+		int64		min_limit_mb = 0;
 		QuotaType	quotatype;
 		bool		isnull;
 
@@ -855,9 +879,12 @@ load_quotas(void)
 		quotatype = (QuotaType)DatumGetInt32(dat);
 
 		dat = SPI_getbinval(tup, tupdesc, 3, &isnull);
-		if (isnull)
-			continue;
-		quota_limit_mb = DatumGetInt64(dat);
+		if (!isnull)
+			quota_limit_mb = DatumGetInt64(dat);
+
+		dat = SPI_getbinval(tup, tupdesc, 4, &isnull);
+		if (!isnull)
+			min_limit_mb = DatumGetInt64(dat);
 
 		if (quotatype == NAMESPACE_QUOTA)
 		{
@@ -865,6 +892,7 @@ load_quotas(void)
 												&targetOid,
 												HASH_ENTER, &found);
 			quota_entry->limitsize = quota_limit_mb;
+			quota_entry->minlimitsize = min_limit_mb;
 		}
 		else if (quotatype == ROLE_QUOTA)
 		{
@@ -872,9 +900,268 @@ load_quotas(void)
 												&targetOid,
 												HASH_ENTER, &found);
 			quota_entry->limitsize = quota_limit_mb;
+			quota_entry->minlimitsize = min_limit_mb;
 		}
 	}
 	return true;
+}
+
+/*
+ * Return the per-database directory that stores min quota reserve files.
+ */
+static char *
+get_min_quota_reserve_dir(void)
+{
+	return psprintf("%s/%s", DataDir, MIN_QUOTA_RESERVE_DIR);
+}
+
+#if !(defined(HAVE_POSIX_FALLOCATE) && defined(__linux__))
+/*
+ * Fill a reserve file with zeroes up to target_bytes.
+ *
+ * This is the portable fallback for platforms without posix_fallocate(), such
+ * as Windows.  FileTruncate() alone can create a sparse file, which would not
+ * actually reserve filesystem space.
+ */
+static int
+write_zeroes_to_reserve_file(File file, int64 target_bytes)
+{
+	#define		RESERVE_WRITE_CHUNK_SIZE (1024 * 1024)
+
+	char	   *zerobuf;
+	int64		offset = 0;
+
+	if (target_bytes <= 0)
+		return 0;
+
+	zerobuf = (char *) palloc0(RESERVE_WRITE_CHUNK_SIZE);
+
+	while (offset < target_bytes)
+	{
+		int			amount;
+		int			written;
+
+		if (target_bytes - offset > RESERVE_WRITE_CHUNK_SIZE)
+			amount = RESERVE_WRITE_CHUNK_SIZE;
+		else
+			amount = (int) (target_bytes - offset);
+
+		written = FileWrite(file,
+							zerobuf,
+							amount,
+							(off_t) offset,
+							WAIT_EVENT_DATA_FILE_WRITE);
+		if (written != amount)
+		{
+			if (written >= 0)
+				errno = ENOSPC;
+			pfree(zerobuf);
+			return -1;
+		}
+
+		offset += amount;
+	}
+
+	pfree(zerobuf);
+	return 0;
+}
+#endif
+
+/*
+ * Resize the reserve file so it matches the remaining protected space.
+ */
+void
+resize_min_quota_reserve_file(QuotaType type, Oid targetoid, int64 target_bytes)
+{
+	char	   *dir = get_min_quota_reserve_dir();
+	char		path[MAXPGPATH];
+	File		file;
+
+	if (MakePGDirectory(dir) < 0 && errno != EEXIST)
+	{
+		ereport(WARNING,
+				(errcode_for_file_access(),
+				 errmsg("could not create reserve directory \"%s\": %m", dir)));
+		pfree(dir);
+		return;
+	}
+
+	snprintf(path, sizeof(path), "%s/%s_%u_%u.reserve",
+			 dir,
+			 type == NAMESPACE_QUOTA ? "nsp" : "rol",
+			 MyDatabaseId,
+			 targetoid);
+
+	file = PathNameOpenFile(path, O_RDWR | O_CREAT | PG_BINARY);
+	if (file < 0)
+	{
+		elog(WARNING, "cannot open reserve file \"%s\": %m", path);
+		pfree(dir);
+		return;
+	}
+
+	if (target_bytes <= 0)
+	{
+		if (FileTruncate(file, 0, WAIT_EVENT_DATA_FILE_TRUNCATE) != 0)
+			elog(WARNING, "cannot truncate reserve file \"%s\": %m", path);
+	}
+	else
+	{
+#if defined(HAVE_POSIX_FALLOCATE) && defined(__linux__)
+		/*
+		 * Preallocate the reservation so the remaining free space cannot be
+		 * consumed by objects that do not have a min quota guarantee.
+		 */
+		if (posix_fallocate(FileGetRawDesc(file), 0, target_bytes) != 0)
+			elog(WARNING, "cannot preallocate reserve file \"%s\": %m", path);
+#else
+		/*
+		 * Windows has no posix_fallocate() equivalent, so write zeroes
+		 * to make the reserve file consume real space.
+		 */
+		if (write_zeroes_to_reserve_file(file, target_bytes) != 0)
+			elog(WARNING, "cannot preallocate reserve file \"%s\": %m", path);
+#endif
+		if (FileTruncate(file, target_bytes, WAIT_EVENT_DATA_FILE_TRUNCATE) != 0)
+			elog(WARNING, "cannot resize reserve file \"%s\": %m", path);
+	}
+
+	FileClose(file);
+	pfree(dir);
+}
+
+/*
+ * Remove the stale reserve file that belongs to the given quota owner.
+ */
+static void
+remove_stale_min_quota_reserve_files(QuotaType type, Oid targetoid)
+{
+	char	   *dir = get_min_quota_reserve_dir();
+	char		path[MAXPGPATH];
+
+	/*
+	 * When min quota is disabled for one object, clear only that object's
+	 * reserve file. Other quota owners may still rely on their reservations.
+	 */
+	snprintf(path, sizeof(path), "%s/%s_%u_%u.reserve",
+			 dir,
+			 type == NAMESPACE_QUOTA ? "nsp" : "rol",
+			 MyDatabaseId,
+			 targetoid);
+
+	if (unlink(path) != 0)
+	{
+		if (errno != ENOENT)
+			elog(WARNING, "cannot remove stale reserve file \"%s\": %m", path);
+	}
+
+	pfree(dir);
+}
+
+/*
+ * Rebuild reserve files from the latest quota map and usage snapshot.
+ */
+void
+reconcile_min_quota_reserve_files(void)
+{
+	HASH_SEQ_STATUS iter;
+	QuotaLimitEntry *quota_entry;
+
+	hash_seq_init(&iter, namespace_quota_limit_map);
+	while ((quota_entry = hash_seq_search(&iter)) != NULL)
+	{
+		NamespaceSizeEntry *nsentry;
+		bool found;
+		int64 used_bytes = 0;
+		int64 reserve_bytes;
+
+		if (quota_entry->minlimitsize <= 0)
+		{
+			/* Remove only this namespace's stale reservation. */
+			remove_stale_min_quota_reserve_files(NAMESPACE_QUOTA,
+												quota_entry->targetoid);
+			continue;
+		}
+
+		nsentry = (NamespaceSizeEntry *) hash_search(namespace_size_map,
+												 &quota_entry->targetoid,
+												 HASH_FIND,
+												 &found);
+		if (found)
+			used_bytes = nsentry->totalsize;
+		reserve_bytes = (quota_entry->minlimitsize * 1024 * 1024) - used_bytes;
+		if (reserve_bytes < 0)
+			reserve_bytes = 0;
+
+		resize_min_quota_reserve_file(NAMESPACE_QUOTA, quota_entry->targetoid, reserve_bytes);
+	}
+
+	hash_seq_init(&iter, role_quota_limit_map);
+	while ((quota_entry = hash_seq_search(&iter)) != NULL)
+	{
+		RoleSizeEntry *rolentry;
+		bool found;
+		int64 used_bytes = 0;
+		int64 reserve_bytes;
+
+		if (quota_entry->minlimitsize <= 0)
+		{
+			/* Remove only this role's stale reservation. */
+			remove_stale_min_quota_reserve_files(ROLE_QUOTA,
+												quota_entry->targetoid);
+			continue;
+		}
+
+		rolentry = (RoleSizeEntry *) hash_search(role_size_map,
+											 &quota_entry->targetoid,
+											 HASH_FIND,
+											 &found);
+		if (found)
+			used_bytes = rolentry->totalsize;
+		reserve_bytes = (quota_entry->minlimitsize * 1024 * 1024) - used_bytes;
+		if (reserve_bytes < 0)
+			reserve_bytes = 0;
+
+		resize_min_quota_reserve_file(ROLE_QUOTA, quota_entry->targetoid, reserve_bytes);
+	}
+}
+
+/*
+ * Clear every reserve file when the worker exits so reservations can be
+ * rebuilt from persisted quota metadata on the next refresh.
+ */
+void
+clear_min_quota_reserve_files(void)
+{
+	char *dir = get_min_quota_reserve_dir();
+	DIR *d = AllocateDir(dir);
+	struct dirent *de;
+
+	if (d == NULL)
+	{
+		pfree(dir);
+		return;
+	}
+
+	while ((de = ReadDir(d, dir)) != NULL)
+	{
+		char path[MAXPGPATH];
+		File file;
+
+		if (de->d_name[0] == '.')
+			continue;
+		snprintf(path, sizeof(path), "%s/%s", dir, de->d_name);
+
+		file = PathNameOpenFile(path, O_RDWR | PG_BINARY);
+		if (file >= 0)
+		{
+			(void) FileTruncate(file, 0, WAIT_EVENT_DATA_FILE_TRUNCATE);
+			FileClose(file);
+		}
+	}
+
+	FreeDir(d);
+	pfree(dir);
 }
 
 /*
