@@ -12,8 +12,8 @@ static uint8 next_seq = 0;
 static int
 mq_send_one_packet(const char *data, size_t len, uint8 seq)
 {
-    StringInfoData buffer;
-    StringInfo buf = &buffer;
+    int status = STATUS_OK;
+    StringInfo buf = makeStringInfo();
 
     initStringInfo(buf);
 
@@ -24,13 +24,15 @@ mq_send_one_packet(const char *data, size_t len, uint8 seq)
     mq_append_payload_len(buf, len);
     mq_append_sequence_id(buf, seq);
 
-    if (internal_putbytes(buf->data, PROTO_HEADER_LEN))
-        return EOF;
+    if (internal_putbytes(buf->data, PROTO_HEADER_LEN) ||
+        internal_putbytes(data, len))
+    {
+        status = EOF;
+    }
 
-    if (internal_putbytes(data, len))
-        return EOF;
-
-    return STATUS_OK;
+    DestroyStringInfo(buf);
+    
+    return status;
 }
 
 void
@@ -59,21 +61,25 @@ mq_putmessage(const char *data, size_t left)
 static int
 mq_recv_packet_header(uint32 *len, uint8 *seq)
 {
-    StringInfoData  buffer;
-    StringInfo      buf = &buffer;
+    StringInfo buf = makeStringInfo();
 
     initStringInfo(buf);
 
     enlargeStringInfo(buf, PROTO_HEADER_LEN);
 
     if (pq_getbytes(buf->data, PROTO_HEADER_LEN) == EOF)
+    {
+        DestroyStringInfo(buf);
         return EOF;
+    }
 
     buf->len += PROTO_HEADER_LEN;
 
     mq_get_int3(buf, (void *) len);
     mq_get_int1(buf, (void *) seq);
 
+    DestroyStringInfo(buf);
+    
     return 0;
 }
 

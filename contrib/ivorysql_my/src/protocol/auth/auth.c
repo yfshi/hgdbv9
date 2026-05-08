@@ -41,7 +41,10 @@ static mysql_encryt_password_hook_type      pre_mysql_encrypt_password_hook = NU
 static auth_plugin_cache_t auth_plugins[] = {
 	{ PASSWORD_TYPE_MYS_NATIVE, &mysql_native_password },
 #ifdef USE_OPENSSL
-    { PASSWORD_TYPE_MYS_CACHING_SHA2, &caching_sha2_password }
+    { PASSWORD_TYPE_MYS_CACHING_SHA2, &caching_sha2_password },
+#endif
+#ifdef USE_GMSSL
+    { PASSWORD_TYPE_SM3, &sm3_password },
 #endif
 };
 
@@ -408,17 +411,12 @@ exec_mysql_password_auth(Port *port)
                 errmsg("Mysql compatition mode unsupport this auth method"));
     }
 
-    // parse shadow password stored in pg_authid
-    auth_plugin->password_parse(rolpassword);
-
-    // do password check
-    ret = auth_plugin->passwd_check(port);
+    // parse shadow password stored in pg_authid and do password check
+    ret = auth_plugin->passwd_check(port, rolpassword);
 
     // clean
     if (rolpassword)
         pfree(rolpassword);
-
-    auth_plugin->clean();
 
     return ret;
 }
@@ -586,6 +584,9 @@ mysql_client_authentication(Port *port)
 #ifdef USE_OPENSSL
         case uaCachingSha256:
 #endif
+#ifdef USE_GMSSL
+        case uaSM3:
+#endif
             if (exec_mysql_password_auth(port) != STATUS_OK)
             {
                 ereport(ERROR,
@@ -593,14 +594,13 @@ mysql_client_authentication(Port *port)
                          errmsg("Access denied for user '%s'@'%s' (using password: YES)", port->user_name, port->remote_host)));
             }
             break;
-        #ifdef USE_GMSSL
-        case uaSM3:
+#ifdef USE_GMSSL
         case uaMD5SM3:
         case uaSM3MD5:
         case uaSCRAMsm3:
         case uaSCRAMsm3sha256:
         case uaSCRAMsha256sm3:
-        #endif
+#endif
         case uaMD5:
         case uaSCRAMsha256:
         case uaGSS:
@@ -688,4 +688,23 @@ void
 unregister_mysql_auth()
 {
     mysql_encrypt_password_hook = pre_mysql_encrypt_password_hook;
+}
+
+uint8 *
+do_auth_switch(char *auth, uint8 *scramble)
+{
+    uint8 *auth_response = NULL;
+    StringInfo buf = makeStringInfo();
+
+    send_auth_switch_packet(auth, scramble);
+
+    if (mq_getmessage(buf) != STATUS_OK)
+        goto fail;
+
+    auth_response = (uint8 *) read_switch_response(buf);
+
+fail:
+    DestroyStringInfo(buf);
+
+    return auth_response;
 }

@@ -1596,6 +1596,7 @@ GRANT SELECT ON mys_information_schema.plugins TO PUBLIC;
 
 INSERT INTO mys_information_schema.plugins VALUES ('mysql_native_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
 INSERT INTO mys_information_schema.plugins VALUES ('caching_sha2_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
+INSERT INTO mys_information_schema.plugins VALUES ('sm3_password', '1.1', 'ACTIVE', 'AUTHENTICATION', '1.1', NULL, NULL, '', '', 'GPL', '');
 
 --
 -- View: mys_information_schema.engines

@@ -102,6 +102,19 @@ native_password_parse(char *rolpassword)
     pfree(raw);
 }
 
+static void
+native_password_clean()
+{
+    for (int i = 0; i < NATIVE_PASSWORD_NPART; ++i)
+    {
+        if (part[i])
+        {
+            pfree(part[i]);
+            part[i] = NULL;
+        }
+    }
+}
+
 /*
  * password stored in pg_authid is s2
  * Client:
@@ -111,27 +124,23 @@ native_password_parse(char *rolpassword)
  *  auth_response = XOR(s3, s1)
  */
 static int
-native_password_check(Port *port)
+native_password_check(Port *port, char *rolpassword)
 {
     bool ret = STATUS_ERROR;
     uint8 s3[SCRAMBLE_LENGTH + 1],  // caculate with with s2 stored in pg_authid
           _s1[SCRAMBLE_LENGTH + 1], // caculate with client's auth_response
           _s2[SCRAMBLE_LENGTH + 1]; // caculate with client's auth_response
-    char  *s2  = part[NATIVE_DIGEST_INDEX]; // had been parsed in password_parse() callback
+    char  *s2;
     uint8 *auth_response = NULL;
     uint8 *scramble = mysql_conn_info.scramble;
-    StringInfo buf = makeStringInfo();
 
-    send_auth_switch_packet(NATIVE_PASSWORD_TAG, scramble);
+    native_password_parse(rolpassword);
 
-    pq_flush();
+    s2  = part[NATIVE_DIGEST_INDEX];
 
-    if (mq_getmessage(buf) != STATUS_OK)
-        goto fail;
+    auth_response = do_auth_switch(NATIVE_PASSWORD_TAG, scramble);
 
-    auth_response = (uint8 *) read_switch_response(buf);
-
-    /** 
+    /**
      * Begin - bug6787
      * Auth switch response from client may be empty.
      */
@@ -152,30 +161,14 @@ native_password_check(Port *port)
         ret = STATUS_OK;
     
     pfree(auth_response);
-    
-fail:
-    DestroyStringInfo(buf);
+
+    native_password_clean();
 
     return ret;
 }
 
-static void
-native_password_clean()
-{
-    for (int i = 0; i < NATIVE_PASSWORD_NPART; ++i)
-    {
-        if (part[i])
-        {
-            pfree(part[i]);
-            part[i] = NULL;
-        }
-    }
-}
-
 mysql_auth_plugin_t mysql_native_password = {
     .type = PASSWORD_TYPE_MYS_NATIVE,
-    .clean = native_password_clean,
     .password_generate = native_password_generate,
-    .password_parse = native_password_parse,
     .passwd_check = native_password_check,
 };
