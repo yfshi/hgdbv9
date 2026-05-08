@@ -2669,10 +2669,13 @@ CREATE OR REPLACE VIEW SYS.TABLES_INTERNAL AS
         NULL::varchar2(5) AS cache,
         'ENABLED'::varchar2(8) AS table_lock,
         NULL::number AS sample_size,
-        TO_CHAR((GREATEST(
+        /* Begin - bug#7760 */
+        TO_CHAR(COALESCE(GREATEST(
                 pg_stat_get_last_analyze_time(c.oid),
                 pg_stat_get_last_autoanalyze_time(c.oid)
-        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        ), pg_stat_get_last_analyze_time(c.oid),
+        pg_stat_get_last_autoanalyze_time(c.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+        /* End - bug#7760 */
         CASE
             WHEN c.relkind = 'p' THEN 'YES'
             ELSE 'NO'
@@ -3214,10 +3217,13 @@ CREATE OR REPLACE VIEW SYS.TAB_COLS_INTERNAL AS
             ELSE NULL
         END::number AS num_nulls,
         NULL::number AS num_buckets,
-        TO_CHAR((GREATEST(
+        /* Begin - bug#7760 */
+        TO_CHAR(COALESCE(GREATEST(
                 pg_stat_get_last_analyze_time(c.oid),
                 pg_stat_get_last_autoanalyze_time(c.oid)
-        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        ), pg_stat_get_last_analyze_time(c.oid),
+        pg_stat_get_last_autoanalyze_time(c.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+        /* End - bug#7760 */
         NULL::number AS sample_size,
         current_setting('server_encoding')::varchar2(44) AS character_set_name,
         CASE UPPER(t.typname::text)
@@ -3787,10 +3793,13 @@ CREATE OR REPLACE VIEW SYS.INDEXES_INTERNAL AS
         END::varchar2(8) AS status,
         c.reltuples::number AS num_rows,
         NULL::number AS sample_size,
-        TO_CHAR((GREATEST(
+        /* Begin - bug#7760 */
+        TO_CHAR(COALESCE(GREATEST(
                 pg_stat_get_last_analyze_time(tbl.oid),
                 pg_stat_get_last_autoanalyze_time(tbl.oid)
-        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        ), pg_stat_get_last_analyze_time(tbl.oid),
+        pg_stat_get_last_autoanalyze_time(tbl.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+        /* End - bug#7760 */
         NULL::varchar2(40) AS degree,
         NULL::varchar2(40) AS instances,
         CASE
@@ -4068,10 +4077,13 @@ CREATE OR REPLACE VIEW SYS.USER_INDEXES AS
         END::varchar2(8) AS status,
         c.reltuples::number AS num_rows,
         NULL::number AS sample_size,
-        TO_CHAR((GREATEST(
+        /* Begin - bug#7760 */
+        TO_CHAR(COALESCE(GREATEST(
                 pg_stat_get_last_analyze_time(tbl.oid),
                 pg_stat_get_last_autoanalyze_time(tbl.oid)
-        )), current_setting('nls_date_format'))::date AS last_analyzed,
+        ), pg_stat_get_last_analyze_time(tbl.oid),
+        pg_stat_get_last_autoanalyze_time(tbl.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+        /* End - bug#7760 */
         NULL::varchar2(40) AS degree,
         NULL::varchar2(40) AS instances,
         CASE
@@ -12208,9 +12220,12 @@ SELECT
 	NULL::number AS chain_cnt,
 	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = c.oid LIMIT 1)::number AS avg_row_len,
 	NULL::number AS sample_size,
-	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(c.oid),
+	/* Begin - bug#7760 */
+	TO_CHAR(COALESCE(GREATEST(pg_stat_get_last_analyze_time(c.oid),
 			pg_stat_get_last_autoanalyze_time(c.oid)
-	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	), pg_stat_get_last_analyze_time(c.oid),
+	pg_stat_get_last_autoanalyze_time(c.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+	/* End - bug#7760 */
 	NULL::varchar2(7) AS buffer_pool,
 	'NONE'::varchar2(7) AS flash_cache,
 	'NONE'::varchar2(7) AS cell_flash_cache,
@@ -12305,9 +12320,12 @@ SELECT
 	NULL::number AS chain_cnt,
 	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = part_c.oid LIMIT 1)::number AS avg_row_len,
 	NULL::number AS sample_size,
-	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(part_c.oid),
+	/* Begin - bug#7760 */
+	TO_CHAR(COALESCE(GREATEST(pg_stat_get_last_analyze_time(part_c.oid),
 			pg_stat_get_last_autoanalyze_time(part_c.oid)
-	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	), pg_stat_get_last_analyze_time(part_c.oid),
+	pg_stat_get_last_autoanalyze_time(part_c.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+	/* End - bug#7760 */
 	NULL::varchar2(7) AS buffer_pool,
 	'NONE'::varchar2(7) AS flash_cache,
 	'NONE'::varchar2(7) AS cell_flash_cache,
@@ -12585,9 +12603,12 @@ SELECT
 	NULL::number AS chain_cnt,
 	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = c.oid LIMIT 1)::number AS avg_row_len,
 	NULL::number AS sample_size,
-	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(c.oid),
+	/* Begin - bug#7760 */
+	TO_CHAR(COALESCE(GREATEST(pg_stat_get_last_analyze_time(c.oid),
 			pg_stat_get_last_autoanalyze_time(c.oid)
-	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	), pg_stat_get_last_analyze_time(c.oid),
+	pg_stat_get_last_autoanalyze_time(c.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+	/* End - bug#7760 */
 	NULL::varchar2(7) AS buffer_pool,
 	'NONE'::varchar2(7) AS flash_cache,
 	'NONE'::varchar2(7) AS cell_flash_cache,
@@ -12670,9 +12691,12 @@ SELECT
 	NULL::number AS chain_cnt,
 	(SELECT SUM(stawidth) FROM pg_statistic WHERE starelid = subpart_c.oid LIMIT 1)::number AS avg_row_len,
 	NULL::number AS sample_size,
-	TO_CHAR((GREATEST(pg_stat_get_last_analyze_time(subpart_c.oid),
+	/* Begin - bug#7760 */
+	TO_CHAR(COALESCE(GREATEST(pg_stat_get_last_analyze_time(subpart_c.oid),
 			pg_stat_get_last_autoanalyze_time(subpart_c.oid)
-	)), current_setting('nls_date_format'))::date AS last_analyzed,
+	), pg_stat_get_last_analyze_time(subpart_c.oid),
+	pg_stat_get_last_autoanalyze_time(subpart_c.oid)), current_setting('nls_date_format'))::date AS last_analyzed,
+	/* End - bug#7760 */
 	NULL::varchar2(7) AS buffer_pool,
 	'NONE'::varchar2(7) AS flash_cache,
 	'NONE'::varchar2(7) AS cell_flash_cache,
