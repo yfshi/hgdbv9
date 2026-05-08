@@ -682,7 +682,7 @@ having col_t1 in (select sum(t2.col1) from t2
 --error 1052
 select t1.col1, t2.col1 from t1, t2 where t1.col1 = t2.col1
 group by t1.col1, t2.col1 having col1 = 2;
-ERROR:  HAVING "col1" is ambiguous
+ERROR:  Column "col1" in HAVING clause is ambiguous
 LINE 2: group by t1.col1, t2.col1 having col1 = 2;
                                          ^
 --error 1052
@@ -747,7 +747,7 @@ select count(s1) from t1 group by s1 having s1*0=0;
 
 -- error 1052
 select * from t1 a, t1 b group by a.s1 having s1 is null;
-ERROR:  HAVING "s1" is ambiguous
+ERROR:  Column "s1" in HAVING clause is ambiguous
 LINE 1: select * from t1 a, t1 b group by a.s1 having s1 is null;
                                                       ^
 -- # ANSI requires: 0 rows
@@ -1351,15 +1351,15 @@ LINE 1: SELECT a FROM (SELECT 1 FROM (SELECT 1) a HAVING a=1) b;
                                                           ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
 SELECT a,b as a FROM (SELECT '1' as a,'2' as b) b  HAVING a=1;
-ERROR:  HAVING "a" is ambiguous
+ERROR:  Column "a" in HAVING clause is ambiguous
 LINE 1: ...LECT a,b as a FROM (SELECT '1' as a,'2' as b) b  HAVING a=1;
                                                                    ^
 SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=2;
-ERROR:  HAVING "a" is ambiguous
+ERROR:  Column "a" in HAVING clause is ambiguous
 LINE 1: SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=2;
                                                         ^
 SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=1;
-ERROR:  HAVING "a" is ambiguous
+ERROR:  Column "a" in HAVING clause is ambiguous
 LINE 1: SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=1;
                                                         ^
 SELECT 1 FROM (SELECT 1) a WHERE a=2;
@@ -1414,7 +1414,7 @@ table_type,
  table_name AS table_type
 FROM test_table
 HAVING table_type ='t1';
-ERROR:  HAVING "table_type" is ambiguous
+ERROR:  Column "table_type" in HAVING clause is ambiguous
 LINE 6: HAVING table_type ='t1';
                ^
 drop table test_table;
@@ -2585,11 +2585,11 @@ drop table alias_t3;
 -- test ambiguous
 create table having_ambiguous(id int, name text);
 select id, name as id from having_ambiguous having id = 1;
-ERROR:  HAVING "id" is ambiguous
+ERROR:  Column "id" in HAVING clause is ambiguous
 LINE 1: select id, name as id from having_ambiguous having id = 1;
                                                            ^
 select id as alias, name as alias from having_ambiguous having alias = 1;
-ERROR:  HAVING "alias" is ambiguous
+ERROR:  Column "alias" in HAVING clause is ambiguous
 LINE 1: ...alias, name as alias from having_ambiguous having alias = 1;
                                                              ^
 drop table having_ambiguous;

@@ -252,6 +252,13 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	}
 	else
 		cur_token = mys_core_yylex(&(lvalp->core_yystype), llocp, yyscanner);
+	/* Begin: Req:SRS-MYSQL-SQL-Select */
+	/* _charset '...' flag to false */
+	if (cur_token != UNDERSCORE_CHARSET)
+	{
+		yyextra->core_yy_extra.has_underscore_charset = false;
+	}
+	/* End: Req:SRS-MYSQL-SQL-Select */
 
 	/*
 	 * If this token isn't one that requires lookahead, just return it.  If it

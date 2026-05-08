@@ -1,0 +1,114 @@
+--
+-- MySQL SELECT modifiers accepted around ALL/DISTINCT
+--
+DROP TABLE IF EXISTS mysql_select_modifiers_test;
+NOTICE:  table "mysql_select_modifiers_test" does not exist, skipping
+DROP TABLE IF EXISTS mysql_select_modifier_names;
+NOTICE:  table "mysql_select_modifier_names" does not exist, skipping
+CREATE TABLE mysql_select_modifiers_test (
+  a integer
+);
+INSERT INTO mysql_select_modifiers_test VALUES (1);
+INSERT INTO mysql_select_modifiers_test VALUES (1);
+INSERT INTO mysql_select_modifiers_test VALUES (2);
+SELECT SQL_SMALL_RESULT SQL_BIG_RESULT SQL_BUFFER_RESULT
+       SQL_CACHE SQL_CALC_FOUND_ROWS ALL a
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ a 
+---
+ 1
+ 1
+ 2
+(3 rows)
+
+SELECT ALL SQL_SMALL_RESULT SQL_NO_CACHE SQL_BUFFER_RESULT a
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ a 
+---
+ 1
+ 1
+ 2
+(3 rows)
+
+SELECT SQL_SMALL_RESULT DISTINCT SQL_BIG_RESULT SQL_BUFFER_RESULT
+       SQL_NO_CACHE SQL_CALC_FOUND_ROWS a
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ a 
+---
+ 1
+ 2
+(2 rows)
+
+SELECT DISTINCT SQL_SMALL_RESULT SQL_BUFFER_RESULT SQL_CACHE a
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ a 
+---
+ 1
+ 2
+(2 rows)
+
+SELECT SQL_CACHE a
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ a 
+---
+ 1
+ 1
+ 2
+(3 rows)
+
+SELECT a AS sql_cache
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ sql_cache 
+-----------
+         1
+         1
+         2
+(3 rows)
+
+--
+-- Reserved keyword cases (MySQL 5.7: reserved words need quoting, so bare
+-- table/column/alias forms should fail)
+--
+--mysql e1064 (42000): You have an error in your SQL syntax;
+SELECT SQL_BIG_RESULT;
+--
+(1 row)
+
+--mysql e1064 (42000): You have an error in your SQL syntax;
+SELECT a AS SQL_BIG_RESULT
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ sql_big_result 
+----------------
+              1
+              1
+              2
+(3 rows)
+
+--mysql e1064 (42000): You have an error in your SQL syntax;
+SELECT a SQL_BIG_RESULT
+FROM mysql_select_modifiers_test
+ORDER BY a;
+ sql_big_result 
+----------------
+              1
+              1
+              2
+(3 rows)
+
+CREATE TABLE SQL_BIG_RESULT (a integer);
+ERROR:  syntax error at or near "SQL_BIG_RESULT"
+LINE 1: CREATE TABLE SQL_BIG_RESULT (a integer);
+                     ^
+SELECT a
+FROM SQL_BIG_RESULT;
+ERROR:  syntax error at or near "SQL_BIG_RESULT"
+LINE 2: FROM SQL_BIG_RESULT;
+             ^
+DROP TABLE mysql_select_modifiers_test;

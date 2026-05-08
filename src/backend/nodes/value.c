@@ -73,3 +73,22 @@ makeBitString(char *str)
 	v->val.str = str;
 	return v;
 }
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+/*
+ *	makeIntroducerString
+ *
+ * Caller is responsible for passing a palloc'd string.  The returned node uses
+ * String's layout, but its tag lets parse analysis treat it as a MySQL
+ * character-set introducer literal.
+ */
+Value *
+makeIntroducerString(char *str)
+{
+	Value	   *v = makeNode(Value);
+
+	v->type = T_IntroducerConst;
+	v->val.str = str;
+	return v;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */

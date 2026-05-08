@@ -141,6 +141,9 @@ static int mys_uservariable_name(mys_core_yyscan_t yyscanner, YYSTYPE *lval);		/
  */
 extern int	mys_core_yyget_column(yyscan_t yyscanner);
 extern void mys_core_yyset_column(int column_no, yyscan_t yyscanner);
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static char *underscore_charset_name_from_introducer(const char *text, int len);
+/* End: Req:SRS-MYSQL-SQL-Select */
 
 %}
 
@@ -628,14 +631,14 @@ other			.
 						case xb:
 							/* Begin - SRS-MYSQL-HEX-LITERAL */
 							if (use_mysql_bit_literal == true)
-							{	
+							{
 								if (!isbindigits_n(yyextra->literalbuf + 1, yyextra->literallen - 1))
 								{
 									ereport(ERROR,
 											(errcode(ERRCODE_SYNTAX_ERROR),
 											 errmsg("You have an error in your SQL syntax.")));
 								}
-							
+
 								yylval->str = litbufdup(yyscanner);
 
 								// yylval->str has 'b' prefix, we have to jump it when make hex const in parse_bitstring().
@@ -655,7 +658,7 @@ other			.
 							 * Check that the data remains valid, if it might
 							 * have been made invalid by unescaping any chars.
 							 */
-							if (yyextra->saw_non_ascii)
+							if (yyextra->has_underscore_charset && yyextra->saw_non_ascii)
 								pg_verifymbstr(yyextra->literalbuf,
 											   yyextra->literallen,
 											   false);
@@ -679,32 +682,41 @@ other			.
 					addlit(yytext, yyleng, yyscanner);
 				}
 <xe>{xeunicode} {
-					pg_wchar	c = strtoul(yytext + 2, NULL, 16);
-
-					/*
-					 * For consistency with other productions, issue any
-					 * escape warning with cursor pointing to start of string.
-					 * We might want to change that, someday.
-					 */
-					check_escape_warning(yyscanner);
-
-					/* Remember start of overall string token ... */
-					PUSH_YYLLOC();
-					/* ... and set the error cursor to point at this esc seq */
-					SET_YYLLOC();
-
-					if (is_utf16_surrogate_first(c))
+					/* Begin: Req:SRS-MYSQL-SQL-Select */
+					if (yyextra->has_underscore_charset)
 					{
-						yyextra->utf16_first_part = c;
-						BEGIN(xeu);
+						addlit(yytext, yyleng, yyscanner);
 					}
-					else if (is_utf16_surrogate_second(c))
-						yyerror("invalid Unicode surrogate pair");
+					/* End: Req:SRS-MYSQL-SQL-Select */
 					else
-						addunicode(c, yyscanner);
+					{
+						pg_wchar	c = strtoul(yytext + 2, NULL, 16);
 
-					/* Restore yylloc to be start of string token */
-					POP_YYLLOC();
+						/*
+						* For consistency with other productions, issue any
+						* escape warning with cursor pointing to start of string.
+						* We might want to change that, someday.
+						*/
+						check_escape_warning(yyscanner);
+
+						/* Remember start of overall string token ... */
+						PUSH_YYLLOC();
+						/* ... and set the error cursor to point at this esc seq */
+						SET_YYLLOC();
+
+						if (is_utf16_surrogate_first(c))
+						{
+							yyextra->utf16_first_part = c;
+							BEGIN(xeu);
+						}
+						else if (is_utf16_surrogate_second(c))
+							yyerror("invalid Unicode surrogate pair");
+						else
+							addunicode(c, yyscanner);
+
+						/* Restore yylloc to be start of string token */
+						POP_YYLLOC();
+					}
 				}
 <xeu>{xeunicode} {
 					pg_wchar	c = strtoul(yytext + 2, NULL, 16);
@@ -734,46 +746,76 @@ other			.
 					yyerror("invalid Unicode surrogate pair");
 				}
 <xe,xeu>{xeunicodefail}	{
-					/* Set the error cursor to point at malformed esc seq */
-					SET_YYLLOC();
-					ereport(ERROR,
-							(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
-							 errmsg("invalid Unicode escape"),
-							 errhint("Unicode escapes must be \\uXXXX or \\UXXXXXXXX."),
-							 lexer_errposition()));
+					/* Begin: Req:SRS-MYSQL-SQL-Select */
+					if (yyextra->has_underscore_charset)
+					{
+						addlit(yytext, yyleng, yyscanner);
+					}
+					/* End: Req:SRS-MYSQL-SQL-Select */
+					else
+					{
+						/* Set the error cursor to point at malformed esc seq */
+						SET_YYLLOC();
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
+								 errmsg("invalid Unicode escape"),
+								 errhint("Unicode escapes must be \\uXXXX or \\UXXXXXXXX."),
+								 lexer_errposition()));
+					}
 				}
 <xe>{xeescape}  {
-					if (yytext[1] == '\'')
+					/* Begin: Req:SRS-MYSQL-SQL-Select */
+					if (yyextra->has_underscore_charset)
+						addlit(yytext, yyleng, yyscanner);
+					/* End: Req:SRS-MYSQL-SQL-Select */
+					else
 					{
-						if (yyextra->backslash_quote == BACKSLASH_QUOTE_OFF ||
-							(yyextra->backslash_quote == BACKSLASH_QUOTE_SAFE_ENCODING &&
-							 PG_ENCODING_IS_CLIENT_ONLY(pg_get_client_encoding())))
-							ereport(ERROR,
-									(errcode(ERRCODE_NONSTANDARD_USE_OF_ESCAPE_CHARACTER),
-									 errmsg("unsafe use of \\' in a string literal"),
-									 errhint("Use '' to write quotes in strings. \\' is insecure in client-only encodings."),
-									 lexer_errposition()));
+						if (yytext[1] == '\'')
+						{
+							if (yyextra->backslash_quote == BACKSLASH_QUOTE_OFF ||
+								(yyextra->backslash_quote == BACKSLASH_QUOTE_SAFE_ENCODING &&
+								 PG_ENCODING_IS_CLIENT_ONLY(pg_get_client_encoding())))
+								ereport(ERROR,
+										(errcode(ERRCODE_NONSTANDARD_USE_OF_ESCAPE_CHARACTER),
+										 errmsg("unsafe use of \\' in a string literal"),
+										 errhint("Use '' to write quotes in strings. \\' is insecure in client-only encodings."),
+										 lexer_errposition()));
+						}
+						if (has_sql_mode(MODE_NO_BACKSLASH_ESCAPES))
+							check_string_escape_warning(yytext[1], yyscanner);
+						addlitchar(unescape_single_char(yytext[1], yyscanner),
+								   yyscanner);
 					}
-					if (has_sql_mode(MODE_NO_BACKSLASH_ESCAPES))
-						check_string_escape_warning(yytext[1], yyscanner);
-					addlitchar(unescape_single_char(yytext[1], yyscanner),
-							   yyscanner);
 				}
 <xe>{xeoctesc}  {
-					unsigned char c = strtoul(yytext + 1, NULL, 8);
+					/* Begin: Req:SRS-MYSQL-SQL-Select */
+					if (yyextra->has_underscore_charset)
+						addlit(yytext, yyleng, yyscanner);
+					/* End: Req:SRS-MYSQL-SQL-Select */
+					else
+					{
+						unsigned char c = strtoul(yytext + 1, NULL, 8);
 
-					check_escape_warning(yyscanner);
-					addlitchar(c, yyscanner);
-					if (c == '\0' || IS_HIGHBIT_SET(c))
-						yyextra->saw_non_ascii = true;
+						check_escape_warning(yyscanner);
+						addlitchar(c, yyscanner);
+						if (c == '\0' || IS_HIGHBIT_SET(c))
+							yyextra->saw_non_ascii = true;
+					}
 				}
 <xe>{xehexesc}  {
-					unsigned char c = strtoul(yytext + 2, NULL, 16);
+					/* Begin: Req:SRS-MYSQL-SQL-Select */
+					if (yyextra->has_underscore_charset)
+						addlit(yytext, yyleng, yyscanner);
+					/* End: Req:SRS-MYSQL-SQL-Select */
+					else
+					{
+						unsigned char c = strtoul(yytext + 2, NULL, 16);
 
-					check_escape_warning(yyscanner);
-					addlitchar(c, yyscanner);
-					if (c == '\0' || IS_HIGHBIT_SET(c))
-						yyextra->saw_non_ascii = true;
+						check_escape_warning(yyscanner);
+						addlitchar(c, yyscanner);
+						if (c == '\0' || IS_HIGHBIT_SET(c))
+							yyextra->saw_non_ascii = true;
+					}
 				}
 <xe>.			{
 					/* This is only needed for \ just before EOF */
@@ -1218,8 +1260,18 @@ other			.
 {identifier}	{
 					int			kwnum;
 					char	   *ident;
+					char	   *charset_name = NULL;
 
 					SET_YYLLOC();
+					/* Begin: Req:SRS-MYSQL-SQL-Select */
+					charset_name = underscore_charset_name_from_introducer(yytext, yyleng);
+					if (charset_name != NULL)
+					{
+						yyextra->has_underscore_charset = true;
+						yylval->str = charset_name;
+						return UNDERSCORE_CHARSET;
+					}
+					/* End: Req:SRS-MYSQL-SQL-Select */
 
 					/* Is it a keyword? */
 					kwnum = ScanKeywordLookup(yytext,
@@ -1227,7 +1279,7 @@ other			.
 					if (kwnum >= 0)
 					{
 						yylval->keyword = GetScanKeyword(kwnum,
-														 yyextra->keywordlist);
+														yyextra->keywordlist);
 						return yyextra->keyword_tokens[kwnum];
 					}
 
@@ -1480,6 +1532,7 @@ mys_scanner_init(const char *str,
 	yyext->literalalloc = 1024;
 	yyext->literalbuf = (char *) palloc(yyext->literalalloc);
 	yyext->literallen = 0;
+	yyext->has_underscore_charset = false; /* Req:SRS-MYSQL-SQL-Select */
 
 	return scanner;
 }
@@ -1706,3 +1759,18 @@ mys_uservariable_name(mys_core_yyscan_t yyscanner, YYSTYPE *lval)
 	return USER_VARIABLE_NAME;
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static char *
+underscore_charset_name_from_introducer(const char *text, int len)
+{
+
+	if (len <= 1 || text[0] != '_')
+		return NULL;
+
+	if (pg_char_to_encoding(text + 1) >= 0)
+		return downcase_truncate_identifier(text + 1, len - 1, true);
+
+	return NULL;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */

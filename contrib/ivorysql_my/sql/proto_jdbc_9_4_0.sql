@@ -78,6 +78,9 @@ ALTER USER proto_user WITH NOSUPERUSER;
 -- test DatabaseMetaData.getColumns
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcGetColumnsTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 
+-- test DatabaseMetaData.getColumns
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcTestIntroducer 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;
