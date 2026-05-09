@@ -153,6 +153,11 @@ static ExecutorCheckPerms_hook_type prev_ExecutorCheckPermsLogin_hook = NULL;
 #endif
 /* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
+/* set default validuntil */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static set_validuntil_hook_type pre_set_validuntil_hook = NULL;
+#endif
+
 #ifdef _WIN32
 static char *strndup(const char *s, size_t n)
 {
@@ -272,20 +277,39 @@ static int username_ignore_case = 0;
 static char *username_whitelist = NULL;
 
 /* Password flags*/
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static int password_min_length = 10;
+static int password_max_length = 64;
+static int password_min_special = 1;
+static int password_min_digit = 1;
+static int password_min_upper = 1;
+static int password_min_lower = 1;
+static int password_valid_until = 7;
+static int password_valid_max = 30;
+static int password_force_set = 1;
+static int password_reuse_interval = 30;
+#else
 static int password_min_length = 1;
 static int password_min_special = 0;
 static int password_min_digit = 0;
 static int password_min_upper = 0;
 static int password_min_lower = 0;
+static int password_valid_until = 0;
+static int password_valid_max = 0;
+static int password_force_set = 0;
+/* password_reuse_interval:
+ * amount of time it takes before a password can be reused again.
+ */
+static int password_reuse_interval = 0;
+#endif
+
 static int password_min_repeat = 0;
 static char *password_not_contain = NULL;
 static char *password_contain = NULL;
 static int password_contain_username = 1;
 static int password_ignore_case = 0;
-static int password_valid_until = 0;
-static int password_valid_max = 0;
+
 static int auth_delay_milliseconds = 0;
-static int password_force_set = 0;
 static int login_msg_display = 1;
 #ifdef ENABLE_DKY_BETA_FEATURE
 int login_msg_display_storage = 0;	/* ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
@@ -295,11 +319,8 @@ int login_msg_display_storage = 0;	/* ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 /*
  password_reuse_history:
 	number of distinct passwords set before a password can be reused.
- password_reuse_interval:
-	amount of time it takes before a password can be reused again.
 */
 static int password_reuse_history = 0;
-static int password_reuse_interval = 0;
 
 char *str_to_sha256(const char *str, const char *salt);
 #endif
@@ -385,6 +406,82 @@ static bool guc_string_check(char **newval, void **extra, GucSource source)
 
 	return ret;
 }
+
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static bool guc_password_minlen_check(int *newval, void **extra, GucSource source)
+{
+	bool ret = false;
+	if (source < PGC_S_USER)
+		return true;
+
+	ret = is_manager();
+	if (!ret)
+		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+
+	if (*newval > password_max_length)
+	{
+		elog(ERROR, "Parameter `password_min_length` must be less than `password_max_length`.");
+	}
+
+	return ret;
+}
+
+static bool guc_password_maxlen_check(int *newval, void **extra, GucSource source)
+{
+	bool ret = false;
+	if (source < PGC_S_USER)
+		return true;
+
+	ret = is_manager();
+	if (!ret)
+		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+
+	if (password_min_length > *newval)
+	{
+		elog(ERROR, "Parameter `password_max_length` must be greater than `password_min_length`.");
+	}
+
+	return ret;
+}
+
+static bool guc_valid_until_check(int *newval, void **extra, GucSource source)
+{
+	bool ret = false;
+	if (source < PGC_S_USER)
+		return true;
+
+	ret = is_manager();
+	if (!ret)
+		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+
+	if (*newval != 0 && password_valid_max != 0 && *newval > password_valid_max)
+	{
+		elog(ERROR, "If both `password_valid_max` and `password_valid_until` are non-zero, "
+					"then `password_valid_until` must be less than `password_valid_max`.");
+	}
+
+	return ret;
+}
+
+static bool guc_valid_max_check(int *newval, void **extra, GucSource source)
+{
+	bool ret = false;
+	if (source < PGC_S_USER)
+		return true;
+
+	ret = is_manager();
+	if (!ret)
+		elog(ERROR, "Permission denied. Only role=(syssso_role or sysdba_role) can change this parameter.");
+
+	if (*newval != 0 && password_valid_until != 0 && *newval < password_valid_until)
+	{
+		elog(ERROR, "If both `password_valid_max` and `password_valid_until` are non-zero, "
+					"then `password_valid_max` must be greater than `password_valid_until`.");
+	}
+
+	return ret;
+}
+#endif
 
 bool check_whitelist(char **newval, void **extra, GucSource source);
 bool is_in_whitelist(char *username);
@@ -759,6 +856,17 @@ static void password_check(const char *username, const char *password)
 		goto clean;
 	}
 
+#if defined(ENABLE_DKY_BETA_FEATURE)
+	if (strnlen(tmp_pass, INT_MAX) > password_max_length)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+				 errmsg(gettext_noop("password length should match the configured %s (%d)"),
+						"credcheck.password_max_length", password_max_length)));
+		goto clean;
+	}
+#endif
+
 	/* Rule 2: password contains username */
 	if (password_contain_username)
 	{
@@ -919,6 +1027,112 @@ username_guc()
 		&username_contain, "", PGC_USERSET, 0, guc_string_check, NULL, NULL);
 }
 
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static void
+password_guc()
+{
+	DefineCustomIntVariable("credcheck.password_min_length",
+							gettext_noop("minimum password length"), NULL,
+							&password_min_length, 10, 1, INT_MAX, PGC_USERSET, 0,
+							guc_password_minlen_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_max_length",
+							gettext_noop("maximum password length"), NULL,
+							&password_max_length, 64, 1, INT_MAX, PGC_USERSET, 0,
+							guc_password_maxlen_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_min_special",
+							gettext_noop("minimum special characters"), NULL,
+							&password_min_special, 1, 0, INT_MAX, PGC_USERSET, 0,
+							guc_int_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_min_digit",
+							gettext_noop("minimum password digits"), NULL,
+							&password_min_digit, 1, 0, INT_MAX, PGC_USERSET, 0,
+							guc_int_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_min_upper",
+							gettext_noop("minimum password uppercase letters"),
+							NULL, &password_min_upper, 1, 0, INT_MAX, PGC_USERSET,
+							0, guc_int_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_min_lower",
+							gettext_noop("minimum password lowercase letters"),
+							NULL, &password_min_lower, 1, 0, INT_MAX, PGC_USERSET,
+							0, guc_int_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_min_repeat",
+							gettext_noop("minimum password characters repeat"),
+							NULL, &password_min_repeat, 0, 0, INT_MAX,
+							PGC_USERSET, 0, guc_int_check, NULL, NULL);
+
+	DefineCustomEnumVariable("credcheck.password_contain_username",
+							 gettext_noop("password contains username"), NULL,
+							 &password_contain_username, true, guc_enum_entry,
+							 PGC_USERSET, 0,
+							 guc_enum_check, NULL, NULL);
+
+	DefineCustomEnumVariable("credcheck.password_ignore_case",
+							 gettext_noop("ignore case while password checking"),
+							 NULL, &password_ignore_case, false, guc_enum_entry,
+							 PGC_USERSET, 0,
+							 guc_enum_check, NULL, NULL);
+
+	DefineCustomStringVariable(
+							"credcheck.password_not_contain",
+							gettext_noop("password should not contain these characters"), NULL,
+							&password_not_contain, "", PGC_USERSET, 0, guc_string_check, NULL, NULL);
+
+	DefineCustomStringVariable(
+							"credcheck.password_contain",
+							gettext_noop("password should contain these characters"), NULL,
+							&password_contain, "", PGC_USERSET, 0, guc_string_check, NULL, NULL);
+
+#if PG_VERSION_NUM >= 120000
+	DefineCustomIntVariable("credcheck.password_reuse_history",
+							gettext_noop("minimum number of password changes before permitting reuse"),
+							NULL, &password_reuse_history, 0, 0, 100,
+							PGC_USERSET, 0, NULL, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_reuse_interval",
+							gettext_noop("minimum number of days elapsed before permitting reuse"),
+							NULL, &password_reuse_interval, 30, 0, 730, /* max 2 years */
+							PGC_USERSET, 0, guc_int_check, NULL, NULL);
+#endif
+
+	DefineCustomIntVariable("credcheck.password_valid_until",
+							gettext_noop("force use of VALID UNTIL clause in CREATE ROLE statement"
+										 " with a minimum number of days"),
+							NULL, &password_valid_until, 7, 0, INT_MAX,
+							PGC_USERSET, 0, guc_valid_until_check, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_valid_max",
+							gettext_noop("force use of VALID UNTIL clause in CREATE ROLE statement"
+										 " with a maximum number of days"),
+							NULL, &password_valid_max, 30, 0, INT_MAX,
+							PGC_USERSET, 0, guc_valid_max_check, NULL, NULL);
+
+	DefineCustomEnumVariable("credcheck.password_force_set",
+							 gettext_noop("force use of PASSWORD clause in CREATE USER statement"),
+							 NULL, &password_force_set, true, guc_enum_entry,
+							 PGC_USERSET, 0,
+							 guc_enum_check, NULL, NULL);
+
+	DefineCustomEnumVariable("credcheck.login_msg_display",
+							 gettext_noop("Allows the client to query the login status"),
+							 NULL, &login_msg_display, true, guc_enum_entry,
+							 PGC_SIGHUP, 0,
+							 guc_enum_check, NULL, NULL);
+
+	DefineCustomEnumVariable("credcheck.login_msg_display_storage",
+							 gettext_noop("Allows the client to query the login status and storage"),
+							 NULL, &login_msg_display_storage, false, guc_enum_entry,
+							 PGC_SIGHUP, 0,
+							 guc_enum_check, NULL, NULL);
+}
+
+#else
+
 static void
 password_guc()
 {
@@ -1009,17 +1223,9 @@ password_guc()
 							 NULL, &login_msg_display, true, guc_enum_entry,
 							 PGC_SIGHUP, 0,
 							 guc_enum_check, NULL, NULL);
-
-	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
-#ifdef ENABLE_DKY_BETA_FEATURE
-	DefineCustomEnumVariable("credcheck.login_msg_display_storage",
-							 gettext_noop("Allows the client to query the login status and storage"),
-							 NULL, &login_msg_display_storage, false, guc_enum_entry,
-							 PGC_SIGHUP, 0,
-							 guc_enum_check, NULL, NULL);
-#endif
-	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 }
+
+#endif
 
 #if PG_VERSION_NUM >= 120000
 
@@ -1520,6 +1726,36 @@ check_password(const char *username, const char *password,
 	}
 }
 
+#if defined(ENABLE_DKY_BETA_FEATURE)
+static void
+set_default_validuntil(char **validUntil)
+{
+	TimestampTz	timestamp;
+	int default_validuntil = 0;
+
+	if (pre_set_validuntil_hook)
+		pre_set_validuntil_hook(validUntil);
+
+	if (!is_enable)
+		return;
+
+	if (*validUntil)
+		return;
+
+	if (password_valid_until > 0)
+		default_validuntil = password_valid_until;
+	else if (password_valid_max > 0)
+		default_validuntil = password_valid_max;
+	else
+		return;
+
+	timestamp = GetCurrentTimestamp();
+	timestamp += default_validuntil * USECS_PER_DAY;
+
+	*validUntil = pstrdup(timestamptz_to_str(timestamp));
+}
+#endif
+
 void _PG_init(void)
 {
 	/* Defined GUCs */
@@ -1629,6 +1865,8 @@ void _PG_init(void)
 
 	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #ifdef ENABLE_DKY_BETA_FEATURE
+	pre_set_validuntil_hook = set_validuntil_hook;
+	set_validuntil_hook = set_default_validuntil;
 	prev_user_login_history_info = user_login_history_info;
 	user_login_history_info = login_info_print_and_stoage;
 	prev_ExecutorCheckPermsLogin_hook = ExecutorCheckPerms_hook;
@@ -1766,7 +2004,9 @@ cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO)
 		ListCell *option;
 		int valid_until = 0;
 		int valid_max = 0;
+#ifndef ENABLE_DKY_BETA_FEATURE
 		bool has_valid_until = false;
+#endif
 		bool save_password = false;
 		char *password;
 		DefElem *dpassword = NULL;
@@ -1809,14 +2049,31 @@ cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO)
 		if (dvalidUntil && dvalidUntil->arg && password_valid_until > 0)
 		{
 			valid_until = check_valid_until(strVal(dvalidUntil->arg));
+#ifndef ENABLE_DKY_BETA_FEATURE
 			has_valid_until = true;
+#else
+			/* check that a minimum number of days for password validity is defined */
+			if (password_valid_until > 0 && valid_until < password_valid_until)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+						 errmsg(gettext_noop("require a VALID UNTIL option with a date older than %d days"), password_valid_until)));
+#endif
 		}
 		if (dvalidUntil && dvalidUntil->arg && password_valid_max > 0)
 		{
 			valid_max = check_valid_until(strVal(dvalidUntil->arg));
+#ifndef ENABLE_DKY_BETA_FEATURE
 			has_valid_until = true;
+#else
+			/* check that a maximum number of days for password validity is defined */
+			if (password_valid_max > 0 && valid_max > password_valid_max)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+						 errmsg(gettext_noop("require a VALID UNTIL option with a date beyond %d days"), password_valid_max)));
+#endif
 		}
 
+#ifndef ENABLE_DKY_BETA_FEATURE
 		/* check that a VALID UNTIL option is present */
 		if (!has_valid_until && (password_valid_until > 0 || password_valid_max > 0))
 			ereport(ERROR,
@@ -1834,6 +2091,8 @@ cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO)
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
 					 errmsg(gettext_noop("require a VALID UNTIL option with a date beyond %d days"), password_valid_max)));
+#endif
+
 		/* The password can be saved into the history */
 		if (save_password)
 			save_password_in_history(stmt->role, password);

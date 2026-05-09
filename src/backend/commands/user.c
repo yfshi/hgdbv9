@@ -74,6 +74,11 @@ mysql_encryt_password_hook_type mysql_encrypt_password_hook;
 /* Hook to check passwords in CreateRole() and AlterRole() */
 check_password_hook_type check_password_hook = NULL;
 
+/* Hook to set password validUntil in CreateRole() */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+set_validuntil_hook_type set_validuntil_hook = NULL;
+#endif
+
 static void AddRoleMems(const char *rolename, Oid roleid,
 						List *memberSpecs, List *memberIds,
 						Oid grantorId, bool admin_opt);
@@ -409,6 +414,12 @@ CreateRole(ParseState *pstate, CreateRoleStmt *stmt)
 				(errcode(ERRCODE_DUPLICATE_OBJECT),
 				errmsg("role \"%s\" already exists",
 						stmt->role)));
+
+	/* set default password validUntil */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+	if (set_validuntil_hook && !validUntil)
+		(*set_validuntil_hook) (&validUntil);
+#endif
 
 	/* Convert validuntil to internal form */
 	if (validUntil)
