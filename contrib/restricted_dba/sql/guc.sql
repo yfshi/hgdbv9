@@ -303,3 +303,5 @@ select setting from pg_settings where name = 'se_feature.restricted_dba';
 
 \c template1 sysdba_u1
 drop database testdb;
+
+select * from hg_security.show_secure_param();

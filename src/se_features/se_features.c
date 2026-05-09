@@ -18,6 +18,7 @@
 
 #include "postgres.h"
 
+#include "funcapi.h"
 #include "miscadmin.h"
 #include "access/table.h"
 #include "catalog/pg_authid.h"
@@ -27,6 +28,7 @@
 #include "utils/syscache.h"
 #include "utils/rel.h"
 #include "utils/acl.h"
+#include "utils/guc.h"
 
 #include "se_features_interface.h"
 
@@ -92,5 +94,88 @@ check_se_rolespec_name(const RoleSpec *role, const char *detail_msg)
 					(errcode(ERRCODE_RESERVED_NAME),
 					 errmsg("role name \"%s\" is reserved",
 							role->rolename)));
+	}
+}
+
+PG_FUNCTION_INFO_V1(show_secure_param);
+/*
+ * show_secure_param - display security-related parameters
+ */
+Datum
+show_secure_param(PG_FUNCTION_ARGS)
+{
+	FuncCallContext *funcctx;
+	int call_cntr;
+	int max_calls;
+	TupleDesc tupdesc;
+	AttInMetadata *attinmeta;
+	MemoryContext oldcontext;
+
+	Oid role_oid = GetUserId();
+	if (!IS_SYSSSO(role_oid))
+		elog(ERROR, "permission denied, only member of syssso_role has privilege");
+
+	/* stuff done only on the first call of the function */
+	if (SRF_IS_FIRSTCALL())
+	{
+		/* create a function context for cross-call persistence */
+		funcctx = SRF_FIRSTCALL_INIT();
+
+		/* switch to memory context appropriate for multiple function calls */
+		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+		/* build tupdesc for result tuples */
+		tupdesc = CreateTemplateTupleDesc(2, false);
+		TupleDescInitEntry(tupdesc, (AttrNumber)1, "parameter",
+						   TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber)2, "value",
+						   TEXTOID, -1, 0);
+
+		attinmeta = TupleDescGetAttInMetadata(tupdesc);
+		funcctx->attinmeta = attinmeta;
+
+		/* Pre-calculate how many parameters we'll return */
+		max_calls = sizeof(security_parameters)/sizeof(security_parameters[0]) - 1;
+
+		funcctx->max_calls = max_calls;
+
+		MemoryContextSwitchTo(oldcontext);
+	}
+
+	/* stuff done on every call of the function */
+	funcctx = SRF_PERCALL_SETUP();
+	call_cntr = funcctx->call_cntr;
+	max_calls = funcctx->max_calls;
+	attinmeta = funcctx->attinmeta;
+
+	if (call_cntr < max_calls)
+	{
+		char *values[2];
+		HeapTuple tuple;
+		Datum result;
+		char *param_value;
+
+		/* get the parameter name */
+		values[0] = (char *)security_parameters[call_cntr];
+
+		/* get the parameter value */
+		param_value = GetConfigOptionByName(values[0], NULL, true);
+		values[1] = param_value ? pstrdup(param_value) : "NULL";
+
+		/* build the tuple */
+		tuple = BuildTupleFromCStrings(attinmeta, values);
+
+		/* make the tuple into a datum */
+		result = HeapTupleGetDatum(tuple);
+
+		/* free memory if needed */
+		if (param_value)
+			pfree(param_value);
+
+		SRF_RETURN_NEXT(funcctx, result);
+	}
+	else
+	{
+		SRF_RETURN_DONE(funcctx);
 	}
 }

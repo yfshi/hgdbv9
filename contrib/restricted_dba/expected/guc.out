@@ -460,3 +460,62 @@ select setting from pg_settings where name = 'se_feature.restricted_dba';
 
 \c template1 sysdba_u1
 drop database testdb;
+select * from hg_security.show_secure_param();
+                       name                       | setting 
+--------------------------------------------------+---------
+ se_feature.mode                                  | off
+ se_feature.restricted_dba                        | off
+ credcheck.enable                                 | off
+ credcheck.username_min_length                    | 1
+ credcheck.username_min_special                   | 0
+ credcheck.username_min_digit                     | 0
+ credcheck.username_min_upper                     | 0
+ credcheck.username_min_lower                     | 0
+ credcheck.username_min_repeat                    | 0
+ credcheck.username_contain_password              | on
+ credcheck.username_contain                       | 
+ credcheck.username_not_contain                   | 
+ credcheck.username_ignore_case                   | off
+ credcheck.password_min_length                    | 1
+ credcheck.password_min_special                   | 0
+ credcheck.password_min_digit                     | 0
+ credcheck.password_min_upper                     | 0
+ credcheck.password_min_lower                     | 0
+ credcheck.password_min_repeat                    | 0
+ credcheck.password_contain_username              | on
+ credcheck.password_contain                       | 
+ credcheck.password_not_contain                   | 
+ credcheck.password_ignore_case                   | off
+ credcheck.whitelist                              | 
+ credcheck.password_valid_until                   | 0
+ credcheck.password_valid_max                     | 0
+ credcheck.password_force_set                     | off
+ credcheck.password_reuse_history                 | 0
+ credcheck.password_reuse_interval                | 0
+ credcheck.history_max_size                       | 65535
+ credcheck.encrypted_password_allowed             | off
+ credcheck.max_auth_failure                       | 0
+ credcheck.reset_superuser                        | off
+ credcheck.auth_failure_cache_size                | 1024
+ credcheck.reset_time_min                         | 1d
+ credcheck.auth_delay_ms                          | 0
+ credcheck.login_msg_display                      | on
+ hg_sysmac.global_on                              | off
+ hg_sysmac.global_table_level                     | off
+ hg_sysmac.global_column_level                    | off
+ hg_sysmac.global_row_level                       | on
+ hg_redaction.enable                              | off
+ pg_resource_group_queuing_timeout                | 0
+ pg_resource_group_bypass                         | off
+ pg_resource_group_bypass_catalog_query           | on
+ pg_resource_group_cpu_limit                      | 0.9
+ diskquota.enable                                 | NULL
+ diskquota.naptime                                | NULL
+ diskquota.max_active_tables                      | NULL
+ diskquota.min_quota_free_spacesql_resource_limit | NULL
+ sqlallocated_memory                              | 1GB
+ sqlread_buffer                                   | 1GB
+ sqlwrite_buffer                                  | 1GB
+ idle_session_timeout                             | 0
+(54 rows)
+
