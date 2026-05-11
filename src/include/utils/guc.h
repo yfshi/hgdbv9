@@ -928,4 +928,87 @@ extern char    *tlcp_pass_file;
 
 extern PGDLLIMPORT int group_concat_max_len; /* bug#7234 */
 
+/*
+ * List of security-related parameters we want to show by default
+ */
+static const char * const security_parameters[] = {
+	"se_feature.mode",
+	"se_feature.restricted_dba",
+	/* credcheck */
+	"credcheck.enable",
+	"credcheck.username_min_length",
+	"credcheck.username_min_special",
+	"credcheck.username_min_digit",
+	"credcheck.username_min_upper",
+	"credcheck.username_min_lower",
+	"credcheck.username_min_repeat",
+	"credcheck.username_contain_password",
+	"credcheck.username_contain",
+	"credcheck.username_not_contain",
+	"credcheck.username_ignore_case",
+	"credcheck.password_min_length",
+#ifdef ENABLE_DKY_BETA_FEATURE
+	"credcheck.password_max_length",
+#endif
+	"credcheck.password_min_special",
+	"credcheck.password_min_digit",
+	"credcheck.password_min_upper",
+	"credcheck.password_min_lower",
+	"credcheck.password_min_repeat",
+	"credcheck.password_contain_username",
+	"credcheck.password_contain",
+	"credcheck.password_not_contain",
+	"credcheck.password_ignore_case",
+	"credcheck.whitelist",
+	"credcheck.password_valid_until",
+	"credcheck.password_valid_max",
+	"credcheck.password_force_set",
+	"credcheck.password_reuse_history",
+	"credcheck.password_reuse_interval",
+	"credcheck.history_max_size",
+	"credcheck.encrypted_password_allowed",
+	"credcheck.max_auth_failure",
+	"credcheck.reset_superuser",
+	"credcheck.auth_failure_cache_size",
+	"credcheck.reset_time_min",
+	"credcheck.auth_delay_ms",
+	"credcheck.login_msg_display",
+	/* hg_sysmac */
+	"hg_sysmac.global_on",
+	"hg_sysmac.global_table_level",
+	"hg_sysmac.global_column_level",
+	"hg_sysmac.global_row_level",
+
+	"hg_redaction.enable",
+	"pg_resource_group_queuing_timeout",
+	"pg_resource_group_bypass",
+	"pg_resource_group_bypass_catalog_query",
+	"pg_resource_group_cpu_limit",
+
+	"diskquota.enable",
+	"diskquota.naptime",
+	"diskquota.max_active_tables",
+	"diskquota.min_quota_free_space"
+
+	"sql_resource_limit",
+	"sqlallocated_memory",
+	"sqlread_buffer",
+	"sqlwrite_buffer",
+
+#ifdef ENABLE_DKY_BETA_FEATURE
+	"hg_rolstatus.enable",
+	"hg_wal_integrity.enable",
+	"credcheck.login_msg_display_storage",
+
+	"bg_mon.listen_address",
+	"bg_mon.port",
+	"bg_mon.naptime",
+	"bg_mon.history_buckets",
+	"bg_mon.uifile",
+	"bg_mon.database",
+#endif
+	"idle_session_timeout",
+	NULL    /* list terminator */
+};
+
 #endif							/* GUC_H */

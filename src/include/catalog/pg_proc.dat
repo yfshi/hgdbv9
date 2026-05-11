@@ -12100,6 +12100,17 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'unlock_current_session', prorettype => 'cstring',
   proargtypes => '', prosrc => 'unlock_current_session'},
 /* End ReqID: LOCK-SESSION */
+
+{ oid => '4662', descr => 'show secure parameter',
+  proname => 'show_secure_param', 
+  pronamespace => '9802',
+  proretset => 't', provolatile => 's', prorettype => 'record',
+  proargtypes => '', prorows => '50',
+  proallargtypes => '{text,text}',
+  proargmodes => '{o,o}',
+  proargnames => '{name,setting}',
+  prosrc => 'show_secure_param' },
+
 /* Begin ReqID: SESSION-VIEWS */
 { oid => '4901',
   descr => 'statistics: extra information about currently active sessions',

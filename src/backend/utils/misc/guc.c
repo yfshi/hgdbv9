@@ -10508,6 +10508,25 @@ ShowGUCConfigOption(const char *name, DestReceiver *dest)
 	const char *varname;
 	char	   *value;
 
+#ifdef ENABLE_DKY_BETA_FEATURE
+	/*judge if show secure parameters*/
+	Oid role_oid = GetUserId();
+	if (!IS_SYSSSO(role_oid))
+	{
+		int i = 0;
+		for (i = 0; security_parameters[i] != NULL; i++)
+		{
+			const char *secure_name = (char *)security_parameters[i];
+			if (strcmp(secure_name, name) == 0)
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_OBJECT),
+						 errmsg("unrecognized configuration parameter \"%s\"", name)));
+			}
+		}
+	}
+#endif
+
 	/* Get the value and canonical spelling of name */
 	value = GetConfigOptionByName(name, &varname, false);
 
