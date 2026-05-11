@@ -174,3 +174,17 @@ CREATE CAST (ivymy.uint3 AS pg_catalog.int8)
 WITH FUNCTION ivymy.uint3_int8(ivymy.uint3)
 AS ASSIGNMENT;
 /* End - BUG#Z7200 */
+
+/* Begin - BUG#Z7615 */
+CREATE FUNCTION ivymy.uint3_numeric(ivymy.uint3)
+RETURNS pg_catalog.numeric
+AS 'MODULE_PATHNAME','uint3_numeric'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint3 AS pg_catalog.numeric)
+WITH FUNCTION ivymy.uint3_numeric(ivymy.uint3)
+AS ASSIGNMENT;
+/* End - BUG#Z7615 */

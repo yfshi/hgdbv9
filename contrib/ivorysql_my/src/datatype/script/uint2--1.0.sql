@@ -133,6 +133,20 @@ CREATE CAST (pg_catalog.numeric AS ivymy.uint2)
 WITH FUNCTION numeric_uint2(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
+/* Begin - BUG#Z7615 */
+CREATE FUNCTION ivymy.uint2_numeric(ivymy.uint2)
+RETURNS pg_catalog.numeric
+AS 'MODULE_PATHNAME','uint2_numeric'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint2 AS pg_catalog.numeric)
+WITH FUNCTION ivymy.uint2_numeric(ivymy.uint2)
+AS ASSIGNMENT;
+/* End - BUG#Z7615 */
+
 -- to bpchar
 CREATE CAST (ivymy.uint2 AS pg_catalog.bpchar) 
 WITH INOUT

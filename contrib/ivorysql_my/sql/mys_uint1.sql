@@ -317,6 +317,20 @@ drop table tb1;
 
 set SQL_MODE to default;
 
+--uint1 -> numeric
+select 255::uint1::numeric(10,4);
+
+create table tb_01 (a tinyint unsigned);
+insert into tb_01 values(100);
+select cast(a as numeric(10,3)) from tb_01;
+select convert(a, numeric) from tb_01;
+drop table tb_01;
+
+create table t_convert_1 (col_numeric numeric);
+insert into t_convert_1 values (255::uint1);
+select * from t_convert_1;
+drop table t_convert_1;
+
 --uint1 -> signed/unsigned (int8/uint8)
 select 255::uint1::int8;
 select 255::uint1::uint8;

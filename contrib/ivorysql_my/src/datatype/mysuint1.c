@@ -40,6 +40,7 @@ PG_FUNCTION_INFO_V1(int4_uint1);
 PG_FUNCTION_INFO_V1(int2_uint1);
 PG_FUNCTION_INFO_V1(boolean_uint1);
 PG_FUNCTION_INFO_V1(uint1_int8);
+PG_FUNCTION_INFO_V1(uint1_numeric);
 
 PG_FUNCTION_INFO_V1(uint1_eq);
 PG_FUNCTION_INFO_V1(uint1_eqint2);
@@ -420,7 +421,17 @@ uint1_int8(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT64(val1);
 }
-/* Begin - BUG#Z7200 */
+/* End - BUG#Z7200 */
+
+/* Begin - BUG#Z7615 */
+Datum
+uint1_numeric(PG_FUNCTION_ARGS)
+{
+	uint8	val1 = PG_GETARG_UINT8(0);
+
+	PG_RETURN_NUMERIC(uint32_to_numeric((uint32) val1));
+}
+/* End - BUG#Z7615 */
 
 /*****************************************************************************
  *	 Operator Function														 *
