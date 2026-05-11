@@ -177,12 +177,18 @@ SELECT
 	-- Type of privilege granted to the role (one of SELECT, INSERT, UPDATE, etc.)
 	unnest(string_to_array(privs.priv, ','))::varchar(64) AS "PRIVILEGE_TYPE",
 
-	-- Whether the privilege is grantable to other users (simulated using pg_has_role with USAGE)
-	CASE
-		WHEN pg_has_role(pg_roles.oid, 'USAGE') THEN 'YES'
-		ELSE 'NO'
-	END::varchar(3) AS "IS_GRANTABLE"
-
+	-- Whether the privilege is grantable to other users
+	CAST(
+		CASE WHEN pg_has_role(pg_roles.oid, c.relowner, 'USAGE')
+		          OR EXISTS (
+		              SELECT 1
+		              FROM aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner))) AS ace(grantor_oid, grantee_oid, prtype, grantable)
+		              WHERE ace.grantee_oid = pg_roles.oid
+		                AND ace.prtype = privs.priv
+		                AND ace.grantable
+		          )
+		     THEN 'YES' ELSE 'NO' END
+	AS varchar(3)) AS "IS_GRANTABLE"
 FROM
 	-- All relations (tables, views, etc.)
 	pg_class c
@@ -193,18 +199,10 @@ FROM
 	-- Cross join with all database roles
 	JOIN pg_roles ON true
 
-	-- LATERAL join to extract privilege types the role has on the table
+	-- LATERAL join to enumerate each privilege type and filter to those held by the role
 	JOIN LATERAL (
-		SELECT array_to_string(array[
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'SELECT') THEN 'SELECT' END,
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'INSERT') THEN 'INSERT' END,
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'UPDATE') THEN 'UPDATE' END,
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'DELETE') THEN 'DELETE' END,
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'TRUNCATE') THEN 'TRUNCATE' END,
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'REFERENCES') THEN 'REFERENCES' END,
-			CASE WHEN has_table_privilege(pg_roles.rolname, c.oid, 'TRIGGER') THEN 'TRIGGER' END
-		], ',') AS priv
-	) AS privs ON privs.priv IS NOT NULL
+		SELECT unnest(ARRAY['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) AS priv
+	) AS privs ON has_table_privilege(pg_roles.rolname, c.oid, privs.priv)
 
 -- Only include valid relation kinds (regular tables, partitioned tables, views, foreign tables, materialized views)
 WHERE c.relkind IN ('r', 'p', 'v', 'f', 'm');
@@ -614,12 +612,7 @@ SELECT
 	CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END::varchar(3) AS "IS_NULLABLE",  -- Whether column allows NULL
 
 	-- DATA_TYPE logic compatible with MySQL conventions
-	CASE
-		WHEN t.typtype = 'd' THEN
-			t.typname    /* Bug - #z5966 #z5964 */
-		ELSE
-			format_type(a.atttypid, NULL)
-	END::varchar(64) AS "DATA_TYPE",
+	mys_information_schema.mys_format_type(t.oid)::varchar(64) AS "DATA_TYPE",
 
 	-- Max character length for character types
 	CAST(information_schema._pg_char_max_length(
@@ -1157,9 +1150,6 @@ SELECT
 	-- Constraint name
 	c.conname::varchar(64) AS "CONSTRAINT_NAME",
 
-	-- Catalog name for the table
-	current_database()::varchar(64) AS "TABLE_CATALOG",
-
 	-- Schema that owns the table
 	nr.nspname::varchar(64) AS "TABLE_SCHEMA",
 
@@ -1180,7 +1170,8 @@ FROM
 	pg_constraint c,
 	pg_class r
 WHERE
-	nc.oid = c.connamespace
+	r.relpersistence <> 't'::"char"
+	AND nc.oid = c.connamespace
 	AND nr.oid = r.relnamespace
 	AND c.conrelid = r.oid
 	AND (c.contype <> ALL (ARRAY['t'::"char", 'x'::"char"]))
@@ -1204,9 +1195,6 @@ SELECT
 	-- Generated constraint name for NOT NULL constraints
 	concat(nr.oid::text, '_', r.oid::text, '_', a.attnum::text, '_not_null')::varchar(64) AS "CONSTRAINT_NAME",
 
-	-- Catalog name for the table
-	current_database()::varchar(64) AS "TABLE_CATALOG",
-
 	-- Schema that owns the table
 	nr.nspname::varchar(64) AS "TABLE_SCHEMA",
 
@@ -1220,7 +1208,8 @@ FROM
 	pg_class r,
 	pg_attribute a
 WHERE
-	nr.oid = r.relnamespace
+	r.relpersistence <> 't'::"char"
+	AND nr.oid = r.relnamespace
 	AND r.oid = a.attrelid
 	AND a.attnotnull
 	AND a.attnum > 0
@@ -1282,13 +1271,17 @@ SELECT
 	p.privilege_type::varchar(64) AS "PRIVILEGE_TYPE",
 
 	-- Whether the privilege is grantable by the grantee
-	CASE
-		WHEN pg_has_role(usr.oid, n.nspowner, 'USAGE') THEN
-			CASE WHEN has_schema_privilege(usr.oid, n.oid, concat(privilege_type, ' WITH GRANT OPTION')) THEN 'YES'
-				 ELSE 'NO'
-			END
-		ELSE 'NO'
-	END::varchar(3) AS "IS_GRANTABLE"
+	CAST(
+		CASE WHEN pg_has_role(usr.oid, n.nspowner, 'USAGE')
+		          OR EXISTS (
+		              SELECT 1
+		              FROM aclexplode(COALESCE(n.nspacl, acldefault('n', n.nspowner))) AS ace(grantor_oid, grantee_oid, prtype, grantable)
+		              WHERE ace.grantee_oid = usr.oid
+		                AND ace.prtype = p.privilege_type
+		                AND ace.grantable
+		          )
+		     THEN 'YES' ELSE 'NO' END
+	AS varchar(3)) AS "IS_GRANTABLE"
 FROM
 	pg_namespace n
 JOIN
