@@ -1588,7 +1588,7 @@ CREATE TABLE mys_information_schema.plugins (
 	"PLUGIN_DESCRIPTION"		longtext,
 	"PLUGIN_LICENSE"			varchar(80),
 	"LOAD_OPTION"				varchar(64)  DEFAULT ''
-);
+) WITH (user_catalog_table = true);
 
 /* Begin - bug#6322 */
 GRANT SELECT ON mys_information_schema.plugins TO PUBLIC;
@@ -1608,7 +1608,7 @@ CREATE TABLE mys_information_schema.engines (
 	"TRANSACTIONS"		varchar(3),
 	"XA"				varchar(3),
 	"SAVEPOINTS"		varchar(3)
-);
+) WITH (user_catalog_table = true);
 
 /* Begin - bug#6322 */
 GRANT SELECT ON mys_information_schema.engines TO PUBLIC;

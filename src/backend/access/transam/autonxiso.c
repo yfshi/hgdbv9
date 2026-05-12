@@ -201,7 +201,7 @@ RegisterAutonxIsoVarExt(const char *name, void *address, int len,
 	oldcxt = MemoryContextSwitchTo(CurrentAutoxIsolationState->context);
 
 	info = palloc0(sizeof(AutonxVarInfo));
-	strncpy(info->name, name, RESNAME_LEN);
+	strlcpy(info->name, name, RESNAME_LEN);
 	info->address = address;
 	info->len = len;
 	info->post_backup = post_backup;

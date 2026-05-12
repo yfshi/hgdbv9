@@ -2,7 +2,7 @@
 # MySQL COMPATIBLE Mode GUC parameters
 #------------------------------------------------------------------------------
 
-#mysql.listen_addresses = 'localhost'
+#mysql.listen_addresses = '*'
 #mysql.port = 3306
 #mysql.protocol_type = mysql	# what kind of protocol listening with
 
