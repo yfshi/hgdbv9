@@ -14234,7 +14234,7 @@ exec_set_plsql_var(PLiSQL_execstate *estate)
 	{
 		plsql_unit = pstrdup(estate->func->namelabel != NULL ? estate->func->namelabel : "");
 		plsql_unit_type = estate->func->namelabel != NULL ? (estate->func->fn_prokind == 'f' ? pstrdup("FUNCTION") : pstrdup("PROCEDURE"))
-														  : pstrdup("ANINYMOUS BLOCK");
+														  : pstrdup("ANONYMOUS BLOCK");
 		unit_var = (PLiSQL_var *)(estate->datums[estate->plsql_unit_varno]);
 		unit_type_var = (PLiSQL_var *)(estate->datums[estate->plsql_unit_type_varno]);
 	}
