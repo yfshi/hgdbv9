@@ -8,7 +8,8 @@
  * Definitions that are needed outside the core parser should be in parser.h.
  *
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0 Global Development Group
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/mysql_parser/mys_gramparse.h
  *

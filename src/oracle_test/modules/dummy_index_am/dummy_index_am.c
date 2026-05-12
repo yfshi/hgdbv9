@@ -3,7 +3,8 @@
  * dummy_index_am.c
  *		Index AM template main file.
  *
- * Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/oracle_test/modules/dummy_index_am/dummy_index_am.c

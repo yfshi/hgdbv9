@@ -5,7 +5,8 @@
  *	 	for the Hook function's definitions.
  *
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/mysql_parser/mys_parser_hook.h
  *

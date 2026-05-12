@@ -3,13 +3,14 @@
  * testlo.c
  *	  test using large objects with libpq
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
-  *
-  *
-  * IDENTIFICATION
-  *    src/mysql_test/examples/testlo.c
-  *
-  *   add the file for requirement "SRS-MISC-MYSQL-FRAME"
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
+ *
+ *
+ * IDENTIFICATION
+ *    src/mysql_test/examples/testlo.c
+ *
+ *   add the file for requirement "SRS-MISC-MYSQL-FRAME"
  *
  *-------------------------------------------------------------------------
  */

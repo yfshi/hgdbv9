@@ -3,7 +3,8 @@
  * test_integerset.c
  *		Test integer set data structure.
  *
- * Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/oracle_test/modules/test_integerset/test_integerset.c

@@ -4,9 +4,10 @@
 /*-------------------------------------------------------------------------
  *
  * mys_gram.y
- *	   IvorySQL-2.0 BISON rules/actions  (MySQL compatible)
+ *	   HighGo BISON rules/actions  (MySQL compatible)
  *
- * Portions Copyright (c) 2019, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	   src/backend/mysql_parser/mys_gram.y

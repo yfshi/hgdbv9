@@ -2,7 +2,8 @@
  *
  * isolation_main --- pg_regress test launcher for isolation tests (Oracle compatibility)
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/oracle_test/isolation/isolation_main.c
  *

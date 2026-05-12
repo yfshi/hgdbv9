@@ -1,8 +1,9 @@
 #
 # ora_errcodes.txt
-#      IvorySQL-2.0 error codes (only for plisql in oracle compatibility mode now)
+#      HighGo error codes (only for plisql in oracle compatibility mode now)
 #
-# Copyright (c) 2022, IvorySQL-2.0 Global Development Group
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
 #
 # This list serves as the basis for generating source files containing error
 # codes. It is kept in a common format to make sure all these source files have

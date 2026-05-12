@@ -8,7 +8,8 @@
  *
  * This code is released under the terms of the PostgreSQL License.
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/mysql_test/regress/pg_regress.c
  *

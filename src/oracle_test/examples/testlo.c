@@ -3,7 +3,8 @@
  * testlo.c
  *	  test using large objects with libpq
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  *
  * IDENTIFICATION

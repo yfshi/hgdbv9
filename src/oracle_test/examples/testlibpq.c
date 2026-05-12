@@ -4,7 +4,7 @@
  *
  * testlibpq.c
  *
- *		Test the C version of libpq, the IvorySQL-2.0 frontend library.
+ *		Test the C version of libpq, the HighGo frontend library.
  *
  *		add the file for requirement "SQL PARSER"
  */

@@ -3,7 +3,8 @@
  * test_parser.c
  *	  Simple example of a text search parser
  *
- * Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/mysql_test/modules/test_parser/test_parser.c

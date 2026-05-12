@@ -2,7 +2,7 @@
 /*-------------------------------------------------------------------------
  *
  * mys_scan.l
- *    lexical scanner for IvorySQL-2.0 (MySQL compatible)
+ *    lexical scanner for HighGo (MySQL compatible)
  *
  * NOTE NOTE NOTE:
  *
@@ -22,7 +22,8 @@
  * Postgres 9.2, this check is made automatically by the Makefile.)
  *
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0 Global Development Group
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/backend/mysql_parser/mys_scan.l

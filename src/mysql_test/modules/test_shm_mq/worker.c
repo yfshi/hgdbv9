@@ -9,7 +9,8 @@
  *		but it should be possible to use much of the control logic just
  *		as presented here.
  *
- * Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/mysql_test/modules/test_shm_mq/worker.c

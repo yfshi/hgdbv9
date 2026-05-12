@@ -7,7 +7,8 @@
  * by the PG_KEYWORD macro, which is not defined in this file; it can
  * be defined by the caller for special purposes.
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0 Global Development Group
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/include/mysql_parser/mys_kwlist.h

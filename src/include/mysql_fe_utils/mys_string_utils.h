@@ -6,7 +6,8 @@
  * assorted contexts.
  *
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/mysql_fe_utils/mys_string_utils.h
  *

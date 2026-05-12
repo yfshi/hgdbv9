@@ -5,7 +5,8 @@
  *		number of background workers for shared memory message queue
  *		testing.
  *
- * Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/mysql_test/modules/test_shm_mq/setup.c

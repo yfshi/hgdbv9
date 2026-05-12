@@ -7,7 +7,8 @@
  * by the PG_KEYWORD macro, which is not defined in this file; it can
  * be defined by the caller for special purposes.
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/pl/plisql/src/pl_reserved_kwlist.h
  *

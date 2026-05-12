@@ -21,7 +21,8 @@
 # Note that case folding works correctly only for all-ASCII keywords!
 #
 #
-# Portions Copyright (c) 2023, IvorySQL-2.0
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
 #
 # src/tools/mys_gen_keywordlist.pl
 #

@@ -2,7 +2,8 @@
 #
 # Makefile for src/mysql_test/ldap
 #
-# Portions Copyright (c) 2022, IvorySQL-2.0
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
 #
 # src/mysql_test/ldap/Makefile
 #
