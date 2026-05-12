@@ -229,3 +229,19 @@ REVOKE ALL ON DATABASE CONTRIB_REGRESSION FROM U1;
 REVOKE ALL ON DATABASE CONTRIB_REGRESSION FROM U2;
 DROP USER U1;
 DROP USER U2;
+
+/* Begin - bug#7760 */
+CREATE TABLE tb_highgo (id INT,name VARCHAR(100)) PARTITION BY HASH (id);
+CREATE TABLE tb_highgo_p1 PARTITION OF tb_highgo FOR VALUES WITH (MODULUS 2, REMAINDER 0);
+CREATE UNLOGGED TABLE tb_highgo_p2 PARTITION OF tb_highgo FOR VALUES WITH (MODULUS 2, REMAINDER 1);
+INSERT INTO tb_highgo VALUES(generate_series(1,1000),md5(random()::text));
+
+ANALYZE tb_highgo;
+SELECT count(1) FROM dba_tab_partitions WHERE table_name = 'TB_HIGHGO' AND last_analyzed IS NOT NULL;
+
+ANALYZE tb_highgo_p1;
+ANALYZE tb_highgo_p2;
+SELECT count(1) FROM dba_tab_partitions WHERE table_name = 'TB_HIGHGO' AND last_analyzed IS NOT NULL;
+
+DROP TABLE tb_highgo;
+/* End - bug#7760 */
