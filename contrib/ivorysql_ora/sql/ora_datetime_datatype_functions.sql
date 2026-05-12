@@ -137,11 +137,11 @@ insert into datetest values (to_char(timestamp '2017-03-12 13:12:23','DD-MM-YYYY
 insert into datetest values (to_char(timestamp '2017-03-12 13:12:23','DD-MM-YYYY HH:MI:SS AM'),7);
 insert into datetest values (to_char(timestamp '2017-03-12 13:12:23','DD-MM-YYYY HH24:MI:SS','NLS_DATE_LANGUAGE = english'),8);
 
-insert into datetest values (to_char(timestamptz '2017-03-12 13:12:23 +2:00'),9);
-insert into datetest values (to_char(timestamptz '2017-03-12 13:12:23 +2:00','DD-MM-YYYY'),10);
-insert into datetest values (to_char(timestamptz '2017-03-12 13:12:23 +2:00','DD-MM-YYYY HH24:MI:SS'),11);
-insert into datetest values (to_char(timestamptz '2017-03-12 13:12:23 +2:00','DD-MM-YYYY HH:MI:SS AM'),12);
-insert into datetest values (to_char(timestamptz '2017-03-12 13:12:23 +2:00','DD-MM-YYYY HH24:MI:SS','NLS_DATE_LANGUAGE = english'),13);
+insert into datetest values (to_char(timestamp '2017-03-12 13:12:23 +2:00'),9);
+insert into datetest values (to_char(timestamp '2017-03-12 13:12:23 +2:00','DD-MM-YYYY'),10);
+insert into datetest values (to_char(timestamp '2017-03-12 13:12:23 +2:00','DD-MM-YYYY HH24:MI:SS'),11);
+insert into datetest values (to_char(timestamp '2017-03-12 13:12:23 +2:00','DD-MM-YYYY HH:MI:SS AM'),12);
+insert into datetest values (to_char(timestamp '2017-03-12 13:12:23 +2:00','DD-MM-YYYY HH24:MI:SS','NLS_DATE_LANGUAGE = english'),13);
 
 insert into datetest values (to_char(INTERVAL '123-2' YEAR(3) TO MONTH),14);
 insert into datetest values (to_char(INTERVAL '123-2' YEAR(3) TO MONTH,'DD-MM-YYYY'),15);
@@ -797,3 +797,31 @@ CREATE TABLE "GOOGOSOFT2"(
 DROP TABLE "GOOGOSOFT";
 DROP TABLE "GOOGOSOFT2";
 /* End - OA-REQ-1604 */
+
+/* Begin - OA-REQ-2128 */
+SELECT to_char(date '2026-05-01') FROM dual;
+SELECT to_char(timestamp '2026-05-01 11:11:11') FROM dual;
+SELECT to_char(timestamp '2026-05-01 11:11:11 +02:00') FROM dual;
+SELECT to_char(INTERVAL '10-1' YEAR(3) TO MONTH) FROM dual;
+SELECT to_char(INTERVAL '10 11:11:11' DAY(3) TO SECOND) FROM dual;
+
+SELECT 10 >= to_char('9') FROM dual;
+SELECT 10 >= to_char('9'::char(1 char)) FROM dual;
+SELECT 10 >= to_char('9'::char(1 byte)) FROM dual;
+SELECT 10 >= to_char('9'::varchar2(1 char)) FROM dual;
+SELECT 10 >= to_char('9'::varchar2(1 byte)) FROM dual;
+SELECT 10 >= to_char(9::int2) FROM dual;
+SELECT 10 >= to_char(9::int4) FROM dual;
+SELECT 10 >= to_char(9::int8) FROM dual;
+SELECT 10 >= to_char(9::number) FROM dual;
+
+SELECT 10::number >= to_char('9') FROM dual;
+SELECT 10::number >= to_char('9'::char(1 char)) FROM dual;
+SELECT 10::number >= to_char('9'::char(1 byte)) FROM dual;
+SELECT 10::number >= to_char('9'::varchar2(1 char)) FROM dual;
+SELECT 10::number >= to_char('9'::varchar2(1 byte)) FROM dual;
+SELECT 10::number >= to_char(9::int2) FROM dual;
+SELECT 10::number >= to_char(9::int4) FROM dual;
+SELECT 10::number >= to_char(9::int8) FROM dual;
+SELECT 10::number >= to_char(9::number) FROM dual;
+/* End - OA-REQ-2128 */

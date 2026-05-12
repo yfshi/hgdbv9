@@ -11723,7 +11723,6 @@ AS IMPLICIT;
 /* End - BUG#998 */
 /* End - BUGID:0000536 */
 
-
 CREATE CAST (sys.oravarcharchar AS pg_catalog.int8)
 WITH INOUT
 AS IMPLICIT;
@@ -11735,18 +11734,6 @@ AS IMPLICIT;
 CREATE CAST (pg_catalog.varchar AS pg_catalog.int8)
 WITH INOUT
 AS IMPLICIT;
-
-
-
---create function for sgrdb
---bug#984 add immutable
-CREATE OR REPLACE FUNCTION sys.to_char(text)
-RETURNS text AS 
-$$
-	SELECT $1;
-$$
-PARALLEL SAFE	-- BUG#M0000422
-LANGUAGE SQL IMMUTABLE;
 
 --bug#797 generate_series support int2,int4,int8 but number has more choices will result error
 CREATE FUNCTION sys.generate_series(number, number) 
