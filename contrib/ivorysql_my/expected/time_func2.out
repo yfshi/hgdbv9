@@ -1,0 +1,807 @@
+-- V920 MySQL datetime function
+set TIMEZONE='Asia/Shanghai';
+-- Test DATE_FORMAT function
+-- Test basic functionality
+SELECT date_format('2023-12-25 10:30:45', '%Y-%m-%d') AS date_only;
+ date_only  
+------------
+ 2023-12-25
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%H:%i:%s') AS time_only;
+ time_only 
+-----------
+ 10:30:45
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%Y-%m-%d %H:%i:%s') AS datetime_full;
+    datetime_full    
+---------------------
+ 2023-12-25 10:30:45
+(1 row)
+
+-- Test various format specifiers
+SELECT date_format('2023-12-25 10:30:45', '%Y') AS year_full;
+ year_full 
+-----------
+ 2023
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%y') AS year_short;
+ year_short 
+------------
+ 23
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%m') AS month_2digits;
+ month_2digits 
+---------------
+ 12
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%c') AS month_numeric;
+ month_numeric 
+---------------
+ 12
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%d') AS day_2digits;
+ day_2digits 
+-------------
+ 25
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%e') AS day_numeric;
+ day_numeric 
+-------------
+ 25
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%H') AS hour_24_2digits;
+ hour_24_2digits 
+-----------------
+ 10
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%h') AS hour_12_2digits;
+ hour_12_2digits 
+-----------------
+ 10
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%k') AS hour_24_numeric;
+ hour_24_numeric 
+-----------------
+ 10
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%l') AS hour_12_numeric;
+ hour_12_numeric 
+-----------------
+ 10
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%i') AS minutes;
+ minutes 
+---------
+ 30
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%s') AS seconds;
+ seconds 
+---------
+ 45
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%p') AS ampm;
+ ampm 
+------
+ AM
+(1 row)
+
+-- Test combined format specifiers
+SELECT date_format('2023-12-25 10:30:45', '%r') AS time_12hour;
+ time_12hour 
+-------------
+ 10:30:45 AM
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%T') AS time_24hour;
+ time_24hour 
+-------------
+ 10:30:45
+(1 row)
+
+-- Test weekday and month names
+SELECT date_format('2023-12-25 10:30:45', '%W') AS weekday_full;
+ weekday_full 
+--------------
+ Monday
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%a') AS weekday_abbreviated;
+ weekday_abbreviated 
+---------------------
+ Mon
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%w') AS weekday_number;
+ weekday_number 
+----------------
+ 1
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%M') AS month_full;
+ month_full 
+------------
+ December
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%b') AS month_abbreviated;
+ month_abbreviated 
+-------------------
+ Dec
+(1 row)
+
+-- Test day with suffix
+SELECT date_format('2023-12-25 10:30:45', '%D') AS day_with_suffix;
+ day_with_suffix 
+-----------------
+ 25th
+(1 row)
+
+SELECT date_format('2023-12-01 10:30:45', '%D') AS day_with_suffix_1st;
+ day_with_suffix_1st 
+---------------------
+ 1st
+(1 row)
+
+SELECT date_format('2023-12-02 10:30:45', '%D') AS day_with_suffix_2nd;
+ day_with_suffix_2nd 
+---------------------
+ 2nd
+(1 row)
+
+SELECT date_format('2023-12-03 10:30:45', '%D') AS day_with_suffix_3rd;
+ day_with_suffix_3rd 
+---------------------
+ 3rd
+(1 row)
+
+-- Test day of year
+SELECT date_format('2023-12-31 10:30:45', '%j') AS day_of_year;
+ day_of_year 
+-------------
+ 365
+(1 row)
+
+-- Test week numbers
+SELECT date_format('2023-12-25 10:30:45', '%U') AS week_number_sunday;
+ week_number_sunday 
+--------------------
+ 52
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%u') AS week_number_monday;
+ week_number_monday 
+--------------------
+ 52
+(1 row)
+
+-- Test year for week number
+SELECT date_format('2023-12-25 10:30:45', '%X') AS year_for_week_sunday;
+ year_for_week_sunday 
+----------------------
+ 2023
+(1 row)
+
+SELECT date_format('2023-12-25 10:30:45', '%x') AS year_for_week_monday;
+ year_for_week_monday 
+----------------------
+ 2023
+(1 row)
+
+-- Test literal %
+SELECT date_format('2023-12-25 10:30:45', 'Year: %Y%%, Month: %m%%') AS literal_percent;
+     literal_percent     
+-------------------------
+ Year: 2023%, Month: 12%
+(1 row)
+
+-- Test with date type
+SELECT date_format('2023-12-25', '%Y-%m-%d') AS date_type_test;
+ date_type_test 
+----------------
+ 2023-12-25
+(1 row)
+
+-- Test with time type
+SELECT date_format('10:30:45', '%H:%i:%s') AS time_type_test;
+WARNING:  Incorrect datetime value: '10:30:45'
+ time_type_test 
+----------------
+ 
+(1 row)
+
+-- Test with timestamp type
+SELECT date_format('2023-12-25 10:30:45', '%Y-%m-%d %H:%i:%s') AS timestamp_type_test;
+ timestamp_type_test 
+---------------------
+ 2023-12-25 10:30:45
+(1 row)
+
+-- Test edge cases
+SELECT date_format('2024-02-29 12:00:00', '%Y-%m-%d') AS leap_day;
+  leap_day  
+------------
+ 2024-02-29
+(1 row)
+
+SELECT date_format('2023-01-01 00:00:00', '%H:%i:%s') AS midnight;
+ midnight 
+----------
+ 00:00:00
+(1 row)
+
+SELECT date_format('2023-12-31 23:59:59', '%H:%i:%s') AS new_year_eve;
+ new_year_eve 
+--------------
+ 23:59:59
+(1 row)
+
+drop table if exists t1;
+NOTICE:  table "t1" does not exist, skipping
+SET sql_mode = default;
+-- #
+-- # Test of date_format()
+-- #
+create table t1 (d date);
+insert into t1 values ('2004-07-14'),('2005-07-14');
+select date_format(d,'%d') from t1 order by 1;
+ date_format 
+-------------
+ 14
+ 14
+(2 rows)
+
+drop table t1;
+-- #
+-- # Test of locale dependent date format (WL#2928 Date Translation NRE)
+-- #
+set names latin1;
+select date_format('2004-01-01','%W (%a), %e %M (%b) %Y');
+             date_format              
+--------------------------------------
+ Thursday (Thu), 1 January (Jan) 2004
+(1 row)
+
+set lc_time_names=ru_RU;
+set names koi8r;
+select date_format('2004-01-01','%W (%a), %e %M (%b) %Y');
+             date_format              
+--------------------------------------
+ Thursday (Thu), 1 January (Jan) 2004
+(1 row)
+
+set lc_time_names=de_DE;
+set names latin1;
+select date_format('2004-01-01','%W (%a), %e %M (%b) %Y');
+             date_format              
+--------------------------------------
+ Thursday (Thu), 1 January (Jan) 2004
+(1 row)
+
+set names latin1;
+set lc_time_names=en_US;
+-- #
+-- # Bug #14016 
+-- #
+create table t1 (f1 datetime);
+insert into t1 (f1) values ('2005-01-01');
+insert into t1 (f1) values ('2005-02-01');
+select date_format(f1, '%m') as d1, date_format(f1, '%M') as d2 from t1 order by date_format(f1, '%M');
+ d1 |    d2    
+----+----------
+ 02 | February
+ 01 | January
+(2 rows)
+
+drop table t1;
+-- #
+-- # Bug#20729:  Bad date_format() call makes mysql server crash
+-- #
+SELECT DATE_FORMAT('%Y-%m-%d %H:%i:%s', 1151414896);
+ERROR:  function DATE_FORMAT(unknown, integer) does not exist
+LINE 1: SELECT DATE_FORMAT('%Y-%m-%d %H:%i:%s', 1151414896);
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+-- #
+-- # Bug #41470: DATE_FORMAT() crashes the complete server with a valid date
+-- #
+-- # show that these two do not crash the server:
+SELECT DATE_FORMAT('0000-01-01','%W %d %M %Y') as valid_date;
+        valid_date        
+--------------------------
+ Saturday 01 January 0000
+(1 row)
+
+SELECT DATE_FORMAT('0000-02-28','%W %d %M %Y') as valid_date;
+       valid_date        
+-------------------------
+ Monday 28 February 0000
+(1 row)
+
+-- # show that date within the Gregorian range render correct results: (THU)
+SELECT DATE_FORMAT('2009-01-01','%W %d %M %Y') as valid_date;
+        valid_date        
+--------------------------
+ Thursday 01 January 2009
+(1 row)
+
+-- Test FROM_UNIXTIME function with precision handling
+-- Test FROM_UNIXTIME with integer timestamp (precision 0)
+SELECT ivymy.from_unixtime(0::bigint) AS epoch;
+        epoch        
+---------------------
+ 1970-01-01 08:00:00
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::bigint) AS billion_seconds;
+   billion_seconds   
+---------------------
+ 2001-09-09 09:46:40
+(1 row)
+
+SELECT ivymy.from_unixtime(1609459200::bigint) AS start_of_2021;
+    start_of_2021    
+---------------------
+ 2021-01-01 08:00:00
+(1 row)
+
+-- Test FROM_UNIXTIME with decimal timestamp (precision matches input)
+SELECT ivymy.from_unixtime(1000000000.1::numeric) AS precision_1;
+      precision_1      
+-----------------------
+ 2001-09-09 09:46:40.1
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.12::numeric) AS precision_2;
+      precision_2       
+------------------------
+ 2001-09-09 09:46:40.12
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.123::numeric) AS precision_3;
+       precision_3       
+-------------------------
+ 2001-09-09 09:46:40.123
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.1234::numeric) AS precision_4;
+       precision_4        
+--------------------------
+ 2001-09-09 09:46:40.1234
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.12345::numeric) AS precision_5;
+        precision_5        
+---------------------------
+ 2001-09-09 09:46:40.12345
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.123456::numeric) AS precision_6;
+        precision_6         
+----------------------------
+ 2001-09-09 09:46:40.123456
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.1234567::numeric) AS precision_7_truncated;
+   precision_7_truncated    
+----------------------------
+ 2001-09-09 09:46:40.123456
+(1 row)
+
+-- Test FROM_UNIXTIME with float timestamp (precision 6, returns text)
+SELECT ivymy.from_unixtime(1000000000.5::float8) AS float_half_second;
+     float_half_second      
+----------------------------
+ 2001-09-09 09:46:40.500000
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.123456789::float8) AS float_max_precision;
+    float_max_precision     
+----------------------------
+ 2001-09-09 09:46:40.123456
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.0::float8) AS float_zero_fractional;
+   float_zero_fractional    
+----------------------------
+ 2001-09-09 09:46:40.000000
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.1::float8) AS float_one_digit;
+      float_one_digit       
+----------------------------
+ 2001-09-09 09:46:40.100000
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000.12::float8) AS float_two_digits;
+      float_two_digits      
+----------------------------
+ 2001-09-09 09:46:40.120000
+(1 row)
+
+-- Test FROM_UNIXTIME with format
+SELECT ivymy.from_unixtime(1000000000::float8, '%Y-%m-%d %H:%i:%s') AS formatted;
+      formatted      
+---------------------
+ 2001-09-09 09:46:40
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%Y-%m-%d') AS date_only;
+ date_only  
+------------
+ 2001-09-09
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%H:%i:%s') AS time_only;
+ time_only 
+-----------
+ 09:46:40
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%W %M %Y') AS weekday_month_year;
+  weekday_month_year   
+-----------------------
+ Sunday September 2001
+(1 row)
+
+-- Test FROM_UNIXTIME with NULL
+SELECT ivymy.from_unixtime(NULL::bigint) AS null_input;
+ null_input 
+------------
+ 
+(1 row)
+
+-- Test FROM_UNIXTIME with negative timestamp (before 1970)
+SELECT ivymy.from_unixtime(-1000000000::bigint) AS before_epoch;
+    before_epoch     
+---------------------
+ 1938-04-25 06:13:20
+(1 row)
+
+-- Test FROM_UNIXTIME with very large timestamp
+SELECT ivymy.from_unixtime(2000000000::bigint) AS future_timestamp;
+  future_timestamp   
+---------------------
+ 2033-05-18 11:33:20
+(1 row)
+
+-- Test FROM_UNIXTIME with format and NULL
+SELECT ivymy.from_unixtime(1000000000::float8, NULL) AS null_format;
+ null_format 
+-------------
+ 
+(1 row)
+
+SELECT ivymy.from_unixtime(NULL::float8, '%Y-%m-%d') AS null_timestamp_format;
+ null_timestamp_format 
+-----------------------
+ 
+(1 row)
+
+-- Test FROM_UNIXTIME with various format strings
+SELECT ivymy.from_unixtime(1000000000::float8, '%Y') AS year_only;
+ year_only 
+-----------
+ 2001
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%m') AS month_only;
+ month_only 
+------------
+ 09
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%d') AS day_only;
+ day_only 
+----------
+ 09
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%H') AS hour_only;
+ hour_only 
+-----------
+ 09
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%i') AS minute_only;
+ minute_only 
+-------------
+ 46
+(1 row)
+
+SELECT ivymy.from_unixtime(1000000000::float8, '%s') AS second_only;
+ second_only 
+-------------
+ 40
+(1 row)
+
+-- Test FROM_UNIXTIME with decimal and format
+SELECT ivymy.from_unixtime(1000000000.123456::numeric, '%Y-%m-%d %H:%i:%s.%f') AS formatted_with_microseconds;
+ formatted_with_microseconds 
+-----------------------------
+ 2001-09-09 09:46:40.123456
+(1 row)
+
+set TIMEZONE=default;
+-- date_add
+SELECT date_add('1997-12-31 23:59:59', INTERVAL 1 SECOND);
+          date_add          
+----------------------------
+ 1998-01-01 00:00:00.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL 1 MINUTE);
+          date_add          
+----------------------------
+ 1998-01-01 00:00:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL 1 HOUR);
+          date_add          
+----------------------------
+ 1998-01-01 00:59:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL 1 DAY);
+          date_add          
+----------------------------
+ 1998-01-01 23:59:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL 1 MONTH);
+          date_add          
+----------------------------
+ 1998-01-31 23:59:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL '1 YEAR');
+          date_add          
+----------------------------
+ 1998-12-31 23:59:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL '1:1 HOUR_MINUTE');
+          date_add          
+----------------------------
+ 1998-01-01 01:00:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL '1:1:1 HOUR_SECOND');
+          date_add          
+----------------------------
+ 1998-01-01 01:01:00.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL '1 1:1 DAY_MINUTE');
+          date_add          
+----------------------------
+ 1998-01-02 01:00:59.000000
+(1 row)
+
+SELECT date_add('1997-12-31 23:59:59', INTERVAL '1 1:1:1 DAY_SECOND');
+          date_add          
+----------------------------
+ 1998-01-02 01:01:00.000000
+(1 row)
+
+SELECT date_add('1997-12-31', INTERVAL 1 SECOND);
+          date_add          
+----------------------------
+ 1997-12-31 00:00:01.000000
+(1 row)
+
+SELECT date_add('1997-12-31', INTERVAL 1 DAY);
+          date_add          
+----------------------------
+ 1998-01-01 00:00:00.000000
+(1 row)
+
+SELECT date_add(NULL, INTERVAL 100000 SECOND);
+ date_add 
+----------
+ 
+(1 row)
+
+SELECT date_add('1998-01-30', INTERVAL 1 MONTH);
+          date_add          
+----------------------------
+ 1998-02-28 00:00:00.000000
+(1 row)
+
+SELECT date_add('1996-02-29', INTERVAL '1 YEAR');
+          date_add          
+----------------------------
+ 1997-02-28 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(cast('1998-08-14 23:59:59' as date), INTERVAL 1 DAY);
+  DATE_ADD  
+------------
+ 1998-08-15
+(1 row)
+
+SELECT DATE_ADD('1998-08-14'::date, INTERVAL 1 DAY);
+  DATE_ADD  
+------------
+ 1998-08-15
+(1 row)
+
+-- date_sub
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL 1 SECOND);
+          date_sub          
+----------------------------
+ 1997-12-31 23:59:59.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL 1 MINUTE);
+          date_sub          
+----------------------------
+ 1997-12-31 23:59:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL 1 HOUR);
+          date_sub          
+----------------------------
+ 1997-12-31 23:00:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL 1 DAY);
+          date_sub          
+----------------------------
+ 1997-12-31 00:00:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL 1 MONTH);
+          date_sub          
+----------------------------
+ 1997-12-01 00:00:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL '1 YEAR');
+          date_sub          
+----------------------------
+ 1997-01-01 00:00:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL '1:1 HOUR_MINUTE');
+          date_sub          
+----------------------------
+ 1997-12-31 22:59:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL '1:1:1 HOUR_SECOND');
+          date_sub          
+----------------------------
+ 1997-12-31 22:58:59.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL '1 1:1 DAY_MINUTE');
+          date_sub          
+----------------------------
+ 1997-12-30 22:59:00.000000
+(1 row)
+
+SELECT date_sub('1998-01-01 00:00:00', INTERVAL '1 1:1:1 DAY_SECOND');
+          date_sub          
+----------------------------
+ 1997-12-30 22:58:59.000000
+(1 row)
+
+SELECT date_sub('1998-01-02', INTERVAL 31 DAY);
+          date_sub          
+----------------------------
+ 1997-12-02 00:00:00.000000
+(1 row)
+
+SELECT date_sub('0000-00-00 00:00:00', INTERVAL 1 SECOND);
+WARNING:  Incorrect datetime value: '0000-00-00 00:00:00'
+ date_sub 
+----------
+ 
+(1 row)
+
+SELECT date_sub('0050-01-01 00:00:01', INTERVAL 2 SECOND);
+          date_sub          
+----------------------------
+ 0049-12-31 23:59:59.000000
+(1 row)
+
+SELECT date_sub('0199-01-01 00:00:01', INTERVAL 2 SECOND);
+          date_sub          
+----------------------------
+ 0198-12-31 23:59:59.000000
+(1 row)
+
+SELECT date_add('0199-12-31 23:59:59', INTERVAL 2 SECOND);
+          date_add          
+----------------------------
+ 0200-01-01 00:00:01.000000
+(1 row)
+
+SELECT date_sub('0200-01-01 00:00:01', INTERVAL 2 SECOND);
+          date_sub          
+----------------------------
+ 0199-12-31 23:59:59.000000
+(1 row)
+
+SELECT date_sub('0200-01-01 00:00:01', INTERVAL 1 SECOND);
+          date_sub          
+----------------------------
+ 0200-01-01 00:00:00.000000
+(1 row)
+
+-- adddate
+SELECT adddate('1997-12-31 23:59:59.000001', 10);
+          adddate           
+----------------------------
+ 1998-01-10 23:59:59.000001
+(1 row)
+
+SELECT adddate('1997-12-31 23:59:59.000001', interval 10 day);
+          adddate           
+----------------------------
+ 1998-01-10 23:59:59.000001
+(1 row)
+
+SELECT adddate(19971231235959, interval 10 day);
+          adddate           
+----------------------------
+ 1998-01-10 23:59:59.000000
+(1 row)
+
+SELECT adddate('1997-12-31 23:59:59.000001'::pg_catalog.timestamp, 10);
+       adddate       
+---------------------
+ 1998-01-10 23:59:59
+(1 row)
+
+SELECT adddate(19971231235959, 10);
+          adddate           
+----------------------------
+ 1998-01-10 23:59:59.000000
+(1 row)
+
+-- subdate
+SELECT subdate('1997-12-31 23:59:59.000001', 10);
+          subdate           
+----------------------------
+ 1997-12-21 23:59:59.000001
+(1 row)
+
+SELECT subdate('1997-12-31 23:59:59.000001', interval 10 day);
+          subdate           
+----------------------------
+ 1997-12-21 23:59:59.000001
+(1 row)
+
+SELECT subdate(19971231235959, interval 10 day);
+          subdate           
+----------------------------
+ 1997-12-21 23:59:59.000000
+(1 row)
+
+SELECT subdate('1997-12-31 23:59:59.000001'::pg_catalog.timestamp, 10);
+       subdate       
+---------------------
+ 1997-12-21 23:59:59
+(1 row)
+
+SELECT subdate(19971231235959, 10);
+          subdate           
+----------------------------
+ 1997-12-21 23:59:59.000000
+(1 row)
+

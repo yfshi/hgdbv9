@@ -637,7 +637,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 
 %type <list>	extract_list overlay_list position_list
 %type <list>	substr_list trim_list
-%type <list>	opt_interval interval_second
+%type <list>	opt_interval interval_second not_empty_interval
 %type <str>		unicode_normal_form
 
 %type <boolean> opt_instead
@@ -16974,6 +16974,12 @@ opt_timezone:
 		;
 
 opt_interval:
+			not_empty_interval						{ $$ = $1; }
+			| /*EMPTY*/
+				{ $$ = NIL; }
+		;
+
+not_empty_interval:
 			MONTH_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); }
 			| DAY_P
@@ -17021,8 +17027,6 @@ opt_interval:
 					linitial($$) = makeIntConst(INTERVAL_MASK(MINUTE) |
 												INTERVAL_MASK(SECOND), @1);
 				}
-			| /*EMPTY*/
-				{ $$ = NIL; }
 		;
 
 interval_second:
@@ -19886,6 +19890,12 @@ AexprConst: Iconst
 					TypeName *t = $1;
 					t->typmods = $3;
 					$$ = makeStringConstCast($2, @2, t);
+				}
+			| ConstInterval Iconst not_empty_interval
+				{
+					TypeName *t = $1;
+					t->typmods = $3;
+					$$ = makeStringConstCast(psprintf("%d", $2), @2, t);
 				}
 			| ConstInterval '(' expr_list ')' opt_sconst
 				{

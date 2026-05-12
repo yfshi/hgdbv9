@@ -38,6 +38,7 @@
 #include "utils/datetime.h"
 #include "utils/elog.h"
 #include "utils/float.h"
+#include "utils/formatting.h"
 #include "utils/fmgrprotos.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
@@ -50,6 +51,24 @@
 #include "../include/mys_locale.h"
 
 PG_FUNCTION_INFO_V1(str_to_date);
+PG_FUNCTION_INFO_V1(date_format);
+PG_FUNCTION_INFO_V1(from_unixtime_int);
+PG_FUNCTION_INFO_V1(from_unixtime_numeric);
+PG_FUNCTION_INFO_V1(from_unixtime_float);
+PG_FUNCTION_INFO_V1(from_unixtime_format);
+PG_FUNCTION_INFO_V1(timestamp_adddate_interval);
+PG_FUNCTION_INFO_V1(datetimes_adddate_interval);
+PG_FUNCTION_INFO_V1(date_adddate_interval);
+PG_FUNCTION_INFO_V1(timestamp_adddate_days);
+PG_FUNCTION_INFO_V1(datetimes_adddate_days);
+PG_FUNCTION_INFO_V1(date_adddate_days);
+PG_FUNCTION_INFO_V1(timestamp_subdate_interval);
+PG_FUNCTION_INFO_V1(datetimes_subdate_interval);
+PG_FUNCTION_INFO_V1(date_subdate_interval);
+PG_FUNCTION_INFO_V1(timestamp_subdate_days);
+PG_FUNCTION_INFO_V1(datetimes_subdate_days);
+PG_FUNCTION_INFO_V1(date_subdate_days);
+
 PG_FUNCTION_INFO_V1(timestampdiff);
 PG_FUNCTION_INFO_V1(dayofmonth);
 PG_FUNCTION_INFO_V1(dayofweek);
@@ -826,6 +845,507 @@ str_to_date(PG_FUNCTION_ARGS)
 										CStringGetDatum(buf),
 										ObjectIdGetDatum(InvalidOid),
 										Int32GetDatum((((14 + typmod) << 16) | typmod) + VARHDRSZ)));
+}
+
+
+/* Begin - bug#z5130 */
+static int64
+mys_tm2time(struct pg_tm *tm)
+{
+    int64 time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+
+    return time;
+}
+
+static int64
+mys_tm2date(struct pg_tm *tm)
+{
+    int64 date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+    return date;
+}
+
+static int64
+mys_tm2datetime(struct pg_tm *tm)
+{
+    int64 date = mys_tm2date(tm);
+    int64 time = mys_tm2time(tm);
+    int64 datetime = date * 1000000 + time;
+
+    return datetime;
+}
+
+static void
+mys_time2tm(int64 time, struct pg_tm *tm)
+{
+    tm->tm_hour = time / 10000;
+    tm->tm_min = (time % 10000) / 100;
+    tm->tm_sec = (time % 10000) % 100;
+}
+
+static void
+mys_date2tm(int64 date, struct pg_tm *tm)
+{
+    tm->tm_year = date / 10000;
+    tm->tm_mon = (date % 10000) / 100;
+    tm->tm_mday = (date % 10000) % 100;
+}
+
+static void
+mys_datetime2tm(int64 datetime, struct pg_tm *tm)
+{
+    int64   date = datetime / 1000000;
+    int64   time = datetime % 1000000;
+
+    mys_date2tm(date, tm);
+    mys_time2tm(time, tm);
+}
+
+static void
+mys_datetimes2tm(Numeric datetimes, struct pg_tm *tm, fsec_t *fsec)
+{
+    int64       datetime;
+    Numeric		tempfsec;
+
+    datetime = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(datetimes)));
+    tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(datetimes),
+                                                   NumericGetDatum(int64_to_numeric(1000000))));
+    tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mod, NumericGetDatum(tempfsec),
+                                                   NumericGetDatum(int64_to_numeric(1000000))));
+
+    *fsec = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(tempfsec)));
+
+    if (*fsec > 500000)
+        datetime--;
+
+    mys_datetime2tm(datetime, tm);
+}
+/* End - bug#z5130 */
+
+static void
+datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result_size, fsec_t fsec)
+{
+	size_t format_len;
+	int result_len = 0;
+	size_t remaining;
+
+	format_len = strlen(format);
+
+	/* Process format string */
+	for (size_t i = 0; i < format_len; i++)
+	{
+		if (result_len >= result_size - 1)
+			break;
+
+		remaining = result_size - result_len - 1;
+
+		if (format[i] == '%' && i + 1 < format_len)
+		{
+			i++;
+			switch (format[i])
+			{
+			case 'Y': /* Year, 4 digits */
+				result_len += snprintf(result + result_len, remaining, "%04d", tm->tm_year);
+				break;
+			case 'y': /* Year, 2 digits */
+				result_len += snprintf(result + result_len, remaining, "%02d", (tm->tm_year + 1900) % 100);
+				break;
+			case 'm': /* Month, 2 digits (01-12) */
+				result_len += snprintf(result + result_len, remaining, "%02d", tm->tm_mon);
+				break;
+			case 'c': /* Month, numeric (1-12) */
+				result_len += snprintf(result + result_len, remaining, "%d", tm->tm_mon);
+				break;
+			case 'd': /* Day, 2 digits (01-31) */
+				result_len += snprintf(result + result_len, remaining, "%02d", tm->tm_mday);
+				break;
+			case 'e': /* Day, numeric (1-31) */
+				result_len += snprintf(result + result_len, remaining, "%d", tm->tm_mday);
+				break;
+			case 'H': /* Hour, 24-hour format (00-23) */
+				result_len += snprintf(result + result_len, remaining, "%02d", tm->tm_hour);
+				break;
+			case 'h': /* Hour, 12-hour format (01-12) */
+			case 'I':
+			{
+				int hour = tm->tm_hour;
+				if (hour == 0)
+					hour = 12;
+				else if (hour > 12)
+					hour -= 12;
+				result_len += snprintf(result + result_len, remaining, "%02d", hour);
+				break;
+			}
+			case 'k': /* Hour, 24-hour format (0-23) */
+				result_len += snprintf(result + result_len, remaining, "%d", tm->tm_hour);
+				break;
+			case 'l': /* Hour, 12-hour format (1-12) */
+			{
+				int hour = tm->tm_hour;
+				if (hour == 0)
+					hour = 12;
+				else if (hour > 12)
+					hour -= 12;
+				result_len += snprintf(result + result_len, remaining, "%d", hour);
+				break;
+			}
+			case 'i': /* Minutes, 2 digits (00-59) */
+				result_len += snprintf(result + result_len, remaining, "%02d", tm->tm_min);
+				break;
+			case 's': /* Seconds, 2 digits (00-59) */
+			case 'S':
+				result_len += snprintf(result + result_len, remaining, "%02d", tm->tm_sec);
+				break;
+			case 'f':
+				result_len += snprintf(result + result_len, remaining, "%06lld", (long long)fsec);
+				break;
+			case 'p': /* AM/PM */
+				result_len += snprintf(result + result_len, remaining, "%s", tm->tm_hour >= 12 ? "PM" : "AM");
+				break;
+			case 'r': /* Time, 12-hour format (hh:mm:ss AM/PM) */
+			{
+				int hour = tm->tm_hour;
+				const char *ampm = "AM";
+				if (hour >= 12)
+				{
+					ampm = "PM";
+					if (hour > 12)
+						hour -= 12;
+				}
+				else if (hour == 0)
+					hour = 12;
+				result_len += snprintf(result + result_len, remaining, "%02d:%02d:%02d %s", hour, tm->tm_min, tm->tm_sec, ampm);
+				break;
+			}
+			case 'T': /* Time, 24-hour format (hh:mm:ss) */
+				result_len += snprintf(result + result_len, remaining, "%02d:%02d:%02d", tm->tm_hour, tm->tm_min, tm->tm_sec);
+				break;
+			case 'W': /* Weekday name (Sunday-Saturday) */
+			{
+				const char *weekday_names[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+				result_len += snprintf(result + result_len, remaining, "%s", weekday_names[tm->tm_wday]);
+				break;
+			}
+			case 'a': /* Abbreviated weekday name (Sun-Sat) */
+			{
+				const char *ab_weekday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+				result_len += snprintf(result + result_len, remaining, "%s", ab_weekday_names[tm->tm_wday]);
+				break;
+			}
+			case 'w': /* Weekday (0=Sunday, 6=Saturday) */
+				result_len += snprintf(result + result_len, remaining, "%d", tm->tm_wday);
+				break;
+			case 'M': /* Month name (January-December) */
+			{
+				const char *month_names[] = {"January", "February", "March", "April", "May", "June",
+												"July", "August", "September", "October", "November", "December"};
+				result_len += snprintf(result + result_len, remaining, "%s", month_names[tm->tm_mon - 1]);
+				break;
+			}
+			case 'b': /* Abbreviated month name (Jan-Dec) */
+			{
+				const char *ab_month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+												"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+				result_len += snprintf(result + result_len, remaining, "%s", ab_month_names[tm->tm_mon - 1]);
+				break;
+			}
+			case 'D': /* Day with suffix (1st, 2nd, 3rd, etc) */
+			{
+				result_len += snprintf(result + result_len, remaining, "%d", tm->tm_mday);
+				if (tm->tm_mday % 10 == 1 && tm->tm_mday != 11)
+					result_len += snprintf(result + result_len, remaining, "st");
+				else if (tm->tm_mday % 10 == 2 && tm->tm_mday != 12)
+					result_len += snprintf(result + result_len, remaining, "nd");
+				else if (tm->tm_mday % 10 == 3 && tm->tm_mday != 13)
+					result_len += snprintf(result + result_len, remaining, "rd");
+				else
+					result_len += snprintf(result + result_len, remaining, "th");
+				break;
+			}
+			case 'j': /* Day of year (001-366) */
+			{
+				/* Calculate day of year */
+				int day_of_year = tm->tm_yday;
+				result_len += snprintf(result + result_len, remaining, "%03d", day_of_year);
+				break;
+			}
+			case 'U': /* Week number (00-53), Sunday as first day of week */
+			case 'V': /* Week number (01-53), Sunday as first day of week */
+			case 'u': /* Week number (00-53), Monday as first day of week */
+			case 'v': /* Week number (01-53), Monday as first day of week */
+			{
+				/* Calculate week number */
+				int week_number = (tm->tm_yday / 7) + 1;
+				if (format[i] == 'U' || format[i] == 'u')
+					result_len += snprintf(result + result_len, remaining, "%02d", week_number);
+				else
+					result_len += snprintf(result + result_len, remaining, "%02d", week_number);
+				break;
+			}
+			case 'X': /* Year for week number (4 digits), Sunday as first day of week */
+			case 'x': /* Year for week number (4 digits), Monday as first day of week */
+				result_len += snprintf(result + result_len, remaining, "%04d", tm->tm_year);
+				break;
+			case '%': /* Literal % */
+				result[result_len++] = '%';
+				break;
+			default:
+				/* Unknown format specifier, just copy it */
+				result[result_len++] = format[i];
+				break;
+			}
+		}
+		else
+		{
+			/* Regular character, just copy it */
+			result[result_len++] = format[i];
+		}
+	}
+
+	/* Null-terminate the result */
+	result[result_len] = '\0';
+}
+
+Datum
+date_format(PG_FUNCTION_ARGS)
+{
+	char *format;
+	struct pg_tm tt, *tm = &tt;
+	fsec_t fsec = 0;
+	char result[MAXDATELEN];
+
+	MYS_ZERO_tm(tm);
+
+	/* Convert date to timestamp */
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm->tm_wday = j2day(date2j(tm->tm_year, tm->tm_mon, tm->tm_mday));
+	tm->tm_yday = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) - date2j(tm->tm_year, 1, 1) + 1;
+
+	format = text_to_cstring(PG_GETARG_TEXT_PP(1));
+
+	datetimes_format_str(tm, format, result, MAXDATELEN, fsec);
+
+	PG_RETURN_TEXT_P(cstring_to_text(result));
+}
+
+/*
+ * from_unixtime_int
+ *
+ * Convert Unix timestamp (integer) to datetime.
+ * Returns DATETIME type with precision 0 (no fractional seconds).
+ *
+ * Parameters:
+ *   unix_timestamp: Unix timestamp as integer (seconds since 1970-01-01 00:00:00 UTC)
+ *
+ * Returns:
+ *   Timestamp (DATETIME type with precision 0)
+ */
+Datum
+from_unixtime_int(PG_FUNCTION_ARGS)
+{
+	int64		seconds = PG_GETARG_INT64(0);
+	Timestamp	timestamp;
+	int64		datetemp, time;
+	fsec_t		fsec = 0;
+	char buf[MAXDATELEN + 1] = {0};
+	TimeADT datetime = MYSQL_INVAILD_DATE;
+	Datum	result;
+	struct pg_tm tt, ttx,
+			   *tm = &tt, *tmx = &ttx;
+
+	MYS_ZERO_tm(tm);
+	MYS_ZERO_tm(tmx);
+
+	/*
+	 * Convert Unix timestamp to pg_tm structure
+	 * Unix timestamp is seconds since 1970-01-01
+	 */
+	GetCurrentDateTime(tmx);
+	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
+	datetemp = datetemp * 1000000;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	datetime = datetemp + time;
+
+	snprintf(buf, MAXDATELEN, "%lld", (long long)datetime);
+
+	result = DirectFunctionCall1(mysdatetime_in,
+								 CStringGetDatum(buf));
+
+	PG_RETURN_NUMERIC(result);
+}
+
+/*
+ * from_unixtime_numeric
+ *
+ * Convert Unix timestamp (numeric/decimal) to datetime.
+ * Returns DATETIME type with precision matching input decimal places (max 6).
+ *
+ * Parameters:
+ *   unix_timestamp: Unix timestamp as numeric (seconds since 1970-01-01 00:00:00 UTC)
+ *
+ * Returns:
+ *   Timestamp (DATETIME type with precision matching input)
+ */
+Datum
+from_unixtime_numeric(PG_FUNCTION_ARGS)
+{
+	Numeric		numeric_datum = PG_GETARG_NUMERIC(0);
+	lldiv_t		lld;
+	Timestamp	timestamp;
+	int64		datetemp, time;
+	fsec_t		fsec;
+	TimeADT datetime = MYSQL_INVAILD_DATE;
+	Numeric num;
+	struct pg_tm tt, ttx,
+			   *tm = &tt, *tmx = &ttx;
+	int			precision, scale;
+	char buf[MAXDATELEN + 1] = {0};
+
+	MYS_ZERO_tm(tm);
+	MYS_ZERO_tm(tmx);
+
+	/* Extract decimal places from the numeric value */
+	scale = DatumGetInt32(DirectFunctionCall1(numeric_scale, NumericGetDatum(numeric_datum)));
+	precision = (scale > 6) ? 6 : scale;
+
+	/* Convert numeric to float8 for processing */
+	numeric_to_lldiv_t(DatumGetNumeric(numeric_datum), &lld);
+
+	/* Convert Unix timestamp to pg_tm structure */
+	GetCurrentDateTime(tmx);
+	timestamp = SetEpochTimestamp() + lld.quot * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
+
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
+	datetemp = datetemp * 1000000;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	datetime = datetemp + time;
+
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long)datetime, (int)(lld.rem / MICRO_PER_NANOSEC));
+
+	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											  CStringGetDatum(buf),
+											  ObjectIdGetDatum(InvalidOid),
+											  Int32GetDatum((((14 + precision) << 16) | precision) + VARHDRSZ)));
+
+	PG_RETURN_NUMERIC(num);
+}
+
+/*
+ * from_unixtime_float
+ *
+ * Convert Unix timestamp (float) to datetime string.
+ * Returns text with fixed 6-digit precision (microseconds, always padded).
+ *
+ * Parameters:
+ *   unix_timestamp: Unix timestamp as float (seconds since 1970-01-01 00:00:00 UTC)
+ *
+ * Returns:
+ *   Text (DATETIME string with 6-digit fractional seconds)
+ */
+Datum
+from_unixtime_float(PG_FUNCTION_ARGS)
+{
+	float8		seconds = PG_GETARG_FLOAT8(0);
+	int64		sec, datetemp, time;
+	fsec_t		fsec;
+	Timestamp	timestamp;
+	Numeric num;
+	TimeADT datetime = MYSQL_INVAILD_DATE;
+	struct pg_tm tt, ttx,
+			   *tm = &tt, *tmx = &ttx;
+	char buf[MAXDATELEN + 1] = {0};
+
+	/* Handle NULL input */
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	/* Check for invalid timestamp */
+	if (!isfinite(seconds))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+
+	/* Extract seconds and fractional seconds (always 6-digit precision for float) */
+	sec = (int64) seconds;
+	fsec = (fsec_t) rint((seconds - sec) * 1000000.0);
+
+	/* Convert Unix timestamp to pg_tm structure */
+	GetCurrentDateTime(tmx);
+	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
+
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+
+	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
+	datetemp = datetemp * 1000000;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	datetime = datetemp + time;
+
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long)datetime, fsec);
+
+	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
+											  CStringGetDatum(buf),
+											  ObjectIdGetDatum(InvalidOid),
+											  Int32GetDatum((((14 + 6) << 16) | 6) + VARHDRSZ)));
+
+	PG_RETURN_NUMERIC(num);
+}
+
+/*
+ * from_unixtime_format
+ *
+ * Convert Unix timestamp to formatted string.
+ *
+ * Parameters:
+ *   unix_timestamp: Unix timestamp (seconds since 1970-01-01 00:00:00 UTC)
+ *   format: Format string (compatible with DATE_FORMAT)
+ *
+ * Returns:
+ *   Formatted string (VARCHAR type)
+ */
+Datum
+from_unixtime_format(PG_FUNCTION_ARGS)
+{
+	float8 seconds = PG_GETARG_FLOAT8(0);
+	Timestamp timestamp;
+	int64 sec;
+	fsec_t fsec;
+	struct pg_tm tt, ttx,
+		*tm = &tt, *tmx = &ttx;
+	char *format;
+	char result[MAXDATELEN];
+
+	/* Handle NULL input */
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	/* Check for invalid timestamp */
+	if (!isfinite(seconds))
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+
+	/* Extract seconds and fractional seconds */
+	sec = (int64) seconds;
+	fsec = (fsec_t) rint((seconds - sec) * 1000000);
+
+	/* Convert Unix timestamp to pg_tm structure */
+	GetCurrentDateTime(tmx);
+	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
+	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
+
+	/* Get format string */
+	format = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	tm->tm_wday = j2day(date2j(tm->tm_year, tm->tm_mon, tm->tm_mday));
+	tm->tm_yday = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) - date2j(tm->tm_year, 1, 1) + 1;
+
+	datetimes_format_str(tm, format, result, MAXDATELEN, fsec);
+
+	PG_RETURN_TEXT_P(cstring_to_text(result));
 }
 
 static Datum
@@ -2509,80 +3029,6 @@ timestamp_arg2(PG_FUNCTION_ARGS)
     PG_RETURN_NULL();
 }
 
-/* Begin - bug#z5130 */
-static int64
-mys_tm2time(struct pg_tm *tm)
-{
-    int64 time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
-
-    return time;
-}
-
-static int64
-mys_tm2date(struct pg_tm *tm)
-{
-    int64 date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
-
-    return date;
-}
-
-static int64
-mys_tm2datetime(struct pg_tm *tm)
-{
-    int64 date = mys_tm2date(tm);
-    int64 time = mys_tm2time(tm);
-    int64 datetime = date * 1000000 + time;
-
-    return datetime;
-}
-
-static void
-mys_time2tm(int64 time, struct pg_tm *tm)
-{
-    tm->tm_hour = time / 10000;
-    tm->tm_min = (time % 10000) / 100;
-    tm->tm_sec = (time % 10000) % 100;
-}
-
-static void
-mys_date2tm(int64 date, struct pg_tm *tm)
-{
-    tm->tm_year = date / 10000;
-    tm->tm_mon = (date % 10000) / 100;
-    tm->tm_mday = (date % 10000) % 100;
-}
-
-static void
-mys_datetime2tm(int64 datetime, struct pg_tm *tm)
-{
-    int64   date = datetime / 1000000;
-    int64   time = datetime % 1000000;
-
-    mys_date2tm(date, tm);
-    mys_time2tm(time, tm);
-}
-
-static void
-mys_datetimes2tm(Numeric datetimes, struct pg_tm *tm, fsec_t *fsec)
-{
-    int64       datetime;
-    Numeric		tempfsec;
-
-    datetime = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(datetimes)));
-    tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mul, NumericGetDatum(datetimes),
-                                                   NumericGetDatum(int64_to_numeric(1000000))));
-    tempfsec = DatumGetNumeric(DirectFunctionCall2(numeric_mod, NumericGetDatum(tempfsec),
-                                                   NumericGetDatum(int64_to_numeric(1000000))));
-
-    *fsec = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(tempfsec)));
-
-    if (*fsec > 500000)
-        datetime--;
-
-    mys_datetime2tm(datetime, tm);
-}
-/* End - bug#z5130 */
-
 Datum 
 timestampadd(PG_FUNCTION_ARGS)
 {
@@ -3850,4 +4296,281 @@ get_format(PG_FUNCTION_ARGS)
 															  Int32GetDatum(-1)));
 	PG_RETURN_VARCHAR_P(result);
 	/* End - BUGZ5533 */
+}
+
+static char *
+adddate_interval(Timestamp timestamp, Interval *span, bool is_add, int dec)
+{
+	char *str;
+	Timestamp tsResult;
+	Numeric		num;
+
+	if (is_add)
+	{
+		tsResult = DirectFunctionCall2(timestamp_pl_interval,
+									   TimestampGetDatum(timestamp),
+									   PointerGetDatum(span));
+	}
+	else
+	{
+		tsResult = DirectFunctionCall2(timestamp_mi_interval,
+									   TimestampGetDatum(timestamp),
+									   PointerGetDatum(span));
+	}
+
+	num = DatumGetNumeric(DirectFunctionCall2(pgtimestamp_mysdatetimes,
+											  TimestampGetDatum(tsResult),
+											  Int32GetDatum(dec)));
+
+	str = DatumGetCString(DirectFunctionCall1(mysdatetimes_out,
+											  NumericGetDatum(num)));
+	return str;
+}
+
+Datum
+timestamp_adddate_interval(PG_FUNCTION_ARGS)
+{
+	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
+	Interval *span = PG_GETARG_INTERVAL_P(1);
+	char *str;
+
+	str = adddate_interval(timestamp, span, true, 0);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+datetimes_adddate_interval(PG_FUNCTION_ARGS)
+{
+	Interval *span = PG_GETARG_INTERVAL_P(1);
+	Timestamp timestamp;
+	struct pg_tm tt, *tm = &tt;
+	fsec_t fsec = 0;
+	char *str;
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm2timestamp(tm, fsec, NULL, &timestamp);
+
+	str = adddate_interval(timestamp, span, true, 6);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+date_adddate_interval(PG_FUNCTION_ARGS)
+{
+	Interval *span = PG_GETARG_INTERVAL_P(1);
+	Timestamp timestamp, tsResult;
+	DateADT dateResult;
+	struct pg_tm tt, *tm = &tt;
+	fsec_t fsec;
+	char *str;
+
+	MYS_ZERO_tm(tm);
+	mys_date2tm(PG_GETARG_DATEADT(0), tm);
+	tm2timestamp(tm, 0, NULL, &timestamp);
+
+	if (span->time == 0)
+	{
+		tsResult = DirectFunctionCall2(timestamp_pl_interval,
+									   TimestampGetDatum(timestamp),
+									   PointerGetDatum(span));
+
+		timestamp2tm(tsResult, NULL, tm, &fsec, NULL, NULL);
+
+		dateResult = mys_tm2date(tm);
+
+		str = DatumGetCString(DirectFunctionCall1(mysdate_out,
+											  TimestampGetDatum(dateResult)));
+	}
+	else
+	{
+		str = adddate_interval(timestamp, span, true, 6);
+	}
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+timestamp_adddate_days(PG_FUNCTION_ARGS)
+{
+	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
+	int32 days = PG_GETARG_INT32(1);
+	Interval *span;
+	char *str;
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	span = (Interval *) palloc0(sizeof(Interval));
+	span->day = days;
+
+	str = adddate_interval(timestamp, span, true, 0);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+datetimes_adddate_days(PG_FUNCTION_ARGS)
+{
+	int32 days = PG_GETARG_INT32(1);
+	Timestamp timestamp;
+	struct pg_tm tt, *tm = &tt;
+	Interval *span;
+	fsec_t fsec = 0;
+	char *str;
+
+	span = (Interval *) palloc0(sizeof(Interval));
+	span->day = days;
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm2timestamp(tm, fsec, NULL, &timestamp);
+
+	str = adddate_interval(timestamp, span, true, 6);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+date_adddate_days(PG_FUNCTION_ARGS)
+{
+	int32 days = PG_GETARG_INT32(1);
+	Timestamp timestamp;
+	struct pg_tm tt, *tm = &tt;
+	Interval *span;
+	fsec_t fsec = 0;
+	char *str;
+
+	span = (Interval *) palloc0(sizeof(Interval));
+	span->day = days;
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm2timestamp(tm, fsec, NULL, &timestamp);
+
+	str = adddate_interval(timestamp, span, true, 0);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+timestamp_subdate_interval(PG_FUNCTION_ARGS)
+{
+	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
+	Interval *span = PG_GETARG_INTERVAL_P(1);
+	char *str;
+
+	str = adddate_interval(timestamp, span, false, 6);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+datetimes_subdate_interval(PG_FUNCTION_ARGS)
+{
+	Interval *span = PG_GETARG_INTERVAL_P(1);
+	Timestamp timestamp;
+	struct pg_tm tt, *tm = &tt;
+	fsec_t fsec = 0;
+	char *str;
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm2timestamp(tm, fsec, NULL, &timestamp);
+
+	str = adddate_interval(timestamp, span, false, 6);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+date_subdate_interval(PG_FUNCTION_ARGS)
+{
+	Interval *span = PG_GETARG_INTERVAL_P(1);
+	Timestamp timestamp, tsResult;
+	DateADT dateResult;
+	struct pg_tm tt, *tm = &tt;
+	char *str;
+
+	MYS_ZERO_tm(tm);
+	mys_date2tm(PG_GETARG_DATEADT(0), tm);
+	tm2timestamp(tm, 0, NULL, &timestamp);
+
+	if (span->time == 0)
+	{
+		tsResult = DirectFunctionCall2(timestamp_mi_interval,
+									   TimestampGetDatum(timestamp),
+									   PointerGetDatum(span));
+
+		dateResult = DatumGetDateADT(DirectFunctionCall1(timestamp_date,
+									   TimestampGetDatum(tsResult)));
+
+		str = DatumGetCString(DirectFunctionCall1(date_out,
+											  TimestampGetDatum(dateResult)));
+	}
+	else
+	{
+		str = adddate_interval(timestamp, span, false, 6);
+	}
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+timestamp_subdate_days(PG_FUNCTION_ARGS)
+{
+	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
+	int32 days = PG_GETARG_INT32(1);
+	Interval *span;
+	char *str;
+
+	span = (Interval *) palloc0(sizeof(Interval));
+	span->day = days;
+
+	str = adddate_interval(timestamp, span, false, 0);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+datetimes_subdate_days(PG_FUNCTION_ARGS)
+{
+	int32 days = PG_GETARG_INT32(1);
+	Timestamp timestamp;
+	struct pg_tm tt, *tm = &tt;
+	Interval *span;
+	fsec_t fsec = 0;
+	char *str;
+
+	span = (Interval *) palloc0(sizeof(Interval));
+	span->day = days;
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm2timestamp(tm, fsec, NULL, &timestamp);
+
+	str = adddate_interval(timestamp, span, false, 6);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
+}
+
+Datum
+date_subdate_days(PG_FUNCTION_ARGS)
+{
+	int32 days = PG_GETARG_INT32(1);
+	Timestamp timestamp;
+	struct pg_tm tt, *tm = &tt;
+	Interval *span;
+	fsec_t fsec = 0;
+	char *str;
+
+	span = (Interval *) palloc0(sizeof(Interval));
+	span->day = days;
+
+	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	tm2timestamp(tm, fsec, NULL, &timestamp);
+
+	str = adddate_interval(timestamp, span, false, 0);
+
+	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
