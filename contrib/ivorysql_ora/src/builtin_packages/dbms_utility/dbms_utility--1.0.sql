@@ -309,19 +309,19 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
             SELECT oid INTO schema_id FROM pg_namespace WHERE nspname = schema;
             -- 1. handle FUNCTION
             FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 'f' AND schemaoid = schema_id AND obj_oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER FUNCTION %I COMPILE', tup.objname);
+                EXECUTE FORMAT('ALTER FUNCTION %I.%I COMPILE', schema, tup.objname);
             END LOOP;
             -- 2. handle PROCEDURE
             FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 'p' AND schemaoid = schema_id AND obj_oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER PROCEDURE %I COMPILE', tup.objname);
+                EXECUTE FORMAT('ALTER PROCEDURE %I.%I COMPILE', schema, tup.objname);
             END LOOP;
             -- 3. handle FUNCTION
             FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 't' AND obj_oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER TRIGGER %I COMPILE', tup.objname);
+                EXECUTE FORMAT('ALTER TRIGGER %I.%I COMPILE', schema, tup.objname);
             END LOOP;
             -- 4. handle PACKAGE
             FOR tup IN (SELECT pkgname FROM pg_package WHERE pkgnamespace = schema_id AND oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER PACKAGE %I COMPILE', tup.pkgname);
+                EXECUTE FORMAT('ALTER PACKAGE %I.%I COMPILE', schema, tup.pkgname);
             END LOOP;
         END IF;
     END;
