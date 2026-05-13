@@ -191,7 +191,8 @@ MYS_REGRESS = numeric_to_times \
 			  mys_alter_modify_multi
 
 MYS_JDBC_REGRESS =	proto_jdbc \
-					proto_jdbc_8_0_28
+					proto_jdbc_8_0_28 \
+					proto_jdbc_9_4_0
 
 
 ifdef USE_PGXS
