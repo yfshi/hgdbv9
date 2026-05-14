@@ -14,6 +14,7 @@ OBJS = \
 	src/protocol/auth/auth.o \
 	src/protocol/auth/caching_sha2.o \
 	src/protocol/auth/native_password.o \
+	src/protocol/auth/sm3.o \
 	src/case_sensitive/casesensitive.o \
 	src/case_sensitive/casefunc.o \
 	src/datatype/strtoll.o \

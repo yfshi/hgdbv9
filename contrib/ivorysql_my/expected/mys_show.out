@@ -877,7 +877,8 @@ show plugins;
 -----------------------+--------+----------------+---------+---------
  mysql_native_password | ACTIVE | AUTHENTICATION |         | GPL
  caching_sha2_password | ACTIVE | AUTHENTICATION |         | GPL
-(2 rows)
+ sm3_password          | ACTIVE | AUTHENTICATION |         | GPL
+(3 rows)
 
 show engines;
        Engine       | Support |      Comment       | Transactions | XA | Savepoints 

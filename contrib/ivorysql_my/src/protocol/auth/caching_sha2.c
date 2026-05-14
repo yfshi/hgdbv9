@@ -688,7 +688,7 @@ caching_sha2_full_authenticate(Port *port)
             *private_key = NULL;
     StringInfo buf = makeStringInfo();
 
-    digest = part[CACHING_SHA2_DIGEST_INDEX]; // set in password_parse() callback
+    digest = part[CACHING_SHA2_DIGEST_INDEX];
     salt = part[CACHING_SHA2_SALT_INDEX];
     iterations = atoi(part[CACHING_SHA2_ITERATION_INDEX]) * ITERATION_MULTIPLIER;
 
@@ -768,19 +768,6 @@ fail:
     return ret;
 }
 
-/**
- * Implentment in Mysql8 source code with
- * function caching_sha2_password_authenticate().
- */
-static int
-caching_sha2_password_check(Port *port)
-{
-    if (caching_sha2_fast_authenticate(port))
-        return STATUS_OK;
-
-    return caching_sha2_full_authenticate(port);
-}
-
 static void
 caching_sha2_password_clean()
 {
@@ -792,6 +779,27 @@ caching_sha2_password_clean()
             part[i] = NULL;
         }
     }
+}
+
+/**
+ * Implentment in Mysql8 source code with
+ * function caching_sha2_password_authenticate().
+ */
+static int
+caching_sha2_password_check(Port *port, char *rolpassword)
+{
+    int status;
+
+    caching_sha2_password_parse(rolpassword);
+
+    if (caching_sha2_fast_authenticate(port))
+        return STATUS_OK;
+
+    status = caching_sha2_full_authenticate(port);
+
+    caching_sha2_password_clean();
+
+    return status;
 }
 
 #ifdef USE_OPENSSL
@@ -824,9 +832,7 @@ create_mysql_auth_cache()
 
 mysql_auth_plugin_t caching_sha2_password = {
     .type = PASSWORD_TYPE_MYS_CACHING_SHA2,
-    .clean = caching_sha2_password_clean,
     .password_generate = caching_sha2_password_generate,
-    .password_parse = caching_sha2_password_parse,
     .passwd_check = caching_sha2_password_check,
 };
 #endif

@@ -217,6 +217,8 @@ send_com_stmt_prepare_ok_packet(int statementId, int columns, int params)
     }
 
     mq_putmessage(buf->data, buf->len);
+
+    DestroyStringInfo(buf);
 }
 
 void
@@ -1244,6 +1246,10 @@ send_auth_switch_packet(char *method, uint8 *scramble)
     mq_append_string_eof(buf, (char *)scramble);
     mq_append_int1(buf, 0x00);
     mq_putmessage(buf->data, buf->len);
+
+    DestroyStringInfo(buf);
+
+    pq_flush();
 }
 
 char *
