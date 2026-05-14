@@ -47,4 +47,10 @@ typedef bool (*RoleDropRoleStatus_type)(uint32 roleoid);
 extern PGDLLIMPORT RoleDropRoleStatus_type RoleDropRoleStatus;
 /* End - ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
 
+/* Hook to set password validUntil in CreateRole() */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+typedef void (*set_validuntil_hook_type) (char **validUntil);
+extern PGDLLIMPORT set_validuntil_hook_type set_validuntil_hook;
+#endif
+
 #endif							/* USER_H */
