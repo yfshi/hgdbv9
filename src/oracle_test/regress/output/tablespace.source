@@ -781,6 +781,37 @@ Number of partitions: 1 (Use \d+ to list them.)
 Tablespace: "regress_tblspace"
 
 DROP TABLE testschema.test_default_tab_p;
+-- Begin - bug#7304
+-- OK
+CREATE TABLE PAR_TEST(A varchar2(10), B NUMERIC)
+TABLESPACE regress_tblspace
+PARTITION BY RANGE(A)
+(
+ PARTITION P1 VALUES LESS THAN('5'),
+ PARTITION P2 VALUES LESS THAN('9')
+);
+drop table par_test;
+-- OK
+CREATE TABLE PAR_TEST(A varchar2(10), B NUMERIC)
+PARTITION BY RANGE(A)
+(
+ PARTITION P1 VALUES LESS THAN('5'),
+ PARTITION P2 VALUES LESS THAN('9')
+) TABLESPACE regress_tblspace;
+drop table par_test;
+-- ERROR
+-- ORA-02215: duplicate tablespace name clause
+CREATE TABLE PAR_TEST(A varchar2(10), B NUMERIC)
+TABLESPACE regress_tblspace
+PARTITION BY RANGE(A)
+(
+ PARTITION P1 VALUES LESS THAN('5'),
+ PARTITION P2 VALUES LESS THAN('9')
+) TABLESPACE regress_tblspace;
+ERROR:  duplicate tablespace name clause
+LINE 7: ) TABLESPACE regress_tblspace;
+                                     ^
+-- End - bug#7304
 -- check that default_tablespace affects index additions in ALTER TABLE
 CREATE TABLE testschema.test_tab(id int) TABLESPACE regress_tblspace;
 INSERT INTO testschema.test_tab VALUES (1);
