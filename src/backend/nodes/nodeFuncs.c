@@ -312,6 +312,11 @@ exprType(const Node *expr)
 			type = ((VarRef *) expr)->rettype;
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			type = ((const OraRowExpr *) expr)->row_typeid;
+			break;
+		/* End - BUG#7712 */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			type = InvalidOid;	/* keep compiler quiet */
@@ -1062,6 +1067,12 @@ exprCollation(const Node *expr)
 			coll = ((VarRef *)expr)->value->constcollid;
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			/* OraRowExpr's result is Oracle record ... */
+			coll = InvalidOid;	/* ... so it has no collation */
+			break;
+		/* End - BUG#7712 */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			coll = InvalidOid;	/* keep compiler quiet */
@@ -1288,6 +1299,12 @@ exprSetCollation(Node *expr, Oid collation)
 		case T_VarRef:
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			/* OraRowExpr's result is Oracle record ... */
+			Assert(!OidIsValid(collation)); /* ... so never set a collation */
+			break;
+		/* End - BUG#7712 */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			break;
@@ -1780,6 +1797,12 @@ exprLocation(const Node *expr)
 			loc = ((const PriorAexpr *) expr)->location;
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			/* the location points at Oracle record type constructor or (, which must be leftmost */
+			loc = ((const RowExpr *) expr)->location;
+			break;
+		/* End - BUG#7712 */
 
 		default:
 			/* for any other node type it's just unknown... */
@@ -2557,6 +2580,17 @@ expression_tree_walker(Node *node,
 			}
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				OraRowExpr  *orarowexpr = (OraRowExpr *) node;
+
+				/* Assume colnames isn't interesting */
+				if (walker(orarowexpr->args, context))
+					return true;
+			}
+			break;
+		/* End - BUG#7712 */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));
@@ -3578,6 +3612,19 @@ expression_tree_mutator(Node *node,
 			}
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				OraRowExpr    *rowexpr = (OraRowExpr *) node;
+				OraRowExpr    *newnode;
+
+				FLATCOPY(newnode, rowexpr, OraRowExpr);
+				MUTATE(newnode->args, rowexpr->args, List *);
+				/* Assume colnames needn't be duplicated */
+				return (Node *) newnode;
+			}
+			break;
+		/* End - BUG#7712 */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));
@@ -4415,6 +4462,17 @@ raw_expression_tree_walker(Node *node,
 			elog(ERROR, "PRIOR operator not allowed here");
 			break;
 		/* End - ReqID:SRS-SQL-HierarchicalQueries */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				OraRowExpr *orarowexpr = (OraRowExpr *) node;
+
+				/* Assume colnames isn't interesting */
+				if (walker(orarowexpr->args, context))
+					return true;
+			}
+			break;
+		/* End - BUG#7712 */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));

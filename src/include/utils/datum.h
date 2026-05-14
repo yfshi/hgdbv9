@@ -91,5 +91,11 @@ extern Datum doCastValue(Datum value, Oid oldTypOid, Oid newTypOid, int typmod);
 extern Datum heap_copy_tuple_as_orarecord(Datum tuple_datum, Datum ora_recordtype);
 extern Datum heap_copy_orarecord_as_tuple(Datum tuple_datum);
 /* End - ReqID:SRS-PLSQL-Collection */
+/* Begin - BUG#7712 */
+Datum orarow_heap_form_tuple(Datum type,
+						TupleDesc tupleDescriptor,
+						Datum *values,
+						bool *isnull);
+/* End - BUG#7712 */
 
 #endif							/* DATUM_H */

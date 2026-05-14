@@ -425,7 +425,7 @@ plisql_ora_record_construct_ref(ParseState *pstate, List *recname, List *fargs,
 	int			numposargs;
 	int		   *argnumbers = NULL;
 	ParseCallbackState pcbstate;
-	RowExpr   *rowexpr;
+	OraRowExpr *rowexpr;	/* BUG#7712 */
 	Node	   *retval;
 
 	switch(list_len)
@@ -580,8 +580,11 @@ plisql_ora_record_construct_ref(ParseState *pstate, List *recname, List *fargs,
 		}
 	}
 
-	rowexpr = makeNode(RowExpr);
-	rowexpr->row_typeid = RECORDOID;
+	/* Begin - BUG#7712 */
+	rowexpr = makeNode(OraRowExpr);
+	rowexpr->row_typeid = ORARECORDOID;
+	rowexpr->type = PointerGetDatum(ora_rec_type);
+	/* End - BUG#7712 */
 	rowexpr->row_format = COERCE_IMPLICIT_CAST;
 	rowexpr->location = -1;
 

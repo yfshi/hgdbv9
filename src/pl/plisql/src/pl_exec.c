@@ -13076,7 +13076,7 @@ check_row(PLiSQL_row *row, TupleDesc tupdesc,
 
 				type = (PLiSQL_ora_record_type *)(DatumGetPointer(values[0]));
 				if (type == NULL)
-					ora_test_tupdesc_match(row->rowtupdesc, tupdesc, true);
+					ora_test_tupdesc_match(tupdesc, row->rowtupdesc, true);	/* BUG#7712 */
 				else
 				{
 					if (type->type.ttype == PLISQL_TTYPE_ORARECORD_TYPE)
@@ -13090,7 +13090,7 @@ check_row(PLiSQL_row *row, TupleDesc tupdesc,
 									errmsg(" expression is of wrong type, \"%s\" does't matched with \"%s\"",
 											type->type.typname, row->datatype->typname)));
 
-							ora_test_tupdesc_match(row->rowtupdesc, tupdesc, true);
+							ora_test_tupdesc_match(tupdesc, row->rowtupdesc, true);	/* BUG#7712 */
 
 						}
 					}
@@ -14246,6 +14246,19 @@ plisql_init_bulk_collect_params(PLiSQL_execstate *estate, PLiSQL_row *row)
 				ereport(ERROR,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						errmsg("Implementation restriction: bulk SQL with collection with non-int key is not supported.")));
+
+		/* Begin - BUG#7603 */
+		/*
+		 * If the BULK COLLECT target is multiple collection variables,
+		 * and one of the collection element datatype is a composite type,
+		 * then throw an error.
+		 */
+		if (row->nfields > 1 &&
+			type_is_rowtype((((PLiSQL_ora_collection_type*)collect_type)->typdatatype)->typoid))
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					errmsg("coercion into multiple record targets not supported")));
+		/* End - BUG#7603 */
 
 		/* get first dim of the collect value */
 		exec_eval_datum(estate, target, &root_typoid,

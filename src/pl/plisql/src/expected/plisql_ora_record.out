@@ -349,7 +349,8 @@ BEGIN
 END;
 /
 ERROR:  Return rowtype or query do not match
-CONTEXT:  PL/iSQL function inline_code_block line 5 at assignment
+CONTEXT:  PL/iSQL assignment "rec := r(1,1,1,1,1)"
+PL/iSQL function inline_code_block line 5 at assignment
 --wrong number or types of arguments in call to 'R'
 DECLARE 
   TYPE r IS RECORD(a int, b int, c int);  

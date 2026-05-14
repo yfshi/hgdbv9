@@ -7637,6 +7637,205 @@ ERROR:  no data found
 CONTEXT:  SQL statement "CALL DBMS_OUTPUT.PUT_LINE('strs(-1) = ' || strs[-1])"
 PL/iSQL function inline_code_block line 5 at CALL
 --/* End - BUG#7714 */
+--/* Begin - BUG#7715 */
+DECLARE
+  TYPE int_varray IS VARRAY(3) OF INTEGER;
+  ints int_varray := int_varray(100, 200);
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('=== TRIM/EXTEND ===');
+  DBMS_OUTPUT.PUT_LINE('BEFORE EXTEND COUNT = ' || ints.COUNT);
+  ints.EXTEND;
+  DBMS_OUTPUT.PUT_LINE('AFTER EXTEND COUNT = ' || ints.COUNT);
+  DBMS_OUTPUT.PUT_LINE('AFTER EXTEND LAST = ' || ints.LAST);
+  ints.TRIM(2);
+  DBMS_OUTPUT.PUT_LINE('AFTER TRIM(2) COUNT = ' || ints.COUNT);
+  DBMS_OUTPUT.PUT_LINE('AFTER TRIM(2) LAST = ' || ints.LAST);
+  BEGIN
+    ints.EXTEND(3);
+  EXCEPTION
+    WHEN OTHERS THEN
+  DBMS_OUTPUT.PUT_LINE('===AFTER EXTEND COUNT = ' || ints.COUNT);
+  DBMS_OUTPUT.PUT_LINE('==AFTER EXTEND LAST = ' || ints.LAST);
+      DBMS_OUTPUT.PUT_LINE('EXTEND ERROR: ' || SQLERRM);
+  END;
+  BEGIN
+    ints.TRIM(2);
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('TRIM ERROR: ' || SQLERRM);
+  END;
+END;
+/
+=== TRIM/EXTEND ===
+BEFORE EXTEND COUNT = 2
+AFTER EXTEND COUNT = 3
+AFTER EXTEND LAST = 3
+AFTER TRIM(2) COUNT = 1
+AFTER TRIM(2) LAST = 1
+===AFTER EXTEND COUNT = 1
+==AFTER EXTEND LAST = 1
+EXTEND ERROR: subscript outside limit
+TRIM ERROR: subscript beyond count
+DECLARE
+  TYPE int_varray IS VARRAY(3) OF INTEGER;
+  ints int_varray := int_varray(100, 200, 300);
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('=== TRIM/EXTEND ===');
+  DBMS_OUTPUT.PUT_LINE('BEFORE EXTEND COUNT = ' || ints.COUNT);
+  BEGIN
+    ints.EXTEND();
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('EXTEND ERROR: ' || SQLERRM);
+  END;
+  BEGIN
+    ints.TRIM(4);
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('TRIM ERROR: ' || SQLERRM);
+  END;
+END;
+/
+=== TRIM/EXTEND ===
+BEFORE EXTEND COUNT = 3
+EXTEND ERROR: subscript outside limit
+TRIM ERROR: subscript beyond count
+DECLARE
+  TYPE int_varray IS VARRAY(3) OF INTEGER;
+  ints int_varray := int_varray(100, 200);
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('=== TRIM/EXTEND ===');
+  DBMS_OUTPUT.PUT_LINE('BEFORE EXTEND COUNT = ' || ints.COUNT);
+  BEGIN
+    ints.EXTEND(2, 1);
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('EXTEND ERROR: ' || SQLERRM);
+  END;
+  BEGIN
+    ints.TRIM(4);
+  EXCEPTION
+    WHEN OTHERS THEN
+      DBMS_OUTPUT.PUT_LINE('TRIM ERROR: ' || SQLERRM);
+  END;
+END;
+/
+=== TRIM/EXTEND ===
+BEFORE EXTEND COUNT = 2
+EXTEND ERROR: subscript outside limit
+TRIM ERROR: subscript beyond count
+DECLARE
+  TYPE asso_type IS TABLE OF INT INDEX BY INTEGER;
+  TYPE int_varray IS VARRAY(3) OF asso_type NOT NULL;
+  a asso_type;
+  ints int_varray := int_varray(a, a);
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('BEFORE EXTEND COUNT = ' || ints.COUNT);
+  ints.EXTEND;
+  DBMS_OUTPUT.PUT_LINE('AFTER EXTEND COUNT = ' || ints.COUNT);
+  DBMS_OUTPUT.PUT_LINE('ints(3).COUNT = ' || ints(3).COUNT);
+END;
+/
+BEFORE EXTEND COUNT = 2
+AFTER EXTEND COUNT = 3
+ints(3).COUNT = 0
+--/* End - BUG#7715 */
+--/* Begin - BUG#7712 */
+DROP TABLE emp;
+ERROR:  table "emp" does not exist
+CREATE TABLE emp (
+  empno NUMBER(4),
+  ename VARCHAR2(10),
+  sal NUMBER(7,2)
+);
+INSERT INTO emp VALUES (7369, 'SMITH', 800.00);
+DECLARE
+  TYPE varray_num IS VARRAY(3) OF NUMBER;
+  TYPE varray_empno IS VARRAY(3) OF emp.empno%TYPE;
+  TYPE varray_emprow IS VARRAY(2) OF emp%ROWTYPE;
+  TYPE dept_record IS RECORD (
+    deptno NUMBER(2),
+    dname VARCHAR2(14)
+  );
+  TYPE varray_dept IS VARRAY(2) OF dept_record;
+  v_empno varray_empno := varray_empno(7369, 7499);
+  v_dept varray_dept := varray_dept(dept_record(10, 'ACCOUNTING'), dept_record(20, 'RESEARCH'));
+  v_emprow varray_emprow := varray_emprow();
+  v_emp emp%ROWTYPE;
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('v_empno(1) = ' || v_empno(1));
+  DBMS_OUTPUT.PUT_LINE('v_dept(2).dname = ' || v_dept(2).dname);
+  SELECT * INTO v_emp FROM emp WHERE empno = 7369;
+  v_emprow.EXTEND;
+  v_emprow(1) := v_emp;
+  DBMS_OUTPUT.PUT_LINE('v_emprow(1).ename = ' || v_emprow(1).ename);
+END;
+/
+v_empno(1) = 7369
+v_dept(2).dname = RESEARCH
+v_emprow(1).ename = SMITH
+DECLARE
+  TYPE dept_record IS RECORD (
+    deptno INT,
+    dname VARCHAR2(14)
+  );
+  TYPE varray_dept IS TABLE  OF dept_record INDEX BY INT;
+  v_dept varray_dept;
+BEGIN
+  v_dept(1) := dept_record(10, 'ACCOUNTING');
+  DBMS_OUTPUT.PUT_LINE('v_dept(1).dname = ' || v_dept(1).dname);
+END;
+/
+v_dept(1).dname = ACCOUNTING
+DECLARE
+  TYPE dept_record IS RECORD (
+    deptno INT,
+    dname VARCHAR2(14)
+  );
+  r dept_record;
+BEGIN
+  r := dept_record(10, 'ACCOUNTING');
+  DBMS_OUTPUT.PUT_LINE('r.dname = ' || r.dname);
+END;
+/
+r.dname = ACCOUNTING
+DROP TABLE emp;
+--/* End - BUG#7712 */
+--/* Begin - BUG#7704 */
+DROP TABLE emp;
+ERROR:  table "emp" does not exist
+CREATE TABLE emp (
+  empno NUMBER(4),
+  ename VARCHAR2(10),
+  sal NUMBER(7,2)
+);
+INSERT INTO emp VALUES (7369, 'SMITH', 800.00);
+DECLARE
+  TYPE empno_table IS TABLE OF emp.empno%TYPE;
+  empnos empno_table := empno_table(7369, 7499);
+  TYPE emp_row_table IS TABLE OF emp%ROWTYPE;
+  emp_rows emp_row_table := emp_row_table();
+  TYPE dept_record IS RECORD (
+    deptno NUMBER(2),
+    dname VARCHAR2(14)
+  );
+  TYPE dept_table IS TABLE OF dept_record;
+  depts dept_table := dept_table(dept_record(10, 'ACCOUNTING'), dept_record(20, 'RESEARCH'));
+  v_emp emp%ROWTYPE;
+BEGIN
+  DBMS_OUTPUT.PUT_LINE('empnos(1) = ' || empnos(1));
+  SELECT * INTO v_emp FROM emp WHERE empno = 7369;
+  emp_rows.EXTEND;
+  emp_rows(1) := v_emp;
+  DBMS_OUTPUT.PUT_LINE('emp_rows(1).ename = ' || emp_rows(1).ename);
+  DBMS_OUTPUT.PUT_LINE('depts(2).dname = ' || depts(2).dname);
+END;
+/
+empnos(1) = 7369
+emp_rows(1).ename = SMITH
+depts(2).dname = RESEARCH
+DROP TABLE emp;
+--/* End - BUG#7704 */
 SET SERVEROUTPUT OFF
 DROP TABLE t1;
 DROP TABLE t2;

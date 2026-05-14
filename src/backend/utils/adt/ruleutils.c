@@ -9585,6 +9585,7 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 		/* Begin - ReqID:SRS-PLSQL-Collection */
 		case T_UdtypeRef:
 		/* End - ReqID:SRS-PLSQL-Collection */
+		case T_OraRowExpr:	/* BUG#7712 */
 			return true;
 
 			/* CASE keywords act as parentheses */
@@ -9705,6 +9706,7 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 				/* Begin - ReqID:SRS-PLSQL-Collection */
 				case T_UdtypeRef:
 				/* End - ReqID:SRS-PLSQL-Collection */
+				case T_OraRowExpr:	/* BUG#7712 */
 					return true;
 				default:
 					return false;
@@ -9761,6 +9763,7 @@ isSimpleNode(Node *node, Node *parentNode, int prettyFlags)
 				/* Begin - ReqID:SRS-PLSQL-Collection */
 				case T_UdtypeRef:
 				/* End - ReqID:SRS-PLSQL-Collection */
+				case T_OraRowExpr:	/* BUG#7712 */
 				default:
 					return false;
 			}
@@ -11200,6 +11203,36 @@ get_rule_expr(Node *node, deparse_context *context,
 			}
 			break;
 		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				OraRowExpr  *rowexpr = (OraRowExpr *) node;
+				ListCell   *arg;
+				int			i;
+				char	   *sep;
+
+				appendStringInfoString(buf, "RECORD_CONSTRUCTOR(");
+				sep = "";
+				i = 0;
+				foreach(arg, rowexpr->args)
+				{
+					Node	   *e = (Node *) lfirst(arg);
+
+					appendStringInfoString(buf, sep);
+					/* Whole-row Vars need special treatment here */
+					get_rule_expr_toplevel(e, context, true);
+					sep = ", ";
+					i++;
+				}
+
+				appendStringInfoChar(buf, ')');
+				if (rowexpr->row_format == COERCE_EXPLICIT_CAST)
+					appendStringInfo(buf, "::%s",
+									 format_type_with_typemod(rowexpr->row_typeid, -1));
+			}
+			break;
+		/* End - BUG#7712 */
 
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(node));

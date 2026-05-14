@@ -2867,6 +2867,87 @@ ExecInitExprRec(Expr *node, ExprState *state,
 			}
 		/* End - ReqID:SRS-MYSQL-SET */
 
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				OraRowExpr  *rowexpr = (OraRowExpr *) node;
+				int			nelems = list_length(rowexpr->args);
+				TupleDesc	tupdesc;
+				int			i;
+				ListCell   *l;
+
+				/* Build tupdesc to describe result tuples */
+				/* Oracle record, use types of given expressions */
+				tupdesc = ExecTypeFromExprList(rowexpr->args);
+				/* ... but adopt OraRowExpr's column aliases */
+				ExecTypeSetColNames(tupdesc, rowexpr->colnames);
+				/* Bless the tupdesc so it can be looked up later */
+				BlessTupleDesc(tupdesc);
+
+				Assert(nelems == tupdesc->natts);
+
+				/*
+				 * Evaluate by first building datums for each field, and then
+				 * a final step forming the composite datum.
+				 */
+				scratch.opcode = EEOP_ORAROW;
+				scratch.d.orarow.tupdesc = tupdesc;
+
+				/* space for the individual field datums */
+				scratch.d.orarow.elemvalues =
+					(Datum *) palloc(sizeof(Datum) * nelems);
+				scratch.d.orarow.elemnulls =
+					(bool *) palloc(sizeof(bool) * nelems);
+				/* as explained above, make sure any extra columns are null */
+				memset(scratch.d.orarow.elemnulls, true, sizeof(bool) * nelems);
+
+				/* Set up evaluation, skipping any deleted columns */
+				i = 0;
+				foreach(l, rowexpr->args)
+				{
+					Form_pg_attribute att = TupleDescAttr(tupdesc, i);
+					Expr	   *e = (Expr *) lfirst(l);
+
+					if (!att->attisdropped)
+					{
+						/*
+						 * Guard against ALTER COLUMN TYPE on rowtype since
+						 * the RowExpr was created.  XXX should we check
+						 * typmod too?	Not sure we can be sure it'll be the
+						 * same.
+						 */
+						if (exprType((Node *) e) != att->atttypid)
+							ereport(ERROR,
+									(errcode(ERRCODE_DATATYPE_MISMATCH),
+									 errmsg("column has type %s instead of type %s",
+											format_type_be(exprType((Node *) e)),
+											format_type_be(att->atttypid))));
+					}
+					else
+					{
+						/*
+						 * Ignore original expression and insert a NULL. We
+						 * don't really care what type of NULL it is, so
+						 * always make an int4 NULL.
+						 */
+						e = (Expr *) makeNullConst(INT4OID, -1, InvalidOid);
+					}
+
+					/* Evaluate column expr into appropriate workspace slot */
+					ExecInitExprRec(e, state,
+									&scratch.d.orarow.elemvalues[i],
+									&scratch.d.orarow.elemnulls[i]);
+					i++;
+				}
+
+				scratch.d.orarow.type = rowexpr->type;
+
+				/* And finally build the row value */
+				ExprEvalPushStep(state, &scratch);
+				break;
+			}
+		/* End - BUG#7712 */
+
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));

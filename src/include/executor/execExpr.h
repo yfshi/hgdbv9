@@ -296,6 +296,10 @@ typedef enum ExprEvalOp
 	EEOP_FORALLEXPR_FETCH,
 	/* End - ReqID:SRS-PLSQL-FORALL */
 
+	/* Begin - BUG#7712 */
+	EEOP_ORAROW,
+	/* End - BUG#7712 */
+
 	/* non-existent operation, used e.g. to check array lengths */
 	EEOP_LAST
 } ExprEvalOp;
@@ -774,6 +778,18 @@ typedef struct ExprEvalStep
 			List	   *subscripts; 	/* the values of forall index */
 		} forallexpr;
 		/* End - ReqID:SRS-PLSQL-FORALL */
+
+		/* Begin - BUG#7712 */
+		/* for EEOP_ORAROW */
+		struct
+		{
+			TupleDesc	tupdesc;	/* descriptor for result tuples */
+			/* workspace for the values constituting the row: */
+			Datum	   *elemvalues;
+			bool	   *elemnulls;
+			Datum		type;
+		}	orarow;
+		/* End - BUG#7712 */
 	}			d;
 } ExprEvalStep;
 
@@ -900,5 +916,8 @@ extern void ExecEvalNvlFetchExec(ExprState *state, ExprEvalStep *op);
 extern void ExecEvalVarRefExec(ExprState *state, ExprEvalStep *op);
 extern void ExecEvalPkgGlobalVarExec(ExprState *state, ExprEvalStep *op);
 /* End - OA#00002227*/
+/* Begin - BUG#7712 */
+extern void ExecEvalOraRow(ExprState *state, ExprEvalStep *op);
+/* End - BUG#7712 */
 
 #endif							/* EXEC_EXPR_H */
