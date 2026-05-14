@@ -1060,3 +1060,46 @@ drop table rms_rru;
 drop table dat_lte_rru_temp;
 drop sequence rms_lte_seq;
 /* End - OA-REQ-1669 */
+/* Begin - OA-2348:ORA merge update set unqualified columns prefer target */
+CREATE TABLE target_table (
+    id         NUMBER PRIMARY KEY,
+    common_col VARCHAR2(20),
+    data_col   VARCHAR2(100)
+);
+CREATE TABLE source_table (
+    id         NUMBER PRIMARY KEY,
+    common_col VARCHAR2(20),
+    new_data   VARCHAR2(100)
+);
+INSERT INTO target_table VALUES (1, 'target_value', 'old data');
+INSERT INTO source_table VALUES (1, 'source_value', 'new data');
+--1,
+BEGIN;
+MERGE INTO target_table t
+USING source_table s
+ON (t.id = s.id)
+WHEN MATCHED THEN
+ UPDATE SET data_col = common_col;
+SELECT * FROM target_table;
+ id |  common_col  |   data_col   
+----+--------------+--------------
+ 1  | target_value | target_value
+(1 row)
+
+ROLLBACK;
+--2, same as test 1
+MERGE INTO target_table t
+USING source_table s
+ON (t.id = s.id)
+WHEN MATCHED THEN
+ UPDATE SET data_col = t.common_col;
+SELECT * FROM target_table;
+ id |  common_col  |   data_col   
+----+--------------+--------------
+ 1  | target_value | target_value
+(1 row)
+
+--cleanup
+DROP TABLE target_table;
+DROP TABLE source_table;
+/* End - OA-2348:ORA merge update set unqualified columns prefer target */

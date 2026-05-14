@@ -1010,6 +1010,23 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 		bool		both_has_thiscol = false;
 		/* End - BUG#Z1326 */
 
+		/* Begin - OA-2348:ORA merge update set unqualified columns prefer target */
+		if (ORA_MODE == compatible_mode &&
+			pstate->p_expr_kind == EXPR_KIND_UPDATE_SOURCE &&
+			pstate->p_target_nsitem != NULL &&
+			pstate->p_target_nsitem->p_cols_visible &&
+			(!pstate->p_target_nsitem->p_lateral_only || pstate->p_lateral_active))
+		{
+			result = scanNSItemForColumn(orig_pstate, pstate->p_target_nsitem,
+										 sublevels_up, colname, has_plus_token, location);
+			if (result)
+			{
+				check_lateral_ref_ok(pstate, pstate->p_target_nsitem, location);
+				break;
+			}
+		}
+		/* End - OA-2348:ORA merge update set unqualified columns prefer target */
+
 		foreach(l, pstate->p_namespace)
 		{
 			ParseNamespaceItem *nsitem = (ParseNamespaceItem *) lfirst(l);
