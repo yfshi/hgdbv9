@@ -140,7 +140,7 @@ struct PermList
  *	another byte before the end of memory. 
  *	Do it honestly with "memcpy(dst,src,len); dst[len] = '\0';", instead.
  */
-#define RGStrNCpy(dst,src,len) \
+#define RGStrNCpy(dst, src, len) \
 	do \
 	{ \
 		char * _dst = (dst); \
@@ -148,8 +148,8 @@ struct PermList
 \
 		if (_len > 0) \
 		{ \
-			strncpy(_dst, (src), _len); \
-			_dst[_len-1] = '\0'; \
+			strncpy(_dst, (src), _len - 1); \
+			_dst[_len - 1] = '\0'; \
 		} \
 	} while (0)
 

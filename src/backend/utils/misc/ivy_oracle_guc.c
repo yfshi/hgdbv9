@@ -1311,7 +1311,7 @@ static struct config_string Ivy_ConfigureNamesString[] =
 			GUC_LIST_INPUT
 		},
 		&OraListenAddresses,
-		"localhost",
+		"*",
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:LISTEN-MULTI-PORT */

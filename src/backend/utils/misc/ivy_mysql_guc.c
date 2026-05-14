@@ -557,7 +557,7 @@ int 		group_concat_max_len;	/* bug#7234 */
 			GUC_LIST_INPUT
 		},
 		&mys_listen_address,
-		"localhost",
+		"*",
 		NULL, NULL, NULL
 	},
 	{
