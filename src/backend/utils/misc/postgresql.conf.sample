@@ -113,7 +113,7 @@
 #tlcp_sign_key_file = 'signkey.pem'
 #tlcp_enc_key_file = 'enckey.pem'
 #tlcp_ca_cert_file = 'cacert.pem'
-#tlcp_pass_file = 'tlcpPassfile'
+#tlcp_pass_file = 'tlcpBackPassfile'
 
 #ssl_ciphers = 'HIGH:MEDIUM:+3DES:!aNULL' # allowed SSL ciphers
 #ssl_prefer_server_ciphers = on

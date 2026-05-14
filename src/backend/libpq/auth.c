@@ -470,6 +470,18 @@ ClientAuthentication(Port *port)
 	 */
 	if (port->hba->clientcert != clientCertOff)
 	{
+		/* Begin - BUG7797 */
+		#ifdef USE_GMSSL
+		if (ssl_min_protocol_version == PG_TLCP_VERSION && !secure_loaded_verify_locations())
+		{
+			/* TODO:TLCP support hostssl all all 0.0.0.0/0 cert map=cert_map */
+			ereport(FATAL,
+					(errcode(ERRCODE_CONFIG_FILE_ERROR),
+					 errmsg("sorry:TLCP not support cert map=cert_map")));
+		}
+		#endif
+		/* End - BUG7797 */
+
 		/* If we haven't loaded a root certificate store, fail */
 		if (!secure_loaded_verify_locations())
 			ereport(FATAL,
