@@ -382,6 +382,20 @@ drop table tb4;
 
 set SQL_MODE to default;
 
+--uint4 -> numeric
+select 4294967295::uint4::numeric(20,4);
+
+create table tb_04 (a int unsigned);
+insert into tb_04 values(100000000);
+select cast(a as numeric(20,3)) from tb_04;
+select convert(a, numeric) from tb_04;
+drop table tb_04;
+
+create table t_convert_4 (col_numeric numeric);
+insert into t_convert_4 values (4294967295::uint4);
+select * from t_convert_4;
+drop table t_convert_4;
+
 --uint4 -> signed/unsigned (int8/uint8)
 select 4294967295::uint4::int8;
 select 4294967295::uint4::uint8;

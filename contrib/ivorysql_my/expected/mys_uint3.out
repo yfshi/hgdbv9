@@ -831,6 +831,37 @@ select a::uint3 + b from tb3;
 
 drop table tb3;
 set SQL_MODE to default;
+--uint3 -> numeric
+select 16777215::uint3::numeric(15,4);
+    numeric    
+---------------
+ 16777215.0000
+(1 row)
+
+create table tb_03 (a mediumint unsigned);
+insert into tb_03 values(10000);
+select cast(a as numeric(15,3)) from tb_03;
+     a     
+-----------
+ 10000.000
+(1 row)
+
+select convert(a, numeric) from tb_03;
+   a   
+-------
+ 10000
+(1 row)
+
+drop table tb_03;
+create table t_convert_3 (col_numeric numeric);
+insert into t_convert_3 values (16777215::uint3);
+select * from t_convert_3;
+ col_numeric 
+-------------
+    16777215
+(1 row)
+
+drop table t_convert_3;
 --uint3 -> signed/unsigned (int8/uint8)
 select 8000000::int3::int8;
   int8   

@@ -33,6 +33,7 @@ PG_FUNCTION_INFO_V1(int2_uint3);
 PG_FUNCTION_INFO_V1(uint3_boolean);
 PG_FUNCTION_INFO_V1(uint3_uint8);
 PG_FUNCTION_INFO_V1(uint3_int8);
+PG_FUNCTION_INFO_V1(uint3_numeric);
 
 Datum
 uint3_in(PG_FUNCTION_ARGS)
@@ -228,3 +229,13 @@ uint3_int8(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(val1);
 }
 /* End - BUG#Z7200 */
+
+/* Begin - BUG#Z7615 */
+Datum
+uint3_numeric(PG_FUNCTION_ARGS)
+{
+	uint32	val1 = PG_GETARG_UINT32(0);
+
+	PG_RETURN_NUMERIC(uint32_to_numeric(val1));
+}
+/* End - BUG#Z7615 */

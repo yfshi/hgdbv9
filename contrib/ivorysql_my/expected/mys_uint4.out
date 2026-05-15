@@ -1218,6 +1218,37 @@ select a::uint4 + b from tb4;
 
 drop table tb4;
 set SQL_MODE to default;
+--uint4 -> numeric
+select 4294967295::uint4::numeric(20,4);
+     numeric     
+-----------------
+ 4294967295.0000
+(1 row)
+
+create table tb_04 (a int unsigned);
+insert into tb_04 values(100000000);
+select cast(a as numeric(20,3)) from tb_04;
+       a       
+---------------
+ 100000000.000
+(1 row)
+
+select convert(a, numeric) from tb_04;
+     a     
+-----------
+ 100000000
+(1 row)
+
+drop table tb_04;
+create table t_convert_4 (col_numeric numeric);
+insert into t_convert_4 values (4294967295::uint4);
+select * from t_convert_4;
+ col_numeric 
+-------------
+  4294967295
+(1 row)
+
+drop table t_convert_4;
 --uint4 -> signed/unsigned (int8/uint8)
 select 4294967295::uint4::int8;
     int8    
