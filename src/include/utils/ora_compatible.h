@@ -4,7 +4,8 @@
  *
  * Definition enumeration structure is fro supporting different compatibility modes.
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/utils/ora_compatible.h
  *

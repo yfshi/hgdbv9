@@ -3,7 +3,8 @@
  * NUMBER-processing utility routines for frontend code (Oracle compatibility)
  *
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/oracle_fe_utils/ora_number_utils.h
  *

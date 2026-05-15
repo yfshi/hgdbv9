@@ -4,7 +4,8 @@
  * specparse.y
  *	  bison grammar for the isolation test file format
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  *	 add the file for requirement "SRS-MISC-MYSQL-FRAME"
  *

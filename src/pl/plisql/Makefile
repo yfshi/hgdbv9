@@ -1,8 +1,9 @@
 #-------------------------------------------------------------------------
 #
-# Makefile for src/pl/plisql (IvorySQL-2.0's PLISQL procedural language)
+# Makefile for src/pl/plisql (HighGo's PLISQL procedural language)
 #
-# Portions Copyright (c) 2022, IvorySQL-2.0
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
 #
 # src/pl/plisql/Makefile
 #

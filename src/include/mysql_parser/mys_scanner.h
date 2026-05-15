@@ -8,7 +8,8 @@
  * higher-level API provided by parser.h.
  *
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0 Global Development Group
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/mysql_parser/mys_scanner.h
  *

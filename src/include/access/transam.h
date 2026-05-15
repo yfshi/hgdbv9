@@ -202,9 +202,9 @@ FullTransactionIdAdvance(FullTransactionId *dest)
 
 /* BEGIN - SQL PARSER */
 /* 1."MinTypeObjectId" specifies the minimum value
- *  to assign an OID to a new data type In IvorySQL-2.0.
+ *  to assign an OID to a new data type In HighGo.
  * 2."MaxTypeObjectId" specifies the maximum value
- *  to assign an OID to a new data type In IvorySQL-2.0.
+ *  to assign an OID to a new data type In HighGo.
  */
 #define MinTypeObjectId			9000
 #define MaxTypeObjectId			9100

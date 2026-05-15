@@ -1,7 +1,8 @@
 #!/usr/bin/perl
 #
 # Generate the plerrcodes.h header from ora_errcodes.txt
-# Copyright (c) 2022, IvorySQL-2.0 Global Development Group
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
 
 use strict;
 use warnings;

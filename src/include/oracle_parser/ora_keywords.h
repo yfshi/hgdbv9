@@ -1,10 +1,11 @@
 /*-------------------------------------------------------------------------
  *
  * ora_keywords.h
- *	  IvorySQL-2.0's list of SQL keywords
+ *	  HighGo's list of SQL keywords
  *
  *
- * Portions Copyright (c) 2022, IvorySQL-2.0 Global Development Group
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * src/include/oracle_parser/ora_keywords.h
  *

@@ -3,7 +3,8 @@
  * test.c
  *		Test harness code for shared memory message queues.
  *
- * Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/oracle_test/modules/test_shm_mq/test.c

@@ -2,7 +2,8 @@
 #
 # Makefile for src/msyql_test/ssl
 #
-# Portions Copyright (c) 2023, IvorySQL-2.0
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
 #
 # src/mysql_test/ssl/Makefile
 #

@@ -7,7 +7,8 @@
  * perspective, but allows regression testing independent of platform-specific
  * features like SELinux.
  *
- * Portions Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * add the file for requirement "SRS-MISC-MYSQL-FRAME"
  *

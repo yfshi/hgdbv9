@@ -3,7 +3,8 @@
  * libpq_pipeline.c
  *		Verify libpq pipeline execution functionality
  *
- * Copyright (c) 2023, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/mysql_test/modules/libpq_pipeline/libpq_pipeline.c

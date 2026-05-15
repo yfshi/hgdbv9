@@ -3,7 +3,8 @@
  * test_ginpostinglist.c
  *		Test varbyte-encoding in ginpostinglist.c
  *
- * Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/mysql_test/modules/test_ginpostinglist/test_ginpostinglist.c

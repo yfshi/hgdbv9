@@ -3,7 +3,8 @@
  * test_regex.c
  *		Test harness for the regular expression package.
  *
- * Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/oracle_test/modules/test_regex/test_regex.c

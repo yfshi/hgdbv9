@@ -3,7 +3,9 @@
 # Makefile for parser
 #
 # 
-# Copyright (c) 2023, IvorySQL-2.0
+# Copyright:
+# Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
+#
 # IDENTIFICATION
 #    src/backend/mysql_parser/Makefile
 #

@@ -4,9 +4,10 @@
 /*-------------------------------------------------------------------------
  *
  * ora_gram.y
- *	  IvorySQL-2.0 BISON rules/actions  (Oracle compatible)
+ *	  HighGo BISON rules/actions  (Oracle compatible)
  *
- * Portions Copyright (c) 2019, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *	  src/backend/parser/oracle/ora_gram.y

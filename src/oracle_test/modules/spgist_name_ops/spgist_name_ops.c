@@ -11,7 +11,8 @@
  * Unlike spgtextproc.c, we don't bother with collation-aware logic.
  *
  *
- * Copyright (c) 2022, IvorySQL-2.0
+ * Copyright:
+ * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
  *
  * IDENTIFICATION
  *		src/oracle_test/modules/spgist_name_ops/spgist_name_ops.c
