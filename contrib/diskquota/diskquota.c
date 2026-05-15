@@ -515,7 +515,9 @@ add_db_to_config(Oid dbid)
 	StringInfoData str;
 
 	initStringInfo(&str);
-	appendStringInfo(&str, "insert into hg_security.diskquota_database_list values(%d);", dbid);
+	/* Begin - BUG#Z7820 */
+	appendStringInfo(&str, "insert into hg_security.diskquota_database_list values(%d) ON CONFLICT DO NOTHING;", dbid);
+	/* End - BUG#Z7820 */
 	exec_simple_spi(str.data, SPI_OK_INSERT);
 
 	return true;
@@ -585,6 +587,11 @@ on_add_db(Oid dbid, DiskquotaMessageResult *code)
 		PG_RE_THROW();
 	}
 	PG_END_TRY();
+
+	/* Begin - BUG#Z7820 */
+	/* Recreating after a failed CREATE may find a stale worker for this dbid. */
+	try_kill_db_worker(dbid);
+	/* End - BUG#Z7820 */
 
 	if (start_worker_by_dboid(dbid) < 1)
 	{
