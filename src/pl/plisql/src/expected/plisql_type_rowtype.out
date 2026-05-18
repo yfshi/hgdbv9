@@ -4213,6 +4213,22 @@ DROP FUNCTION fun2;
 DROP PACKAGE pkg1;
 DROP TABLE t1;
 /* End - BUG#M0000536 */
+/* Begin - OA-REQ-2357 */
+CREATE TABLE test_tb (id int);
+CREATE OR REPLACE PROCEDURE test_pro
+ AUTHID DEFINER
+IS
+  INSERT INTO test_tb (idi) VALUES (1);
+END;
+/
+WARNING:  there was an compilation error
+HINT:  syntax error at or near "INTO"
+ALTER PROCEDURE test_pro COMPILE;
+WARNING:  there was an compilation error
+HINT:  syntax error at or near "INTO"
+DROP PROCEDURE test_pro();
+DROP TABLE test_tb;
+/* End - OA-REQ-2357 */
 RESET IVORYSQL.COMPATIBLE_MODE;
 RESET IVORYSQL.IDENTIFIER_CASE_SWITCH;
 --
