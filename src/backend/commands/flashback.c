@@ -29,6 +29,8 @@
 #include "utils/acl.h"
 #include "utils/rel.h"
 #include "access/xact.h"
+#include "access/commit_ts.h"
+#include "access/htup_details.h"
 #include "miscadmin.h"
 #include "commands/flashback.h"
 #include "utils/timestamp.h"
@@ -49,6 +51,7 @@
 #include "catalog/heap.h"
 #include "storage/predicate.h"
 #include "catalog/index.h"
+#include "catalog/pg_attribute.h"
 #include "pgstat.h"
 #include "parser/pg_object_hook.h"
 #include "utils/ora_compatible.h"
@@ -58,8 +61,12 @@
 #include "catalog/storage.h"
 #include "catalog/pg_namespace.h"
 #include "catalog/pg_trigger.h"
+#include "commands/vacuum.h"
 #include "executor/executor.h"
 #include "commands/trigger.h"
+
+static void FlashbackCheckRelationTimepoint(Relation rel, TimestampTz timepoint);
+static void FlashbackCheckUndoRetentionTimepoint(TimestampTz timepoint);
 
 /*
  * Delete delta tuples that inserted after the snapshot.
@@ -188,6 +195,7 @@ void FlashbackToTimepoint(FlashbackStmt *stmt, int nth)
     RangeVar *rangevar = list_nth(stmt->relation_list, nth);
     Relation rel;
     Snapshot snapshot;
+    TimestampTz timepoint;
 
     rel = table_openrv(rangevar, AccessExclusiveLock);
 
@@ -201,12 +209,15 @@ void FlashbackToTimepoint(FlashbackStmt *stmt, int nth)
          rel->rd_rel->relpersistence != RELPERSISTENCE_UNLOGGED))
         elog(ERROR, "Flashback only support simple table");
 
+    timepoint = DatumGetTimestampTz(((Const *)stmt->timepoint)->constvalue);
+	FlashbackCheckUndoRetentionTimepoint(timepoint);
+    FlashbackCheckRelationTimepoint(rel, timepoint);
+
     /*
      * Construct the snapshot based on the transaction status
      * at the corresponding timestamp.
      */
-    snapshot = TimestampGetSnapshot(DatumGetTimestampTz(((Const *)stmt->timepoint)->constvalue),
-                                    SNAPSHOT_FLASHBACK_MVCC, false);
+    snapshot = TimestampGetSnapshot(timepoint, SNAPSHOT_FLASHBACK_MVCC, false);
 
     /*
      * Delete delta tuples that inserted after restore point.
@@ -228,6 +239,117 @@ void FlashbackToTimepoint(FlashbackStmt *stmt, int nth)
     CommandCounterIncrement();
 
     return;
+}
+
+/*
+ * A flashback target older than undo_retention may already have lost the tuple
+ * versions needed to reconstruct the table contents.
+ */
+static void
+FlashbackCheckUndoRetentionTimepoint(TimestampTz timepoint)
+{
+	TimestampTz undo_cutoff_ts;
+
+	if (undo_retention <= 0)
+		return;
+
+	if (!track_commit_timestamp)
+		ereport(ERROR,
+				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+				 errmsg("undo_retention requires track_commit_timestamp to be enabled")));
+
+	undo_cutoff_ts = GetCurrentTimestamp() -
+		((int64) undo_retention * USECS_PER_SEC);
+
+	if (timestamptz_cmp_internal(timepoint, undo_cutoff_ts) < 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_SNAPSHOT_TOO_OLD),
+				 errmsg("The flashback timepoint is older than current undo_retention cutoff."),
+				 errdetail("Make sure the parameter undo_retention is set to a appropriate value.")));
+}
+
+/*
+ * A table flashback to an older tuple snapshot cannot safely cross schema or
+ * storage boundaries.  Use catalog tuple commit timestamps as conservative
+ * lower bounds for the current relation and column definitions.
+ */
+static void
+FlashbackCheckRelationTimepoint(Relation rel, TimestampTz timepoint)
+{
+    Oid         relid = RelationGetRelid(rel);
+    Relation    attrrel;
+    SysScanDesc scan;
+    ScanKeyData skey[1];
+    HeapTuple   tup;
+
+    tup = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
+    if (HeapTupleIsValid(tup))
+    {
+        TransactionId xmin = HeapTupleHeaderGetXmin(tup->t_data);
+        TimestampTz   catalogtime;
+
+        if (!TransactionIdIsNormal(xmin) ||
+            !TransactionIdGetCommitTsData(xmin, &catalogtime, NULL))
+            ereport(ERROR,
+                    (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                     errmsg("could not determine relation \"%s\" catalog modification time",
+                            RelationGetRelationName(rel))));
+
+        if (timestamptz_cmp_internal(catalogtime, timepoint) > 0)
+            ereport(ERROR,
+                    (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                     errmsg("cannot flashback relation \"%s\" to a time before its current catalog version",
+                            RelationGetRelationName(rel))));
+
+        ReleaseSysCache(tup);
+    }
+
+    ScanKeyInit(&skey[0],
+                Anum_pg_attribute_attrelid,
+                BTEqualStrategyNumber, F_OIDEQ,
+                ObjectIdGetDatum(relid));
+
+    attrrel = table_open(AttributeRelationId, AccessShareLock);
+    scan = systable_beginscan(attrrel,
+                              AttributeRelidNumIndexId,
+                              true,
+                              NULL,
+                              1,
+                              skey);
+    while (HeapTupleIsValid(tup = systable_getnext(scan)))
+    {
+        Form_pg_attribute attr = (Form_pg_attribute) GETSTRUCT(tup);
+        TransactionId xmin;
+        TimestampTz   catalogtime;
+
+        if (attr->attnum <= 0)
+            continue;
+
+        xmin = HeapTupleHeaderGetXmin(tup->t_data);
+        if (!TransactionIdIsNormal(xmin) ||
+            !TransactionIdGetCommitTsData(xmin, &catalogtime, NULL))
+            ereport(ERROR,
+                    (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                     errmsg("could not determine relation \"%s\" column modification time",
+                            RelationGetRelationName(rel))));
+
+        if (timestamptz_cmp_internal(catalogtime, timepoint) <= 0)
+            continue;
+
+        if (attr->attisdropped)
+            ereport(ERROR,
+                    (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                     errmsg("cannot flashback relation \"%s\" to a time before a column was dropped",
+                            RelationGetRelationName(rel))));
+        else
+            ereport(ERROR,
+                    (errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+                     errmsg("cannot flashback relation \"%s\" to a time before column \"%s\" was added or modified",
+                            RelationGetRelationName(rel), NameStr(attr->attname))));
+    }
+
+    systable_endscan(scan);
+    table_close(attrrel, AccessShareLock);
 }
 
 /*
@@ -591,7 +713,9 @@ FlashbackBeforeDrop(FlashbackStmt *stmt, int nth)
 
         replaces[Anum_pg_class_relname - 1] = true;
         if (desc.type == RB_OBJ_TABLE && stmt->new_relname_list != NULL)
-            values[Anum_pg_class_relname - 1] = DirectFunctionCall1(namein, CStringGetDatum((char*)list_nth(stmt->new_relname_list, nth)));
+			values[Anum_pg_class_relname - 1] =
+				DirectFunctionCall1(namein,
+									CStringGetDatum(strVal(list_nth(stmt->new_relname_list, nth))));
         else
             values[Anum_pg_class_relname - 1] = DirectFunctionCall1(namein, CStringGetDatum(desc.originname));
 
@@ -727,105 +851,136 @@ RbRelationSetNewRelfilenode(Relation relation, char persistence)
     RelationAssumeNewRelfilenode(relation);
 }
 
+static bool
+RbTruncateCanRecycleRelation(Relation rel)
+{
+	if (rel->rd_rel->relkind != RELKIND_RELATION ||
+		(rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT &&
+		 rel->rd_rel->relpersistence != RELPERSISTENCE_UNLOGGED))
+		return false;
+
+	return true;
+}
+
+static void
+RbTruncateOneRelation(Relation rel)
+{
+	Oid relid = RelationGetRelid(rel);
+	Oid toastRelid;
+	RbObjDesc baseDesc;
+	ReindexParams newparams = {0};
+
+	if (RbJudgeHaveTrigger(relid))
+	{
+		elog(NOTICE, "Not support truncate triggers where use recyclebin features, "
+					 "requires manual truncate target table");
+	}
+
+	/*
+	 * This effectively deletes all rows in the table, and may be done
+	 * in a serializable transaction.  In that case we must record a
+	 * rw-conflict in to this transaction from each transaction
+	 * holding a predicate lock on the table.
+	 */
+	CheckTableForSerializableConflictIn(rel);
+
+	/*
+	 * Create a new empty storage file for the relation, and assign it
+	 * as the relfilenode value, and record the old relfilenode to recyclebin.
+	 */
+	RbDescInit(rel, &baseDesc, RCYOPERATION_TRUNCATE, RB_OBJ_TABLE);
+	baseDesc.id = baseDesc.baseid = RecyclebinWrite(&baseDesc, InvalidOid);
+
+	/*
+	 * The same for the toast table, if any.
+	 */
+	toastRelid = rel->rd_rel->reltoastrelid;
+
+	RbRelationSetNewRelfilenode(rel, rel->rd_rel->relpersistence);
+
+	if (OidIsValid(toastRelid))
+	{
+		RbObjDesc   desc;
+		Relation    relToast;
+
+		relToast = relation_open(toastRelid, AccessExclusiveLock);
+		RbDescInit(relToast, &desc, RCYOPERATION_TRUNCATE, RB_OBJ_TOAST);
+		RecyclebinWrite(&desc, baseDesc.baseid);
+		RbRelationSetNewRelfilenode(relToast, relToast->rd_rel->relpersistence);
+		table_close(relToast, NoLock);
+	}
+
+	/*
+	 * Reconstruct the indexes to match, and we're done.
+	 */
+	(void)reindex_relation(relid, REINDEX_REL_PROCESS_TOAST, &newparams);
+
+	/* report truncate to PgStatCollector */
+	pgstat_count_truncate(rel);
+
+	/* Record time of truancate relation. */
+	if (pg_object_alter_obj_hook &&
+		pg_object_get_ori_infor_hook &&
+		compatible_mode == ORA_MODE)
+	{
+		ObjectAddress address;
+		PgObjectInfo objinf;
+
+		ObjectAddressSet(address, RelationRelationId, relid);
+		if ((objinf = pg_object_get_ori_infor_hook(address)) != NULL)
+			pg_object_alter_obj_hook(address,
+									 objinf->oriname,
+									 objinf->orischema,
+									 objinf->orioption,
+									 NULL);
+	}
+}
+
 /*
  * Move the old filenode to the recycle bin and generate a new filenode for the table.
  */
-void 
+void
 RbTruncate(List *explicit_rels, List *relids, List *relids_logged,
-                DropBehavior behavior, bool restart_seqs)
+		   DropBehavior behavior, bool restart_seqs)
 {
-    Relation rel = (Relation)linitial(explicit_rels);
-    Oid relid;
-    Oid toastRelid;
-    RbObjDesc baseDesc;
-    ReindexParams newparams = {0};
+	ListCell *cell;
 
-    /*
-     * 1. Open relation in AccessExclusiveLock, and check permission, etc.
-     */
-    relid = RelationGetRelid(rel);
-    rel = table_open(relid, AccessExclusiveLock);
+	/*
+	 * 1. Check whether all relations can be recycled.  If any relation in the
+	 * batch is unsupported, keep the original truncate behavior for the whole
+	 * command.
+	 */
+	if (restart_seqs == true)
+	{
+		ExecuteTruncateGuts(explicit_rels, relids, relids_logged,
+							behavior, restart_seqs);
+		return;
+	}
 
-    if (list_length(explicit_rels) != 1 ||
-        restart_seqs == true ||
-        rel->rd_rel->relkind != RELKIND_RELATION ||
-        (rel->rd_rel->relpersistence != RELPERSISTENCE_PERMANENT &&
-         rel->rd_rel->relpersistence != RELPERSISTENCE_UNLOGGED))
-    {
-        ExecuteTruncateGuts(explicit_rels, relids, relids_logged,
-                            behavior, restart_seqs);
-        table_close(rel, AccessExclusiveLock);
-        return;
-    }
+	foreach(cell, explicit_rels)
+	{
+		Relation rel = (Relation) lfirst(cell);
 
-    if (RbJudgeHaveTrigger(relid))
-    {
-        elog(NOTICE, "Not support truncate triggers where use recyclebin features, "
-                     "requires manual truncate target table");
-    }
+		if (!RbTruncateCanRecycleRelation(rel))
+		{
+			ExecuteTruncateGuts(explicit_rels, relids, relids_logged,
+								behavior, restart_seqs);
+			return;
+		}
+	}
 
-    heap_truncate_check_FKs(explicit_rels, false);
+	heap_truncate_check_FKs(explicit_rels, false);
 
-    /*
-     * This effectively deletes all rows in the table, and may be done
-     * in a serializable transaction.  In that case we must record a
-     * rw-conflict in to this transaction from each transaction
-     * holding a predicate lock on the table.
-     */
-    CheckTableForSerializableConflictIn(rel);
+	/*
+	 * 2. Create a new empty storage file for each relation, and assign it
+	 * as the relfilenode value, and record the old relfilenode to recyclebin.
+	 */
+	foreach(cell, explicit_rels)
+	{
+		Relation rel = (Relation) lfirst(cell);
 
-    /*
-     * 2. Create a new empty storage file for the relation, and assign it
-     * as the relfilenode value, and record the old relfilenode to recyclebin.
-     */
-    RbDescInit(rel, &baseDesc, RCYOPERATION_TRUNCATE, RB_OBJ_TABLE);
-    baseDesc.id = baseDesc.baseid = RecyclebinWrite(&baseDesc, InvalidOid);
-    RbRelationSetNewRelfilenode(rel, rel->rd_rel->relpersistence);
-
-    /*
-     * 3. The same for the toast table, if any.
-     */
-    toastRelid = rel->rd_rel->reltoastrelid;
-    if (OidIsValid(toastRelid))
-    {
-        RbObjDesc   desc;
-        Relation    relToast;
-
-        relToast = relation_open(toastRelid, AccessExclusiveLock);
-        RbDescInit(relToast, &desc, RCYOPERATION_TRUNCATE, RB_OBJ_TOAST);
-        RecyclebinWrite(&desc, baseDesc.baseid);
-        RbRelationSetNewRelfilenode(relToast, relToast->rd_rel->relpersistence);
-        table_close(relToast, NoLock);
-    }
-
-    /*
-     * 4. Reconstruct the indexes to match, and we're done.
-     */
-    (void)reindex_relation(relid, REINDEX_REL_PROCESS_TOAST, &newparams);
-
-    /*
-     * 5. Report stat, and clean.
-     */
-
-    /* report truncate to PgStatCollector */
-    pgstat_count_truncate(rel);
-
-    /* Record time of truancate relation. */
-    if (pg_object_alter_obj_hook && compatible_mode == ORA_MODE)
-    {
-        ObjectAddress address;
-        PgObjectInfo objinf;
-
-        ObjectAddressSet(address, RelationRelationId, relid);
-        objinf = pg_object_get_ori_infor_hook(address);
-        pg_object_alter_obj_hook(address,
-                                 objinf->oriname,
-                                 objinf->orischema,
-                                 objinf->orioption,
-                                 NULL);
-    }
-
-    table_close(rel, NoLock);
+		RbTruncateOneRelation(rel);
+	}
 }
 
 /*

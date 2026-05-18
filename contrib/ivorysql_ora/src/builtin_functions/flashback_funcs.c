@@ -106,21 +106,17 @@ pg_versions_operation(PG_FUNCTION_ARGS)
 	tuphdr = tuple->t_data;
 
 	/*
-	 * INSERT for a live inserted version, UPDATE for either side of an update
-	 * chain, and DELETE for a deleted version. Lock-only xmax values are ignored.
+	 * A valid non-lock xmax means this version has been superseded or deleted,
+	 * even if it was originally produced by UPDATE and still carries
+	 * HEAP_UPDATED.  Only surviving versions created by UPDATE report U.
 	 */
-	if (tuphdr->t_infomask & HEAP_UPDATED)
-		op = 'U';
-	else if ((tuphdr->t_infomask & HEAP_XMAX_INVALID) ||
-			HeapTupleHeaderIsOnlyLocked(tuphdr))
-		op = 'I';
-	else if (HeapTupleHeaderIndicatesMovedPartitions(tuphdr))
+	if (!(tuphdr->t_infomask & HEAP_XMAX_INVALID) &&
+			!HeapTupleHeaderIsOnlyLocked(tuphdr))
 		op = 'D';
-	else if (ItemPointerIsValid(&tuple->t_self) &&
-			!ItemPointerEquals(&tuple->t_self, &tuphdr->t_ctid))
+	else if (tuphdr->t_infomask & HEAP_UPDATED)
 		op = 'U';
 	else
-		op = 'D';
+		op = 'I';
 
 	if (should_free)
 		heap_freetuple(tuple);
