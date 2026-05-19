@@ -35,44 +35,44 @@ select * from autocommit_test6;
 -- /* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
 -- load data
 -- allowLoadLocalInfile default is on
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- allowLoadLocalInfile set to false manual
 -- return an error
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalOffTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcLoadDataLocalOffTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- set server local_infile to off
 show local_infile;
 alter system set local_infile = off;
 select pg_reload_conf();
 -- return an error
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- set server local_infile to on
 show local_infile;
 alter system set local_infile = on;
 select pg_reload_conf();
 -- success
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- select into test
 -- return an error as proto_user is not superuser, so could not write file on server
 \du proto_user
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- give super priv to proto_user
 ALTER USER proto_user WITH SUPERUSER;
 \du proto_user
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 ALTER USER proto_user WITH NOSUPERUSER;
 \du proto_user
 -- /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 -- fetch
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcFetchTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcFetchTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- very long sql
-\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLInsertLongData 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLInsertLongData 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- final clean
 RESET ROLE;

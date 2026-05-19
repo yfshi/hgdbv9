@@ -29,11 +29,11 @@ public class MySQLJdbcLoadDataLocalOffTest {
 
 		if (jar_version.equals("new"))
 		{
-			url_jdbc = "jdbc:mysql://?allowLoadLocalInfile=false&?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&createDatabaseIfNotExist=true";
+			url_jdbc = "jdbc:mysql://?allowLoadLocalInfile=false&allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&createDatabaseIfNotExist=true";
 		}
 		else
 		{
-			url_jdbc = "jdbc:mysql://?allowLoadLocalInfile=false&?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&useSSL=false&createDatabaseIfNotExist=true";
+			url_jdbc = "jdbc:mysql://?allowLoadLocalInfile=false&allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&useSSL=false&createDatabaseIfNotExist=true";
 		}
 
 		try (Connection connection = DriverManager.getConnection(url_jdbc, info);

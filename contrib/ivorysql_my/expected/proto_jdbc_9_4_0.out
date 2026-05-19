@@ -1,0 +1,361 @@
+/* Begin - BUG#7733 */
+set ivorysql.compatible_mode = PG;
+CREATE USER proto_user WITH PASSWORD 'ivorysql@123';
+ERROR:  role "proto_user" already exists
+GRANT ALL ON SCHEMA public TO proto_user;
+ALTER USER proto_user WITH PASSWORD 'ivorysql@123';
+set ivorysql.compatible_mode = MYSQL;
+-- compile java source file
+\! javac -classpath proto_test/class/junixsocket-common-2.6.2.jar:proto_test/class/junixsocket-mysql-2.6.2.jar proto_test/class/*.java
+-- wrong password
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+c1:INT
+c2:INT
+c3:INT
+c4:INT
+c5:SMALLINT
+c6:SMALLINT
+c7:BIGINT
+c8:BIGINT
+c9:FLOAT
+c10:DOUBLE
+c11:BIT
+c12:TINYINT
+c13:VARCHAR
+c15:VARCHAR
+QUERY PLAN:TEXT
+Hash Join
+  Hash Cond: (a.c1 = b.c2)
+  ->  Seq Scan on t3 a
+  ->  Hash
+        ->  Seq Scan on t3 b
+res_getBoolean: true
+res_getInt: 1
+res_getString: 1
+res_getBoolean: false
+res_getInt: 0
+res_getString: 0
+1
+mysql
+2
+ivorysql-server
+3
+postgres
+a:BIT
+name:VARCHAR
+size:CHAR
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+c1:INT
+c2:INT
+c3:INT
+c4:INT
+c5:SMALLINT
+c6:SMALLINT
+c7:BIGINT
+c8:BIGINT
+c9:FLOAT
+c10:DOUBLE
+c11:BIT
+c12:TINYINT
+c13:VARCHAR
+c15:VARCHAR
+QUERY PLAN:TEXT
+Hash Join
+  Hash Cond: (a.c1 = b.c2)
+  ->  Seq Scan on t3 a
+  ->  Hash
+        ->  Seq Scan on t3 b
+res_getBoolean: true
+res_getInt: 1
+res_getString: 1
+res_getBoolean: false
+res_getInt: 0
+res_getString: 0
+1
+mysql
+2
+ivorysql-server
+3
+postgres
+a:BIT
+name:VARCHAR
+size:CHAR
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcPrepareTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+Exception in thread "main" java.sql.SQLException: type "set" does not exist
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeUpdateInternal(StatementImpl.java:1499)
+	at com.mysql.cj.jdbc.StatementImpl.executeLargeUpdate(StatementImpl.java:2321)
+	at com.mysql.cj.jdbc.StatementImpl.executeUpdate(StatementImpl.java:1369)
+	at MySQLJdbcPrepareTest.main(MySQLJdbcPrepareTest.java:85)
+select * from t3;
+ERROR:  relation "t3" does not exist
+LINE 1: select * from t3;
+                      ^
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcAutoCommitTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+select relname from pg_class where relname like '%autocommit_test%' order by relname;
+ relname 
+---------
+(0 rows)
+
+select * from autocommit_test6;
+ERROR:  relation "autocommit_test6" does not exist
+LINE 1: select * from autocommit_test6;
+                      ^
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/junixsocket-common-2.6.2.jar:proto_test/class/junixsocket-mysql-2.6.2.jar:proto_test/class/junixsocket-native-common-2.6.2.jar:proto_test/class/. MySQLJdbcAutoIncrementTest 127.0.0.1 $MYSPORT db_uds $USER
+4
+5
+6
+7
+-- prepare
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLLongDataExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+CREATE TABLE SUCCESS
+insert success, affected rows: 1
+insert blob data success, affected rows: 1
+
+Result Check:
+ID	FileName			TextLength	BinLength
+------------------------------------------------------------
+1	large_text_file.txt 	628890	0
+2	large_binary_file.dat	0	2097152
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLPreparedStatementExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+Table created successfully or already exists
+Inserted long text data successfully, affected rows: 1
+Inserted long binary data successfully, affected rows: 1
+
+=== Demonstrating COM_STMT_RESET ===
+First execution - affected rows: 1
+Second execution after reset - affected rows: 1
+
+=== Demonstrating COM_STMT_RESET with Batch ===
+Batch execution completed. Results: [1, 1, 1]
+
+=== Demonstrating COM_STMT_CLOSE ===
+Method 1: Using try-with-resources for automatic COM_STMT_CLOSE
+Query 1 returned 7 rows
+Query 2 returned 7 rows
+Query 3 returned 7 rows
+Method 2: Using explicit close() for COM_STMT_CLOSE
+Total records: 7
+Found 5 records with COM_STMT in description
+First prepared statement closed
+Second prepared statement closed
+
+=== Demonstrating COM_STMT_CLOSE on Connection Close ===
+Created 3 prepared statements
+When connection closes, COM_STMT_CLOSE will be sent for all open statements
+Connection closed - all statements received COM_STMT_CLOSE
+
+=== Data Verification Results ===
+ID    File Name                 Text Length  Bin Length   Description                                       
+----------------------------------------------------------------------------------------------------
+1     large_text_file.txt       598890       0            COM_STMT_SEND_LONG_DATA example with text data    
+2     large_binary_file.dat     0            1048576      COM_STMT_SEND_LONG_DATA example with binary data  
+3     reset_example_1.dat       0            524288       First execution before reset                      
+4     reset_example_2.dat       0            262144       Second execution after reset                      
+5     batch_file_1.txt          57890        0            Batch example 1 - COM_STMT_RESET between batches  
+6     batch_file_2.txt          57890        0            Batch example 2 - COM_STMT_RESET between batches  
+7     batch_file_3.txt          57890        0            Batch example 3 - COM_STMT_RESET between batches  
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcStmtPrepareTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+=== COM_STMT_PREPARE JDBC Test ===
+
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+Database connection successful
+Prepared statement result: 30
+Multiple parameters: 100, test, true
+
+Database connection closed
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+=== COM_STMT_RESET JDBC Test ===
+
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+Database connection successful
+1. Testing clearParameters on PreparedStatement:
+After clearParameters and reset: 200
+2. Testing clearBatch on Statement (with DML statements):
+Batch execution results: 2 commands executed
+Total rows in test_batch: 1
+3. Testing multiple executions with parameter reset:
+Iteration 1: 10 * 2 = 20
+Iteration 2: 20 * 2 = 40
+Iteration 3: 30 * 2 = 60
+Iteration 4: 40 * 2 = 80
+Iteration 5: 50 * 2 = 100
+4. Testing ResultSet cleanup and statement reuse:
+First execution: 100
+Second execution after reset: 200
+5. Testing batch operations with PreparedStatement:
+PreparedStatement batch executed: 3 inserts
+New records inserted: 3
+
+Database connection closed
+-- /* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+-- load data
+-- allowLoadLocalInfile default is on
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+Database connection successful
+Success generated the CSV file
+Test failed: The used command is not allowed with this Server version
+java.sql.SQLException: The used command is not allowed with this Server version
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685)
+	at MySQLJdbcLoadDataLocalTest.testLoadDataLocal(MySQLJdbcLoadDataLocalTest.java:85)
+	at MySQLJdbcLoadDataLocalTest.main(MySQLJdbcLoadDataLocalTest.java:46)
+
+Database connection closed
+-- allowLoadLocalInfile set to false manual
+-- return an error
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcLoadDataLocalOffTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Exception in thread "main" java.sql.SQLException: The used command is not allowed with this Server version
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685)
+	at MySQLJdbcLoadDataLocalOffTest.main(MySQLJdbcLoadDataLocalOffTest.java:56)
+-- set server local_infile to off
+show local_infile;
+ local_infile 
+--------------
+ on
+(1 row)
+
+alter system set local_infile = off;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+-- return an error
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+Database connection successful
+Success generated the CSV file
+Test failed: The used command is not allowed with this Server version
+java.sql.SQLException: The used command is not allowed with this Server version
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685)
+	at MySQLJdbcLoadDataLocalTest.testLoadDataLocal(MySQLJdbcLoadDataLocalTest.java:85)
+	at MySQLJdbcLoadDataLocalTest.main(MySQLJdbcLoadDataLocalTest.java:46)
+
+Database connection closed
+-- set server local_infile to on
+show local_infile;
+ local_infile 
+--------------
+ off
+(1 row)
+
+alter system set local_infile = on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+-- success
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcLoadDataLocalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+Database connection successful
+Success generated the CSV file
+Test failed: The used command is not allowed with this Server version
+java.sql.SQLException: The used command is not allowed with this Server version
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685)
+	at MySQLJdbcLoadDataLocalTest.testLoadDataLocal(MySQLJdbcLoadDataLocalTest.java:85)
+	at MySQLJdbcLoadDataLocalTest.main(MySQLJdbcLoadDataLocalTest.java:46)
+
+Database connection closed
+-- select into test
+-- return an error as proto_user is not superuser, so could not write file on server
+\du proto_user
+            List of roles
+ Role name  | Attributes | Member of 
+------------+------------+-----------
+ proto_user |            | {}
+
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+CREATE TABLE t_select_into SUCCESS
+Insert data (1,1,'highgo')
+Insert data (2,2,'wor$k')
+Insert data (3,3,'high,go')
+Insert data SUCCESS
+java.sql.SQLException: permission denied
+	at com.mysql.cj.jdbc.exceptions.SQLError.createSQLException(SQLError.java:121)
+	at com.mysql.cj.jdbc.exceptions.SQLExceptionsMapping.translateException(SQLExceptionsMapping.java:114)
+	at com.mysql.cj.jdbc.StatementImpl.executeInternal(StatementImpl.java:837)
+	at com.mysql.cj.jdbc.StatementImpl.execute(StatementImpl.java:685)
+	at MySQLJdbcSelectIntoFileTest.selectIntoData(MySQLJdbcSelectIntoFileTest.java:106)
+	at MySQLJdbcSelectIntoFileTest.main(MySQLJdbcSelectIntoFileTest.java:57)
+-- give super priv to proto_user
+ALTER USER proto_user WITH SUPERUSER;
+\du proto_user
+            List of roles
+ Role name  | Attributes | Member of 
+------------+------------+-----------
+ proto_user | Admin      | {}
+
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcSelectIntoFileTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Loading class `com.mysql.jdbc.Driver'. This is deprecated. The new driver class is `com.mysql.cj.jdbc.Driver'. The driver is automatically registered via the SPI and manual loading of the driver class is generally unnecessary.
+CREATE TABLE t_select_into SUCCESS
+Insert data (1,1,'highgo')
+Insert data (2,2,'wor$k')
+Insert data (3,3,'high,go')
+Insert data SUCCESS
+Read the outfile
+1,1,highgo
+2,2,wor$k
+3,3,"high,go"
+Succesed to delete the CSV file
+ALTER USER proto_user WITH NOSUPERUSER;
+\du proto_user
+            List of roles
+ Role name  | Attributes | Member of 
+------------+------------+-----------
+ proto_user |            | {}
+
+-- /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+-- fetch
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcFetchTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Test table initialized, inserted 10 rows.
+
+Starting query execution, fetchSize = 2
+Reading row 1: id=1, name=Name1, age=Age1
+Reading row 2: id=2, name=Name2, age=Age2
+Reading row 3: id=3, name=Name3, age=Age3
+Reading row 4: id=4, name=Name4, age=Age4
+Reading row 5: id=5, name=Name5, age=Age5
+Reading row 6: id=6, name=Name6, age=Age6
+Reading row 7: id=7, name=Name7, age=Age7
+Reading row 8: id=8, name=Name8, age=Age8
+Reading row 9: id=9, name=Name9, age=Age9
+Reading row 10: id=10, name=Name10, age=Age10
+Reading row 11: id=11, name=null, age=null
+Total rows read: 11.
+-- very long sql
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLInsertLongData 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Insert success, data length is 29250924
+Insert success, data length is 16418556
+Insert success, data length is 16418556
+Content length is 29250924
+Content length is 16418556
+-- test DatabaseMetaData.getColumns
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcGetColumnsTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+-- final clean
+RESET ROLE;
+DROP USER IF EXISTS proto_user CASCADE;
+ERROR:  syntax error at or near "CASCADE"
+LINE 1: DROP USER IF EXISTS proto_user CASCADE;
+                                       ^
+\! rm proto_test/class/*.class
+/* END - BUG#7733 */

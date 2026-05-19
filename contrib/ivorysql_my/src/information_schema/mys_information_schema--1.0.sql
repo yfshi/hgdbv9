@@ -1240,7 +1240,14 @@ SELECT
 	pg_encoding_to_char(d.encoding)::varchar(32) AS "DEFAULT_CHARACTER_SET_NAME",
 
 	-- Default collation name of the current database
-	d.datcollate::varchar(32) AS "DEFAULT_COLLATION_NAME",
+	/* Begin - BUG#7733 */
+	CAST((
+		SELECT "Default collation"
+		FROM show_mysql_charsets()
+		WHERE lower("Charset") = lower(pg_encoding_to_char(d.encoding))
+		LIMIT 1
+	) AS varchar(32)) AS "DEFAULT_COLLATION_NAME",
+	/* End - BUG#7733 */
 
 	-- SQL path, always NULL in PostgreSQL (not supported)
 	NULL::varchar(512) AS "SQL_PATH"
