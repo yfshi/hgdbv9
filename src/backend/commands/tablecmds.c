@@ -1856,6 +1856,7 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	if(pg_object_create_obj_hook && compatible_mode == ORA_MODE)
 	{
 		StringInfoData	str;
+		char			objkind = relkind;        // BUG #z7791
 		initStringInfo(&str);
 		if (relkind == RELKIND_SEQUENCE)
 		{
@@ -1896,10 +1897,17 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 		}
 
+		/* Begin - BUG #z7791 */
+		if (relkind == RELKIND_PARTITIONED_TABLE)
+		{
+			objkind = PG_OBJECT_PARTITION_RELATION;
+		}
+		/* End - BUG #z7791 */
+
 		pg_object_create_obj_hook(relname,
 										namespaceId,
 										false,
-										relkind,
+										objkind,	// BUG #z7791
 										address,
 										relkind == RELKIND_SEQUENCE ? (strcmp(str.data, "}") == 0 ? NULL : DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(str.data)))) : NULL,
 										NULL);
@@ -7413,7 +7421,7 @@ ATRewriteTable(AlteredTableInfo *tab, Oid OIDNewHeap, LOCKMODE lockmode)
 		{
 			TupleTableSlot *insertslot;
 			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
-			Datum numericDatum = (Datum)0;;
+			Datum numericDatum = (Datum)0;
 			bool need_update_auto_value = false;
 			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
