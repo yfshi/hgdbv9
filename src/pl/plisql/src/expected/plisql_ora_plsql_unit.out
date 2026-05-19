@@ -218,14 +218,14 @@ BEGIN
 END;
 /
 NOTICE:  proname: 
-NOTICE:  protype: ANINYMOUS BLOCK
+NOTICE:  protype: ANONYMOUS BLOCK
 DO $$
 BEGIN
     RAISE NOTICE 'proname: %', $$PLSQL_UNIT;
     RAISE NOTICE 'protype: %', $$PLSQL_UNIT_TYPE;
 END $$;
 NOTICE:  proname: 
-NOTICE:  protype: ANINYMOUS BLOCK
+NOTICE:  protype: ANONYMOUS BLOCK
 DECLARE
     v_unit VARCHAR2(100);
 BEGIN
@@ -236,7 +236,7 @@ BEGIN
 END;
 /
 $$PLSQL_UNIT = 
-Plsql type: ANINYMOUS BLOCK
+Plsql type: ANONYMOUS BLOCK
 -- 4. trigger
 CREATE OR REPLACE TRIGGER plsql_unit_trig
 AFTER INSERT ON plsql_unit_test
