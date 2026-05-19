@@ -6167,6 +6167,7 @@ getTables(Archive *fout, int *numTables)
 	int			i_reltablespace;
 	int			i_reloptions;
 	int			i_checkoption;
+	int			i_readonly;	/* OA-REQ-2248 */
 	int			i_toastreloptions;
 	int			i_reloftype;
 	int			i_relpages;
@@ -6316,9 +6317,10 @@ getTables(Archive *fout, int *numTables)
 						  "d.refobjid AS owning_tab, "
 						  "d.refobjsubid AS owning_col, "
 						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
+						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
 						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
 						  "tc.reloptions AS toast_reloptions, "
 						  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
 						  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
@@ -6404,9 +6406,10 @@ getTables(Archive *fout, int *numTables)
 						  "d.refobjid AS owning_tab, "
 						  "d.refobjsubid AS owning_col, "
 						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
+						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
 						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
 						  "tc.reloptions AS toast_reloptions, "
 						  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
 						  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
@@ -6540,9 +6543,10 @@ getTables(Archive *fout, int *numTables)
 						  "d.refobjid AS owning_tab, "
 						  "d.refobjsubid AS owning_col, "
 						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
+						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
 						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
 						  "tc.reloptions AS toast_reloptions, "
 						  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
 						  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
@@ -6637,9 +6641,10 @@ getTables(Archive *fout, int *numTables)
 						  "d.refobjid AS owning_tab, "
 						  "d.refobjsubid AS owning_col, "
 						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
+						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
 						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
 						  "false AS ispartition, "
@@ -6696,9 +6701,10 @@ getTables(Archive *fout, int *numTables)
 						  "d.refobjid AS owning_tab, "
 						  "d.refobjsubid AS owning_col, "
 						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
+						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
 						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
 						  "false AS ispartition, "
@@ -6755,9 +6761,10 @@ getTables(Archive *fout, int *numTables)
 						  "d.refobjid AS owning_tab, "
 						  "d.refobjsubid AS owning_col, "
 						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded') AS reloptions, "
+						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
 						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
 						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
 						  "tc.reloptions AS toast_reloptions, "
 						  "NULL AS changed_acl, "
 						  "false AS ispartition, "
@@ -7106,6 +7113,7 @@ getTables(Archive *fout, int *numTables)
 	i_reltablespace = PQfnumber(res, "reltablespace");
 	i_reloptions = PQfnumber(res, "reloptions");
 	i_checkoption = PQfnumber(res, "checkoption");
+	i_readonly = PQfnumber(res, "readonly");	/* OA-REQ-2248 */
 	i_toastreloptions = PQfnumber(res, "toast_reloptions");
 	i_reloftype = PQfnumber(res, "reloftype");
 	i_is_identity_sequence = PQfnumber(res, "is_identity_sequence");
@@ -7201,6 +7209,12 @@ getTables(Archive *fout, int *numTables)
 			tblinfo[i].checkoption = NULL;
 		else
 			tblinfo[i].checkoption = pg_strdup(PQgetvalue(res, i, i_checkoption));
+		/* Begin - OA-REQ-2248 */
+		if (i_readonly == -1 || PQgetisnull(res, i, i_readonly))
+			tblinfo[i].readonly = NULL;
+		else
+			tblinfo[i].readonly = pg_strdup(PQgetvalue(res, i, i_readonly));
+		/* End - OA-REQ-2248 */
 		tblinfo[i].toast_reloptions = pg_strdup(PQgetvalue(res, i, i_toastreloptions));
 		if (PQgetisnull(res, i, i_amname))
 			tblinfo[i].amname = NULL;
@@ -17038,9 +17052,12 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 			}
 			appendPQExpBuffer(q, " AS\n%s", result->data);
 			destroyPQExpBuffer(result);
-
-			if (tbinfo->checkoption != NULL && !tbinfo->dummy_view)
+			/* Begin - OA-REQ-2248 */
+			if (tbinfo->readonly != NULL && !tbinfo->dummy_view)
+				appendPQExpBuffer(q, "\n WITH READ ONLY");
+			else if (tbinfo->checkoption != NULL && !tbinfo->dummy_view)
 				appendPQExpBuffer(q, "\n  WITH %s CHECK OPTION", tbinfo->checkoption);
+			/* End - OA-REQ-2248 */
 			appendPQExpBufferStr(q, ";\n");
 		}
 	}
@@ -19650,9 +19667,13 @@ dumpRule(Archive *fout, const RuleInfo *rinfo)
 		result = createViewAsClause(fout, tbinfo);
 		appendPQExpBuffer(cmd, " AS\n%s", result->data);
 		destroyPQExpBuffer(result);
-		if (tbinfo->checkoption != NULL)
+		/* Begin - OA-REQ-2248 */
+		if (tbinfo->readonly != NULL)
+			appendPQExpBuffer(cmd, "\n WITH READ ONLY");
+		else if (tbinfo->checkoption != NULL)
 			appendPQExpBuffer(cmd, "\n  WITH %s CHECK OPTION",
 							  tbinfo->checkoption);
+		/* End - OA-REQ-2248 */
 		appendPQExpBufferStr(cmd, ";\n");
 	}
 	else

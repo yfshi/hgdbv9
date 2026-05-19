@@ -452,6 +452,7 @@ typedef struct ViewOptions
 {
 	int32		vl_len_;		/* varlena header (do not touch directly!) */
 	bool		security_barrier;
+	bool		read_only;	/* OA-REQ-2248 */
 	ViewOptCheckOption check_option;
 } ViewOptions;
 
@@ -464,6 +465,18 @@ typedef struct ViewOptions
 	(AssertMacro(relation->rd_rel->relkind == RELKIND_VIEW),				\
 	 (relation)->rd_options ?												\
 	  ((ViewOptions *) (relation)->rd_options)->security_barrier : false)
+
+/* Begin - OA-REQ-2248 */
+/*
+ * RelationIsReadOnlyView
+ *		Return whether the relation is a read-only view,or not. Note multiple
+ *		eval of argument!
+ */
+ #define RelationIsReadOnlyView(relation)									\
+	(AssertMacro(relation->rd_rel->relkind == RELKIND_VIEW),				\
+	 (relation)->rd_options ?												\
+	  ((ViewOptions *) (relation)->rd_options)->read_only : false)
+/* End - OA-REQ-2248 */
 
 /*
  * RelationHasCheckOption
