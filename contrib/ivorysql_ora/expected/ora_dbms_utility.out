@@ -50,6 +50,8 @@ BEGIN
         ('"   "', '   ', FALSE, 'Quoted spaces preserved', 30),
         ('"   .table "', '   .table ', FALSE, 'Leading space', 30),
         ('"table.  "', 'table.  ', FALSE, 'Trailing space', 30),
+        ('"_table"', '_table', FALSE, 'Begin by dots and underscore', 30),
+        ('"123table"', '123table', FALSE, 'Begin by dots and number', 30),
 
         -- expection case (should_error = true)
         ('""', NULL, TRUE, 'Empty quoted identifier', 30),
@@ -61,6 +63,8 @@ BEGIN
         ('emp.', NULL, TRUE, 'Trailing dot', 30),
         ('   .table ', '', TRUE, 'Leading space', 30),
         ('table.  ', '', TRUE, 'Trailing space', 30),
+        ('123table', '', TRUE, 'Begin by number', 30),
+        ('_table', '', TRUE, 'Begin by underscore', 30),
 
         -- Special: NULL input → returns NULL (not error)
         (NULL, NULL, FALSE, 'NULL input → returns NULL (Oracle behavior)', 30)
@@ -118,6 +122,8 @@ NOTICE:  PASS: Unquoted spaces → NOT trimmed (Oracle returns as-is)
 NOTICE:  PASS: Quoted spaces preserved
 NOTICE:  PASS: Leading space
 NOTICE:  PASS: Trailing space
+NOTICE:  PASS: Begin by dots and underscore
+NOTICE:  PASS: Begin by dots and number
 NOTICE:  PASS: Empty quoted identifier
 NOTICE:  PASS: Unquoted identifier cannot contain spaces
 NOTICE:  PASS: Unquoted identifier cannot contain comma
@@ -127,6 +133,8 @@ NOTICE:  PASS: Leading dot
 NOTICE:  PASS: Trailing dot
 NOTICE:  PASS: Leading space
 NOTICE:  PASS: Trailing space
+NOTICE:  PASS: Begin by number
+NOTICE:  PASS: Begin by underscore
 NOTICE:  PASS: NULL input → returns NULL (Oracle behavior)
 NOTICE:  === PostgreSQL test suite completed ===
 /
@@ -192,38 +200,38 @@ NOTICE:  [5]: [    "My_Table" ]
 -- ==============================================================
 DO $$
 BEGIN
-    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public', 'error_tb');
+    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC', 'error_tb');
     IF EXISTS(SELECT 1 FROM pg_class WHERE relname = 'error_tb') THEN
         DBMS_OUTPUT.PUT_LINE('create error table public.error success');
     END IF;
 END $$;
-create error table public.error success
 /
 DO $$
 BEGIN
-    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public', 'error_tb');
+    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC', 'error_tb');
     IF EXISTS(SELECT 1 FROM pg_class WHERE relname = 'error_tb') THEN
         DBMS_OUTPUT.PUT_LINE('create error table public.error success');
     END IF;
 END $$;
-ERROR:  name [error_tb] is already used by an existing object
-CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 266 at RAISE
-SQL statement "CALL DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public', 'error_tb')"
+ERROR:  name [ERROR_TB] is already used by an existing object
+CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 278 at RAISE
+SQL statement "CALL DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC', 'error_tb')"
 PL/iSQL function inline_code_block line 3 at CALL
 /
 DO $$
 BEGIN
-    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public1', 'error_tb');
+    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC1', 'error_tb');
     IF EXISTS(SELECT 1 FROM pg_class WHERE relname = 'error_tb') THEN
         DBMS_OUTPUT.PUT_LINE('create error table public.error success');
     END IF;
 END $$;
 ERROR:  schema [public1] does not exist
-CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 263 at RAISE
-SQL statement "CALL DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public1', 'error_tb')"
+CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 275 at RAISE
+SQL statement "CALL DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC1', 'error_tb')"
 PL/iSQL function inline_code_block line 3 at CALL
 /
 DROP TABLE public.error_tb;
+ERROR:  table "error_tb" does not exist
 -- ==============================================================
 -- Test for PROCEDURE DB_VERSION(
 --      version OUT VARCHAR2,
@@ -971,10 +979,16 @@ ERROR:  function test_func_invalid is in an invalid state
 DO $$
 DECLARE
     nspoid OID;
+    usr VARCHAR2;
 BEGIN
+    IF ORA_CASE_TRANS(current_user::VARCHAR2) = current_user THEN
+        usr := (current_user::VARCHAR2);
+    ELSE
+        usr := UPPER(current_user::VARCHAR2);
+    END IF;
     SELECT oid INTO nspoid FROM pg_namespace WHERE nspname = current_schema;
-    DBMS_UTILITY.VALIDATE(owner => current_user::VARCHAR2, objname => 'TEST_FUNC_INVALID', namespace => nspoid::text::number);
-    DBMS_UTILITY.VALIDATE(owner => current_user::VARCHAR2, objname => 'TEST_PROC_INVALID', namespace => nspoid::text::number);
+    DBMS_UTILITY.VALIDATE(owner => usr, objname => 'TEST_FUNC_INVALID', namespace => nspoid::text::number);
+    DBMS_UTILITY.VALIDATE(owner => usr, objname => 'TEST_PROC_INVALID', namespace => nspoid::text::number);
 END $$;
 /
 SELECT object_name, object_type, status FROM all_objects WHERE lower(object_name) IN ('test_func_invalid', 'test_proc_invalid') ORDER BY object_name;
@@ -1026,9 +1040,15 @@ ERROR:  procedure test_PROC is in an invalid state
 DO $$
 DECLARE
     nspoid OID;
+    usr VARCHAR2;
 BEGIN
+    IF ORA_CASE_TRANS(current_user::VARCHAR2) = current_user THEN
+        usr := (current_user::VARCHAR2);
+    ELSE
+        usr := UPPER(current_user::VARCHAR2);
+    END IF;
     SELECT oid INTO nspoid FROM pg_namespace WHERE nspname = current_schema;
-    DBMS_UTILITY.VALIDATE(owner => current_user::VARCHAR2, objname => 'test_PROC', namespace => nspoid::text::number);
+    DBMS_UTILITY.VALIDATE(owner => usr, objname => 'test_PROC', namespace => nspoid::text::number);
 END $$;
 /
 CALL "test_PROC"();
@@ -1893,7 +1913,7 @@ parameter value: read committed
 length of parameter value: 14
 ---------------param: invalid_parameter_name-------------------
 ERROR:  get_parameter_value: invalid or unsupported parameter "invalid_parameter_name"
-CONTEXT:  PL/iSQL function sys.dbms_utility.get_parameter_value line 1111 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.get_parameter_value line 1132 at RAISE
 PL/iSQL function inline_code_block line 17 at assignment
 /
 -- ==============================================================
@@ -1920,10 +1940,10 @@ select * from dbms_utility.is_bit_set('\x0101', 8);
 
 select * from dbms_utility.is_bit_set('\x0101', -1);
 ERROR:  index out of range
-CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1150 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1171 at RAISE
 select * from dbms_utility.is_bit_set('\x0101', 65);
 ERROR:  index out of range
-CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1150 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1171 at RAISE
 -- ==============================================================
 -- ANALYZE_PART_OBJECT
 -- ==============================================================

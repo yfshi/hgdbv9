@@ -51,6 +51,8 @@ BEGIN
         ('"   "', '   ', FALSE, 'Quoted spaces preserved', 30),
         ('"   .table "', '   .table ', FALSE, 'Leading space', 30),
         ('"table.  "', 'table.  ', FALSE, 'Trailing space', 30),
+        ('"_table"', '_table', FALSE, 'Begin by dots and underscore', 30),
+        ('"123table"', '123table', FALSE, 'Begin by dots and number', 30),
 
         -- expection case (should_error = true)
         ('""', NULL, TRUE, 'Empty quoted identifier', 30),
@@ -62,6 +64,8 @@ BEGIN
         ('emp.', NULL, TRUE, 'Trailing dot', 30),
         ('   .table ', '', TRUE, 'Leading space', 30),
         ('table.  ', '', TRUE, 'Trailing space', 30),
+        ('123table', '', TRUE, 'Begin by number', 30),
+        ('_table', '', TRUE, 'Begin by underscore', 30),
 
         -- Special: NULL input → returns NULL (not error)
         (NULL, NULL, FALSE, 'NULL input → returns NULL (Oracle behavior)', 30)
@@ -159,7 +163,7 @@ END;
 -- ==============================================================
 DO $$
 BEGIN
-    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public', 'error_tb');
+    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC', 'error_tb');
     IF EXISTS(SELECT 1 FROM pg_class WHERE relname = 'error_tb') THEN
         DBMS_OUTPUT.PUT_LINE('create error table public.error success');
     END IF;
@@ -168,7 +172,7 @@ END $$;
 
 DO $$
 BEGIN
-    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public', 'error_tb');
+    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC', 'error_tb');
     IF EXISTS(SELECT 1 FROM pg_class WHERE relname = 'error_tb') THEN
         DBMS_OUTPUT.PUT_LINE('create error table public.error success');
     END IF;
@@ -177,7 +181,7 @@ END $$;
 
 DO $$
 BEGIN
-    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('public1', 'error_tb');
+    DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC1', 'error_tb');
     IF EXISTS(SELECT 1 FROM pg_class WHERE relname = 'error_tb') THEN
         DBMS_OUTPUT.PUT_LINE('create error table public.error success');
     END IF;
@@ -565,10 +569,16 @@ SELECT * FROM test_func_invalid();
 DO $$
 DECLARE
     nspoid OID;
+    usr VARCHAR2;
 BEGIN
+    IF ORA_CASE_TRANS(current_user::VARCHAR2) = current_user THEN
+        usr := (current_user::VARCHAR2);
+    ELSE
+        usr := UPPER(current_user::VARCHAR2);
+    END IF;
     SELECT oid INTO nspoid FROM pg_namespace WHERE nspname = current_schema;
-    DBMS_UTILITY.VALIDATE(owner => current_user::VARCHAR2, objname => 'TEST_FUNC_INVALID', namespace => nspoid::text::number);
-    DBMS_UTILITY.VALIDATE(owner => current_user::VARCHAR2, objname => 'TEST_PROC_INVALID', namespace => nspoid::text::number);
+    DBMS_UTILITY.VALIDATE(owner => usr, objname => 'TEST_FUNC_INVALID', namespace => nspoid::text::number);
+    DBMS_UTILITY.VALIDATE(owner => usr, objname => 'TEST_PROC_INVALID', namespace => nspoid::text::number);
 END $$;
 /
 
@@ -617,9 +627,15 @@ CALL "test_PROC"();
 DO $$
 DECLARE
     nspoid OID;
+    usr VARCHAR2;
 BEGIN
+    IF ORA_CASE_TRANS(current_user::VARCHAR2) = current_user THEN
+        usr := (current_user::VARCHAR2);
+    ELSE
+        usr := UPPER(current_user::VARCHAR2);
+    END IF;
     SELECT oid INTO nspoid FROM pg_namespace WHERE nspname = current_schema;
-    DBMS_UTILITY.VALIDATE(owner => current_user::VARCHAR2, objname => 'test_PROC', namespace => nspoid::text::number);
+    DBMS_UTILITY.VALIDATE(owner => usr, objname => 'test_PROC', namespace => nspoid::text::number);
 END $$;
 /
 
