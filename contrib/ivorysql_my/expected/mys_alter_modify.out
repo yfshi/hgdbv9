@@ -597,19 +597,15 @@ show create table test_auto;
 (1 row)
 
 drop table test_auto;
--- success
+-- fail as id is not a primary key or a unique key
 create table test_auto(id int, name varchar(20));
+alter table test_auto modify id int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+-- mysql success, but v9 fail, canot support
 alter table test_auto modify id int primary key, modify id int auto_increment;
-show create table test_auto;
-   Table   |                   Create Table                   
------------+--------------------------------------------------
- test_auto | CREATE TABLE "test_auto" (                      +
-           |     "id" integer NOT NULL AUTO_INCREMENT,       +
-           |     "name" character varying(20),               +
-           |     CONSTRAINT "test_auto_pkey" PRIMARY KEY (id)+
-           | )
-(1 row)
-
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_auto modify id int unique key, modify id int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
 drop table test_auto;
 -- varchar(20)  --> smallint auto
 -- smallint max is 32767, report error with alter type
