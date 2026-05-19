@@ -1749,24 +1749,24 @@ SELECT
 FROM DBA_TAB_PARTITIONS
 WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
 ORDER BY table_owner, table_name, partition_name;
-    table_name    | composite | partition_name | subpartition_count |   high_value   | high_value_length | partition_position | interval 
-------------------+-----------+----------------+--------------------+----------------+-------------------+--------------------+----------
- test_hash_part   | NO        | sys_p1         | 0                  |                |                   | 1                  | NO
- test_hash_part   | NO        | sys_p2         | 0                  |                |                   | 2                  | NO
- test_hash_part   | NO        | sys_p3         | 0                  |                |                   | 3                  | NO
- test_hash_part   | NO        | sys_p4         | 0                  |                |                   | 4                  | NO
- test_list_part   | NO        | p_east         | 0                  | 'EAST', '华东' | 16                | 1                  | NO
- test_list_part   | NO        | p_other        | 0                  | DEFAULT        | 7                 | 3                  | NO
- test_list_part   | NO        | p_west         | 0                  | 'WEST', '华西' | 16                | 2                  | NO
- test_range_part  | NO        | p202401        | 0                  | '2024-02-01'   | 12                | 1                  | NO
- test_range_part  | NO        | p202402        | 0                  | '2024-03-01'   | 12                | 2                  | NO
- test_range_part  | NO        | p202403        | 0                  | MAXVALUE       | 8                 | 3                  | NO
- test_subpart     | YES       | p202401        | 3                  | '2024-02-01'   | 12                | 1                  | NO
- test_subpart     | YES       | p202402        | 3                  | MAXVALUE       | 8                 | 2                  | NO
- user1_range_part | NO        | p1             | 0                  | '2024-01-01'   | 12                | 1                  | NO
- user1_range_part | NO        | p2             | 0                  | MAXVALUE       | 8                 | 2                  | NO
- user2_list_part  | NO        | p_a            | 0                  | 'A'            | 3                 | 1                  | NO
- user2_list_part  | NO        | p_b            | 0                  | 'B'            | 3                 | 2                  | NO
+    table_name    | composite | partition_name | subpartition_count |                        high_value                        | high_value_length | partition_position | interval 
+------------------+-----------+----------------+--------------------+----------------------------------------------------------+-------------------+--------------------+----------
+ test_hash_part   | NO        | sys_p1         | 0                  |                                                          |                   | 1                  | NO
+ test_hash_part   | NO        | sys_p2         | 0                  |                                                          |                   | 2                  | NO
+ test_hash_part   | NO        | sys_p3         | 0                  |                                                          |                   | 3                  | NO
+ test_hash_part   | NO        | sys_p4         | 0                  |                                                          |                   | 4                  | NO
+ test_list_part   | NO        | p_east         | 0                  | 'EAST', '华东'                                           | 16                | 1                  | NO
+ test_list_part   | NO        | p_other        | 0                  | DEFAULT                                                  | 7                 | 3                  | NO
+ test_list_part   | NO        | p_west         | 0                  | 'WEST', '华西'                                           | 16                | 2                  | NO
+ test_range_part  | NO        | p202401        | 0                  | TO_DATE('2024-02-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ test_range_part  | NO        | p202402        | 0                  | TO_DATE('2024-03-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 2                  | NO
+ test_range_part  | NO        | p202403        | 0                  | MAXVALUE                                                 | 8                 | 3                  | NO
+ test_subpart     | YES       | p202401        | 3                  | TO_DATE('2024-02-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ test_subpart     | YES       | p202402        | 3                  | MAXVALUE                                                 | 8                 | 2                  | NO
+ user1_range_part | NO        | p1             | 0                  | TO_DATE('2024-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ user1_range_part | NO        | p2             | 0                  | MAXVALUE                                                 | 8                 | 2                  | NO
+ user2_list_part  | NO        | p_a            | 0                  | 'A'                                                      | 3                 | 1                  | NO
+ user2_list_part  | NO        | p_b            | 0                  | 'B'                                                      | 3                 | 2                  | NO
 (16 rows)
 
 -- DBA_TAB_SUBPARTITIONS
@@ -1879,24 +1879,24 @@ SELECT
 FROM ALL_TAB_PARTITIONS
 WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
 ORDER BY table_owner, table_name, partition_name;
-    table_name    | composite | partition_name | subpartition_count |   high_value   | high_value_length | partition_position | interval 
-------------------+-----------+----------------+--------------------+----------------+-------------------+--------------------+----------
- test_hash_part   | NO        | sys_p1         | 0                  |                |                   | 1                  | NO
- test_hash_part   | NO        | sys_p2         | 0                  |                |                   | 2                  | NO
- test_hash_part   | NO        | sys_p3         | 0                  |                |                   | 3                  | NO
- test_hash_part   | NO        | sys_p4         | 0                  |                |                   | 4                  | NO
- test_list_part   | NO        | p_east         | 0                  | 'EAST', '华东' | 16                | 1                  | NO
- test_list_part   | NO        | p_other        | 0                  | DEFAULT        | 7                 | 3                  | NO
- test_list_part   | NO        | p_west         | 0                  | 'WEST', '华西' | 16                | 2                  | NO
- test_range_part  | NO        | p202401        | 0                  | '2024-02-01'   | 12                | 1                  | NO
- test_range_part  | NO        | p202402        | 0                  | '2024-03-01'   | 12                | 2                  | NO
- test_range_part  | NO        | p202403        | 0                  | MAXVALUE       | 8                 | 3                  | NO
- test_subpart     | YES       | p202401        | 3                  | '2024-02-01'   | 12                | 1                  | NO
- test_subpart     | YES       | p202402        | 3                  | MAXVALUE       | 8                 | 2                  | NO
- user1_range_part | NO        | p1             | 0                  | '2024-01-01'   | 12                | 1                  | NO
- user1_range_part | NO        | p2             | 0                  | MAXVALUE       | 8                 | 2                  | NO
- user2_list_part  | NO        | p_a            | 0                  | 'A'            | 3                 | 1                  | NO
- user2_list_part  | NO        | p_b            | 0                  | 'B'            | 3                 | 2                  | NO
+    table_name    | composite | partition_name | subpartition_count |                        high_value                        | high_value_length | partition_position | interval 
+------------------+-----------+----------------+--------------------+----------------------------------------------------------+-------------------+--------------------+----------
+ test_hash_part   | NO        | sys_p1         | 0                  |                                                          |                   | 1                  | NO
+ test_hash_part   | NO        | sys_p2         | 0                  |                                                          |                   | 2                  | NO
+ test_hash_part   | NO        | sys_p3         | 0                  |                                                          |                   | 3                  | NO
+ test_hash_part   | NO        | sys_p4         | 0                  |                                                          |                   | 4                  | NO
+ test_list_part   | NO        | p_east         | 0                  | 'EAST', '华东'                                           | 16                | 1                  | NO
+ test_list_part   | NO        | p_other        | 0                  | DEFAULT                                                  | 7                 | 3                  | NO
+ test_list_part   | NO        | p_west         | 0                  | 'WEST', '华西'                                           | 16                | 2                  | NO
+ test_range_part  | NO        | p202401        | 0                  | TO_DATE('2024-02-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ test_range_part  | NO        | p202402        | 0                  | TO_DATE('2024-03-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 2                  | NO
+ test_range_part  | NO        | p202403        | 0                  | MAXVALUE                                                 | 8                 | 3                  | NO
+ test_subpart     | YES       | p202401        | 3                  | TO_DATE('2024-02-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ test_subpart     | YES       | p202402        | 3                  | MAXVALUE                                                 | 8                 | 2                  | NO
+ user1_range_part | NO        | p1             | 0                  | TO_DATE('2024-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ user1_range_part | NO        | p2             | 0                  | MAXVALUE                                                 | 8                 | 2                  | NO
+ user2_list_part  | NO        | p_a            | 0                  | 'A'                                                      | 3                 | 1                  | NO
+ user2_list_part  | NO        | p_b            | 0                  | 'B'                                                      | 3                 | 2                  | NO
 (16 rows)
 
 -- ALL_TAB_SUBPARTITIONS
@@ -2007,20 +2007,20 @@ SELECT
 FROM USER_TAB_PARTITIONS
 WHERE table_name ILIKE 'test_%' OR table_name ILIKE 'user1_%' OR table_name ILIKE 'user2_%'
 ORDER BY table_name, partition_name;
-   table_name    | composite | partition_name | subpartition_count |   high_value   | high_value_length | partition_position | interval 
------------------+-----------+----------------+--------------------+----------------+-------------------+--------------------+----------
- test_hash_part  | NO        | sys_p1         | 0                  |                |                   | 1                  | NO
- test_hash_part  | NO        | sys_p2         | 0                  |                |                   | 2                  | NO
- test_hash_part  | NO        | sys_p3         | 0                  |                |                   | 3                  | NO
- test_hash_part  | NO        | sys_p4         | 0                  |                |                   | 4                  | NO
- test_list_part  | NO        | p_east         | 0                  | 'EAST', '华东' | 16                | 1                  | NO
- test_list_part  | NO        | p_other        | 0                  | DEFAULT        | 7                 | 3                  | NO
- test_list_part  | NO        | p_west         | 0                  | 'WEST', '华西' | 16                | 2                  | NO
- test_range_part | NO        | p202401        | 0                  | '2024-02-01'   | 12                | 1                  | NO
- test_range_part | NO        | p202402        | 0                  | '2024-03-01'   | 12                | 2                  | NO
- test_range_part | NO        | p202403        | 0                  | MAXVALUE       | 8                 | 3                  | NO
- test_subpart    | YES       | p202401        | 3                  | '2024-02-01'   | 12                | 1                  | NO
- test_subpart    | YES       | p202402        | 3                  | MAXVALUE       | 8                 | 2                  | NO
+   table_name    | composite | partition_name | subpartition_count |                        high_value                        | high_value_length | partition_position | interval 
+-----------------+-----------+----------------+--------------------+----------------------------------------------------------+-------------------+--------------------+----------
+ test_hash_part  | NO        | sys_p1         | 0                  |                                                          |                   | 1                  | NO
+ test_hash_part  | NO        | sys_p2         | 0                  |                                                          |                   | 2                  | NO
+ test_hash_part  | NO        | sys_p3         | 0                  |                                                          |                   | 3                  | NO
+ test_hash_part  | NO        | sys_p4         | 0                  |                                                          |                   | 4                  | NO
+ test_list_part  | NO        | p_east         | 0                  | 'EAST', '华东'                                           | 16                | 1                  | NO
+ test_list_part  | NO        | p_other        | 0                  | DEFAULT                                                  | 7                 | 3                  | NO
+ test_list_part  | NO        | p_west         | 0                  | 'WEST', '华西'                                           | 16                | 2                  | NO
+ test_range_part | NO        | p202401        | 0                  | TO_DATE('2024-02-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ test_range_part | NO        | p202402        | 0                  | TO_DATE('2024-03-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 2                  | NO
+ test_range_part | NO        | p202403        | 0                  | MAXVALUE                                                 | 8                 | 3                  | NO
+ test_subpart    | YES       | p202401        | 3                  | TO_DATE('2024-02-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS') | 56                | 1                  | NO
+ test_subpart    | YES       | p202402        | 3                  | MAXVALUE                                                 | 8                 | 2                  | NO
 (12 rows)
 
 -- USER_TAB_SUBPARTITIONS
@@ -2362,3 +2362,40 @@ DROP TABLE IF EXISTS pg_diff_key_count;
 DROP TABLE IF EXISTS pg_diff_key_column;
 DROP TABLE IF EXISTS pg_same_key;
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+/* Begin - bug#7786 */
+SET timezone = '-08:00';
+CREATE TABLE PAR_TEST(
+ A FLOAT,
+ B NUMERIC,
+ C INT,
+ D BINARY_FLOAT,
+ E BINARY_DOUBLE,
+ F DATE,
+ G TIMESTAMP(3),
+ H TIMESTAMP(4) WITH TIME ZONE,
+ I TIMESTAMP(5) WITH LOCAL TIME ZONE,
+ J INTERVAL YEAR TO MONTH,
+ K INTERVAL DAY TO SECOND,
+ L CHAR(10),
+ M VARCHAR2(10))
+PARTITION BY RANGE(A,B,C,D,E,F,G,H,I,J,K,L,M)
+(
+ PARTITION P1 VALUES LESS THAN(1E2, 1E2, 1E2, 1E2, 1E2,
+							DATE '2026-1-1',
+							TIMESTAMP '2026-1-1 11:11:11.123',
+							TIMESTAMP '2026-1-1 11:11:11.123 +08:00',
+							TIMESTAMP '2026-1-1 11:11:11.123',
+							INTERVAL '1-2' YEAR TO MONTH,
+							INTERVAL '1 1:1:1' DAY TO SECOND,
+							'CHAR',
+							'VARCHAR2')
+);
+select table_name, partition_name, high_value from dba_tab_partitions where table_name ilike 'PAR_TEST';
+ table_name | partition_name |                                                                                                                                                                                               high_value                                                                                                                                                                                               
+------------+----------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ par_test   | p1             | 100, 100, 100, 1.0E+002, 1.0E+002, TO_DATE('2026-01-01 00:00:00', 'SYYYY-MM-DD HH24:MI:SS'), TO_TIMESTAMP('2026-01-01 11:11:11.123000', 'SYYYY-MM-DD HH24:MI:SS.FF'), TO_TIMESTAMP_TZ('2026-01-01 11:11:11.123000 +08:00', 'SYYYY-MM-DD HH24:MI:SS.FF TZH:TZM'), TO_TIMESTAMP_TZ('2026-01-01 11:11:11.123000', 'SYYYY-MM-DD HH24:MI:SS.FF'), '+01-02', '+01 01:01:01.000000', 'CHAR      ', 'VARCHAR2'
+(1 row)
+
+RESET timezone;
+DROP TABLE PAR_TEST;
+/* Begin - bug#7786 */
