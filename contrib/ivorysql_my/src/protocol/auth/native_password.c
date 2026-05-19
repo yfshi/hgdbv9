@@ -68,6 +68,11 @@ native_password_generate(const char *plain_password, int len)
 
     base64_len = pg_b64_encode((char *) s2, SCRAMBLE_LENGTH, base64, sizeof(base64));
 
+    if (base64_len < 0)
+    {
+        elog(ERROR, "mysql_native_password: could not encode s2");
+    }
+
     snprintf(rolpassword, sizeof(rolpassword), "%s$%.*s", NATIVE_PASSWORD_TAG, base64_len, base64);
 
     return pstrdup(rolpassword);
@@ -97,7 +102,10 @@ native_password_parse(char *rolpassword)
 
     part[NATIVE_DIGEST_INDEX] = (char *) palloc0(len2 + 1);
 
-    pg_b64_decode(digest_base64, len1, part[NATIVE_DIGEST_INDEX], len2);
+    if (pg_b64_decode(digest_base64, len1, part[NATIVE_DIGEST_INDEX], len2))
+    {
+        elog(ERROR, "mysql_native_password: could not decode digest");
+    }
 
     pfree(raw);
 }
@@ -126,7 +134,7 @@ native_password_clean()
 static int
 native_password_check(Port *port, char *rolpassword)
 {
-    bool ret = STATUS_ERROR;
+    int ret = STATUS_ERROR;
     uint8 s3[SCRAMBLE_LENGTH + 1],  // caculate with with s2 stored in pg_authid
           _s1[SCRAMBLE_LENGTH + 1], // caculate with client's auth_response
           _s2[SCRAMBLE_LENGTH + 1]; // caculate with client's auth_response
