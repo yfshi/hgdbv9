@@ -432,7 +432,7 @@ static void audit_threshold_alarm(int32 level, char *msg);
 static void audit_send_mail(char *msg);
 static void audit_terminate_session(void);
 static void audit_lock_user(void);
-static Node *audit_change_where_clause(Node *clause);
+static Node *audit_change_where_clause(const char *sourcetext, Node *clause);
 static void audit_get_from_clause_name(Node *n);
 static Node * make_NullTest(char *col);
 static BoolExpr *Audit_make_BoolExprNode(BoolExprType boolop, char *expr1_left,char *expr1_equl, char *expr1_right,
@@ -443,7 +443,7 @@ static Node *make_A_Const(char *name, int location);
 static BoolExpr *make_BoolExprNode(BoolExprType boolop, Node *left_ExprNode, Node *right_ExprNode);
 static void audit_create_usr_list_syssao(void);
 static void	audit_create_usr_list_syssso(void);
-static Node *audit_privi_mode(Node *n, bool iswhereclase);
+static Node *audit_privi_mode(const char *sourcetext, Node *n, bool iswhereclase);
 void audit_ddl_command_end(PG_FUNCTION_ARGS, const char *query);
 void pg_audit_launch(void);
 void _PG_init(void);
@@ -4286,7 +4286,8 @@ static bool audit_ExecutorCheckPerms_hook(List *rangeTabls, bool abort)
 	 * user access to audit related tables should be restricted
 	 */
 	
-	if (audit_GUC.audit_enable == AUDIT_ON && !internalStatement)
+	/* when audit_GUC.audit_enable is off and on, the permission verificatoin for audit log table should be consistent */
+	if (!internalStatement) 
 	{
 		check_audit_table(rangeTabls);
 	}
@@ -6502,16 +6503,16 @@ audit_arch_job(void)
 							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", archpath, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */	/* BUG#Z6166 */
+			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */	/* BUG#Z6166 */
 		}
 		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", DataDir, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */	/* BUG#Z6166 */
+			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */	/* BUG#Z6166 */
 		}
 		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
-			snprintf(copysql, sizeof(copysql), "COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv''", archpath, oids[elemno]);	/* BUG#Z5840 */
+			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv''", archpath, oids[elemno]);	/* BUG#Z5840 */
 
 		if (audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
 		{
@@ -7737,7 +7738,7 @@ audit_create_usr_list_syssso(void)
  *	Where parse tree
  */
 static Node *
-audit_change_where_clause(Node *clause)
+audit_change_where_clause(const char *sourcetext, Node *clause)
 {
 	BoolExpr   *BoolExprNode = NULL;
 	Node	*right_Node = NULL;
@@ -7747,12 +7748,26 @@ audit_change_where_clause(Node *clause)
 	int num = 0;
 	bool flag = false;
 	Oid		useroid;
+	const char *text;
 
-	if (audit_GUC.audit_privimode == 1)
+	/* when se_feature_mode if off, only superuser has permission and no rewriting is required */
+	if (audit_GUC.audit_privimode == 1 || !se_feature_mode) 
 		return clause;
 
 	if (audit_refname)
 	{
+		/* during automatic archiving, the WHERE clause shoud not be rewritten to prevent incomplete audit archiving logs */
+		if (sourcetext != NULL)
+		{
+			text = sourcetext;
+
+			if (strstr(text, "/* AUDIT_ARCHIVE_COPY */") != NULL && audit_GUC.audit_archdir && 
+				audit_GUC.audit_archdir[0] != '\0' && strstr(text, audit_GUC.audit_archdir) != NULL)
+			{
+				return clause;
+			}
+		}
+		
 		useroid = GetUserId();
 		
 		if (IS_SYSSAO(useroid))
@@ -7833,7 +7848,7 @@ audit_change_where_clause(Node *clause)
  * with separate permissions
  */
 static Node *
-audit_privi_mode(Node *n, bool iswhereclase)
+audit_privi_mode(const char *sourcetext, Node *n, bool iswhereclase)
 {
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return n;
@@ -7843,7 +7858,7 @@ audit_privi_mode(Node *n, bool iswhereclase)
 
 	if (iswhereclase)
 	{
-		return audit_change_where_clause(n);
+		return audit_change_where_clause(sourcetext, n);
 	}
 	else
 	{

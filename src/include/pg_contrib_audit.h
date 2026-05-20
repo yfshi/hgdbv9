@@ -553,7 +553,7 @@ extern PGDLLIMPORT audit_drop_pg_audit audit_drop_pg_audit_hook;
 typedef void  (*audit_alter_pg_audit_log)(char *relname);
 extern PGDLLIMPORT audit_alter_pg_audit_log audit_alter_pg_audit_log_hook;
 
-typedef Node*  (*audit_privi_model)(Node *n, bool iswhereclase);
+typedef Node*  (*audit_privi_model)(const char *sourcetext, Node *n, bool iswhereclase);
 extern PGDLLIMPORT audit_privi_model audit_privi_mode_hook;
 
 typedef int (*get_children_num) (int target);
