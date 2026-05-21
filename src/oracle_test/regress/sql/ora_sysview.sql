@@ -1516,3 +1516,38 @@ DROP TABLE IF EXISTS pg_diff_key_count;
 DROP TABLE IF EXISTS pg_diff_key_column;
 DROP TABLE IF EXISTS pg_same_key;
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+/* Begin - bug#7786 */
+SET timezone = '-08:00';
+CREATE TABLE PAR_TEST(
+ A FLOAT,
+ B NUMERIC,
+ C INT,
+ D BINARY_FLOAT,
+ E BINARY_DOUBLE,
+ F DATE,
+ G TIMESTAMP(3),
+ H TIMESTAMP(4) WITH TIME ZONE,
+ I TIMESTAMP(5) WITH LOCAL TIME ZONE,
+ J INTERVAL YEAR TO MONTH,
+ K INTERVAL DAY TO SECOND,
+ L CHAR(10),
+ M VARCHAR2(10))
+PARTITION BY RANGE(A,B,C,D,E,F,G,H,I,J,K,L,M)
+(
+ PARTITION P1 VALUES LESS THAN(1E2, 1E2, 1E2, 1E2, 1E2,
+							DATE '2026-1-1',
+							TIMESTAMP '2026-1-1 11:11:11.123',
+							TIMESTAMP '2026-1-1 11:11:11.123 +08:00',
+							TIMESTAMP '2026-1-1 11:11:11.123',
+							INTERVAL '1-2' YEAR TO MONTH,
+							INTERVAL '1 1:1:1' DAY TO SECOND,
+							'CHAR',
+							'VARCHAR2')
+);
+
+select table_name, partition_name, high_value from dba_tab_partitions where table_name ilike 'PAR_TEST';
+
+RESET timezone;
+DROP TABLE PAR_TEST;
+/* Begin - bug#7786 */

@@ -561,6 +561,7 @@ static void pg_get_function_arg_reference_typerowtype_internal(Tuplestorestate *
 /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
 static char *ora_get_subpartkeydef_worker(Oid relid, int prettyFlags, bool attrsOnly, bool missing_ok);
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+static void ora_get_const_expr(Const *constval, deparse_context *context, int showtype); /* bug#7786 */
 
 
 /* ----------
@@ -14475,6 +14476,171 @@ ora_get_subpartkeydef_worker(Oid relid, int prettyFlags, bool attrsOnly, bool mi
 	return buf.data;
 }
 
+/* Begin - bug#7786 */
+/*
+ * Similar to get_const_expr, but the display of constant literals
+ * for certain data types differs from that of PG, currently only
+ * used for the display format of high_value of partitioned table
+ * system views.
+ */
+static void
+ora_get_const_expr(Const *constval, deparse_context *context, int showtype)
+{
+	StringInfo	buf = context->buf;
+	Oid			typoutput;
+	bool		typIsVarlena;
+	char	   *extval;
+	bool		needlabel = false;
+
+	if (constval->constisnull)
+	{
+		/*
+		 * Always label the type of a NULL constant to prevent misdecisions
+		 * about type when reparsing.
+		 */
+		appendStringInfoString(buf, "NULL");
+		if (showtype >= 0)
+		{
+			appendStringInfo(buf, "::%s",
+							 format_type_with_typemod(constval->consttype,
+													  constval->consttypmod));
+			get_const_collation(constval, context);
+		}
+		return;
+	}
+
+	getTypeOutputInfo(constval->consttype,
+					  &typoutput, &typIsVarlena);
+
+	/*
+	 * Begin - ReqID:SRS-GKC-DATATYPE_001
+	 * Compatible oracle , pass typmod to output function
+	 */
+	if (ORA_MODE == compatible_mode &&
+		(constval->consttype == YMINTERVALOID ||
+		constval->consttype == DSINTERVALOID))
+	{
+		extval = OidOutputFunctionCallWithTypmod(typoutput, constval->constvalue, constval->consttypmod);
+	}
+	else
+	{
+		switch (constval->consttype)
+		{
+			case ORADATEOID:
+			case ORATIMESTAMPOID:
+			case ORATIMESTAMPTZOID:
+			case ORATIMESTAMPLTZOID:
+				{
+					int	save_nestlevel = 0;
+					save_nestlevel = NewGUCNestLevel();
+					(void) set_config_option("nls_date_format", "SYYYY-MM-DD HH24:MI:SS",
+											 PGC_USERSET, PGC_S_SESSION,
+											 GUC_ACTION_SAVE, true, 0, false);
+
+					(void) set_config_option("nls_timestamp_format", "SYYYY-MM-DD HH24:MI:SS.FF",
+										  PGC_USERSET, PGC_S_SESSION,
+										  GUC_ACTION_SAVE, true, 0, false);
+
+					(void) set_config_option("nls_timestamp_tz_format", "SYYYY-MM-DD HH24:MI:SS.FF TZH:TZM",
+										PGC_USERSET, PGC_S_SESSION,
+										GUC_ACTION_SAVE, true, 0, false);
+					extval = OidOutputFunctionCall(typoutput, constval->constvalue);
+					AtEOXact_GUC(false, save_nestlevel);
+				}
+				break;
+			default:
+				extval = OidOutputFunctionCall(typoutput, constval->constvalue);
+				break;
+		}
+	}
+	/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+	switch (constval->consttype)
+	{
+		case INT2OID:
+		case INT4OID:
+		case INT8OID:
+		case NUMERICOID:
+		case NUMBEROID:
+		case BINARY_FLOATOID:
+		case BINARY_DOUBLEOID:
+		case FLOAT4OID:
+		case FLOAT8OID:
+			appendStringInfoString(buf, extval);
+			break;
+
+		case ORADATEOID:
+			appendStringInfo(buf, "TO_DATE('%s', 'SYYYY-MM-DD HH24:MI:SS')", extval);
+			break;
+
+		case ORATIMESTAMPOID:
+			appendStringInfo(buf, "TO_TIMESTAMP('%s', 'SYYYY-MM-DD HH24:MI:SS.FF')", extval);
+			break;
+
+		case ORATIMESTAMPTZOID:
+			appendStringInfo(buf, "TO_TIMESTAMP_TZ('%s', 'SYYYY-MM-DD HH24:MI:SS.FF TZH:TZM')", extval);
+			break;
+
+		case ORATIMESTAMPLTZOID:
+			appendStringInfo(buf, "TO_TIMESTAMP_TZ('%s', 'SYYYY-MM-DD HH24:MI:SS.FF')", extval);
+			break;
+
+		case BOOLOID:
+			if (strcmp(extval, "t") == 0)
+				appendStringInfoString(buf, "true");
+			else
+				appendStringInfoString(buf, "false");
+			break;
+
+		default:
+			simple_quote_literal(buf, extval);
+			break;
+	}
+
+	pfree(extval);
+
+	if (showtype < 0)
+		return;
+
+	/*
+	 * For showtype == 0, append ::typename unless the constant will be
+	 * implicitly typed as the right type when it is read in.
+	 *
+	 * XXX this code has to be kept in sync with the behavior of the parser,
+	 * especially make_const.
+	 */
+	switch (constval->consttype)
+	{
+		case BOOLOID:
+		case UNKNOWNOID:
+			/* These types can be left unlabeled */
+			needlabel = false;
+			break;
+		case INT4OID:
+			/* We determined above whether a label is needed */
+			break;
+		case NUMERICOID:
+
+			/*
+			 * Float-looking constants will be typed as numeric, which we
+			 * checked above; but if there's a nondefault typmod we need to
+			 * show it.
+			 */
+			needlabel |= (constval->consttypmod >= 0);
+			break;
+		default:
+			needlabel = true;
+			break;
+	}
+	if (needlabel || showtype > 0)
+		appendStringInfo(buf, "::%s",
+						 format_type_with_typemod(constval->consttype,
+												  constval->consttypmod));
+
+	get_const_collation(constval, context);
+}
+/* End - bug#7786 */
+
 /*
  * Get high value of the (sub)partition bounds.
  */
@@ -14534,7 +14700,7 @@ ora_get_partition_highvalue(PG_FUNCTION_ARGS)
 					Const	*val = castNode(Const, lfirst(cell));
 
 					appendStringInfoString(buf, sep);
-					get_const_expr(val, &context, -1);
+					ora_get_const_expr(val, &context, -1); /* bug#7786 */
 					sep = ", ";
 				}
 			}
@@ -14570,7 +14736,7 @@ ora_get_partition_highvalue(PG_FUNCTION_ARGS)
 					{
 						Const	   *val = castNode(Const, datum->value);
 
-						get_const_expr(val, &context, -1);
+						ora_get_const_expr(val, &context, -1); /* bug#7786 */
 					}
 					sep = ", ";
 				}
