@@ -582,6 +582,11 @@ extern PGDLLIMPORT bool restricted_dba;
 extern bool convert_multiinsert_with_cte;
 /* End - SRS-SQL-MULTITABLEINSERT */
 
+/* Begin - ReqID:SRS-MYSQL-PROC */
+extern PGDLLIMPORT bool default_function_security_is_definer;
+extern PGDLLIMPORT bool create_function_with_sql_mode;
+/* End - ReqID:SRS-MYSQL-PROC */
+
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 typedef enum ResourcelimitMode
 {
@@ -773,6 +778,8 @@ extern bool guc_list_input_check(const char *varname);
 /* End - ReqID:SRS-MYSQL-SET */
 
 /* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+extern PGDLLIMPORT const char *sql_mode_names[];
+
 #define MODE_REAL_AS_FLOAT              ((1ULL << 0))
 #define MODE_PIPES_AS_CONCAT            ((1ULL << 1))
 #define MODE_ANSI_QUOTES                ((1ULL << 2))

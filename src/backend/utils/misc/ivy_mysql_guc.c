@@ -154,6 +154,11 @@ bool		mysql_local_infile = true;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 int 		group_concat_max_len;	/* bug#7234 */
 
+/* Begin - ReqID:SRS-MYSQL-PROC */
+bool 		default_function_security_is_definer;
+bool		create_function_with_sql_mode;
+/* End - ReqID:SRS-MYSQL-PROC */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -355,6 +360,28 @@ int 		group_concat_max_len;	/* bug#7234 */
 		NULL, NULL, NULL
 	},
 	/* End - RedID:SRS-MYSQL-SQL-LOADDATA */
+	/* Begin - ReqID:SRS-MYSQL-PROC */
+	{
+		{"mysql.default_function_security_is_definer", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Used to set whether Function/Procedure's default security property is DEFINER or INVOKER."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&default_function_security_is_definer,
+		false,
+		NULL, NULL, NULL
+	},
+	{
+		{"mysql.create_function_with_sql_mode", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Used to set whether record current sql_mode to proconfig when create function or procedure."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&create_function_with_sql_mode,
+		false,
+		NULL, NULL, NULL
+	},
+	/* End - ReqID:SRS-MYSQL-PROC */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
@@ -787,7 +814,7 @@ check_read_only_var(char **newval, void **extra, GucSource source)
 			errmsg("Variable 'sql_mode' can't be set to the value of '%s'", val))); \
 } while(0);
 
-static const char *sql_mode_names[] =
+const char *sql_mode_names[] =
 {
 	"REAL_AS_FLOAT",
   	"PIPES_AS_CONCAT",
@@ -1133,6 +1160,11 @@ assign_regress_test_default_value(bool newval, void *extra)
 
 		/* bug#7415 */
 		SetConfigOption("max_allowed_packet", "1073741824", PGC_USERSET, PGC_S_OVERRIDE);
+
+		/* Begin - ReqID:SRS-MYSQL-PROC */
+		SetConfigOption("mysql.default_function_security_is_definer", "false", PGC_USERSET, PGC_S_OVERRIDE);
+		SetConfigOption("mysql.create_function_with_sql_mode", "false", PGC_USERSET, PGC_S_OVERRIDE);
+		/* End - ReqID:SRS-MYSQL-PROC */
 	}
 }
 

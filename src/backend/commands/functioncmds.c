@@ -50,6 +50,7 @@
 #include "catalog/pg_transform.h"
 #include "catalog/pg_type.h"
 #include "commands/alter.h"
+#include "commands/comment.h"
 #include "commands/defrem.h"
 #include "commands/extension.h"
 #include "commands/proclang.h"
@@ -1274,6 +1275,20 @@ compute_function_attributes(ParseState *pstate,
 			result_cache_item = defel;
 		}
 		/* End - ReqID:SRS-SQL-PROC */
+		/* Begin - ReqID:SRS-MYSQL-PROC */
+		else if (MYS_MODE == compatible_mode && strcmp(defel->defname, "owner") == 0)
+		{
+			continue;
+		}
+		else if (MYS_MODE == compatible_mode && strcmp(defel->defname, "comment") == 0)
+		{
+			continue;
+		}
+		else if (MYS_MODE == compatible_mode && strcmp(defel->defname, "operator_tpye") == 0)
+		{
+			continue;
+		}
+		/* End - ReqID:SRS-MYSQL-PROC */
 		else if (compute_common_attribute(pstate,
 										  is_procedure,
 										  defel,
@@ -1806,6 +1821,11 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	prosupport = InvalidOid;
 	parallel = PROPARALLEL_UNSAFE;
 
+	/* Begin - ReqID:SRS-MYSQL-PROC */
+	if (compatible_mode == MYS_MODE)
+		security = default_function_security_is_definer;
+	/* End - ReqID:SRS-MYSQL-PROC */
+
 	/* Extract non-default attributes from stmt->options list */
 	compute_function_attributes(pstate,
 								stmt->is_procedure,
@@ -2093,6 +2113,42 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 
 		pfree(buf.data);
 	}
+
+	/* Begin - ReqID: SRS-MYSQL-PROC */
+	if (compatible_mode == MYS_MODE)
+	{
+		ListCell   	*option;
+		RoleSpec	*owner = NULL;
+		char		*comment = NULL;
+
+		foreach(option, stmt->options)
+		{
+			DefElem    *defel = (DefElem *) lfirst(option);
+
+			if (strcmp(defel->defname, "comment") == 0)
+			{
+				// find the last one comment node
+				comment = strVal(defel->arg);
+			}
+			else if (strcmp(defel->defname, "owner") == 0)
+			{
+				owner = (RoleSpec *) defel->arg;
+			}
+		}
+
+		if (comment)
+			CreateComments(address.objectId, address.classId, address.objectSubId, comment);
+
+		if (owner)
+		{
+			Oid			classId = address.classId;
+			Oid			newowner = get_rolespec_oid(owner, false);
+			Relation	catalog = table_open(classId, RowExclusiveLock);
+			AlterObjectOwner_internal(catalog, address.objectId, newowner);
+			table_close(catalog, RowExclusiveLock);
+		}
+	}
+	/* End - ReqID: SRS-MYSQL-PROC */
 
 	return address;
 	/* END - ReqID:SRS-CMD-PGDUMP */
@@ -3759,11 +3815,6 @@ SKIP_PG_PROC_CHECK:
 		HeapTupleData	newrettupdata;
 		Datum		newretvalue;
 		/* End - ReqID:SRS-PLSQL-RECORD */
-		/* Begin - ReqID:SRS-MYSQL-SET */
-		HeapTuple		tuple = NULL;
-		Datum			proargmodesDatum;
-		bool			isNull;
-		/* End - ReqID:SRS-MYSQL-SET */
 
 		if (fcinfo->isnull)
 			elog(ERROR, "procedure returned null record");
@@ -3821,80 +3872,29 @@ SKIP_PG_PROC_CHECK:
 		 */
 		if (compatible_mode == MYS_MODE)
 		{
-			if (OidIsValid(fexpr->funcid))
-				tuple = SearchSysCache1(PROCOID, ObjectIdGetDatum(fexpr->funcid));
-
-			if (HeapTupleIsValid(tuple))
+			for (int i = 0; i < retdesc->natts; i++)
 			{
-				ArrayType	   *arr;
-				int				ndim;
-				Datum		   *elem_values;
-				bool		   *elem_nulls;
-				int				nelems;
-				int				j = 0;
+				Node *node = list_nth(stmt->outargs, i);
 
-				proargmodesDatum = SysCacheGetAttr(PROCOID, tuple, Anum_pg_proc_proargmodes,
-									   &isNull);
-				if (!isNull)
+				node = strip_implicit_coercions(node);
+
+				if (IsA(node, VarRef))
 				{
-					/* proargmodes is a char array, get array value */
-					arr = DatumGetArrayTypeP(proargmodesDatum);
-					ndim = ARR_NDIM(arr);
+					bool	isnull;
+					VarRef	*userVar = (VarRef *) node;
+					Datum 	value = slot_getattr(slot, i + 1, &isnull);
+					Form_pg_attribute att = TupleDescAttr(retdesc, i);
 
-					/* The array must be one-dimensional */
-					if (ndim != 1)
-						ereport(ERROR,
-								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-								 errmsg("only one-dimensional char arrays are supported")));
-
-					/*
-					 * Convert the array values into the elem_values and elem_nulls,
-					 * and compute the number of elements, storing the result in nelems,
-					 */
-					deconstruct_array(arr, CHAROID, 1, true, TYPALIGN_CHAR, &elem_values, &elem_nulls, &nelems);
-
-					/* Interate over and check OUT parameters */
-					for (i = 0; i < nelems; i++)
-					{
-						if (!elem_nulls[i])
-						{
-							char c = DatumGetChar(elem_values[i]);
-
-							/*
-							 * if the parameter is an OUT parameter  and the passed-in argument
-							 * is a user-defined variable, assign the value of the OUT parameter
-							 * to that variable.
-							 */
-							if (c == PROARGMODE_OUT && IsA(lfirst(list_nth_cell(stmt->funccall->args, i)), VarRef))
-							{
-								Datum			value;
-								bool			isNull;
-								VarRef		   *userVar;
-								Oid 			valTypeOid;
-								int32			typmod;
-								Oid 			colloid;
-								int 			typlen;
-								bool			attbyval;
-
-								/*
-								 * Get the name, value, type, collate and typlen, typbyval
-								 * of each user variable.
-								 */
-								userVar = (VarRef *)lfirst(list_nth_cell(stmt->funccall->args, i));
-								valTypeOid = TupleDescAttr(retdesc, j)->atttypid;
-								typmod =  TupleDescAttr(retdesc, j)->atttypmod;
-								colloid = TupleDescAttr(retdesc, j)->attcollation;
-								typlen = TupleDescAttr(retdesc, j)->attlen;
-								attbyval = TupleDescAttr(retdesc, j)->attbyval;
-								value = slot_getattr(slot, ++j, &isNull);
-
-								if (setuservarinternal_hook)
-									setuservarinternal_hook(userVar->varname, valTypeOid, typmod, colloid, typlen, value, isNull, attbyval);
-							}
-						}
-					}
+					if (setuservarinternal_hook)
+						setuservarinternal_hook(userVar->varname,
+												att->atttypid,
+												att->atttypmod,
+												att->attcollation,
+												att->attlen,
+												value,
+												isnull,
+												att->attbyval);
 				}
-				ReleaseSysCache(tuple);
 			}
 		}
 		/* End - ReqID:SRS-MYSQL-SET */

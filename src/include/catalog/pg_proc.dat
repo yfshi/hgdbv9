@@ -11957,26 +11957,22 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proargtypes => '', prosrc => 'hgdb_version' },
 #/* End - BUG#Z00005371 */
 
+/*BEGIN MySQL Compatibility Metadatas*/
 #/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 { oid => '4658', descr => 'mysql get last auto_increment value',
   proname => 'mys_get_lastval', provolatile => 'v', proparallel => 'u',
   prorettype => 'int8', proargtypes => '', prosrc => 'mys_get_lastval' },
-
 { oid => '4659', descr => 'mysql set last auto_increment value',
   proname => 'mys_set_lastval', provolatile => 'v', proparallel => 'u', proisstrict => 'f',
   prorettype => 'int8', proargtypes => 'int8', prosrc => 'mys_set_lastval' },
-  
 { oid => '4660', descr => 'mysql set auto_increment value by callback',
   proname => 'mys_set_insertval', provolatile => 'v', proparallel => 'u',
   prorettype => 'int8', proargtypes => 'oid int2 bool int4 numeric', prosrc => 'mys_set_insertval' },
-
 { oid => '4661', descr => 'autoincrement  next value',
   proname => 'autoinc_nextval', provolatile => 'v', proparallel => 'u',
   prorettype => 'int8', proargtypes => 'regclass', prosrc => 'autoinc_nextval_oid' },
-
 #/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
-/*BEGIN MySQL Compatibility Metadatas*/
 /* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 { oid => '6020', descr => 'Cast enum to another enum for MySQL.',
   proname => 'enum_to_enum', provolatile => 's', prorettype => 'anyenum',
@@ -12091,6 +12087,13 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
 { oid => '6055', descr => 'convert numeric to tinyint',
   proname => 'numeric_tinyint', prorettype => 'tinyint', proargtypes => 'numeric int4 bool int8',
   prosrc => 'numeric_tinyint' },
+
+/* Begin - ReqID:SRS-MYSQL-PROC */
+{ oid => '6067', descr => 'body of a mysql function',
+  proname => 'pg_get_function_body', provolatile => 's', prorettype => 'text',
+  proargtypes => 'oid', prosrc => 'pg_get_function_body' },
+/* End - ReqID:SRS-MYSQL-PROC */
+
 /*END MySQL Compatibility Metadatas*/
 /* Begin ReqID: LOCK-SESSION */
 { oid => '8302', descr => 'lock current session',

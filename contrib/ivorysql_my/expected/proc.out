@@ -1,0 +1,455 @@
+set mysql.at_or_atat = true;
+set mysql.default_function_security_is_definer = true;
+set mysql.create_function_with_sql_mode = true;
+CREATE USER proc_user WITH PASSWORD 'ivorysql@123';
+GRANT ALL ON SCHEMA public, mysql TO proc_user;
+SET ROLE proc_user;
+-- comment
+CREATE OR REPLACE FUNCTION comment_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+LANGUAGE SQL;
+\df+ comment_test
+                                                                                     List of functions
+ Schema |     Name     | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+--------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | comment_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | definer  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- deterministic
+-- default is not deterministic(volatile)
+CREATE OR REPLACE FUNCTION deterministic_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+LANGUAGE SQL;
+\df+ deterministic_test
+                                                                                        List of functions
+ Schema |        Name        | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+--------------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | deterministic_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | definer  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- set to immutable
+CREATE OR REPLACE FUNCTION deterministic_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+deterministic
+LANGUAGE SQL;
+\df+ deterministic_test
+                                                                                        List of functions
+ Schema |        Name        | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+--------------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | deterministic_test | integer          | boolean             | func | immutable  | unsafe   | proc_user | definer  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- set to volatile
+CREATE OR REPLACE FUNCTION deterministic_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+not deterministic
+LANGUAGE SQL;
+\df+ deterministic_test
+                                                                                        List of functions
+ Schema |        Name        | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+--------------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | deterministic_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | definer  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- security
+-- default is definer
+CREATE OR REPLACE FUNCTION security_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+LANGUAGE SQL;
+\df+ security_test
+                                                                                     List of functions
+ Schema |     Name      | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+---------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | security_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | definer  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- set to definer
+CREATE OR REPLACE FUNCTION security_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+sql security definer
+LANGUAGE SQL;
+\df+ security_test
+                                                                                     List of functions
+ Schema |     Name      | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+---------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | security_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | definer  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- set to innoker
+CREATE OR REPLACE FUNCTION security_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+sql security invoker
+LANGUAGE SQL;
+\df+ security_test
+                                                                                     List of functions
+ Schema |     Name      | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+---------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | security_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | invoker  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- operator keywords
+CREATE OR REPLACE FUNCTION operator_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+no sql contains sql reads sql data modifies sql data
+sql security invoker
+LANGUAGE SQL;
+\df+ operator_test
+                                                                                     List of functions
+ Schema |     Name      | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+---------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | operator_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | invoker  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- definer
+-- default is CURRENT_USER
+CREATE OR REPLACE 
+DEFINER = CURRENT_USER
+FUNCTION definer_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+no sql contains sql reads sql data modifies sql data
+sql security invoker
+LANGUAGE SQL;
+select proname from pg_proc where proname = 'definer_test' and proowner = current_userid();
+   proname    
+--------------
+ definer_test
+(1 row)
+
+-- set to CURRENT_USER
+CREATE OR REPLACE 
+DEFINER = CURRENT_USER
+FUNCTION definer_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+no sql contains sql reads sql data modifies sql data
+sql security invoker
+LANGUAGE SQL;
+select proname from pg_proc where proname = 'definer_test' and proowner = current_userid();
+   proname    
+--------------
+ definer_test
+(1 row)
+
+-- set to CURRENT_USER()
+CREATE OR REPLACE 
+DEFINER = CURRENT_USER()
+FUNCTION definer_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+no sql contains sql reads sql data modifies sql data
+sql security invoker
+LANGUAGE SQL;
+select proname from pg_proc where proname = 'definer_test' and proowner = current_userid();
+   proname    
+--------------
+ definer_test
+(1 row)
+
+CREATE OR REPLACE 
+DEFINER = 'proc_user'@'%'
+FUNCTION definer_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+no sql contains sql reads sql data modifies sql data
+sql security invoker
+LANGUAGE SQL;
+\df+ definer_test
+                                                                                     List of functions
+ Schema |     Name     | Result data type | Argument data types | Type | Volatility | Parallel |   Owner   | Security | Access privileges | Language |    Source code     |  Description   
+--------+--------------+------------------+---------------------+------+------------+----------+-----------+----------+-------------------+----------+--------------------+----------------
+ public | definer_test | integer          | boolean             | func | volatile   | unsafe   | proc_user | invoker  |                   | sql      | select !($1::int); | ths is comment
+(1 row)
+
+-- mysql.proc
+desc mysql.proc;
+        Field         |                Type                 | Null | Key | Default | Extra 
+----------------------+-------------------------------------+------+-----+---------+-------
+ db                   | character varying(64)               | YES  |     |         | 
+ name                 | character varying(64)               | YES  |     |         | 
+ type                 | mysql.enum_mysql_proc_type          | YES  |     |         | 
+ specific_name        | character varying(64)               | YES  |     |         | 
+ language             | mysql.enum_mysql_proc_language      | YES  |     |         | 
+ sql_data_access      | mysql.enum_mysql_proc_access        | YES  |     |         | 
+ is_deterministic     | mysql.enum_mysql_proc_deterministic | YES  |     |         | 
+ security_type        | mysql.enum_mysql_proc_security      | YES  |     |         | 
+ param_list           | text                                | YES  |     |         | 
+ returns              | longblob                            | YES  |     |         | 
+ body                 | text                                | YES  |     |         | 
+ definer              | character varying(93)               | YES  |     |         | 
+ created              | timestamp                           | YES  |     |         | 
+ modified             | timestamp                           | YES  |     |         | 
+ sql_mode             | character varying                   | YES  |     |         | 
+ comment              | text                                | YES  |     |         | 
+ character_set_client | character varying(32)               | YES  |     |         | 
+ collation_connection | character varying(32)               | YES  |     |         | 
+ db_collation         | character varying(32)               | YES  |     |         | 
+ body_utf8            | text                                | YES  |     |         | 
+(20 rows)
+
+-- show create function
+show create function comment_test;
+   Function   |                                                                                                 sql_mode                                                                                                 |                                                                                                       Create Function                                                                                                       | character_set_client | collation_connection | Database Collation 
+--------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ comment_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE FUNCTION public.comment_test(boolean)                                                                                                                                                                    +| UTF8                 | utf8_general_ci      | utf8_general_ci
+              |                                                                                                                                                                                                          |  RETURNS integer                                                                                                                                                                                                           +|                      |                      | 
+              |                                                                                                                                                                                                          |  LANGUAGE sql                                                                                                                                                                                                              +|                      |                      | 
+              |                                                                                                                                                                                                          |  SECURITY DEFINER                                                                                                                                                                                                          +|                      |                      | 
+              |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+              |                                                                                                                                                                                                          | AS $function$select !($1::int);$function$                                                                                                                                                                                  +|                      |                      | 
+              |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+show create function deterministic_test;
+      Function      |                                                                                                 sql_mode                                                                                                 |                                                                                                       Create Function                                                                                                       | character_set_client | collation_connection | Database Collation 
+--------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ deterministic_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE FUNCTION public.deterministic_test(boolean)                                                                                                                                                              +| UTF8                 | utf8_general_ci      | utf8_general_ci
+                    |                                                                                                                                                                                                          |  RETURNS integer                                                                                                                                                                                                           +|                      |                      | 
+                    |                                                                                                                                                                                                          |  LANGUAGE sql                                                                                                                                                                                                              +|                      |                      | 
+                    |                                                                                                                                                                                                          |  SECURITY DEFINER                                                                                                                                                                                                          +|                      |                      | 
+                    |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+                    |                                                                                                                                                                                                          | AS $function$select !($1::int);$function$                                                                                                                                                                                  +|                      |                      | 
+                    |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+show create function security_test;
+   Function    |                                                                                                 sql_mode                                                                                                 |                                                                                                       Create Function                                                                                                       | character_set_client | collation_connection | Database Collation 
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ security_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE FUNCTION public.security_test(boolean)                                                                                                                                                                   +| UTF8                 | utf8_general_ci      | utf8_general_ci
+               |                                                                                                                                                                                                          |  RETURNS integer                                                                                                                                                                                                           +|                      |                      | 
+               |                                                                                                                                                                                                          |  LANGUAGE sql                                                                                                                                                                                                              +|                      |                      | 
+               |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+               |                                                                                                                                                                                                          | AS $function$select !($1::int);$function$                                                                                                                                                                                  +|                      |                      | 
+               |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+show create function operator_test;
+   Function    |                                                                                                 sql_mode                                                                                                 |                                                                                                       Create Function                                                                                                       | character_set_client | collation_connection | Database Collation 
+---------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ operator_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE FUNCTION public.operator_test(boolean)                                                                                                                                                                   +| UTF8                 | utf8_general_ci      | utf8_general_ci
+               |                                                                                                                                                                                                          |  RETURNS integer                                                                                                                                                                                                           +|                      |                      | 
+               |                                                                                                                                                                                                          |  LANGUAGE sql                                                                                                                                                                                                              +|                      |                      | 
+               |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+               |                                                                                                                                                                                                          | AS $function$select !($1::int);$function$                                                                                                                                                                                  +|                      |                      | 
+               |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+-- show create procedure
+show create procedure comment_test;
+ERROR:  PROCEDURE public.comment_test does not exist
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+show create procedure deterministic_test;
+ERROR:  PROCEDURE public.deterministic_test does not exist
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+show create procedure security_test;
+ERROR:  PROCEDURE public.security_test does not exist
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+show create procedure operator_test;
+ERROR:  PROCEDURE public.operator_test does not exist
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+create or replace procedure proc_test()
+as
+$$
+declare
+i int := 1000;
+j int := 1;
+k int := 1;
+begin
+    while i <= 1200 loop
+	j = 1;
+		while j <=12 loop 
+		k = 1;
+			while k <= 28 loop
+				k = k+1;
+			end loop;
+			j = j+1;
+		end loop;
+    i = i+1;
+    end loop;
+end;
+$$ language plmysql;
+show create function proc_test;
+ERROR:  FUNCTION public.proc_test does not exist
+CONTEXT:  PL/pgSQL function show_create_function(character,character) line 15 at RAISE
+show create procedure proc_test;
+ Procedure |                                                                                                 sql_mode                                                                                                 |                                                                                                      Create Procedure                                                                                                       | character_set_client | collation_connection | Database Collation 
+-----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ proc_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE DEFINER = `proc_user`@`%` PROCEDURE `public.proc_test`()                                                                                                                                                 +| UTF8                 | utf8_general_ci      | utf8_general_ci
+           |                                                                                                                                                                                                          |  LANGUAGE SQL                                                                                                                                                                                                              +|                      |                      | 
+           |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+           |                                                                                                                                                                                                          | AS $procedure$                                                                                                                                                                                                             +|                      |                      | 
+           |                                                                                                                                                                                                          | declare                                                                                                                                                                                                                    +|                      |                      | 
+           |                                                                                                                                                                                                          | i int := 1000;                                                                                                                                                                                                             +|                      |                      | 
+           |                                                                                                                                                                                                          | j int := 1;                                                                                                                                                                                                                +|                      |                      | 
+           |                                                                                                                                                                                                          | k int := 1;                                                                                                                                                                                                                +|                      |                      | 
+           |                                                                                                                                                                                                          | begin                                                                                                                                                                                                                      +|                      |                      | 
+           |                                                                                                                                                                                                          |     while i <= 1200 loop                                                                                                                                                                                                   +|                      |                      | 
+           |                                                                                                                                                                                                          |         j = 1;                                                                                                                                                                                                             +|                      |                      | 
+           |                                                                                                                                                                                                          |                 while j <=12 loop                                                                                                                                                                                          +|                      |                      | 
+           |                                                                                                                                                                                                          |                 k = 1;                                                                                                                                                                                                     +|                      |                      | 
+           |                                                                                                                                                                                                          |                         while k <= 28 loop                                                                                                                                                                                 +|                      |                      | 
+           |                                                                                                                                                                                                          |                                 k = k+1;                                                                                                                                                                                   +|                      |                      | 
+           |                                                                                                                                                                                                          |                         end loop;                                                                                                                                                                                          +|                      |                      | 
+           |                                                                                                                                                                                                          |                         j = j+1;                                                                                                                                                                                           +|                      |                      | 
+           |                                                                                                                                                                                                          |                 end loop;                                                                                                                                                                                                  +|                      |                      | 
+           |                                                                                                                                                                                                          |     i = i+1;                                                                                                                                                                                                               +|                      |                      | 
+           |                                                                                                                                                                                                          |     end loop;                                                                                                                                                                                                              +|                      |                      | 
+           |                                                                                                                                                                                                          | end;                                                                                                                                                                                                                       +|                      |                      | 
+           |                                                                                                                                                                                                          | $procedure$                                                                                                                                                                                                                +|                      |                      | 
+           |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+-- user define variable argument test
+-- user define variable can be any type
+create or replace procedure arg_test(IN arg1 text, OUT arg2 text, INOUT arg3 text)
+as $$
+begin
+	set arg1 = concat(arg1, '-1');
+	set arg2 = concat(arg2, '-2');
+	set arg3 = concat(arg3, '-3');
+end;
+$$ language plmysql;
+-- case 1
+set @var1 = 'a';
+set @var2 = 'b';
+set @var3 = 'c';
+-- a, null, c-3
+call arg_test(@var1, @var2, @var3);
+ arg2 | arg3 
+------+------
+      | c-3
+(1 row)
+
+-- a, null, c-3
+select @var1, @var2, @var3;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+ a        |          | c-3
+(1 row)
+
+-- case 2
+set @var1 = 1::text;
+set @var2 = 2::text;
+set @var3 = 3::text;
+-- 1, null, 3-3
+call arg_test(@var1, @var2, @var3);
+ arg2 | arg3 
+------+------
+      | 3-3
+(1 row)
+
+-- 1, null, 3-3
+select @var1, @var2, @var3;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+ 1        |          | 3-3
+(1 row)
+
+-- case 3
+set @var1 = 1;
+set @var2 = 2;
+set @var3 = 3;
+-- 1, null, 3-3
+call arg_test(@var1::text, @var2::text, @var3::text);
+ arg2 | arg3 
+------+------
+      | 3-3
+(1 row)
+
+-- 1, null, 3
+select @var1, @var2, @var3;
+ ?column? | ?column? | ?column? 
+----------+----------+----------
+        1 |        2 |        3
+(1 row)
+
+-- system variable can only be IN-type
+call arg_test(@var1::text, @@autocommit, @var3::text);
+ERROR:  OUT or INOUT argument 1 for routine arg_test is not a variable or NEW pseudo-variable in BEFORE trigger
+call arg_test(@var1::text, @var2::text, @@autocommit);
+ERROR:  OUT or INOUT argument 2 for routine arg_test is not a variable or NEW pseudo-variable in BEFORE trigger
+-- test sql_mode
+set sql_mode = 'ansi_quotes';
+create or replace function sql_mode_func1()
+returns text
+as $$
+declare
+	ret text;
+begin
+	select current_setting('sql_mode') into ret;
+	return ret;
+end;
+$$ language plmysql;
+set sql_mode = 'pipes_as_concat';
+create or replace function sql_mode_func2()
+returns text
+as $$
+declare
+	ret text;
+begin
+	select current_setting('sql_mode') into ret;
+	return ret;
+end;
+$$ language plmysql;
+set sql_mode = 'only_full_group_by';
+create or replace function sql_mode_func3()
+returns text
+as $$
+declare
+	ret text;
+begin
+	select current_setting('sql_mode') into ret;
+	return ret;
+end;
+$$ language plmysql;
+set sql_mode = '';
+select sql_mode_func1(), sql_mode_func2(), sql_mode_func3();
+ sql_mode_func1 | sql_mode_func2  |   sql_mode_func3   
+----------------+-----------------+--------------------
+ ANSI_QUOTES    | PIPES_AS_CONCAT | ONLY_FULL_GROUP_BY
+(1 row)
+
+show sql_mode;
+ sql_mode 
+----------
+ 
+(1 row)
+
+set sql_mode = 'no_backslash_escapes';
+select sql_mode_func1(), sql_mode_func2(), sql_mode_func3();
+ sql_mode_func1 | sql_mode_func2  |   sql_mode_func3   
+----------------+-----------------+--------------------
+ ANSI_QUOTES    | PIPES_AS_CONCAT | ONLY_FULL_GROUP_BY
+(1 row)
+
+show sql_mode;
+       sql_mode       
+----------------------
+ NO_BACKSLASH_ESCAPES
+(1 row)
+
+set sql_mode = default;
+-- finish
+set mysql.at_or_atat = false;
+set mysql.default_function_security_is_definer = false;
+set mysql.create_function_with_sql_mode = false;

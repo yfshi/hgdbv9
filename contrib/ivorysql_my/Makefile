@@ -193,7 +193,10 @@ MYS_REGRESS = numeric_to_times \
 			  mys_alter_modify_multi \
 			  order_by_alias \
 			  mys_select_hint \
-			  charset_binary
+			  charset_binary \
+			  sql_mode \
+			  proc
+
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28 \

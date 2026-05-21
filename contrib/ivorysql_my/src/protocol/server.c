@@ -195,6 +195,10 @@ mysql_session_init(ProtocolExtensionConfig *self)
 		SetConfigOption("mysql.use_mysql_do", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.use_mysql_bit_literal", "true", PGC_USERSET, PGC_S_OVERRIDE); 
 		SetConfigOption("ivorysql.aggregates_without_group_by", "true", PGC_USERSET, PGC_S_OVERRIDE);
+		/* Begin - ReqID:SRS-MYSQL-PROC */
+		SetConfigOption("mysql.default_function_security_is_definer", "true", PGC_USERSET, PGC_S_OVERRIDE);
+		SetConfigOption("mysql.create_function_with_sql_mode", "true", PGC_USERSET, PGC_S_OVERRIDE);
+		/* End - ReqID:SRS-MYSQL-PROC */
 	}
 }
 

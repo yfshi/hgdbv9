@@ -128,6 +128,7 @@ PG_FUNCTION_INFO_V1(mys_strcmp);
 PG_FUNCTION_INFO_V1(database);
 PG_FUNCTION_INFO_V1(char_length_varlena); /* bug#z6050 */
 PG_FUNCTION_INFO_V1(oct);
+PG_FUNCTION_INFO_V1(number_to_sql_mode);
 
 static unsigned
 b64_decode(const char* src, unsigned len, char* dst, bool flag)
@@ -1692,3 +1693,39 @@ oct(PG_FUNCTION_ARGS)
 	else
 		PG_RETURN_TEXT_P(cstring_to_text("0"));
 }
+
+/* Begin - ReqID: SRS-MYSQL-PROC */
+Datum
+number_to_sql_mode(PG_FUNCTION_ARGS)
+{
+	sql_mode_t 		input = PG_GETARG_INT64(0);
+	sql_mode_t 		it;
+	const char 		**name;
+	StringInfoData 	buf;
+
+	initStringInfo(&buf);
+
+	for (it = MODE_VALUES_FIRST, name = sql_mode_names;
+		 *name != NULL; it = NEXT_MODE_VALUE(it), name++)
+	{
+		if (input & it)
+		{
+			if (buf.len != 0)
+				appendStringInfoChar(&buf, ',');
+
+			appendStringInfoString(&buf, *name);
+
+			input &= ~it;
+		}
+	}
+
+	if (input)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("illegal argument for function")));
+	}
+
+	PG_RETURN_TEXT_P(cstring_to_text(buf.data));
+}
+/* End - ReqID: SRS-MYSQL-PROC */

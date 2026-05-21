@@ -4361,3 +4361,15 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 /* End - SRS-MYSQL-BUILDINFUNCTION */
+
+/* Begin - ReqID: SRS-MYSQL-PROC */
+CREATE FUNCTION ivymy.number_to_sql_mode(int8)
+RETURNS text
+AS 'MODULE_PATHNAME','number_to_sql_mode'
+LANGUAGE C;
+
+CREATE FUNCTION ivymy.number_to_sql_mode(uint8)
+RETURNS text
+AS 'MODULE_PATHNAME','number_to_sql_mode'
+LANGUAGE C;
+/* End - ReqID: SRS-MYSQL-PROC */

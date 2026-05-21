@@ -15,7 +15,7 @@ CREATE TYPE mys_show_charset_results AS ("Charset" VARCHAR,
                                          "Default collation" VARCHAR,
                                          "Maxlen" INT8);
 
-CREATE FUNCTION pg_catalog.show_mysql_charsets()
+CREATE FUNCTION ivymy.show_mysql_charsets()
 RETURNS setof mys_show_charset_results
 AS 'MODULE_PATHNAME','show_mysql_charsets'
 LANGUAGE C
@@ -28,7 +28,7 @@ CREATE TYPE mys_show_collation_results AS ("Collation" VARCHAR,
                                            "Compiled" VARCHAR,
                                            "Sortlen" INT8);
 
-CREATE FUNCTION pg_catalog.show_mysql_collations()
+CREATE FUNCTION ivymy.show_mysql_collations()
 RETURNS setof mys_show_collation_results
 AS 'MODULE_PATHNAME','show_mysql_collations'
 LANGUAGE C
@@ -839,3 +839,89 @@ BEGIN
 		ivymy.mys_show_create_table(reloid)::varchar as "Create Table";
 END
 $$ LANGUAGE plpgsql;
+
+/* Begin - ReqID:SRS-MYSQL-PROC */
+CREATE OR REPLACE FUNCTION ivymy.show_create_function(
+	IN 	func_name char,
+	IN  db_name char DEFAULT current_schema(),
+	OUT `Function` text,
+	OUT `sql_mode` text,
+	OUT `Create Function` text,
+	OUT `character_set_client` text,
+	OUT `collation_connection` text,
+	OUT `Database Collation` text
+)
+RETURNS SETOF record AS $$
+DECLARE
+	v_type text;
+BEGIN
+	IF to_regproc(concat(db_name, '.', func_name)) IS NULL THEN
+		RAISE EXCEPTION 'FUNCTION % does not exist', concat(db_name, '.', func_name);
+	END IF;
+
+	SELECT type INTO v_type
+	FROM mysql.proc
+	WHERE db = db_name AND name = func_name;
+
+	IF  v_type IS NULL OR
+		v_type != 'FUNCTION' THEN
+		RAISE EXCEPTION 'FUNCTION % does not exist', concat(db_name, '.', func_name);
+	END IF;
+
+	RETURN QUERY
+		SELECT
+			func_name::text as `Function`,
+			p.sql_mode::text as `sql_mode`,
+			pg_get_functiondef(to_regproc(concat(db_name, '.', func_name))::oid)::text as `Create Function`, 
+			p.character_set_client::text as `character_set_client`, 
+			p.collation_connection::text as `collation_connection`, 
+			db_collation::text as `Database Collation`
+		FROM
+			mysql.proc p
+		WHERE
+			db = db_name AND name = func_name;
+END
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION ivymy.show_create_procedure(
+	IN 	pro_name char,
+	IN  db_name char DEFAULT current_schema(),
+	OUT `Procedure` text,
+	OUT `sql_mode` text,
+	OUT `Create Procedure` text,
+	OUT `character_set_client` text,
+	OUT `collation_connection` text,
+	OUT `Database Collation` text
+)
+RETURNS SETOF record AS $$
+DECLARE
+	v_type text;
+BEGIN
+	IF to_regproc(concat(db_name, '.', pro_name)) IS NULL THEN
+		RAISE EXCEPTION 'PROCEDURE % does not exist', concat(db_name, '.', pro_name);
+	END IF;
+
+	SELECT type INTO v_type
+	FROM mysql.proc
+	WHERE db = db_name AND name = pro_name;
+
+	IF  v_type IS NULL OR
+		v_type != 'PROCEDURE' THEN
+		RAISE EXCEPTION 'PROCEDURE % does not exist', concat(db_name, '.', pro_name);
+	END IF;
+
+	RETURN QUERY
+		SELECT
+			pro_name::text as `Function`,
+			p.sql_mode::text as `sql_mode`,
+			pg_get_functiondef(to_regproc(concat(db_name, '.', pro_name))::oid)::text as `Create Procedure`, 
+			p.character_set_client::text as `character_set_client`, 
+			p.collation_connection::text as `collation_connection`, 
+			db_collation::text as `Database Collation`
+		FROM
+			mysql.proc p
+		WHERE
+			db = db_name AND name = pro_name;
+END
+$$ LANGUAGE plpgsql;
+/* End - ReqID:SRS-MYSQL-PROC */
