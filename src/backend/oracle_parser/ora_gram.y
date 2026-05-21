@@ -1013,6 +1013,7 @@ static bool isAconstNode(Node *node);
  */
 %token		NOT_LA NULLS_LA WITH_LA PACKAGE_BODY /* ReqID:SRS-SQL-PACKAGE */ OVERRIDING_P/* BUG#Z375 */ /* Bug#Z485 */
 %token	    CONNECT_TO DATABASE_LINK CONNECT_BY /* ReqID:SRS-SQL-HierarchicalQueries */
+%token		TABLESPACE_LA /* bug#7304 */
 
 /*
  * The grammar likewise thinks these tokens are keywords, but they are never
@@ -1066,6 +1067,7 @@ static bool isAconstNode(Node *node);
 				drop_table_partition modify_table_partition drop_table_subpartition
 				rename_partition_subpart truncate_partition_subpart move_table_partition
 				move_table_subpartition
+%type <str>		OraPreTableSpace /* bug#7304 */
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /* Begin - OA-REQ-2127 */
@@ -4763,6 +4765,38 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->if_not_exists = false;
 					$$ = (Node *)n;
 				}
+		/* Begin - bug#7304 */
+		| CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
+			OptInherit OraPreTableSpace table_partitioning_clauses table_access_method_clause
+			OptWith default_collation_option OnCommitOption OptTableSpace
+				{
+					CreateStmt *n = makeNode(CreateStmt);
+					$4->relpersistence = $2;
+					n->relation = $4;
+					n->tableElts = $6;
+					n->inhRelations = $8;
+					n->partspec = $10->root_partiton_spec;
+					n->ora_partspec = $10;
+					n->ofTypename = NULL;
+					n->constraints = NIL;
+					n->accessMethod = $11;
+					n->options = $12;
+					n->collname = $13;
+					n->oncommit = $14;
+					if (n->oncommit == ONCOMMIT_NOOP && $4->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+						n->oncommit = ONCOMMIT_DELETE_ROWS;
+					n->tablespacename = $9;
+					n->if_not_exists = false;
+					$$ = (Node *)n;
+
+					/* ORA-02215: duplicate tablespace name clause */
+					if ($15)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("duplicate tablespace name clause"),
+								 parser_errposition(@15)));
+				}
+		/* End - bug#7304 */
 		/* Multi-step partition creation syntax only to support pg_dump */
 		| CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OnlyOraclePartitionSpec table_access_method_clause
@@ -5492,9 +5526,10 @@ OraHashPartitionBoundSpec: PARTITION opt_subpartition_desc
 							}
 		;
 
-
-
-
+/* Begin - bug#7304 */
+OraPreTableSpace:	 TABLESPACE_LA name		{ $$ = $2; }
+		;
+/* End - bug#7304 */
 
 opt_partition_name: name				{ $$ = $1; }
 				| /* EMPTY */			{ $$ = NULL; }

@@ -823,6 +823,11 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			cur_token_length = 8;
 			break;
 		/* End - ReqID:SRS-SECURITY-FLASHBACK */
+		/* Begin - bug#7304 */
+		case TABLESPACE:
+			cur_token_length = 10;
+			break;
+		/* End - bug#7304 */
 		default:
 			return cur_token;
 	}
@@ -1054,6 +1059,18 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				cur_token = VERSIONS_LA;
 			break;
 		/* End - ReqID:SRS-SECURITY-FLASHBACK */
+		/* Begin - bug#7304 */
+		case TABLESPACE:
+			if (token_is_col_id(next_token))
+			{
+				next_token = ora_internal_yylex(yyscanner, llocp, &aux1);
+				push_back_token(yyscanner, next_token, &aux1);
+
+				if (next_token == PARTITION)
+					cur_token = TABLESPACE_LA;
+			}
+			break;
+		/* End - bug#7304 */
 	}
 
 	return cur_token;

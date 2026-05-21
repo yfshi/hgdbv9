@@ -1300,10 +1300,18 @@ ProcessUtilitySlow(ParseState *pstate,
 				{
 					List	   *stmts;
 					RangeVar   *table_rv = NULL;
+					/* Begin - bug#7268 */
+					MemoryContext	oldcontext;
+					MemoryContext	per_stmt_context;
+					/* End - bug#7268 */
 
 					/* Run parse analysis ... */
 					stmts = transformCreateStmt((CreateStmt *) parsetree,
 												queryString);
+
+					per_stmt_context = AllocSetContextCreate(CurrentMemoryContext,
+															 "per-statement context",
+															 ALLOCSET_DEFAULT_SIZES); /* bug#7268 */
 
 					/*
 					 * ... and do it.  We can't use foreach() because we may
@@ -1324,6 +1332,8 @@ ProcessUtilitySlow(ParseState *pstate,
 
 							/* Remember transformed RangeVar for LIKE */
 							table_rv = cstmt->relation;
+
+							oldcontext = MemoryContextSwitchTo(per_stmt_context); /* bug#7268 */
 
 							/* Create the table itself */
 							address = DefineRelation(cstmt,
@@ -1356,6 +1366,11 @@ ProcessUtilitySlow(ParseState *pstate,
 
 							NewRelationCreateToastTable(address.objectId,
 														toast_options);
+
+							/* Begin - bug#7268 */
+							MemoryContextSwitchTo(oldcontext);
+							MemoryContextReset(per_stmt_context);
+							/* End - bug#7268 */
 						}
 						else if (IsA(stmt, CreateForeignTableStmt))
 						{
@@ -1427,6 +1442,7 @@ ProcessUtilitySlow(ParseState *pstate,
 					 * individually, so disable collection below.
 					 */
 					commandCollected = true;
+					MemoryContextDelete(per_stmt_context); /* bug#7268 */
 				}
 				break;
 

@@ -2128,6 +2128,15 @@ heap_drop_with_catalog(Oid relid)
 		{
 			Relation			parentrel;
 			PartitionDesc		parent_partdesc;
+			/* Begin - bug#7268 */
+			MemoryContext	oldcontext;
+			MemoryContext	per_stmt_context;
+
+			per_stmt_context = AllocSetContextCreate(CurrentMemoryContext,
+													 "per-partition context",
+													 ALLOCSET_DEFAULT_SIZES);
+			oldcontext = MemoryContextSwitchTo(per_stmt_context);
+			/* End - bug#7268 */
 
 			/* parentOid already acquired lock */
 			parentrel = table_open(parentOid, NoLock);
@@ -2214,6 +2223,10 @@ heap_drop_with_catalog(Oid relid)
 
 			table_close(parentrel, NoLock);
 			RemoveOraclePartitions(relid);
+			/* Begin - bug#7268 */
+			MemoryContextSwitchTo(oldcontext);
+			MemoryContextDelete(per_stmt_context);
+			/* End - bug#7268 */
 		}
 	}
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
