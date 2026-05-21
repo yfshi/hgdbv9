@@ -3979,6 +3979,10 @@ _copyCopyStmt(const CopyStmt *from)
 	COPY_STRING_FIELD(filename);
 	COPY_NODE_FIELD(options);
 	COPY_NODE_FIELD(whereClause);
+	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
+	COPY_SCALAR_FIELD(mys_load_local);
+	COPY_SCALAR_FIELD(select_into);
+	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 	return newnode;
 }

@@ -700,6 +700,22 @@ BeginCopyTo(ParseState *pstate,
 						(errcode(ERRCODE_INVALID_NAME),
 						 errmsg("relative path not allowed for COPY to file")));
 
+			/* Begin - bug#z7477 */
+			/* file exist, report an error */
+			if (compatible_mode == MYS_MODE && pstate->select_into)
+			{
+				/* use fopen to check if file exist (the same with file_exists()) */
+				FILE	*f = fopen(cstate->filename, "r");
+				if (f)
+				{
+					fclose(f);
+					ereport(ERROR,
+							(errcode(ERRCODE_DUPLICATE_FILE),
+							 errmsg("file \"%s\" already exists", cstate->filename)));
+				}
+			}
+			/* End - bug#z7477 */
+
 			oumask = umask(S_IWGRP | S_IWOTH);
 			PG_TRY();
 			{

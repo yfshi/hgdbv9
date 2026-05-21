@@ -2747,6 +2747,14 @@ typedef struct CopyStmt
 	 * using mys_load_local to indentify stdin
 	 */
 	bool       mys_load_local;
+	/* Begin - bug#z7477 */
+	/* why add this flag:
+	 *   used to distinguish this is select into, not copy to
+	 *   copy to: allow file exist
+	 *   select into: not allows file exist
+	 */
+	bool	select_into;
+	/* End - bug#z7477 */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 } CopyStmt;
 

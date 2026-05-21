@@ -415,6 +415,7 @@ struct ParseState
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
 	bool	mys_load_local;		/* mark its load local case on mysql mode */
+	bool	select_into;		/* mark its select into */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 	bool	p_tryVersionsPseudoColumn;
