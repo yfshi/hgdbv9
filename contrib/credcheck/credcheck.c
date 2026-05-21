@@ -314,6 +314,9 @@ static int login_msg_display = 1;
 #ifdef ENABLE_DKY_BETA_FEATURE
 int login_msg_display_storage = 0;	/* ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #endif
+/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
+static int password_expiration = 3;
+/* End - ReqID:SRS-SECURITY-ENHANCE-8 */
 
 #if PG_VERSION_NUM >= 120000
 /*
@@ -1129,6 +1132,14 @@ password_guc()
 							 NULL, &login_msg_display_storage, false, guc_enum_entry,
 							 PGC_SIGHUP, 0,
 							 guc_enum_check, NULL, NULL);
+
+	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
+	DefineCustomIntVariable("credcheck.password_expiration",
+							gettext_noop("Number of days before password expiration to warn the user,"
+										 "the default value is 3, and the unit of the parameter is days."),
+							NULL, &password_expiration, 3, 0, INT_MAX,
+							PGC_SIGHUP, 0, guc_int_check, NULL, NULL);
+	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
 }
 
 #else
@@ -1223,6 +1234,24 @@ password_guc()
 							 NULL, &login_msg_display, true, guc_enum_entry,
 							 PGC_SIGHUP, 0,
 							 guc_enum_check, NULL, NULL);
+
+	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+#ifdef ENABLE_DKY_BETA_FEATURE
+	DefineCustomEnumVariable("credcheck.login_msg_display_storage",
+							 gettext_noop("Allows the client to query the login status and storage"),
+							 NULL, &login_msg_display_storage, false, guc_enum_entry,
+							 PGC_SIGHUP, 0,
+							 guc_enum_check, NULL, NULL);
+#endif
+	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
+
+	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
+	DefineCustomIntVariable("credcheck.password_expiration",
+							gettext_noop("Number of days before password expiration to warn the user,"
+										 "the default value is 3, and the unit of the parameter is days."),
+							NULL, &password_expiration, 3, 0, INT_MAX,
+							PGC_SIGHUP, 0, guc_int_check, NULL, NULL);
+	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
 }
 
 #endif
@@ -3485,8 +3514,19 @@ static Interval *output_time_left(TimestampTz current_valid, TimestampTz current
 	days = total_seconds / 86400;
 	total_seconds %= 86400;
 
-	if (days >= 3)
+	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8
+	 *
+	 * The original value was 3, and now it is changed to GUC
+	 * parameter credcheck.password_expiration, The parameter
+	 * credcheck.password_expiration can be modified and takes
+	 * effect after restart.
+	 */
+	if ((days >= password_expiration && password_expiration > 0) ||
+		password_expiration == 0)
+	{
 		return NULL;
+	}
+	/* End - ReqID:SRS-SECURITY-ENHANCE-8 */
 
 	memset(&output, 0, sizeof(Interval));
 	output.month = 0;
