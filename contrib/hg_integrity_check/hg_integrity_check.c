@@ -318,7 +318,7 @@ Datum pg_wal_md5_verify(PG_FUNCTION_ARGS)
 		if (!pg_file_md5_checksum(fname, act_md5, &errnumber))
 		{
 			values[0] = PointerGetDatum(cstring_to_text(fname));
-			values[1] = records[i].md5 ? PointerGetDatum(cstring_to_text(records[i].md5)) : PointerGetDatum(cstring_to_text(""));
+			values[1] = PointerGetDatum(cstring_to_text(records[i].md5));
 			values[2] = PointerGetDatum(cstring_to_text("NULL"));
 			values[3] = BoolGetDatum(false);
 			values[4] = PointerGetDatum(cstring_to_text( err_info[errnumber]));

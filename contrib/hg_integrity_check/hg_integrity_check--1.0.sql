@@ -14,10 +14,20 @@ DECLARE
 	archive_command_val text;
 	wal_integrity_enable text;
 	rec record;
+	se_feature_mode_val text;
+	is_superuser_val text;
 BEGIN
 	--check user permissions
-	IF NOT hg_security.is_syssso(get_current_userid()) THEN
-		RAISE EXCEPTION 'User % not execution permissions, need syssso user or superuser!',current_user;
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF NOT hg_security.is_syssso(get_current_userid()) THEN
+			RAISE EXCEPTION 'permission denied';
+		END IF;
+	ELSE
+		IF NOT is_superuser_val IN('on', 'true', '1') THEN
+			RAISE EXCEPTION 'permission denied';
+		END IF;
 	END IF;
 
 	wal_integrity_enable = current_setting('hg_wal_integrity.enable', true);
