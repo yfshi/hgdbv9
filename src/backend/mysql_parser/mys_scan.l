@@ -1047,12 +1047,20 @@ other			.
 					char	   *dashdash = strstr(yytext, "--");
 
 					/* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
-					if (nchars == 1 && qm_as_param && yytext[0] == '?')
-					{
-						SET_YYLLOC();
-						yyextra->param_no++;
-						yylval->ival = yyextra->param_no;
-						return PARAM;
+					if (qm_as_param && yytext[nchars -1] == '?')
+					{	/* Begin - bug#7930 */
+						if (nchars != 1)
+						{
+							yyless(yyleng -1);
+						}
+						else
+						/* End - bug#7930 */
+						{
+							SET_YYLLOC();
+							yyextra->param_no++;
+							yylval->ival = yyextra->param_no;
+							return PARAM;
+						}
 					}
 					/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 

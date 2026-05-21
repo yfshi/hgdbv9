@@ -31,6 +31,7 @@ select * from autocommit_test6;
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLLongDataExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLPreparedStatementExample 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcStmtPrepareTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcStmtPrepareTest_2 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
 -- /* Begin - ReqID:SRS-MYSQL-SQL-LOADDATA */
