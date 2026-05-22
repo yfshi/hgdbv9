@@ -409,11 +409,23 @@ caching_sha2_password_generate(const char *plain_password, int len)
      */
     digest = generate_full_digest(plain_password, salt, iterations);
 
-    base64_salt_len = pg_b64_enc_len(SCRAMBLE_LENGTH);
-    pg_b64_encode((char *) salt, SCRAMBLE_LENGTH, base64_salt, base64_salt_len);
+    base64_salt_len = pg_b64_encode((char *) salt, SCRAMBLE_LENGTH, base64_salt, sizeof(base64_salt));
 
-    base64_digest_len = pg_b64_enc_len(STORED_SHA256_DIGEST_LENGTH);
-    pg_b64_encode((char *) digest, STORED_SHA256_DIGEST_LENGTH, base64_digest, base64_digest_len);
+    if (base64_salt_len < 0)
+    {
+        elog(ERROR, "caching_sha2_password: could not encode salt");
+    }
+
+    base64_salt[base64_salt_len] = '\0';
+
+    base64_digest_len = pg_b64_encode((char *) digest, STORED_SHA256_DIGEST_LENGTH, base64_digest, sizeof(base64_digest));
+
+    if (base64_digest_len < 0)
+    {
+        elog(ERROR, "caching_sha2_password: could not digest");
+    }
+
+    base64_digest[base64_digest_len] = '\0';
 
     snprintf(ret, sizeof(ret), "%s$A$00%d$%.*s$%.*s", CACHING_PASSWORD_TAG, iterations / ITERATION_MULTIPLIER,
              base64_salt_len, base64_salt,
@@ -452,8 +464,15 @@ caching_sha2_password_parse(char *rolpassword)
     part[CACHING_SHA2_SALT_INDEX] = (char *) palloc0(SALT_LENGTH + 1);
     part[CACHING_SHA2_DIGEST_INDEX] = (char *) palloc0(STORED_SHA256_DIGEST_LENGTH + 1);
 
-    pg_b64_decode(salt, strlen(salt), part[CACHING_SHA2_SALT_INDEX], SALT_LENGTH + 1);
-    pg_b64_decode(digest, strlen(digest), part[CACHING_SHA2_DIGEST_INDEX], STORED_SHA256_DIGEST_LENGTH + 1);
+    if (pg_b64_decode(salt, strlen(salt), part[CACHING_SHA2_SALT_INDEX], SALT_LENGTH + 1))
+    {
+        elog(ERROR, "caching_sha2_password: could not decode salt");
+    }
+
+    if (pg_b64_decode(digest, strlen(digest), part[CACHING_SHA2_DIGEST_INDEX], STORED_SHA256_DIGEST_LENGTH + 1))
+    {
+        elog(ERROR, "caching_sha2_password: could not decode digest");
+    }
 
     pfree(raw);
 }
@@ -528,9 +547,24 @@ caching_sha2_fast_authenticate(Port *port)
          _s2[SHA2_HASH_SIZE + 1],
          s3[SHA2_HASH_SIZE + 1],
          *salt = (char *) mysql_conn_info.scramble,
-         *_digest = (char *) mysql_conn_info.auth_response;
+         *_digest;
 
     UserCachedLinesHashEntry *result;
+    StringInfo buf = makeStringInfo();
+
+    /* Begin - bug#7934 */
+    send_auth_switch_packet(CACHING_PASSWORD_TAG, (uint8 *) salt);
+
+    if (mq_getmessage(buf) != STATUS_OK)
+        return false;
+
+    _digest = read_switch_response(buf);
+
+    DestroyStringInfo(buf);
+
+    if (!_digest)
+        return false;
+    /* End - bug#7934 */
 
     LWLockAcquire(UserCachedLinesHashLock, LW_SHARED);
     result = UserCachedLinesHashTableAccess(HASH_FIND, port->user_name, NULL);
