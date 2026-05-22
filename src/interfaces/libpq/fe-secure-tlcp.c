@@ -390,8 +390,13 @@ pgtlcp_read(PGconn *conn, void *ptr, size_t len)
 				break;
 
 			case 0:
-				/* If errno didn't get set, treat it as regular EOF */
-				rv = 0;
+				/* Begin - bug#z7895 */
+				result_errno = ECONNRESET;
+				appendPQExpBuffer(&conn->errorMessage,
+								  libpq_gettext("TLCP error: %s\n"),
+								  SOCK_STRERROR(result_errno, sebuf, sizeof(sebuf)));
+				rv = -1;
+				/* End - bug#z7895 */
 				break;
 
 			default:

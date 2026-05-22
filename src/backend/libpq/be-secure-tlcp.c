@@ -30,8 +30,9 @@
 #include <gmssl/x509.h>
 /* End - BUG#Z7577 */
 
+#include "utils/memutils.h" // BUG#Z7895
+
 static TLS_CTX tlcp_ctx;
-static TLS_CONNECT tlcp_conn;
 
 static bool ssl_is_server_start;
 
@@ -113,25 +114,34 @@ be_tlcp_open_server(Port *port)
 {
 	int ret = 0;
 
-	memset(&tlcp_conn, '\0', sizeof(TLS_CONNECT));
-	if (tls_init(&tlcp_conn, &tlcp_ctx) != 1)
+	/* Begin - bug#z7895 */
+	port->tlcp_conn =
+				MemoryContextAllocZero(TopMemoryContext, sizeof(TLS_CONNECT));
+
+	if (tls_init(port->tlcp_conn, &tlcp_ctx) != 1)
 	{
 		ereport(COMMERROR,
 				(errcode(ERRCODE_PROTOCOL_VIOLATION),
 				 errmsg("could not initialize TLCP connection: TLCP init")));
+		tls_cleanup(port->tlcp_conn);
+		pfree(port->tlcp_conn);
+		port->tlcp_conn = NULL;
 		return -1;
 	}
 
-	if (tls_set_socket(&tlcp_conn, port->sock) != 1)
+	if (tls_set_socket(port->tlcp_conn, port->sock) != 1)
 	{
 		ereport(COMMERROR,
 				(errcode(ERRCODE_PROTOCOL_VIOLATION),
 				 errmsg("could not create TLCP socket fail")));
+		tls_cleanup(port->tlcp_conn);
+		pfree(port->tlcp_conn);
+		port->tlcp_conn = NULL;
 		return -1;
 	}
+	/* End - bug#z7895 */
 
 	port->ssl_in_use = true;
-	port->tlcp_conn = &tlcp_conn;
 
 aloop:
 	if ((ret = tls_do_handshake(port->tlcp_conn)) != 1)
@@ -194,6 +204,13 @@ aloop:
 		}
 		/* End - BUG Z7353 */
 
+		/* Begin - bug#z7895 */
+		tls_cleanup(port->tlcp_conn);
+		pfree(port->tlcp_conn);
+		port->tlcp_conn = NULL;
+		port->ssl_in_use = false;
+		/* End - bug#z7895 */
+
 		return -1;
 	}
 
@@ -234,7 +251,15 @@ be_tlcp_write(Port *port, void *ptr, size_t len, int *waitfor)
 void
 be_tlcp_close(Port *port)
 {
-	tls_socket_close(port->tlcp_conn->sock);
+	/* Begin - bug#z7895 */
+	if (port->tlcp_conn)
+	{
+		(void) tls_shutdown(port->tlcp_conn);
+		tls_cleanup(port->tlcp_conn);
+		pfree(port->tlcp_conn);
+		port->tlcp_conn = NULL;
+	}
+	/* End - bug#z7895 */
 
 	port->ssl_in_use = false;
 
