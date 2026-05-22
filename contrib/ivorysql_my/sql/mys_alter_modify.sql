@@ -603,7 +603,7 @@ alter table test_coll modify address text COLLATE "utf8mb3_unicode_ci";
 \d+ test_coll;
 
 -- support collate default
-alter table test_coll modify address text COLLATE "default"
+alter table test_coll modify address text COLLATE "default";
 \d+ test_coll;
 
 -- remove  collate
@@ -1279,3 +1279,218 @@ alter table t1 modify b varchar(255);
 insert into t1 values (0,4);
 select * from t1;
 drop table t1;
+
+---- bug#z7880
+-- test case: rename a to b, check the view
+reset sql_mode;
+CREATE TABLE t_7880(id INT, a INT);
+INSERT INTO t_7880 VALUES(1,100);
+CREATE VIEW t_7880_v AS SELECT id,a FROM t_7880;
+\d+ t_7880_v;
+ALTER TABLE t_7880 RENAME a TO b;
+\d+ t_7880_v;
+DROP VIEW t_7880_v;
+DROP TABLE t_7880;
+
+-- test case: datatype change, report error
+CREATE TABLE t_7880(id INT, a INT);
+INSERT INTO t_7880 VALUES(1,100);
+CREATE VIEW t_7880_v AS SELECT id,a FROM t_7880;
+ALTER TABLE t_7880 CHANGE a b float;
+ALTER TABLE t_7880 CHANGE a b float default 200;
+ALTER TABLE t_7880 CHANGE a b float NULL;
+ALTER TABLE t_7880 CHANGE a b float primary key;
+ALTER TABLE t_7880 CHANGE a b float unique key auto_increment;
+DROP VIEW t_7880_v;
+DROP TABLE t_7880;
+
+-- test case: no datatype change, add attributes
+create table t_7880(id int, a int);
+insert into t_7880 values(1,100);
+create view t_7880_v as select id,a from t_7880;
+\d+ t_7880;
+\d+ t_7880_v;
+alter table t_7880 change a a2 int;
+\d+ t_7880;
+\d+ t_7880_v;
+select * from t_7880_v;
+alter table t_7880 change a2 a3 int default 200;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(20);
+select * from t_7880_v;
+alter table t_7880 change a3 a4 int;
+insert into t_7880 values(30);
+select * from t_7880_v;
+alter table t_7880 change a4 a4 int not null;
+update t_7880 set a4=300 where id=30;
+alter table t_7880 change a4 a4 int not null;
+insert into t_7880 values(40);
+insert into t_7880 values(40,400);
+select * from t_7880_v;
+alter table t_7880 change a4 a5 int unique key;
+alter table t_7880 change a5 a5 int auto_increment comment 'test bug';
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(50);
+select * from t_7880_v;
+
+-- test case: no datatype change, del attributes
+alter table t_7880 change a5 a4 INT not null default 200 comment 'test bug 2';
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(60,600);
+alter table t_7880 change a4 a4 int not null default 1000;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(70);
+alter table t_7880 change a4 a3 int not null;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(80,800);
+ALTER TABLE t_7880 CHANGE a3 a2 INT;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(90);
+alter table t_7880 change a2 a2 float;
+select * from t_7880_v;
+drop view t_7880_v;
+drop table t_7880;
+
+-- test case: enum
+create table t_7880(id int, a enum('a','b','c'));
+insert into t_7880 values(1,'b');
+create view t_7880_v as select id,a from t_7880;
+-- succ
+alter table t_7880 change a a2 enum('a','b','c');
+-- error
+alter table t_7880 change a2 a2 enum('1','b','3');
+alter table t_7880 change a2 a3 enum('1','2','3');
+alter table t_7880 change a2 a3 int;
+insert into t_7880 values(10,'c');
+select * from t_7880_v;
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+drop view t_7880_v;
+drop table t_7880;
+
+-- test case: varchar
+create table t_7880(id int, a varchar(20));
+insert into t_7880 values(1,'bbcdefg');
+create view t_7880_v as select id,a from t_7880;
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+alter table t_7880 change a a2 varchar(30);
+alter table t_7880 change a a2 text;
+alter table t_7880 change a a2 varchar(20);
+insert into t_7880 values(10,'chjtyre');
+select * from t_7880_v;
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+alter table t_7880 change a2 a2 varchar(20) COLLATE "default";
+alter table t_7880 change a2 a2 varchar(20) COLLATE "C";
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+drop view t_7880_v;
+drop table t_7880;
+
+---- test case: modify
+-- test case: modify, datatype change, fail
+CREATE TABLE t_7880(id INT, a INT);
+INSERT INTO t_7880 VALUES(1,100);
+CREATE VIEW t_7880_v AS SELECT id,a FROM t_7880;
+ALTER TABLE t_7880 MODIFY a float;
+ALTER TABLE t_7880 MODIFY a float default 200;
+ALTER TABLE t_7880 MODIFY a float NULL;
+ALTER TABLE t_7880 MODIFY a float primary key;
+ALTER TABLE t_7880 MODIFY a float unique key auto_increment;
+DROP VIEW t_7880_v;
+DROP TABLE t_7880;
+
+-- test case: modify, no datatype change, add attributes
+create table t_7880(id int, a int);
+insert into t_7880 values(1,100);
+create view t_7880_v as select id,a from t_7880;
+show create table t_7880;
+\d+ t_7880_v;
+alter table t_7880 modify a int;
+show create table t_7880;
+\d+ t_7880_v;
+select * from t_7880_v;
+alter table t_7880 modify a int default 200;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(20);
+select * from t_7880_v;
+alter table t_7880 modify a int;
+insert into t_7880 values(30);
+select * from t_7880_v;
+alter table t_7880 modify a int not null;
+update t_7880 set a=300 where id=30;
+alter table t_7880 modify a int not null;
+insert into t_7880 values(40);
+insert into t_7880 values(40,400);
+select * from t_7880_v;
+alter table t_7880 modify a int unique key;
+alter table t_7880 modify a int auto_increment comment 'test bug';
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(50);
+select * from t_7880_v;
+
+-- test case: no datatype change, del attributes
+alter table t_7880 modify a INT not null default 200 comment 'test bug 2';
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(60,600);
+alter table t_7880 modify a int not null default 1000;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(70);
+alter table t_7880 modify a int not null;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(80,800);
+ALTER TABLE t_7880 modify a INT;
+show create table t_7880;
+\d+ t_7880_v;
+insert into t_7880 values(90);
+alter table t_7880 modify a float;
+select * from t_7880_v;
+drop view t_7880_v;
+drop table t_7880;
+
+-- test case: enum
+create table t_7880(id int, a enum('a','b','c'));
+insert into t_7880 values(1,'b');
+create view t_7880_v as select id,a from t_7880;
+-- succ
+alter table t_7880 modify a enum('a','b','c');
+-- error
+alter table t_7880 modify a enum('1','b','3');
+alter table t_7880 modify a enum('1','2','3');
+alter table t_7880 modify a int;
+insert into t_7880 values(10,'c');
+select * from t_7880_v;
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+drop view t_7880_v;
+drop table t_7880;
+
+-- test case: varchar
+create table t_7880(id int, a varchar(20));
+insert into t_7880 values(1,'bbcdefg');
+create view t_7880_v as select id,a from t_7880;
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+alter table t_7880 modify a varchar(30);
+alter table t_7880 modify a text;
+alter table t_7880 modify a varchar(20);
+insert into t_7880 values(10,'chjtyre');
+select * from t_7880_v;
+show create table t_7880;
+select "View", "Create View" from show_create_views('t_7880_v');
+alter table t_7880 modify a varchar(20) COLLATE "default";
+alter table t_7880 modify a varchar(20) COLLATE "C";
+drop view t_7880_v;
+drop table t_7880;
