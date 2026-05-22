@@ -18,7 +18,9 @@
 
 #include "access/heapam.h"
 #include "access/htup_details.h"
+#include "access/relation.h"
 #include "access/reloptions.h"
+#include "access/table.h"
 #include "access/transam.h"
 #include "access/xact.h"
 #include "catalog/namespace.h"
@@ -125,6 +127,7 @@ static HTAB *role_quota_limit_map = NULL;
 /* black list for database objects which exceed their quota limit */
 static HTAB *disk_quota_black_map = NULL;
 static HTAB *local_disk_quota_black_map = NULL;
+HTAB *disk_quota_state_map = NULL;
 
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 
@@ -146,6 +149,8 @@ static void init_sessionlist_pid(void);
 static bool quota_check_common(Oid ownerOid, Oid nsOid);
 
 static char *get_min_quota_reserve_dir(void);
+static void sync_quota_state(Oid targetOid, int64 current_usage, QuotaType type);
+static void cleanup_stale_quota_state_map(void);
 
 /*
  * DiskQuotaShmemSize
@@ -158,6 +163,7 @@ DiskQuotaShmemSize(void)
 
 	size = sizeof(DiskquotaMessageBox);
 	size = add_size(size, hash_estimate_size(MAX_DISK_QUOTA_BLACK_ENTRIES, sizeof(BlackMapEntry)));
+	size = add_size(size, hash_estimate_size(MAX_DISK_QUOTA_BLACK_ENTRIES, sizeof(DiskQuotaStateEntry)));
 	size = add_size(size, hash_estimate_size(diskquota_max_active_tables, sizeof(DiskQuotaActiveTableEntry)));
 	return size;
 }
@@ -170,6 +176,7 @@ init_lwlocks(void)
 	diskquota_locks.active_table_lock = &base[0].lock;
 	diskquota_locks.black_map_lock = &base[1].lock;
 	diskquota_locks.message_box_lock = &base[2].lock;
+	diskquota_locks.quota_state_lock = &base[3].lock;
 }
 /*
  * DiskQuotaShmemInit
@@ -210,6 +217,16 @@ disk_quota_shmem_startup(void)
 									&hash_ctl,
 									HASH_ELEM | HASH_FUNCTION);
 
+	memset(&hash_ctl, 0, sizeof(hash_ctl));
+	hash_ctl.keysize = sizeof(DiskQuotaStateKey);
+	hash_ctl.entrysize = sizeof(DiskQuotaStateEntry);
+	hash_ctl.hash = tag_hash;
+	disk_quota_state_map = ShmemInitHash("diskquota shared quota state",
+									INIT_DISK_QUOTA_BLACK_ENTRIES,
+									MAX_DISK_QUOTA_BLACK_ENTRIES,
+									&hash_ctl,
+									HASH_ELEM | HASH_FUNCTION);
+
 	init_shm_worker_active_tables();
 	disk_quota_lock_array = ShmemInitStruct("disk_quota_partionlock",
 								diskquota_max_active_tables ,
@@ -227,7 +244,7 @@ init_disk_quota_shmem(void)
 	 * resources in pgss_shmem_startup().
 	 */
 	RequestAddinShmemSpace(DiskQuotaShmemSize());
-	RequestNamedLWLockTranche("diskquota_locks", 3);
+	RequestNamedLWLockTranche("diskquota_locks", 4);
 
 	/*
 	 * Install startup hook to initialize our shared memory.
@@ -316,15 +333,11 @@ refresh_disk_quota_model(bool force)
 {
 	elog(DEBUG1,"check disk quota begin");
 	StartTransactionCommand();
-	SPI_connect();
-	PushActiveSnapshot(GetTransactionSnapshot());
 	/* skip refresh model when load_quotas failed */
 	if (load_quotas())
 	{
 		refresh_disk_quota_usage(force);
 	}
-	SPI_finish();
-	PopActiveSnapshot();
 	CommitTransactionCommand();
 	elog(DEBUG1,"check disk quota end");
 }
@@ -344,6 +357,7 @@ refresh_disk_quota_usage(bool force)
 	calculate_table_disk_usage(force);
 	calculate_schema_disk_usage();
 	calculate_role_disk_usage();
+	cleanup_stale_quota_state_map();
 	reconcile_min_quota_reserve_files();
 	/* copy local black map back to shared black map */
 	flush_local_black_map();
@@ -450,6 +464,7 @@ static void check_disk_quota_by_oid(Oid targetOid, int64 current_usage, QuotaTyp
 		return;
 	}
 
+	sync_quota_state(targetOid, current_usage, type);
 	quota_limit_mb = quota_entry->limitsize * (1024 *1024) - BLCKSZ;
 	current_usage_mb = current_usage;
 	if (quota_limit_mb > 0 && current_usage_mb >= quota_limit_mb)
@@ -708,7 +723,7 @@ calculate_table_disk_usage(bool force)
 			update_namespace_map(tsentry->namespaceoid, tsentry->totalsize);
 			update_role_map(tsentry->owneroid, tsentry->totalsize);
 
-			ereport(LOG, (errmsg("An active relfilenode %d:%d is added into local cache",
+			ereport(DEBUG1, (errmsg("An active relfilenode %d:%d is added into local cache",
 								active_table_entry->node.relNode, active_table_entry->node.spcNode)));
 		}
 		else if (found && active_table_entry->type != AT_UNLINK)
@@ -717,8 +732,9 @@ calculate_table_disk_usage(bool force)
 			tsentry->totalsize = active_table_entry->tablesize;
 			update_namespace_map(tsentry->namespaceoid, tsentry->totalsize - oldtotalsize);
 			update_role_map(tsentry->owneroid, tsentry->totalsize - oldtotalsize);
-			ereport(LOG, (errmsg("An active relfilenode %d:%d is updated into local cache",
-								active_table_entry->node.relNode, active_table_entry->node.spcNode)));
+
+			ereport(DEBUG1, (errmsg("An active relfilenode %d:%d is updated into local cache",
+									active_table_entry->node.relNode, active_table_entry->node.spcNode)));
 		}
 		else if (found && active_table_entry->type == AT_UNLINK)
 		{
@@ -726,8 +742,8 @@ calculate_table_disk_usage(bool force)
 			update_namespace_map(tsentry->namespaceoid, -1 * tsentry->totalsize);
 			hash_search(table_size_map, &active_table_entry->node, HASH_REMOVE, NULL);
 
-			ereport(LOG, (errmsg("An active relfilenode %d:%d is deleted into local cache",
-								active_table_entry->node.relNode, active_table_entry->node.spcNode)));
+			ereport(DEBUG1, (errmsg("An active relfilenode %d:%d is deleted into local cache",
+									active_table_entry->node.relNode, active_table_entry->node.spcNode)));
 		}
 		else if (!found && active_table_entry->type == AT_UNLINK)
 		{
@@ -737,7 +753,7 @@ calculate_table_disk_usage(bool force)
 		else
 		{
 			ereport(ERROR, (errmsg("An active relfilenode %d:%d is under incorrect status",
-			                     active_table_entry->node.relNode, active_table_entry->node.spcNode)));
+									active_table_entry->node.relNode, active_table_entry->node.spcNode)));
 		}
 
 	}
@@ -802,27 +818,40 @@ static void calculate_role_disk_usage(void)
 static bool
 load_quotas(void)
 {
-	int			ret;
 	TupleDesc	tupdesc;
-	int			i;
 	bool		found;
 	QuotaLimitEntry* quota_entry;
 	HASH_SEQ_STATUS iter;
 
 	RangeVar   *rv;
 	Relation	rel;
+	TableScanDesc scan;
+	HeapTuple	tup;
 
 	rv = makeRangeVar("hg_security", "quota_config", -1);
 	rel = table_openrv_extended(rv, AccessShareLock, true);
 	if (!rel)
 	{
 		/* configuration table is missing. */
-		elog(LOG, "configuration table \"quota_config\" is missing in database \"%s\"," 
+		elog(LOG, "configuration table \"quota_config\" is missing in database \"%s\","
 				" please recreate diskquota extension",
 			 get_database_name(MyDatabaseId));
 		return false;
 	}
-	table_close(rel, NoLock);
+
+	tupdesc = RelationGetDescr(rel);
+	if (tupdesc->natts != 4 ||
+		TupleDescAttr(tupdesc, 0)->atttypid != OIDOID ||
+		TupleDescAttr(tupdesc, 1)->atttypid != INT4OID ||
+		TupleDescAttr(tupdesc, 2)->atttypid != INT8OID ||
+		TupleDescAttr(tupdesc, 3)->atttypid != INT8OID)
+	{
+		relation_close(rel, AccessShareLock);
+		elog(LOG, "configuration table \"quota_config\" is corruptted in database \"%s\","
+				" please recreate diskquota extension",
+			 get_database_name(MyDatabaseId));
+		return false;
+	}
 
 	/* clear entries in quota limit map*/
 	hash_seq_init(&iter, namespace_quota_limit_map);
@@ -841,26 +870,13 @@ load_quotas(void)
 				HASH_REMOVE, NULL);
 	}
 
-	ret = SPI_execute("select targetoid, quotatype, quotalimitMB, minlimitMB from hg_security.quota_config", true, 0);
-	if (ret != SPI_OK_SELECT)
-		elog(FATAL, "SPI_execute failed: error code %d", ret);
-
-	tupdesc = SPI_tuptable->tupdesc;
-	if (tupdesc->natts != 4 ||
-		TupleDescAttr(tupdesc, 0)->atttypid != OIDOID ||
-		TupleDescAttr(tupdesc, 1)->atttypid != INT4OID ||
-		TupleDescAttr(tupdesc, 2)->atttypid != INT8OID ||
-		TupleDescAttr(tupdesc, 3)->atttypid != INT8OID)
+	/*
+	 * Scan quota_config directly so the periodic refresh path does not need
+	 * SPI or an active MVCC snapshot on every cycle.
+	 */
+	scan = table_beginscan(rel, SnapshotSelf, 0, NULL);
+	while ((tup = heap_getnext(scan, ForwardScanDirection)) != NULL)
 	{
-		elog(LOG, "configuration table \"quota_config\" is corruptted in database \"%s\"," 
-				" please recreate diskquota extension",
-			 get_database_name(MyDatabaseId));
-		return false;
-	}
-
-	for (i = 0; i < SPI_processed; i++)
-	{
-		HeapTuple	tup = SPI_tuptable->vals[i];
 		Datum		dat;
 		Oid			targetOid;
 		int64		quota_limit_mb = 0;
@@ -868,21 +884,21 @@ load_quotas(void)
 		QuotaType	quotatype;
 		bool		isnull;
 
-		dat = SPI_getbinval(tup, tupdesc, 1, &isnull);
+		dat = heap_getattr(tup, 1, tupdesc, &isnull);
 		if (isnull)
 			continue;
 		targetOid = DatumGetObjectId(dat);
 		
-		dat = SPI_getbinval(tup, tupdesc, 2, &isnull);
+		dat = heap_getattr(tup, 2, tupdesc, &isnull);
 		if (isnull)
 			continue;
 		quotatype = (QuotaType)DatumGetInt32(dat);
 
-		dat = SPI_getbinval(tup, tupdesc, 3, &isnull);
+		dat = heap_getattr(tup, 3, tupdesc, &isnull);
 		if (!isnull)
 			quota_limit_mb = DatumGetInt64(dat);
 
-		dat = SPI_getbinval(tup, tupdesc, 4, &isnull);
+		dat = heap_getattr(tup, 4, tupdesc, &isnull);
 		if (!isnull)
 			min_limit_mb = DatumGetInt64(dat);
 
@@ -903,6 +919,9 @@ load_quotas(void)
 			quota_entry->minlimitsize = min_limit_mb;
 		}
 	}
+
+	table_endscan(scan);
+	relation_close(rel, AccessShareLock);
 	return true;
 }
 
@@ -1191,12 +1210,16 @@ get_rel_owner_schema(Oid relid, Oid *ownerOid, Oid *nsOid)
 static bool
 quota_check_common(Oid ownerOid, Oid nsOid)
 {
-	bool found = false;
 	BlackMapEntry keyitem;
+	bool ns_blacklisted = false;
+	bool role_blacklisted = false;
+	bool ns_state_exceeded = false;
+	bool role_state_exceeded = false;
 
 	memset(&keyitem, 0, sizeof(BlackMapEntry));
 	LWLockAcquire(diskquota_locks.black_map_lock, LW_SHARED);
 
+	/* First check the worker-maintained blacklist for schema and role. */
 	if (nsOid != InvalidOid)
 	{
 		keyitem.targetoid = nsOid;
@@ -1204,21 +1227,7 @@ quota_check_common(Oid ownerOid, Oid nsOid)
 		keyitem.targettype = NAMESPACE_QUOTA;
 		hash_search(disk_quota_black_map,
 				&keyitem,
-				HASH_FIND, &found);
-		if (found)
-		{
-			LWLockRelease(diskquota_locks.black_map_lock);
-			/* Begin - ReqID:SRS-SECURITY-AUDIT */
-			#ifdef USE_SQLITE
-			if (sqlite_open_db_for_audit_hook)
-				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
-			#endif
-			/* End - ReqID:SRS-SECURITY-AUDIT */
-			ereport(ERROR,
-					(errcode(ERRCODE_DISK_FULL),
-					 errmsg("schema's disk space quota exceeded")));
-			return false;
-		}
+				HASH_FIND, &ns_blacklisted);
 	}
 
 	if (ownerOid != InvalidOid)
@@ -1228,24 +1237,132 @@ quota_check_common(Oid ownerOid, Oid nsOid)
 		keyitem.targettype = ROLE_QUOTA;
 		hash_search(disk_quota_black_map,
 				&keyitem,
-				HASH_FIND, &found);
-		if (found)
-		{
-			LWLockRelease(diskquota_locks.black_map_lock);
+				HASH_FIND, &role_blacklisted);
+	}
 
+	LWLockRelease(diskquota_locks.black_map_lock);
+
+	/* Then check shared quota state, which can be fresher than the blacklist. */
+	if (nsOid != InvalidOid)
+	{
+		DiskQuotaStateKey statekey;
+		DiskQuotaStateEntry *state;
+		bool found;
+
+		memset(&statekey, 0, sizeof(DiskQuotaStateKey));
+		statekey.targetoid = nsOid;
+		statekey.databaseoid = MyDatabaseId;
+		statekey.targettype = NAMESPACE_QUOTA;
+
+		LWLockAcquire(diskquota_locks.quota_state_lock, LW_SHARED);
+		state = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+													&statekey,
+													HASH_FIND,
+													&found);
+		if (found && state->used_bytes >= state->limit_bytes)
+			ns_state_exceeded = true;
+		LWLockRelease(diskquota_locks.quota_state_lock);
+	}
+
+	if (ownerOid != InvalidOid)
+	{
+		DiskQuotaStateKey statekey;
+		DiskQuotaStateEntry *state;
+		bool found;
+
+		memset(&statekey, 0, sizeof(DiskQuotaStateKey));
+		statekey.targetoid = ownerOid;
+		statekey.databaseoid = MyDatabaseId;
+		statekey.targettype = ROLE_QUOTA;
+
+		LWLockAcquire(diskquota_locks.quota_state_lock, LW_SHARED);
+		state = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+													&statekey,
+													HASH_FIND,
+													&found);
+		if (found && state->used_bytes >= state->limit_bytes)
+			role_state_exceeded = true;
+		LWLockRelease(diskquota_locks.quota_state_lock);
+	}
+
+	if (ns_blacklisted || ns_state_exceeded)
+	{
+		DiskQuotaStateKey statekey;
+		DiskQuotaStateEntry *state;
+		bool found;
+		bool still_exceeded = true;
+
+		memset(&statekey, 0, sizeof(DiskQuotaStateKey));
+		statekey.targetoid = nsOid;
+		statekey.databaseoid = MyDatabaseId;
+		statekey.targettype = NAMESPACE_QUOTA;
+
+		LWLockAcquire(diskquota_locks.quota_state_lock, LW_SHARED);
+		state = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+													&statekey,
+													HASH_FIND,
+													&found);
+		if (found &&
+			state->limit_bytes > 0 &&
+			state->used_bytes < state->limit_bytes)
+			still_exceeded = false;
+		LWLockRelease(diskquota_locks.quota_state_lock);
+
+		if (still_exceeded)
+		{
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
+
+			ereport(ERROR,
+					(errcode(ERRCODE_DISK_FULL),
+					 errmsg("schema's disk space quota exceeded")));
+			return false;
+		}
+	}
+
+	if (role_blacklisted || role_state_exceeded)
+	{
+		DiskQuotaStateKey statekey;
+		DiskQuotaStateEntry *state;
+		bool found;
+		bool still_exceeded = true;
+
+		memset(&statekey, 0, sizeof(DiskQuotaStateKey));
+		statekey.targetoid = ownerOid;
+		statekey.databaseoid = MyDatabaseId;
+		statekey.targettype = ROLE_QUOTA;
+
+		LWLockAcquire(diskquota_locks.quota_state_lock, LW_SHARED);
+		state = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+													&statekey,
+													HASH_FIND,
+													&found);
+		if (found &&
+			state->limit_bytes > 0 &&
+			state->used_bytes < state->limit_bytes)
+			still_exceeded = false;
+		LWLockRelease(diskquota_locks.quota_state_lock);
+
+		if (still_exceeded)
+		{
 			/* Begin - ReqID:SRS-SECURITY-AUDIT */
 			#ifdef USE_SQLITE
 			if (sqlite_open_db_for_audit_hook)
 				sqlite_open_db_for_audit_hook(SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
 			#endif
 			/* End - ReqID:SRS-SECURITY-AUDIT */
+
 			ereport(ERROR,
 					(errcode(ERRCODE_DISK_FULL),
 					 errmsg("role's disk space quota exceeded")));
 			return false;
 		}
 	}
-	LWLockRelease(diskquota_locks.black_map_lock);
+
 	return true;
 }
 
@@ -1280,6 +1397,7 @@ void
 diskquota_invalidate_db(Oid dbid)
 {
 	BlackMapEntry * entry;
+	DiskQuotaStateEntry *state_entry;
 	HASH_SEQ_STATUS iter;
 	LWLockAcquire(diskquota_locks.black_map_lock, LW_EXCLUSIVE);
 	hash_seq_init(&iter, disk_quota_black_map);
@@ -1291,6 +1409,15 @@ diskquota_invalidate_db(Oid dbid)
 		}
 	}
 	LWLockRelease(diskquota_locks.black_map_lock);
+
+	LWLockAcquire(diskquota_locks.quota_state_lock, LW_EXCLUSIVE);
+	hash_seq_init(&iter, disk_quota_state_map);
+	while ((state_entry = hash_seq_search(&iter)) != NULL)
+	{
+		if (state_entry->key.databaseoid == dbid)
+			hash_search(disk_quota_state_map, &state_entry->key, HASH_REMOVE, NULL);
+	}
+	LWLockRelease(diskquota_locks.quota_state_lock);
 }
 
 static void init_sessionlist_pid(void)
@@ -1321,4 +1448,235 @@ static void init_sessionlist_pid(void)
 	}
 
 	return;
+}
+
+/*
+ * Synchronize the shared quota state for one quota target.
+ *
+ * Writers consult this state for fast enforcement, while the worker refreshes
+ * used_bytes from its model to keep it close to reality.
+ */
+static void
+sync_quota_state(Oid targetOid, int64 current_usage, QuotaType type)
+{
+	bool found;
+	DiskQuotaStateKey keyitem;
+	DiskQuotaStateEntry *entry;
+	QuotaLimitEntry *quota_entry;
+
+	if (type == NAMESPACE_QUOTA)
+		quota_entry = (QuotaLimitEntry *) hash_search(namespace_quota_limit_map,
+													  &targetOid,
+													  HASH_FIND,
+													  &found);
+	else
+		quota_entry = (QuotaLimitEntry *) hash_search(role_quota_limit_map,
+													  &targetOid,
+													  HASH_FIND,
+													  &found);
+	if (!found)
+		return;
+
+	memset(&keyitem, 0, sizeof(keyitem));
+	keyitem.targetoid = targetOid;
+	keyitem.databaseoid = MyDatabaseId;
+	keyitem.targettype = (uint32) type;
+
+	LWLockAcquire(diskquota_locks.quota_state_lock, LW_EXCLUSIVE);
+	entry = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+												&keyitem,
+												HASH_ENTER_NULL,
+												&found);
+	if (entry)
+	{
+		if (!found)
+		{
+			entry->key = keyitem;
+			entry->reserved_bytes = 0;
+		}
+		entry->limit_bytes = quota_entry->limitsize * 1024 * 1024;
+		entry->used_bytes = current_usage;
+	}
+	else
+	{
+		elog(WARNING, "shared disk quota state map size limit reached.");
+	}
+	LWLockRelease(diskquota_locks.quota_state_lock);
+}
+
+/*
+ * Return whether a namespace has any configured quota entry.
+ */
+static bool
+namespace_has_quota(Oid namespaceoid)
+{
+	bool found;
+
+	hash_search(namespace_quota_limit_map, &namespaceoid, HASH_FIND, &found);
+	return found;
+}
+
+/*
+ * Return whether a role has any configured quota entry.
+ */
+static bool
+role_has_quota(Oid owneroid)
+{
+	bool found;
+
+	hash_search(role_quota_limit_map, &owneroid, HASH_FIND, &found);
+	return found;
+}
+
+/*
+ * Remove shared quota-state entries whose configuration was deleted.
+ *
+ * Entries with outstanding reservations are kept until writers release them.
+ */
+static void
+cleanup_stale_quota_state_map(void)
+{
+	HASH_SEQ_STATUS iter;
+	DiskQuotaStateEntry *entry;
+
+	LWLockAcquire(diskquota_locks.quota_state_lock, LW_EXCLUSIVE);
+	hash_seq_init(&iter, disk_quota_state_map);
+	while ((entry = hash_seq_search(&iter)) != NULL)
+	{
+		bool keep_entry = true;
+
+		if (entry->key.databaseoid != MyDatabaseId)
+			continue;
+
+		/* Keep configured targets; stale unreserved entries can be removed. */
+		if (entry->key.targettype == NAMESPACE_QUOTA)
+			keep_entry = namespace_has_quota(entry->key.targetoid);
+		else if (entry->key.targettype == ROLE_QUOTA)
+			keep_entry = role_has_quota(entry->key.targetoid);
+
+		if (!keep_entry && entry->reserved_bytes == 0)
+			hash_search(disk_quota_state_map, &entry->key, HASH_REMOVE, NULL);
+	}
+	LWLockRelease(diskquota_locks.quota_state_lock);
+}
+
+/*
+ * Create or refresh shared quota state after a hard quota is configured.
+ */
+void
+update_shared_quota_state(Oid targetoid, int64 quota_limit_mb, QuotaType type)
+{
+	DiskQuotaStateKey key;
+	DiskQuotaStateEntry *entry;
+	bool found;
+	int64 used_bytes;
+
+	used_bytes = get_current_usage_bytes(targetoid, type);
+
+	memset(&key, 0, sizeof(key));
+	key.targetoid = targetoid;
+	key.databaseoid = MyDatabaseId;
+	key.targettype = (uint32) type;
+
+	LWLockAcquire(diskquota_locks.quota_state_lock, LW_EXCLUSIVE);
+	entry = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+												&key,
+												HASH_ENTER_NULL,
+												&found);
+	if (entry)
+	{
+		if (!found)
+		{
+			entry->key = key;
+			entry->reserved_bytes = 0;
+		}
+		entry->limit_bytes = quota_limit_mb * 1024 * 1024;
+		entry->used_bytes = used_bytes;
+	}
+	else
+	{
+		elog(WARNING, "shared disk quota state map size limit reached.");
+	}
+	LWLockRelease(diskquota_locks.quota_state_lock);
+}
+
+/*
+ * Remove shared quota state after a hard quota is cleared.
+ */
+void
+remove_shared_quota_state(Oid targetoid, QuotaType type)
+{
+	DiskQuotaStateKey key;
+
+	memset(&key, 0, sizeof(key));
+	key.targetoid = targetoid;
+	key.databaseoid = MyDatabaseId;
+	key.targettype = (uint32) type;
+
+	LWLockAcquire(diskquota_locks.quota_state_lock, LW_EXCLUSIVE);
+	hash_search(disk_quota_state_map, &key, HASH_REMOVE, NULL);
+	LWLockRelease(diskquota_locks.quota_state_lock);
+}
+
+/*
+ * Refresh used_bytes for one quota target after size-changing utility commands.
+ */
+static void
+refresh_shared_quota_usage(Oid targetoid, QuotaType type)
+{
+	DiskQuotaStateKey key;
+	DiskQuotaStateEntry *entry;
+	bool found;
+	int64 used_bytes;
+
+	if (!OidIsValid(targetoid))
+		return;
+
+	used_bytes = get_current_usage_bytes(targetoid, type);
+
+	memset(&key, 0, sizeof(key));
+	key.targetoid = targetoid;
+	key.databaseoid = MyDatabaseId;
+	key.targettype = (uint32) type;
+
+	LWLockAcquire(diskquota_locks.quota_state_lock, LW_EXCLUSIVE);
+	entry = (DiskQuotaStateEntry *) hash_search(disk_quota_state_map,
+												&key,
+												HASH_FIND,
+												&found);
+	if (found)
+		entry->used_bytes = used_bytes;
+	LWLockRelease(diskquota_locks.quota_state_lock);
+}
+
+/*
+ * Refresh schema and role quota state for a relation that changed outside the
+ * normal page-extension path, such as TRUNCATE or VACUUM.
+ */
+void
+refresh_relation_quota_state(Oid relid)
+{
+	Relation rel;
+	Oid namespaceoid;
+	Oid owneroid;
+	int ret;
+
+	if (!OidIsValid(relid))
+		return;
+
+	rel = try_relation_open(relid, AccessShareLock);
+	if (rel == NULL || rel->rd_rel == NULL)
+		return;
+
+	namespaceoid = rel->rd_rel->relnamespace;
+	owneroid = rel->rd_rel->relowner;
+	relation_close(rel, AccessShareLock);
+
+	/* get_current_usage_bytes() uses SPI, so connect around both refreshes. */
+	ret = SPI_connect();
+	if (ret != SPI_OK_CONNECT)
+		elog(ERROR, "cannot connect SPI to refresh quota state: error code %d", ret);
+	refresh_shared_quota_usage(namespaceoid, NAMESPACE_QUOTA);
+	refresh_shared_quota_usage(owneroid, ROLE_QUOTA);
+	SPI_finish();
 }

@@ -161,7 +161,6 @@ select hg_security.set_schema_quota('srE', '1 GB');
 
 -- expect insert succeed
 insert into a select generate_series(1,1000);
-ERROR:  schema's disk space quota exceeded
 drop table a;
 reset search_path;
 drop schema srE;
