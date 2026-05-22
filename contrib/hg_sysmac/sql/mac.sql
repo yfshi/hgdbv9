@@ -223,3 +223,30 @@ SELECT __hg_seclabel__,* FROM tb1;
 DROP TABLE tb1;
 RESET ROLE;
 DROP USER u1,u2,u3;
+
+-- Begin #BUG7896 --
+--
+-- When restricted_dba is enabled, syssso should
+-- also be able to set seclabel for users.
+--
+CREATE USER usr1 WITH PASSWORD 'usr1@123';
+SELECT hg_security.set_user_seclabel('usr1'::regrole, 's0');
+ALTER SYSTEM SET se_feature.mode TO ON;
+ALTER SYSTEM SET se_feature.restricted_dba TO ON;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+
+SELECT current_user AS boot_user \gset
+\c - syssso
+SHOW se_feature.mode;
+SHOW se_feature.restricted_dba;
+SELECT hg_security.set_user_seclabel('usr1'::regrole, 's1');
+
+ALTER SYSTEM SET se_feature.mode TO OFF;
+ALTER SYSTEM SET se_feature.restricted_dba TO OFF;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+
+\c - :boot_user
+DROP USER usr1;
+-- End #BUG7896 --

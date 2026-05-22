@@ -1308,7 +1308,7 @@ quota_check_common(Oid ownerOid, Oid nsOid)
 			still_exceeded = false;
 		LWLockRelease(diskquota_locks.quota_state_lock);
 
-		if (still_exceeded)
+		if (still_exceeded && state->limit_bytes > 0)
 		{
 			/* Begin - ReqID:SRS-SECURITY-AUDIT */
 			#ifdef USE_SQLITE
@@ -1347,7 +1347,7 @@ quota_check_common(Oid ownerOid, Oid nsOid)
 			still_exceeded = false;
 		LWLockRelease(diskquota_locks.quota_state_lock);
 
-		if (still_exceeded)
+		if (still_exceeded && state->limit_bytes > 0)
 		{
 			/* Begin - ReqID:SRS-SECURITY-AUDIT */
 			#ifdef USE_SQLITE
