@@ -144,6 +144,16 @@ static int64 sql_rowcount = 0; /* rowcount */
 /* Begin - ReqID:SRS-PLSQL-FORALL */
 static Datum sql_bulk_rowcount = 0; /* bulk_rowcount */
 /* End - ReqID:SRS-PLSQL-FORALL */
+/* Begin - BUG#Z7819 */
+typedef enum
+{
+	BULK_ROWCOUNT_UNINITIALIZED, 	/* the SQL%BULK_ROWCOUNT is uninitialized */
+	BULK_ROWCOUNT_OUTSIDE_LIMIT,	/* the SQL%BULK_ROWCOUNT is outside limt */
+	BULK_ROWCOUNT_NORMAL			/* the SQL%BULK_ROWCOUNT is normal value */
+} PLiSQL_bulk_rowcount_flag;
+
+static PLiSQL_bulk_rowcount_flag bulk_rowcount_flag = BULK_ROWCOUNT_UNINITIALIZED;
+/* Begin - BUG#Z7819 */
 
 /*
  * Memory management within a plisql function generally works with three
@@ -576,6 +586,10 @@ static void exec_set_plsql_var(PLiSQL_execstate *estate);
 /* Begin - ReqID:SRS-PLSQL-FORALL */
 static bool is_integer_type(Oid typoid);
 /* End - ReqID:SRS-PLSQL-FORALL */
+
+/* Begin - BUG#Z7819 */
+static void set_bulk_rowcount_flag(PLiSQL_bulk_rowcount_flag flag);
+/* End - BUG#Z7819 */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -4137,6 +4151,11 @@ exec_stmt_forall(PLiSQL_execstate *estate, PLiSQL_stmt_forall *stmt)
 				{
 					pfree(forallparams);
 					exec_set_found(estate, found);
+
+					/* Begin - BUG#Z7828 */
+					set_bulk_rowcount_flag(BULK_ROWCOUNT_UNINITIALIZED);
+					/* End - BUG#Z7828 */
+
 					exec_set_implicit_cursor_attribute(estate, 0,
 													0,
 													NULL);
@@ -4262,6 +4281,14 @@ exec_stmt_forall(PLiSQL_execstate *estate, PLiSQL_stmt_forall *stmt)
 						{
 							pfree(forallparams);
 							exec_set_found(estate, found);
+
+							/* Begin - BUG#Z7828 */
+							if (lower_value > upper_value)
+								set_bulk_rowcount_flag(BULK_ROWCOUNT_UNINITIALIZED);
+							else
+								set_bulk_rowcount_flag(BULK_ROWCOUNT_OUTSIDE_LIMIT);
+							/* End - BUG#Z7828 */
+
 							exec_set_implicit_cursor_attribute(estate, 0,
 															0,
 															NULL);
@@ -4294,6 +4321,11 @@ exec_stmt_forall(PLiSQL_execstate *estate, PLiSQL_stmt_forall *stmt)
 				{
 					pfree(forallparams);
 					exec_set_found(estate, found);
+
+					/* Begin - BUG#Z7819 */
+					set_bulk_rowcount_flag(BULK_ROWCOUNT_OUTSIDE_LIMIT);
+					/* End - BUG#Z7819 */
+
 					exec_set_implicit_cursor_attribute(estate, 0,
 													0,
 													NULL);
@@ -4321,6 +4353,10 @@ exec_stmt_forall(PLiSQL_execstate *estate, PLiSQL_stmt_forall *stmt)
 
 		/* execute the DML or dynamic SQL */
 		rc = exec_stmts(estate, list_make1(stmt->body));
+
+		/* Begin - BUG#Z7819 */
+		set_bulk_rowcount_flag(BULK_ROWCOUNT_NORMAL);
+		/* End - BUG#Z7819 */
 	}
 	else if (stmt->body->cmd_type == PLISQL_STMT_DYNEXECUTE)
 	{
@@ -4371,6 +4407,10 @@ exec_stmt_forall(PLiSQL_execstate *estate, PLiSQL_stmt_forall *stmt)
 			total_processed += SPI_processed;
 			forall_processed[i++] = SPI_processed;
 		}
+
+		/* Begin - BUG#Z7819 */
+		set_bulk_rowcount_flag(BULK_ROWCOUNT_NORMAL);
+		/* End - BUG#Z7819 */
 
 		exec_set_implicit_cursor_attribute(estate, total_processed,
 										forallparams->total,
@@ -7737,6 +7777,31 @@ exec_eval_datum(PLiSQL_execstate *estate,
 							break;
 						/* Begin - ReqID:SRS-PLSQL-FORALL */
 						case PLISQL_ATTRIBUTE_BULK_ROWCOUNT:
+							/* Begin - BUG#Z7819 */
+							switch (bulk_rowcount_flag)
+							{
+								case BULK_ROWCOUNT_UNINITIALIZED:
+									{
+										ereport(ERROR,
+											(errcode(ERRCODE_COLLECTION_IS_NULL),
+											errmsg("Reference to uninitialized collection")));
+									}
+									break;
+								case BULK_ROWCOUNT_OUTSIDE_LIMIT:
+									{
+										ereport(ERROR,
+											(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+											errmsg("subscript outside limit")));
+									}
+									break;
+								case BULK_ROWCOUNT_NORMAL:
+									break;
+								default:
+									elog(ERROR, "unrecognized bulk rowcount flag: %d", bulk_rowcount_flag);
+									break;
+							};
+							/* End - BUG#Z7819 */
+
 							if (sql_bulk_rowcount == (Datum) 0)
 								*isnull = true;
 							else
@@ -11740,10 +11805,6 @@ exec_set_implicit_cursor_attribute(PLiSQL_execstate *estate, uint64 rowcount,
 								PointerGetDatum(arr),
 								false, INT8ARRAYOID, -1);
 				}
-				else
-					exec_assign_value(estate, attribute,
-								(Datum) 0,
-								true, INT8ARRAYOID, -1);
 			}
 			break;
 			/* End - ReqID:SRS-PLSQL-FORALL */
@@ -14257,3 +14318,14 @@ is_integer_type(Oid typoid)
 			typoid == INT2OID);
 }
 /* End - ReqID:SRS-PLSQL-FORALL */
+
+/* Begin - BUG#Z7819 */
+/*
+ * set bulk_rowcount_flag after execute a FORALL statement
+ */
+static void
+set_bulk_rowcount_flag(PLiSQL_bulk_rowcount_flag flag)
+{
+	bulk_rowcount_flag = flag;
+}
+/* End - BUG#Z7819 */

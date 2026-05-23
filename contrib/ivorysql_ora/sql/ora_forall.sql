@@ -1176,6 +1176,159 @@ END;
 
 SELECT *FROM log;
 SELECT * FROM employees_temp ORDER BY empno;
+DROP TABLE log;
+
+--/* Begin - BUG#7819 */
+CREATE TABLE ta(empno INT);
+CREATE TABLE test_results (seq NUMBER, msg VARCHAR2(4000));
+
+DECLARE
+    TYPE NumList IS TABLE OF NUMBER;
+    empty_set NumList := NumList();
+    v_seq NUMBER := 0;
+    rc_val NUMBER;
+    err_msg VARCHAR2(4000);
+BEGIN
+    FORALL i IN INDICES OF empty_set
+        INSERT INTO ta VALUES(empty_set(i));
+
+    BEGIN
+        rc_val := SQL%BULK_ROWCOUNT(1);  -- raise an error
+        v_seq := v_seq + 1;
+        INSERT INTO test_results VALUES (v_seq, 'Unexpected: SQL%BULK_ROWCOUNT(1) exists');
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+            v_seq := v_seq + 1;
+            INSERT INTO test_results VALUES (v_seq, 'Accessing element 1 raises NO_DATA_FOUND');
+        WHEN OTHERS THEN
+            err_msg := SQLERRM;
+            v_seq := v_seq + 1;
+            INSERT INTO test_results VALUES (v_seq, 'Accessing element 1 raises ' || err_msg);
+    END;
+    v_seq := v_seq + 1;
+    INSERT INTO test_results VALUES (v_seq, 'Row count in ta = ' || (SELECT COUNT(*) FROM ta));
+END;
+/
+
+SELECT * FROM test_results ORDER BY seq;
+SELECT count(*) FROM ta;
+
+DECLARE
+    TYPE IntList IS TABLE OF INTEGER;
+    empty_set IntList := IntList();
+BEGIN
+    FORALL i IN INDICES OF empty_set
+        INSERT INTO ta VALUES(empty_set(i));
+
+    DBMS_OUTPUT.PUT_LINE ('SQL%ROWCOUNT = ' || SQL%ROWCOUNT);
+	DBMS_OUTPUT.PUT_LINE ('SQL%BULK_ROWCOUNT(1) = ' || SQL%BULK_ROWCOUNT(1));
+END;
+/
+
+DECLARE
+    TYPE IntList IS TABLE OF INTEGER;
+    empty_set IntList := IntList();
+BEGIN
+    FORALL i IN VALUES OF empty_set
+        INSERT INTO ta VALUES(empty_set(i));
+
+    DBMS_OUTPUT.PUT_LINE ('SQL%ROWCOUNT = ' || SQL%ROWCOUNT);
+	DBMS_OUTPUT.PUT_LINE ('SQL%BULK_ROWCOUNT(1) = ' || SQL%BULK_ROWCOUNT(1));
+END;
+/
+
+DECLARE
+    TYPE IntList IS TABLE OF INTEGER;
+    empty_set IntList := IntList(1, 2);
+BEGIN
+    FORALL i IN INDICES OF empty_set BETWEEN -4 AND -2
+        INSERT INTO ta VALUES(empty_set(i));
+
+    DBMS_OUTPUT.PUT_LINE ('SQL%ROWCOUNT = ' || SQL%ROWCOUNT);
+	DBMS_OUTPUT.PUT_LINE ('SQL%BULK_ROWCOUNT(1) = ' || SQL%BULK_ROWCOUNT(1));
+END;
+/
+
+DROP TABLE ta;
+DROP TABLE test_results;
+--/* End - BUG#7819 */
+
+--/* Begin - BUG#7828 */
+CREATE TABLE ta(empno INT);
+INSERT INTO ta VALUES(1);
+
+DECLARE
+    TYPE NumList IS TABLE OF NUMBER;
+    dummy NumList := NumList(0);
+    rc_val NUMBER;
+BEGIN
+    FORALL i IN 5 .. 3
+       INSERT INTO ta VALUES(dummy(i));
+    BEGIN
+	  rc_val := SQL%BULK_ROWCOUNT(1);
+	  DBMS_OUTPUT.PUT_LINE('Unexpected: SQL%BULK_ROWCOUNT(1) exists');
+
+    EXCEPTION
+        WHEN NO_DATA_FOUND THEN
+			DBMS_OUTPUT.PUT_LINE('Accessing element 1 raises NO_DATA_FOUND');
+        WHEN OTHERS THEN
+           DBMS_OUTPUT.PUT_LINE('Accessing element 1 raises ' || SQLERRM);
+    END;
+END;
+/
+
+DECLARE
+    TYPE IntList IS TABLE OF INTEGER;
+    empty_set IntList := IntList(1, 2, 3);
+BEGIN
+    FORALL i IN INDICES OF empty_set BETWEEN 3 AND 1
+        INSERT INTO ta VALUES(empty_set(i));
+
+    DBMS_OUTPUT.PUT_LINE ('SQL%ROWCOUNT = ' || SQL%ROWCOUNT);
+	DBMS_OUTPUT.PUT_LINE ('SQL%BULK_ROWCOUNT(1) = ' || SQL%BULK_ROWCOUNT(1));
+END;
+/
+
+DROP TABLE ta;
+--/* End - BUG#7828 */
+
+--/* Begin - BUG#7821 */
+CREATE TABLE test_delete (deptno INT);
+INSERT INTO test_delete VALUES(10);
+INSERT INTO test_delete VALUES(10);
+INSERT INTO test_delete VALUES(20);
+INSERT INTO test_delete VALUES(20);
+INSERT INTO test_delete VALUES(30);
+INSERT INTO test_delete VALUES(30);
+CREATE TABLE test_results (seq NUMBER, msg VARCHAR2(4000));
+
+DECLARE
+    TYPE NumList IS TABLE OF NUMBER;
+    depts NumList := NumList(10, 20, 30);
+    v_seq NUMBER := 0;
+    rc NUMBER;
+    total NUMBER;
+BEGIN
+    FORALL j IN depts.FIRST..depts.LAST
+        DELETE FROM test_delete WHERE deptno = depts(j);
+    FOR i IN depts.FIRST..depts.LAST LOOP
+        v_seq := v_seq + 1;
+        rc := SQL%BULK_ROWCOUNT(i);
+		raise notice '%', rc;
+        INSERT INTO test_results VALUES (v_seq, 'Statement #' || i || ' deleted ' || rc || ' rows.');
+    END LOOP;
+    total := SQL%ROWCOUNT;
+    v_seq := v_seq + 1;
+    INSERT INTO test_results VALUES (v_seq, 'Total rows deleted: ' || total);
+END;
+/
+
+SELECT * FROM test_results ORDER BY seq;
+SELECT count(*) FROM test_delete;
+
+DROP TABLE test_delete;
+DROP TABLE test_results;
+--/* End - BUG#7821 */
 
 SET SERVEROUTPUT OFF
 
