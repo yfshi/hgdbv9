@@ -91,6 +91,39 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 flashback table foo to before drop;
 select a, left(b, 10), length(b) from foo order by a limit 1;
 
+create table fb_rename_a(a int);
+create table fb_rename_b(a int);
+insert into fb_rename_a values (1);
+insert into fb_rename_b values (2);
+drop table fb_rename_a;
+drop table fb_rename_b;
+flashback table fb_rename_a, fb_rename_b to before drop rename to fb_rename_a_new, fb_rename_b_new;
+select * from fb_rename_a_new;
+select * from fb_rename_b_new;
+drop table fb_rename_a_new purge;
+drop table fb_rename_b_new purge;
+
+create table fb_drop_multi_a(a int);
+create table fb_drop_multi_b(a int);
+create table fb_drop_multi_c(a int);
+insert into fb_drop_multi_a values (1);
+insert into fb_drop_multi_b values (2);
+insert into fb_drop_multi_c values (3);
+drop table fb_drop_multi_a, fb_drop_multi_b, fb_drop_multi_c;
+select relname from pg_class
+    where relname in ('fb_drop_multi_a', 'fb_drop_multi_b', 'fb_drop_multi_c')
+    order by 1;
+select rcyoriginname, rcyoperation, rcytype from pg_recyclebin
+    where rcyoriginname like 'fb_drop_multi_%'
+    order by 1, 2, 3;
+flashback table fb_drop_multi_a, fb_drop_multi_b, fb_drop_multi_c to before drop;
+select 'a' as rel, * from fb_drop_multi_a;
+select 'b' as rel, * from fb_drop_multi_b;
+select 'c' as rel, * from fb_drop_multi_c;
+drop table fb_drop_multi_a purge;
+drop table fb_drop_multi_b purge;
+drop table fb_drop_multi_c purge;
+
 drop table foo purge;  -- drop with purge
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 set ivorysql.enable_recycle_bin = off;
@@ -137,6 +170,22 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 flashback table foo to before truncate;
 select a, left(c, 10), length(c) from foo;
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+
+create table fb_trunc_multi_a(a int);
+create table fb_trunc_multi_b(a int);
+insert into fb_trunc_multi_a values (1);
+insert into fb_trunc_multi_b values (2);
+truncate fb_trunc_multi_a, fb_trunc_multi_b;
+select rcyoriginname, rcyoperation, rcytype from pg_recyclebin
+    where rcyoriginname like 'fb_trunc_multi_%'
+    order by 1, 2, 3;
+select 'a' as rel, count(*) from fb_trunc_multi_a;
+select 'b' as rel, count(*) from fb_trunc_multi_b;
+flashback table fb_trunc_multi_a, fb_trunc_multi_b to before truncate;
+select 'a' as rel, * from fb_trunc_multi_a;
+select 'b' as rel, * from fb_trunc_multi_b;
+drop table fb_trunc_multi_a purge;
+drop table fb_trunc_multi_b purge;
 
 truncate foo; --warning
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;

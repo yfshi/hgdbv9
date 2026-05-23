@@ -3570,32 +3570,20 @@ sweepOneObjectToTrash(RbObjDesc *baseDesc, ObjectAddress *object,
 	return;
 }
 
-/*
- * Move the object and its dependencies to the recycle bin and record the information.
- */
-void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, int flags)
+static bool
+RbCanRecycleBaseObject(ObjectAddress *baseObj)
 {
-	Relation depRel;
-	Relation baseRel;
-	RbObjDesc baseDesc;
-	ObjectAddresses *targetObjects = NULL;
-	ObjectAddress *baseObj = objects->refs;
 	bool useRecycle = false;
-	ObjectFunOrPkgSets *depTypeObjects = NULL;
-
-	/* No work if no objects... */
-	if (objects->numrefs <= 0)
-		return;
-
-	depTypeObjects = ObjectFunOrPkgSetsInit();
 
 	/* for now, only the table recovery is supported. */
 	if (getObjectClass(baseObj) == OCLASS_CLASS)
 	{
 		char relKind = get_rel_relkind(baseObj->objectId);
+
 		if (relKind == RELKIND_RELATION)
 		{
 			Relation rel = table_open(baseObj->objectId, NoLock);
+
 			if (rel->rd_rel->relpersistence == RELPERSISTENCE_PERMANENT ||
 				rel->rd_rel->relpersistence == RELPERSISTENCE_UNLOGGED)
 				useRecycle = true;
@@ -3603,18 +3591,30 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 		}
 	}
 
-	if (!useRecycle)
+	return useRecycle;
+}
+
+static void
+sweepBaseObjectToTrash(ObjectAddress *baseObj, const ObjectAddresses *objects,
+					   DropBehavior behavior, int flags, Relation *depRel)
+{
+	Relation baseRel;
+	RbObjDesc baseDesc;
+	ObjectAddresses *targetObjects = NULL;
+	ObjectFunOrPkgSets *depTypeObjects = NULL;
+	int i;
+
+	if (!RbCanRecycleBaseObject(baseObj))
 	{
+		ObjectAddresses *deleteObjects = new_object_addresses();
+
+		add_exact_object_address(baseObj, deleteObjects);
+
 		/* really delete */
-		performMultipleDeletions(objects, behavior, flags);
+		performMultipleDeletions(deleteObjects, behavior, flags);
+		free_object_addresses(deleteObjects);
 		return;
 	}
-
-	/*
-	 * We save some cycles by opening pg_depend just once and passing the
-	 * Relation pointer down to all the recursive deletion steps.
-	 */
-	depRel = table_open(DependRelationId, RowExclusiveLock);
 
 	/*
 	 * Construct a list of objects to delete (ie, the given objects plus
@@ -3624,6 +3624,7 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 	 * dependent on another one in the list; we'll just skip that object and
 	 * delete it when we reach its owner.
 	 */
+	depTypeObjects = ObjectFunOrPkgSetsInit();
 	targetObjects = new_object_addresses();
 
 	/*
@@ -3636,7 +3637,7 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 	 * Finds all subobjects that reference the base table recursively.
 	 */
 	findDependentObjects(baseObj, DEPFLAG_ORIGINAL, flags, NULL, /* empty stack */
-						 targetObjects, depTypeObjects, objects, &depRel);
+						 targetObjects, depTypeObjects, objects, depRel);
 	ObjectFunOrPkgSetsDestroy(&depTypeObjects);
 
 	/*
@@ -3660,14 +3661,37 @@ void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, 
 	/*
 	 * Drop all the objects in the proper order.
 	 */
-	for (int i = 0; i < targetObjects->numrefs; i++)
+	for (i = 0; i < targetObjects->numrefs; i++)
 	{
 		ObjectAddress *thisobj = targetObjects->refs + i;
-		sweepOneObjectToTrash(&baseDesc, thisobj, &depRel, flags);
+		sweepOneObjectToTrash(&baseDesc, thisobj, depRel, flags);
 	}
 
 	/* And clean up */
 	free_object_addresses(targetObjects);
+}
+
+/*
+ * Move the object and its dependencies to the recycle bin and record the information.
+ */
+void sweepObjectsToTrash(const ObjectAddresses *objects, DropBehavior behavior, int flags)
+{
+	Relation depRel;
+	int i;
+
+	/* No work if no objects... */
+	if (objects->numrefs <= 0)
+		return;
+
+	/*
+	 * We save some cycles by opening pg_depend just once and passing the
+	 * Relation pointer down to all the recursive deletion steps.
+	 */
+	depRel = table_open(DependRelationId, RowExclusiveLock);
+
+	for (i = 0; i < objects->numrefs; i++)
+		sweepBaseObjectToTrash(objects->refs + i, objects, behavior, flags, &depRel);
+
 	table_close(depRel, RowExclusiveLock);
 }
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
