@@ -360,6 +360,16 @@ BIT PASS size=28542477 md5=7686b82e8947ed4a9da1a00bce970464
 XML PASS size=943 md5=8cae243a5f3f99b0e748c20d778459bf
 HTML PASS size=515245 md5=07e72dab71ee08a5ca7186fe585495f1
 ALL TEST PASSED
+-- TIME/DATETIME/TIMESTAMP fractional seconds
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcTimeDecimalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+=== preferQueryMode=simple ===
+TIME(6)      write:12:34:56.789012           read:12:34:56.789012
+DATETIME(3)  write:2024-01-15 12:34:56.123   read:2024-01-15 12:34:56.123
+TIMESTAMP(4) write:2024-06-01 08:00:00.1234  read:2024-06-01 08:00:00.1234
+=== executeBatch ===
+TIME(6)      write:12:34:56.789012           read:12:34:56.789012
+DATETIME(3)  write:2024-01-15 12:34:56.123   read:2024-01-15 12:34:56.123
+TIMESTAMP(4) write:2024-06-01 08:00:00.1234  read:2024-06-01 08:00:00.1234
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

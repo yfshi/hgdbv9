@@ -2081,11 +2081,9 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 
 		initStringInfo(&buf);
 
-		if (myenable_case_switch)
-		{
-			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
-			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
-		}
+		appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+		attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+
 		pg_object_create_obj_hook(orifuncname, namespaceId, stmt->replace,
 								  stmt->is_procedure ? PROKIND_PROCEDURE : (isWindowFunc ? PROKIND_WINDOW : PROKIND_FUNCTION),
 								  address,

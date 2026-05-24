@@ -1576,10 +1576,6 @@ CreateExtensionInternal(char *extensionName,
 	ObjectAddress address;
 	ListCell   *lc;
 	volatile bool	modify_flag = false;	/* BUG#Z830 */
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	bool		mys_case_switch_change_flg = false;
-	bool		currentmyenable_case_switch = myenable_case_switch;
-	/* End - ReqID:SRS-MYSQL-CASE */
 	Oid			objectOwner = extowner;	/* ReqID:SRS-SQL-SCHEMA */
 
 
@@ -1647,24 +1643,10 @@ CreateExtensionInternal(char *extensionName,
 		}
 		/* end - bug:z676,z776 */
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (DB_MYSQL == database_mode && MYS_MODE == compatible_mode)
+		if (DB_MYSQL == database_mode && MYS_MODE == compatible_mode &&
+			!pcontrol->mys_case_switch)
 		{
-			if (pcontrol->mys_case_switch == true)
-			{
-				if (myenable_case_switch == false)
-				{
-					SetConfigOption("mysql.enable_case_switch", "on", PGC_USERSET, PGC_S_OVERRIDE);
-					mys_case_switch_change_flg = true;
-				}
-			}
-			else
-			{
-				if (myenable_case_switch == true)
-				{
-					SetConfigOption("mysql.enable_case_switch", "off", PGC_USERSET, PGC_S_OVERRIDE);
-					mys_case_switch_change_flg = true;
-				}
-			}
+			mys_in_extension_install = true;
 		}
 		/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -1892,20 +1874,7 @@ CreateExtensionInternal(char *extensionName,
 			modify_flag = false;
 		}
 
-		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (database_mode == DB_MYSQL &&
-			MYS_MODE == compatible_mode &&
-			mys_case_switch_change_flg)
-		{
-			/* The parameter is on at the beginning and should be on at the end.*/
-			if (currentmyenable_case_switch == true)
-				SetConfigOption("mysql.enable_case_switch", "on", PGC_USERSET, PGC_S_OVERRIDE);
-			else
-				SetConfigOption("mysql.enable_case_switch", "off", PGC_USERSET, PGC_S_OVERRIDE);
-
-			mys_case_switch_change_flg = false;
-		}
-		/* End - ReqID:SRS-MYSQL-CASE */
+		mys_in_extension_install = false;
 	}
 	PG_END_TRY();
 	/* end - bug:z676,z776 */

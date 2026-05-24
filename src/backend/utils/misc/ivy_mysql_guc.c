@@ -128,7 +128,7 @@ bool		enable_ignore_columns_list = false;
 /* End - BUG#Z1434 */
 bool		mysql_convert = false;		/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
-bool		myenable_case_switch = true;	/* ReqID:SRS-MYSQL-CASE */
+bool		mys_in_extension_install = false;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 int			div_precision_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 int			auto_increment_increment = 1;			/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
@@ -212,18 +212,6 @@ int 		group_concat_max_len;	/* bug#7234 */
 		false,
 		NULL, NULL, NULL
 	},
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	{
-		{"mysql.enable_case_switch", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
-			gettext_noop("whether enable case conversion feature in oracle compatible mode."),
-			NULL,
-			GUC_NOT_IN_SAMPLE
-		},
-		&myenable_case_switch,
-		true,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:SRS-MYSQL-CASE */
 	/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 	{
 		{"mysql.mode_pad_char_to_full", PGC_USERSET, COMPAT_MYSQL_OPTIONS,

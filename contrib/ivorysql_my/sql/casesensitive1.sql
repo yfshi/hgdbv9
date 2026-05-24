@@ -2,7 +2,6 @@
  * The situation when lower_case_table_names is 1 
  */
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_case_switch to on;
 set lower_case_table_names = 1;
 
 --create schema
@@ -369,5 +368,4 @@ DROP SCHEMA SC cascade;		--err
 
 
 reset ivorysql.compatible_mode;
-reset mysql.enable_case_switch;
 reset lower_case_table_names;

@@ -146,8 +146,6 @@ extern bool listOpFamilyFunctions(const char *access_method_pattern,
 								  const char *family_pattern, bool verbose);
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
-/* mysql display flg */
-extern bool mysql_case_on_flag(void);
 extern int mysql_lower_num(void);
 extern char *mysql_psql_downcase_identifier(const char *str, int len);
 /* Eed - ReqID:SRS-MYSQL-CASE */

@@ -3,7 +3,6 @@
  */
 --parameter settings 
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_case_switch to on;
 /*
  * test function and procedure
  */
@@ -1402,5 +1401,4 @@ LINE 1: update public.COMYSQL_TEST set public.COMYSQL_TEST.ID = 2 wh...
 drop table COMYSQL_TEST;
 ERROR:  table "COMYSQL_TEST" does not exist
 reset ivorysql.compatible_mode;
-reset mysql.enable_case_switch;
 reset lower_case_table_names;

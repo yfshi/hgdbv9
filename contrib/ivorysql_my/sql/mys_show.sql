@@ -840,3 +840,30 @@ drop table 123abc.aa;
 drop table test_sche.aa;
 drop schema 123abc;
 drop schema test_sche;
+
+-- # Begin - BUG#7662
+set sql_mode = '';
+
+-- show databases
+create database aa;
+show databases where database = 'aa';
+drop schema aa;
+
+-- show tables / show full tables
+create table tb(id int, name text);
+show tables where Tables_in_public = 'tb';
+show full tables where Tables_in_public = 'tb';
+
+-- show columns / show full columns
+show columns from tb;
+show full columns from tb;
+drop table tb;
+
+-- show indexes
+create table tb(id int primary key, name text);
+create index tb_name_idx on tb(name);
+show indexes from tb;
+drop table tb;
+
+set sql_mode = DEFAULT;
+-- # Begin - BUG#7662

@@ -538,7 +538,7 @@ extern PGDLLIMPORT bool enable_ignore_columns_list;
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 extern PGDLLIMPORT int lower_case_table_names;
-extern PGDLLIMPORT bool myenable_case_switch;
+extern PGDLLIMPORT bool mys_in_extension_install;
 /* End - ReqID:SRS-MYSQL-CASE */
 
 extern PGDLLIMPORT bool not_mode_pad_char_to_full;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */

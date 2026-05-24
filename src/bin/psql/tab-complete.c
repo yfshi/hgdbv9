@@ -50,6 +50,7 @@
 #include "pqexpbuffer.h"
 #include "settings.h"
 #include "stringutils.h"
+#include "oracle_fe_utils/ora_string_utils.h"
 
 /*
  * Ancient versions of libedit provide filename_completion_function()
@@ -1252,6 +1253,7 @@ static char *complete_from_files(const char *text, int state);
 static char *pg_strdup_keyword_case(const char *s, const char *ref);
 static char *escape_string(const char *text);
 static PGresult *exec_query(const char *query);
+static char *getCurrentSqlMode(PGconn *conn);
 
 static char **get_previous_words(int point, char **buffer, int *nwords);
 
@@ -4708,7 +4710,59 @@ _complete_from_query(const char *simple_query,
 		appendPQExpBuffer(&query_buffer, "\nLIMIT %d",
 						  completion_max_records);
 
-		result = exec_query(query_buffer.data);
+		/* Begin - BUG#7662 */
+		getDbCompatibleMode(pset.db);
+		if (db_mode == DB_MYSQL)
+		{
+			char	   *saved_sql_mode = getCurrentSqlMode(pset.db);
+			PGresult   *tmp_res;
+			PQExpBufferData set_buf;
+			bool		need_restore = false;
+
+			if (strstr(saved_sql_mode, "PIPES_AS_CONCAT") == NULL)
+			{
+				initPQExpBuffer(&set_buf);
+
+				appendPQExpBuffer(
+					&set_buf,
+					"SET sql_mode = '%s%sPIPES_AS_CONCAT'",
+					saved_sql_mode,
+					(saved_sql_mode[0] != '\0') ? "," : "");
+
+				tmp_res = PQexec(pset.db, set_buf.data);
+
+				if (tmp_res)
+					PQclear(tmp_res);
+
+				termPQExpBuffer(&set_buf);
+
+				need_restore = true;
+			}
+
+			result = exec_query(query_buffer.data);
+
+			if (need_restore)
+			{
+				initPQExpBuffer(&set_buf);
+
+				appendPQExpBuffer(
+					&set_buf,
+					"SET sql_mode = '%s'",
+					saved_sql_mode);
+
+				tmp_res = PQexec(pset.db, set_buf.data);
+
+				if (tmp_res)
+					PQclear(tmp_res);
+
+				termPQExpBuffer(&set_buf);
+			}
+
+			free(saved_sql_mode);
+		}
+		/* End - BUG#7662 */
+		else
+			result = exec_query(query_buffer.data);
 
 		termPQExpBuffer(&query_buffer);
 		free(e_text);
@@ -5062,6 +5116,27 @@ escape_string(const char *text)
 	return result;
 }
 
+
+/* Begin - BUG#7662 */
+static char *
+getCurrentSqlMode(PGconn *conn)
+{
+	PGresult   *res;
+	char	   *sql_mode;
+
+	res = PQexec(conn, "SHOW sql_mode");
+	if (res &&
+		PQresultStatus(res) == PGRES_TUPLES_OK &&
+		PQntuples(res) > 0)
+		sql_mode = pg_strdup(PQgetvalue(res, 0, 0));
+	else
+		sql_mode = pg_strdup("");
+	if (res)
+		PQclear(res);
+
+	return sql_mode;
+}
+/* End - BUG#7662 */
 
 /*
  * Execute a query and report any errors. This should be the preferred way of

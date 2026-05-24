@@ -2734,3 +2734,10 @@ insert into t1 values (NULL);
 select * from t1 order by a;
 DROP TABLE t1;
 set sql_mode=default;
+
+-- Begin - BUG#7487 
+SELECT to_char('2026-05-15 10:30:45'::datetime, 'YYYY--MM');
+SELECT to_char('2026-05-15 10:30:45'::datetime, 'YYYY-MM-DD HH24:MI:SS');
+SELECT to_char('2026-05-15 10:30:45.123456'::datetime(6), 'YYYY--MM');
+SELECT to_char('2026-05-15 10:30:45.123456'::datetime(6), 'YYYY-MM-DD HH24:MI:SS');
+-- End - BUG#7487 
