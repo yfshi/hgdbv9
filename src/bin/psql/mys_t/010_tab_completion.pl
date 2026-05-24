@@ -34,7 +34,7 @@ if ($@)
 
 # start a new server
 my $node = get_new_node('main');
-$node->init;
+$node->init(extra => ['-m', 'mysql']);
 $node->start;
 
 # set up a few database objects
@@ -150,8 +150,8 @@ clear_query();
 # check table name completion with multiple alternatives
 # note: readline might print a bell before the completion
 check_completion(
-	"select * from my\t",
-	qr/select \* from my\a?tab/,
+	"select * from myt\t",
+	qr/select \* from myt\a?ab/,
 	"complete my<tab> to mytab when there are multiple choices");
 
 # some versions of readline/libedit require two tabs here, some only need one
@@ -222,6 +222,29 @@ check_completion(
 	"offer multiple enum choices");
 
 clear_line();
+
+# Begin - BUG#7662
+check_completion(
+    "SET ivorysql.compatible_mode = mysql;\n",
+    qr/SET/,
+    "set compatible_mode to mysql");
+
+clear_line();
+
+check_completion(
+    "SET sql_mode='';\n",
+    qr/SET/,
+    "set sql_mode to empty");
+
+clear_line();
+
+check_completion(
+	"drop table 'ta\t\t",
+	qr/tab1/,
+	"offer multiple enum choices");
+
+clear_line();
+# Begin - BUG#7662
 
 # send psql an explicit \q to shut it down, else pty won't close properly
 $h->quit or die "psql returned $?";

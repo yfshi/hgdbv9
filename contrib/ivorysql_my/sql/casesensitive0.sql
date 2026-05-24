@@ -3,7 +3,6 @@
  */
 --parameter settings 
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_case_switch to on;
 set lower_case_table_names = 0;
 
 --create schema
@@ -610,5 +609,4 @@ drop table TB;
 
 
 reset ivorysql.compatible_mode;
-reset mysql.enable_case_switch;
 reset lower_case_table_names;

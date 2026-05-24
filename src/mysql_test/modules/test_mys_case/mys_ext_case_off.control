@@ -1,0 +1,6 @@
+comment = 'Test extension with mys_case_switch = false (default)'
+default_version = '1.0'
+relocatable = false
+# Begin - ReqID:SRS-MYSQL-CASE
+mys_case_switch = false
+# End - ReqID:SRS-MYSQL-CASE

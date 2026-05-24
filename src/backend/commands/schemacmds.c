@@ -299,27 +299,17 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	{
 		ObjectAddress	addrs;
 		StringInfoData	buf;
-		bool	needbracket = false;
 		Jsonb	*attr = NULL;
 		DefElem	*option = (DefElem *) stmt->option;
 
 		initStringInfo(&buf);
 
-		if (myenable_case_switch)
-		{
-			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"", lower_case_table_names);
-			needbracket = true;
-		}
+		appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"", lower_case_table_names);
 
 		if(option != NULL)
 		{
-			if (needbracket)
-				appendStringInfoString(&buf, ", \"mysoption\" : ");
-			else
-			{
-				appendStringInfoString(&buf, "{\"mysoption\" : ");
-				needbracket = true;
-			}
+			appendStringInfoString(&buf, ", \"mysoption\" : ");
+			
 
 			if (pg_strncasecmp(option->defname, "CHARSET", 7) == 0)
 				appendStringInfo(&buf, "\"CHARACTER SET %s\"", strVal(option->arg));
@@ -329,11 +319,8 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 				;
 		}
 
-		if (needbracket)
-		{
-			appendStringInfoString(&buf, "}");
-			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
-		}
+		appendStringInfoString(&buf, "}");
+		attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
 
 		ObjectAddressSet(addrs, NamespaceRelationId, namespaceId);
 		pg_object_create_obj_hook(orischemaName, namespaceId,

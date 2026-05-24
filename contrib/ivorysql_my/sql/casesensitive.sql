@@ -3,7 +3,6 @@
  */
 --parameter settings 
 set ivorysql.compatible_mode to mysql;
-set mysql.enable_case_switch to on;
 
 /*
  * test function and procedure
@@ -1049,5 +1048,4 @@ drop table COMYSQL_TEST;
 
 
 reset ivorysql.compatible_mode;
-reset mysql.enable_case_switch;
 reset lower_case_table_names;

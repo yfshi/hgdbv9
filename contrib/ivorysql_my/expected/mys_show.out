@@ -2163,3 +2163,57 @@ drop table 123abc.aa;
 drop table test_sche.aa;
 drop schema 123abc;
 drop schema test_sche;
+-- # Begin - BUG#7662
+set sql_mode = '';
+-- show databases
+create database aa;
+show databases where database = 'aa';
+ Database 
+----------
+ aa
+(1 row)
+
+drop schema aa;
+-- show tables / show full tables
+create table tb(id int, name text);
+show tables where Tables_in_public = 'tb';
+ Tables_in_public 
+------------------
+ tb
+(1 row)
+
+show full tables where Tables_in_public = 'tb';
+ Tables_in_public | Table_type 
+------------------+------------
+ tb               | BASE TABLE
+(1 row)
+
+-- show columns / show full columns
+show columns from tb;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ id    | integer | YES  |     |         | 
+ name  | text    | YES  |     |         | 
+(2 rows)
+
+show full columns from tb;
+ Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name  | text    |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(2 rows)
+
+drop table tb;
+-- show indexes
+create table tb(id int primary key, name text);
+create index tb_name_idx on tb(name);
+show indexes from tb;
+ Table | Non_unique |  Key_name   | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+-------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ tb    |          0 | tb_pkey     |            1 | id          | A         |           0 |          |        | NO   | btree      |         | 
+ tb    |          1 | tb_name_idx |            1 | name        | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table tb;
+set sql_mode = DEFAULT;
+-- # Begin - BUG#7662

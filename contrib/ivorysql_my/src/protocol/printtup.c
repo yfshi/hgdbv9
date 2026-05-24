@@ -27,26 +27,42 @@ make_column_definition_with_attr(FormData_pg_attribute *attr)
     const TypeItem *item = GetItemByTypeOid(attr->atttypid, false);
 
     field->name = attr->attname.data;
-
-    switch (item->mysql_type_id)
-    {
-        // since mysql-jdbc 5.1.47 don't support enum and set.
-        case MYSQL_TYPE_ENUM:
-        case MYSQL_TYPE_SET:
-            field->type = MYSQL_TYPE_STRING;
-            break;
-        default:
-            field->type = item->mysql_type_id;
-            break;
-    }
-
-    field->flags = item->flags;
-    field->charset = item->charset_flag;
+    field->type = item->mysql_type_id;
 
     if (attr->atttypmod != -1)
         field->length = attr->atttypmod;
     else
         field->length = DEFAULLT_DATA_FIELD_LEN;
+
+    switch (item->mysql_type_id)
+    {
+        /* since mysql-jdbc 5.1.47 don't support enum and set. */
+        case MYSQL_TYPE_ENUM:
+        case MYSQL_TYPE_SET:
+            field->type = MYSQL_TYPE_STRING;
+            break;
+
+        /* Begin - BUG#7611 */
+        case MYSQL_TYPE_TIME:
+        case MYSQL_TYPE_DATETIME:
+        case MYSQL_TYPE_TIMESTAMP:
+        {
+            int fsp = (attr->atttypmod != -1) ? attr->atttypmod : 0;
+            int base_len = (item->mysql_type_id == MYSQL_TYPE_TIME) ? 10 : 19;
+
+            field->decimals = fsp;
+            field->length = base_len + (fsp > 0 ? fsp + 1 : 0);
+
+            break;
+        }
+
+        default:
+            break;
+        /* End - BUG#7611 */
+    }
+
+    field->flags = item->flags;
+    field->charset = item->charset_flag;
 
     return field;
 }

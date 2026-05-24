@@ -1228,11 +1228,9 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 
 			initStringInfo(&buf);
 
-			if (myenable_case_switch)
-			{
-				appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
-				attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
-			}
+			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+
 			ObjectAddressSet(addrs, RelationRelationId, relationId);
 			pg_object_create_obj_hook(orirelname, namespaceId, false,
 									  newrelkind, addrs,

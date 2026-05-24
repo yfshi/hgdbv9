@@ -358,7 +358,7 @@ describeFunctions(const char *functypes, const char *func_pattern,
 	/* No "Parallel" column before 9.6 */
 	static const bool translate_columns_pre_96[] = {false, false, false, false, true, true, false, true, false, false, false, false};
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	bool	mysqlf = mysql_case_on_flag();
+	bool	mysqlf = (db_mode == DB_MYSQL);
 	//char	*newfunc_pattern = NULL;
 	int		lowernum;
 	/* End - ReqID:SRS-MYSQL-CASE */
@@ -4472,7 +4472,7 @@ listTables(const char *tabtypes, const char *pattern, bool verbose, bool showSys
 	initPQExpBuffer(&buf);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	mysqlfg = mysql_case_on_flag();
+	mysqlfg = (db_mode == DB_MYSQL);
 	if (mysqlfg)
 	{
 		/*
@@ -7489,40 +7489,6 @@ listOpFamilyFunctions(const char *access_method_pattern,
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 
-/* mysql_case_on_flag()
- * Check whether the mysql case switch is turned on.
- *
- * return
- */
-bool mysql_case_on_flag(void)
-{
-	PQExpBufferData buf;
-	PGresult   *res;
-	char	   *cell;
-
-	if(db_mode != DB_MYSQL)
-		return false;
-
-	initPQExpBuffer(&buf);
-
-	printfPQExpBuffer(&buf, "show mysql.enable_case_switch");
-
-	res = PSQLexec(buf.data);
-	termPQExpBuffer(&buf);
-	if (!res)
-		return false;
-
-	if (PQntuples(res) != 1)
-		return false;
-
-	cell = PQgetvalue(res, 0, 0);
-	if (strcmp(cell, "on"))
-		return false;
-
-	PQclear(res);
-	return true;
-}
-
 /* mysql_lower_num()
  * get lower_case_table_names value.
  *
@@ -7530,7 +7496,7 @@ bool mysql_case_on_flag(void)
  */
 int mysql_lower_num(void)
 {
-	if (mysql_case_on_flag())
+	if (db_mode == DB_MYSQL)
 	{
 		PQExpBufferData buf;
 		PGresult   *res;

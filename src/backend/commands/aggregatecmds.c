@@ -521,11 +521,9 @@ DefineAggregate(ParseState *pstate,
 
 		initStringInfo(&buf);
 
-		if (myenable_case_switch)
-		{
-			appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
-			attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
-		}
+		appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+		attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
+
 		pg_object_create_obj_hook(orifuncname, aggNamespace,
 								  replace, PROKIND_AGGREGATE,
 								  address,

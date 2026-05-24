@@ -32,7 +32,7 @@ CREATE TABLE test_real1(col REAL);
 DESC test_real1;
  Field |       Type       | Null | Key | Default | Extra 
 -------+------------------+------+-----+---------+-------
- col   | double precision | null | key | default | 
+ col   | double precision | YES  |     |         | 
 (1 row)
 
 SET sql_mode = 'REAL_AS_FLOAT';
@@ -40,7 +40,7 @@ CREATE TEMPORARY TABLE test_real2(col REAL);
 DESC test_real2;
  Field |  Type  | Null | Key | Default | Extra 
 -------+--------+------+-----+---------+-------
- col   | float4 | null | key | default | 
+ col   | float4 | YES  |     |         | 
 (1 row)
 
 drop table test_real1, test_real2;

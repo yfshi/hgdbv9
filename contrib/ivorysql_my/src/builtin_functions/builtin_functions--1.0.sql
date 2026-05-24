@@ -596,6 +596,20 @@ CREATE OR REPLACE FUNCTION ivymy.time_format(date, text) RETURNS text
 AS $$
     SELECT ivymy.time_format(cast($1 as text), $2);
 $$ LANGUAGE SQL STRICT PARALLEL SAFE;
+
+/* Begin - BUG#7487 */
+
+CREATE OR REPLACE FUNCTION ivymy.to_char(mysdatetime, text) RETURNS text
+AS $$
+    SELECT pg_catalog.to_char($1::pg_catalog.timestamp, $2);
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.to_char(mysdatetimes, text) RETURNS text
+AS $$
+    SELECT pg_catalog.to_char($1::pg_catalog.timestamp, $2);
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
+/* Begin - BUG#7487 */
+
 /*TIMESTAMP*/
 CREATE OR REPLACE FUNCTION ivymy.timestamp(text)
 RETURNS datetime(6)
