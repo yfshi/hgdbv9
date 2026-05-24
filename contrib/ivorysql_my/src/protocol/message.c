@@ -275,14 +275,14 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
 }
 
 static mysql_column_definition_t *
-make_column_definition_with_name(char *name, char *tableName)
+make_column_definition_with_name(char *colName, char *tableName, char *schemaName)
 {
     mysql_column_definition_t *field = (mysql_column_definition_t *) palloc0(sizeof(mysql_column_definition_t));
 
-    field->name = name;
+    field->name = colName;
     field->type = MYSQL_TYPE_VAR_STRING;
     field->length = DEFAULLT_DATA_FIELD_LEN;
-    field->db = MyProcPort->database_name;
+    field->db = schemaName;
     field->table = tableName;
     field->org_table = tableName;
     field->charset = COLLATE_UTF8MB4_GENERAL_CI;
@@ -801,7 +801,7 @@ execute_com_field_list(char *tableName)
                 HeapTuple spi_tuple = SPI_tuptable->vals[i];
                 char *name = SPI_getvalue(spi_tuple, spi_tupdesc, SPI_fnumber(spi_tupdesc, "Field"));
                 char *default_value = SPI_getvalue(spi_tuple, spi_tupdesc, SPI_fnumber(spi_tupdesc, "Default"));            
-                mysql_column_definition_t *field = make_column_definition_with_name(name, tableName);
+                mysql_column_definition_t *field = make_column_definition_with_name(name, tableName, NULL);
 
                 field->default_value = default_value;
                 field->is_com_field_list = true;
@@ -896,6 +896,7 @@ execute_com_stmt_prepare(const char *client_sql)
     int         column_count;
     PreparedStatement *entry;
     char        stmt_name[NAMEDATALEN];
+    TupleDesc   resultDesc;
     
     sql = makeStringInfo();
     statement_id += 1;
@@ -916,27 +917,40 @@ execute_com_stmt_prepare(const char *client_sql)
 
     column_count = list_length(query->targetList);
     param_count = entry->plansource->num_params;
+    resultDesc = entry->plansource->resultDesc;
 
     for (int i = 0; i < param_count; i++)
     {
         const TypeItem *item;
-        mysql_column_definition_t *param_field = make_column_definition_with_name("?", NULL);
+        mysql_column_definition_t *param_field = make_column_definition_with_name("?", NULL, NULL);
         item = GetItemByTypeOid(entry->plansource->param_types[i], false);
         param_field->type = item->mysql_type_id;
         param_field->charset = item->charset_flag;
         send_column_definition41_packet(param_field);
     }
 
-    if (!has_client_capabilities(CLIENT_DEPRECATE_EOF))
+    if (param_count > 0 && !has_client_capabilities(CLIENT_DEPRECATE_EOF))  /* bug#7930 */
         send_eof(0, 0);
 
     for (int i = 0; i < column_count; i++)
-    {
-        mysql_column_definition_t *column_field = make_column_definition_with_name("", NULL);
+    {   
+        /* Begin - bug#7930 */
+        Form_pg_attribute att;
+        mysql_column_definition_t *column_field;
+        char *colname = NULL;
+
+        if (resultDesc)
+        {
+            att = TupleDescAttr(resultDesc, i);
+            colname = NameStr(att->attname);
+        }
+
+        column_field = make_column_definition_with_name(colname, NULL, NULL);
+        /* End- bug#7930 */
         send_column_definition41_packet(column_field);
     }
 
-    if (!has_client_capabilities(CLIENT_DEPRECATE_EOF))
+    if (column_count > 0 && !has_client_capabilities(CLIENT_DEPRECATE_EOF))  /* bug#7930 */
         send_eof(0, 0);
 
     return 0;

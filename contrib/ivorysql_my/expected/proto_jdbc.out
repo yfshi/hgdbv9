@@ -166,6 +166,17 @@ Prepared statement result: 30
 Multiple parameters: 100, test, true
 
 Database connection closed
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcStmtPrepareTest_2 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+Database connection successful
+--- Test 1: PreparedStatement WITHOUT parameters ---
+Columns: a, b
+Row 1: a=1, b=ABC
+
+--- Test 2: PreparedStatement WITH parameter ---
+Columns: a, b
+Row 1: a=1, b=ABC
+
+Database connection closed
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 === COM_STMT_RESET JDBC Test ===
 
