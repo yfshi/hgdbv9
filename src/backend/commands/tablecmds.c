@@ -23313,6 +23313,94 @@ CheckColumnIsPrimary(Relation rel, char *colname)
 	return isPartOfPrimary;
 }
 
+/* Begin - BUG#z7871 */
+/*
+ * CheckColumnIsPriOrUni
+ *     check if this column is primary key or Unique key
+ * args
+ *     Relation rel
+ *     char *colname
+ *
+ * The returned is true or false
+ */
+static bool
+CheckColumnIsPriOrUni(Relation rel, char *colname)
+{
+	HeapTuple tuple;
+	Form_pg_attribute attTup;
+	AttrNumber attnum;
+	List *indexoidlist;
+	ListCell *indexoidscan;
+	bool isPartOfPriOrUni = false;
+
+	tuple = SearchSysCacheCopyAttName(RelationGetRelid(rel), colname);
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" does not exist",
+						colname, RelationGetRelationName(rel))));
+	attTup = (Form_pg_attribute) GETSTRUCT(tuple);
+	attnum = attTup->attnum;
+
+	/* Prevent them from altering a system attribute */
+	if (attnum <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot alter system column \"%s\"",
+						colname)));
+
+	/*
+	 * Check that the attribute is not in a primary key or in an unique index
+	 *
+	 * Note: we'll throw error even if the pkey index is not valid.
+	 */
+
+	/* Loop over all indexes on the relation */
+	indexoidlist = RelationGetIndexList(rel);
+
+	foreach(indexoidscan, indexoidlist)
+	{
+		Oid		indexoid = lfirst_oid(indexoidscan);
+		HeapTuple	indexTuple;
+		Form_pg_index	indexStruct;
+		int		i;
+
+		indexTuple = SearchSysCache1(INDEXRELID, ObjectIdGetDatum(indexoid));
+		if (!HeapTupleIsValid(indexTuple))
+			elog(ERROR, "cache lookup failed for index %u", indexoid);
+		indexStruct = (Form_pg_index) GETSTRUCT(indexTuple);
+
+		/*
+		 * If the index is not a primary key or an index used as replica
+		 * identity, skip the check.
+		 */
+		if (indexStruct->indisprimary || indexStruct->indisunique)
+		{
+			/*
+			 * Loop over each attribute in the primary key or the unique index
+			 * and see if it matches the to-be-altered
+			 * attribute.
+			 */
+			for (i = 0; i < indexStruct->indnkeyatts; i++)
+			{
+				if (indexStruct->indkey.values[i] == attnum)
+				{
+					isPartOfPriOrUni = true;
+					break;
+				}
+			}
+		}
+
+		ReleaseSysCache(indexTuple);
+	}
+
+	list_free(indexoidlist);
+	heap_freetuple(tuple);
+
+	return isPartOfPriOrUni;
+}
+/* End - BUG#z7871 */
+
 /*
  * CheckColumnIsAutoincrement
  *     check if col is auto increment already
@@ -23783,6 +23871,20 @@ ATExecModifyChangeColumn(AlteredTableInfo *tab,
  	{
 		elog(ERROR, "there can be only one auto column and it must be defined as a key");
  	}
+
+	/* Begin - BUG#z7871 */
+	/*
+	 * if column is set auto and (primary or unique key) is one SQL
+	 *     not need to check
+	 * if column is set auto
+	 *     check if this column is pri or uni already
+	 */
+	if (def->is_auto_increment && !def->is_pri_or_unique)
+	{
+		if (!CheckColumnIsPriOrUni(rel,colName))
+			elog(ERROR, "there can be only one auto column and it must be defined as a key");
+	}
+	/* End - BUG#z7871 */
 
 	/*
 	 * rename if needed

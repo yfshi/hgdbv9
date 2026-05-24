@@ -237,10 +237,13 @@ alter table test_auto modify id int primary key;
 alter table test_auto modify id int auto_increment;
 show create table test_auto;
 drop table test_auto;
--- success
+
+-- fail as id is not a primary key or a unique key
 create table test_auto(id int, name varchar(20));
+alter table test_auto modify id int auto_increment;
+-- mysql success, but v9 fail, canot support
 alter table test_auto modify id int primary key, modify id int auto_increment;
-show create table test_auto;
+alter table test_auto modify id int unique key, modify id int auto_increment;
 drop table test_auto;
 
 -- varchar(20)  --> smallint auto
