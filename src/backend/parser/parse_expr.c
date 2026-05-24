@@ -1967,9 +1967,9 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 				if (!equal(target_result, (Node *)tle->expr))
 					ereport(ERROR,
 							(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-							errmsg("%s \"%s\" is ambiguous",
-									ParseExprKindName(orig_pstate->p_expr_kind),
-									name),
+							errmsg("Column \"%s\" in %s clause is ambiguous",
+									name,
+									ParseExprKindName(orig_pstate->p_expr_kind)),
 							parser_errposition(orig_pstate, location)));
 				continue;
 			}

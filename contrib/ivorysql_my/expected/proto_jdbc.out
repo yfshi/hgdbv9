@@ -349,6 +349,18 @@ Insert success, data length is 16418556
 Insert success, data length is 16418556
 Content length is 29250924
 Content length is 16418556
+-- test DatabaseMetaData.getColumns
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcTestIntroducer 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+PASS 1
+PASS 2
+PASS 3
+PASS 4
+PASS 5
+PASS 6
+BIT PASS size=28542477 md5=7686b82e8947ed4a9da1a00bce970464
+XML PASS size=943 md5=8cae243a5f3f99b0e748c20d778459bf
+HTML PASS size=515245 md5=07e72dab71ee08a5ca7186fe585495f1
+ALL TEST PASSED
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

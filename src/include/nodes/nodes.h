@@ -639,8 +639,10 @@ typedef enum NodeTag
 	T_RatioToReportCall,
 	/* End - OA-REQ-2132 */
 	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
-	T_FlashbackNode
+	T_FlashbackNode,
 	/* End - ReqID:SRS-SECURITY-FLASHBACK */
+	T_IntroducerConst				/* Req:SRS-MYSQL-SQL-Select */
+
 } NodeTag;
 
 /*

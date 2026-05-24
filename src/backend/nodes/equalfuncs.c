@@ -3747,6 +3747,7 @@ _equalValue(const Value *a, const Value *b)
 		/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		case T_HexString: /* BUG#5048 5070 */
 		case T_MysBitString:	/* SRS-MYSQL-HEX-LITERAL */
+		case T_IntroducerConst:		/* Req:SRS-MYSQL-SQL-Select */
 			COMPARE_STRING_FIELD(val.str);
 			break;
 		case T_Null:

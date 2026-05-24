@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<binaryCompatibilityTest>
+    <metadata>
+        <name>_binary string literal XML test</name>
+        <version>1.0</version>
+        <description>XML data used to verify _binary '...' JDBC insertion and retrieval.</description>
+    </metadata>
+    <escapeCases>
+        <case id="newline">line1
+line2</case>
+        <case id="tab">col1	col2	col3</case>
+        <case id="carriageReturn">left&#13;right</case>
+        <case id="singleQuote">Tom&apos;s XML value</case>
+        <case id="doubleQuote">attribute style &quot;quoted&quot; value</case>
+        <case id="backslash">C:\\tmp\\binary\\file.xml</case>
+        <case id="mixed">abc123_'\'_binary''_!@#$%^*()_+-=[]{}|;:,.?/</case>
+    </escapeCases>
+    <items>
+        <item id="1" enabled="true">alpha</item>
+        <item id="2" enabled="false">beta</item>
+        <item id="3" enabled="true">gamma</item>
+    </items>
+</binaryCompatibilityTest>

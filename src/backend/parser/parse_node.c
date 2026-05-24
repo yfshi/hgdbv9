@@ -17,6 +17,7 @@
 #include "access/htup_details.h"
 #include "access/table.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_collation_d.h"
 #include "mb/pg_wchar.h"
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
@@ -26,6 +27,7 @@
 #include "parser/parse_relation.h"
 #include "parser/parsetree.h"
 #include "utils/builtins.h"
+#include "utils/guc.h"
 #include "utils/int8.h"
 #include "utils/lsyscache.h"
 #include "utils/syscache.h"
@@ -37,6 +39,12 @@ static void pcb_error_callback(void *arg);
 mysql_hexstring_parse_hook_type mysql_hexstring_parse_hook = NULL;
 mysql_bitstring_parse_hook_type mysql_bitstring_parse_hook = NULL;
 /* End BUG#5048 5070 */
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static bytea *make_introducer_string_bytea(const char *str, bool escaped);
+static Const *make_introducer_const(ParseState *pstate, const char *str,
+								int location);
+/* End: Req:SRS-MYSQL-SQL-Select */
 
 /*
  * make_parsestate
@@ -502,6 +510,12 @@ make_const(ParseState *pstate, Value *value, int location)
 			break;
 		/* End - SRS-MYSQL-HEX-LITERAL */
 
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case T_IntroducerConst:
+			con = make_introducer_const(pstate, strVal(value), location);
+			return con;
+		/* End: Req:SRS-MYSQL-SQL-Select */
+
 		/* Begin - BUG:Z093 */
 		case T_BFloat:
 			{
@@ -582,3 +596,89 @@ make_const(ParseState *pstate, Value *value, int location)
 
 	return con;
 }
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+/*
+ * Convert a MySQL _binary literal raw parse node to a bytea Const.
+ */
+static Const *
+make_introducer_const(ParseState *pstate, const char *str, int location)
+{
+	Const	   *con;
+	bytea	   *bytes = NULL;
+
+	bytes = make_introducer_string_bytea(str, !has_sql_mode(MODE_NO_BACKSLASH_ESCAPES));
+
+	con = makeConst(VARBINARYOID,
+					-1,
+					DEFAULT_COLLATION_OID,
+					-1,
+					PointerGetDatum(bytes),
+					false,
+					false);
+	con->location = location;
+
+	return con;
+}
+
+static bytea *
+make_introducer_string_bytea(const char *str, bool escaped)
+{
+	bytea	   *result;
+	char	   *dst;
+	int			len = strlen(str);
+
+	result = (bytea *) palloc(VARHDRSZ + len);
+	dst = VARDATA(result);
+
+	if (!escaped)
+	{
+		memcpy(dst, str, len);
+		SET_VARSIZE(result, VARHDRSZ + len);
+		return result;
+	}
+
+	while (*str)
+	{
+		if (*str == '\\' && str[1] != '\0')
+		{
+			str++;
+			switch (*str)
+			{
+				case 'b':
+					*dst++ = '\b';
+					break;
+				case 'n':
+					*dst++ = '\n';
+					break;
+				case 'r':
+					*dst++ = '\r';
+					break;
+				case 't':
+					*dst++ = '\t';
+					break;
+				case '0':
+					*dst++ = '\0';	// AscII null
+					break;
+				case 'Z':			// ^Z must be escaped no Win32
+					*dst++ = '\032';
+					break;
+				case '_':
+				case '%':
+					*dst++ = '\\';	// remenber prefix for wildcard
+					*dst++ = *str;
+					break;
+				default:
+					*dst++ = *str;
+					break;
+			}
+			str++;
+		}
+		else
+			*dst++ = *str++;
+	}
+
+	SET_VARSIZE(result, VARHDRSZ + (dst - VARDATA(result)));
+	return result;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */

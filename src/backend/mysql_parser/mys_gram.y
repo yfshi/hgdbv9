@@ -85,6 +85,9 @@
 #include "miscadmin.h"
 #include "libpq/libpq-be.h"
 /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+#include "catalog/pg_collation_d.h"
+/* End: Req:SRS-MYSQL-SQL-Select */
 
 /*
  * Location tracking support --- simpler than bison's default, since we only
@@ -335,6 +338,10 @@ static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 
 static List *
 makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /* ReqID:SRS-MYSQL-RENAME */
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static char *concatSconstList(List *strs);
+/* End: Req:SRS-MYSQL-SQL-Select */
 %}
 
 %pure-parser
@@ -844,6 +851,10 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %type <str>			opt_separator
 /* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+%type <list>		sconst_list from_list_parens table_ref_factor
+/* End: Req:SRS-MYSQL-SQL-Select */
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -864,6 +875,7 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 %token <str>    USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
 %token <str> 	IDENT_SCONST /* bug#6888 */
 
+%token <str>	UNDERSCORE_CHARSET	/* Req:SRS-MYSQL-SQL-Select */
 /*
  * If you want to make any keyword changes, update the keyword table in
  * src/include/parser/kwlist.h and add new keywords to the appropriate one
@@ -952,6 +964,9 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 	SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
 	SIGNED SIMILAR SIMPLE SKIP SMALLINT SNAPSHOT SOME SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */ SQL_P 
+	/* Begin: Req:SRS-MYSQL-SQL-Select */
+	SQL_BIG_RESULT SQL_BUFFER_RESULT SQL_CACHE SQL_CALC_FOUND_ROWS SQL_NO_CACHE SQL_SMALL_RESULT
+	/* End: Req:SRS-MYSQL-SQL-Select */
 	/* Begin - bug#6410 */
 	SQL_TSI_DAY SQL_TSI_HOUR SQL_TSI_MICROSECOND SQL_TSI_MINUTE SQL_TSI_MONTH SQL_TSI_QUARTER SQL_TSI_SECOND SQL_TSI_WEEK SQL_TSI_YEAR
 	/* End - bug#6410 */
@@ -14256,7 +14271,7 @@ select_clause:
  * However, this is not checked by the grammar; parse analysis must check it.
  */
 simple_select:
-			SELECT opt_all_clause opt_target_list
+			SELECT opt_query_spec_option opt_target_list
 			into_clause from_clause where_clause
 			group_clause having_clause window_clause
 				{
@@ -14271,20 +14286,20 @@ simple_select:
 					n->windowClause = $9;
 					$$ = (Node *)n;
 				}
-			| SELECT distinct_clause target_list
+			| SELECT opt_query_spec_option distinct_clause opt_query_spec_option target_list
 			into_clause from_clause where_clause
 			group_clause having_clause window_clause
 				{
 					SelectStmt *n = makeNode(SelectStmt);
-					n->distinctClause = $2;
-					n->targetList = $3;
-					n->intoClause = $4;
-					n->fromClause = $5;
-					n->whereClause = $6;
-					n->groupClause = ($7)->list;
-					n->groupDistinct = ($7)->distinct;
-					n->havingClause = $8;
-					n->windowClause = $9;
+					n->distinctClause = $3;
+					n->targetList = $5;
+					n->intoClause = $6;
+					n->fromClause = $7;
+					n->whereClause = $8;
+					n->groupClause = ($9)->list;
+					n->groupDistinct = ($9)->distinct;
+					n->havingClause = $10;
+					n->windowClause = $11;
 					$$ = (Node *)n;
 				}
 			| values_clause							{ $$ = $1; }
@@ -14648,6 +14663,27 @@ opt_sort_clause:
 			sort_clause								{ $$ = $1; }
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+/*
+ * MySQL accepts these SELECT hint after SELECT, and also around
+ * ALL/DISTINCT.
+ */
+opt_query_spec_option:
+			opt_query_spec_option opt_query_hint
+			| /*EMPTY*/
+		;
+
+opt_query_hint:
+			SQL_SMALL_RESULT
+			| SQL_BIG_RESULT
+			| SQL_BUFFER_RESULT
+			| SQL_CACHE
+			| SQL_NO_CACHE
+			| SQL_CALC_FOUND_ROWS
+			| ALL
+		;
+/* End: Req:SRS-MYSQL-SQL-Select */
 
 sort_clause:
 			ORDER BY sortby_list					{ $$ = $3; }
@@ -15064,11 +15100,41 @@ from_clause:
 			| FROM DUAL								{ $$ = NIL; }	/* ReqID:SRS-MYSQL-SELECT */
 			| /*EMPTY*/								{ $$ = NIL; }
 		;
-
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+/*
+ * To make compatible with mysql's parens formlist, there is a new token
+ * `table_ref_factor` replacing the original `table_ref`.
+ *
+ * We can reduce to `table_ref_factor` using rule of `table_ref` as general,
+ * and also reduce using the newly supported parens fromlist.
+ *
+ * For now, these situation are compatible to mysql:
+ *	- Multiple table_ref within a or multiple parens, such as:
+ *	  	SELECT * FROM (tb1, (tb2, tb3)), tb4;
+ *		SELECT * FROM (((tb1, tb2)), ((tb3, tb4)));
+ *		...
+ * But there are still some situation not supported yet:
+ *	- Single table_ref within a or multiple parens:
+ *		SELECT * FROM (tb1);
+ *		SELECT * FROM (((tb1)));
+ *	- Other possible cases...
+ */
 from_list:
-			table_ref								{ $$ = list_make1($1); }
-			| from_list ',' table_ref				{ $$ = lappend($1, $3); }
+			table_ref_factor						{ $$ = $1; }
+			| from_list ',' table_ref_factor		{ $$ = list_concat($1, $3); }
 		;
+
+table_ref_factor:
+			table_ref								{ $$ = list_make1($1); }
+			| from_list_parens						{ $$ = $1; }
+		;
+
+from_list_parens:
+			'(' from_list ',' table_ref_factor ')'	{ $$ = list_concat($2, $4); }
+			| '(' from_list_parens ')'				{ $$ = $2; }
+		;
+
+/* End: Req:SRS-MYSQL-SQL-Select */
 
 /*
  * table_ref is where an alias clause can be attached.
@@ -17170,6 +17236,7 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = makeNotExpr($2, @1); }
 			| NOT_LA a_expr						%prec NOT
 				{ $$ = makeNotExpr($2, @1); }
+			/* Begin: Req:SRS-MYSQL-SQL-Select */
 			| a_expr REGEXP a_expr				%prec REGEXP
 				{
 					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
@@ -17198,6 +17265,7 @@ a_expr:		c_expr									{ $$ = $1; }
 					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~*",
 								left_text, pattern_text, @2);
 				}
+			/* End: Req:SRS-MYSQL-SQL-Select */
 			| a_expr LIKE a_expr
 				{
 					$$ = (Node *) makeSimpleA_Expr(AEXPR_LIKE, "~~",
@@ -19783,6 +19851,19 @@ func_name_without_binary:
 		;
 /* End - bug#6011 */
 
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+sconst_list:
+			Sconst
+				{
+					$$ = list_make1($1);
+				}
+			| sconst_list Sconst
+				{
+					$$ = lappend($1, $2);
+				}
+			;
+/* End: Req:SRS-MYSQL-SQL-Select */
+
 /*
  * Constants
  */
@@ -19794,10 +19875,12 @@ AexprConst: Iconst
 				{
 					$$ = makeFloatConst($1, @1);
 				}
-			| Sconst
+			/* Begin: Req:SRS-MYSQL-SQL-Select */
+			| sconst_list
 				{
-					$$ = makeStringConst($1, @1);
+					$$ = makeStringConst(concatSconstList($1), @1);
 				}
+			/* End: Req:SRS-MYSQL-SQL-Select */
 			| BCONST  // b'val' or B'val' and 0bval
 				{	
 					/* Begin - SRS-MYSQL-HEX-LITERAL */
@@ -19839,6 +19922,39 @@ AexprConst: Iconst
 					$$ = makeHexStringConst(input + 1, @1);
 					/* End - SRS-MYSQL-HEX-LITERAL */
 				}
+			/* Begin: Req:SRS-MYSQL-SQL-Select */
+				/*_charset 'val'*/
+			| UNDERSCORE_CHARSET SCONST
+				{
+					$$ = makeAConst(makeIntroducerString($2), @2);
+				}
+				/*_charset b'val'*/
+			| UNDERSCORE_CHARSET BCONST
+				{
+					$$ = makeMysBitStringConst($2, @2);
+				}
+				/*_charset x'val'*/
+			| UNDERSCORE_CHARSET XCONST
+				{
+					char *input = $2;
+
+					/**
+					 * If length of input string without prefix 'X' or 'x' is odd, 
+					 * then through syntax error.
+					 */
+					if (strlen(input) % 2 == 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+									errmsg("You have an error in your SQL syntax.")));
+				
+					$$ = makeHexStringConst(input + 1, @2);
+				}
+				/*_charset 0x123*/
+			| UNDERSCORE_CHARSET HCONST
+				{
+					$$ =  makeHexStringConst($2, @2);
+				}
+			/* End: Req:SRS-MYSQL-SQL-Select */
 			| func_name_without_binary /* bug#6011 */ Sconst
 				{
 					/* generic type 'literal' syntax */
@@ -20812,6 +20928,14 @@ reserved_keyword:
 			| SESSION_USER
 			| SOME
 			| SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */
+			/* Begin: Req:SRS-MYSQL-SQL-Select */
+			| SQL_BIG_RESULT
+			| SQL_BUFFER_RESULT
+			| SQL_CACHE
+			| SQL_CALC_FOUND_ROWS
+			| SQL_NO_CACHE
+			| SQL_SMALL_RESULT
+			/* End: Req:SRS-MYSQL-SQL-Select */
 			| SYMMETRIC
 			| TABLE
 			| THEN
@@ -21234,6 +21358,14 @@ bare_label_keyword:
 			| SOME
 			| SPATIAL /* ReqID:SRS-MYSQL-CREATE-INDEX */
 			| SQL_P
+			/* Begin: Req:SRS-MYSQL-SQL-Select */
+			| SQL_BIG_RESULT
+			| SQL_BUFFER_RESULT
+			| SQL_CACHE
+			| SQL_CALC_FOUND_ROWS
+			| SQL_NO_CACHE
+			| SQL_SMALL_RESULT
+			/* End: Req:SRS-MYSQL-SQL-Select */
 			| STABLE
 			| STANDALONE_P
 			| START
@@ -21538,6 +21670,20 @@ makeMysBitStringConst(char *str, int location)
 }
 /* End - SRS-MYSQL-HEX-LITERAL */
 
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static Node *
+makeIntroducerConst(char *str, int location)
+{
+	A_Const *n = makeNode(A_Const);
+
+	n->val.type = T_IntroducerConst;
+	n->val.val.str = str;
+	n->location = location;
+
+	return (Node *)n;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */
+
 /* Begin - bug#z6027 */
 static char *
 parse_hex_to_cstring(const char *src)
@@ -21584,6 +21730,11 @@ makeAConst(Value *v, int location)
 		case T_Integer:
 			n = makeIntConst(v->val.ival, location);
 			break;
+		/* Begin: Req:SRS-MYSQL-SQL-Select */
+		case T_IntroducerConst:
+			n = makeIntroducerConst(v->val.str, location);
+			break;
+		/* End: Req:SRS-MYSQL-SQL-Select */
 
 		case T_String:
 		default:
@@ -23334,3 +23485,20 @@ processIntoClauseInSelectStmt(SelectStmt *stmt, IntoClause *itc)
 }
 /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static char *
+concatSconstList(List *strs)
+{
+	StringInfoData	buf;
+	ListCell		*lc;
+
+	initStringInfo(&buf);
+
+	foreach (lc, strs)
+	{
+		appendStringInfoString(&buf, (char *) lfirst(lc));
+	}
+
+	return buf.data;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */

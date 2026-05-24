@@ -115,6 +115,9 @@ typedef struct mys_core_yy_extra_type
 	/* state variables for literal-lexing warnings */
 	bool		warn_on_first_escape;
 	bool		saw_non_ascii;
+	/* Begin: Req:SRS-MYSQL-SQL-Select */
+	bool		has_underscore_charset;		/* charset name after a MySQL introducer */
+	/* End: Req:SRS-MYSQL-SQL-Select */
 } mys_core_yy_extra_type;
 
 /*

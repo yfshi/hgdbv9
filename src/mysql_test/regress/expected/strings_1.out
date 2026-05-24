@@ -18,9 +18,11 @@ SELECT 'first line'
 ' - next line' /* this comment is not allowed here */
 ' - third line'
 	AS "Illegal comment within continuation";
-ERROR:  syntax error at or near "' - third line'"
-LINE 3: ' - third line'
-        ^
+ Illegal comment within continuation 
+-------------------------------------
+ first line - next line - third line
+(1 row)
+
 -- Unicode escapes
 SET standard_conforming_strings TO on;
 SELECT U&'d\0061t\+000061' AS U&"d\0061t\+000061";

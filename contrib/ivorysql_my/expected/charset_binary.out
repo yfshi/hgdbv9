@@ -1,0 +1,555 @@
+CREATE TABLE mysql_binary_test (s varchar(20) collate utf8_general_ci);
+INSERT INTO mysql_binary_test VALUES ('a'), ('A'), ('abc'), ('ABC'), ('a_c'), ('a%c');
+set mysql.use_mysql_bit_literal = on;
+set sql_mode = 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE';
+show sql_mode;
+                                                                                      sql_mode                                                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION
+(1 row)
+
+SELECT s FROM mysql_binary_test
+WHERE s = _binary 'abc';
+  s  
+-----
+ abc
+ ABC
+(2 rows)
+
+-- MySQL 5.7 expected: abc, ABC
+SELECT s FROM mysql_binary_test
+WHERE s = _binary 'ABC';
+  s  
+-----
+ abc
+ ABC
+(2 rows)
+
+-- MySQL 5.7 expected: abc, ABC
+SELECT s FROM mysql_binary_test
+WHERE s <> _binary 'abc';
+  s  
+-----
+ a
+ A
+ a_c
+ a%c
+(4 rows)
+
+-- MySQL 5.7 expected: a, A, a%c, a_c
+------***************************
+SELECT s FROM mysql_binary_test
+WHERE s LIKE _binary 'a_c';
+  s  
+-----
+ abc
+ a_c
+ a%c
+(3 rows)
+
+-- MySQL 5.7 expected: a%c, abc, ABC, a_c
+------***************************
+SELECT s FROM mysql_binary_test
+WHERE s LIKE _binary 'A%';
+  s  
+-----
+ A
+ ABC
+(2 rows)
+
+-- MySQL 5.7 expected: a, A, a%c, abc, ABC, a_c
+SELECT s FROM mysql_binary_test
+WHERE s IN (_binary 'abc', 'zzz');
+  s  
+-----
+ abc
+ ABC
+(2 rows)
+
+-- MySQL 5.7 expected: abc, ABC
+SELECT s FROM mysql_binary_test
+WHERE s = ANY (ARRAY[_binary 'abc', 'zzz']);
+ERROR:  could not determine which collation to use for string comparison
+HINT:  Use the COLLATE clause to set the collation explicitly.
+-- MySQL 5.7 expected: abc, ABC
+SELECT s FROM mysql_binary_test
+WHERE s <> ALL (ARRAY[_binary 'abc', 'zzz']);
+ERROR:  could not determine which collation to use for string comparison
+HINT:  Use the COLLATE clause to set the collation explicitly.
+-- MySQL 5.7 expected: a, A, a%c, a_c
+SELECT s FROM mysql_binary_test
+WHERE s REGEXP _binary '^[a-z]+$';
+  s  
+-----
+ a
+ A
+ abc
+ ABC
+(4 rows)
+
+-- MySQL 5.7 expected: a, A, abc, ABC
+SELECT 'A' REGEXP '^[a-z]+$' AS regexp_default_case_insensitive;
+ regexp_default_case_insensitive 
+---------------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 1
+SELECT 'A' REGEXP ('^[a-z]+$' COLLATE "C") AS regexp_collate_c_still_case_insensitive;
+ regexp_collate_c_still_case_insensitive 
+-----------------------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 1
+--pg 1 case-insenctive
+SELECT 'A' collate utf8_general_ci  ~* _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
+ regexp_binary_case_sensitive 
+------------------------------
+ t
+(1 row)
+
+--pg 0
+SELECT 'A'   ~** _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
+ERROR:  operator does not exist: unknown ~** varbinary
+LINE 1: SELECT 'A'   ~** _binary '^[a-z]+$' AS regexp_binary_case_se...
+                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+--pg 0 case-senctive
+SELECT 'A' collate utf8_general_ci  ~ _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
+ regexp_binary_case_sensitive 
+------------------------------
+ f
+(1 row)
+
+--pg 0 case-senctive
+SELECT 'A'   ~ _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
+ regexp_binary_case_sensitive 
+------------------------------
+ f
+(1 row)
+
+SELECT 'A' collate utf8_general_ci  REGEXP _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
+ regexp_binary_case_sensitive 
+------------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 1
+SELECT 'A' REGEXP _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
+ regexp_binary_case_sensitive 
+------------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 0
+------***************************
+SELECT 'A' REGEXP (_binary '^[a-z]+$') AS regexp_binary_collate_c_still_case_sensitive;
+ regexp_binary_collate_c_still_case_sensitive 
+----------------------------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 0
+SELECT 'A' REGEXP (_binary '^[a-z]+$' COLLATE "C") AS regexp_binary_collate_c_still_case_sensitive;
+ regexp_binary_collate_c_still_case_sensitive 
+----------------------------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 0
+SELECT _binary X'41' = 'A' AS binary_hex_literal_equals_text;
+ binary_hex_literal_equals_text 
+--------------------------------
+                              0
+(1 row)
+
+SELECT _binary 0x41 = 'A' AS binary_hex_literal_equals_text;
+ binary_hex_literal_equals_text 
+--------------------------------
+                              0
+(1 row)
+
+-- MySQL 5.7 expected: 1
+SELECT _binary B'01000001' = 'A' AS binary_bit_literal_equals_text;
+ binary_bit_literal_equals_text 
+--------------------------------
+                              0
+(1 row)
+
+-- MySQL 5.7 expected: 1
+SELECT 'A' REGEXP _binary X'5e5b612d7a5d2b24' AS regexp_binary_hex_literal;
+ regexp_binary_hex_literal 
+---------------------------
+ t
+(1 row)
+
+SELECT 'A' REGEXP _binary 0x5e5b612d7a5d2b24 AS regexp_binary_hex_literal;
+ regexp_binary_hex_literal 
+---------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 0
+SELECT 'A' REGEXP _binary B'0101111001011011011000010010110101111010010111010010101100100100' AS regexp_binary_bit_literal;
+ regexp_binary_bit_literal 
+---------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 0
+SELECT s FROM mysql_binary_test
+WHERE s NOT REGEXP _binary '^[a-z]+$';
+  s  
+-----
+ a_c
+ a%c
+(2 rows)
+
+-- MySQL 5.7 expected: a%c, a_c
+SELECT s FROM mysql_binary_test
+WHERE (s = _binary 'abc') OR s = 'ABC';
+  s  
+-----
+ abc
+ ABC
+(2 rows)
+
+-- MySQL 5.7 expected: abc, ABC
+------***************************
+SELECT s FROM mysql_binary_test
+WHERE NOT s LIKE _binary 'A%';
+  s  
+-----
+ a
+ abc
+ a_c
+ a%c
+(4 rows)
+
+-- MySQL 5.7 expected: (empty set)
+SELECT _binary 'x' COLLATE "C" = 'x' AS collated_binary_literal;
+ collated_binary_literal 
+-------------------------
+ t
+(1 row)
+
+-- MySQL 5.7 expected: 1
+DROP TABLE mysql_binary_test;
+-- MySQL _binary / charset introducer compatibility cases.
+-- Expected byte results are shown as hex bytes.
+select _BiNary 'abc';          -- ok: bytes 61 62 63
+ ?column? 
+----------
+ \x616263
+(1 row)
+
+select _binary 'abc';          -- ok: bytes 61 62 63
+ ?column? 
+----------
+ \x616263
+(1 row)
+
+select _binary 'abd';          -- ok: bytes 61 62 64
+ ?column? 
+----------
+ \x616264
+(1 row)
+
+select _binary 'abdv';         -- ok: bytes 61 62 64 76
+  ?column?  
+------------
+ \x61626476
+(1 row)
+
+select _binary '6162';         -- ok: bytes 36 31 36 32
+  ?column?  
+------------
+ \x36313632
+(1 row)
+
+select _binary '5c6e';         -- ok: bytes 35 63 36 65
+  ?column?  
+------------
+ \x35633665
+(1 row)
+
+select _binary '\0';           -- ok: bytes 00
+ ?column? 
+----------
+ \x00
+(1 row)
+
+select _binary '\Z';           -- ok: bytes 1a
+ ?column? 
+----------
+ \x1a
+(1 row)
+
+select _binary '\n';           -- ok: bytes 0a
+ ?column? 
+----------
+ \x0a
+(1 row)
+
+select _binary '\r';           -- ok: bytes 0d
+ ?column? 
+----------
+ \x0d
+(1 row)
+
+select _binary '\t';           -- ok: bytes 09
+ ?column? 
+----------
+ \x09
+(1 row)
+
+select _binary '\b';           -- ok: bytes 08
+ ?column? 
+----------
+ \x08
+(1 row)
+
+select _binary '''''';         -- ok: bytes 27 27
+ ?column? 
+----------
+ \x2727
+(1 row)
+
+select _binary '123\
+aa';                           -- ok: bytes 31 32 33 0a 61 61
+    ?column?    
+----------------
+ \x3132330a6161
+(1 row)
+
+--select _binary '\'\'';         -- ok: mysql server ok:''
+select _binary '\u1';          -- ok: bytes 75 31
+ ?column? 
+----------
+ \x7531
+(1 row)
+
+select _binary '\x00';         -- ok: bytes 78 30 30
+ ?column? 
+----------
+ \x783030
+(1 row)
+
+--**********************
+set standard_conforming_strings = off;
+select _binary '\'';           -- ok: bytes 27
+ ?column? 
+----------
+ \x27
+(1 row)
+
+-- select _binary 'abc\';        -- failed ,sql not end.
+set standard_conforming_strings = default;
+select _binary '\\';           -- ok: bytes 5c
+ ?column? 
+----------
+ \x5c
+(1 row)
+
+select _binary 'a''b';         -- ok: bytes 61 27 62
+ ?column? 
+----------
+ \x612762
+(1 row)
+
+select _binary x'6162';        -- ok: bytes 61 62
+ varbinary 
+-----------
+ \x6162
+(1 row)
+
+select _binary X'6162';        -- ok: bytes 61 62
+ varbinary 
+-----------
+ \x6162
+(1 row)
+
+select _binary x'5c6e';        -- ok: bytes 5c 6e
+ varbinary 
+-----------
+ \x5c6e
+(1 row)
+
+select _binary x'';            -- ok: empty bytes
+ varbinary 
+-----------
+ \x
+(1 row)
+
+select _binary x'abc';         -- mysql error: odd number of hex digits in x'...'
+ERROR:  You have an error in your SQL syntax.
+select _binary x'g1';          -- mysql error: invalid hex digit
+ERROR:  invalid hexadecimal digit: "g"
+LINE 1: select _binary x'g1';
+                       ^
+select _binary x'61g2';        -- mysql error: invalid hex digit
+ERROR:  invalid hexadecimal digit: "g"
+LINE 1: select _binary x'61g2';
+                       ^
+select _binary 0x6162;         -- ok: bytes 61 62
+ varbinary 
+-----------
+ \x6162
+(1 row)
+
+select _binary 0X6162;         -- mysql error: not support 0X
+ERROR:  syntax error at or near "0X6162"
+LINE 1: select _binary 0X6162;
+                       ^
+select _binary 0xabc;          -- ok: bytes 0a bc
+ varbinary 
+-----------
+ \x0abc
+(1 row)
+
+select _binary 0x0abc;         -- ok: bytes 0a bc
+ varbinary 
+-----------
+ \x0abc
+(1 row)
+
+select _binary 0x;             -- mysql error: invalid hexadecimal integer
+ERROR:  syntax error at or near "0x"
+LINE 1: select _binary 0x;
+                       ^
+select _binary 0x_;            -- mysql error: invalid hexadecimal integer
+ERROR:  syntax error at or near "0x_"
+LINE 1: select _binary 0x_;
+                       ^
+select _binary 0x12_;          -- mysql error: invalid hexadecimal integer
+ERROR:  syntax error at or near "0x12_"
+LINE 1: select _binary 0x12_;
+                       ^
+select _binary 0xg1;           -- mysql error: invalid hexadecimal integer
+ERROR:  syntax error at or near "0xg1"
+LINE 1: select _binary 0xg1;
+                       ^
+select _binary b'01100001';    -- ok: bytes 61
+ varbinary 
+-----------
+ \x61
+(1 row)
+
+select _binary B'01100001';    -- ok: bytes 61
+ varbinary 
+-----------
+ \x61
+(1 row)
+
+select _binary b'1';           -- ok: bytes 01
+ varbinary 
+-----------
+ \x01
+(1 row)
+
+select _binary b'101010111100'; -- ok: bytes 0a bc
+ varbinary 
+-----------
+ \x0abc
+(1 row)
+
+select _binary b'';            -- ok: empty bytes
+ varbinary 
+-----------
+ \x
+(1 row)
+
+select _binary;                -- mysql error: unterminated MySQL character set introducer
+ERROR:  syntax error at or near ";"
+LINE 1: select _binary;
+                      ^
+select _binary abc;            -- mysql error: introducer must be followed by a string literal
+ERROR:  syntax error at or near "abc"
+LINE 1: select _binary abc;
+                       ^
+select _binary 123;            -- mysql error: introducer must be followed by a string literal
+ERROR:  syntax error at or near "123"
+LINE 1: select _binary 123;
+                       ^
+select _utf8 'abc';            -- mysql-compatible parser path recognized; current implementation error: _utf8 not supported
+ ?column? 
+----------
+ \x616263
+(1 row)
+
+select _utf8mb4 'abc';         -- mysql-compatible parser path recognized; current implementation error: _utf8mb4 not supported
+ ?column? 
+----------
+ \x616263
+(1 row)
+
+create table test_col_type as select _binary 'aaay';
+\d test_col_type;
+             Table "public.test_col_type"
+  Column  |   Type    | Collation | Nullable | Default 
+----------+-----------+-----------+----------+---------
+ ?column? | varbinary | default   |          | 
+
+drop table test_col_type;
+create table test_col_b as select _binary b'010000001';
+\d test_col_b;
+               Table "public.test_col_b"
+  Column   |   Type    | Collation | Nullable | Default 
+-----------+-----------+-----------+----------+---------
+ varbinary | varbinary |           |          | 
+
+drop table test_col_b;
+select _binary b'102';         -- mysql error: invalid binary digit
+ERROR:  You have an error in your SQL syntax.
+set mysql.use_mysql_bit_literal = default;
+select _binary b'102';
+ varbinary 
+-----------
+ \x96
+(1 row)
+
+set sql_mode = 'NO_BACKSLASH_ESCAPES,REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE';
+select _binary '\0';           -- ok: bytes 5c 30
+ ?column? 
+----------
+ \x5c30
+(1 row)
+
+select _binary '\Z';           -- ok: bytes 5c 5a
+ ?column? 
+----------
+ \x5c5a
+(1 row)
+
+select _binary '\n';           -- ok: bytes 5c 6e
+ ?column? 
+----------
+ \x5c6e
+(1 row)
+
+select _binary '\r';           -- ok: bytes 5c 72
+ ?column? 
+----------
+ \x5c72
+(1 row)
+
+select _binary '\t';           -- ok: bytes 5c 74
+ ?column? 
+----------
+ \x5c74
+(1 row)
+
+select _binary '\b';           -- ok: bytes 5c 62
+ ?column? 
+----------
+ \x5c62
+(1 row)
+
+select _binary '\\';           -- ok: bytes 5c 5c
+ ?column? 
+----------
+ \x5c5c
+(1 row)
+
+set sql_mode = default;

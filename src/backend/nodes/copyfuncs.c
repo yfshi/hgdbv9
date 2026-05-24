@@ -5762,6 +5762,7 @@ _copyValue(const Value *from)
 			break;
 		case T_Float:
 		case T_String:
+		case T_IntroducerConst:			/* Req:SRS-MYSQL-SQL-Select */
 		case T_BitString:
 			COPY_STRING_FIELD(val.str);
 			break;
