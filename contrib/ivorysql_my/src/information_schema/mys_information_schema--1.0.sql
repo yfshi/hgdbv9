@@ -2087,3 +2087,89 @@ FROM (
 GRANT SELECT ON performance_schema.session_status TO PUBLIC;
 
 /* End - #Z5943 */
+
+/* Begin - ReqID:SRS-MYSQL-PROC */
+CREATE type mysql.enum_mysql_proc_type as enum('FUNCTION','PROCEDURE');
+CREATE type mysql.enum_mysql_proc_language as enum('SQL');
+CREATE type mysql.enum_mysql_proc_access as enum('CONTAINS_SQL','NO_SQL','READS_SQL_DATA','MODIFIES_SQL_DATA');
+CREATE type mysql.enum_mysql_proc_deterministic as enum('YES','NO');
+CREATE type mysql.enum_mysql_proc_security as enum('INVOKER','DEFINER');
+
+CREATE OR REPLACE VIEW mysql.proc AS
+SELECT
+	-- db
+    n.nspname::char(64) AS db,
+	-- name
+    p.proname::char(64) AS name,
+	-- type
+    CASE p.prokind
+        WHEN 'f' THEN 'FUNCTION'
+        WHEN 'p' THEN 'PROCEDURE'
+    END::mysql.enum_mysql_proc_type AS type,
+	-- specific_name
+    p.proname::char(64) AS specific_name,
+	-- language
+    'SQL'::mysql.enum_mysql_proc_language AS language,
+	-- sql_data_access
+	'MODIFIES_SQL_DATA'::mysql.enum_mysql_proc_access AS sql_data_access,
+	-- is_deterministic
+	CASE p.provolatile
+        WHEN 'i' THEN 'YES'
+        ELSE 'NO'
+    END::mysql.enum_mysql_proc_deterministic AS is_deterministic,
+	-- security_type
+	CASE p.prosecdef
+        WHEN true THEN 'DEFINER'
+        ELSE 'INVOKER'
+    END::mysql.enum_mysql_proc_security AS security_type,
+	-- param_list
+	pg_get_function_arguments(p.oid)::text AS param_list,
+	-- returns
+	CASE p.prokind
+		WHEN 'f' THEN format_type(p.prorettype, NULL)
+		ELSE ''
+	END::longblob AS returns,
+	-- body
+	pg_get_function_body(p.oid) AS body,
+	-- definer
+	pg_get_userbyid(p.proowner)::char(93) AS definer,
+	-- created
+	ob.created::timestamp AS created,
+	-- modified
+	ob.modified::timestamp AS modified,
+	-- sql_mode
+	(
+		SELECT split_part(config, '=', 2) FROM (SELECT unnest(proconfig) AS config)
+		WHERE config LIKE 'sql_mode=%'
+	)::varchar AS sql_mode,
+	-- comment
+    d.description::text AS comment,
+	-- character_set_client
+	pg_encoding_to_char(db.encoding)::char(32) AS character_set_client,
+	-- collation_connection
+	(
+		SELECT `DEFAULT_COLLATE_NAME` FROM mys_information_schema.character_sets
+		WHERE lower(pg_encoding_to_char(db.encoding)) = `CHARACTER_SET_NAME`
+	)::char(32) AS collation_connection,
+	-- db_collation
+	(
+		SELECT `DEFAULT_COLLATE_NAME` FROM mys_information_schema.character_sets
+		WHERE lower(pg_encoding_to_char(db.encoding)) = `CHARACTER_SET_NAME`
+	)::char(32) AS db_collation,
+	-- body_utf8
+    pg_get_function_body(p.oid) AS body_utf8
+FROM
+    pg_proc p
+JOIN
+    pg_namespace n ON n.oid = p.pronamespace
+LEFT JOIN
+    pg_description d ON d.objoid = p.oid AND d.objsubid = 0
+LEFT JOIN
+    pg_object ob ON d.objoid = ob.obj_oid
+LEFT JOIN
+    pg_database db ON db.datname = current_database()
+WHERE
+    p.prokind = 'f' OR p.prokind = 'p';
+
+GRANT SELECT ON mysql.proc TO PUBLIC;
+/* End - ReqID:SRS-MYSQL-PROC */

@@ -42,6 +42,7 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "catalog/pg_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+#include "commands/comment.h"
 #include "commands/defrem.h"
 #include "commands/tablespace.h"
 #include "commands/view.h"		/* ReqID:SRS-SQL-FORCEVIEW */
@@ -544,6 +545,7 @@ static const char *standard_quote_identifier(const char *ident);
 static char *trim_whitespace(char *str);
 
 Datum pg_get_functiondef_internal(PG_FUNCTION_ARGS); /* BUG:Z139 */
+static Datum mys_get_functiondef_internal(PG_FUNCTION_ARGS); /* ReqID:SRS-MYSQL-SQL-PROC */
 
 #define only_marker(rte)  ((rte)->inh ? "" : "ONLY ")
 
@@ -3263,15 +3265,20 @@ pg_get_functiondef(PG_FUNCTION_ARGS)
 	Datum		result;
 	HeapTuple	proctup;
 	Form_pg_proc proc;
+	char		*lang;
 
 	proctup = SearchSysCache1(PROCOID, funcid);
 	if (!HeapTupleIsValid(proctup))
 		PG_RETURN_NULL();
 
 	proc = (Form_pg_proc) GETSTRUCT(proctup);
+
+	lang = get_language_name(proc->prolang, false);
 	
-	if (strcmp("plisql", get_language_name(proc->prolang, false)) == 0)
+	if (strcmp("plisql", lang) == 0)
 		result = DirectFunctionCall1(ivy_get_plisql_functiondef, funcid);
+	else if (strcmp("plmysql", lang) == 0)
+		result = DirectFunctionCall1(mys_get_functiondef_internal, funcid);
 	else
 		result = DirectFunctionCall1(pg_get_functiondef_internal, funcid);
 
@@ -3560,6 +3567,327 @@ pg_get_functiondef_internal(PG_FUNCTION_ARGS)
 	PG_RETURN_TEXT_P(string_to_text(buf.data));
 }
 
+/* Begin - ReqID:SRS-MYSQL-SQL-PROC */
+static void
+pg_get_function_body_internal(HeapTuple	proctup, StringInfo buf)
+{
+	Form_pg_proc proc;
+	Datum		tmp;
+	bool		isnull;
+	const char *prosrc;
+	StringInfoData dq;
+	bool		isfunction;
+
+	proc = (Form_pg_proc) GETSTRUCT(proctup);
+
+	isfunction = (proc->prokind != PROKIND_PROCEDURE);
+
+	SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosqlbody, &isnull);
+
+	if (proc->prolang == SQLlanguageId && !isnull)
+	{
+		print_function_sqlbody(buf, proctup);
+	}
+	else
+	{
+		appendStringInfoString(buf, "AS ");
+
+		tmp = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_probin, &isnull);
+		if (!isnull)
+		{
+			simple_quote_literal(buf, TextDatumGetCString(tmp));
+			appendStringInfoString(buf, ", "); /* assume prosrc isn't null */
+		}
+
+		tmp = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_prosrc, &isnull);
+
+		if (isnull)
+			elog(ERROR, "null prosrc");
+		prosrc = TextDatumGetCString(tmp);
+
+		/*
+		 * We always use dollar quoting.  Figure out a suitable delimiter.
+		 *
+		 * Since the user is likely to be editing the function body string, we
+		 * shouldn't use a short delimiter that he might easily create a
+		 * conflict with.  Hence prefer "$function$"/"$procedure$", but extend
+		 * if needed.
+		 */
+		initStringInfo(&dq);
+		appendStringInfoChar(&dq, '$');
+		appendStringInfoString(&dq, (isfunction ? "function" : "procedure"));
+		while (strstr(prosrc, dq.data) != NULL)
+			appendStringInfoChar(&dq, 'x');
+		appendStringInfoChar(&dq, '$');
+
+		appendBinaryStringInfo(buf, dq.data, dq.len);
+		appendStringInfoString(buf, prosrc);
+		appendBinaryStringInfo(buf, dq.data, dq.len);
+	}
+}
+
+Datum
+mys_get_functiondef_internal(PG_FUNCTION_ARGS)
+{
+	Oid			funcid = PG_GETARG_OID(0);
+	StringInfoData buf;
+	HeapTuple	proctup;
+	Form_pg_proc proc;
+	bool		isfunction;
+	Datum		tmp;
+	bool		isnull;
+	const char *name;
+	const char *nsp;
+	float4		procost;
+	int			oldlen;
+	char		*comment;
+
+	initStringInfo(&buf);
+
+	/* Look up the function */
+	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcid));
+	if (!HeapTupleIsValid(proctup))
+		PG_RETURN_NULL();
+
+	proc = (Form_pg_proc) GETSTRUCT(proctup);
+	name = NameStr(proc->proname);
+
+	if (proc->prokind == PROKIND_AGGREGATE)
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("\"%s\" is an aggregate function", name)));
+
+	isfunction = (proc->prokind != PROKIND_PROCEDURE);
+
+	/*
+	 * We always qualify the function name, to ensure the right function gets
+	 * replaced.
+	 */
+	nsp = get_namespace_name(proc->pronamespace);
+
+	/* Begin - ReqID:SRS-MYSQL-CASE */
+	if (mysql_switch_hook && mysql_get_objnameinfo_hook && mysql_switch_hook())
+	{
+		char	   *fucname = NULL;
+		char	   *fucschema = NULL;
+		ObjectAddress address;
+
+		ObjectAddressSet(address, ProcedureRelationId, proc->oid);
+		mysql_get_objnameinfo_hook(address, &fucname, &fucschema);
+		if (fucname)
+			name = pstrdup(fucname);
+		if (fucschema)
+			nsp = pstrdup(fucschema);
+	}
+	/* End - ReqID:SRS-MYSQL-CASE */
+
+	appendStringInfo(&buf, "CREATE OR REPLACE ");
+
+	// DEFINEER
+	appendStringInfo(&buf, "DEFINER = `%s`@`%%` ", GetUserNameFromId(proc->proowner, true));
+
+	appendStringInfo(&buf, "%s `%s`(",
+					 isfunction ? "FUNCTION" : "PROCEDURE",
+					 quote_qualified_identifier(nsp, name));
+
+	(void) print_function_arguments(&buf, proctup, false, true);
+	appendStringInfoString(&buf, ")\n");
+
+	if (isfunction)
+	{
+		appendStringInfoString(&buf, " RETURNS ");
+		print_function_rettype(&buf, proctup);
+		appendStringInfoChar(&buf, '\n');
+	}
+
+	print_function_trftypes(&buf, proctup);
+
+	// LANGUAGE
+	appendStringInfo(&buf, " LANGUAGE SQL\n");
+
+	// COMMENT
+	comment = GetComment(funcid, ProcedureRelationId, 0);
+	if (comment)
+		appendStringInfo(&buf, " COMMENT '%s'\n", comment);
+
+	/* Emit some miscellaneous options on one line */
+	oldlen = buf.len;
+
+	if (proc->prokind == PROKIND_WINDOW)
+		appendStringInfoString(&buf, " WINDOW");
+
+	// DETERMINISTIC
+	switch (proc->provolatile)
+	{
+		case PROVOLATILE_IMMUTABLE:
+			appendStringInfoString(&buf, " DETERMINISTIC"); // IMMUTABLE
+			break;
+		case PROVOLATILE_STABLE:
+			appendStringInfoString(&buf, " STABLE");
+			break;
+		case PROVOLATILE_VOLATILE:
+			break;
+	}
+
+	switch (proc->proparallel)
+	{
+		case PROPARALLEL_SAFE:
+			appendStringInfoString(&buf, " PARALLEL SAFE");
+			break;
+		case PROPARALLEL_RESTRICTED:
+			appendStringInfoString(&buf, " PARALLEL RESTRICTED");
+			break;
+		case PROPARALLEL_UNSAFE:
+			break;
+	}
+
+	if (proc->proisstrict)
+		appendStringInfoString(&buf, " STRICT");
+
+	// default value of function security is invoker in mysql
+	if (!proc->prosecdef)
+		appendStringInfoString(&buf, " SQL SECURITY INVOKER"); // SECURITY INVOKER
+
+	if (proc->proleakproof)
+		appendStringInfoString(&buf, " LEAKPROOF");
+
+	/* This code for the default cost and rows should match functioncmds.c */
+	if (proc->prolang == INTERNALlanguageId ||
+		proc->prolang == ClanguageId)
+		procost = 1;
+	else
+		procost = 100;
+	if (proc->procost != procost)
+		appendStringInfo(&buf, " COST %g", proc->procost);
+
+	if (proc->prorows > 0 && proc->prorows != 1000)
+		appendStringInfo(&buf, " ROWS %g", proc->prorows);
+
+	if (proc->prosupport)
+	{
+		Oid			argtypes[1];
+
+		/*
+		 * We should qualify the support function's name if it wouldn't be
+		 * resolved by lookup in the current search path.
+		 */
+		argtypes[0] = INTERNALOID;
+		appendStringInfo(&buf, " SUPPORT %s",
+						 generate_function_name(proc->prosupport, 1,
+												NIL, argtypes,
+												false, NULL, EXPR_KIND_NONE));
+	}
+
+	if (oldlen != buf.len)
+		appendStringInfoChar(&buf, '\n');
+
+	/* Emit any proconfig options, one per line */
+	tmp = SysCacheGetAttr(PROCOID, proctup, Anum_pg_proc_proconfig, &isnull);
+	if (!isnull)
+	{
+		ArrayType  *a = DatumGetArrayTypeP(tmp);
+		int			i;
+
+		Assert(ARR_ELEMTYPE(a) == TEXTOID);
+		Assert(ARR_NDIM(a) == 1);
+		Assert(ARR_LBOUND(a)[0] == 1);
+
+		for (i = 1; i <= ARR_DIMS(a)[0]; i++)
+		{
+			Datum		d;
+
+			d = array_ref(a, 1, &i,
+						  -1 /* varlenarray */ ,
+						  -1 /* TEXT's typlen */ ,
+						  false /* TEXT's typbyval */ ,
+						  TYPALIGN_INT /* TEXT's typalign */ ,
+						  &isnull);
+			if (!isnull)
+			{
+				char	   *configitem = TextDatumGetCString(d);
+				char	   *pos;
+
+				pos = strchr(configitem, '=');
+				if (pos == NULL)
+					continue;
+				*pos++ = '\0';
+
+				appendStringInfo(&buf, " SET %s TO ",
+								 quote_identifier(configitem));
+
+				/*
+				 * Variables that are marked GUC_LIST_QUOTE were already fully
+				 * quoted by flatten_set_variable_args() before they were put
+				 * into the proconfig array.  However, because the quoting
+				 * rules used there aren't exactly like SQL's, we have to
+				 * break the list value apart and then quote the elements as
+				 * string literals.  (The elements may be double-quoted as-is,
+				 * but we can't just feed them to the SQL parser; it would do
+				 * the wrong thing with elements that are zero-length or
+				 * longer than NAMEDATALEN.)
+				 *
+				 * Variables that are not so marked should just be emitted as
+				 * simple string literals.  If the variable is not known to
+				 * guc.c, we'll do that; this makes it unsafe to use
+				 * GUC_LIST_QUOTE for extension variables.
+				 */
+				if (GetConfigOptionFlags(configitem, true) & GUC_LIST_QUOTE)
+				{
+					List	   *namelist;
+					ListCell   *lc;
+
+					/* Parse string into list of identifiers */
+					if (!SplitGUCList(pos, ',', &namelist))
+					{
+						/* this shouldn't fail really */
+						elog(ERROR, "invalid list syntax in proconfig item");
+					}
+					foreach(lc, namelist)
+					{
+						char	   *curname = (char *) lfirst(lc);
+
+						simple_quote_literal(&buf, curname);
+						if (lnext(namelist, lc))
+							appendStringInfoString(&buf, ", ");
+					}
+				}
+				else
+					simple_quote_literal(&buf, pos);
+				appendStringInfoChar(&buf, '\n');
+			}
+		}
+	}
+
+	/* And finally the function definition ... */
+	pg_get_function_body_internal(proctup, &buf);
+
+	appendStringInfoChar(&buf, '\n');
+
+	ReleaseSysCache(proctup);
+
+	PG_RETURN_TEXT_P(string_to_text(buf.data));
+}
+
+Datum
+pg_get_function_body(PG_FUNCTION_ARGS)
+{
+	Oid				funcid = PG_GETARG_OID(0);
+	HeapTuple		proctup;
+	StringInfoData	buf;
+
+	initStringInfo(&buf);
+
+	proctup = SearchSysCache1(PROCOID, ObjectIdGetDatum(funcid));
+	if (!HeapTupleIsValid(proctup))
+		PG_RETURN_NULL();
+	
+	pg_get_function_body_internal(proctup, &buf);
+
+	ReleaseSysCache(proctup);
+
+	PG_RETURN_TEXT_P(string_to_text(buf.data));
+}
+/* End - ReqID:SRS-MYSQL-SQL-PROC */
 
 /* Begin - BUG:Z139 */
 /*

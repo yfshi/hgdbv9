@@ -323,6 +323,12 @@ static Node *makeShowPluginsStmt(void);
 static Node *makeShowEnginesStmt(void);
 /* End - ReqID:SRS-MYSQL-SHOW */
 
+/* Begin - ReqID:SRS-MYSQL-PROC */
+static Node *makeShowCreateFunctionStmt(List *func_name);
+static Node *makeShowCreateProcedureStmt(List *pro_name);
+static List *add_sql_mode_to_proconfig(List *proconfig);
+/* End - ReqID:SRS-MYSQL-PROC */
+
 /* Begin - ReqID:SRS-MYSQL-RENAME */
 static void CheckUserHostId(char *userName, char *hostId);
 static bool IsValidIdentUsername(char *input);
@@ -457,7 +463,7 @@ static char *concatSconstList(List *strs);
 %type <node>	alter_table_cmd alter_type_cmd opt_collate_clause auto_increment auto_increment_value
 	   			replica_identity partition_cmd index_partition_cmd
 /* Begin - SRS-MYSQL-CREATE-TABLE */
-%type <list>    create_table_options_list create_table_options_list_node
+%type <list>    create_table_options_list opt_create_table_options_list
 %type <node>    create_engine create_comment create_table_options create_row_format /* oa-2019 */ 
 %type <list>    index_options create_table_index_opt opt_index_options /* ReqID:SRS-MYSQL-CREATE-INDEX */
 %type <node>    index_opt 
@@ -855,6 +861,12 @@ static char *concatSconstList(List *strs);
 %type <list>		sconst_list from_list_parens table_ref_factor
 /* End: Req:SRS-MYSQL-SQL-Select */
 
+/* Begin - ReqID: SRS-MYSQL-PROC */
+%type <defelt>		mys_func_opt_item
+%type <node>		opt_definer definer_value
+%type <list>		mys_func_name
+/* End - ReqID: SRS-MYSQL-PROC */
+
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
  * They must be listed first so that their numeric codes do not depend on
@@ -895,14 +907,18 @@ static char *concatSconstList(List *strs);
 	CHARACTER CHARACTERISTICS CHARSET CHECK CHECKPOINT CLASS CLOSE
 	CLUSTER COALESCE COLLATE COLLATION COLUMN COLUMNS COMMENT COMMENTS COMMIT
 	COMMITTED COMPRESSION CONCURRENTLY CONFIGURATION CONFLICT
-	CONNECTION CONSTRAINT CONSTRAINTS CONTENT_P CONTINUE_P CONVERSION_P CONVERT COPY
+	CONNECTION CONSTRAINT CONSTRAINTS
+	CONTAINS /* SRS-MYSQL-PROC */
+	CONTENT_P CONTINUE_P CONVERSION_P CONVERT COPY
 	COST CREATE CROSS CSV CUBE CURRENT_P
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CURTIME CYCLE
 
 	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC DESCRIBE /* ReqID:SRS-MYSQL-SHOW */
-	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO_P
+	DETACH
+	DETERMINISTIC /* SRS-MYSQL-PROC */
+	DICTIONARY DISABLE_P DISCARD DISTINCT DO_P
 	DISTINCTROW /* BUG#Z4610*/ 
 	DIV DO DOCUMENT_P DOMAIN_P
 	DOUBLE_P DROP DUAL /* ReqID:SRS-MYSQL-SELECT */ DUPLICATE_P
@@ -936,7 +952,10 @@ static char *concatSconstList(List *strs);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LONGBLOB LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
-	MICROSECOND_P MINUTE_P MINVALUE MOD MODE MODIFY /* ReqID:SRS-MYSQL-SQL-Alter */ MONTH_P MOVE
+	MICROSECOND_P MINUTE_P MINVALUE MOD MODE
+	MODIFIES /* SRS-MYSQL-PROC */
+	MODIFY /* ReqID:SRS-MYSQL-SQL-Alter */
+	MONTH_P MOVE
 
 	NAME_CONST NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NONE
 	NORMALIZE NORMALIZED
@@ -954,7 +973,9 @@ static char *concatSconstList(List *strs);
 
 	QUARTER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
-	RANGE READ REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
+	RANGE READ
+	READS /* SRS-MYSQL-PROC */
+	REAL REASSIGN RECHECK RECURSIVE REF_P REFERENCES REFERENCING
 	REFRESH REGEXP REINDEX RELATIVE_P RLIKE RELEASE RENAME REPEATABLE REPLACE REPLICA
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS ROW_FORMAT /* oa-2019 */ RULE
@@ -2528,8 +2549,26 @@ MysqlShowStmt:
 					$$ = makeShowEnginesStmt();
 				}
 			/* End - ReqID: SRS-MYSQL-PROTOCOL */
+			/* Begin - Req: SRS-MYSQL-PROC */
+			| SHOW CREATE FUNCTION mys_func_name
+				{
+					$$ = makeShowCreateFunctionStmt($4);
+				}
+			| SHOW CREATE PROCEDURE mys_func_name
+				{
+					$$ = makeShowCreateProcedureStmt($4);
+				}
+			/* End - Req: SRS-MYSQL-PROC */
 /* End - Req: SRS-MYSQL-SHOW */
 		;
+
+/* Begin - Req: SRS-MYSQL-PROC */
+mys_func_name:
+			IDENT					{ $$ = list_make1(makeStringConst($1, @1)); }
+			| IDENT '.' IDENT		{ $$ = list_make2(makeStringConst($1, @1), makeStringConst($3, @3)); }
+		;
+/* End - Req: SRS-MYSQL-PROC */
+
 
 describe:
 			DESCRIBE
@@ -3587,7 +3626,7 @@ auto_increment:
 			auto_increment_value						{ $$ = (Node *) makeDefElem("start", $1, @1); }
 		;
 
-create_table_options_list_node:
+opt_create_table_options_list:
 			create_table_options_list		{ $$ = $1; }
 			| /* EMPTY */					{ $$ = NIL; }
 		;
@@ -4349,7 +4388,7 @@ copy_generic_opt_arg_list_item:
 CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OptPartitionSpec table_access_method_clause OptWith
 			OnCommitOption OptTableSpace
-			create_table_options_list_node /* SRS-MYSQL-CREATE-TABLE */
+			opt_create_table_options_list /* SRS-MYSQL-CREATE-TABLE */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4376,7 +4415,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name '('
 			OptTableElementList ')' OptInherit OptPartitionSpec table_access_method_clause
 			OptWith OnCommitOption OptTableSpace
-			create_table_options_list_node /* SRS-MYSQL-CREATE-TABLE */
+			opt_create_table_options_list /* SRS-MYSQL-CREATE-TABLE */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4403,7 +4442,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		| CREATE OptTemp TABLE qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
 			OptWith OnCommitOption OptTableSpace
-			create_table_options_list_node /* SRS-MYSQL-CREATE-TABLE */
+			opt_create_table_options_list /* SRS-MYSQL-CREATE-TABLE */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4431,7 +4470,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
 			OptWith OnCommitOption OptTableSpace
-			create_table_options_list_node /* SRS-MYSQL-CREATE-TABLE */
+			opt_create_table_options_list /* SRS-MYSQL-CREATE-TABLE */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4459,7 +4498,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		| CREATE OptTemp TABLE qualified_name PARTITION OF qualified_name
 			OptTypedTableElementList PartitionBoundSpec OptPartitionSpec
 			table_access_method_clause OptWith OnCommitOption OptTableSpace
-			create_table_options_list_node /* SRS-MYSQL-CREATE-TABLE */
+			opt_create_table_options_list /* SRS-MYSQL-CREATE-TABLE */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -4487,7 +4526,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name PARTITION OF
 			qualified_name OptTypedTableElementList PartitionBoundSpec OptPartitionSpec
 			table_access_method_clause OptWith OnCommitOption OptTableSpace
-			create_table_options_list_node  /* SRS-MYSQL-CREATE-TABLE */
+			opt_create_table_options_list  /* SRS-MYSQL-CREATE-TABLE */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -9370,60 +9409,144 @@ opt_lowpriority:
  *****************************************************************************/
 
 CreateFunctionStmt:
-			CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
+			CREATE opt_or_replace opt_definer FUNCTION func_name func_args_with_defaults
 			RETURNS func_return opt_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
 					n->replace = $2;
-					n->funcname = $4;
-					n->parameters = $5;
-					n->returnType = $7;
-					n->options = $8;
-					n->sql_body = $9;
+					n->funcname = $5;
+					n->parameters = $6;
+					n->returnType = $8;
+					n->options = $9;
+					n->sql_body = $10;
+
+					/* Begin - ReqID: SRS-MYSQL-PROC */
+					if ($3)
+					{
+						n->options = lappend(n->options, $3);
+					}
+
+					if (create_function_with_sql_mode)
+						n->options = add_sql_mode_to_proconfig(n->options);
+					/* End - ReqID: SRS-MYSQL-PROC */
+
 					$$ = (Node *)n;
 				}
-			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
+			| CREATE opt_or_replace opt_definer FUNCTION func_name func_args_with_defaults
 			  RETURNS TABLE '(' table_func_column_list ')' opt_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
 					n->replace = $2;
-					n->funcname = $4;
-					n->parameters = mergeTableFuncParameters($5, $9);
-					n->returnType = TableFuncTypeName($9);
-					n->returnType->location = @7;
-					n->options = $11;
-					n->sql_body = $12;
+					n->funcname = $5;
+					n->parameters = mergeTableFuncParameters($6, $10);
+					n->returnType = TableFuncTypeName($10);
+					n->returnType->location = @8;
+					n->options = $12;
+					n->sql_body = $13;
+
+					/* Begin - ReqID: SRS-MYSQL-PROC */
+					if ($3)
+					{
+						n->options = lappend(n->options, $3);
+					}
+
+					if (create_function_with_sql_mode)
+						n->options = add_sql_mode_to_proconfig(n->options);
+					/* End - ReqID: SRS-MYSQL-PROC */
+
 					$$ = (Node *)n;
 				}
-			| CREATE opt_or_replace FUNCTION func_name func_args_with_defaults
+			| CREATE opt_or_replace opt_definer FUNCTION func_name func_args_with_defaults
 			  opt_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = false;
 					n->replace = $2;
-					n->funcname = $4;
-					n->parameters = $5;
+					n->funcname = $5;
+					n->parameters = $6;
 					n->returnType = NULL;
-					n->options = $6;
-					n->sql_body = $7;
+					n->options = $7;
+					n->sql_body = $8;
+
+					/* Begin - ReqID: SRS-MYSQL-PROC */
+					if ($3)
+					{
+						n->options = lappend(n->options, $3);
+					}
+
+					if (create_function_with_sql_mode)
+						n->options = add_sql_mode_to_proconfig(n->options);
+					/* End - ReqID: SRS-MYSQL-PROC */
+
 					$$ = (Node *)n;
 				}
-			| CREATE opt_or_replace PROCEDURE func_name func_args_with_defaults
+			| CREATE opt_or_replace opt_definer PROCEDURE func_name func_args_with_defaults
 			  opt_createfunc_opt_list opt_routine_body
 				{
 					CreateFunctionStmt *n = makeNode(CreateFunctionStmt);
 					n->is_procedure = true;
 					n->replace = $2;
-					n->funcname = $4;
-					n->parameters = $5;
+					n->funcname = $5;
+					n->parameters = $6;
 					n->returnType = NULL;
-					n->options = $6;
-					n->sql_body = $7;
+					n->options = $7;
+					n->sql_body = $8;
+
+					/* Begin - ReqID: SRS-MYSQL-PROC */
+					if ($3)
+					{
+						n->options = lappend(n->options, $3);
+					}
+
+					if (create_function_with_sql_mode)
+						n->options = add_sql_mode_to_proconfig(n->options);
+					/* End - ReqID: SRS-MYSQL-PROC */
+
 					$$ = (Node *)n;
 				}
 		;
+
+/* Begin - ReqID: SRS-MYSQL-PROC */
+opt_definer:
+			DEFINER '=' definer_value
+				{
+					$$ = $3;
+				}
+			| /* EMPTY */
+				{
+					$$ = NULL;
+				}
+		;
+
+definer_value:
+			SCONST USER_VARIABLE_NAME
+				{
+					RoleSpec *n;
+					n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+					n->rolename = pstrdup($1);
+					CheckUserHostId($1, $2);
+					$$ = (Node *) makeDefElem("owner", (Node *) n, @1);
+				}
+			| IDENT USER_VARIABLE_NAME
+				{
+					RoleSpec *n;
+					n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+					n->rolename = pstrdup($1);
+					CheckUserHostId($1, $2);
+					$$ = (Node *) makeDefElem("owner", (Node *) n, @1);
+				}
+			| CURRENT_USER
+				{
+					$$ = NULL;
+				}
+			| CURRENT_USER '(' ')'
+				{
+					$$ = NULL;
+				}
+		;
+/* End - ReqID: SRS-MYSQL-PROC */
 
 opt_or_replace:
 			OR REPLACE								{ $$ = true; }
@@ -9829,7 +9952,54 @@ createfunc_opt_item:
 				{
 					$$ = $1;
 				}
+			/* Begin - ReqID: SRS-MYSQL-PROC */
+			| mys_func_opt_item
+				{
+					$$ = $1;
+				}
+			/* End - ReqID: SRS-MYSQL-PROC */
 		;
+
+/* Begin - ReqID: SRS-MYSQL-PROC */
+mys_func_opt_item:
+			SQL_P SECURITY DEFINER
+				{
+					$$ = makeDefElem("security", (Node *)makeInteger(true), @1);
+				}
+			| SQL_P SECURITY INVOKER
+				{
+					$$ = makeDefElem("security", (Node *)makeInteger(false), @1);
+				}
+			| DETERMINISTIC
+				{
+					$$ = makeDefElem("volatility", (Node *)makeString("immutable"), @1);
+				}
+			| NOT DETERMINISTIC
+				{
+					$$ = makeDefElem("volatility", (Node *)makeString("volatile"), @1);
+				}
+			| CONTAINS SQL_P
+				{
+					$$ = makeDefElem("operator_tpye", (Node *)makeString("contains sql"), @1);
+				}
+			| NO SQL_P
+				{
+					$$ = makeDefElem("operator_tpye", (Node *)makeString("no sql"), @1);
+				}
+			| READS SQL_P DATA_P
+				{
+					$$ = makeDefElem("operator_tpye", (Node *)makeString("read sql data"), @1);
+				}
+			| MODIFIES SQL_P DATA_P
+				{
+					$$ = makeDefElem("operator_tpye", (Node *)makeString("modifies sql data"), @1);
+				}
+			| COMMENT SCONST
+				{
+					$$ = makeDefElem("comment", (Node *)makeString($2), @1);
+				}
+		;
+/* End - ReqID: SRS-MYSQL-PROC */
 
 func_as:	Sconst						{ $$ = list_make1(makeString($1)); }
 			| Sconst ',' Sconst
@@ -20382,6 +20552,7 @@ unreserved_keyword:
 			| CONFLICT
 			| CONNECTION
 			| CONSTRAINTS
+			| CONTAINS	/* ReqID:SRS-MYSQL-PROC */
 			| CONTENT_P
 			| CONTINUE_P
 			| CONVERSION_P
@@ -20407,6 +20578,7 @@ unreserved_keyword:
 			| DEPENDS
 			| DEPTH
 			| DETACH
+			| DETERMINISTIC	/* SRS-MYSQL-PROC */
 			| DICTIONARY
 			| DISABLE_P
 			| DISCARD
@@ -20498,6 +20670,7 @@ unreserved_keyword:
 			| MINVALUE
 			| MOD
 			| MODE
+			| MODIFIES	/* ReqID:SRS-MYSQL-PROC */
 			| MODIFY	/* ReqID:SRS-MYSQL-SQL-Alter */
 			| MONTH_P
 			| MOVE
@@ -20557,6 +20730,7 @@ unreserved_keyword:
 			| QUOTE
 			| RANGE
 			| READ
+			| READS		/* ReqID:SRS-MYSQL-PROC */
 			| REASSIGN
 			| RECHECK
 			| RECURSIVE
@@ -21041,6 +21215,7 @@ bare_label_keyword:
 			| CONNECTION
 			| CONSTRAINT
 			| CONSTRAINTS
+			| CONTAINS		/* ReqID:SRS-MYSQL-PROC */
 			| CONTENT_P
 			| CONTINUE_P
 			| CONVERSION_P
@@ -21084,6 +21259,7 @@ bare_label_keyword:
 			| DESC
 			| DESCRIBE /* ReqID: SRS-MYSQL-SHOW */
 			| DETACH
+			| DETERMINISTIC	/* SRS-MYSQL-PROC */
 			| DICTIONARY
 			| DISABLE_P
 			| DISCARD
@@ -21223,6 +21399,7 @@ bare_label_keyword:
 			| MINVALUE
 			| MOD
 			| MODE
+			| MODIFIES		/* ReqID:SRS-MYSQL-PROC */
 			| MODIFY	/* ReqID:SRS-MYSQL-SQL-Alter */
 			| MOVE
 			| NAME_P
@@ -21298,6 +21475,7 @@ bare_label_keyword:
 			| QUOTE
 			| RANGE
 			| READ
+			| READS		/* ReqID:SRS-MYSQL-PROC */
 			| REAL
 			| REASSIGN
 			| RECHECK
@@ -23501,4 +23679,36 @@ concatSconstList(List *strs)
 
 	return buf.data;
 }
-/* End: Req:SRS-MYSQL-SQL-Select */
+/* End: Req:SRS-MYSQL-SQL-Select *//* Begin - ReqID:SRS-MYSQL-SQL-PROC */
+static Node *
+makeShowCreateFunctionStmt(List *func_name)
+{
+	return (Node *) makeRangeFuncSelect("show_create_function",
+										func_name, 
+										NULL);
+}
+
+static Node *
+makeShowCreateProcedureStmt(List *pro_name)
+{
+	return (Node *) makeRangeFuncSelect("show_create_procedure",
+										pro_name, 
+										NULL);
+}
+
+static List *
+add_sql_mode_to_proconfig(List *proconfig)
+{
+	VariableSetStmt *vs;
+	DefElem *elem;
+
+	vs = makeNode(VariableSetStmt);
+	vs->kind = VAR_SET_CURRENT;
+	vs->name = "sql_mode";
+
+	elem = makeDefElem("set", (Node *) vs, -1);
+
+	return lappend(proconfig, (Node *) elem);
+}
+
+/* End - ReqID:SRS-MYSQL-SQL-PROC */

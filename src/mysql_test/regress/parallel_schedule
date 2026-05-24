@@ -136,6 +136,3 @@ test: fast_default
 # run stats by itself because its delay may be insufficient under heavy load
 test: stats
 
-# check for mysql's sql_mode
-# ReqID: SRS-MISC-MYSQL-FRAME
-test: sql_mode

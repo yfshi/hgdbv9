@@ -490,14 +490,22 @@ WITH FUNCTION ivymy.numeric_mystimestamp(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
 /* CREATE CAST */
----------- Compatible Postgresql Cast ----------
 CREATE CAST (ivymy.mystimestamp AS pg_catalog.timestamp)
 WITH INOUT
 AS ASSIGNMENT;
 
+/* Begin - ReqID: SRS-MYSQL-PROC */
+CREATE FUNCTION ivymy.timestamp_mystimestamp(pg_catalog.timestamp)
+RETURNS ivymy.mystimestamp
+AS 'MODULE_PATHNAME','timestamp_mystimestamp'
+LANGUAGE C
+PARALLEL SAFE
+STRICT;
+
 CREATE CAST (pg_catalog.timestamp AS ivymy.mystimestamp)
-WITH INOUT
+WITH FUNCTION ivymy.timestamp_mystimestamp(pg_catalog.timestamp)
 AS ASSIGNMENT;
+/* End - ReqID: SRS-MYSQL-PROC */
 
 CREATE FUNCTION ivymy.timestamptz_mystimestamp(pg_catalog.timestamptz)
 RETURNS ivymy.mystimestamp
@@ -506,6 +514,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.timestamptz AS ivymy.mystimestamp)
 WITH FUNCTION ivymy.timestamptz_mystimestamp(pg_catalog.timestamptz)
 AS ASSIGNMENT;

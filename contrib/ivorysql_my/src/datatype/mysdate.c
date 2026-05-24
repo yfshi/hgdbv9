@@ -3123,14 +3123,9 @@ PG_FUNCTION_INFO_V1(mystimestamp_int8_like);
 PG_FUNCTION_INFO_V1(mystimestamp2_notlike);
 PG_FUNCTION_INFO_V1(mystimestamp_text_notlike);
 PG_FUNCTION_INFO_V1(mystimestamp_int8_notlike);
-/*****************************************************************************
- *	 Date ADT
- *****************************************************************************/
 
-/* 
- * mystimestamp_in
- * Given date text string, convert to internal date format.
- */
+PG_FUNCTION_INFO_V1(timestamp_mystimestamp); /* SRS-MYSQL-PROC */
+
 Datum
 mystimestamp_in(PG_FUNCTION_ARGS)
 {
@@ -7438,3 +7433,29 @@ Datum mystimes_mystimestamps(PG_FUNCTION_ARGS)
 
 	PG_RETURN_NUMERIC(num);
 }
+
+/* Begin - ReqID: SRS-MYSQL-PROC */
+Datum
+timestamp_mystimestamp(PG_FUNCTION_ARGS)
+{
+	Timestamp	timestamp = PG_GETARG_TIMESTAMP(0);
+	fsec_t		fsec;
+	int64 		date;
+	TimeOffset	time;
+	TimeADT		result;
+	struct pg_tm tt, *tm = &tt;
+
+	if (timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL) != 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+	}
+
+	date = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) * 1000000L;
+	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
+	result = date + time;
+
+	PG_RETURN_TIMEADT(result);
+}
+/* End - ReqID: SRS-MYSQL-PROC */

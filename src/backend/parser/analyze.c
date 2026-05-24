@@ -5912,6 +5912,35 @@ transformCallStmt(ParseState *pstate, CallStmt *stmt)
 			}
 			i++;
 		}
+
+		/* Begin - Req: SRS-MYSQL-PROC */
+		if (compatible_mode == MYS_MODE)
+		{
+			i = 0;
+
+			foreach(lc, stmt->funccall->args)
+			{
+				Node	   *n = lfirst(lc);
+
+				if (IsA(n, VarRef))
+				{
+					VarRef *ref = (VarRef *) n;
+
+					if (ref->varkind == SYSTEM_VAR && argmodes[i] != PROARGMODE_IN)
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("OUT or INOUT argument %d for routine %s is "
+										"not a variable or NEW pseudo-variable in "
+										"BEFORE trigger", i, NameListToString(stmt->funccall->funcname))));
+					}
+				}
+
+				i++;
+			}
+		}
+		/* End - Req: SRS-MYSQL-PROC */
+
 		/* Begin - BUG#Z196: procedure with out arguments supports overload */
 		/*
 		 * If compatible_mode is ORA_MODE and the procedure language is PLISQL,

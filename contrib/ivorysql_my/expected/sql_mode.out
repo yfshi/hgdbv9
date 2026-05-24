@@ -109,3 +109,203 @@ ERROR:  Variable 'sql_mode' can't be set to the value of 'ANSI_QUOTES, IGNORE_SP
 -- check backquote identifier
 CREATE TABLE `sql_mode_test`(id int);
 DROP TABLE `sql_mode_test`;
+select number_to_sql_mode(1 << 0);
+ number_to_sql_mode 
+--------------------
+ REAL_AS_FLOAT
+(1 row)
+
+select number_to_sql_mode(1 << 1);
+ number_to_sql_mode 
+--------------------
+ PIPES_AS_CONCAT
+(1 row)
+
+select number_to_sql_mode(1 << 2);
+ number_to_sql_mode 
+--------------------
+ ANSI_QUOTES
+(1 row)
+
+select number_to_sql_mode(1 << 3);
+ number_to_sql_mode 
+--------------------
+ IGNORE_SPACE
+(1 row)
+
+select number_to_sql_mode(1 << 4);
+ number_to_sql_mode 
+--------------------
+ ,
+(1 row)
+
+select number_to_sql_mode(1 << 5);
+ number_to_sql_mode 
+--------------------
+ ONLY_FULL_GROUP_BY
+(1 row)
+
+select number_to_sql_mode(1 << 6);
+   number_to_sql_mode    
+-------------------------
+ NO_UNSIGNED_SUBTRACTION
+(1 row)
+
+select number_to_sql_mode(1 << 7);
+ number_to_sql_mode 
+--------------------
+ NO_DIR_IN_CREATE
+(1 row)
+
+select number_to_sql_mode(1 << 8);
+ number_to_sql_mode 
+--------------------
+ POSTGRESQL
+(1 row)
+
+select number_to_sql_mode(1 << 9);
+ number_to_sql_mode 
+--------------------
+ ORACLE
+(1 row)
+
+select number_to_sql_mode(1 << 10);
+ number_to_sql_mode 
+--------------------
+ MSSQL
+(1 row)
+
+select number_to_sql_mode(1 << 11);
+ number_to_sql_mode 
+--------------------
+ DB2
+(1 row)
+
+select number_to_sql_mode(1 << 12);
+ number_to_sql_mode 
+--------------------
+ MAXDB
+(1 row)
+
+select number_to_sql_mode(1 << 13);
+ number_to_sql_mode 
+--------------------
+ NO_KEY_OPTIONS
+(1 row)
+
+select number_to_sql_mode(1 << 14);
+ number_to_sql_mode 
+--------------------
+ NO_TABLE_OPTIONS
+(1 row)
+
+select number_to_sql_mode(1 << 15);
+ number_to_sql_mode 
+--------------------
+ NO_FIELD_OPTIONS
+(1 row)
+
+select number_to_sql_mode(1 << 16);
+ number_to_sql_mode 
+--------------------
+ MYSQL323
+(1 row)
+
+select number_to_sql_mode(1 << 17);
+ number_to_sql_mode 
+--------------------
+ MYSQL40
+(1 row)
+
+select number_to_sql_mode(1 << 18);
+ number_to_sql_mode 
+--------------------
+ ANSI
+(1 row)
+
+select number_to_sql_mode(1 << 19);
+  number_to_sql_mode   
+-----------------------
+ NO_AUTO_VALUE_ON_ZERO
+(1 row)
+
+select number_to_sql_mode(1 << 20);
+  number_to_sql_mode  
+----------------------
+ NO_BACKSLASH_ESCAPES
+(1 row)
+
+select number_to_sql_mode(1 << 21);
+ number_to_sql_mode  
+---------------------
+ STRICT_TRANS_TABLES
+(1 row)
+
+select number_to_sql_mode(1 << 22);
+ number_to_sql_mode 
+--------------------
+ STRICT_ALL_TABLES
+(1 row)
+
+select number_to_sql_mode(1 << 23);
+ number_to_sql_mode 
+--------------------
+ NO_ZERO_IN_DATE
+(1 row)
+
+select number_to_sql_mode(1 << 24);
+ number_to_sql_mode 
+--------------------
+ NO_ZERO_DATE
+(1 row)
+
+select number_to_sql_mode(1 << 25);
+ number_to_sql_mode  
+---------------------
+ ALLOW_INVALID_DATES
+(1 row)
+
+select number_to_sql_mode(1 << 26);
+     number_to_sql_mode     
+----------------------------
+ ERROR_FOR_DIVISION_BY_ZERO
+(1 row)
+
+select number_to_sql_mode(1 << 27);
+ number_to_sql_mode 
+--------------------
+ TRADITIONAL
+(1 row)
+
+select number_to_sql_mode(1 << 28);
+ number_to_sql_mode  
+---------------------
+ NO_AUTO_CREATE_USER
+(1 row)
+
+select number_to_sql_mode(1 << 29);
+ number_to_sql_mode  
+---------------------
+ HIGH_NOT_PRECEDENCE
+(1 row)
+
+select number_to_sql_mode(1 << 30);
+   number_to_sql_mode   
+------------------------
+ NO_ENGINE_SUBSTITUTION
+(1 row)
+
+select number_to_sql_mode(1 << 31);
+   number_to_sql_mode    
+-------------------------
+ PAD_CHAR_TO_FULL_LENGTH
+(1 row)
+
+select number_to_sql_mode(1 << 32);
+ERROR:  illegal argument for function
+select number_to_sql_mode(15);
+                   number_to_sql_mode                   
+--------------------------------------------------------
+ REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,IGNORE_SPACE
+(1 row)
+

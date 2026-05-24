@@ -8368,7 +8368,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
+					if (!makeDefault && (record->group != COMPAT_MYSQL_OPTIONS || action == GUC_ACTION_SAVE)) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8462,7 +8462,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
+					if (!makeDefault && (record->group != COMPAT_MYSQL_OPTIONS || action == GUC_ACTION_SAVE)) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8556,7 +8556,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
+					if (!makeDefault && (record->group != COMPAT_MYSQL_OPTIONS || action == GUC_ACTION_SAVE)) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8678,7 +8678,7 @@ set_config_option(const char *name, const char *value,
 				if (changeVal)
 				{
 					/* Save old value to support transaction abort */
-					if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
+					if (!makeDefault && (record->group != COMPAT_MYSQL_OPTIONS || action == GUC_ACTION_SAVE)) /* ReqID:SRS-MYSQL-AutoCommit */
 						push_old_value(&conf->gen, action);
 
 					if (conf->assign_hook)
@@ -8817,7 +8817,7 @@ set_config_option(const char *name, const char *value,
 					if (enable_tmp_backdoor)
 					{
 						/* Save old value to support transaction abort */
-						if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
+						if (!makeDefault && (record->group != COMPAT_MYSQL_OPTIONS || action == GUC_ACTION_SAVE)) /* ReqID:SRS-MYSQL-AutoCommit */
 							push_old_value(&conf->gen, action);
 
 						if (conf->assign_hook)
@@ -8837,7 +8837,7 @@ set_config_option(const char *name, const char *value,
 					else
 					{
 						/* Save old value to support transaction abort */
-						if (!makeDefault && record->group != COMPAT_MYSQL_OPTIONS) /* ReqID:SRS-MYSQL-AutoCommit */
+						if (!makeDefault && (record->group != COMPAT_MYSQL_OPTIONS || action == GUC_ACTION_SAVE)) /* ReqID:SRS-MYSQL-AutoCommit */
 							push_old_value(&conf->gen, action);
 
 						if (conf->assign_hook)
