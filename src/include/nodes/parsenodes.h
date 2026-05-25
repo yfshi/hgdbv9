@@ -4081,7 +4081,8 @@ typedef enum ViewCheckOption
 {
 	NO_CHECK_OPTION,
 	LOCAL_CHECK_OPTION,
-	CASCADED_CHECK_OPTION
+	CASCADED_CHECK_OPTION,
+	READ_ONLY_VIEW_OPTION	/* OA-REQ-2248 */
 } ViewCheckOption;
 
 typedef struct ViewStmt

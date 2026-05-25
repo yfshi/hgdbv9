@@ -120,7 +120,7 @@ static bool setNewRteIfExist(Query* parsetree, Oid base_relid, int result_relati
 static List *RewriteQueryForMultiTableInsert(Query *parsetree,
 				List *rewrite_events, int orig_rt_length);
 /* End - SRS-SQL-MULTITABLEINSERT */
-
+static void errorOnReadOnlyView(Relation view, CmdType commandType);	/* OA-REQ-2248 */
 
 
 /*
@@ -3425,6 +3425,28 @@ static bool setNewRteIfExist(Query *parsetree, Oid base_relid, int result_relati
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
+/* Begin - OA-REQ-2248 */
+static void
+errorOnReadOnlyView(Relation view, CmdType commandType)
+{
+	Assert(view->rd_rel->relkind == RELKIND_VIEW);
+
+	switch (commandType)
+	{
+		case CMD_INSERT:
+		case CMD_UPDATE:
+		case CMD_DELETE:
+		case CMD_MERGE:
+		case CMD_MULTI_INSERT:
+			ereport(ERROR,
+							(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+							 errmsg("cannot perform a DML operation on a read-only view")));
+			break;
+		default:
+			break;
+	}
+}
+/* End - OA-REQ-2248 */
 
 /*
  * rewriteTargetView -
@@ -3449,6 +3471,11 @@ rewriteTargetView(Query *parsetree, Relation view)
 	Relation	base_rel;
 	List	   *view_targetlist;
 	ListCell   *lc;
+
+	/* Begin - OA-REQ-2248 */
+	if (RelationIsReadOnlyView(view))
+		errorOnReadOnlyView(view, parsetree->commandType);
+	/* End - OA-REQ-2248 */
 
 	/*
 	 * Get the Query from the view's ON SELECT rule.  We're going to munge the
@@ -4435,6 +4462,11 @@ RewriteQuery(Query *parsetree, List *rewrite_events, int orig_rt_length,
 		 */
 		rt_entry_relation = table_open(rt_entry->relid, NoLock);
 
+		/* Begin - OA-REQ-2248 */
+		if (rt_entry_relation->rd_rel->relkind == RELKIND_VIEW &&
+				RelationIsReadOnlyView(rt_entry_relation))
+			errorOnReadOnlyView(rt_entry_relation, event);
+		/* End - OA-REQ-2248 */
 		/*
 		 * Rewrite the targetlist as needed for the command type.
 		 */

@@ -334,6 +334,7 @@ typedef struct _tableInfo
 	char	   *reltablespace;	/* relation tablespace */
 	char	   *reloptions;		/* options specified by WITH (...) */
 	char	   *checkoption;	/* WITH CHECK OPTION, if any */
+	char	   *readonly;		/* WITH READ ONLY, if any */	/* OA-REQ-2248 */
 	char	   *toast_reloptions;	/* WITH options for the TOAST table */
 	bool		hasindex;		/* does it have any indexes? */
 	bool		hasrules;		/* does it have any rules? */

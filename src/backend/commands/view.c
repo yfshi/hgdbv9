@@ -744,6 +744,12 @@ DefineView(ViewStmt *stmt, const char *queryString,
 		stmt->options = lappend(stmt->options,
 								makeDefElem("check_option",
 											(Node *) makeString("cascaded"), -1));
+	/* Begin - OA-REQ-2248 */
+	else if (stmt->withCheckOption == READ_ONLY_VIEW_OPTION)
+		stmt->options = lappend(stmt->options,
+								makeDefElem("read_only",
+											(Node *) makeString("true"), -1));
+	/* End - OA-REQ-2248 */
 
 	/*
 	 * Check that the view is auto-updatable if WITH CHECK OPTION was

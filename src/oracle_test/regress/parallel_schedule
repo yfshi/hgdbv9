@@ -300,3 +300,7 @@ test: ora_user_grant_compat
 #/* Begin - OA-REQ-2252 */
 test: ora_nested_agg
 #/* End - OA-REQ-2252 */
+
+#/* Begin - OA-REQ-2248 */
+test: ora_readonly_view
+#/* End - OA-REQ-2248 */

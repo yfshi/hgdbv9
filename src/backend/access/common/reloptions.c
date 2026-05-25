@@ -207,6 +207,17 @@ static relopt_bool boolRelOpts[] =
 		false
 	},
 	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
+	/* Begin - OA-REQ-2248 */
+	{
+		{
+			"read_only",
+			"View is read only",
+			RELOPT_KIND_VIEW,
+			AccessExclusiveLock
+		},
+		false
+	},
+	/* End - OA-REQ-2248 */
 	/* list terminator */
 	{{NULL}}
 };
@@ -2077,6 +2088,8 @@ view_reloptions(Datum reloptions, bool validate)
 	static const relopt_parse_elt tab[] = {
 		{"security_barrier", RELOPT_TYPE_BOOL,
 		offsetof(ViewOptions, security_barrier)},
+		{"read_only", RELOPT_TYPE_BOOL,
+		offsetof(ViewOptions, read_only)},	/* OA-REQ-2248 */
 		{"check_option", RELOPT_TYPE_ENUM,
 		offsetof(ViewOptions, check_option)}
 	};
