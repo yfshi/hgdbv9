@@ -2346,18 +2346,20 @@ compileFunctionInternal(Oid funcOid, bool compile, ObjectType objtype)
 			MemoryContextSwitchTo(oldcontext);
 			CurrentResourceOwner = oldowner;
 
+			/* Begin - OA-REQ-2357 */
+			/* emit nuisance notice (intentionally not errposition'd) */
+			ereport(WARNING,
+					(errmsg("there was an compilation error"),
+					 errhint("%s", edata->message),
+					 errposition(edata->cursorpos)));
+			/* End - OA-REQ-2357 */
+
 			if (procForm->prostatus == PROSTATUS_NA || procForm->prostatus == PROSTATUS_VALID)
 			{
 				/*
 				 * When lanvalidator failed, only update prostatus to PROSTATUS_INVALID,
 				 * do not update prorettype, proargtypes, proallargtypes.
 				 */
-				/* emit nuisance notice (intentionally not errposition'd) */
-				ereport(WARNING,
-						(errmsg("there was an compilation error"),
-						 errhint("%s", edata->message),
-						 errposition(edata->cursorpos)));
-
 				nulls[Anum_pg_proc_prostatus - 1] = false;
 				values[Anum_pg_proc_prostatus - 1] = CharGetDatum(PROSTATUS_INVALID);
 				replaces[Anum_pg_proc_prostatus - 1] = true;
@@ -2484,14 +2486,16 @@ compileFunctionInternal(Oid funcOid, bool compile, ObjectType objtype)
 				MemoryContextSwitchTo(oldcontext);
 				CurrentResourceOwner = oldowner;
 
+				/* Begin - OA-REQ-2357 */
+				/* emit nuisance notice (intentionally not errposition'd) */
+				ereport(WARNING,
+						(errmsg("there was an compilation error"),
+						 errhint("%s", edata->message),
+						 errposition(edata->cursorpos)));
+				/* End - OA-REQ-2357 */
+
 				if (procForm->prostatus == PROSTATUS_NA || procForm->prostatus == PROSTATUS_VALID)
 				{
-					/* emit nuisance notice (intentionally not errposition'd) */
-					ereport(WARNING,
-							(errmsg("there was an compilation error"),
-							 errhint("%s", edata->message),
-							 errposition(edata->cursorpos)));
-
 					/*
 					 * When lanvalidator failed, only update prostatus to PROSTATUS_INVALID,
 					 * do not update prorettype, proargtypes, proallargtypes.
