@@ -133,15 +133,15 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         schName VARCHAR2 := ORA_CASE_TRANS(schema);
     BEGIN
         normalized_method_opt := UPPER(TRIM(method_opt));
-        IF NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = tabName) THEN
+        IF NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schName) THEN      -- BUG #z7926
             RAISE EXCEPTION 'invalid schema';
         END IF;
 
         FOR tup IN
             SELECT oid, relname, relowner FROM pg_class WHERE oid::integer >= (get_macro_value('FirstNormalObjectId'))::integer AND relkind IN ('r', 'p')
-                                            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = tabName)
+                                            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schName)      -- BUG #z7926
         LOOP
-            tbl_name := FORMAT('%I.%I', tabName, tup.relname);
+            tbl_name := FORMAT('%I.%I', schName, tup.relname);      -- BUG #z7926
             IF tup.relowner = current_user::regrole THEN
                 EXECUTE FORMAT('ANALYZE %I', tbl_name);
             ELSE
@@ -152,7 +152,6 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
 
     PROCEDURE CANONICALIZE(name IN VARCHAR2, canon_name OUT VARCHAR2, canon_len IN BINARY_INTEGER) AS
     DECLARE
-        name_text TEXT;
         parts TEXT[];
         res TEXT;
         part TEXT;
@@ -165,14 +164,20 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
             RETURN;
         END IF;
 
-        IF name = '' THEN
-            canon_name := '';
+        IF TRIM(name) IS NULL THEN
+            canon_name := name;
             RETURN;
         END IF;
 
         IF name = '""' THEN
             RAISE EXCEPTION 'illegal zero-length identifier';
         END IF;
+
+        -- Begin - BUG #z7925
+        IF name !~ '^\s*[a-zA-Z]' AND name !~ '^\s*"' THEN
+            RAISE EXCEPTION 'unexpected name string "%"', name;
+        END IF;
+        -- End - BUG #z7925
 
         -- ------------------------------------------------------------------
         -- 2. Handle whole quoted identifier (e.g., "MySchema.MyTable", "Hello" )
@@ -302,39 +307,47 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         ret BOOLEAN;
         schema_id OID;
         tup RECORD;
+        schName VARCHAR2 := ORA_CASE_TRANS(schema);     -- BUG #z7923
     BEGIN
-        IF ((schema IS NULL) OR (NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schema))) THEN
+        -- Begin - BUG #z7923
+        IF ((schName IS NULL) OR (NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schName))) THEN
             RAISE EXCEPTION 'invalid schema';
         ELSE
-            SELECT oid INTO schema_id FROM pg_namespace WHERE nspname = schema;
+            SELECT oid INTO schema_id FROM pg_namespace WHERE nspname = schName;
             -- 1. handle FUNCTION
-            FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 'f' AND schemaoid = schema_id AND obj_oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER FUNCTION %I.%I COMPILE', schema, tup.objname);
+            FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 'f' AND schemaoid = schema_id AND obj_oid::integer >= (get_macro_value('FirstNormalObjectId'))::integer) LOOP
+                EXECUTE FORMAT('ALTER FUNCTION %I.%I COMPILE', schName, tup.objname);
             END LOOP;
             -- 2. handle PROCEDURE
-            FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 'p' AND schemaoid = schema_id AND obj_oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER PROCEDURE %I.%I COMPILE', schema, tup.objname);
+            FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 'p' AND schemaoid = schema_id AND obj_oid::integer >= (get_macro_value('FirstNormalObjectId'))::integer) LOOP
+                EXECUTE FORMAT('ALTER PROCEDURE %I.%I COMPILE', schName, tup.objname);
             END LOOP;
             -- 3. handle FUNCTION
-            FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 't' AND obj_oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER TRIGGER %I.%I COMPILE', schema, tup.objname);
+            FOR tup IN (SELECT objname FROM pg_object WHERE objkind = 't' AND obj_oid::integer >= (get_macro_value('FirstNormalObjectId'))::integer) LOOP
+                EXECUTE FORMAT('ALTER TRIGGER %I.%I COMPILE', schName, tup.objname);
             END LOOP;
             -- 4. handle PACKAGE
-            FOR tup IN (SELECT pkgname FROM pg_package WHERE pkgnamespace = schema_id AND oid::integer > (get_macro_value('FirstNormalObjectId'))::integer) LOOP
-                EXECUTE FORMAT('ALTER PACKAGE %I.%I COMPILE', schema, tup.pkgname);
+            FOR tup IN (SELECT pkgname FROM pg_package WHERE pkgnamespace = schema_id AND oid::integer >= (get_macro_value('FirstNormalObjectId'))::integer) LOOP
+                EXECUTE FORMAT('ALTER PACKAGE %I.%I COMPILE', schName, tup.pkgname);
             END LOOP;
         END IF;
+        -- End - BUG #z7923
     END;
 
     PROCEDURE CREATE_ALTER_TYPE_ERROR_TABLE(schema_name IN VARCHAR2, table_name IN VARCHAR2) AS
+    DECLARE
+        -- Begin - BUG #z7922
+        schName VARCHAR2 := ORA_CASE_TRANS(schema_name);
+        tabName VARCHAR2 := ORA_CASE_TRANS(table_name);
     BEGIN
-        IF NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schema_name) THEN
-            RAISE EXCEPTION 'schema [%] does not exist', schema_name;
+        IF NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schName) THEN
+            RAISE EXCEPTION 'schema [%] does not exist', schName;
         END IF;
-        IF EXISTS(SELECT 1 FROM pg_class WHERE relname = table_name and relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schema_name)) THEN
-            RAISE EXCEPTION 'name [%] is already used by an existing object', table_name;
+        IF EXISTS(SELECT 1 FROM pg_class WHERE relname = tabName and relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schName)) THEN
+            RAISE EXCEPTION 'name [%] is already used by an existing object', tabName;
         END IF;
-        EXECUTE FORMAT('CREATE TABLE %I.%I(owner VARCHAR2(128), object_name VARCHAR2(128), sequence# INTEGER, text_length INTEGER, error_text TEXT)', schema_name, table_name);
+        EXECUTE FORMAT('CREATE TABLE %I.%I(owner VARCHAR2, object_name VARCHAR2, sequence# NUMBER, text_length NUMBER, error_text VARCHAR2)', schName, tabName);
+        -- End -  BUG #z7922
     END;
 
     PROCEDURE DB_VERSION(version OUT VARCHAR2, compatibility OUT VARCHAR2) AS
@@ -376,12 +389,16 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         rec RECORD;
         visited TEXT[];
         current_key TEXT;
+        -- Begin - BUG #z7923
+        objOwner VARCHAR2 := ORA_CASE_TRANS(object_owner);
+        objName VARCHAR2 := ORA_CASE_TRANS(object_name);
+        -- End - BUG #z7923
     BEGIN
-        header := 'DEPENDENCIES ON ' || UPPER(QUOTE_IDENT(object_owner)) || '.' || UPPER(QUOTE_IDENT(object_name));
+        header := 'DEPENDENCIES ON ' || UPPER(QUOTE_IDENT(object_owner)) || '.' || QUOTE_IDENT(objName);
         DBMS_OUTPUT.PUT_LINE(header);
         DBMS_OUTPUT.PUT_LINE(REPEAT('-', LENGTH(header)));
         visited := ARRAY[]::TEXT[];
-        DBMS_OUTPUT.PUT_LINE(FORMAT('*%s    %s.%s()', UPPER(object_type), UPPER(object_owner), UPPER(object_name)));
+        DBMS_OUTPUT.PUT_LINE(FORMAT('*%s    %s.%s()', UPPER(object_type), objOwner, UPPER(object_name)));
 
         FOR rec IN (
             WITH RECURSIVE dep_tree AS (
@@ -390,8 +407,8 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
                 FROM all_dependencies d
                 WHERE
                     UPPER(d.referenced_type) = UPPER(object_type)
-                    AND d.referenced_owner = UPPER(object_owner)
-                    AND d.referenced_name = UPPER(object_name)
+                    AND d.referenced_owner = objOwner   -- BUG #z7923
+                    AND d.referenced_name = objName     -- BUG #z7923
 
                 UNION ALL
 
@@ -892,9 +909,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
     PROCEDURE COMMA_TO_TABLE(list IN VARCHAR2, tablen OUT BINARY_INTEGER, tab OUT VARCHAR2[]) AS
     BEGIN
         IF list IS NULL OR trim(list) = '' THEN
-            tab := '{}';
-            tablen := 0;
-            RETURN;
+            RAISE EXCEPTION 'comma-separated list invalid';     -- BUG #z7924
         END IF;
 
         SELECT
@@ -945,30 +960,36 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
     DECLARE
         tup RECORD;
         procName VARCHAR2 := ORA_CASE_TRANS(objname);
+        -- Begin - BUG #z7789
+        powner VARCHAR2 := ORA_CASE_TRANS(owner);
+        schName VARCHAR2;
     BEGIN
         IF NOT EXISTS (SELECT 1 FROM pg_proc WHERE proname = procName AND pronamespace = namespace
-                    AND proowner = (SELECT oid FROM pg_authid WHERE rolname = owner)) THEN
+                    AND proowner = (SELECT oid FROM pg_authid WHERE rolname = powner)) THEN
             RAISE EXCEPTION 'argument passed to DBMS_UTILITY.VALIDATE is not legal';
         END IF;
 
-        IF (SELECT oid FROM pg_proc WHERE proname = procName AND pronamespace = namespace AND proowner = (SELECT oid FROM pg_authid WHERE rolname = owner)) 
+        IF (SELECT oid FROM pg_proc WHERE proname = procName AND pronamespace = namespace AND proowner = (SELECT oid FROM pg_authid WHERE rolname = powner)) 
             < (get_macro_value('FirstNormalObjectId'))::integer THEN
             RAISE NOTICE 'Not support to validate system object';
             RETURN;
         END IF;
 
-        FOR tup IN (SELECT proname, prokind FROM pg_proc WHERE proname = procName AND pronamespace = namespace AND proowner = (SELECT oid FROM pg_authid WHERE rolname = owner)) LOOP
+        SELECT nspname INTO schName FROM pg_namespace WHERE oid = namespace;
+
+        FOR tup IN (SELECT proname, prokind FROM pg_proc WHERE proname = procName AND pronamespace = namespace AND proowner = (SELECT oid FROM pg_authid WHERE rolname = powner)) LOOP
             IF LOWER(tup.proname) = tup.proname THEN
                 procName := tup.proname;
             ELSE
                 procName := '"' || tup.proname || '"';
             END IF;
             IF tup.prokind = 'p' THEN
-                EXECUTE FORMAT('ALTER PROCEDURE %s COMPILE', procName);
+                EXECUTE FORMAT('ALTER PROCEDURE %s.%s COMPILE', schName, procName);
             ELSE
-                EXECUTE FORMAT('ALTER FUNCTION %s COMPILE', procName);
+                EXECUTE FORMAT('ALTER FUNCTION %s.%s COMPILE', schName, procName);
             END IF;
         END LOOP;
+        -- End - BUG #z7789
     END;
 
     /*-----------------------------------sub function-----------------------------------*/
@@ -1167,7 +1188,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
 
     FUNCTION GET_HASH_VALUE(name VARCHAR2, base NUMBER, hash_size NUMBER) RETURN NUMBER IS
     BEGIN
-        RETURN ((hashtext(name::text) + 2147483648) % GREATEST(hash_size, 1) + base);
+        RETURN ((COALESCE(hashtext(name::text), 0) + 2147483648) % GREATEST(hash_size, 1) + base);  -- BUG #z7935
     END;
 
     FUNCTION GET_PARAMETER_VALUE(parnam IN VARCHAR2, intval OUT BINARY_INTEGER, strval OUT VARCHAR2, listno IN BINARY_INTEGER DEFAULT 1) RETURN BINARY_INTEGER IS
@@ -1291,7 +1312,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         part2 VARCHAR2;
         dblink VARCHAR2;
         part1_type NUMBER;
-        object_number OID;
+        object_number NUMBER;       -- BUG #z7936
         wait_time NUMBER := 0;
     BEGIN
         COMMA_TO_TABLE(list => tables, tablen => tab_cnd, tab => tab_list);
