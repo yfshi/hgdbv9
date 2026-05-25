@@ -1572,7 +1572,7 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 		bool		is_exists = false;
 /* Begin - ReqID:SRS-SECURITY-AUDIT */		
 		if (audit_privi_mode_hook)
-			(*audit_privi_mode_hook)((Node *)rv, false);
+			(*audit_privi_mode_hook)(pstate->p_sourcetext, (Node *)rv, false);
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/* Begin - BUG#M0000489 */

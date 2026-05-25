@@ -2536,7 +2536,7 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	markTargetListOrigins(pstate, qry->targetList);
 	/* Begin - ReqID:SRS-SECURITY-AUDIT */
 	if (audit_privi_mode_hook)
-		stmt->whereClause = (*audit_privi_mode_hook)(stmt->whereClause, true);
+		stmt->whereClause = (*audit_privi_mode_hook)(pstate->p_sourcetext, stmt->whereClause, true);
 	/* End - ReqID:SRS-SECURITY-AUDIT */
 
 	/* Begin: Req:SRS-MYSQL-SQL-Select */
