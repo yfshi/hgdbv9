@@ -37,17 +37,19 @@ generate_old_dump(void)
 /* BEGIN - ReqID:SRS-CMD-highgo2pg */
 #ifdef HG2PG
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-			  "\"%s/pg_dumpall\" %s --globals-only --quote-all-identifiers "
+			  "\"%s/pg_dumpall\" %s%s --globals-only --quote-all-identifiers "
 			  "--binary-upgrade %s -f %s",
 			  old_cluster.bindir, cluster_conn_opts(&old_cluster),
+			  protocol_negotiation_supported(&old_cluster) ? "" : " -d \"max_protocol_version=3.0\"",
 			  log_opts.verbose ? "--verbose" : "",
 			  GLOBALS_DUMP_FILE);
 #else
 /* END - ReqID:SRS-CMD-highgo2pg */
 	exec_prog(UTILITY_LOG_FILE, NULL, true, true,
-			  "\"%s/pg_dumpall\" %s --globals-only --quote-all-identifiers "
+			  "\"%s/pg_dumpall\" %s%s --globals-only --quote-all-identifiers "
 			  "--binary-upgrade %s -f %s %s",		// BUG #Z7100
 			  new_cluster.bindir, cluster_conn_opts(&old_cluster),
+			  protocol_negotiation_supported(&old_cluster) ? "" : " -d \"max_protocol_version=3.0\"",
 			  log_opts.verbose ? "--verbose" : "",
 			  GLOBALS_DUMP_FILE,
 			  old_cluster.extension_exclude_patterns.head != NULL ? exclude_ext.data : ""	// BUG #Z7100
@@ -69,6 +71,9 @@ generate_old_dump(void)
 		initPQExpBuffer(&connstr);
 		appendPQExpBufferStr(&connstr, "dbname=");
 		appendConnStrVal(&connstr, old_db->db_name);
+		if (!protocol_negotiation_supported(&old_cluster))
+			appendPQExpBufferStr(&connstr, " max_protocol_version=3.0");
+
 		initPQExpBuffer(&escaped_connstr);
 		appendShellString(&escaped_connstr, connstr.data);
 		termPQExpBuffer(&connstr);

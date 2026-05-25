@@ -661,7 +661,7 @@ scram_verify_plain_password(const char *scram_type, const char *username, const 
 	 * Compare the secret's Server Key with the one computed from the
 	 * user-supplied password.
 	 */
-	return memcmp(computed_key, server_key, SCRAM_KEY_LEN) == 0;
+	return timingsafe_bcmp(computed_key, server_key, SCRAM_KEY_LEN) == 0;
 }
 
 
@@ -1203,9 +1203,9 @@ verify_final_nonce(scram_state *state)
 
 	if (final_nonce_len != client_nonce_len + server_nonce_len)
 		return false;
-	if (memcmp(state->client_final_nonce, state->client_nonce, client_nonce_len) != 0)
+	if (timingsafe_bcmp(state->client_final_nonce, state->client_nonce, client_nonce_len) != 0)
 		return false;
-	if (memcmp(state->client_final_nonce + client_nonce_len, state->server_nonce, server_nonce_len) != 0)
+	if (timingsafe_bcmp(state->client_final_nonce + client_nonce_len, state->server_nonce, server_nonce_len) != 0)
 		return false;
 
 	return true;
@@ -1284,7 +1284,7 @@ verify_client_proof(scram_state *state)
 	}
 #endif
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	if (memcmp(client_StoredKey, state->StoredKey, SCRAM_KEY_LEN) != 0)
+	if (timingsafe_bcmp(client_StoredKey, state->StoredKey, SCRAM_KEY_LEN) != 0)
 		return false;
 
 	return true;
