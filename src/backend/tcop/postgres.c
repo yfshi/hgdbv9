@@ -3482,8 +3482,15 @@ die(SIGNAL_ARGS)
 		UserAbortTransactionBlock(false);
 		CommitTransactionCommand();
 	}
-	if (audit_WriteRecord_hook)
-		(*audit_WriteRecord_hook)();
+
+	/* Begin - Z7903 */
+	if (strcmp(MyBgworkerEntry->bgw_name, AUDIT_LAUNCHER_S) != 0)
+	{
+		if (audit_WriteRecord_hook)
+			(*audit_WriteRecord_hook)();
+	}
+	/* End - Z7903 */
+
 #endif
 
 	/* Don't joggle the elbow of proc_exit */

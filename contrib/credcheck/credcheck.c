@@ -2879,6 +2879,18 @@ credcheck_max_auth_failure(Port *port, int status)
 					}
 					else
 					{
+						/* Begin - Z7899 */
+						#ifdef USE_SQLITE
+							if (sqlite_open_db_for_audit_hook)
+							{
+								char	errtext[MAXPGPATH];
+
+								memset(errtext, 0, MAXPGPATH);
+								sprintf(errtext, "rejecting connection, user \"%s\" has been banned", port->user_name);
+								sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGIN, AUDIT_FAIL, port->user_name, errtext);
+							}
+						#endif
+						/* End - Z7899 */
 						ereport(FATAL, (errcode(ERRCODE_CONNECTION_FAILURE), errmsg("rejecting connection, user \"%s\" has been banned", port->user_name)));
 					}
 				}
