@@ -147,6 +147,36 @@ CREATE OPERATOR ivymy.^ (
 	RIGHTARG = text
 );
 
+-- /* Begin - BUG#M7845 */
+--
+-- text ~** text
+--
+CREATE OR REPLACE FUNCTION ivymy.mysql_text_regexeq(text, text)
+		RETURNS bool
+		AS 'MODULE_PATHNAME', 'mysql_text_regexeq'
+		LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.~** (
+	FUNCTION = mysql_text_regexeq,
+	LEFTARG = text,
+	RIGHTARG = text
+);
+
+--
+-- text !~** text
+--
+CREATE OR REPLACE FUNCTION ivymy.mysql_text_regexne(text, text)
+		RETURNS bool
+		AS 'MODULE_PATHNAME', 'mysql_text_regexne'
+		LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.!~** (
+	FUNCTION = mysql_text_regexne,
+	LEFTARG = text,
+	RIGHTARG = text
+);
+-- /* End - BUG#M7845 */
+
 --
 -- cast (text as bool)
 --

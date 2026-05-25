@@ -137,7 +137,7 @@ select col && col from tb;  -- 0
 drop table if exists tb;
 
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_OPER_004
-create table tb (col longtext);
+create table tb (col longtext collate utf8_general_ci);
 insert into tb values('JetPack 1000');
 insert into tb values('JetPack 2000');
 insert into tb values('JetPack 3000');
@@ -159,7 +159,7 @@ select * from tb where col regexp '\\.$';  -- Furball Inc.
 drop table if exists tb;
 
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_OPER_005
-create table tb (col longtext);
+create table tb (col longtext collate utf8_general_ci);
 insert into tb values('JetPack 1000');
 insert into tb values('JetPack 2000');
 insert into tb values('JetPack 3000');
@@ -181,7 +181,7 @@ select * from tb where col not regexp '\\.$';
 drop table if exists tb;
 
 -- TC_IVYSQL_MSQL_DATATYPE_LONGTEXT_OPER_006
-create table tb (col longtext);
+create table tb (col longtext collate utf8_general_ci);
 insert into tb values('JetPack 1000');
 insert into tb values('JetPack 2000');
 insert into tb values('JetPack 3000');

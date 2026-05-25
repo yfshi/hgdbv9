@@ -91,14 +91,14 @@ WHERE s REGEXP _binary '^[a-z]+$';
 SELECT 'A' REGEXP '^[a-z]+$' AS regexp_default_case_insensitive;
  regexp_default_case_insensitive 
 ---------------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 1
 SELECT 'A' REGEXP ('^[a-z]+$' COLLATE "C") AS regexp_collate_c_still_case_insensitive;
  regexp_collate_c_still_case_insensitive 
 -----------------------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 1
@@ -111,10 +111,11 @@ SELECT 'A' collate utf8_general_ci  ~* _binary '^[a-z]+$' AS regexp_binary_case_
 
 --pg 0
 SELECT 'A'   ~** _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
-ERROR:  operator does not exist: unknown ~** varbinary
-LINE 1: SELECT 'A'   ~** _binary '^[a-z]+$' AS regexp_binary_case_se...
-                     ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ regexp_binary_case_sensitive 
+------------------------------
+ f
+(1 row)
+
 --pg 0 case-senctive
 SELECT 'A' collate utf8_general_ci  ~ _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
  regexp_binary_case_sensitive 
@@ -135,11 +136,11 @@ SELECT 'A' collate utf8_general_ci  REGEXP _binary '^[a-z]+$' AS regexp_binary_c
  t
 (1 row)
 
--- MySQL 5.7 expected: 1
+-- MySQL 5.7 expected: 0
 SELECT 'A' REGEXP _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
  regexp_binary_case_sensitive 
 ------------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 0
@@ -147,14 +148,14 @@ SELECT 'A' REGEXP _binary '^[a-z]+$' AS regexp_binary_case_sensitive;
 SELECT 'A' REGEXP (_binary '^[a-z]+$') AS regexp_binary_collate_c_still_case_sensitive;
  regexp_binary_collate_c_still_case_sensitive 
 ----------------------------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 0
 SELECT 'A' REGEXP (_binary '^[a-z]+$' COLLATE "C") AS regexp_binary_collate_c_still_case_sensitive;
  regexp_binary_collate_c_still_case_sensitive 
 ----------------------------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 0
@@ -177,24 +178,24 @@ SELECT _binary B'01000001' = 'A' AS binary_bit_literal_equals_text;
                               0
 (1 row)
 
--- MySQL 5.7 expected: 1
+-- MySQL 5.7 expected: 0
 SELECT 'A' REGEXP _binary X'5e5b612d7a5d2b24' AS regexp_binary_hex_literal;
  regexp_binary_hex_literal 
 ---------------------------
- t
+ f
 (1 row)
 
 SELECT 'A' REGEXP _binary 0x5e5b612d7a5d2b24 AS regexp_binary_hex_literal;
  regexp_binary_hex_literal 
 ---------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 0
 SELECT 'A' REGEXP _binary B'0101111001011011011000010010110101111010010111010010101100100100' AS regexp_binary_bit_literal;
  regexp_binary_bit_literal 
 ---------------------------
- t
+ f
 (1 row)
 
 -- MySQL 5.7 expected: 0
@@ -550,6 +551,44 @@ select _binary '\\';           -- ok: bytes 5c 5c
  ?column? 
 ----------
  \x5c5c
+(1 row)
+
+select _binary 'a' COLLATE 'C';
+ ?column? 
+----------
+ \x61
+(1 row)
+
+select _binary 'a' COLLATE "C";
+ ?column? 
+----------
+ \x61
+(1 row)
+
+-- error ,because _binary current use default collate to achieve, not binary collate.
+select _bianry 'aa' COLLATE 'binary';
+ERROR:  type "_bianry" does not exist
+LINE 1: select _bianry 'aa' COLLATE 'binary';
+               ^
+-- expected 1
+SELECT _binary 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_general_ci');
+ ?column? 
+----------
+ t
+(1 row)
+
+-- expected 0
+SELECT 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_bin');
+ ?column? 
+----------
+ f
+(1 row)
+
+-- expected 0
+SELECT _binary 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_bin');
+ ?column? 
+----------
+ f
 (1 row)
 
 set sql_mode = default;

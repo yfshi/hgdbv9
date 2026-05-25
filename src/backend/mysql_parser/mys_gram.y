@@ -7999,6 +7999,7 @@ any_name_list:
 
 any_name:	ColId						{ $$ = list_make1(makeString($1)); }
 			| ColId attrs				{ $$ = lcons(makeString($1), $2); }
+			| SCONST					{ $$ = list_make1(makeString($1)); }
 		;
 
 attrs:		'.' attr_name
@@ -17411,28 +17412,28 @@ a_expr:		c_expr									{ $$ = $1; }
 				{
 					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
 					Node	*pattern_text = makeTypeCast($3, SystemTypeName("text"),  @2);
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "~*",
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "~**",
 								left_text, pattern_text, @2);
 				}
 			| a_expr NOT_LA REGEXP a_expr		%prec REGEXP
 				{
 					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
 					Node	*pattern_text = makeTypeCast($4, SystemTypeName("text"),  @2);
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~*",
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~**",
 								left_text, pattern_text, @2);
 				}
 			| a_expr RLIKE a_expr				%prec RLIKE
 				{
 					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
 					Node	*pattern_text = makeTypeCast($3, SystemTypeName("text"),  @2);
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "~*",
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "~**",
 								left_text, pattern_text, @2);
 				}
 			| a_expr NOT_LA RLIKE a_expr		%prec RLIKE
 				{
 					Node	*left_text = makeTypeCast($1, SystemTypeName("text"),  @2);
 					Node	*pattern_text = makeTypeCast($4, SystemTypeName("text"),  @2);
-					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~*",
+					$$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "!~**",
 								left_text, pattern_text, @2);
 				}
 			/* End: Req:SRS-MYSQL-SQL-Select */

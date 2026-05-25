@@ -144,7 +144,7 @@ mys_get_call_expr_typemod_and_colloid(FmgrInfo *flinfo,
  * constcollid:variable collate
  * constlen:typelen
  * constvalue:variable value,there is a datum.
- * constisnull:value is null or not，true is null.
+ * constisnull:value is null or not, true is null.
  * constbyval:passing by value.
  */
 void

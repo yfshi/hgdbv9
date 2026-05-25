@@ -6,6 +6,7 @@
 #include "funcapi.h"
 #include "mb/pg_wchar.h"
 #include "miscadmin.h"
+#include "regex/regex.h"
 #include "utils/builtins.h"
 #include "utils/hsearch.h"
 #include "utils/lsyscache.h"
@@ -15,7 +16,10 @@
 
 PG_FUNCTION_INFO_V1(show_mysql_charsets);
 PG_FUNCTION_INFO_V1(show_mysql_collations);
-
+/* Begin - BUG#M7845 */
+PG_FUNCTION_INFO_V1(mysql_text_regexeq);
+PG_FUNCTION_INFO_V1(mysql_text_regexne);
+/* End - BUG#M7845 */
 typedef struct {
     Oid              coll;
     CHARSET_INFO    *cs;
@@ -127,7 +131,7 @@ add_compiled_collation(const CHARSET_INFO *cs)
 }
 
 static CHARSET_INFO *
-search_charset_info_by_coll_id(Oid coll)
+search_charset_info_by_coll_id(Oid coll, bool missing_ok)
 {
 	char *collname = NULL;
     MysqlCharsetInfoHashEntry *entry;
@@ -146,7 +150,7 @@ search_charset_info_by_coll_id(Oid coll)
     entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_FIND, NULL);
 	collname = get_collation_name(coll);
 
-    if (entry == NULL)
+    if (collname && entry == NULL)
     {
         entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_ENTER, NULL);
         entry->cs = NULL;
@@ -166,8 +170,12 @@ search_charset_info_by_coll_id(Oid coll)
     assert(entry);
 
 	if (entry->cs == NULL)
-		ereport(ERROR,
-				errmsg("The collation \"%s\" is not supported in MySQL mode.", collname));
+    {
+        if (!missing_ok)
+            ereport(ERROR,
+                    errmsg("The collation \"%s\" is not supported in MySQL mode.", collname));
+    }
+
 	if (collname)
 		pfree(collname);
 
@@ -177,7 +185,7 @@ search_charset_info_by_coll_id(Oid coll)
 int
 do_mysql_strcoll(unsigned char *arg1, int len1, unsigned char *arg2, int len2, Oid coll, bool trim)
 {
-    CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll);
+    CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll, false);
 
     return cs->coll->strnncoll(cs, arg1, len1, arg2, len2, trim);
 }
@@ -187,7 +195,7 @@ do_mysql_strnxfrm(unsigned char *dst, size_t dstlen, uint32 nweights,
 						 const unsigned char *src, size_t srclen,
 						 uint32 flags, Oid coll)
 {
-	CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll);
+	CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll, false);
 
 	return cs->coll->strnxfrm(cs, dst, dstlen, nweights, src, srclen, flags);
 }
@@ -195,7 +203,7 @@ do_mysql_strnxfrm(unsigned char *dst, size_t dstlen, uint32 nweights,
 size_t
 do_mysql_strnxfrmlen(size_t srclen, uint32 nweights, Oid coll)
 {
-	CHARSET_INFO	*cs = search_charset_info_by_coll_id(coll);
+	CHARSET_INFO	*cs = search_charset_info_by_coll_id(coll, false);
 
 	return cs->coll->strnxfrmlen(cs, Max(srclen, nweights) * cs->mbmaxlen);
 }
@@ -205,7 +213,7 @@ do_mysql_hash(const unsigned char *key, int32_t len, Oid coll)
 {
     uint64          nr1 = 1;
 	uint64          nr2 = 4;
-    CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll);
+    CHARSET_INFO   *cs = search_charset_info_by_coll_id(coll, false);
 
     assert(cs);
 
@@ -359,11 +367,55 @@ show_mysql_collations(PG_FUNCTION_ARGS)
         values[3] = CStringGetTextDatum(Default);       // Default
         values[4] = CStringGetTextDatum(Compiled);      // Compiled
         values[5] = Int64GetDatum(cs->sort_len);        // Sortlen
-        
+
         returnTuple = heap_form_tuple(fctx->tuple_desc, values, nulls);
 
         SRF_RETURN_NEXT(fctx, HeapTupleGetDatum(returnTuple));
     }
-    
+
     SRF_RETURN_DONE(fctx);
 }
+
+/* Begin - BUG#M7845 */
+Datum
+mysql_text_regexeq(PG_FUNCTION_ARGS)
+{
+    text *s = PG_GETARG_TEXT_PP(0);
+    text *p = PG_GETARG_TEXT_PP(1);
+    int regex_case_flag = REG_BASIC;
+    CHARSET_INFO *cs = search_charset_info_by_coll_id(PG_GET_COLLATION(), true);
+
+    if (cs && !(cs->state & (MY_CS_BINSORT | MY_CS_CSSORT)))
+    {
+        regex_case_flag = REG_ICASE;
+    }
+
+    PG_RETURN_BOOL(RE_compile_and_execute(p,
+                                          VARDATA_ANY(s),
+                                          VARSIZE_ANY_EXHDR(s),
+                                          REG_ADVANCED | regex_case_flag,
+                                          PG_GET_COLLATION(),
+                                          0, NULL));
+}
+
+Datum
+mysql_text_regexne(PG_FUNCTION_ARGS)
+{
+    text *s = PG_GETARG_TEXT_PP(0);
+    text *p = PG_GETARG_TEXT_PP(1);
+    int regex_case_flag = REG_BASIC;
+    CHARSET_INFO *cs = search_charset_info_by_coll_id(PG_GET_COLLATION(), true);
+
+    if (cs && !(cs->state & (MY_CS_BINSORT | MY_CS_CSSORT)))
+    {
+        regex_case_flag = REG_ICASE;
+    }
+
+    PG_RETURN_BOOL(!RE_compile_and_execute(p,
+                                           VARDATA_ANY(s),
+                                           VARSIZE_ANY_EXHDR(s),
+                                           REG_ADVANCED | regex_case_flag,
+                                           PG_GET_COLLATION(),
+                                           0, NULL));
+}
+/* End - BUG#M7845 */

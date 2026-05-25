@@ -152,6 +152,10 @@ static bool pseudo_collation_replace_walker(Node *node, pseudo_collation_replace
 static bool transformRelInfromOrusingcluase(List *relist, RangeVar *rv, ColumnRef **colref);
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static Node *strip_explicit_to_var(Node *node);
+/* End: Req:SRS-MYSQL-SQL-Select */
+
 /* Begin - OA#00002199 */
 typedef struct outer_join_vars{
 	 Var	 *plus_var;		/* outerjoin var */
@@ -2948,14 +2952,28 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 					/**
 					 * Name conflicts only occur when targetList exist alias.
 					 * After searched for the table, only determine whether it exists in the targetList.
-					*/
+					 */
 					foreach (tl, *tlist)
 					{
 						TargetEntry *select_tle = (TargetEntry *)lfirst(tl);
+						char *real_colname = NULL;
+						Node *tleVar = strip_explicit_to_var((Node *)select_tle->expr);
 
-						/*is alias and  visible*/
-						if (!select_tle->resjunk && select_tle->resname_is_alias && select_tle->resname != NULL &&
-							strcmp(select_tle->resname, name) == 0)
+						/* If there is a stripped Node, it must be of type Var*/
+						if (tleVar)
+							get_tablename_colname_from_var(pstate, (Var *)tleVar, &real_colname, NULL);
+
+						/**
+						 * is visible &&
+						 * expr isn`t Var, just juge tle_resname equal name
+						 * select_tle in table(real_colname != NULL),  real_colname not equal fount name, so resname is alias
+						 * so just judge resname equal name. if equal, name in table ans targetlist.
+						 *
+						 * (real_colname && pg_strcasecmp(real_colname, name) != 0) prevent  'a as a', we determinr it table col, not alias.
+						 */
+						if (!select_tle->resjunk &&
+							(!tleVar || (real_colname && pg_strcasecmp(real_colname, name) != 0)) &&
+							pg_strcasecmp(select_tle->resname, name) == 0)
 						{
 							ereport(WARNING,
 									(errcode(ERRCODE_AMBIGUOUS_COLUMN),
@@ -2970,8 +2988,10 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			}
 			/* End: Req:SRS-MYSQL-SQL-Select */
 			else
+			{
 				if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 					name = NULL;
+			}
 		}
 
 
@@ -6410,3 +6430,70 @@ getOuterJoinQuals(List **multi_outerjoins, Bitmapset *join_vars, BoolExprType bo
 
 	return ret_quals;
 }
+
+/* Begin: Req:SRS-MYSQL-SQL-Select */
+static Node *
+strip_explicit_to_var(Node *node)
+{
+	for (;;)
+	{
+		if (node == NULL)
+			return NULL;
+
+		switch (nodeTag(node))
+		{
+			case T_Var:
+				return (Node *)node;
+			case T_RelabelType:
+			{
+				RelabelType *relabel = (RelabelType *)node;
+				node = (Node *)relabel->arg;
+				break;
+			}
+			case T_CoerceViaIO:
+			{
+				CoerceViaIO *coerceviaio = (CoerceViaIO *)node;
+				node = (Node *)coerceviaio->arg;
+				break;
+			}
+			case T_ArrayCoerceExpr:
+			{
+				ArrayCoerceExpr *arraycoerceexpr = (ArrayCoerceExpr *)node;
+				node = (Node *)arraycoerceexpr->arg;
+				break;
+			}
+			case T_CoerceToDomain:
+			{
+				CoerceToDomain *coercetodomain = (CoerceToDomain *)node;
+				node = (Node *)coercetodomain->arg;
+				break;
+			}
+			case T_ConvertRowtypeExpr:
+			{
+				ConvertRowtypeExpr *convertrowtypeexpr = (ConvertRowtypeExpr *)node;
+				node = (Node *)convertrowtypeexpr->arg;
+				break;
+			}
+			case T_CollateExpr:
+			{
+				CollateExpr *collateexpr = (CollateExpr *)node;
+				node = (Node *)collateexpr->arg;
+				break;
+			}
+			case T_FuncExpr:
+			{
+				FuncExpr *func = (FuncExpr *)node;
+				if (func->funcformat == COERCE_EXPLICIT_CALL ||
+					func->args == NIL)
+					return NULL;
+				node = (Node *)linitial(func->args);
+				break;
+			}
+			default:
+				return NULL;
+		}
+	}
+
+	return NULL;
+}
+/* End: Req:SRS-MYSQL-SQL-Select */
