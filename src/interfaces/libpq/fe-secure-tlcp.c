@@ -194,12 +194,20 @@ initialize_TLCP(PGconn *conn)
 	else
 	{
 		strlcpy(cacertfile, conn->tlcpcacert, sizeof(cacertfile));
+		/* Begin - BUG7793 */
+		if (stat(cacertfile, &bufenc) != 0)
+		{
+			appendPQExpBuffer(&conn->errorMessage,
+						  libpq_gettext("client TLCP read cacertfile fail:%s \n"), cacertfile);
+			return -1;
+		}
+		/* End - BUG7793 */
 	}
 
 	/* get clientcert.pem path */
 	if (!(conn->tlcpcert && strlen(conn->tlcpcert) > 0))
 	{
-		snprintf(certfile, sizeof(certfile), "%s/%s", homedir, CLIENT_CA_CERT_FILE);
+		snprintf(certfile, sizeof(certfile), "%s/%s", homedir, CLIENT_CERT_FILE);  // BUG7793
 	}
 	else
 	{
@@ -209,7 +217,7 @@ initialize_TLCP(PGconn *conn)
 	/* get clientkey.pem path */
 	if (!(conn->tlcpkey && strlen(conn->tlcpkey) > 0))
 	{
-		snprintf(keyfile, sizeof(keyfile), "%s/%s", homedir, CLIENT_CA_CERT_FILE);
+		snprintf(keyfile, sizeof(keyfile), "%s/%s", homedir, CLIENT_CERT_KEY_FILE);  // BUG7793
 	}
 	else
 	{
