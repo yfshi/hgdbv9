@@ -1506,3 +1506,17 @@ FROM dual;  -- ABC
  ABC
 (1 row)
 
+/* Begin - ReqID: OA-2348 */
+SELECT sys.empty_clob IS NULL AS result FROM DUAL;
+ result 
+--------
+ t
+(1 row)
+
+SELECT sys.empty_blob IS NULL AS result FROM DUAL;
+ result 
+--------
+ t
+(1 row)
+
+/* End - ReqID: OA-2348 */
