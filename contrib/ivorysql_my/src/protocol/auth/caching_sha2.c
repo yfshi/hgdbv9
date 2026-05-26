@@ -464,12 +464,12 @@ caching_sha2_password_parse(char *rolpassword)
     part[CACHING_SHA2_SALT_INDEX] = (char *) palloc0(SALT_LENGTH + 1);
     part[CACHING_SHA2_DIGEST_INDEX] = (char *) palloc0(STORED_SHA256_DIGEST_LENGTH + 1);
 
-    if (pg_b64_decode(salt, strlen(salt), part[CACHING_SHA2_SALT_INDEX], SALT_LENGTH + 1))
+    if (pg_b64_decode(salt, strlen(salt), part[CACHING_SHA2_SALT_INDEX], SALT_LENGTH + 1) < 0)
     {
         elog(ERROR, "caching_sha2_password: could not decode salt");
     }
 
-    if (pg_b64_decode(digest, strlen(digest), part[CACHING_SHA2_DIGEST_INDEX], STORED_SHA256_DIGEST_LENGTH + 1))
+    if (pg_b64_decode(digest, strlen(digest), part[CACHING_SHA2_DIGEST_INDEX], STORED_SHA256_DIGEST_LENGTH + 1) < 0)
     {
         elog(ERROR, "caching_sha2_password: could not decode digest");
     }

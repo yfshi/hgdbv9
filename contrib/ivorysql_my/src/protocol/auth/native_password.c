@@ -102,7 +102,7 @@ native_password_parse(char *rolpassword)
 
     part[NATIVE_DIGEST_INDEX] = (char *) palloc0(len2 + 1);
 
-    if (pg_b64_decode(digest_base64, len1, part[NATIVE_DIGEST_INDEX], len2))
+    if (pg_b64_decode(digest_base64, len1, part[NATIVE_DIGEST_INDEX], len2) < 0)
     {
         elog(ERROR, "mysql_native_password: could not decode digest");
     }
