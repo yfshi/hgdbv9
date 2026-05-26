@@ -19220,10 +19220,7 @@ PreCommit_on_commit_actions(void)
 								Relation    toscurrentIndex;
 
 								toscurrentIndex = index_open(tosId, RowExclusiveLock);
-								if (toscurrentIndex && toscurrentIndex->rd_node.relNode == 0)
-									toscurrentIndex->rd_node.relNode = tosId;
 								RelationDropStorage(toscurrentIndex);
-
 								index_close(toscurrentIndex, NoLock);
 							}
 

@@ -1462,9 +1462,6 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 		indexDesc = index_open(indexOid, RowExclusiveLock);
 		if (RELATION_IS_GLOBAL_TEMP(indexDesc))
 		{
-			if (indexDesc->rd_node.relNode == 0)
-				indexDesc->rd_node.relNode = indexOid;
-
 			if (!gtt_storage_attached(RelationGetRelid(indexDesc)))
 			{
 				if (RELATION_IS_GLOBAL_TEMP(resultRelInfo->ri_RelationDesc) &&
@@ -1499,8 +1496,6 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 			IndexInfo	*indexInfo;
 
 			currentIndex = index_open(indexId, RowExclusiveLock);
-			if (currentIndex && currentIndex->rd_node.relNode == 0)
-				currentIndex->rd_node.relNode = indexId;
 
 			/* Init tost index storage */
 			indexInfo = BuildIndexInfo(currentIndex);

@@ -1034,6 +1034,16 @@ ora_index_create(Relation heapRelation,
 		}
 	}
 
+	/* Begin - OA-REQ-2388 */
+	/*
+	 * Keep GTT index relfilenode consistent with GTT table behavior
+	 * store index OID in pg_class.relfilenode
+	 */
+	if (RELATION_IS_GLOBAL_TEMP(heapRelation) && skip_create_storage
+		&& !OidIsValid(relFileNode))
+		relFileNode = indexRelationId;
+	/* End - OA-REQ-2388 */
+
 	/*
 	 * create the index relation's relcache entry and, if necessary, the
 	 * physical disk file. (If we fail further down, it's the smgr's
@@ -2288,11 +2298,6 @@ index_drop(Oid indexId, bool concurrent, bool concurrent_lock_mode)
 	lockmode = (concurrent || concurrent_lock_mode) ? ShareUpdateExclusiveLock : AccessExclusiveLock;
 	userHeapRelation = table_open(heapId, lockmode);
 	userIndexRelation = index_open(indexId, lockmode);
-
-	/* Begin - ReqID:SRS-SQL-GTT */
-	if (RELATION_IS_GLOBAL_TEMP(userIndexRelation) && userIndexRelation->rd_node.relNode == 0)
-		userIndexRelation->rd_node.relNode = indexId;
-	/* End - ReqID:SRS-SQL-GTT */
 
 	/*
 	 * We might still have open queries using it in our own session, which the
@@ -3818,11 +3823,6 @@ reindex_index(Oid indexId, bool skip_constraint_checks, char persistence,
 		table_close(heapRelation, NoLock);
 		return;
 	}
-
-	/* Begin - ReqID:SRS-SQL-GTT */
-	if (RELATION_IS_GLOBAL_TEMP(iRel) && iRel->rd_node.relNode == 0)
-		iRel->rd_node.relNode = indexId;
-	/* End - ReqID:SRS-SQL-GTT */
 
 	if (progress)
 		pgstat_progress_update_param(PROGRESS_CREATEIDX_ACCESS_METHOD_OID,

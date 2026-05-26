@@ -3727,14 +3727,6 @@ RelationTruncateIndexes(Relation heapRelation, LOCKMODE lockmode)
 		/* Open the index relation; use exclusive lock, just to be sure */
 		currentIndex = index_open(indexId, lockmode);
 
-		/* Begin - ReqID:SRS-SQL-GTT */
-		if (RELATION_IS_GLOBAL_TEMP(currentIndex))
-		{
-			if (currentIndex->rd_node.relNode == 0)
-				currentIndex->rd_node.relNode = indexId;
-		}
-		/* End - ReqID:SRS-SQL-GTT */
-
 		/*
 		 * Fetch info needed for index_build.  Since we know there are no
 		 * tuples that actually need indexing, we can use a dummy IndexInfo.
