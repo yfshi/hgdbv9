@@ -591,6 +591,11 @@ static bool is_integer_type(Oid typoid);
 static void set_bulk_rowcount_flag(PLiSQL_bulk_rowcount_flag flag);
 /* End - BUG#Z7819 */
 
+/* Begin - BUG#Z7822 */
+static void plisql_param_eval_forall_var(ExprState *state, ExprEvalStep *op,
+					   ExprContext *econtext);
+/* End - BUG#Z7822 */
+
 /* ----------
  * plisql_exec_function	Called by the call handler for
  *				function execution.
@@ -9465,7 +9470,15 @@ plisql_param_compile(ParamListInfo params, Param *param,
 	 */
 	if (datum->dtype == PLISQL_DTYPE_VAR)
 	{
-		if (param != expr->expr_rw_param &&
+		/* Begin - BUG#Z7822 */
+		if (database_mode == DB_ORACLE &&
+			compatible_mode == ORA_MODE &&
+			expr->forallparams != NULL &&
+			expr->forallparams->indexdno == dno &&
+			((PLiSQL_var *) datum)->datatype->typlen != -1)
+			scratch.d.cparam.paramfunc = plisql_param_eval_forall_var;
+		/* End - BUG#Z7822 */
+		else if (param != expr->expr_rw_param &&
 			((PLiSQL_var *) datum)->datatype->typlen == -1)
 			scratch.d.cparam.paramfunc = plisql_param_eval_var_ro;
 		else
@@ -14342,3 +14355,30 @@ set_bulk_rowcount_flag(PLiSQL_bulk_rowcount_flag flag)
 	bulk_rowcount_flag = flag;
 }
 /* End - BUG#Z7819 */
+
+/* Begin - BUG#Z7822 */
+/*
+ * plisql_param_eval_forall_var		evaluation of EEOP_PARAM_CALLBACK step
+ *
+ * This is specialized to the case of DTYPE_VAR variables for which
+ * is the index variable in FORALL statement.
+ * If econtext->ecxt_estate->es_forall_params is not null,
+ * we get the variable value from ecxt_estate->es_forall_param,
+ * otherwise, we get the variable value by calling plisql_param_eval_var.
+ */
+static void
+plisql_param_eval_forall_var(ExprState *state, ExprEvalStep *op,
+					   ExprContext *econtext)
+{
+	if (econtext->ecxt_estate &&
+		econtext->ecxt_estate->es_forall_params != NULL &&
+		econtext->ecxt_estate->es_forall_params->subscripts != NIL)
+	{
+		*op->resvalue = UInt32GetDatum(list_nth_int(econtext->ecxt_estate->es_forall_params->subscripts,
+											econtext->ecxt_estate->es_forall_params->curr_idx));
+		*op->resnull = false;
+	}
+	else
+		plisql_param_eval_var(state, op, econtext);
+}
+/* End - BUG#Z7822 */

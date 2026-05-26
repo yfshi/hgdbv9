@@ -1714,28 +1714,9 @@ _copySubscriptingRef(const SubscriptingRef *from)
 	COPY_NODE_FIELD(reflowerindexpr);
 	COPY_NODE_FIELD(refexpr);
 	COPY_NODE_FIELD(refassgnexpr);
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	COPY_NODE_FIELD(forallexpr);
-	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	return newnode;
 }
-
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-/*
- * _copyForallExpr
- */
-static ForallExpr *
-_copyForallExpr(const ForallExpr *from)
-{
-	ForallExpr *newnode = makeNode(ForallExpr);
-
-	COPY_NODE_FIELD(subscripts);
-	COPY_SCALAR_FIELD(indexdno);
-
-	return newnode;
-}
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * _copyFuncExpr
@@ -6230,11 +6211,6 @@ copyObjectImpl(const void *from)
 		case T_SubscriptingRef:
 			retval = _copySubscriptingRef(from);
 			break;
-		/* Begin - ReqID:SRS-PLSQL-FORALL */
-		case T_ForallExpr:
-			retval = _copyForallExpr(from);
-			break;
-		/* End - ReqID:SRS-PLSQL-FORALL */
 		case T_FuncExpr:
 			retval = _copyFuncExpr(from);
 			break;

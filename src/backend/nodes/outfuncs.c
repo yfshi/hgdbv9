@@ -1340,21 +1340,7 @@ _outSubscriptingRef(StringInfo str, const SubscriptingRef *node)
 	WRITE_NODE_FIELD(reflowerindexpr);
 	WRITE_NODE_FIELD(refexpr);
 	WRITE_NODE_FIELD(refassgnexpr);
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	WRITE_NODE_FIELD(forallexpr);
-	/* End - ReqID:SRS-PLSQL-FORALL */
 }
-
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-static void
-_outForallExpr(StringInfo str, const ForallExpr *node)
-{
-	WRITE_NODE_TYPE("ForallExpr");
-
-	WRITE_NODE_FIELD(subscripts);
-	WRITE_OID_FIELD(indexdno);
-}
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 static void
 _outFuncExpr(StringInfo str, const FuncExpr *node)
@@ -4634,11 +4620,6 @@ outNode(StringInfo str, const void *obj)
 			case T_SubscriptingRef:
 				_outSubscriptingRef(str, obj);
 				break;
-			/* Begin - ReqID:SRS-PLSQL-FORALL */
-			case T_ForallExpr:
-				_outForallExpr(str, obj);
-				break;
-			/* End - ReqID:SRS-PLSQL-FORALL */
 			case T_FuncExpr:
 				_outFuncExpr(str, obj);
 				break;

@@ -260,10 +260,6 @@ typedef struct ScalarArrayOpExprHashTable
 ora_updatexml_hook_type ora_updatexml_hook = NULL;
 /* End - ReqID:SRS-SQL-XML */
 
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-void ExecEvalForallExprFetch(ExprState *state, ExprEvalStep *op, ExprContext *econtext);
-/* End - ReqID:SRS-PLSQL-FORALL */
-
 /*
  * Prepare ExprState for interpreted execution.
  */
@@ -547,7 +543,6 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		/* Begin - OA#00002227 */
 		&&CASE_EEOP_PKGGLOBAL_VARREF,
 		/* End - OA#00002227*/
-		&&CASE_EEOP_FORALLEXPR_FETCH,	/* ReqID:SRS-PLSQL-FORALL */
 		&&CASE_EEOP_ORAROW,	/* BUG#7712 */
 		&&CASE_EEOP_LAST
 	};
@@ -1977,14 +1972,6 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 		/* End - OA#00002227*/
-
-		/* Begin - ReqID:SRS-PLSQL-FORALL */
-		EEO_CASE(EEOP_FORALLEXPR_FETCH)
-		{
-			ExecEvalForallExprFetch(state, op, econtext);
-			EEO_NEXT();
-		}
-		/* End - ReqID:SRS-PLSQL-FORALL */
 
 		/* Begin - BUG#7712 */
 		EEO_CASE(EEOP_ORAROW)
@@ -4912,20 +4899,6 @@ ExecEvalPkgGlobalVarExec(ExprState *state, ExprEvalStep *op)
 	return;
 }
 /* End - OA#00002227*/
-
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-/*
- * fetch the forall expression index value
- */
-void
-ExecEvalForallExprFetch(ExprState *state, ExprEvalStep *op, ExprContext *econtext)
-{
-	if (econtext->ecxt_estate &&
-		econtext->ecxt_estate->es_forall_params != NULL)
-		*op->resvalue = UInt32GetDatum(list_nth_int(op->d.forallexpr.subscripts,
-										econtext->ecxt_estate->es_forall_params->curr_idx));
-}
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 /* Begin - BUG#7712 */
 /*
