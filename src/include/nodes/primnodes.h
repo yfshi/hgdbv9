@@ -1240,6 +1240,22 @@ typedef struct RowCompareExpr
 	List	   *rargs;			/* the right-hand input arguments */
 } RowCompareExpr;
 
+/* Begin - BUG#7712 */
+/*
+ * OraRowExpr - a Oracle record type constructor expression
+ */
+typedef struct OraRowExpr
+{
+	Expr		xpr;
+	Datum	   type;			/* the address of Oracle record datatype */
+	List	   *args;			/* the fields */
+	Oid			row_typeid;		/* ORARECORDOID */
+	CoercionForm row_format;	/* how to display this node */
+	List	   *colnames;		/* list of String, or NIL */
+	int			location;		/* token location, or -1 if unknown */
+} OraRowExpr;
+/* End - BUG#7712 */
+
 /* Begin - BUG#Z4592 */
 /*
  * CoalesceType - a sub NodeTag(label) for CoalesceExpr.

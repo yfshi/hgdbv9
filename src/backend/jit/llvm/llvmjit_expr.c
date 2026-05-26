@@ -2508,6 +2508,13 @@ llvm_compile_expr(ExprState *state)
 				LLVMBuildBr(b, opblocks[opno + 1]);
 				break;
 			/* End - ReqID:SRS-PLSQL-FORALL */
+			/* Begin - BUG#7712 */
+			case EEOP_ORAROW:
+				build_EvalXFunc(b, mod, "ExecEvalOraRow",
+								v_state, op);
+				LLVMBuildBr(b, opblocks[opno + 1]);
+				break;
+			/* End - BUG#7712 */
 
 			case EEOP_LAST:
 				Assert(false);

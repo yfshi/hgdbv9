@@ -38,6 +38,7 @@
 #include "funcapi.h"
 #include "../pl/plisql/src/plisql.h"
 #include "../pl/plisql/src/pl_udt_type.h"
+#include "common/int.h"	/* BUG#7715 */
 
 static CollectTypeData *create_collectype_data(CollectTypeInfo *type, int32 limit_idx, int max_index);
 static int32 GetCollecType(char typtype);
@@ -90,6 +91,9 @@ static Datum datum_type_cast(Datum value,
 				Oid valtype, int32 valtypmod,
 				Oid reqtype, int32 reqtypmod);
 /* End - ReqID:SRS-PLSQL-BULKCOLLECT */
+/* Begin - BUG#Z7715 */
+static void check_extend(CollectTypeData *collect_data, int extend_num);
+/* End - BUG#Z7715 */
 
 PG_FUNCTION_INFO_V1(collection_init);
 PG_FUNCTION_INFO_V1(collection_first);
@@ -2669,20 +2673,49 @@ collection_extend(PG_FUNCTION_ARGS)
 	Datum				collect = PG_GETARG_DATUM(0);
 	MemoryContext		old;
 	CollectTypeData		*collect_value;
+	/* Begin - BUG#Z7715 */
+	Oid 				keytypoid,
+						valuetypoid;
+	int 				keytypmod,
+						valuetypmod;
+	bool				notnull;
+	Datum				new_value = PointerGetDatum(NULL);
+	bool				null_value = true;
+	/* End - BUG#Z7715 */
 
 	collect_value = (CollectTypeData *) DatumGetPointer(collect);
 
 	CHECK_COLLECTION_IS_NULL(collect_value);
+
+	/* Begin - BUG#Z7715 */
+	check_extend(collect_value, 1);
+
+	/* get type info */
+	get_collectype_typeinfo(collect_value->type, &keytypoid, &keytypmod,
+								&valuetypoid, &valuetypmod, &notnull);
+
+	/* End - BUG#Z7715 */
 
 	Assert(collect_value->valCxt != NULL);
 	old = MemoryContextSwitchTo(collect_value->valCxt);
 
 	collect_value->max_index++;
 
+	/* Begin - BUG#Z7715 */
+	if (valuetypoid == ASSOCIATIVE_ARRAYOID)
+	{
+		/* do init for associate array */
+		new_value = init_collectype_var(PointerGetDatum(collect_value->type->typdatatype));
+		null_value = false;
+	}
+	/* End - BUG#Z7715 */
+
 	insert_collectype_data(collect_value,
 			Int32GetDatum(collect_value->max_index),
-			PointerGetDatum(NULL),
-			true,
+			/* Begin - BUG#Z7715 */
+			new_value,
+			null_value,
+			/* End - BUG#Z7715 */
 			false,
 			false);
 
@@ -2730,6 +2763,9 @@ collection_extend_n(PG_FUNCTION_ARGS)
 	/* get type info */
 	get_collectype_typeinfo(collect_value->type, &keytypoid, &keytypmod,
 								&valuetypoid, &valuetypmod, &notnull);
+	/* Begin - BUG#Z7715 */
+	check_extend(collect_value, num);
+	/* End - BUG#Z7715 */
 
 	old = MemoryContextSwitchTo(collect_value->valCxt);
 
@@ -2865,6 +2901,10 @@ collection_extend_ni(PG_FUNCTION_ARGS)
 
 	byval = get_typbyval(valuetypoid);
 	typlen = get_typlen(valuetypoid);
+
+	/* Begin - BUG#Z7715 */
+	check_extend(collect_value, num);
+	/* End - BUG#Z7715 */
 
 	Assert(collect_value->valCxt != NULL);
 	old = MemoryContextSwitchTo(collect_value->valCxt);
@@ -3579,15 +3619,6 @@ bulk_collect_into_receive(TupleTableSlot *slot, DestReceiver *self)
 		{
 			int 		rowtype_natts;
 
-			/*
-			 * Check whether the number of BULK COLLECT INTO target lists
-			 * is more than one.
-			 */
-			if (bulk_params->collect_num > 1)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						errmsg("coercion into multiple record targets not supported")));/* BUG#Z7603 */
-
 			/* get the numbers of row type's field */
 			if (value_typoid == ORARECORDOID)
 			{
@@ -4022,3 +4053,40 @@ get_collect_all_key_values(Datum collect_value, bool has_between_and,
 	return keys_list;
 }
 /* End - ReqID:SRS-PLSQL-FORALL */
+
+/* Begin - BUG#Z7715 */
+/*
+ * Check whether the number of extend elements exceeds the limit of collection
+ */
+static void
+check_extend(CollectTypeData *collect_data, int extend_num)
+{
+	CollectTypeInfo *collect_type = collect_data->type;
+	Datum  collect_values = collect_data->values;
+
+	if (!IS_PLSQL_VARRAY(collect_type->typtype))
+	{
+		c_map		*map;
+		int32		size;
+		int32           res;
+
+		map = (c_map *) DatumGetPointer(collect_values);
+		size = c_map_size(map);
+		if (pg_add_s32_overflow(size, extend_num, &res))
+			ereport(ERROR,
+				(errcode(ERRCODE_SUBSCRIPT_BEYOND_COUNT),
+				errmsg("subscript beyond count")));
+	}
+	else
+	{
+		CollectVarrayValue	*varray;
+
+		varray = (CollectVarrayValue*) DatumGetPointer(collect_values);
+
+		if (varray->current_used + extend_num > collect_data->limit_idx)
+			ereport(ERROR,
+				(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+				errmsg("subscript outside limit")));
+	}
+}
+/* End - BUG#Z7715 */

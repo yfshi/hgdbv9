@@ -2125,6 +2125,12 @@ FigureColnameInternal(Node *node, char **name)
 		case T_XmlSerialize:
 			*name = "xmlserialize";
 			return 2;
+			/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			/* make Oracle record constructor act like a function */
+			*name = "record_constructor ";
+			return 2;
+		/* End - BUG#7712 */
 		default:
 			break;
 	}

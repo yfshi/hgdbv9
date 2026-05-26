@@ -921,6 +921,21 @@ _equalOnConflictExpr(const OnConflictExpr *a, const OnConflictExpr *b)
 	return true;
 }
 
+/* Begin - BUG#7712 */
+static bool
+_equalOraRowExpr(const OraRowExpr *a, const OraRowExpr *b)
+{
+	COMPARE_NODE_FIELD(args);
+	COMPARE_SCALAR_FIELD(type);
+	COMPARE_SCALAR_FIELD(row_typeid);
+	COMPARE_COERCIONFORM_FIELD(row_format);
+	COMPARE_NODE_FIELD(colnames);
+	COMPARE_LOCATION_FIELD(location);
+
+	return true;
+}
+/* End - BUG#7712 */
+
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 static bool
 _equalUpsertExpr(const UpsertExpr *a, const UpsertExpr *b)
@@ -4115,6 +4130,11 @@ equal(const void *a, const void *b)
 		case T_JoinExpr:
 			retval = _equalJoinExpr(a, b);
 			break;
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			retval = _equalOraRowExpr(a, b);
+			break;
+		/* End - BUG#7712 */
 
 			/*
 			 * RELATION NODES

@@ -215,6 +215,7 @@ typedef enum NodeTag
 	T_PseudoColVar, /* ReqID:SRS-SQL-ROWNUM */
 	T_UdtypeRef,	/* ReqID:SRS-PLSQL-Collection */
 	T_ForallExpr,	/* ReqID:SRS-PLSQL-FORALL */
+	T_OraRowExpr,	/* BUG#7712 */
 
 	/*
 	 * TAGS FOR EXPRESSION STATE NODES (execnodes.h)

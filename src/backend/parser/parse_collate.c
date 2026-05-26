@@ -579,6 +579,26 @@ assign_collations_walker(Node *node, assign_collations_context *context)
 				strength = COLLATE_NONE;
 			location = exprLocation(node);
 			break;
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				/*
+				 * OraRowExpr is a special case because the subexpressions are
+				 * independent: we don't want to complain if some of them have
+				 * incompatible explicit collations.
+				 */
+				OraRowExpr    *expr = (OraRowExpr *) node;
+
+				assign_list_collations(context->pstate, expr->args);
+
+				/*
+				 * Since the result is always Oracle record and therefore never
+				 * has a collation, we can just stop here: this node has no
+				 * impact on the collation of its parent.
+				 */
+				return false;	/* done */
+			}
+		/* End - BUG#7712 */
 
 		default:
 			{

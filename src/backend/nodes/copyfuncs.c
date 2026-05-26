@@ -2452,6 +2452,24 @@ _copyOnConflictExpr(const OnConflictExpr *from)
 	return newnode;
 }
 
+/*
+ * _copyOraRowExpr
+ */
+static OraRowExpr *
+_copyOraRowExpr(const OraRowExpr *from)
+{
+	OraRowExpr    *newnode = makeNode(OraRowExpr);
+
+	COPY_NODE_FIELD(args);
+	COPY_SCALAR_FIELD(type);
+	COPY_SCALAR_FIELD(row_typeid);
+	COPY_SCALAR_FIELD(row_format);
+	COPY_NODE_FIELD(colnames);
+	COPY_LOCATION_FIELD(location);
+
+	return newnode;
+}
+
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 /*
  * _copyUpsertExpr
@@ -6337,6 +6355,11 @@ copyObjectImpl(const void *from)
 		case T_OnConflictExpr:
 			retval = _copyOnConflictExpr(from);
 			break;
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			retval = _copyOraRowExpr(from);
+			break;
+		/* End - BUG#7712 */
 
 			/*
 			 * RELATION NODES

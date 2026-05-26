@@ -563,6 +563,12 @@ parsetree_tree_walker(Node *node, Node* (*walker) (),
 														walker, context);
 				break;
 			}
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			((OraRowExpr *) node)->args = (List *) parsetree_tree_walker((Node *) ((OraRowExpr *) node)->args,
+																walker, context);
+			break;
+		/* End - BUG#7712 */
 		default:
 			break;
 	}
@@ -2231,6 +2237,11 @@ split_join_where_clause_recurse(Node **pnode, split_join_where_clause_context *c
 			ret = false;
 			*context->has_prior = true;
 			break;
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			ret = split_join_where_clause_recurse((Node **) &((OraRowExpr *) node)->args, context);
+			break;
+		/* End - BUG#7712 */
 		default:
 			break;
 	}

@@ -847,6 +847,11 @@ JumbleExpr(JumbleState *jstate, Node *node)
 		case T_PseudoColVar:
 			break;
 		/* End - BUG#Z1278 */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			JumbleExpr(jstate, (Node *) ((OraRowExpr *) node)->args);
+			break;
+		/* End - BUG#7712 */
 		default:
 			/* Only a warning, since we can stumble along anyway */
 			elog(WARNING, "unrecognized node type: %d",

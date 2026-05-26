@@ -3608,6 +3608,14 @@ pseudo_collation_replace_TableFunc(TableFunc *tfunc, pseudo_collation_replace_co
 	REPLACE_LIST_PSEUDO_COLLATION(tfunc->coldefexprs);
 }
 
+/* Begin - BUG#7712 */
+static inline void 
+pseudo_collation_replace_OraRowExpr(OraRowExpr *r, pseudo_collation_replace_context *context)
+{
+	REPLACE_LIST_PSEUDO_COLLATION(r->args);
+}
+/* End - BUG#7712 */
+
 static bool 
 pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *context)
 {	
@@ -3808,6 +3816,11 @@ pseudo_collation_replace_walker(Node *node, pseudo_collation_replace_context *co
 		case T_TableFunc:
 			pseudo_collation_replace_TableFunc((TableFunc *) node, context);
 			break;
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			pseudo_collation_replace_OraRowExpr((OraRowExpr *) node, context);
+			break;
+		/* End - BUG#7712 */
 		default:
 			break;
 	}
@@ -4060,6 +4073,17 @@ flatten_grouping_sets(Node *expr, bool toplevel, bool *hasGroupingSets)
 
 				return (Node *) result;
 			}
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			{
+				OraRowExpr    *r = (OraRowExpr *) expr;
+
+				if (r->row_format == COERCE_IMPLICIT_CAST)
+					return flatten_grouping_sets((Node *) r->args,
+												 false, NULL);
+			}
+			break;
+		/* End - BUG#7712 */
 		default:
 			break;
 	}

@@ -1469,6 +1469,9 @@ contain_leaked_vars_walker(Node *node, void *context)
 		/* Begin - ReqID:SRS-PLSQL-Collection */
 		case T_UdtypeRef:
 		/* End - ReqID:SRS-PLSQL-Collection */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+		/* End - BUG#7712 */
 
 			/*
 			 * We know these node types don't contain function calls; but
@@ -3392,6 +3395,9 @@ eval_const_expressions_mutator(Node *node,
 		case T_ArrayExpr:
 		case T_RowExpr:
 		case T_MinMaxExpr:
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+		/* End - BUG#7712 */
 			{
 				/*
 				 * Generic handling for node types whose own processing is
@@ -5415,6 +5421,10 @@ evaluate_expr(Expr *expr, Oid result_type, int32 result_typmod,
 	{
 		if (resultTypLen == -1)
 			const_val = PointerGetDatum(PG_DETOAST_DATUM_COPY(const_val));
+		/* Begin - BUG#7712 */
+		else if (result_type == ORARECORDOID)
+			const_val = rowDatumCopy(const_val, const_is_null);
+		/* End - BUG#7712 */
 		else
 			const_val = datumCopy(const_val, resultTypByVal, resultTypLen);
 	}

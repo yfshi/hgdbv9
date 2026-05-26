@@ -1212,6 +1212,73 @@ BEGIN
   FROM employee;
 END;
 /
+
+DECLARE
+  TYPE empnos_t IS VARRAY(100) OF NUMBER;
+  TYPE empnames_t IS VARRAY(100) OF VARCHAR(20);
+  TYPE emphiredates_t IS VARRAY(100) OF date;
+  TYPE empdepartnos_t IS VARRAY(100) OF NUMBER;
+  v_empnos empnos_t;
+  v_empnames empnames_t;
+  v_emphiredates emphiredates_t;
+  v_empdepartnos empdepartnos_t;
+BEGIN
+  DELETE employee RETURNING empno, ename, hiredate, departno
+   BULK COLLECT INTO v_empnos, v_empnames, v_emphiredates, v_empdepartnos;
+  FOR i IN 1 .. v_empnos.count LOOP
+    DBMS_OUTPUT.PUT_LINE('ID: ' || v_empnos(i) || ', NAME: '|| v_empnames(i) || ', hiredate:' ||  v_emphiredates(i) || ', departno :' ||v_empdepartnos(i));
+  END LOOP;
+END;
+/
+
+select *from employee;
+
+DECLARE
+  TYPE emp_rec IS RECORD(id int);
+  TYPE emp_rec_t IS TABLE OF emp_rec;
+  v_emp_recs1 emp_rec_t;
+  v_emp_recs2 emp_rec_t;
+BEGIN
+  DELETE employee RETURNING empno, departno
+  BULK COLLECT INTO v_emp_recs1, v_emp_recs2;
+  FOR i IN 1 .. v_emp_recs1.count LOOP
+    DBMS_OUTPUT.PUT_LINE('ID: ' || v_emp_recs1(i).id || ', departno :' || v_emp_recs2(i).id);
+  END LOOP;
+END;
+/
+
+insert into employee values(1, 'kim', to_date('2017-10-18','yyyy-mm-dd'), 1);
+DECLARE
+  TYPE empnos_t IS VARRAY(100) OF NUMBER;
+  TYPE empnames_t IS VARRAY(100) OF VARCHAR(20);
+  TYPE emphiredates_t IS VARRAY(100) OF date;
+  TYPE empdepartnos_t IS VARRAY(100) OF NUMBER;
+  v_empnos empnos_t;
+  v_empnames empnames_t;
+  v_emphiredates emphiredates_t;
+  v_empdepartnos empdepartnos_t;
+BEGIN
+  EXECUTE IMMEDIATE 'UPDATE employee SET departno = 100 RETURNING empno, ename, hiredate, departno INTO :1, :2, :3, :4'
+  RETURNING BULK COLLECT INTO v_empnos, v_empnames, v_emphiredates, v_empdepartnos;
+  FOR i IN 1 .. v_empnos.count LOOP
+    DBMS_OUTPUT.PUT_LINE('ID: ' || v_empnos(i) || ', NAME: '|| v_empnames(i) || ', hiredate:' ||  v_emphiredates(i) || ', departno :' ||v_empdepartnos(i));
+  END LOOP;
+END;
+/
+
+DECLARE
+  TYPE emp_rec IS RECORD(id int);
+  TYPE emp_rec_t IS TABLE OF emp_rec;
+  v_emp_recs1 emp_rec_t;
+  v_emp_recs2 emp_rec_t;
+BEGIN
+  EXECUTE IMMEDIATE 'UPDATE employee SET departno = 100 RETURNING empno, departno INTO :1, :2, :3, :4'
+  RETURNING BULK COLLECT INTO v_emp_recs1, v_emp_recs2;
+  FOR i IN 1 .. v_emp_recs1.count LOOP
+    DBMS_OUTPUT.PUT_LINE('ID: ' || v_emp_recs1(i).id || ', departno :' || v_emp_recs2(i).id);
+  END LOOP;
+END;
+/
 --/* End - BUG#7603 */
 
 --clean

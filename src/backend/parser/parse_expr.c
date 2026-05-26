@@ -176,6 +176,9 @@ static Node *buildHgVersionsExpr(ParseState *pstate,
 								 bool has_plus_token,
 								 int location);
 /* End - ReqID:SRS-SECURITY-FLASHBACK */
+/* Begin - BUG#7712 */
+static Node *transformOraRowExpr(ParseState *pstate, OraRowExpr *r, bool allowDefault);
+/* End - BUG#7712 */
 
 /* Begin - Bug#Z167 */
 static inline void
@@ -913,6 +916,11 @@ transformExprRecurse(ParseState *pstate, Node *expr)
 			result = transformVarRef(pstate, (VarRef *)expr);
 			break;
 		/* End - ReqID:SRS-MYSQL-SET */
+		/* Begin - BUG#7712 */
+		case T_OraRowExpr:
+			result = transformOraRowExpr(pstate, (OraRowExpr *) expr, false);
+			break;
+		/* End - BUG#7712 */
 		default:
 			/* should not reach here */
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
@@ -5860,3 +5868,35 @@ transformVarRef(ParseState *pstate, VarRef *varref)
 	return transformExprRecurse(pstate, funcCall);
 }
 /* End - ReqID:SRS-MYSQL-SET */
+
+/* Begin - BUG#7712 */
+static Node *
+transformOraRowExpr(ParseState *pstate, OraRowExpr *r, bool allowDefault)
+{
+	OraRowExpr  *newr;
+
+	newr = makeNode(OraRowExpr);
+
+	/* Transform the field expressions */
+	newr->args = transformExpressionList(pstate, r->args,
+										 pstate->p_expr_kind, allowDefault);
+
+	/* Disallow more columns than will fit in a tuple */
+	if (list_length(newr->args) > MaxTupleAttributeNumber)
+		ereport(ERROR,
+				(errcode(ERRCODE_TOO_MANY_COLUMNS),
+				 errmsg("ROW expressions can have at most %d entries",
+						MaxTupleAttributeNumber),
+				 parser_errposition(pstate, r->location)));
+
+	/* Barring later casting, we consider the type ORARECORDOID */
+	newr->row_typeid = ORARECORDOID;
+	newr->row_format = COERCE_IMPLICIT_CAST;
+	newr->type = r->type;
+
+	newr->colnames = list_copy(r->colnames);
+	newr->location = r->location;
+
+	return (Node *) newr;
+}
+/* End - BUG#7712 */

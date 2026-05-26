@@ -548,6 +548,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		&&CASE_EEOP_PKGGLOBAL_VARREF,
 		/* End - OA#00002227*/
 		&&CASE_EEOP_FORALLEXPR_FETCH,	/* ReqID:SRS-PLSQL-FORALL */
+		&&CASE_EEOP_ORAROW,	/* BUG#7712 */
 		&&CASE_EEOP_LAST
 	};
 
@@ -1984,6 +1985,15 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 			EEO_NEXT();
 		}
 		/* End - ReqID:SRS-PLSQL-FORALL */
+
+		/* Begin - BUG#7712 */
+		EEO_CASE(EEOP_ORAROW)
+		{
+			ExecEvalOraRow(state, op);
+
+			EEO_NEXT();
+		}
+		/* End - BUG#7712 */
 
 		EEO_CASE(EEOP_LAST)
 		{
@@ -4916,3 +4926,22 @@ ExecEvalForallExprFetch(ExprState *state, ExprEvalStep *op, ExprContext *econtex
 										econtext->ecxt_estate->es_forall_params->curr_idx));
 }
 /* End - ReqID:SRS-PLSQL-FORALL */
+
+/* Begin - BUG#7712 */
+/*
+ * Evaluate a Oracle record constructor expression.
+ *
+ * The individual columns have already been evaluated into
+ * op->d.row.elemvalues[]/elemnulls[].
+ */
+void
+ExecEvalOraRow(ExprState *state, ExprEvalStep *op)
+{
+	/* build tuple from evaluated field values */
+	*op->resvalue = orarow_heap_form_tuple(op->d.orarow.type,
+							op->d.orarow.tupdesc,
+							op->d.orarow.elemvalues,
+							op->d.orarow.elemnulls);
+	*op->resnull = false;
+}
+/* End - BUG#7712 */

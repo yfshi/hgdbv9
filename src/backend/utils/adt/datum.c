@@ -1059,3 +1059,102 @@ heap_copy_orarecord_as_tuple(Datum tuple_datum)
 	return PointerGetDatum(newheader);
 }
 /* End - ReqID:SRS-PLSQL-Collection */
+
+/* Begin - BUG#7712 */
+/*
+ * make a tuple which the first value is Oracle record type.
+ */
+Datum
+orarow_heap_form_tuple(Datum type,
+					TupleDesc tupleDesc,
+					Datum *old_values,
+					bool *old_isnull)
+{
+	Datum		*values;
+	bool		*nulls;
+	int 		natts;
+	HeapTuple	newtup = NULL;
+	TupleDesc	newtupdesc;
+	int 		i;
+	Datum		result;
+	PLiSQL_ora_record_type	 *ora_rec_type;
+	ListCell	*lc;
+
+	natts = tupleDesc->natts + 1;
+	values = palloc(sizeof(Datum) * natts);
+	nulls = palloc(sizeof(bool) * natts);
+	memset(nulls, false, sizeof(bool) * natts);
+
+	newtupdesc = CreateTemplateTupleDesc(natts, false);
+	newtupdesc->tdtypeid = ORARECORDOID;
+	TupleDescInitEntry(newtupdesc, 1,
+					"__###__",
+					UDTPOINTEROID, -1,
+					0);
+	TupleDescInitEntryCollation(newtupdesc,
+								1,
+								InvalidOid);
+
+	values[0] = type;
+	nulls[0] = false;
+
+	ora_rec_type = (PLiSQL_ora_record_type *) PointerGetDatum(type);
+
+	if (ora_rec_type != NULL && ora_rec_type->type.ttype == PLISQL_TTYPE_ORARECORD_TYPE)
+	{
+		ora_rec_type = (PLiSQL_ora_record_type *) type;
+
+		if (list_length(ora_rec_type->args) != tupleDesc->natts)
+			ereport(ERROR,
+				(errcode(ERRCODE_DATATYPE_MISMATCH),
+				 errmsg("Return rowtype or query do not match")));
+
+		i = 0;
+		foreach(lc, ora_rec_type->args)
+		{
+			PLiSQL_ora_record_argitem *argitem = (PLiSQL_ora_record_argitem *) lfirst(lc);
+			Datum	src_value;
+			Oid 	src_oid;
+
+			src_oid = SPI_gettypeid(tupleDesc, i + 1);
+
+			if (!old_isnull[i])
+				src_value = doCastValue(old_values[i], src_oid,
+								argitem->type->typoid, argitem->type->atttypmod);
+
+			copy_tupleAttrsValues(src_value,
+								old_isnull[i],
+								argitem->type->typoid,
+								((PLiSQL_type *)(argitem->type))->typbyval,
+								((PLiSQL_type *)(argitem->type))->typlen,
+								&(values[i + 1]));
+			nulls[i + 1] = old_isnull[i];
+			TupleDescInitEntry(newtupdesc, i + 2,
+						   argitem->type->typname,
+						   argitem->type->typoid,
+						   argitem->type->atttypmod,
+						   0);
+			TupleDescInitEntryCollation(newtupdesc,
+										i + 2,
+										argitem->type->collation);
+
+			i++;
+		}
+	}
+	else
+		ereport(ERROR,
+				(errcode(ERRCODE_DATA_EXCEPTION),
+				 errmsg("invalid Oracle record type")));
+
+	BlessTupleDesc(newtupdesc);
+	newtup = heap_form_tuple(newtupdesc, values, nulls);
+
+	pfree(values);
+	pfree(nulls);
+
+	result = heap_copy_tuple_as_datum(newtup, newtupdesc);
+	heap_freetuple(newtup);
+
+	return result;
+}
+/* End - BUG#7712 */

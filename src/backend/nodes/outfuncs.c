@@ -4380,6 +4380,21 @@ _outOraPartSup(StringInfo str, const OraPartSup *node)
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - BUG#7712 */
+static void
+_outOraRowExpr(StringInfo str, const OraRowExpr *node)
+{
+	WRITE_NODE_TYPE("ORAROW");
+
+	WRITE_UINT64_FIELD(type);
+	WRITE_NODE_FIELD(args);
+	WRITE_OID_FIELD(row_typeid);
+	WRITE_ENUM_FIELD(row_format, CoercionForm);
+	WRITE_NODE_FIELD(colnames);
+	WRITE_LOCATION_FIELD(location);
+}
+/* End - BUG#7712 */
+
 /*
  * outNode -
  *	  converts a Node into ascii string and append it to 'str'
@@ -5213,6 +5228,11 @@ outNode(StringInfo str, const void *obj)
 				_outOraPartSup(str, obj);
 				break;
 			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+			/* Begin - BUG#7712 */
+			case T_OraRowExpr:
+				_outOraRowExpr(str, obj);
+				break;
+			/* End - BUG#7712 */
 			default:
 
 				/*
