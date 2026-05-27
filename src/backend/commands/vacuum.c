@@ -2274,14 +2274,6 @@ vac_open_indexes(Relation relation, LOCKMODE lockmode,
 
 		indrel = index_open(indexoid, lockmode);
 
-		/* Begin - ReqID:SRS-SQL-GTT */
-		if (RELATION_IS_GLOBAL_TEMP(indrel))
-		{
-			if (indrel->rd_node.relNode == 0)
-				indrel->rd_node.relNode = indexoid;
-		}
-		/* End - ReqID:SRS-SQL-GTT */
-
 		if (indrel->rd_index->indisready)
 			(*Irel)[i++] = indrel;
 		else

@@ -215,11 +215,6 @@ get_relation_info(PlannerInfo *root, Oid relationObjectId, bool inhparent,
 			 * Extract info from the relation descriptor for the index.
 			 */
 			indexRelation = index_open(indexoid, lmode);
-			/* Begin - ReqID:SRS-SQL-GTT */
-			if (RELATION_IS_GLOBAL_TEMP(indexRelation) && indexRelation->rd_node.relNode == 0)
-				indexRelation->rd_node.relNode = indexoid;
-			/* End - ReqID:SRS-SQL-GTT */
-
 			index = indexRelation->rd_index;
 
 			/*

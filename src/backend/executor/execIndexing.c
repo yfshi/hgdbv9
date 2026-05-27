@@ -201,13 +201,6 @@ ExecOpenIndices(ResultRelInfo *resultRelInfo, bool speculative)
 		IndexInfo  *ii;
 
 		indexDesc = index_open(indexOid, RowExclusiveLock);
-		/* Begin - ReqID:SRS-SQL-GTT */
-		if (RELATION_IS_GLOBAL_TEMP(indexDesc) && !gtt_storage_attached(indexOid))
-		{
-			if (indexDesc->rd_node.relNode == 0)
-				indexDesc->rd_node.relNode = indexOid;
-		}
-		/* End - ReqID:SRS-SQL-GTT */
 
 		/* extract index key information from the index's pg_index info */
 		ii = BuildIndexInfo(indexDesc);
@@ -348,9 +341,6 @@ ExecInsertIndexTuples(ResultRelInfo *resultRelInfo,
 		/* Begin - BUG#Z5712 */
 		if (RELATION_IS_GLOBAL_TEMP(indexRelation))
 		{
-			if (indexRelation->rd_node.relNode == 0)
-				indexRelation->rd_node.relNode = indexRelation->rd_id;
-
 			if (!gtt_storage_attached(RelationGetRelid(indexRelation)))
 			{
 				Relation 	rel;
