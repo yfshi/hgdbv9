@@ -105,6 +105,7 @@ DiskquotaMessageBox * message_box = NULL;
 /* using hash table to support incremental update the table size entry.*/
 static HTAB *disk_quota_worker_map = NULL;
 static object_access_hook_type next_object_access_hook;
+static ProcessUtility_hook_type prev_ProcessUtility_hook = NULL;
 static int num_db = 0;
 
 /* functions of disk quota*/
@@ -128,6 +129,10 @@ static void process_message_box(void);
 static void process_message_box_internal(DiskquotaMessageResult *code);
 static void dq_object_access_hook(ObjectAccessType access, Oid classId,
 				Oid objectId, int subId, void *arg);
+static void dq_process_utility(PlannedStmt *pstmt, const char *queryString,
+							   bool readOnlyTree, ProcessUtilityContext context,
+							   ParamListInfo params, QueryEnvironment *queryEnv,
+							   DestReceiver *dest, QueryCompletion *qc);
 static const char *err_code_to_err_message(DiskquotaMessageResult code);
 extern void diskquota_invalidate_db(Oid dbid);
 
@@ -185,7 +190,7 @@ _PG_init(void)
 							"max number of active tables monitored by disk-quota",
 							NULL,
 							&diskquota_max_active_tables,
-							1 * 1024 * 1024,
+							1024,
 							1,
 							INT_MAX,
 							PGC_SIGHUP,
@@ -234,6 +239,9 @@ _PG_init(void)
 	/* Add dq_object_access_hook to handle drop extension event.*/
 	next_object_access_hook = object_access_hook;
 	object_access_hook = dq_object_access_hook;
+
+	prev_ProcessUtility_hook = ProcessUtility_hook;
+	ProcessUtility_hook = dq_process_utility;
 
 	if (diskquota_enable != AUOTA_ON)
 		return ;
@@ -375,7 +383,6 @@ disk_quota_worker_main(Datum main_arg)
 		/* Do the work */
 		refresh_disk_quota_model(false);
 		refresh_box_message();
-		diskquota_send_sig_to_session();
 
 		/* emergency bailout if postmaster has died */
 		if (rc & WL_POSTMASTER_DEATH)
@@ -943,6 +950,12 @@ set_quota_internal(Oid targetoid, int64 quota_limit_mb, QuotaType type)
 		if (ret != SPI_OK_UPDATE)
 			elog(ERROR, "cannot update quota setting table, error code %d", ret);
 	}
+
+	/* Keep enforcement state in sync with SQL-visible quota metadata. */
+	if (quota_limit_mb > 0)
+		update_shared_quota_state(targetoid, quota_limit_mb, type);
+	else
+		remove_shared_quota_state(targetoid, type);
 	/*
 	 * And finish our transaction.
 	 */
@@ -1405,6 +1418,72 @@ out:
 	if (next_object_access_hook)
 		(*next_object_access_hook)(access, classId, objectId,
 				subId, arg);
+}
+
+/*
+ * ProcessUtility hook used to refresh quota state after utility commands that
+ * can shrink or rewrite relation storage.
+ */
+static void
+dq_process_utility(PlannedStmt *pstmt, const char *queryString,
+				   bool readOnlyTree, ProcessUtilityContext context,
+				   ParamListInfo params, QueryEnvironment *queryEnv,
+				   DestReceiver *dest, QueryCompletion *qc)
+{
+	Node *parsetree = pstmt->utilityStmt;
+
+	if (prev_ProcessUtility_hook)
+		prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context,
+								 params, queryEnv, dest, qc);
+	else
+		standard_ProcessUtility(pstmt, queryString, readOnlyTree, context,
+								params, queryEnv, dest, qc);
+
+	if (IsBackgroundWorker || creating_extension || parsetree == NULL)
+		return;
+
+	/* Only utility commands with immediate storage-size effects are handled. */
+	switch (nodeTag(parsetree))
+	{
+		case T_TruncateStmt:
+			{
+				TruncateStmt *stmt = (TruncateStmt *) parsetree;
+				ListCell   *lc;
+
+				foreach(lc, stmt->relations)
+				{
+					RangeVar *rv = lfirst_node(RangeVar, lc);
+					Oid relid = RangeVarGetRelid(rv, AccessShareLock, true);
+
+					if (OidIsValid(relid))
+						refresh_relation_quota_state(relid);
+				}
+			}
+			break;
+		case T_VacuumStmt:
+			{
+				VacuumStmt *stmt = (VacuumStmt *) parsetree;
+				ListCell   *lc;
+
+				if (!stmt->is_vacuumcmd || stmt->rels == NIL)
+					break;
+
+				foreach(lc, stmt->rels)
+				{
+					VacuumRelation *vrel = lfirst_node(VacuumRelation, lc);
+					Oid relid = vrel->oid;
+
+					if (!OidIsValid(relid) && vrel->relation != NULL)
+						relid = RangeVarGetRelid(vrel->relation, AccessShareLock, true);
+
+					if (OidIsValid(relid))
+						refresh_relation_quota_state(relid);
+				}
+			}
+			break;
+		default:
+			break;
+	}
 }
 
 static const char *err_code_to_err_message(DiskquotaMessageResult code)

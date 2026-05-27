@@ -26,8 +26,36 @@ struct DiskQuotaLocks
 	LWLock *active_table_lock;
 	LWLock *black_map_lock;
 	LWLock *message_box_lock;
+	LWLock *quota_state_lock;
 };
 typedef struct DiskQuotaLocks DiskQuotaLocks;
+
+/*
+ * Key for one quota target in the shared quota state map.
+ *
+ * A target is unique only within a database and quota type, because namespace
+ * OIDs and role OIDs can overlap.
+ */
+typedef struct DiskQuotaStateKey
+{
+	Oid			targetoid; /* namespace OID or role OID */
+	Oid			databaseoid; /* database that owns this quota state */
+	/* Distinguishes namespace quota entries from role quota entries. */
+	uint32		targettype;
+} DiskQuotaStateKey;
+
+/*
+ * Shared quota state used by backends to make enforcement decisions before the
+ * worker has refreshed the older blacklist view.
+ */
+typedef struct DiskQuotaStateEntry
+{
+	DiskQuotaStateKey key; /* quota target identity */
+	int64		limit_bytes; /* configured hard quota in bytes */
+	int64		used_bytes; /* latest known usage for this target */
+	/* Bytes reserved by active writers but not necessarily visible to worker. */
+	int64		reserved_bytes;
+} DiskQuotaStateEntry;
 
 typedef struct DiskQuotaDbOidPids
 {
@@ -97,6 +125,8 @@ extern DiskQuotaLocks diskquota_locks;
 extern LWLockPadded *disk_quota_lock_array;
 
 extern DiskquotaMessageBox *message_box;
+extern HTAB *disk_quota_state_map;
+
 extern quotaSwitch diskquota_enable;
 extern quotaSwitch diskquota_strict;
 
@@ -124,6 +154,10 @@ extern int64 get_current_usage_bytes(Oid targetoid, QuotaType type);
 extern void reconcile_min_quota_reserve_files(void);
 extern void clear_min_quota_reserve_files(void);
 extern void resize_min_quota_reserve_file(QuotaType type, Oid targetoid, int64 target_bytes);
+
+extern void update_shared_quota_state(Oid targetoid, int64 quota_limit_mb, QuotaType type);
+extern void refresh_relation_quota_state(Oid relid);
+extern void remove_shared_quota_state(Oid targetoid, QuotaType type);
 
 extern int   diskquota_naptime;
 extern int   diskquota_max_active_tables;

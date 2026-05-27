@@ -14,9 +14,11 @@
 #include "postgres.h"
 
 #include "access/htup_details.h"
+#include "access/genam.h"
 #include "catalog/indexing.h"
 #include "catalog/pg_class.h"
 #include "catalog/pg_type.h"
+#include "catalog/namespace.h"
 #include "executor/spi.h"
 #include "funcapi.h"
 #include "miscadmin.h"
@@ -71,7 +73,9 @@ void diskquota_send_sig_to_proc(void);
 DiskQuotaSessionPids *save_pid_to_queue(int pid);
 static DiskQuotaSessionPids *diskquota_alloc_node(void);
 static void init_entry(DiskQuotaActiveTableFileEntry *entry, void *node);
-static Oid get_rel_oid(Oid reltablespace, Oid relfilenode);
+static Oid get_rel_oid_by_relfilenode(Oid reltablespace, Oid relfilenode);
+static void report_active_table_relation_internal(RelFileNode *node, Oid namespaceoid,
+									  Oid owneroid, ActiveType at);
 
 void save_relation(Relation rel);
 
@@ -131,6 +135,25 @@ static void active_table_hook_smgrunlink(SMgrRelation *reln,
 	{
 		report_active_table_SmgrStat(reln[i], AT_UNLINK);
 	}
+}
+
+/*
+ * Report an active relation when the caller can provide namespace and owner
+ * information that may not be visible through pg_class yet.
+ */
+void
+report_active_table_relation(Relation rel, ActiveType at)
+{
+	SMgrRelation smgr;
+
+	if (rel == NULL || rel->rd_rel == NULL)
+		return;
+
+	smgr = RelationGetSmgr(rel);
+	report_active_table_relation_internal(&smgr->smgr_rnode.node,
+										  rel->rd_rel->relnamespace,
+										  rel->rd_rel->relowner,
+										  at);
 }
 
 /*
@@ -319,7 +342,7 @@ get_active_tables_stats()
 
 				if (relOid == InvalidOid)
 				{
-					relOid = get_rel_oid(active_table_file_entry->node.spcNode, active_table_file_entry->node.relNode);
+					relOid = get_rel_oid_by_relfilenode(active_table_file_entry->node.spcNode, active_table_file_entry->node.relNode);
 				}
 
 				if (relOid != InvalidOid) {
@@ -341,7 +364,7 @@ get_active_tables_stats()
 
 				if (relOid == InvalidOid)
 				{
-					relOid = get_rel_oid(active_table_file_entry->node.spcNode, active_table_file_entry->node.relNode);
+					relOid = get_rel_oid_by_relfilenode(active_table_file_entry->node.spcNode, active_table_file_entry->node.relNode);
 				}
 
 				active_table_entry = hash_search(local_active_table_stats_map, &active_table_file_entry->node,
@@ -514,11 +537,108 @@ report_active_table_SmgrStat(SMgrRelation reln, ActiveType at)
 
 		LWLockRelease(diskquota_locks.active_table_lock);
 	}
+}
 
-	if ((entry && !entry->ispushedback) ||
-		(entry && found && entry->ispushedback))
-		/* send sig to launch, statistics of disk usage */
-		diskquota_send_sig_to_proc();
+static void
+report_active_table_relation_internal(RelFileNode *node, Oid namespaceoid,
+									  Oid owneroid, ActiveType at)
+{
+	DiskQuotaActiveTableFileEntry *entry = NULL;
+	bool found = false;
+
+	/* ignore the system table relfilenode */
+	if (node->relNode < FirstNormalObjectId)
+		return;
+
+	LWLockAcquire(diskquota_locks.active_table_lock, LW_EXCLUSIVE);
+	entry = hash_search(active_tables_map, node, HASH_ENTER_NULL, &found);
+	if (entry && !entry->ispushedback)
+	{
+		entry->node = *node;
+
+		/*
+		 * A relation-aware caller already supplied transaction-local owner and
+		 * namespace info for this relfilenode. Do not overwrite it with the
+		 * generic smgr hook path, or the worker will stop seeing in-flight size
+		 * changes for uncommitted relations.
+		 */
+		if (at != AT_UNLINK &&
+			!OidIsValid(namespaceoid) &&
+			(entry->tablestatus == TABLE_IN_TRANSX_CHANGE ||
+			 entry->tablestatus == TABLE_IN_TRANSX_CREATE ||
+			 entry->tablestatus == TABLE_IN_TRANSX_DELETE))
+		{
+			LWLockRelease(diskquota_locks.active_table_lock);
+			return;
+		}
+
+		switch (at)
+		{
+			case AT_EXTEND:
+			case AT_TRUNCATE:
+				entry->tablestatus = OidIsValid(namespaceoid) ? TABLE_IN_TRANSX_CHANGE : TABLE_COMMIT_CHANGE;
+				entry->inXnamespace = namespaceoid;
+				entry->inXowner = owneroid;
+				break;
+			case AT_CREATE:
+				entry->tablestatus = OidIsValid(namespaceoid) ? TABLE_IN_TRANSX_CREATE : TABLE_COMMIT_CREATE;
+				entry->inXnamespace = namespaceoid;
+				entry->inXowner = owneroid;
+				break;
+			case AT_UNLINK:
+				entry->tablestatus = TABLE_COMMIT_DELETE;
+				entry->inXnamespace = InvalidOid;
+				entry->inXowner = InvalidOid;
+				break;
+			default:
+				entry->tablestatus = TABLE_UNKNOWN;
+				break;
+		}
+
+	}
+	/*
+	 * if the entry is still in active list and marked as un-committed,
+	 * this means the entry is only visible in transaction, and need to process here
+	 */
+	else if (entry && found && entry->ispushedback)
+	{
+		/*
+		 * If the entry status is TABLE_NOT_FOUND, but its action type is AT_UNLINK. This means
+		 * the transaction is under committing or aborting, hence we just need ignore this active
+		 * entry and send its unlink status back to worker.
+		 */
+		if (at == AT_UNLINK)
+		{
+			entry->tablestatus = TABLE_IN_TRANSX_DELETE;
+			entry->inXnamespace = InvalidOid;
+			entry->inXowner = InvalidOid;
+		}
+		else
+		{
+			entry->inXnamespace = namespaceoid;
+			entry->inXowner = owneroid;
+			switch (at)
+			{
+			case AT_EXTEND :
+			case AT_TRUNCATE :
+				entry->tablestatus = TABLE_IN_TRANSX_CHANGE;
+				break;
+			case AT_CREATE:
+				entry->tablestatus = TABLE_IN_TRANSX_CREATE;
+				break;
+			default:
+				entry->tablestatus = TABLE_UNKNOWN;
+				break;
+			}
+		}
+	}
+	else if (entry == NULL)
+	{
+		/* We may miss the file size change of this relation at current refresh interval.*/
+		ereport(WARNING, (errmsg("Share memory is not enough for active tables.")));
+
+	}
+	LWLockRelease(diskquota_locks.active_table_lock);
 }
 
 void diskquota_send_sig_to_proc(void)
@@ -664,51 +784,87 @@ static void init_entry(DiskQuotaActiveTableFileEntry *entry, void *node)
 	return;
 }
 
-static Oid get_rel_oid(Oid reltablespace, Oid relfilenode)
+/*
+ * Resolve a relfilenode to pg_class.oid.
+ *
+ * We need to keep temporary relations visible here, because diskquota tracks
+ * active table changes reported from storage hooks and those changes can come
+ * from temporary tables as well.
+ */
+static Oid get_rel_oid_by_relfilenode(Oid reltablespace, Oid relfilenode)
 {
-	StringInfoData buf;
-	int			ret;
-	uint64		proc;
 	Oid reloid = InvalidOid;
+	Relation relation;
+	SysScanDesc scandesc;
+	HeapTuple tuple;
+	ScanKeyData skey[2];
+	Oid scan_tablespace;
+	int pass;
 
-	initStringInfo(&buf);
+	relation = table_open(RelationRelationId, AccessShareLock);
 
-	if (SPI_connect() != SPI_OK_CONNECT)
+	for (pass = 0; pass < 2; pass++)
 	{
-		elog(WARNING, "SPI_connect failed");
+		scan_tablespace = reltablespace;
+
+		/*
+		 * pg_class stores 0 for relations in the database default tablespace.
+		 * Search the represented tablespace first, then fall back to 0.
+		 */
+		if (pass == 1)
+		{
+			if (reltablespace != MyDatabaseTableSpace && reltablespace != InvalidOid)
+				break;
+			scan_tablespace = 0;
+		}
+		else if (scan_tablespace == MyDatabaseTableSpace)
+		{
+			scan_tablespace = 0;
+		}
+
+		ScanKeyInit(&skey[0],
+					Anum_pg_class_reltablespace,
+					BTEqualStrategyNumber,
+					F_OIDEQ,
+					ObjectIdGetDatum(scan_tablespace));
+		ScanKeyInit(&skey[1],
+					Anum_pg_class_relfilenode,
+					BTEqualStrategyNumber,
+					F_OIDEQ,
+					ObjectIdGetDatum(relfilenode));
+
+		scandesc = systable_beginscan(relation,
+									  ClassTblspcRelfilenodeIndexId,
+									  true,
+									  NULL,
+									  2,
+									  skey);
+
+		while (HeapTupleIsValid(tuple = systable_getnext(scandesc)))
+		{
+			Form_pg_class classform = (Form_pg_class) GETSTRUCT(tuple);
+
+			if (classform->relpersistence == RELPERSISTENCE_TEMP)
+			{
+				/*
+				 * Unlike RelidByRelfilenode(), do not skip temporary relations.
+				 * diskquota needs to resolve them too when consuming active table
+				 * entries recorded by the storage hooks.
+				 */
+				reloid = classform->oid;
+				break;
+			}
+			if (!OidIsValid(reloid))
+				reloid = classform->oid;
+		}
+
+		systable_endscan(scandesc);
+
+		if (OidIsValid(reloid))
+			break;
 	}
 
-	if (reltablespace == 1663 || reltablespace == InvalidOid)
-	{
-		appendStringInfo(&buf, "select oid from pg_class where relfilenode=%d and (reltablespace=%d or reltablespace = 0);",
-						relfilenode, reltablespace);
-	}
-	else
-	{
-		appendStringInfo(&buf, "select oid from pg_class where relfilenode=%d and reltablespace=%d;",
-						relfilenode, reltablespace);
-	}
-
-	ret = SPI_execute(buf.data, false, 0);
-	if (ret != SPI_OK_SELECT)
-	{
-		SPI_finish();
-		ereport(WARNING, errmsg("cannot select pg_class: error code %d", ret));
-	}
-
-	proc = SPI_processed;
-
-	if (proc == 1)
-	{
-		SPITupleTable *spi_tuptable = SPI_tuptable;
-		TupleDesc	spi_tupdesc = spi_tuptable->tupdesc;
-		reloid = atooid(SPI_getvalue(spi_tuptable->vals[0], spi_tupdesc, 1));
-	}
-
-	if (SPI_finish() != SPI_OK_FINISH)
-	{
-		elog(WARNING, "SPI_finish failed");
-	}
+	table_close(relation, AccessShareLock);
 
 	return reloid;
 }
