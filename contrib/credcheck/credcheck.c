@@ -3692,7 +3692,7 @@ login_info_print_and_stoage(void)
 	char	*username;
 
 	/* Begin - BUG#Z7629 */
-	if (is_enable == 1 && login_msg_display == 1 && login_msg_display_storage == 1)
+	if (is_enable == 1 && login_msg_display == 1)	/* BUG#Z8061 : After enabling macro ENABLE_DKY_BETA_FEATURE, need to retain the original login display function */
 	{
 		StartTransactionCommand();
 
