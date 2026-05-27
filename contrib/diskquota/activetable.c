@@ -450,7 +450,8 @@ report_active_table_SmgrStat(SMgrRelation reln, ActiveType at)
 	DiskQuotaActiveTableFileEntry *entry = NULL;
 	bool found = false;
 
-	if (diskquota_enable != AUOTA_ON)
+	if (diskquota_enable != AUOTA_ON ||
+		MyProcPort == NULL) /* BUG#Z7841 */
 		return ;
 
 	/* ignore the system table relfilenode */
@@ -871,7 +872,8 @@ static Oid get_rel_oid_by_relfilenode(Oid reltablespace, Oid relfilenode)
 
 void save_relation(Relation rel)
 {
-	if (diskquota_enable != AUOTA_ON)
+	if (diskquota_enable != AUOTA_ON ||
+		MyProcPort == NULL) /* BUG#Z7841 */
 		return ;
 
 	if (rel != NULL && rel->rd_rel != NULL)
