@@ -174,9 +174,6 @@ static SubscriptingRef *transformCollectionSubscripts(ParseState *pstate,
 							 Node *rhs,
 							 int location);
 /* End - ReqID:SRS-PLSQL-Collection */
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-static ForallExpr *plisql_parse_forallexpr(ParseState *pstate, List *indexpr);
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 /* ----------
  * plisql_compile		Make an execution tree for a PL/iSQL function.
@@ -6216,11 +6213,6 @@ transformCollectionSubscripts(ParseState *pstate,
 	sbsref->refexpr = (Expr *) containerBase;
 	sbsref->refupperindexpr = indexpr;
 	sbsref->refassgnexpr = NULL;
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	/* check if the last subscript is the forall index */
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	sbsref->forallexpr = plisql_parse_forallexpr(pstate, indexpr);
-	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	*datatype = type_info;
 	return sbsref;
@@ -6251,63 +6243,3 @@ get_row_field_type(PLiSQL_type *data_type, char *name)
 	return type;
 }
 /* End - ReqID:SRS-PLSQL-Collection */
-
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-/*
- * plisql_parse_forallexpr		parser callback for a ForallExpr
- */
-static ForallExpr *
-plisql_parse_forallexpr(ParseState *pstate, List *indexpr)
-{
-	PLiSQL_expr		*expr;
-	ForallExpr		*forall_expr = NULL;
-	Node			*last_index;
-	ListCell		*lc;
-	bool			found_forall_index = false;
-
-	if (indexpr == NIL)
-		return NULL;
-
-	if (pstate->p_ref_hook_state == NULL)
-		return NULL;
-
-	expr = (PLiSQL_expr *) pstate->p_ref_hook_state;
-
-	if (expr->forallparams == NULL)
-		return NULL;
-
-	last_index = (Node *) llast(indexpr);
-
-	if (last_index == NULL)
-		return NULL;
-
-	foreach(lc, indexpr)
-	{
-		Node *cur_expr = (Node *) lfirst(lc);
-
-		if (cur_expr == last_index)
-		{
-			/* paramid's are 1-based, but dnos are 0-based */
-			if (cur_expr->type == T_Param &&
-				((Param *)cur_expr)->paramid == expr->forallparams->indexdno + 1)
-				found_forall_index = true;
-		}
-		else if (cur_expr->type == T_Param &&
-				((Param *)cur_expr)->paramid == expr->forallparams->indexdno + 1)
-				ereport(ERROR,
-						(errcode(ERRCODE_SYNTAX_ERROR),
-						 errmsg("bulk SQL attributes must use a single index")));
-	}
-
-	if (found_forall_index)
-	{
-		forall_expr = makeNode(ForallExpr);
-		forall_expr->subscripts = list_copy(expr->forallparams->subscripts);
-		forall_expr->indexdno = expr->forallparams->indexdno;
-
-		return forall_expr;
-	}
-	else
-		return NULL;
-}
-/* End - ReqID:SRS-PLSQL-FORALL */

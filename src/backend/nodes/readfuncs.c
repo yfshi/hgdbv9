@@ -904,28 +904,9 @@ _readSubscriptingRef(void)
 	READ_NODE_FIELD(reflowerindexpr);
 	READ_NODE_FIELD(refexpr);
 	READ_NODE_FIELD(refassgnexpr);
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	READ_NODE_FIELD(forallexpr);
-	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	READ_DONE();
 }
-
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-/*
- * _readForallExpr
- */
-static ForallExpr *
-_readForallExpr(void)
-{
-	READ_LOCALS(ForallExpr);
-
-	READ_NODE_FIELD(subscripts);
-	READ_INT_FIELD(indexdno);
-
-	READ_DONE();
-}
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * _readFuncExpr
@@ -3324,10 +3305,6 @@ parseNodeString(void)
 		return_value = _readWindowFunc();
 	else if (MATCH("SUBSCRIPTINGREF", 15))
 		return_value = _readSubscriptingRef();
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	else if (MATCH("FORALLEXPR", 10))
-		return_value = _readForallExpr();
-	/* End - ReqID:SRS-PLSQL-FORALL */
 	else if (MATCH("FUNCEXPR", 8))
 		return_value = _readFuncExpr();
 	else if (MATCH("NAMEDARGEXPR", 12))

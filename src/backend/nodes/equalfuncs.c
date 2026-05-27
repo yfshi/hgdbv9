@@ -346,23 +346,9 @@ _equalSubscriptingRef(const SubscriptingRef *a, const SubscriptingRef *b)
 	COMPARE_NODE_FIELD(reflowerindexpr);
 	COMPARE_NODE_FIELD(refexpr);
 	COMPARE_NODE_FIELD(refassgnexpr);
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	COMPARE_NODE_FIELD(forallexpr);
-	/* End - ReqID:SRS-PLSQL-FORALL */
 
 	return true;
 }
-
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-static bool
-_equalForallExpr(const ForallExpr * a, const ForallExpr *b)
-{
-	COMPARE_NODE_FIELD(subscripts);
-	COMPARE_SCALAR_FIELD(indexdno);
-
-	return true;
-}
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 static bool
 _equalFuncExpr(const FuncExpr *a, const FuncExpr *b)
@@ -4005,11 +3991,6 @@ equal(const void *a, const void *b)
 		case T_SubscriptingRef:
 			retval = _equalSubscriptingRef(a, b);
 			break;
-		/* Begin - ReqID:SRS-PLSQL-FORALL */
-		case T_ForallExpr:
-			retval = _equalForallExpr(a, b);
-			break;
-		/* End - ReqID:SRS-PLSQL-FORALL */
 		case T_FuncExpr:
 			retval = _equalFuncExpr(a, b);
 			break;

@@ -473,17 +473,6 @@ typedef struct WindowFunc
 	int			location;		/* token location, or -1 if unknown */
 } WindowFunc;
 
-/* Begin - ReqID:SRS-PLSQL-FORALL */
-/*
- * Forall expression
- */
-typedef struct ForallExpr
-{
-	Expr		xpr;
-	List	   *subscripts;		/* the values of forall index */
-	int			indexdno;		/* the dno of forall index variable */
-} ForallExpr;
-/* End - ReqID:SRS-PLSQL-FORALL */
 
 /*
  * SubscriptingRef: describes a subscripting operation over a container
@@ -540,9 +529,6 @@ typedef struct SubscriptingRef
 								 * container value */
 	Expr	   *refassgnexpr;	/* expression for the source value, or NULL if
 								 * fetch */
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	ForallExpr  *forallexpr;	 /* forall expression */
-	/* End - ReqID:SRS-PLSQL-FORALL */
 } SubscriptingRef;
 
 /*

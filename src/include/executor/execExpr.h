@@ -292,10 +292,6 @@ typedef enum ExprEvalOp
 	EEOP_PKGGLOBAL_VARREF,
 	/* End - OA#00002227*/
 
-	/* Begin - ReqID:SRS-PLSQL-FORALL */
-	EEOP_FORALLEXPR_FETCH,
-	/* End - ReqID:SRS-PLSQL-FORALL */
-
 	/* Begin - BUG#7712 */
 	EEOP_ORAROW,
 	/* End - BUG#7712 */
@@ -771,13 +767,6 @@ typedef struct ExprEvalStep
 			PkgGlobalVarParam *gparam;
 		} pkgglobalvar;
 		/* End - OA#00002227*/
-
-		/* Begin - ReqID:SRS-PLSQL-FORALL */
-		struct
-		{
-			List	   *subscripts; 	/* the values of forall index */
-		} forallexpr;
-		/* End - ReqID:SRS-PLSQL-FORALL */
 
 		/* Begin - BUG#7712 */
 		/* for EEOP_ORAROW */

@@ -138,7 +138,6 @@ BEGIN
     INSERT INTO employees_temp(empno, departno) VALUES(ids2(1)(1), depts(i));
 END;
 /
----------------
 
 DELETE FROM employees_temp;
 DECLARE
@@ -1329,6 +1328,32 @@ SELECT count(*) FROM test_delete;
 DROP TABLE test_delete;
 DROP TABLE test_results;
 --/* End - BUG#7821 */
+
+--/* Begin - BUG#7822 */
+CREATE TABLE ta(empno INT);
+
+DECLARE
+  TYPE NumList IS TABLE OF NUMBER;
+  ids NumList := NumList(10, 20, 30);
+BEGIN
+  FORALL i IN 1 .. 2
+    INSERT INTO ta VALUES(ids(i+1));
+END;
+/
+
+SELECT * FROM ta ORDER BY empno;
+
+DECLARE
+  TYPE NumList IS TABLE OF NUMBER;
+  ids NumList := NumList(10, 20);
+BEGIN
+  FORALL i IN 1 .. 2
+    INSERT INTO ta VALUES(ids(i+1));
+END;
+/
+
+DROP TABLE ta;
+--/* End - BUG#7822 */
 
 SET SERVEROUTPUT OFF
 
