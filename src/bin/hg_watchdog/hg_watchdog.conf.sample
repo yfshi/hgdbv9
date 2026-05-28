@@ -1,0 +1,21 @@
+# The current file is a configureation file template for the hg_watchdog feature. the configureation file uses the installation path,
+# data path, and other startup options as configureation parameters.
+#
+# Among them, the installation path and data path are required and must be provided. in addtion, the configureation identifiers for each
+# group must be correct. Other startup options are optional, such as -l logfile.
+#
+# In the template:
+#		instanceno-installpath: represents the installation path.
+#		instanceno-installdata: represents the data path.
+#		instanceno-option:represents optional parameters.
+#
+# instanceno is instance1, instance2, ..., instancen, the number in each group must be the same.
+#
+# Example is shown below:
+#
+instance1-installpath:/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug
+instance1-installdata:/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug/data
+instance1-option: -l /home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug/logfile
+
+instance2-installpath:/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug
+instance2-installdata:/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug/mysdata
