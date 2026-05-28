@@ -31,6 +31,7 @@
 #include "access/reloptions.h"
 #include "access/table.h"
 #include "access/toast_compression.h"
+#include "access/xact.h"	/* BUG#z7880 */
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
 #include "catalog/index.h"
@@ -1140,6 +1141,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 	ListCell   *clist;
 	List 	   *seqoptions = NIL; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	char		attr_identity = 0;/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
+	bool		is_enum_col = false; /* BUG#z7880 */
 
 	cxt->columns = lappend(cxt->columns, column);
 
@@ -1247,8 +1249,68 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		strVal(llast(column->typeName->names)) = enumTypeName;
 
 		DefineAnonymousEnum(column->typeName);
+
+		is_enum_col = true;
 	}
 	/* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
+	/* Begin - bug#z7880 */
+	/*
+	 * for alter table modify/change scenario
+	 * if the col is enum previous, and it is an enum now
+	 *     check if this two enum is a same one
+	 *     if the same, delete the new one
+	 *     and put the old enumTypeName to the new column def
+	 *
+	 * Importance Notice:
+	 *     as we use the old enumTypeName, so there will be a mis-match for the type name
+	 *     the old column name is b, so the enum type is TableName_ColName_anonymous_enum(t_7880_b_anonymous_enum)
+	 *     after change the column name to d, the enum type reused t_7880_b_anonymous_enum
+	 *     not t_7880_d_anonymous_enum
+	 *     so if somewhere to combine the type name by the table name and column name, there will be failure
+	 */
+	if (compatible_mode == MYS_MODE && is_enum_col && cxt->modify_column)
+	{
+		HeapTuple	heapTup;
+		Form_pg_attribute attTup;
+		HeapTuple	typeTuple;
+		Form_pg_type tform;
+		Oid		targettype;
+		int32		targettypmod;
+		heapTup = SearchSysCacheCopyAttName(RelationGetRelid(cxt->rel), cxt->old_col_name);
+		if (!HeapTupleIsValid(heapTup))
+		{
+			ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("column \"%s\" of relation \"%s\" does not exist",
+						cxt->old_col_name, RelationGetRelationName(cxt->rel))));
+		}
+		attTup = (Form_pg_attribute) GETSTRUCT(heapTup);
+
+		typeTuple = typenameType(NULL, column->typeName, &targettypmod);
+		tform = (Form_pg_type) GETSTRUCT(typeTuple);
+		targettype = tform->oid;
+		if (enum_is_equal(attTup->atttypid, targettype))
+		{
+			DropStmt *stmt = makeNode(DropStmt);
+			stmt->removeType = OBJECT_TYPE;
+			stmt->missing_ok = false;
+			stmt->objects = list_make1(column->typeName);
+			stmt->behavior = DROP_RESTRICT;
+			stmt->concurrent = false;
+
+			RemoveObjects(stmt);
+
+			strVal(llast(column->typeName->names)) = get_typename(attTup->atttypid);
+			CommandCounterIncrement();
+		}
+		if (HeapTupleIsValid(typeTuple))
+		{
+			ReleaseSysCache(typeTuple);
+		}
+		heap_freetuple(heapTup);
+	}
+	/* End - bug#z7880 */
 
 	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	if (compatible_mode == MYS_MODE)
@@ -4518,17 +4580,6 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					ColumnDef  *def = castNode(ColumnDef, cmd->def);
 					cxt.modify_column = true;
 					cxt.old_col_name = cmd->name;
-					/* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
-					if (compatible_mode == MYS_MODE)
-					{
-						/*
-						 * When alter column's type, if target type is enum,
-						 * then drop then enum type
-						 */
-						transformDropTypeOwnedByTable(&cxt, cmd->name);
-					}
-					/* End - ReqID:SRS-MYSQL-ENUMTYPE */
-
 					/*
 					 * for transform the col def
 					 * reuse this function

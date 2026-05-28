@@ -14516,6 +14516,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 	/* End - ReqID:SRS-PLSQL-TYPE */
 
 	Oid	myrelid = RelationGetRelid(rel);
+	bool	is_noop = false;	/* bug#z7880 */
 
 	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
 	/*
@@ -14618,6 +14619,19 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 		targettype == SYS_REFCURSOROID))
 		elog(ERROR, "column cannot be a cursor type");
 	/* End - ReqID:SRS-PLSQL-CURSOR */
+
+	/* Begin - bug#z7880 */
+	/*
+	 * check if there using the same datatype to modify/change
+	 */
+	if (MYS_MODE == compatible_mode && (cmd->subtype == AT_ChangeColumn || cmd->subtype == AT_ModifyColumn))
+	{
+		is_noop = (targettype == attTup->atttypid &&
+			   targettypmod == attTup->atttypmod &&
+			   targetcollid == attTup->attcollation &&
+			   list_length(typeName->arrayBounds) == attTup->attndims);
+	}
+	/* End - bug#z7880 */
 
 	/*
 	 * If there is a default expression for the column, get it and ensure we
@@ -14821,6 +14835,59 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 						break;
 					}
 				}
+				/* Begin - BUG#z7880 */
+				else if (MYS_MODE == compatible_mode && (cmd->subtype == AT_ChangeColumn || cmd->subtype == AT_ModifyColumn))
+				{
+					/*
+					 * if using the same data type to modify/change
+					 *     did not report the error
+					 * just for view "_RETURN"
+					 */
+					Relation        ruleDesc;
+					ScanKeyData skey[1];
+					SysScanDesc rcscan;
+					HeapTuple       tup;
+					Form_pg_rewrite rule;
+
+					ruleDesc = table_open(RewriteRelationId, AccessShareLock);
+
+					ScanKeyInit(&skey[0],
+								Anum_pg_rewrite_oid,
+								BTEqualStrategyNumber, F_OIDEQ,
+								ObjectIdGetDatum(foundObject.objectId));
+
+					rcscan = systable_beginscan(ruleDesc, RewriteOidIndexId, true,
+											NULL, 1, skey);
+
+					tup = systable_getnext(rcscan);
+
+					if (!HeapTupleIsValid(tup))
+					{
+						systable_endscan(rcscan);
+						table_close(ruleDesc, AccessShareLock);
+						elog(ERROR, "could not find tuple for rule %u",
+									foundObject.objectId);
+					}
+
+					rule = (Form_pg_rewrite) GETSTRUCT(tup);
+
+					if (is_noop && strcmp(NameStr(rule->rulename), "_RETURN") == 0)
+					{
+						systable_endscan(rcscan);
+						table_close(ruleDesc, AccessShareLock);
+						break;
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+								 errmsg("cannot alter type of a column used by a view or rule"),
+								 errdetail("%s depends on column \"%s\"",
+										getObjectDescription(&foundObject, false),
+										colName)));
+					}
+				}
+				/* End - BUG#z7880 */
 				else
 					/*
 				 	 * View/rule bodies have pretty much the same issues as

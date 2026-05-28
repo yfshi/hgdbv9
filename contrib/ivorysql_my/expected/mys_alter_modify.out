@@ -1612,27 +1612,24 @@ alter table test_coll modify address text COLLATE "utf8mb3_unicode_ci";
  address | text                   | utf8mb3_unicode_ci |          |                           | extended |              | 
 
 -- support collate default
-alter table test_coll modify address text COLLATE "default"
+alter table test_coll modify address text COLLATE "default";
 \d+ test_coll;
-                                                       Table "public.test_coll"
- Column  |          Type          |     Collation      | Nullable |          Default          | Storage  | Stats target | Description 
----------+------------------------+--------------------+----------+---------------------------+----------+--------------+-------------
- id      | integer                |                    |          |                           | plain    |              | 
- name    | character varying(255) |                    | not null | 'name'::character varying | extended |              | 
- address | text                   | utf8mb3_unicode_ci |          |                           | extended |              | 
+                                                  Table "public.test_coll"
+ Column  |          Type          | Collation | Nullable |          Default          | Storage  | Stats target | Description 
+---------+------------------------+-----------+----------+---------------------------+----------+--------------+-------------
+ id      | integer                |           |          |                           | plain    |              | 
+ name    | character varying(255) |           | not null | 'name'::character varying | extended |              | 
+ address | text                   |           |          |                           | extended |              | 
 
 -- remove  collate
 alter table test_coll modify address text;
-ERROR:  syntax error at or near "alter"
-LINE 3: alter table test_coll modify address text;
-        ^
 \d+ test_coll;
-                                                       Table "public.test_coll"
- Column  |          Type          |     Collation      | Nullable |          Default          | Storage  | Stats target | Description 
----------+------------------------+--------------------+----------+---------------------------+----------+--------------+-------------
- id      | integer                |                    |          |                           | plain    |              | 
- name    | character varying(255) |                    | not null | 'name'::character varying | extended |              | 
- address | text                   | utf8mb3_unicode_ci |          |                           | extended |              | 
+                                                  Table "public.test_coll"
+ Column  |          Type          | Collation | Nullable |          Default          | Storage  | Stats target | Description 
+---------+------------------------+-----------+----------+---------------------------+----------+--------------+-------------
+ id      | integer                |           |          |                           | plain    |              | 
+ name    | character varying(255) |           | not null | 'name'::character varying | extended |              | 
+ address | text                   |           |          |                           | extended |              | 
 
 drop table test_coll;
 -------- test case: modify view
@@ -2324,27 +2321,27 @@ insert into test_name values(10,2),(11,3);
 
 alter table test_name change color color enum('aaa', 'bbb', 'ccc', 'ddd');
 \d+ test_name;
-                                             Table "public.test_name"
- Column |              Type               | Collation | Nullable | Default | Storage | Stats target | Description 
---------+---------------------------------+-----------+----------+---------+---------+--------------+-------------
- id     | integer                         |           |          |         | plain   |              | 
- color  | test_name_color_anonymous_enum1 |           |          |         | plain   |              | 
+                                            Table "public.test_name"
+ Column |              Type              | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+--------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer                        |           |          |         | plain   |              | 
+ color  | test_name_color_anonymous_enum |           |          |         | plain   |              | 
 
 alter table test_name change color color_new enum('aaa', 'bbb', 'ccc', 'ddd');
+\d+ test_name;
+                                              Table "public.test_name"
+  Column   |              Type              | Collation | Nullable | Default | Storage | Stats target | Description 
+-----------+--------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id        | integer                        |           |          |         | plain   |              | 
+ color_new | test_name_color_anonymous_enum |           |          |         | plain   |              | 
+
+alter table test_name change color_new color_new enum('111','bbb','ccc','444','555');
 \d+ test_name;
                                                 Table "public.test_name"
   Column   |                Type                | Collation | Nullable | Default | Storage | Stats target | Description 
 -----------+------------------------------------+-----------+----------+---------+---------+--------------+-------------
  id        | integer                            |           |          |         | plain   |              | 
  color_new | test_name_color_new_anonymous_enum |           |          |         | plain   |              | 
-
-alter table test_name change color_new color_new enum('111','bbb','ccc','444','555');
-\d+ test_name;
-                                                Table "public.test_name"
-  Column   |                Type                 | Collation | Nullable | Default | Storage | Stats target | Description 
------------+-------------------------------------+-----------+----------+---------+---------+--------------+-------------
- id        | integer                             |           |          |         | plain   |              | 
- color_new | test_name_color_new_anonymous_enum1 |           |          |         | plain   |              | 
 
 alter table test_name change color_new color enum('123','bbb','456','ccc');
 ERROR:  Data truncated for column
@@ -2358,11 +2355,11 @@ insert into test_name values(10,2),(11,3);
 alter table test_name change color color_new enum('aaa', 'bbb', 'ddd');
 ERROR:  Data truncated for column
 \d+ test_name;
-                                            Table "public.test_name"
- Column |              Type              | Collation | Nullable | Default | Storage | Stats target | Description 
---------+--------------------------------+-----------+----------+---------+---------+--------------+-------------
- id     | integer                        |           |          |         | plain   |              | 
- color  | test_name_color_anonymous_enum |           |          |         | plain   |              | 
+                                             Table "public.test_name"
+ Column |              Type               | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------------------------------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer                         |           |          |         | plain   |              | 
+ color  | test_name_color_anonymous_enum1 |           |          |         | plain   |              | 
 
 select * from test_name;
  id | color 
@@ -3219,3 +3216,800 @@ select * from t1;
 (4 rows)
 
 drop table t1;
+---- bug#z7880
+-- test case: rename a to b, check the view
+reset sql_mode;
+CREATE TABLE t_7880(id INT, a INT);
+INSERT INTO t_7880 VALUES(1,100);
+CREATE VIEW t_7880_v AS SELECT id,a FROM t_7880;
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+ALTER TABLE t_7880 RENAME a TO b;
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.b AS a
+   FROM t_7880;
+
+DROP VIEW t_7880_v;
+DROP TABLE t_7880;
+-- test case: datatype change, report error
+CREATE TABLE t_7880(id INT, a INT);
+INSERT INTO t_7880 VALUES(1,100);
+CREATE VIEW t_7880_v AS SELECT id,a FROM t_7880;
+ALTER TABLE t_7880 CHANGE a b float;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "b"
+ALTER TABLE t_7880 CHANGE a b float default 200;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "b"
+ALTER TABLE t_7880 CHANGE a b float NULL;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "b"
+ALTER TABLE t_7880 CHANGE a b float primary key;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "b"
+ALTER TABLE t_7880 CHANGE a b float unique key auto_increment;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "b"
+DROP VIEW t_7880_v;
+DROP TABLE t_7880;
+-- test case: no datatype change, add attributes
+create table t_7880(id int, a int);
+insert into t_7880 values(1,100);
+create view t_7880_v as select id,a from t_7880;
+\d+ t_7880;
+                                  Table "public.t_7880"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ a      | integer |           |          |         | plain   |              | 
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+alter table t_7880 change a a2 int;
+\d+ t_7880;
+                                  Table "public.t_7880"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ a2     | integer |           |          |         | plain   |              | 
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a2 AS a
+   FROM t_7880;
+
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+(1 row)
+
+alter table t_7880 change a2 a3 int default 200;
+show create table t_7880;
+ Table  |         Create Table         
+--------+------------------------------
+ t_7880 | CREATE TABLE "t_7880" (     +
+        |     "id" integer,           +
+        |     "a3" integer DEFAULT 200+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a3 AS a
+   FROM t_7880;
+
+insert into t_7880 values(20);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+(2 rows)
+
+alter table t_7880 change a3 a4 int;
+insert into t_7880 values(30);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+ 30 |    
+(3 rows)
+
+alter table t_7880 change a4 a4 int not null;
+ERROR:  column "a4" of relation "t_7880" contains null values
+update t_7880 set a4=300 where id=30;
+alter table t_7880 change a4 a4 int not null;
+insert into t_7880 values(40);
+ERROR:  null value in column "a4" of relation "t_7880" violates not-null constraint
+DETAIL:  Failing row contains (40, null).
+insert into t_7880 values(40,400);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+ 30 | 300
+ 40 | 400
+(4 rows)
+
+alter table t_7880 change a4 a5 int unique key;
+alter table t_7880 change a5 a5 int auto_increment comment 'test bug';
+show create table t_7880;
+ Table  |                         Create Table                         
+--------+--------------------------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                                     +
+        |     "id" integer,                                           +
+        |     "a5" integer NOT NULL AUTO_INCREMENT COMMENT 'test bug',+
+        |     CONSTRAINT "t_7880_a5_key" UNIQUE (a5)                  +
+        | ) AUTO_INCREMENT=401
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a5 AS a
+   FROM t_7880;
+
+insert into t_7880 values(50);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+ 30 | 300
+ 40 | 400
+ 50 | 401
+(5 rows)
+
+-- test case: no datatype change, del attributes
+alter table t_7880 change a5 a4 INT not null default 200 comment 'test bug 2';
+show create table t_7880;
+ Table  |                        Create Table                         
+--------+-------------------------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                                    +
+        |     "id" integer,                                          +
+        |     "a4" integer NOT NULL DEFAULT 200 COMMENT 'test bug 2',+
+        |     CONSTRAINT "t_7880_a5_key" UNIQUE (a4)                 +
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a4 AS a
+   FROM t_7880;
+
+insert into t_7880 values(60,600);
+alter table t_7880 change a4 a4 int not null default 1000;
+show create table t_7880;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                   +
+        |     "id" integer,                         +
+        |     "a4" integer NOT NULL DEFAULT 1000,   +
+        |     CONSTRAINT "t_7880_a5_key" UNIQUE (a4)+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a4 AS a
+   FROM t_7880;
+
+insert into t_7880 values(70);
+alter table t_7880 change a4 a3 int not null;
+show create table t_7880;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                   +
+        |     "id" integer,                         +
+        |     "a3" integer NOT NULL,                +
+        |     CONSTRAINT "t_7880_a5_key" UNIQUE (a3)+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a3 AS a
+   FROM t_7880;
+
+insert into t_7880 values(80,800);
+ALTER TABLE t_7880 CHANGE a3 a2 INT;
+show create table t_7880;
+ Table  |                Create Table                
+--------+--------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                   +
+        |     "id" integer,                         +
+        |     "a2" integer,                         +
+        |     CONSTRAINT "t_7880_a5_key" UNIQUE (a2)+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a2 AS a
+   FROM t_7880;
+
+insert into t_7880 values(90);
+alter table t_7880 change a2 a2 float;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a2"
+select * from t_7880_v;
+ id |  a   
+----+------
+  1 |  100
+ 20 |  200
+ 30 |  300
+ 40 |  400
+ 50 |  401
+ 60 |  600
+ 70 | 1000
+ 80 |  800
+ 90 |     
+(9 rows)
+
+drop view t_7880_v;
+drop table t_7880;
+-- test case: enum
+create table t_7880(id int, a enum('a','b','c'));
+insert into t_7880 values(1,'b');
+create view t_7880_v as select id,a from t_7880;
+-- succ
+alter table t_7880 change a a2 enum('a','b','c');
+-- error
+alter table t_7880 change a2 a2 enum('1','b','3');
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a2"
+alter table t_7880 change a2 a3 enum('1','2','3');
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a3"
+alter table t_7880 change a2 a3 int;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a3"
+insert into t_7880 values(10,'c');
+select * from t_7880_v;
+ id | a 
+----+---
+  1 | b
+ 10 | c
+(2 rows)
+
+show create table t_7880;
+ Table  |           Create Table           
+--------+----------------------------------
+ t_7880 | CREATE TABLE "t_7880" (         +
+        |     "id" integer,               +
+        |     "a2" t_7880_a_anonymous_enum+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a2 AS a                       +
+          |    FROM t_7880;
+(1 row)
+
+drop view t_7880_v;
+drop table t_7880;
+-- test case: varchar
+create table t_7880(id int, a varchar(20));
+insert into t_7880 values(1,'bbcdefg');
+create view t_7880_v as select id,a from t_7880;
+show create table t_7880;
+ Table  |         Create Table          
+--------+-------------------------------
+ t_7880 | CREATE TABLE "t_7880" (      +
+        |     "id" integer,            +
+        |     "a" character varying(20)+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a                             +
+          |    FROM t_7880;
+(1 row)
+
+alter table t_7880 change a a2 varchar(30);
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a2"
+alter table t_7880 change a a2 text;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a2"
+alter table t_7880 change a a2 varchar(20);
+insert into t_7880 values(10,'chjtyre');
+select * from t_7880_v;
+ id |    a    
+----+---------
+  1 | bbcdefg
+ 10 | chjtyre
+(2 rows)
+
+show create table t_7880;
+ Table  |          Create Table          
+--------+--------------------------------
+ t_7880 | CREATE TABLE "t_7880" (       +
+        |     "id" integer,             +
+        |     "a2" character varying(20)+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a2 AS a                       +
+          |    FROM t_7880;
+(1 row)
+
+alter table t_7880 change a2 a2 varchar(20) COLLATE "default";
+alter table t_7880 change a2 a2 varchar(20) COLLATE "C";
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a2"
+show create table t_7880;
+ Table  |          Create Table          
+--------+--------------------------------
+ t_7880 | CREATE TABLE "t_7880" (       +
+        |     "id" integer,             +
+        |     "a2" character varying(20)+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a2 AS a                       +
+          |    FROM t_7880;
+(1 row)
+
+drop view t_7880_v;
+drop table t_7880;
+---- test case: modify
+-- test case: modify, datatype change, fail
+CREATE TABLE t_7880(id INT, a INT);
+INSERT INTO t_7880 VALUES(1,100);
+CREATE VIEW t_7880_v AS SELECT id,a FROM t_7880;
+ALTER TABLE t_7880 MODIFY a float;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+ALTER TABLE t_7880 MODIFY a float default 200;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+ALTER TABLE t_7880 MODIFY a float NULL;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+ALTER TABLE t_7880 MODIFY a float primary key;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+ALTER TABLE t_7880 MODIFY a float unique key auto_increment;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+DROP VIEW t_7880_v;
+DROP TABLE t_7880;
+-- test case: modify, no datatype change, add attributes
+create table t_7880(id int, a int);
+insert into t_7880 values(1,100);
+create view t_7880_v as select id,a from t_7880;
+show create table t_7880;
+ Table  |      Create Table       
+--------+-------------------------
+ t_7880 | CREATE TABLE "t_7880" (+
+        |     "id" integer,      +
+        |     "a" integer        +
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+alter table t_7880 modify a int;
+show create table t_7880;
+ Table  |      Create Table       
+--------+-------------------------
+ t_7880 | CREATE TABLE "t_7880" (+
+        |     "id" integer,      +
+        |     "a" integer        +
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+(1 row)
+
+alter table t_7880 modify a int default 200;
+show create table t_7880;
+ Table  |        Create Table         
+--------+-----------------------------
+ t_7880 | CREATE TABLE "t_7880" (    +
+        |     "id" integer,          +
+        |     "a" integer DEFAULT 200+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+insert into t_7880 values(20);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+(2 rows)
+
+alter table t_7880 modify a int;
+insert into t_7880 values(30);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+ 30 |    
+(3 rows)
+
+alter table t_7880 modify a int not null;
+ERROR:  column "a" of relation "t_7880" contains null values
+update t_7880 set a=300 where id=30;
+alter table t_7880 modify a int not null;
+insert into t_7880 values(40);
+ERROR:  null value in column "a" of relation "t_7880" violates not-null constraint
+DETAIL:  Failing row contains (40, null).
+insert into t_7880 values(40,400);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+ 30 | 300
+ 40 | 400
+(4 rows)
+
+alter table t_7880 modify a int unique key;
+alter table t_7880 modify a int auto_increment comment 'test bug';
+show create table t_7880;
+ Table  |                        Create Table                         
+--------+-------------------------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                                    +
+        |     "id" integer,                                          +
+        |     "a" integer NOT NULL AUTO_INCREMENT COMMENT 'test bug',+
+        |     CONSTRAINT "t_7880_a_key" UNIQUE (a)                   +
+        | ) AUTO_INCREMENT=401
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+insert into t_7880 values(50);
+select * from t_7880_v;
+ id |  a  
+----+-----
+  1 | 100
+ 20 | 200
+ 30 | 300
+ 40 | 400
+ 50 | 401
+(5 rows)
+
+-- test case: no datatype change, del attributes
+alter table t_7880 modify a INT not null default 200 comment 'test bug 2';
+show create table t_7880;
+ Table  |                        Create Table                        
+--------+------------------------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                                   +
+        |     "id" integer,                                         +
+        |     "a" integer NOT NULL DEFAULT 200 COMMENT 'test bug 2',+
+        |     CONSTRAINT "t_7880_a_key" UNIQUE (a)                  +
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+insert into t_7880 values(60,600);
+alter table t_7880 modify a int not null default 1000;
+show create table t_7880;
+ Table  |               Create Table               
+--------+------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                 +
+        |     "id" integer,                       +
+        |     "a" integer NOT NULL DEFAULT 1000,  +
+        |     CONSTRAINT "t_7880_a_key" UNIQUE (a)+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+insert into t_7880 values(70);
+alter table t_7880 modify a int not null;
+show create table t_7880;
+ Table  |               Create Table               
+--------+------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                 +
+        |     "id" integer,                       +
+        |     "a" integer NOT NULL,               +
+        |     CONSTRAINT "t_7880_a_key" UNIQUE (a)+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+insert into t_7880 values(80,800);
+ALTER TABLE t_7880 modify a INT;
+show create table t_7880;
+ Table  |               Create Table               
+--------+------------------------------------------
+ t_7880 | CREATE TABLE "t_7880" (                 +
+        |     "id" integer,                       +
+        |     "a" integer,                        +
+        |     CONSTRAINT "t_7880_a_key" UNIQUE (a)+
+        | )
+(1 row)
+
+\d+ t_7880_v;
+                          View "public.t_7880_v"
+ Column |  Type   | Collation | Nullable | Default | Storage | Description 
+--------+---------+-----------+----------+---------+---------+-------------
+ id     | integer |           |          |         | plain   | 
+ a      | integer |           |          |         | plain   | 
+View definition:
+ SELECT t_7880.id,
+    t_7880.a
+   FROM t_7880;
+
+insert into t_7880 values(90);
+alter table t_7880 modify a float;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+select * from t_7880_v;
+ id |  a   
+----+------
+  1 |  100
+ 20 |  200
+ 30 |  300
+ 40 |  400
+ 50 |  401
+ 60 |  600
+ 70 | 1000
+ 80 |  800
+ 90 |     
+(9 rows)
+
+drop view t_7880_v;
+drop table t_7880;
+-- test case: enum
+create table t_7880(id int, a enum('a','b','c'));
+insert into t_7880 values(1,'b');
+create view t_7880_v as select id,a from t_7880;
+-- succ
+alter table t_7880 modify a enum('a','b','c');
+-- error
+alter table t_7880 modify a enum('1','b','3');
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+alter table t_7880 modify a enum('1','2','3');
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+alter table t_7880 modify a int;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+insert into t_7880 values(10,'c');
+select * from t_7880_v;
+ id | a 
+----+---
+  1 | b
+ 10 | c
+(2 rows)
+
+show create table t_7880;
+ Table  |          Create Table           
+--------+---------------------------------
+ t_7880 | CREATE TABLE "t_7880" (        +
+        |     "id" integer,              +
+        |     "a" t_7880_a_anonymous_enum+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a                             +
+          |    FROM t_7880;
+(1 row)
+
+drop view t_7880_v;
+drop table t_7880;
+-- test case: varchar
+create table t_7880(id int, a varchar(20));
+insert into t_7880 values(1,'bbcdefg');
+create view t_7880_v as select id,a from t_7880;
+show create table t_7880;
+ Table  |         Create Table          
+--------+-------------------------------
+ t_7880 | CREATE TABLE "t_7880" (      +
+        |     "id" integer,            +
+        |     "a" character varying(20)+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a                             +
+          |    FROM t_7880;
+(1 row)
+
+alter table t_7880 modify a varchar(30);
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+alter table t_7880 modify a text;
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+alter table t_7880 modify a varchar(20);
+insert into t_7880 values(10,'chjtyre');
+select * from t_7880_v;
+ id |    a    
+----+---------
+  1 | bbcdefg
+ 10 | chjtyre
+(2 rows)
+
+show create table t_7880;
+ Table  |         Create Table          
+--------+-------------------------------
+ t_7880 | CREATE TABLE "t_7880" (      +
+        |     "id" integer,            +
+        |     "a" character varying(20)+
+        | )
+(1 row)
+
+select "View", "Create View" from show_create_views('t_7880_v');
+   View   |                Create View                
+----------+-------------------------------------------
+ t_7880_v | CREATE VIEW t_7880_v AS SELECT t_7880.id,+
+          |     t_7880.a                             +
+          |    FROM t_7880;
+(1 row)
+
+alter table t_7880 modify a varchar(20) COLLATE "default";
+alter table t_7880 modify a varchar(20) COLLATE "C";
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
+drop view t_7880_v;
+drop table t_7880;
