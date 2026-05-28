@@ -852,19 +852,8 @@ CREATE OR REPLACE FUNCTION ivymy.show_create_function(
 	OUT `Database Collation` text
 )
 RETURNS SETOF record AS $$
-DECLARE
-	v_type text;
 BEGIN
-	IF to_regproc(concat(db_name, '.', func_name)) IS NULL THEN
-		RAISE EXCEPTION 'FUNCTION % does not exist', concat(db_name, '.', func_name);
-	END IF;
-
-	SELECT type INTO v_type
-	FROM mysql.proc
-	WHERE db = db_name AND name = func_name;
-
-	IF  v_type IS NULL OR
-		v_type != 'FUNCTION' THEN
+	IF NOT EXISTS (SELECT 1 FROM mysql.proc p WHERE db = db_name AND name = func_name AND type = 'FUNCTION') THEN
 		RAISE EXCEPTION 'FUNCTION % does not exist', concat(db_name, '.', func_name);
 	END IF;
 
@@ -879,7 +868,7 @@ BEGIN
 		FROM
 			mysql.proc p
 		WHERE
-			db = db_name AND name = func_name;
+			db = db_name AND name = func_name AND type = 'FUNCTION';
 END
 $$ LANGUAGE plpgsql;
 
@@ -895,24 +884,15 @@ CREATE OR REPLACE FUNCTION ivymy.show_create_procedure(
 )
 RETURNS SETOF record AS $$
 DECLARE
-	v_type text;
+	ret record;
 BEGIN
-	IF to_regproc(concat(db_name, '.', pro_name)) IS NULL THEN
-		RAISE EXCEPTION 'PROCEDURE % does not exist', concat(db_name, '.', pro_name);
-	END IF;
-
-	SELECT type INTO v_type
-	FROM mysql.proc
-	WHERE db = db_name AND name = pro_name;
-
-	IF  v_type IS NULL OR
-		v_type != 'PROCEDURE' THEN
+	IF NOT EXISTS (SELECT 1 FROM mysql.proc p WHERE db = db_name AND name = pro_name AND type = 'PROCEDURE') THEN
 		RAISE EXCEPTION 'PROCEDURE % does not exist', concat(db_name, '.', pro_name);
 	END IF;
 
 	RETURN QUERY
 		SELECT
-			pro_name::text as `Function`,
+			pro_name::text as `Procedure`,
 			p.sql_mode::text as `sql_mode`,
 			pg_get_functiondef(to_regproc(concat(db_name, '.', pro_name))::oid)::text as `Create Procedure`, 
 			p.character_set_client::text as `character_set_client`, 
@@ -921,7 +901,7 @@ BEGIN
 		FROM
 			mysql.proc p
 		WHERE
-			db = db_name AND name = pro_name;
+			db = db_name AND name = pro_name AND type = 'PROCEDURE';
 END
 $$ LANGUAGE plpgsql;
 /* End - ReqID:SRS-MYSQL-PROC */

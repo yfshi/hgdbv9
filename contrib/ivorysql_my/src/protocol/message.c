@@ -235,24 +235,6 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     {
         // no response packet is sent to the client
     }
-    else if (current_packet_type == COM_STMT_PREPARE)
-    {
-        Query   *query;
-        int     column_count;
-        int     param_count;
-        char    stmt_name[NAMEDATALEN];
-        PreparedStatement *entry;
-        
-        snprintf(stmt_name, NAMEDATALEN, MYSQL_STMT_NAME_FMT, statement_id);
-
-        entry = FetchPreparedStatement(stmt_name, true);
-        query = (Query *) linitial(entry->plansource->query_list);
-
-        column_count = list_length(query->targetList);
-        param_count = entry->plansource->num_params;
-
-        send_com_stmt_prepare_ok_packet(statement_id, column_count, param_count);
-    }
     else if (tag == CMDTAG_SELECT    ||
              tag == CMDTAG_SHOW      ||
              tag == CMDTAG_EXPLAIN)
@@ -888,29 +870,41 @@ prepare_portal_if_not_exist(int statement_id)
 }
 
 static int
-execute_com_stmt_prepare(const char *client_sql)
+execute_com_stmt_prepare(char *client_sql)
 {
-    StringInfo  sql;
     Query       *query;
     int         param_count;
     int         column_count;
     PreparedStatement *entry;
     char        stmt_name[NAMEDATALEN];
     TupleDesc   resultDesc;
+    PrepareStmt *pstmt;
+    ParseState  *pstate;
     
-    sql = makeStringInfo();
+    /* Set statement_timestamp() */
+    SetCurrentStatementStartTimestamp();
+    start_xact_command();
+
     statement_id += 1;
 
     snprintf(stmt_name, NAMEDATALEN, MYSQL_STMT_NAME_FMT, statement_id);
 
-    appendStringInfo(sql, "PREPARE %s AS %s", stmt_name, client_sql);
+    pstmt = makeNode(PrepareStmt);
+    pstmt->name = stmt_name;
+    pstmt->argtypes = NIL;
+    pstmt->query = (Node *) makeString(client_sql);
 
-    /* Set statement_timestamp() */
-    SetCurrentStatementStartTimestamp();
-    
-    exec_simple_query(sql->data);
+    pstate = make_parsestate(NULL);
+	pstate->p_sourcetext = client_sql;
 
-    DestroyStringInfo(sql);
+    if (InSecurityRestrictedOperation())
+    {
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("cannot execute %s within security-restricted operation", "PREPARE")));
+    }
+
+    PrepareQuery(pstate, pstmt, -1, 0);
 
     entry = FetchPreparedStatement(stmt_name, true);
     query = (Query *) linitial(entry->plansource->query_list);
@@ -918,6 +912,8 @@ execute_com_stmt_prepare(const char *client_sql)
     column_count = list_length(query->targetList);
     param_count = entry->plansource->num_params;
     resultDesc = entry->plansource->resultDesc;
+
+    send_com_stmt_prepare_ok_packet(statement_id, column_count, param_count);
 
     for (int i = 0; i < param_count; i++)
     {
@@ -953,6 +949,8 @@ execute_com_stmt_prepare(const char *client_sql)
     if (column_count > 0 && !has_client_capabilities(CLIENT_DEPRECATE_EOF))  /* bug#7930 */
         send_eof(0, 0);
 
+    finish_xact_command();
+    
     return 0;
 }
 

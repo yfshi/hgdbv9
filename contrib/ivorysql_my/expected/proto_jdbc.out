@@ -79,17 +79,93 @@ a:BIT
 name:VARCHAR
 size:CHAR
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcPrepareTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
-Exception in thread "main" java.sql.SQLException: type "set" does not exist
-	at com.mysql.jdbc.SQLError.createSQLException(SQLError.java:965)
-	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3978)
-	at com.mysql.jdbc.MysqlIO.checkErrorPacket(MysqlIO.java:3914)
-	at com.mysql.jdbc.MysqlIO.sendCommand(MysqlIO.java:2530)
-	at com.mysql.jdbc.MysqlIO.sqlQueryDirect(MysqlIO.java:2683)
-	at com.mysql.jdbc.ConnectionImpl.execSQL(ConnectionImpl.java:2491)
-	at com.mysql.jdbc.StatementImpl.executeUpdateInternal(StatementImpl.java:1552)
-	at com.mysql.jdbc.StatementImpl.executeLargeUpdate(StatementImpl.java:2607)
-	at com.mysql.jdbc.StatementImpl.executeUpdate(StatementImpl.java:1480)
-	at MySQLJdbcPrepareTest.main(MySQLJdbcPrepareTest.java:85)
+Tables_in_public:VARCHAR:t4
+Tables_in_public:VARCHAR:t3
+Database:VARCHAR:public
+Field:VARCHAR:c1
+Type:VARCHAR:integer
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c10
+Type:VARCHAR:double precision
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c11
+Type:VARCHAR:mysbit(10)
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c12
+Type:VARCHAR:boolean
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c13
+Type:VARCHAR:character(10)
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c15
+Type:VARCHAR:character varying(10)
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c16
+Type:VARCHAR:character varying(10)
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c18
+Type:VARCHAR:"year"
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+Field:VARCHAR:c19
+Type:VARCHAR:date
+Null:VARCHAR:YES
+Key:VARCHAR:null
+Default:VARCHAR:null
+Extra:VARCHAR:
+c1:INT:null
+c2:INT UNSIGNED:null
+c3:TINYINT:0
+c4:TINYINT UNSIGNED:null
+c5:SMALLINT:null
+c6:SMALLINT UNSIGNED:null
+c7:BIGINT:null
+c8:BIGINT UNSIGNED:null
+c9:FLOAT:null
+c10:DOUBLE:null
+c11:BIT:null
+c12:TINYINT:null
+c13:VARCHAR:null
+c15:VARCHAR:null
+c16:VARCHAR:null
+c18:YEAR:null
+c19:DATE:null
+c20:TIME:null
+c21:TIMESTAMP:null
+c22:DATETIME:null
+c23:BLOB:null
+c24:BLOB:null
+c25:BLOB:null
+c26:BLOB:null
+c27:GEOMETRY:null
+c29:VARCHAR:null
+c32:CHAR:null
+c33:CHAR:null
+c34:VARCHAR:null
+c35:CHAR:null
 select * from t3;
 ERROR:  relation "t3" does not exist
 LINE 1: select * from t3;

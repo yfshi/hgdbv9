@@ -2565,7 +2565,7 @@ MysqlShowStmt:
 /* Begin - Req: SRS-MYSQL-PROC */
 mys_func_name:
 			IDENT					{ $$ = list_make1(makeStringConst($1, @1)); }
-			| IDENT '.' IDENT		{ $$ = list_make2(makeStringConst($1, @1), makeStringConst($3, @3)); }
+			| IDENT '.' IDENT		{ $$ = list_make2(makeStringConst($3, @3), makeStringConst($1, @1)); }
 		;
 /* End - Req: SRS-MYSQL-PROC */
 

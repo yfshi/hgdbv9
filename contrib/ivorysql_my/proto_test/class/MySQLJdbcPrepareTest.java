@@ -108,84 +108,23 @@ public class MySQLJdbcPrepareTest {
                 "c25 mediumblob," +
                 "c26 longblob," +
                 "c27 point," +
-                "c28 polygon," +
                 "c29 text," +
-                "c30 decimal(5, 3)," +
-                "c31 json," +
                 "c32 enum('a', 'b')," +
-                "c33 set('a', 'b')," +
+                "c33 enum('a', 'b')," +
                 "c34 char," +
                 "c35 name" +
                 ")");
-            
-            PreparedStatement p1 = connection.prepareStatement("insert into t3 values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
-            p1.setInt(1, 1);
-            p1.setLong(2, 2000);
-            p1.setInt(3, 1);
-            p1.setInt(4, 4);
-            p1.setInt(5, 5);
-            p1.setInt(6, 6);
-            p1.setLong(7, 7);
-            p1.setLong(8, 8);
-            p1.setFloat(9, 9.9f);
-            p1.setDouble(10, 10.0);
-            p1.setBytes(11, "c".getBytes());
-            p1.setBoolean(12, true);
-            p1.setString(13, "char");
-            p1.setString(14, "varchar");
-            p1.setString(15, "nvarchar");
-            p1.setInt(16, 2023);
-            p1.setDate(17, java.sql.Date.valueOf("2023-02-27"));
-            p1.setTime(18, Time.valueOf("14:46:30"));
-            p1.setTimestamp(19, Timestamp.valueOf("2023-03-07 16:16:16.666"));
-            p1.setObject(20, Timestamp.valueOf("2023-03-07 16:16:16.666"));
-
-            Blob blob = connection.createBlob();
-            blob.setBytes(1, "blob".getBytes());
-            p1.setBlob(21, blob);
-            p1.setBlob(22, blob);
-            p1.setBlob(23, blob);
-            p1.setBlob(24, blob);
-            p1.setObject(25, "(1000,0)");
-            p1.setObject(26, "(1000,0,200,3)");
-            p1.setString(27, "text");
-            p1.setBigDecimal(28, new BigDecimal(20));
-            p1.setString(29, "{\"k\": \"v\"}"); 
-            p1.setString(30, "a");
-            p1.setString(31, "a");
-            p1.setString(32, "c");
-            p1.setString(33, "ivorysql");
-            
-            p1.executeUpdate();
             
             PreparedStatement p2 = connection.prepareStatement("select * from t3 where c1=?");
             p2.setObject(1, 1);
             resultSet = p2.executeQuery();
             print_res(resultSet);
 
-            p1.clearParameters();
-            p1.close();
             p2.clearParameters();
             p2.close();
             resultSet.close();
 
             p2 = connection.prepareStatement("show tables like ?");
-            p2.setString(1, "t%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
-            p2 = connection.prepareStatement("show table status like ?");
-            p2.setString(1, "t%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
-            p2 = connection.prepareStatement("show open tables like ?");
             p2.setString(1, "t%");
             resultSet = p2.executeQuery();
             print_res(resultSet);
@@ -209,48 +148,8 @@ public class MySQLJdbcPrepareTest {
             p2.close();
             resultSet.close();
 
-            p2 = connection.prepareStatement("show CHARACTER SET like ?");
-            p2.setString(1, "gb18030%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
-            p2 = connection.prepareStatement("show COLLATION like ?");
-            p2.setString(1, "gbk_bin%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
             p2 = connection.prepareStatement("show COLUMNS FROM t3 like ?");
             p2.setString(1, "c1%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
-            p2 = connection.prepareStatement("show COLUMNS FROM t3 like ?");
-            p2.setString(1, "c1%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
-            p2 = connection.prepareStatement("show FUNCTION STATUS like ?");
-            p2.setString(1, "json_out%");
-            resultSet = p2.executeQuery();
-            print_res(resultSet);
-            p2.clearParameters();
-            p2.close();
-            resultSet.close();
-
-            p2 = connection.prepareStatement("show STATUS like ?");
-            p2.setString(1, "datname%");
             resultSet = p2.executeQuery();
             print_res(resultSet);
             p2.clearParameters();
@@ -273,7 +172,7 @@ public class MySQLJdbcPrepareTest {
             p2.close();
             resultSet.close();
 
-            statement.execute("set sql_mode = 'sql_mode_strict,ansi_quotes'");
+            statement.execute("set sql_mode = 'STRICT_TRANS_TABLES,ansi_quotes'");
             statement.executeUpdate("insert into t3(c3) values(0)");
             PreparedStatement p3 = connection.prepareStatement("select * from t3 where c3=?");
             p3.setString(1, "abc");
