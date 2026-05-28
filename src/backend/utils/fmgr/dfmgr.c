@@ -36,6 +36,10 @@
 #include "storage/shmem.h"
 #include "utils/hsearch.h"
 
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+
 
 /* signatures for PostgreSQL-specific library init/fini functions */
 typedef void (*PG_init_t) (void);
@@ -66,6 +70,28 @@ typedef struct df_files
 
 static DynamicFileList *file_list = NULL;
 static DynamicFileList *file_tail = NULL;
+
+#ifdef USE_LICENSE
+/*
+ * List of extension files to check.
+ */
+typedef struct
+{
+	const char *name;	// extension's library name
+	const int   code;	// code in license
+	const char *desc;	// descrition
+} ExtensionFileList;
+
+static ExtensionFileList extensionFiles[] =
+{
+	{"postgis-3.so", LIC_DB_GIS, "GIS"},					// postgis
+	{"age.so", LIC_DB_GRAPH, "Graph"},						// age
+	{"vector.so", LIC_DB_VECTOR, "Vector"},					// pgvector
+	{"timescaledb.so", LIC_DB_TIMESERIES, "Timeseries"},	// timescaledb
+	{"pg_documentdb_core.so", LIC_DB_DOCUMENT, "Document"},	// pg_document_core
+	{NULL, 0, NULL}
+};
+#endif
 
 /* stat() call under Win32 returns an st_ino field, but it has no meaning */
 #ifndef WIN32
@@ -174,6 +200,40 @@ lookup_external_function(void *filehandle, const char *funcname)
 }
 
 
+#ifdef USE_LICENSE
+/*
+ * Check extension license by library name.
+ */
+static void
+check_extension_license(const char *libname)
+{
+	int i;
+	char const *filename;
+
+	/* Get library name without prefix. */
+	filename = last_dir_separator(libname);
+	if (filename == NULL)
+		filename = libname;
+	else
+		filename++;
+
+	for (i = 0; extensionFiles[i].name != NULL; i++)
+	{
+		if (strcmp(filename, extensionFiles[i].name) == 0)
+		{
+			if (!hg_get_productBitMapByCode(extensionFiles[i].code))
+			{
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("\"%s\" requires a license upgrade", extensionFiles[i].desc)));
+			}
+			return;
+		}
+	}
+}
+#endif
+
+
 /*
  * Load the specified dynamic-link library file, unless it already is
  * loaded.  Return the pg_dl* handle for the file.
@@ -218,6 +278,9 @@ internal_load_library(const char *libname)
 
 	if (file_scanner == NULL)
 	{
+#ifdef USE_LICENSE
+		check_extension_license(libname);
+#endif
 		/*
 		 * File not loaded yet.
 		 */
