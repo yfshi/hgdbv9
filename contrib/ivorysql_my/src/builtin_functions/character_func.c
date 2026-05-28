@@ -1685,8 +1685,17 @@ Datum
 oct(PG_FUNCTION_ARGS)
 {
 	text *result;
-	Datum newval = PG_GETARG_DATUM(0);
+	text *input;
+	Datum newval;
 
+	if (PG_ARGISNULL(0))
+		PG_RETURN_NULL();
+
+	input = PG_GETARG_TEXT_PP(0);
+	if (VARSIZE_ANY_EXHDR(input) == 0)
+		PG_RETURN_TEXT_P(cstring_to_text("0"));
+
+	newval = PointerGetDatum(input);
 	result = DatumGetTextPP(DirectFunctionCall3(conv, newval, 10, 8));
 	if (result)
 		PG_RETURN_TEXT_P(result);
