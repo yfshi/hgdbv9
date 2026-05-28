@@ -12558,11 +12558,9 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 		prm->pflags = PARAM_FLAG_CONST;
 
 		/* Begin - BUG#Z7311 */
-		if (param->info == PROARGMODE_OUT &&
-			param->datum_dno > -1 &&
+		if (param->datum_dno > -1 &&
 			param->datum_dno < estate->ndatums)
 		{
-
 			PLiSQL_datum *datum = (PLiSQL_datum*)estate->datums[param->datum_dno];
 
 			/*
@@ -12570,13 +12568,20 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 			 * and the collection element has no data, exec_eval_expr will
 			 * raise an ERRCODE_NO_DATA_FOUND error, in this situation,
 			 * don't call exec_eval_expr.
+			 *
+			 * If it's USING IN a collection or a collection element, we should
+			 * get the datatype and assign it to prm->pdatatype.
 			 */
 			if (datum->dtype == PLISQL_DTYPE_VAR &&
 				((PLiSQL_var *)datum)->datatype != NULL &&
 				((PLiSQL_var *)datum)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
 			{
-				prm->value = ((PLiSQL_var *)datum)->value;
-				prm->isnull = ((PLiSQL_var *)datum)->isnull;
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				prm->value = exec_eval_expr(estate, param,
+											&prm->isnull,
+											&prm->ptype,
+											&ppdtypmod);
+				/* End - ReqID:SRS-PLSQL-Collection */
 				prm->pdatatype = ((PLiSQL_var *)datum)->datatype;
 				prm->ptype = prm->pdatatype->typoid;
 			}
@@ -12585,8 +12590,12 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype != NULL &&
 				((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE)
 			{
-				prm->value = ((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->value;
-				prm->isnull = ((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->isnull;
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				prm->value = exec_eval_expr(estate, param,
+											&prm->isnull,
+											&prm->ptype,
+											&ppdtypmod);
+				/* End - ReqID:SRS-PLSQL-Collection */
 				prm->pdatatype = ((PLiSQL_var *)(((PLiSQL_pkg_datum *)datum)->pkgvar))->datatype;
 				prm->ptype = prm->pdatatype->typoid;
 			}
@@ -12601,7 +12610,6 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 				PLiSQL_type *val_type;
 				int			j;
 
-				oldcontext = MemoryContextSwitchTo(stmt_mcontext);
 				if (datum->dtype == PLISQL_DTYPE_PACKAGE_DATUM)
 				{
 					/* reference a package collection element */
@@ -12662,14 +12670,27 @@ exec_eval_using_params(PLiSQL_execstate *estate, List *params)
 						}
 					}
 				}
-				prm->value = (Datum) 0;
-				prm->isnull = true;
-				prm->pdatatype = collect_type;
-				prm->ptype = prm->pdatatype->typoid;
-				i++;
-				MemoryContextSwitchTo(oldcontext);
-				exec_eval_cleanup(estate);
-				continue;
+
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				if (param->info == PROARGMODE_OUT)
+				{
+					prm->value = (Datum) 0;
+					prm->isnull = true;
+					prm->pdatatype = collect_type;
+					prm->ptype = prm->pdatatype->typoid;
+					i++;
+					continue;
+				}
+				else
+				{
+					prm->value = exec_eval_expr(estate, param,
+												&prm->isnull,
+												&prm->ptype,
+												&ppdtypmod);
+					prm->pdatatype = collect_type;
+					prm->ptype = prm->pdatatype->typoid;
+				}
+				/* End - ReqID:SRS-PLSQL-Collection */
 			}
 			else
 				prm->value = exec_eval_expr(estate, param,
