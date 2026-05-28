@@ -535,7 +535,8 @@ quota_check_ExecCheckRTPerms(List *rangeTable, bool ereport_on_violation)
 {
 	ListCell   *l;
 
-	if (diskquota_enable != AUOTA_ON)
+	if (diskquota_enable != AUOTA_ON ||
+		MyProcPort == NULL) /* BUG#Z7841 */
 		return true;
 
 	foreach(l, rangeTable)
@@ -583,7 +584,8 @@ quota_check_ReadBufferExtendCheckPerms(Relation reln, pg_attribute_unused() Fork
 							pg_attribute_unused() ReadBufferMode mode,
 							pg_attribute_unused() BufferAccessStrategy strategy)
 {
-	if (diskquota_enable != AUOTA_ON)
+	if (diskquota_enable != AUOTA_ON ||
+		MyProcPort == NULL) /* BUG#Z7841 */
 		return true;
 
 	if (!relation_needs_quota_check(reln))
