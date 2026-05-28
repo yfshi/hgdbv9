@@ -1323,6 +1323,7 @@ _outWindowFunc(StringInfo str, const WindowFunc *node)
 	WRITE_UINT_FIELD(winref);
 	WRITE_BOOL_FIELD(winstar);
 	WRITE_BOOL_FIELD(winagg);
+	WRITE_INT_FIELD(ignore_nulls); /* OA-REQ-2348 */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -3131,6 +3132,8 @@ _outFuncCall(StringInfo str, const FuncCall *node)
 	WRITE_BOOL_FIELD(func_variadic);
 	WRITE_ENUM_FIELD(funcformat, CoercionForm);
 	WRITE_LOCATION_FIELD(location);
+	WRITE_NODE_FIELD(rawargs);
+	WRITE_INT_FIELD(ignore_nulls); /* OA-REQ-2348 */
 }
 
 /* Begin - ReqID:SRS-SQL-PROC */

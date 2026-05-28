@@ -1073,6 +1073,11 @@ static bool isAconstNode(Node *node);
 /* Begin - OA-REQ-2127 */
 %type <range>	opt_index_name
 /* End - OA-REQ-2127 */
+/* Begin - OA-REQ-2348 */
+%type <ival>	null_treatment
+%type <list>	opt_offset_and_default
+%token <keyword>	IGNORE_P RESPECT_P LAG_P
+/* Begin - OA-REQ-2348 */
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
@@ -1080,7 +1085,9 @@ static bool isAconstNode(Node *node);
 /* see detail for opt_values */
 %nonassoc	VALUES
 /* End - SRS-SQL-MULTITABLEINSERT */
-
+/* Begin - OA-REQ-2348 */
+%nonassoc	IGNORE_P RESPECT_P
+/* End - OA-REQ-2348 */
 /* Begin - BUG#M0000307 */
 %nonassoc	DAY_P YEAR_P DEFAULT    /* see param_name */ /* ReqID:SRS-SQL-PARTITION-TABLE */
 /* Begin - BUG#00007405 */
@@ -20276,7 +20283,7 @@ func_application: func_name '(' ')'
  * (Note that many of the special SQL functions wouldn't actually make any
  * sense as functional index entries, but we ignore that consideration here.)
  */
-func_expr: func_application within_group_clause filter_clause over_clause
+func_expr: func_application within_group_clause filter_clause null_treatment /* OA-REQ-2348 */ over_clause
 				{
 					FuncCall *n = (FuncCall *) $1;
 					/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
@@ -20350,7 +20357,8 @@ func_expr: func_application within_group_clause filter_clause over_clause
 							n->agg_within_group = true;
 						}
 						n->agg_filter = $3;
-						n->over = $4;
+						n->ignore_nulls = $4; /* OA-REQ-2348 */
+						n->over = $5;
 						$$ = (Node *) n;
 					}
 					/* End - ReqID:SRS-SQL-HierarchicalQueries */
@@ -20381,7 +20389,38 @@ func_expr: func_application within_group_clause filter_clause over_clause
 					$$ = (Node *)n;
 				}
 			/* End - BUG#M0000457 */
+			/* Begin - OA-REQ-2348 */
+			/* Window function LAG compatible with oracle */
+			| LAG_P '(' func_arg_expr null_treatment opt_offset_and_default ')' null_treatment over_clause
+				{
+					FuncCall	*n;
+					List		*lag_arg = list_make1($3);
+
+					/* ORA-30484 */
+					if ($4 != NO_NULLTREATMENT && $7 != NO_NULLTREATMENT)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("missing OVER clause, or invalid identifier found for window function"),
+								 parser_errposition(@2)));
+
+					if ($5)
+						lag_arg = list_concat(lag_arg, $5);
+
+					n = makeFuncCall(SystemFuncName("lag"), lag_arg, COERCE_EXPLICIT_CALL, @1);
+					n->ignore_nulls = $4 != NO_NULLTREATMENT ? $4 : $7;
+					n->over = $8;
+					$$ = (Node *)n;
+				}
+			/* End - OA-REQ-2348 */
 		;
+
+/* Begin - OA-REQ-2348 */
+opt_offset_and_default:
+		',' func_arg_expr							{ $$ = list_make1($2); }
+		| ',' func_arg_expr ',' func_arg_expr		{ $$ = list_make2($2, $4); }
+		| /*EMPTY*/									{ $$ = NIL; }
+	;
+/* End - OA-REQ-2348 */
 
 /*
  * As func_expr but does not accept WINDOW functions directly
@@ -21071,6 +21110,14 @@ filter_clause:
 /*
  * Window Definitions
  */
+/* Begin - OA-REQ-2348 */
+null_treatment:
+			IGNORE_P NULLS_P						{ $$ = PARSER_IGNORE_NULLS; }
+			| RESPECT_P NULLS_P						{ $$ = PARSER_RESPECT_NULLS; }
+			| /*EMPTY*/				%prec SET		{ $$ = NO_NULLTREATMENT; }
+		;
+/* End - OA-REQ-2348 */
+
 window_clause:
 			WINDOW window_definition_list			{ $$ = $2; }
 			| /*EMPTY*/								{ $$ = NIL; }
@@ -22983,6 +23030,7 @@ unreserved_keyword:
 			| IDENTIFIED	/* ReqID:SRS-SQL-DBLINK */
 			| IDENTITY_P
 			| IF_P
+			| IGNORE_P	/* OA-REQ-2348 */
 			| IMMEDIATE
 			| IMMUTABLE
 			| IMPLICIT_P
@@ -23133,6 +23181,7 @@ unreserved_keyword:
 			| REPLACE
 			| REPLICA
 			| RESET
+			| RESPECT_P	/* OA-REQ-2348 */
 			| RESTART
 			| RESTRICT
 			| RESULT_CACHE	/* ReqID:SRS-SQL-PROC */
@@ -23423,6 +23472,7 @@ reserved_keyword:
 			| INITIALLY
 			| INTERSECT
 			| INTO
+			| LAG_P	/* OA-REQ-2348 */
 			| LATERAL_P
 			| LEADING
 			| LIMIT
@@ -23721,6 +23771,7 @@ bare_label_keyword:
 			| KEEP	/* ReqID:SRS-SQL-SEQ */
 			| KEY
 			| LABEL
+			| LAG_P	/* OA-REQ-2348 */
 			| LANGUAGE
 			| LARGE_P
 			| LAST_P

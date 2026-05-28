@@ -882,6 +882,7 @@ _readWindowFunc(void)
 	READ_UINT_FIELD(winref);
 	READ_BOOL_FIELD(winstar);
 	READ_BOOL_FIELD(winagg);
+	READ_INT_FIELD(ignore_nulls); /* OA-REQ-2348 */
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
