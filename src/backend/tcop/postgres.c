@@ -3484,7 +3484,7 @@ die(SIGNAL_ARGS)
 	}
 
 	/* Begin - Z7903 */
-	if (strcmp(MyBgworkerEntry->bgw_name, AUDIT_LAUNCHER_S) != 0)
+	if (MyBgworkerEntry != NULL && strcmp(MyBgworkerEntry->bgw_name, AUDIT_LAUNCHER_S) != 0)
 	{
 		if (audit_WriteRecord_hook)
 			(*audit_WriteRecord_hook)();
@@ -5733,10 +5733,10 @@ PostgresMain(int argc, char *argv[],
 					if (audit_aborted_hook)
 						(*audit_aborted_hook)();
 
-						AbortCurrentTransaction();
-						StartTransactionCommand();
-						UserAbortTransactionBlock(false);
-						CommitTransactionCommand();
+					AbortCurrentTransaction();
+					StartTransactionCommand();
+					UserAbortTransactionBlock(false);
+					CommitTransactionCommand();
 
 					if (audit_WriteRecord_hook)
 						(*audit_WriteRecord_hook)();
