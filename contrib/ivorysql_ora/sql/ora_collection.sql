@@ -11,7 +11,7 @@
 --11 RETURNING INTO collection
 --12 EXECUTE USING collection
 --13 collection appears in DML
---13 more test cases
+--14 more test cases
 
 CREATE TABLE t1(i int, j int);
 INSERT INTO t1 VALUES(1, 11);
@@ -6303,6 +6303,252 @@ DROP PROCEDURE create_dept;
 
 DROP TABLE departs;
 
+
+--execute a anonymous block, which invokes a function whose parameter data type is associate array.
+CREATE OR REPLACE PACKAGE pkg AUTHID DEFINER AS
+  TYPE var_type IS TABLE OF VARCHAR2(5)
+    INDEX BY PLS_INTEGER;
+  PROCEDURE print_var_type (x var_type);
+END pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY pkg AS
+  PROCEDURE print_var_type (x var_type) IS
+    idx PLS_INTEGER;
+  BEGIN
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('the associative array is null');
+	  RETURN;
+	END IF;
+	idx := x.FIRST;
+    WHILE idx IS NOT NULL LOOP
+	  DBMS_OUTPUT.PUT_LINE('x(' || idx || ') = ' || x(idx));
+	  idx := x.NEXT(idx);
+    END LOOP;
+  END;
+END pkg;
+/
+
+DECLARE
+  num_words  pkg.var_type;
+  dyn_stmt     VARCHAR2(3000);
+BEGIN
+  num_words(0) := 'zero';
+  num_words(1) := 'one';
+  num_words(2) := 'two';
+  num_words(10) := 'ten';
+  num_words(-1) := 'minus';
+
+  dyn_stmt := 'BEGIN pkg.print_var_type(:x); END;';
+  EXECUTE IMMEDIATE dyn_stmt USING num_words;
+  num_words.DELETE;
+  EXECUTE IMMEDIATE dyn_stmt USING num_words;
+  num_words(1) := '123456';
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('exception: the length is too long');
+END;
+/
+
+--execute a anonymous block, which invokes a function whose parameter data type is nested table.
+CREATE OR REPLACE PACKAGE pkg AUTHID DEFINER AS
+  TYPE fruit_names IS TABLE OF VARCHAR2(10);
+  PROCEDURE print_fruits (x fruit_names);
+END pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY pkg AS
+  PROCEDURE print_fruits (x fruit_names) IS
+  BEGIN
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('the nested table is null');
+	  RETURN;
+	END IF;
+    FOR i IN x.FIRST .. x.LAST LOOP
+	  DBMS_OUTPUT.PUT_LINE('x(' || i || ') = ' || x(i));
+    END LOOP;
+  END;
+END pkg;
+/
+
+DECLARE
+  fruits   pkg.fruit_names;
+  dyn_str VARCHAR2(3000);
+BEGIN
+  fruits := pkg.fruit_names('pear', 'orange', 'peach');
+  dyn_str := 'BEGIN pkg.print_fruits(:x); END;';
+  EXECUTE IMMEDIATE dyn_str USING fruits;
+  fruits := pkg.fruit_names();
+  EXECUTE IMMEDIATE dyn_str USING fruits;
+  fruits := NULL;
+  EXECUTE IMMEDIATE dyn_str USING fruits;
+EXCEPTION
+  WHEN OTHERS THEN
+    DBMS_OUTPUT.PUT_LINE('exception: the nested table is not initialed');
+END;
+/
+
+--execute a anonymous block, which invokes a function whose parameter data type is varray.
+CREATE OR REPLACE PACKAGE pkg AUTHID DEFINER AS
+  TYPE fruit_names IS VARRAY(4) OF VARCHAR2(20);
+  PROCEDURE print_fruits (x fruit_names, y  OUT fruit_names);
+END pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY pkg AS
+  PROCEDURE print_fruits (x fruit_names, y  OUT fruit_names) IS
+  BEGIN
+    y := x;
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('x is empty');
+	  RETURN;
+	END IF;
+
+    FOR i IN x.FIRST .. x.LAST LOOP
+      DBMS_OUTPUT.PUT_LINE('x(' || i || ') = ' || x(i));
+    END LOOP;
+  END;
+END pkg;
+/
+DECLARE
+  fruits pkg.fruit_names;
+  dyn_str VARCHAR2(3000);
+  fruits2 pkg.fruit_names;
+BEGIN
+  fruits := pkg.fruit_names('apple', 'pear', 'banana', 'strawberry');
+  dyn_str := 'BEGIN pkg.print_fruits(:1, :2); END;';
+  EXECUTE IMMEDIATE dyn_str USING fruits, OUT fruits2;
+   IF fruits2.COUNT = 0 THEN
+     DBMS_OUTPUT.PUT_LINE('fruits2 is empty');
+   ELSE
+     FOR i IN fruits2.FIRST .. fruits2.LAST LOOP
+	   DBMS_OUTPUT.PUT_LINE('fruits2(' || i || ') = ' || fruits2(i));
+     END LOOP;
+   END IF;
+END;
+/
+
+DECLARE
+  fruits pkg.fruit_names;
+  dyn_str VARCHAR2(3000);
+  fruits2 pkg.fruit_names;
+BEGIN
+  fruits := pkg.fruit_names();
+  dyn_str := 'BEGIN pkg.print_fruits(:1, :2); END;';
+  EXECUTE IMMEDIATE dyn_str USING fruits, OUT fruits2;
+   IF fruits2.COUNT = 0 THEN
+	 DBMS_OUTPUT.PUT_LINE('fruits2 is empty');
+   ELSE
+     FOR i IN fruits2.FIRST .. fruits2.LAST LOOP
+       DBMS_OUTPUT.PUT_LINE('fruits2(' || i || ') = ' || fruits2(i));
+     END LOOP;
+   END IF;
+END;
+/
+
+DECLARE
+  dyn_str VARCHAR2(3000);
+  fruits pkg.fruit_names;
+BEGIN
+  dyn_str := 'BEGIN pkg.print_fruits(pkg.fruit_names(''a'', ''b'', ''c'', ''d'', ''e''), :1); END;';
+  EXECUTE IMMEDIATE dyn_str USING OUT fruits;
+EXCEPTION
+  WHEN OTHERS THEN
+	DBMS_OUTPUT.PUT_LINE('exception: the number of varray exceed the limit');
+END;
+/
+
+--execute a anonymous block, which invokes a function whose parameter data type is multi-collection.
+CREATE OR REPLACE PACKAGE pkg AUTHID DEFINER AS
+  TYPE vtype IS VARRAY(4) OF VARCHAR2(20);
+  TYPE ntype IS TABLE OF vtype;
+  PROCEDURE print_collect (x ntype, y  OUT ntype);
+END pkg;
+/
+CREATE OR REPLACE PACKAGE BODY pkg AS
+  PROCEDURE print_collect (x ntype, y  OUT ntype) IS
+  BEGIN
+    y := x;
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('x is empty');
+	  RETURN;
+	END IF;
+
+    FOR i IN x.FIRST .. x.LAST LOOP
+      FOR j IN x(i).FIRST .. x(i).LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('x(' || i || ')(' || j || ') = ' || x(i)(j));
+      END LOOP;
+    END LOOP;
+  END;
+END pkg;
+/
+DECLARE
+  v1 pkg.vtype;
+  dyn_str VARCHAR2(3000);
+  v2 pkg.ntype;
+  v3 pkg.ntype;
+BEGIN
+  v1 := pkg.vtype('apple', 'pear', 'banana', 'strawberry');
+  v2 := pkg.ntype(v1);
+  dyn_str := 'BEGIN pkg.print_collect(:1, :2); END;';
+  EXECUTE IMMEDIATE dyn_str USING v2, OUT v3;
+   IF v3.COUNT = 0 THEN
+     DBMS_OUTPUT.PUT_LINE('v3 is empty');
+   ELSE
+     FOR i IN v3.FIRST .. v3.LAST LOOP
+       FOR j IN v3(i).FIRST .. v3(i).LAST LOOP
+         DBMS_OUTPUT.PUT_LINE('v3(' || i || ')(' || j || ') = ' || v3(i)(j));
+       END LOOP;
+     END LOOP;
+   END IF;
+END;
+/
+
+CREATE OR REPLACE PACKAGE pkg AUTHID DEFINER AS
+  TYPE vtype IS VARRAY(4) OF VARCHAR2(20);
+  TYPE mrecord IS RECORD(c1 vtype, c2 int);
+  TYPE ntype IS TABLE OF mrecord;
+  PROCEDURE print_collect (x vtype, y  OUT vtype);
+END pkg;
+/
+CREATE OR REPLACE PACKAGE BODY pkg AS
+  PROCEDURE print_collect (x vtype, y  OUT vtype) IS
+  BEGIN
+    y := x;
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('x is empty');
+	  RETURN;
+	END IF;
+
+    FOR i IN x.FIRST .. x.LAST LOOP
+      DBMS_OUTPUT.PUT_LINE('x(' || i || ') = ' || x(i));
+    END LOOP;
+  END;
+END pkg;
+/
+DECLARE
+  v1 pkg.vtype;
+  dyn_str VARCHAR2(3000);
+  v2 pkg.ntype;
+  v3 pkg.ntype;
+  r1 pkg.mrecord;
+  r2 pkg.mrecord;
+BEGIN
+  v1 := pkg.vtype('apple', 'pear', 'banana', 'strawberry');
+  r1.c1 := v1;
+  v2 := pkg.ntype(r1, r2);
+  dyn_str := 'BEGIN pkg.print_collect(:1, :2); END;';
+  EXECUTE IMMEDIATE dyn_str USING v2(1).c1, OUT v2(2).c1;
+   IF v2(2).c1.COUNT = 0 THEN
+     DBMS_OUTPUT.PUT_LINE('v2(2).c1 is empty');
+   ELSE
+     FOR i IN v2(2).c1.FIRST .. v2(2).c1.LAST LOOP
+       DBMS_OUTPUT.PUT_LINE('v2(2).c1(' || i || ') = ' || v2(2).c1(i));
+     END LOOP;
+   END IF;
+END;
+/
+DROP PACKAGE pkg ;
 
 --13 collection appears in DML
 CREATE TABLE tc(id INT, name varchar(20), age INT, salary INT);
