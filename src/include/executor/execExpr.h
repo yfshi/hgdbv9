@@ -43,7 +43,8 @@ typedef bool (*ExecEvalBoolSubroutine) (ExprState *state,
 										ExprContext *econtext);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 typedef void (*ExecEvalOutParamSubroutine)(ExprState *state,
-										struct ExprEvalStep *op);
+										struct ExprEvalStep *op,
+										ExprContext *econtext); /* OA#00002404 */
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - ReqID:SRS-PLSQL-Collection */
@@ -731,7 +732,6 @@ typedef struct ExprEvalStep
 			int			*paramids;		/* the out parameter id number */
 			int			 nout;			/* out parameter number of the function */
 			Oid			 rettype;		/* function return type */
-			void		*pestate;		/* the parent of current PLiSQL_execstate */
 			ExecEvalOutParamSubroutine outparam_func;
 		}			out_params;
 		/* End - ReqID:SRS-SQL-FUNCOUT */

@@ -4752,7 +4752,6 @@ ExecInitFuncOutParams(Expr *node, ExprState *state,
 				scratch.d.out_params.nout = nout;
 				scratch.d.out_params.rettype = rettype;
 
-				scratch.d.out_params.pestate = params->paramFetchArg;
 				params->outparamSetup(&scratch);
 				ExprEvalPushStep(state, &scratch);
 			}

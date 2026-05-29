@@ -1918,7 +1918,7 @@ ExecInterpExpr(ExprState *state, ExprContext *econtext, bool *isnull)
 		EEO_CASE(EEOP_OUT_PARAM_CALLBACK)
 		{
 			/* process OUT paramerters value */
-			op->d.out_params.outparam_func(state, op);
+			op->d.out_params.outparam_func(state, op, econtext); /* OA#00002404 */
 			EEO_NEXT();
 		}
 		/* End - ReqID:SRS-SQL-FUNCOUT */

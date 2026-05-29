@@ -524,7 +524,7 @@ static PLiSQL_variable *make_callstmt_target(PLiSQL_execstate *estate,
 
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 static void plisql_out_param_setup(void *s);
-static void plisql_out_param(ExprState *state, ExprEvalStep *op);
+static void plisql_out_param(ExprState *state, ExprEvalStep *op, ExprContext *econtext); /* OA#00002404 */
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
@@ -12951,9 +12951,12 @@ plisql_out_param_setup(void *s)
  * and assign values to out parameters
  */
 static void
-plisql_out_param(ExprState *state, ExprEvalStep *op)
+plisql_out_param(ExprState *state, ExprEvalStep *op, ExprContext *econtext) /* OA#00002404 */
 {
-	PLiSQL_execstate *estate = (PLiSQL_execstate *)op->d.out_params.pestate;
+	/* Begin - OA#00002404 */
+	PLiSQL_execstate *estate;
+	ParamListInfo	params;
+	/* End - OA#00002404 */
 	Datum 		  value = *op->resvalue;
 	bool 		  isNull = *op->resnull;
 	int 		  nout = op->d.out_params.nout;
@@ -12964,6 +12967,12 @@ plisql_out_param(ExprState *state, ExprEvalStep *op)
 	HeapTupleData tmptup;
 	TupleDesc	  tupdesc = NULL;
 	int 		  j;
+
+	/* Begin - OA#00002404 */
+	/* fetch back the hook data */
+	params = econtext->ecxt_param_list_info;
+	estate = (PLiSQL_execstate *) params->paramFetchArg;
+	/* End - OA#00002404 */
 
 	old = MemoryContextSwitchTo(estate->datum_context);
 
