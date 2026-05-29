@@ -29,6 +29,12 @@ install: all installdirs
 
 installdirs:
 	$(MKDIR_P) '$(DESTDIR)$(bindir)'
+# Begin - BUG#Z8011
+ifeq ($(enable_dky_beta_feature), yes)
+	$(INSTALL_DATA) hg_watchdog.conf.sample '$(DESTDIR)$(datadir)/hg_watchdog.conf.sample'
+	$(INSTALL_DATA) hg_watchdog.service.sample '$(DESTDIR)$(datadir)/hg_watchdog.service.sample'
+endif
+# End - BUG#Z8011
 
 clean distclean maintainer-clean:
 	rm -rf $(OBJS) hg_watchdog

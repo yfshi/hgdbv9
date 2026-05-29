@@ -1,0 +1,20 @@
+[Unit]
+Description=PostgreSQL Watchdog Daemon
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+
+ExecStart=/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug/bin/hg_watchdog -f /home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/debug/hg_watchdog.conf
+
+User=markbo
+
+# Automatic service recovery mechanism
+Restart=always
+RestartSec=5
+
+KillMode=process
+
+[Install]
+WantedBy=multi-user.target
