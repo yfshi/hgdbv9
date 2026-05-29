@@ -147,16 +147,6 @@ WITH FUNCTION ivymy.uint2_numeric(ivymy.uint2)
 AS ASSIGNMENT;
 /* End - BUG#Z7615 */
 
--- to bpchar
-CREATE CAST (ivymy.uint2 AS pg_catalog.bpchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
--- to varchar
-CREATE CAST (ivymy.uint2 AS pg_catalog.varchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
 --
 -- cast (varchar as uint2)
 --
@@ -220,7 +210,17 @@ AS ASSIGNMENT;
 --
 -- cast (uint2 as uint8)
 --
-CREATE CAST (ivymy.uint2 AS ivymy.uint8) WITH INOUT AS IMPLICIT;
+CREATE FUNCTION ivymy.uint2_uint8(ivymy.uint2)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','uint2_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint2 AS ivymy.uint8)
+WITH FUNCTION ivymy.uint2_uint8(ivymy.uint2)
+AS IMPLICIT;
 
 /* Begin - BUG#Z7200 */
 CREATE FUNCTION ivymy.uint2_int8(ivymy.uint2)

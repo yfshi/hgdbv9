@@ -2618,6 +2618,8 @@ select cast('111111111111' as datetime );
 select cast('11-11-11 11:11:11'::pg_catalog.timestamp as datetime );
 select cast('11-11-11 11:11:11'::pg_catalog.timestamptz as datetime );
 select cast('11-11-11 11:11:11'::pg_catalog.date as datetime );
+select cast('2020-08-02 07:30:40'::pg_catalog.date as datetime );
+select cast('12-10-08 10:10:10' ::pg_catalog.date as datetime );
 
 select cast(111111111111 as datetime(3) );
 select cast('111111111111' as datetime(3) );

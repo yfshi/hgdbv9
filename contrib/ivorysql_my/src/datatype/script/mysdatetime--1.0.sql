@@ -1,5 +1,3 @@
-
--- Begin - ReqID:SRS-MYSQL-DATETIMETYPE 
 /***************************************************************
  *
  * MySQL datetime type support
@@ -523,8 +521,6 @@ CREATE CAST (pg_catalog.numeric AS ivymy.mysdatetime)
 WITH FUNCTION ivymy.numeric_mysdatetime(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
-/* CREATE CAST */
----------- Compatible Postgresql Cast ----------
 CREATE CAST (ivymy.mysdatetime AS pg_catalog.timestamp)
 WITH INOUT
 AS ASSIGNMENT;
@@ -541,9 +537,15 @@ CREATE CAST (pg_catalog.timestamp AS ivymy.mysdatetime)
 WITH FUNCTION ivymy.timestamp_mysdatetime(pg_catalog.timestamp)
 AS ASSIGNMENT;
 
-CREATE CAST (pg_catalog.date AS ivymy.mysdatetime)
-WITH INOUT
-AS ASSIGNMENT;
+CREATE FUNCTION ivymy.date_mysdatetime(pg_catalog.date)
+RETURNS ivymy.mysdatetime
+AS 'MODULE_PATHNAME','date_mysdatetime'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.date AS ivymy.mysdatetime) WITH FUNCTION ivymy.date_mysdatetime(pg_catalog.date) AS ASSIGNMENT;
 
 CREATE FUNCTION ivymy.timestamptz_mysdatetime(pg_catalog.timestamptz)
 RETURNS ivymy.mysdatetime
@@ -552,11 +554,11 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (pg_catalog.timestamptz AS ivymy.mysdatetime)
 WITH FUNCTION ivymy.timestamptz_mysdatetime(pg_catalog.timestamptz)
 AS ASSIGNMENT;
 
---datetime to boolean
 CREATE FUNCTION ivymy.mysdatetime_boolean(ivymy.mysdatetime) 
 RETURNS boolean 
 AS 'MODULE_PATHNAME','mysdatetime_boolean'
@@ -564,6 +566,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mysdatetime AS boolean)
 WITH FUNCTION ivymy.mysdatetime_boolean(ivymy.mysdatetime)
 AS ASSIGNMENT;
@@ -576,6 +579,7 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
+
 CREATE CAST (ivymy.mysdatetime as float4) WITH FUNCTION mysdatetime_float4(ivymy.mysdatetime) AS ASSIGNMENT;
 
 CREATE OR REPLACE FUNCTION ivymy.mysdatetime_float8(ivymy.mysdatetime)
@@ -586,12 +590,11 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE
 LEAKPROOF;
+
 CREATE CAST (ivymy.mysdatetime as float8) WITH FUNCTION mysdatetime_float8(ivymy.mysdatetime) AS ASSIGNMENT;
 
--- to int8
 CREATE CAST (ivymy.mysdatetime as bigint) WITHOUT FUNCTION AS IMPLICIT;
 
--- to numeric
 CREATE FUNCTION ivymy.mysdatetime_numeric(ivymy.mysdatetime)
 RETURNS pg_catalog.numeric
 AS 'MODULE_PATHNAME','mysdatetime_numeric'
@@ -599,4 +602,5 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 STABLE;
+
 CREATE CAST (ivymy.mysdatetime AS pg_catalog.numeric) WITH FUNCTION ivymy.mysdatetime_numeric(ivymy.mysdatetime) AS ASSIGNMENT;

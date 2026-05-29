@@ -1,3 +1,4 @@
+-- Begin - ReqID:SRS-MYSQL-DATETIMETYPE 
 /***************************************************************
  *
  * MySQL datetimes type support

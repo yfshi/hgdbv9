@@ -68,6 +68,9 @@ PG_FUNCTION_INFO_V1(mys_date_hash_extended);
 PG_FUNCTION_INFO_V1(mysdate_bit_count);
 
 PG_FUNCTION_INFO_V1(mysdate_boolean);
+PG_FUNCTION_INFO_V1(date_mysdate);
+PG_FUNCTION_INFO_V1(timestamp_mysdate);
+PG_FUNCTION_INFO_V1(timestamptz_mysdate);
 
 PG_FUNCTION_INFO_V1(mysdate2_like);
 PG_FUNCTION_INFO_V1(mysdate_text_like);
@@ -576,15 +579,16 @@ mys_date_hash_extended(PG_FUNCTION_ARGS)
 }
 
 //BIT_COUNT
-Datum mysdate_bit_count(PG_FUNCTION_ARGS)
+Datum
+mysdate_bit_count(PG_FUNCTION_ARGS)
 {
 	DateADT dateVal1 = PG_GETARG_DATEADT(0);
 
 	PG_RETURN_INT64(getCount(dateVal1));
 }
 
-// date to boolean
-Datum mysdate_boolean(PG_FUNCTION_ARGS)
+Datum
+mysdate_boolean(PG_FUNCTION_ARGS)
 {
 	DateADT dateVal1 = PG_GETARG_DATEADT(0);
 
@@ -592,6 +596,71 @@ Datum mysdate_boolean(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	PG_RETURN_BOOL(dateVal1 != 0);
+}
+
+Datum
+date_mysdate(PG_FUNCTION_ARGS)
+{
+	DateADT dateVal = PG_GETARG_DATEADT(0);
+	DateADT date;
+	struct pg_tm tt, *tm = &tt;
+
+	j2date(dateVal + POSTGRES_EPOCH_JDATE,
+		   &(tm->tm_year), &(tm->tm_mon), &(tm->tm_mday));
+
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+
+	PG_RETURN_DATEADT(date);
+}
+
+Datum
+timestamp_mysdate(PG_FUNCTION_ARGS)
+{
+	Timestamp	timestamp = PG_GETARG_TIMESTAMP(0);
+	DateADT		date;
+	struct pg_tm tt, *tm = &tt;
+	fsec_t		fsec;
+
+	if (timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL) != 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+	}
+
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	
+	PG_RETURN_DATEADT(date);
+}
+
+Datum
+timestamptz_mysdate(PG_FUNCTION_ARGS)
+{
+	TimestampTz	dt = PG_GETARG_TIMESTAMPTZ(0);
+	DateADT		date;
+	struct pg_tm tt, *tm = &tt;
+	int			tz;
+	fsec_t		fsec;
+	int			dterr;
+	int			warn;
+
+	if (timestamp2tm(dt, &tz, tm, &fsec, NULL, NULL) != 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+	}
+
+	dterr = mysdatetime_rounded_seconds(tm, &fsec, &warn);
+	if (dterr)
+	{
+		ereport(WARNING, (errmsg("timestamp field overflow.")));
+		PG_RETURN_NULL();
+	}
+
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	
+	PG_RETURN_DATEADT(date);
 }
 
 //like
@@ -788,6 +857,7 @@ PG_FUNCTION_INFO_V1(mysdatetime_recv);
 PG_FUNCTION_INFO_V1(mysdatetime_send);
 PG_FUNCTION_INFO_V1(int_mysdatetime);
 PG_FUNCTION_INFO_V1(numeric_mysdatetime);
+PG_FUNCTION_INFO_V1(date_mysdatetime);
 
 PG_FUNCTION_INFO_V1(mysdatetime_eq);
 PG_FUNCTION_INFO_V1(mysdatetime_ne);
@@ -1273,6 +1343,24 @@ int_mysdatetime(PG_FUNCTION_ARGS)
 			datetime = temp + time;
 		}
 	}
+
+	PG_RETURN_TIMEADT(datetime);
+}
+
+Datum
+date_mysdatetime(PG_FUNCTION_ARGS)
+{
+	DateADT dateVal = PG_GETARG_DATEADT(0);
+	struct pg_tm tt, *tm = &tt;
+	TimeADT datetime, date = 0;
+
+	j2date(dateVal + POSTGRES_EPOCH_JDATE,
+		   &(tm->tm_year), &(tm->tm_mon), &(tm->tm_mday));
+
+	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
+
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	datetime = date * 1000000;
 
 	PG_RETURN_TIMEADT(datetime);
 }
@@ -3097,6 +3185,7 @@ PG_FUNCTION_INFO_V1(mystimestamp_send);
 PG_FUNCTION_INFO_V1(int_mystimestamp);
 PG_FUNCTION_INFO_V1(numeric_mystimestamp);
 PG_FUNCTION_INFO_V1(timestamptz_mystimestamp);
+PG_FUNCTION_INFO_V1(date_mystimestamp);
 PG_FUNCTION_INFO_V1(mystimestamp_eq);
 PG_FUNCTION_INFO_V1(mystimestamp_ne);
 PG_FUNCTION_INFO_V1(mystimestamp_lt);
@@ -3607,6 +3696,25 @@ Datum timestamptz_mystimestamp(PG_FUNCTION_ARGS)
 
 	PG_RETURN_TIMEADT(res);
 }
+
+Datum
+date_mystimestamp(PG_FUNCTION_ARGS)
+{
+	DateADT dateVal = PG_GETARG_DATEADT(0);
+	struct pg_tm tt, *tm = &tt;
+	TimeADT timestamp, datetemp = 0;
+
+	j2date(dateVal + POSTGRES_EPOCH_JDATE,
+		   &(tm->tm_year), &(tm->tm_mon), &(tm->tm_mday));
+
+	tm->tm_hour = tm->tm_min = tm->tm_sec = 0;
+
+	datetemp = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	timestamp = datetemp * 1000000;
+
+	PG_RETURN_TIMEADT(timestamp);
+}
+
 /*****************************************************************************
  *	 Operator Function														 *
  *****************************************************************************/

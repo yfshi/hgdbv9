@@ -271,17 +271,6 @@ CREATE OPERATOR ivymy.- (
 );
 
 -- CREATE CAST
-
--- to bpchar
-CREATE CAST (pg_catalog.int2 AS pg_catalog.bpchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
--- to varchar
-CREATE CAST (pg_catalog.int2 AS pg_catalog.varchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
 CREATE FUNCTION ivymy.boolean_int2(pg_catalog.bool) 
 RETURNS pg_catalog.int2
 AS 'MODULE_PATHNAME','boolean_int2'

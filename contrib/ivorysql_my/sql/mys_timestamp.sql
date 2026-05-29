@@ -1357,6 +1357,8 @@ select cast('111111111111' as timestamp );
 select cast('11-11-11 11:11:11'::pg_catalog.timestamp as timestamp );
 select cast('11-11-11 11:11:11'::pg_catalog.timestamptz as timestamp );
 select cast('11-11-11 11:11:11'::pg_catalog.date as timestamp );
+select cast('2020-08-02 07:30:40'::pg_catalog.date as timestamp );
+select cast('12-10-08 10:10:10'::pg_catalog.date as timestamp );
 
 select cast(111111111111 as timestamp(3) );
 select cast('111111111111' as timestamp(3) );

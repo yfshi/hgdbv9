@@ -694,12 +694,6 @@ CREATE CAST (pg_catalog.numeric AS ivymy.mystimestamps)
 WITH FUNCTION ivymy.numeric_mystimestamps(pg_catalog.numeric, int, bool, int8)
 AS ASSIGNMENT;
 
-/* CREATE CAST */
----------- Compatible Postgresql Cast ----------
-CREATE CAST (ivymy.mystimestamps AS pg_catalog.timestamp)
-WITH INOUT
-AS ASSIGNMENT;
-
 CREATE FUNCTION ivymy.pgdate_mystimestamps(pg_catalog.date, integer)
 RETURNS ivymy.mystimestamps
 AS 'MODULE_PATHNAME','pgdate_mystimestamps'

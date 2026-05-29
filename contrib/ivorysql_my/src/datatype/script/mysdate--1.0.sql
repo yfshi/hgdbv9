@@ -420,7 +420,6 @@ CREATE AGGREGATE ivymy.min(ivymy.mysdate) (
   PARALLEL = SAFE
 );
 
----------- Compatible MySQL Cast ----------
 CREATE FUNCTION ivymy.int_mysdate(pg_catalog.int8, int, bool, int8)
 RETURNS ivymy.mysdate
 AS 'MODULE_PATHNAME','int_mysdate'
@@ -458,16 +457,33 @@ CREATE CAST (pg_catalog.int4 AS ivymy.mysdate) WITH FUNCTION ivymy.int_mysdate(p
 CREATE CAST (pg_catalog.int2 AS ivymy.mysdate) WITH FUNCTION ivymy.int_mysdate(pg_catalog.int2, int, bool, int8) AS ASSIGNMENT;
 CREATE CAST (pg_catalog.numeric AS ivymy.mysdate) WITH FUNCTION ivymy.numeric_mysdate(pg_catalog.numeric) AS ASSIGNMENT;
 
-/* CREATE CAST */
----------- Compatible Postgresql Cast ----------
-CREATE CAST (ivymy.mysdate AS pg_catalog.date) WITH INOUT AS ASSIGNMENT;
-CREATE CAST (pg_catalog.date AS ivymy.mysdate) WITH INOUT AS ASSIGNMENT;
-CREATE CAST (pg_catalog.timestamp AS ivymy.mysdate) WITH INOUT AS ASSIGNMENT;
-/* set CURRENT_TIMESTAMP */
-CREATE CAST (pg_catalog.timestamptz AS ivymy.mysdate) WITH INOUT AS ASSIGNMENT;
+CREATE FUNCTION ivymy.date_mysdate(pg_catalog.date)
+RETURNS ivymy.mysdate
+AS 'MODULE_PATHNAME','date_mysdate'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+CREATE CAST (pg_catalog.date AS ivymy.mysdate) WITH FUNCTION ivymy.date_mysdate(pg_catalog.date) AS ASSIGNMENT;
 
+CREATE FUNCTION ivymy.timestamp_mysdate(pg_catalog.timestamp)
+RETURNS ivymy.mysdate
+AS 'MODULE_PATHNAME','timestamp_mysdate'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+CREATE CAST (pg_catalog.timestamp AS ivymy.mysdate) WITH FUNCTION ivymy.timestamp_mysdate(pg_catalog.timestamp) AS ASSIGNMENT;
 
---date to boolean
+CREATE FUNCTION ivymy.timestamptz_mysdate(pg_catalog.timestamptz)
+RETURNS ivymy.mysdate
+AS 'MODULE_PATHNAME','timestamptz_mysdate'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+CREATE CAST (pg_catalog.timestamptz AS ivymy.mysdate) WITH FUNCTION ivymy.timestamptz_mysdate(pg_catalog.timestamptz) AS ASSIGNMENT;
+
 CREATE FUNCTION ivymy.mysdate_boolean(ivymy.mysdate) 
 RETURNS boolean 
 AS 'MODULE_PATHNAME','mysdate_boolean'

@@ -112,9 +112,6 @@ CREATE CAST (ivymy.mystime AS pg_catalog.numeric)
 WITH FUNCTION ivymy.mystime_numeric(ivymy.mystime)
 AS ASSIGNMENT;
 
-CREATE CAST (ivymy.mystime AS pg_catalog.timestamp)
-WITH INOUT
-AS ASSIGNMENT;
 
 CREATE FUNCTION ivymy.pgdate_mystime(pg_catalog.date)
 RETURNS ivymy.mystime
@@ -152,9 +149,6 @@ CREATE CAST (pg_catalog.timestamptz AS ivymy.mystime)
 WITH FUNCTION ivymy.pgtimestamptz_mystime(pg_catalog.timestamptz)
 AS ASSIGNMENT;
 
-CREATE CAST (pg_catalog.time AS ivymy.mystime)
-WITH INOUT
-AS ASSIGNMENT;
 
 ----function eq
 CREATE FUNCTION ivymy.mystime_eq(ivymy.mystime, ivymy.mystime)
