@@ -813,6 +813,10 @@ select aes_decrypt(AES_ENCRYPT('my_text', 'my_key_string') , 'my_key_string');
 SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',16));
 SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',100));
 
+-- begin - bug#7501
+SELECT AES_DECRYPT(AES_DECRYPT(AES_ENCRYPT(AES_ENCRYPT('nested', 'key1'), 'key2'), 'key2'), 'key1') AS result;
+-- end - bug#7501
+
 create table gct(a int, b varchar(100));
 insert into gct values (0, 'a'), (1, 'b'), (1, 'c'), (2, 'd'), (2, 'f'), (2, 'g');
 insert into gct values (0, 'a'), (1, 'c'), (1, 'b'), (2, 'g'), (2, 'f'), (2, 'd');

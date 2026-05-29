@@ -4024,7 +4024,7 @@ STRICT
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.aes_decrypt(text, text, text default '', text default '', text default '', text default '')
-RETURNS bytea
+RETURNS varbinary
 AS 'MODULE_PATHNAME','ivymy_aes_decrypt'
 LANGUAGE C
 PARALLEL SAFE
@@ -4081,30 +4081,50 @@ PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.date_format(p1 date, p2 text)
 RETURNS text
-IMMUTABLE 
+IMMUTABLE STRICT
 AS $$
 SELECT date_format(p1::ivymy.mysdatetimes, p2);
-$$ 
+$$
 LANGUAGE sql
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.date_format(p1 datetime, p2 text)
 RETURNS text
-IMMUTABLE 
+IMMUTABLE STRICT
 AS $$
 SELECT date_format(p1::ivymy.mysdatetimes, p2);
-$$ 
+$$
 LANGUAGE sql
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.date_format(p1 text, p2 text)
 RETURNS text
-IMMUTABLE 
+IMMUTABLE STRICT
 AS $$
 SELECT date_format(p1::ivymy.mysdatetimes, p2);
-$$ 
+$$
 LANGUAGE sql
 PARALLEL SAFE;
+
+/* Begin - bug#z8076 8075 8074*/
+CREATE OR REPLACE FUNCTION ivymy.date_format(p1 bigint, p2 text)
+RETURNS text
+IMMUTABLE STRICT
+AS $$
+SELECT date_format(p1::ivymy.mysdatetimes, p2);
+$$
+LANGUAGE sql
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.date_format(p1 time(6), p2 text)
+RETURNS text
+IMMUTABLE STRICT
+AS $$
+SELECT date_format(p1::ivymy.mysdatetimes, p2);
+$$
+LANGUAGE sql
+PARALLEL SAFE;
+/* End - bug#z8076 8075 8074*/
 
 -- CREATE FUNCTION FROM_UNIXTIME
 CREATE FUNCTION ivymy.from_unixtime(bigint)
@@ -4228,6 +4248,24 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
+CREATE FUNCTION ivymy.adddate(datetime, int)
+RETURNS text
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+/* Begin - bug#z8088 */
+CREATE FUNCTION ivymy.adddate(text, text)
+RETURNS text
+AS 'SELECT ivymy.adddate($1::datetime(6), $2::int)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#z8088 */
+
 -- CREATE FUNCTION date_add
 CREATE FUNCTION ivymy.date_add(datetime, pg_catalog.interval)
 RETURNS text
@@ -4349,6 +4387,24 @@ LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.subdate(datetime, int)
+RETURNS text
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+/* Begin - bug#z8088 */
+CREATE FUNCTION ivymy.subdate(text, text)
+RETURNS text
+AS 'SELECT ivymy.subdate($1::datetime(6), $2::int)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#z8088 */
 
 -- CREATE FUNCTION date_sub
 CREATE FUNCTION ivymy.date_sub(datetime, pg_catalog.interval)

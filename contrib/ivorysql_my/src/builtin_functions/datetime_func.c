@@ -174,6 +174,11 @@ PG_FUNCTION_INFO_V1(get_format);
 #define LEAPS_THRU_END_OF(y)  ((y) / 4 - (y) / 100 + (y) / 400)
 #define FIRST_JULIAN_DAY 1721060
 
+/* Begin - bug#z8078 */
+#define UNIXTIME_MAX 2147483647
+#define UNIXTIME_MIN 0
+/* End - bug#z8078 */
+
 #ifdef _WIN32
 #define strcasecmp _stricmp
 #endif
@@ -1153,6 +1158,11 @@ from_unixtime_int(PG_FUNCTION_ARGS)
 	struct pg_tm tt, ttx,
 			   *tm = &tt, *tmx = &ttx;
 
+	/* Begin - bug#z8078 */
+	if (seconds > UNIXTIME_MAX || seconds < UNIXTIME_MIN)
+		PG_RETURN_NULL();
+	/* End - bug#z8078 */
+
 	MYS_ZERO_tm(tm);
 	MYS_ZERO_tm(tmx);
 
@@ -1204,6 +1214,14 @@ from_unixtime_numeric(PG_FUNCTION_ARGS)
 	int			precision, scale;
 	char buf[MAXDATELEN + 1] = {0};
 
+	/* Begin - bug#z8078 */
+	if (DatumGetBool(DirectFunctionCall2(numeric_gt, NumericGetDatum(numeric_datum),
+						NumericGetDatum(int64_to_numeric(UNIXTIME_MAX)))) ||
+		DatumGetBool(DirectFunctionCall2(numeric_lt, NumericGetDatum(numeric_datum),
+						NumericGetDatum(int64_to_numeric(UNIXTIME_MIN)))))
+		PG_RETURN_NULL();
+	/* End - bug#z8078 */
+
 	MYS_ZERO_tm(tm);
 	MYS_ZERO_tm(tmx);
 
@@ -1225,7 +1243,7 @@ from_unixtime_numeric(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	datetime = datetemp + time;
 
-	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long)datetime, (int)(lld.rem / MICRO_PER_NANOSEC));
+	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long)datetime, (int)round((double)lld.rem / MICRO_PER_NANOSEC)); /* bug#8080 */
 
 	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
 											  CStringGetDatum(buf),
@@ -1260,16 +1278,18 @@ from_unixtime_float(PG_FUNCTION_ARGS)
 			   *tm = &tt, *tmx = &ttx;
 	char buf[MAXDATELEN + 1] = {0};
 
-	/* Handle NULL input */
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	/* Check for invalid timestamp */
 	if (!isfinite(seconds))
 		ereport(ERROR,
 				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
 				 errmsg("timestamp out of range")));
 
+	/* Begin - bug#z8078 */
+	if (seconds > (float8)UNIXTIME_MAX || seconds < (float8)UNIXTIME_MIN)
+		PG_RETURN_NULL();
+	/* End - bug#z8078 */
+
+	seconds = round(seconds * 1e6) / 1e6;
 	/* Extract seconds and fractional seconds (always 6-digit precision for float) */
 	sec = (int64) seconds;
 	fsec = (fsec_t) rint((seconds - sec) * 1000000.0);
@@ -3815,20 +3835,34 @@ to_days(PG_FUNCTION_ARGS)
 Datum
 to_seconds(PG_FUNCTION_ARGS)
 {
-	struct	pg_tm tt, *tm = &tt;
-	fsec_t	fsec = 0;
 	int64	result = 0;
-	int		flag = TIME_NO_ZERO_DATE;
-	int		dec = 0;
 	int64	part1 = 0, part2 = 0;
+	int		year = 0, mon = 0, day = 0,
+			hour = 0, min = 0, sec = 0;
+	char	*str;
+	lldiv_t	seconds;
 
 	Numeric	date = PG_GETARG_NUMERIC(0);
 
-	if (!get_datetime_from_numeric(date, tm, &fsec, flag, &dec))
-		PG_RETURN_NULL();
+	/* Begin - BUG#Z8127 */
+	numeric_to_lldiv_t(DatumGetNumeric(date), &seconds);
+	year = seconds.quot / 10000000000;
+	mon = seconds.quot % 10000000000 / 100000000;
+	day = seconds.quot % 100000000 / 1000000;
+	hour = seconds.quot % 1000000 / 10000;
+	min = seconds.quot % 10000 / 100;
+	sec = seconds.quot % 100;
+	/* End - BUG#Z8127 */
 
-	part1 = calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday);
-	part2 = ((tm->tm_hour * MINS_PER_HOUR + tm->tm_min) * SECS_PER_MINUTE) + tm->tm_sec;
+	if (mon == 0 || day == 0)
+	{
+		str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(date)));
+		ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", str)));
+		PG_RETURN_NULL();
+	}
+
+	part1 = calc_day(year, mon, day);
+	part2 = ((hour * MINS_PER_HOUR + min) * SECS_PER_MINUTE) + sec;
 	result = part2 + part1 * 24L * MINS_PER_HOUR * SECS_PER_MINUTE;
 	PG_RETURN_INT64(result);
 }
@@ -4447,7 +4481,7 @@ date_adddate_days(PG_FUNCTION_ARGS)
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
 
-	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
 	str = adddate_interval(timestamp, span, true, 0);
@@ -4567,7 +4601,7 @@ date_subdate_days(PG_FUNCTION_ARGS)
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
 
-	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
 	str = adddate_interval(timestamp, span, false, 0);

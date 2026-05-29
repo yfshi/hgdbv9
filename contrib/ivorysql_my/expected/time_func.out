@@ -2018,6 +2018,14 @@ ERROR:  function to_seconds(integer, integer) does not exist
 LINE 1: select to_seconds(1,2);
                ^
 HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/* Begin - BUG#8127 */
+SELECT TO_SECONDS('0000-01-01 00:00:00');
+ TO_SECONDS 
+------------
+      86400
+(1 row)
+
+/* End - BUG#8127 */
 --dayname
 set lc_time_names to default;
 select dayname(950501);--Monday

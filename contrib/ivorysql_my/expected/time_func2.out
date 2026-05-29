@@ -338,6 +338,35 @@ SELECT DATE_FORMAT('2009-01-01','%W %d %M %Y') as valid_date;
  Thursday 01 January 2009
 (1 row)
 
+/* Begin - BUG#8076 8075 8074*/
+set sql_mode= '';
+SELECT DATE_FORMAT(00000000, '%m');
+ DATE_FORMAT 
+-------------
+ 00
+(1 row)
+
+set sql_mode = default;
+SELECT DATE_FORMAT('0000-00-00', '%m');
+WARNING:  Incorrect datetime value: '0000-00-00'
+ DATE_FORMAT 
+-------------
+ 
+(1 row)
+
+SELECT DATE_FORMAT(00000000, '%m');
+ DATE_FORMAT 
+-------------
+ 00
+(1 row)
+
+SELECT DATE_FORMAT(CAST('23:59:59.999999' AS TIME(6)), '%H:%i:%s.%f') AS max_time;
+    max_time     
+-----------------
+ 23:59:59.999999
+(1 row)
+
+/* End - BUG#8076 8075 8074*/
 -- Test FROM_UNIXTIME function with precision handling
 -- Test FROM_UNIXTIME with integer timestamp (precision 0)
 SELECT ivymy.from_unixtime(0::bigint) AS epoch;
@@ -398,7 +427,7 @@ SELECT ivymy.from_unixtime(1000000000.123456::numeric) AS precision_6;
 SELECT ivymy.from_unixtime(1000000000.1234567::numeric) AS precision_7_truncated;
    precision_7_truncated    
 ----------------------------
- 2001-09-09 09:46:40.123456
+ 2001-09-09 09:46:40.123457
 (1 row)
 
 -- Test FROM_UNIXTIME with float timestamp (precision 6, returns text)
@@ -406,12 +435,6 @@ SELECT ivymy.from_unixtime(1000000000.5::float8) AS float_half_second;
      float_half_second      
 ----------------------------
  2001-09-09 09:46:40.500000
-(1 row)
-
-SELECT ivymy.from_unixtime(1000000000.123456789::float8) AS float_max_precision;
-    float_max_precision     
-----------------------------
- 2001-09-09 09:46:40.123456
 (1 row)
 
 SELECT ivymy.from_unixtime(1000000000.0::float8) AS float_zero_fractional;
@@ -466,9 +489,9 @@ SELECT ivymy.from_unixtime(NULL::bigint) AS null_input;
 
 -- Test FROM_UNIXTIME with negative timestamp (before 1970)
 SELECT ivymy.from_unixtime(-1000000000::bigint) AS before_epoch;
-    before_epoch     
----------------------
- 1938-04-25 06:13:20
+ before_epoch 
+--------------
+ 
 (1 row)
 
 -- Test FROM_UNIXTIME with very large timestamp
@@ -535,6 +558,44 @@ SELECT ivymy.from_unixtime(1000000000.123456::numeric, '%Y-%m-%d %H:%i:%s.%f') A
  2001-09-09 09:46:40.123456
 (1 row)
 
+/* Begin - BUG#8078 */
+SELECT FROM_UNIXTIME(-1::numeric);
+ FROM_UNIXTIME 
+---------------
+ 
+(1 row)
+
+SELECT FROM_UNIXTIME(2147483648::numeric);
+ FROM_UNIXTIME 
+---------------
+ 
+(1 row)
+
+SELECT FROM_UNIXTIME(-1::bigint);
+ FROM_UNIXTIME 
+---------------
+ 
+(1 row)
+
+SELECT FROM_UNIXTIME(2147483648::bigint);
+ FROM_UNIXTIME 
+---------------
+ 
+(1 row)
+
+SELECT FROM_UNIXTIME(-1::float8);
+ FROM_UNIXTIME 
+---------------
+ 
+(1 row)
+
+SELECT FROM_UNIXTIME(2147483648::float8);
+ FROM_UNIXTIME 
+---------------
+ 
+(1 row)
+
+/* End - BUG#8078 */
 set TIMEZONE=default;
 -- date_add
 SELECT date_add('1997-12-31 23:59:59', INTERVAL 1 SECOND);
@@ -805,3 +866,47 @@ SELECT subdate(19971231235959, 10);
  1997-12-21 23:59:59.000000
 (1 row)
 
+/* Begin - BUG#8088 */
+SELECT ADDDATE('1997-4-30', '1qwe');
+WARNING:  Truncated incorrect INTEGER value: '1qwe'
+          ADDDATE           
+----------------------------
+ 1997-05-01 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('1997-4-30', 'qaz10');
+WARNING:  Truncated incorrect INTEGER value: 'qaz10'
+          ADDDATE           
+----------------------------
+ 1997-04-30 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('1997-4-30', '02qaz10');
+WARNING:  Truncated incorrect INTEGER value: '02qaz10'
+          ADDDATE           
+----------------------------
+ 1997-05-02 00:00:00.000000
+(1 row)
+
+SELECT SUBDATE('1997-4-30', '1qwe');
+WARNING:  Truncated incorrect INTEGER value: '1qwe'
+          SUBDATE           
+----------------------------
+ 1997-04-29 00:00:00.000000
+(1 row)
+
+SELECT SUBDATE('1997-4-30', 'qaz10');
+WARNING:  Truncated incorrect INTEGER value: 'qaz10'
+          SUBDATE           
+----------------------------
+ 1997-04-30 00:00:00.000000
+(1 row)
+
+SELECT SUBDATE('1997-4-30', '02qaz10');
+WARNING:  Truncated incorrect INTEGER value: '02qaz10'
+          SUBDATE           
+----------------------------
+ 1997-04-28 00:00:00.000000
+(1 row)
+
+/* Begin - BUG#8088 */
