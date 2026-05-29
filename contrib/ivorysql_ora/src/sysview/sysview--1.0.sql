@@ -4371,7 +4371,7 @@ GRANT SELECT ON SYS.USER_IND_COLUMNS TO PUBLIC;
 * *******************************************************************************************/
 CREATE OR REPLACE VIEW SYS.DBA_DEPENDENCIES AS
 ------------------------------------------------------------------------------------------
--- subquery-1：handle table, index, sequence etc. (classid=pg_class)
+-- subquery-1: handle table, index, sequence etc. (classid=pg_class)
 ------------------------------------------------------------------------------------------
     SELECT
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
@@ -4474,7 +4474,7 @@ CREATE OR REPLACE VIEW SYS.DBA_DEPENDENCIES AS
 UNION ALL
 
 ------------------------------------------------------------------------------------------
--- subquery-2：handle proc (classid=pg_proc)
+-- subquery-2: handle proc (classid=pg_proc)
 ------------------------------------------------------------------------------------------
     SELECT
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
@@ -5681,7 +5681,7 @@ GRANT SELECT ON SYS.DBA_DEPENDENCIES TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.ALL_DEPENDENCIES AS
 ------------------------------------------------------------------------------------------
--- subquery-1：handle table, index, sequence etc. (classid=pg_class)
+-- subquery-1: handle table, index, sequence etc. (classid=pg_class)
 ------------------------------------------------------------------------------------------
     SELECT
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::varchar2)::varchar2(128) AS owner,
@@ -5794,7 +5794,7 @@ CREATE OR REPLACE VIEW SYS.ALL_DEPENDENCIES AS
 UNION ALL
 
 ------------------------------------------------------------------------------------------
--- subquery-2：handle proc (classid=pg_proc)
+-- subquery-2: handle proc (classid=pg_proc)
 ------------------------------------------------------------------------------------------
     SELECT
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(p.proowner)::varchar2)::varchar2(128) AS owner,
@@ -7054,7 +7054,7 @@ GRANT SELECT ON SYS.ALL_DEPENDENCIES TO PUBLIC;
 
 CREATE OR REPLACE VIEW SYS.USER_DEPENDENCIES AS
 ------------------------------------------------------------------------------------------
--- subquery-1：handle table, index, sequence etc. (classid=pg_class)
+-- subquery-1: handle table, index, sequence etc. (classid=pg_class)
 ------------------------------------------------------------------------------------------
     SELECT
         SYS.ORA_CASE_TRANS(c.relname::varchar2)::varchar2(128) AS name,
@@ -7158,7 +7158,7 @@ CREATE OR REPLACE VIEW SYS.USER_DEPENDENCIES AS
 UNION ALL
 
 ------------------------------------------------------------------------------------------
--- subquery-2：handle proc (classid=pg_proc)
+-- subquery-2: handle proc (classid=pg_proc)
 ------------------------------------------------------------------------------------------
     SELECT
         SYS.ORA_CASE_TRANS(p.proname::varchar2)::varchar2(128) AS name,

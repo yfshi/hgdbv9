@@ -232,7 +232,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
                         END IF;
                         -- Keep as-is (do NOT uppercase)
                     ELSE
-                        -- Contains comma or non-whitespace space → always invalid
+                        -- Contains comma or non-whitespace space --> always invalid
                         IF position(',' IN part) > 0 THEN
                             RAISE EXCEPTION 'unexpected name string "%"', name;
                         ELSE
@@ -251,7 +251,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
 
         -- ------------------------------------------------------------------
         -- 5. Final validation: reject empty components in qualified names
-        --    (e.g., 'a..b' → ['a', '', 'b'] → '' is invalid in multi-part context)
+        --    (e.g., 'a..b' -> ['a', '', 'b'] --> '' is invalid in multi-part context)
         -- ------------------------------------------------------------------
         IF NOT is_single THEN
             FOR i IN 1..array_length(parts, 1) LOOP
