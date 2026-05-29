@@ -1,7 +1,5 @@
 #!/bin/bash
 SCRIPT_DIR=$(cd "$(dirname "$0")/.." && pwd)
-echo "$SCRIPT_DIR"
-
 
 function initmd5 {
 	if ! command -v md5sum > /dev/null 2>&1; then
@@ -10,7 +8,6 @@ function initmd5 {
 	fi
 	md5=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` `find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | md5sum | awk '{print $1}')
 	echo ${md5} > $SCRIPT_DIR/etc/.md5
-	echo "Initialize MD5 value : ${md5}"
 }
 
 function checkmd5 {

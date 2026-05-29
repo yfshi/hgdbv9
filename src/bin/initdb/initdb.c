@@ -4526,7 +4526,6 @@ main(int argc, char *argv[])
 			printf(_("Initialization integrity check failed.\n"));
 			exit(-1);
 		}
-		printf(_("Initialization integrity check successfully.\n"));
 	}
 #endif
 #endif
