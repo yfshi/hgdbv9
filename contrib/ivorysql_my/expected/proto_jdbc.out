@@ -400,8 +400,8 @@ Insert data (2,2,'wor$k')
 Insert data (3,3,'high,go')
 Insert data SUCCESS
 Read the outfile
-1,1,highgo
-2,2,wor$k
+1,1,"highgo"
+2,2,"wor$k"
 3,3,"high,go"
 Succesed to delete the CSV file
 ALTER USER proto_user WITH NOSUPERUSER;

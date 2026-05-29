@@ -4208,23 +4208,23 @@ fields_list:
                 ;
 
 fields_option:
-                TERMINATED BY Sconst
-                        {
-                                $$ = (Node *)makeDefElem("delimiter", (Node *)makeString($3), @1);
-                        }
-                | OPTIONALLY ENCLOSED BY Sconst
-                        {
-                                 $$ = (Node *)makeDefElem("quote", (Node *)makeString($4), @1);
-                        }
-                | ENCLOSED BY Sconst
-                        {
-                                $$ = (Node *)makeDefElem("quote", (Node *)makeString($3), @1);
-                        }
-                | ESCAPED BY Sconst
-                        {
-                                $$ = (Node *)makeDefElem("escape", (Node *)makeString($3), @1);
-                        }
-                ;
+		TERMINATED BY Sconst
+			{
+				$$ = (Node *)makeDefElem("delimiter", (Node *)makeString($3), @1);
+			}
+		| OPTIONALLY ENCLOSED BY Sconst
+			{
+				$$ = (Node *)makeDefElem("op_enclosed_by_quote", (Node *)makeString($4), @1);
+			}
+		| ENCLOSED BY Sconst
+			{
+				$$ = (Node *)makeDefElem("enclosed_by_quote", (Node *)makeString($3), @1);
+			}
+		| ESCAPED BY Sconst
+			{
+				$$ = (Node *)makeDefElem("escape", (Node *)makeString($3), @1);
+			}
+		;
 
 opt_fields_options:
                 FIELDS fields_list      { $$ = $2; }

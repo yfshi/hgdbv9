@@ -108,6 +108,66 @@ select * into OUTFILE '@abs_builddir@/results/test_select_into_12.csv' CHARACTER
 copy test_check_gbk from '@abs_builddir@/results/test_select_into_12.csv' with(format csv, delimiter ',' , encoding 'utf8');
 select * from test_check_gbk;
 
+------ bug#z7476
+\c contrib_regression
+create table test_7476 (id int primary key auto_increment, name varchar(50) not null, age tinyint, city varchar(100), create_time date);
+
+-- bug7476 test case
+insert into test_7476(name, age, city, create_time) values('Alice', 25, '亚特兰大Atlanta', '2026-05-27');
+insert into test_7476(name, age, city, create_time) values ('Bob', 30, '波士顿Boston', '2026-05-28');
+insert into test_7476(name, age, city, create_time) values ('Charlie', 28, '芝加哥Chicago', '2026-05-29');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_1.csv' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_1.csv');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_2.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_2.csv');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_3.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_3.csv');
+
+\! rm -rf @abs_builddir@/results/test_select_into_7476*
+
+-- more test case
+delete from test_7476;
+insert into test_7476(name, age, city, create_time) values('Alice', 25, '亚特兰大"Atlanta', '2026-05-27');
+insert into test_7476(name, age, city, create_time) values ('Bob', 30, '波士顿""Boston', '2026-05-28');
+insert into test_7476(name, age, city, create_time) values ('Charlie', 28, '芝加哥"""Chicago', '2026-05-29');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m3.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_m3.csv');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m4.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_m4.csv');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m5.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_m5.csv');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m6.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_m6.csv');
+
+SELECT age,city INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m7.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_m7.csv');
+
+SELECT age,city INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m8.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
+select pg_read_file('@abs_builddir@/results/test_select_into_7476_m8.csv');
+
+drop table test_7476;
+\! rm -rf @abs_builddir@/results/test_select_into_7476*
+
+------ bug#7538
+create table test_7538(id int primary key auto_increment, name varchar(50) not null, age tinyint, city varchar(100));
+
+insert into test_7538(name, age, city) values('Alice', 25, '亚特兰大""Atlanta'), ('Bob', 30, '波士顿"Boston'), ('Charlie', 28, '芝加哥"""Chicago');
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7538_1.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7538;
+select pg_read_file('@abs_builddir@/results/test_select_into_7538_1.csv');
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7538_2.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '"' FROM test_7538;
+select pg_read_file('@abs_builddir@/results/test_select_into_7538_2.csv');
+
+drop table test_7538;
+\! rm -rf @abs_builddir@/results/test_select_into_7538*
+
 -- clean up
 \c contrib_regression
 drop database select_into_gbk;
