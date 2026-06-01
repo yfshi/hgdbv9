@@ -965,3 +965,8 @@ SELECT TRIM(BOTH 'A' FROM 'AAA') AS result FROM dual; -- (null)
 SELECT
   TRIM('Z' FROM 'ABC') AS result
 FROM dual;  -- ABC
+
+/* Begin - ReqID: OA-2348 */
+SELECT sys.empty_clob IS NULL AS result FROM DUAL;
+SELECT sys.empty_blob IS NULL AS result FROM DUAL;
+/* End - ReqID: OA-2348 */
