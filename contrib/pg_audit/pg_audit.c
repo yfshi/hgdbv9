@@ -497,6 +497,7 @@ static bool audit_app_check_hook(char **newvalue, void **extra, GucSource source
 static bool audit_is_in_transaction(void);  // OA:2290
 static bool audit_insert_user_or_group(Relation audit_log, AuditEvent *auditevent, char *alter_action);
 static bool audit_drop_user_or_group(Relation audit_log, AuditEvent *auditevent, char *drop_action);
+static void audit_free_auditlist(void);  //BUG - Z7959
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -2105,8 +2106,7 @@ audit_WriteRecord(void)
 		/* do not write audit logs on the standby node */
 		else
 		{
-			list_free(auditlist);
-			auditlist = NIL;
+			audit_free_auditlist();   //BUG - Z7959
 		}
 	}
 
@@ -2182,7 +2182,7 @@ audit_ExecutorStart_hook(QueryDesc *queryDesc, int eflags)
 	MemoryContext contextOld;
 	AuditEventStackItem *stackItem;
 
-	if (audit_GUC.audit_enable == AUDIT_ON)
+	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
 	{
 		if (!internalStatement)
 		{
@@ -3323,7 +3323,7 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 
 	audit_check_pg_track_settings(pstmt->utilityStmt);
 
-	if (audit_GUC.audit_enable == AUDIT_ON)
+	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
 	{
 		audit_get_actionname_from_tree(pstmt->utilityStmt, event);
 
@@ -14948,3 +14948,22 @@ static bool audit_is_in_transaction(void)
 		return false;
 }
 /* End OA:2290 */
+
+/* Begin - BUG:7959 */
+static void audit_free_auditlist(void)
+{
+	ListCell *listcell;
+
+	if (auditlist == NULL)
+		return ;
+
+	foreach(listcell, auditlist)
+	{
+		AuditEvent *auditevent = lfirst(listcell);
+
+		MemoryContextDelete(auditevent->auditContext);
+	}
+	list_free(auditlist);
+	auditlist = NIL;
+}
+/* End - BUG:7959 */
