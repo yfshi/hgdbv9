@@ -5946,7 +5946,6 @@ select cast('11-11-11 11:11:11'::pg_catalog.timestamp as date );
 (1 row)
 
 select cast('11-11-11 11:11:11'::pg_catalog.timestamptz as date );
-WARNING:  Truncated incorrect datetime value: '2011-11-11 11:11:11-08'
   mysdate   
 ------------
  2011-11-11
@@ -5956,6 +5955,42 @@ select cast('11-11-11 11:11:11'::pg_catalog.date as date );
   mysdate   
 ------------
  2011-11-11
+(1 row)
+
+select cast('2020-08-02 07:30:40'::pg_catalog.date as date );
+  mysdate   
+------------
+ 2020-08-02
+(1 row)
+
+select cast('2020-08-02 07:30:40'::pg_catalog.timestamp as date );
+  mysdate   
+------------
+ 2020-08-02
+(1 row)
+
+select cast('2020-08-02 07:30:40'::pg_catalog.timestamptz as date );
+  mysdate   
+------------
+ 2020-08-02
+(1 row)
+
+select cast('12-10-08 10:10:10' ::pg_catalog.date as date);
+  mysdate   
+------------
+ 2012-10-08
+(1 row)
+
+select cast('12-10-08 10:10:10' ::pg_catalog.timestamp as date);
+  mysdate   
+------------
+ 2012-10-08
+(1 row)
+
+select cast('12-10-08 10:10:10' ::pg_catalog.timestamptz as date);
+  mysdate   
+------------
+ 2012-10-08
 (1 row)
 
 -- mysql type to mysql type

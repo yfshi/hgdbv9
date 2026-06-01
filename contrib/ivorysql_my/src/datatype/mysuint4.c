@@ -40,6 +40,7 @@ PG_FUNCTION_INFO_V1(int4_uint4);
 PG_FUNCTION_INFO_V1(int2_uint4);
 PG_FUNCTION_INFO_V1(boolean_uint4);
 PG_FUNCTION_INFO_V1(uint4_numeric);
+PG_FUNCTION_INFO_V1(uint4_uint8);
 PG_FUNCTION_INFO_V1(uint4_int8);
 
 PG_FUNCTION_INFO_V1(uint4_eq);
@@ -410,6 +411,14 @@ uint4_numeric(PG_FUNCTION_ARGS)
 	uint32		val1 = PG_GETARG_UINT32(0);
 
 	PG_RETURN_NUMERIC(uint32_to_numeric(val1));
+}
+
+Datum
+uint4_uint8(PG_FUNCTION_ARGS)
+{
+	uint32	val1 = PG_GETARG_UINT32(0);
+
+	PG_RETURN_UINT64(val1);
 }
 
 /* Begin - BUG#Z7200 */

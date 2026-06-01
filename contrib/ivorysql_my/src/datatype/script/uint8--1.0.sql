@@ -239,17 +239,6 @@ WITH FUNCTION ivymy.uint8_float8(ivymy.uint8, int, bool, int8)
 AS ASSIGNMENT;
 /* End BUG#5048 5070 */
 
-
--- to bpchar
-CREATE CAST (ivymy.uint8 AS pg_catalog.bpchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
--- to varchar
-CREATE CAST (ivymy.uint8 AS pg_catalog.varchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
 --
 -- cast (varchar as uint8)
 --

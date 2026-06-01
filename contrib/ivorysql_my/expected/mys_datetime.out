@@ -12199,6 +12199,18 @@ select cast('11-11-11 11:11:11'::pg_catalog.date as datetime );
  2011-11-11 00:00:00
 (1 row)
 
+select cast('2020-08-02 07:30:40'::pg_catalog.date as datetime );
+     mysdatetime     
+---------------------
+ 2020-08-02 00:00:00
+(1 row)
+
+select cast('12-10-08 10:10:10' ::pg_catalog.date as datetime );
+     mysdatetime     
+---------------------
+ 2012-10-08 00:00:00
+(1 row)
+
 select cast(111111111111 as datetime(3) );
       mysdatetimes       
 -------------------------

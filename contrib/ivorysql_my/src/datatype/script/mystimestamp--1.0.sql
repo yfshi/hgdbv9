@@ -519,11 +519,16 @@ CREATE CAST (pg_catalog.timestamptz AS ivymy.mystimestamp)
 WITH FUNCTION ivymy.timestamptz_mystimestamp(pg_catalog.timestamptz)
 AS ASSIGNMENT;
 
-CREATE CAST (pg_catalog.date AS ivymy.mystimestamp)
-WITH INOUT
-AS ASSIGNMENT;
+CREATE FUNCTION ivymy.date_mystimestamp(pg_catalog.date)
+RETURNS ivymy.mystimestamp
+AS 'MODULE_PATHNAME','date_mystimestamp'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
 
---timestamp to boolean
+CREATE CAST (pg_catalog.date AS ivymy.mystimestamp) WITH FUNCTION ivymy.date_mystimestamp(pg_catalog.date) AS ASSIGNMENT;
+
 CREATE FUNCTION ivymy.mystimestamp_boolean(ivymy.mystimestamp) 
 RETURNS boolean 
 AS 'MODULE_PATHNAME','mystimestamp_boolean'
@@ -531,6 +536,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mystimestamp AS boolean)
 WITH FUNCTION ivymy.mystimestamp_boolean(ivymy.mystimestamp)
 AS ASSIGNMENT;

@@ -145,16 +145,6 @@ CREATE CAST (ivymy.uint4 AS pg_catalog.numeric)
 WITH FUNCTION ivymy.uint4_numeric(ivymy.uint4)
 AS ASSIGNMENT;
 
--- to bpchar
-CREATE CAST (ivymy.uint4 AS pg_catalog.bpchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
--- to varchar
-CREATE CAST (ivymy.uint4 AS pg_catalog.varchar) 
-WITH INOUT
-AS ASSIGNMENT;
-
 --
 -- cast (varchar as uint4)
 --
@@ -218,7 +208,17 @@ AS ASSIGNMENT;
 --
 -- cast (uint4 as uint8)
 --
-CREATE CAST (ivymy.uint4 AS ivymy.uint8) WITH INOUT AS IMPLICIT;
+CREATE FUNCTION ivymy.uint4_uint8(ivymy.uint4)
+RETURNS ivymy.uint8
+AS 'MODULE_PATHNAME','uint4_uint8'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.uint4 AS ivymy.uint8)
+WITH FUNCTION ivymy.uint4_uint8(ivymy.uint4)
+AS IMPLICIT;
 
 /* Begin - BUG#Z7200 */
 CREATE FUNCTION ivymy.uint4_int8(ivymy.uint4)

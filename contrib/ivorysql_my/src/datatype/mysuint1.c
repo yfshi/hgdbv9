@@ -39,6 +39,7 @@ PG_FUNCTION_INFO_V1(int8_uint1);
 PG_FUNCTION_INFO_V1(int4_uint1);
 PG_FUNCTION_INFO_V1(int2_uint1);
 PG_FUNCTION_INFO_V1(boolean_uint1);
+PG_FUNCTION_INFO_V1(uint1_uint8);
 PG_FUNCTION_INFO_V1(uint1_int8);
 PG_FUNCTION_INFO_V1(uint1_numeric);
 
@@ -411,6 +412,14 @@ Datum
 boolean_uint1(PG_FUNCTION_ARGS)
 {
 	PG_RETURN_UINT32(PG_GETARG_BOOL(0));
+}
+
+Datum
+uint1_uint8(PG_FUNCTION_ARGS)
+{
+	uint8	val1 = PG_GETARG_UINT8(0);
+
+	PG_RETURN_UINT64(val1);
 }
 
 /* Begin - BUG#Z7200 */
