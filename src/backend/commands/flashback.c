@@ -250,9 +250,6 @@ FlashbackCheckUndoRetentionTimepoint(TimestampTz timepoint)
 {
 	TimestampTz undo_cutoff_ts;
 
-	if (undo_retention <= 0)
-		return;
-
 	if (!track_commit_timestamp)
 		ereport(ERROR,
 				(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
