@@ -273,6 +273,40 @@ show sql_mode;
 
 set sql_mode = default;
 
+-- Begin - bug#8016
+CREATE OR REPLACE FUNCTION public.schema_func_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+LANGUAGE SQL;
+
+show create function public.schema_func_test;
+
+create or replace procedure public.schema_proc_test()
+as
+$$
+declare
+i int := 1000;
+j int := 1;
+k int := 1;
+begin
+    while i <= 1200 loop
+	j = 1;
+		while j <=12 loop 
+		k = 1;
+			while k <= 28 loop
+				k = k+1;
+			end loop;
+			j = j+1;
+		end loop;
+    i = i+1;
+    end loop;
+end;
+$$ language plmysql;
+
+show create procedure public.schema_proc_test;
+-- End - bug#8016
+
 -- finish
 set mysql.at_or_atat = false;
 set mysql.default_function_security_is_definer = false;

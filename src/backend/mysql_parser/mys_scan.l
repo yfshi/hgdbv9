@@ -924,23 +924,22 @@ other			.
 					char	   *ident;
 
 					BEGIN(INITIAL);
-					if (yyextra->literallen == 0)
+
+					/* Begin - bug#8059 */
+					if (!has_sql_mode(MODE_ANSI_QUOTES))
 					{
-						/* Begin - BUG#Z5565 */
-						if (has_sql_mode(MODE_ANSI_QUOTES))
-							yyerror("zero-length delimited identifier");
-						/* End - BUG#Z5565 */
+						yylval->str = litbufdup(yyscanner);
+						return IDENT_SCONST;
 					}
+					/* End - bug#8059 */
+
+					if (yyextra->literallen == 0)
+						yyerror("zero-length delimited identifier");
 					ident = litbufdup(yyscanner);
 					if (yyextra->literallen >= NAMEDATALEN)
 						truncate_identifier(ident, yyextra->literallen, true);
 					yylval->str = ident;
-
-					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-					if (has_sql_mode(MODE_ANSI_QUOTES))
-						return IDENT;
-					return IDENT_SCONST; /* bug#6888 */
-					/* End - ReqID:SRS-MISC-MYSQL-FRAME */
+					return IDENT;
 				}
 <xbatq>{xbatqqstop}	{
 					/* Begin - ReqID:SRS-MYSQL-SET */

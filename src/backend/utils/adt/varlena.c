@@ -1711,7 +1711,7 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 	}
 	/* End - SRS-SQL-NLSSORT */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	else if (compatible_mode == MYS_MODE && get_collation_provider(collid) == COLLPROVIDER_MYSQL)
+	else if (get_collation_provider(collid) == COLLPROVIDER_MYSQL)	/* bug#8128 */
 	{
 		result = mysql_varstr_cmp(pstrdup(arg1), len1, pstrdup(arg2), len2, collid);
 	}

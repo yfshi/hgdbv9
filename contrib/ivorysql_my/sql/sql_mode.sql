@@ -88,3 +88,9 @@ select number_to_sql_mode(1 << 30);
 select number_to_sql_mode(1 << 31);
 select number_to_sql_mode(1 << 32);
 select number_to_sql_mode(15);
+
+/* Begin - bug#8059 */
+set sql_mode = '';
+select "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+set sql_mode = default;
+/* End - bug#8059 */

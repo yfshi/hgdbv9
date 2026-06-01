@@ -988,14 +988,15 @@ SELECT
 
 	-- SQL mode (default initial value)
 	(
-		SELECT reset_val FROM pg_settings WHERE name = 'sql_mode'
+		SELECT split_part(config, '=', 2) FROM (SELECT unnest(proconfig) AS config)
+		WHERE config LIKE 'sql_mode=%'
 	)::varchar(8192) AS "SQL_MODE",
 
 	-- Function comment or empty string
-	COALESCE(obj_description(p.oid, 'pg_proc'), '')::longtext AS "ROUTINE_COMMENT",
+	pd.description::longtext AS "ROUTINE_COMMENT",
 
 	-- Definer (not available in PostgreSQL)
-	concat(r.rolname, '@', 'localhost')::varchar(93) AS "DEFINER",
+	concat(r.rolname, '@', '%')::varchar(93) AS "DEFINER",
 
 	-- Client character set (not available)
 	NULL::varchar(32) AS "CHARACTER_SET_CLIENT",
@@ -1012,6 +1013,8 @@ JOIN pg_type t ON p.prorettype = t.oid
 LEFT JOIN pg_collation c ON t.typcollation = c.oid
 LEFT JOIN pg_database d ON d.datname = current_database()
 LEFT JOIN pg_object o ON o.obj_oid = p.oid AND o.refclassid = 'pg_proc'::regclass
+LEFT JOIN
+    pg_description pd ON pd.objoid = p.oid AND pd.objsubid = 0
 JOIN pg_roles r ON r.oid = p.proowner
 WHERE n.nspname NOT IN ('pg_catalog', 'information_schema')
 	AND p.prokind IN ('f', 'p');
@@ -2123,16 +2126,16 @@ SELECT
         ELSE 'INVOKER'
     END::mysql.enum_mysql_proc_security AS security_type,
 	-- param_list
-	pg_get_function_arguments(p.oid)::text AS param_list,
+	pg_get_function_arguments(p.oid)::blob AS param_list,
 	-- returns
 	CASE p.prokind
 		WHEN 'f' THEN format_type(p.prorettype, NULL)
 		ELSE ''
 	END::longblob AS returns,
 	-- body
-	pg_get_function_body(p.oid) AS body,
+	pg_get_function_body(p.oid)::longblob AS body,
 	-- definer
-	pg_get_userbyid(p.proowner)::char(93) AS definer,
+	concat(pg_get_userbyid(p.proowner), '@', '%')::char(93) AS definer,
 	-- created
 	ob.created::timestamp AS created,
 	-- modified
@@ -2157,7 +2160,7 @@ SELECT
 		WHERE lower(pg_encoding_to_char(db.encoding)) = `CHARACTER_SET_NAME`
 	)::char(32) AS db_collation,
 	-- body_utf8
-    pg_get_function_body(p.oid) AS body_utf8
+    pg_get_function_body(p.oid)::longblob AS body_utf8
 FROM
     pg_proc p
 JOIN
@@ -2165,7 +2168,7 @@ JOIN
 LEFT JOIN
     pg_description d ON d.objoid = p.oid AND d.objsubid = 0
 LEFT JOIN
-    pg_object ob ON d.objoid = ob.obj_oid
+    pg_object ob ON p.oid = ob.obj_oid
 LEFT JOIN
     pg_database db ON db.datname = current_database()
 WHERE
@@ -2173,3 +2176,5 @@ WHERE
 
 GRANT SELECT ON mysql.proc TO PUBLIC;
 /* End - ReqID:SRS-MYSQL-PROC */
+
+GRANT USAGE ON SCHEMA mysql TO PUBLIC; -- bug#8062

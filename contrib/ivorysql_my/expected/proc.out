@@ -193,9 +193,9 @@ desc mysql.proc;
  sql_data_access      | mysql.enum_mysql_proc_access        | YES  |     |         | 
  is_deterministic     | mysql.enum_mysql_proc_deterministic | YES  |     |         | 
  security_type        | mysql.enum_mysql_proc_security      | YES  |     |         | 
- param_list           | text                                | YES  |     |         | 
+ param_list           | blob                                | YES  |     |         | 
  returns              | longblob                            | YES  |     |         | 
- body                 | text                                | YES  |     |         | 
+ body                 | longblob                            | YES  |     |         | 
  definer              | character varying(93)               | YES  |     |         | 
  created              | timestamp                           | YES  |     |         | 
  modified             | timestamp                           | YES  |     |         | 
@@ -204,7 +204,7 @@ desc mysql.proc;
  character_set_client | character varying(32)               | YES  |     |         | 
  collation_connection | character varying(32)               | YES  |     |         | 
  db_collation         | character varying(32)               | YES  |     |         | 
- body_utf8            | text                                | YES  |     |         | 
+ body_utf8            | longblob                            | YES  |     |         | 
 (20 rows)
 
 -- show create function
@@ -257,16 +257,16 @@ show create function operator_test;
 -- show create procedure
 show create procedure comment_test;
 ERROR:  PROCEDURE public.comment_test does not exist
-CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 6 at RAISE
 show create procedure deterministic_test;
 ERROR:  PROCEDURE public.deterministic_test does not exist
-CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 6 at RAISE
 show create procedure security_test;
 ERROR:  PROCEDURE public.security_test does not exist
-CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 6 at RAISE
 show create procedure operator_test;
 ERROR:  PROCEDURE public.operator_test does not exist
-CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 15 at RAISE
+CONTEXT:  PL/pgSQL function show_create_procedure(character,character) line 6 at RAISE
 create or replace procedure proc_test()
 as
 $$
@@ -290,7 +290,7 @@ end;
 $$ language plmysql;
 show create function proc_test;
 ERROR:  FUNCTION public.proc_test does not exist
-CONTEXT:  PL/pgSQL function show_create_function(character,character) line 15 at RAISE
+CONTEXT:  PL/pgSQL function show_create_function(character,character) line 4 at RAISE
 show create procedure proc_test;
  Procedure |                                                                                                 sql_mode                                                                                                 |                                                                                                      Create Procedure                                                                                                       | character_set_client | collation_connection | Database Collation 
 -----------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
@@ -449,6 +449,74 @@ show sql_mode;
 (1 row)
 
 set sql_mode = default;
+-- Begin - bug#8016
+CREATE OR REPLACE FUNCTION public.schema_func_test(bool)
+RETURNS int
+AS 'select !($1::int);'
+comment 'ths is comment'
+LANGUAGE SQL;
+show create function public.schema_func_test;
+     Function     |                                                                                                 sql_mode                                                                                                 |                                                                                                       Create Function                                                                                                       | character_set_client | collation_connection | Database Collation 
+------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ schema_func_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE FUNCTION public.schema_func_test(boolean)                                                                                                                                                                +| UTF8                 | utf8_general_ci      | utf8_general_ci
+                  |                                                                                                                                                                                                          |  RETURNS integer                                                                                                                                                                                                           +|                      |                      | 
+                  |                                                                                                                                                                                                          |  LANGUAGE sql                                                                                                                                                                                                              +|                      |                      | 
+                  |                                                                                                                                                                                                          |  SECURITY DEFINER                                                                                                                                                                                                          +|                      |                      | 
+                  |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+                  |                                                                                                                                                                                                          | AS $function$select !($1::int);$function$                                                                                                                                                                                  +|                      |                      | 
+                  |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+create or replace procedure public.schema_proc_test()
+as
+$$
+declare
+i int := 1000;
+j int := 1;
+k int := 1;
+begin
+    while i <= 1200 loop
+	j = 1;
+		while j <=12 loop 
+		k = 1;
+			while k <= 28 loop
+				k = k+1;
+			end loop;
+			j = j+1;
+		end loop;
+    i = i+1;
+    end loop;
+end;
+$$ language plmysql;
+show create procedure public.schema_proc_test;
+    Procedure     |                                                                                                 sql_mode                                                                                                 |                                                                                                      Create Procedure                                                                                                       | character_set_client | collation_connection | Database Collation 
+------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------------------+----------------------+--------------------
+ schema_proc_test | REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | CREATE OR REPLACE DEFINER = `proc_user`@`%` PROCEDURE `public.schema_proc_test`()                                                                                                                                          +| UTF8                 | utf8_general_ci      | utf8_general_ci
+                  |                                                                                                                                                                                                          |  LANGUAGE SQL                                                                                                                                                                                                              +|                      |                      | 
+                  |                                                                                                                                                                                                          |  SET sql_mode TO 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION'+|                      |                      | 
+                  |                                                                                                                                                                                                          | AS $procedure$                                                                                                                                                                                                             +|                      |                      | 
+                  |                                                                                                                                                                                                          | declare                                                                                                                                                                                                                    +|                      |                      | 
+                  |                                                                                                                                                                                                          | i int := 1000;                                                                                                                                                                                                             +|                      |                      | 
+                  |                                                                                                                                                                                                          | j int := 1;                                                                                                                                                                                                                +|                      |                      | 
+                  |                                                                                                                                                                                                          | k int := 1;                                                                                                                                                                                                                +|                      |                      | 
+                  |                                                                                                                                                                                                          | begin                                                                                                                                                                                                                      +|                      |                      | 
+                  |                                                                                                                                                                                                          |     while i <= 1200 loop                                                                                                                                                                                                   +|                      |                      | 
+                  |                                                                                                                                                                                                          |         j = 1;                                                                                                                                                                                                             +|                      |                      | 
+                  |                                                                                                                                                                                                          |                 while j <=12 loop                                                                                                                                                                                          +|                      |                      | 
+                  |                                                                                                                                                                                                          |                 k = 1;                                                                                                                                                                                                     +|                      |                      | 
+                  |                                                                                                                                                                                                          |                         while k <= 28 loop                                                                                                                                                                                 +|                      |                      | 
+                  |                                                                                                                                                                                                          |                                 k = k+1;                                                                                                                                                                                   +|                      |                      | 
+                  |                                                                                                                                                                                                          |                         end loop;                                                                                                                                                                                          +|                      |                      | 
+                  |                                                                                                                                                                                                          |                         j = j+1;                                                                                                                                                                                           +|                      |                      | 
+                  |                                                                                                                                                                                                          |                 end loop;                                                                                                                                                                                                  +|                      |                      | 
+                  |                                                                                                                                                                                                          |     i = i+1;                                                                                                                                                                                                               +|                      |                      | 
+                  |                                                                                                                                                                                                          |     end loop;                                                                                                                                                                                                              +|                      |                      | 
+                  |                                                                                                                                                                                                          | end;                                                                                                                                                                                                                       +|                      |                      | 
+                  |                                                                                                                                                                                                          | $procedure$                                                                                                                                                                                                                +|                      |                      | 
+                  |                                                                                                                                                                                                          |                                                                                                                                                                                                                             |                      |                      | 
+(1 row)
+
+-- End - bug#8016
 -- finish
 set mysql.at_or_atat = false;
 set mysql.default_function_security_is_definer = false;
