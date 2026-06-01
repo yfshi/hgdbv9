@@ -850,3 +850,22 @@ SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELE
 -- End - bug#7234
 
 drop table gct;
+
+/* Begin Bug#Z5690 */
+-- Test Function OCT
+SELECT 
+	OCT(0) 						AS oct1,
+	OCT(64) 					AS oct2,
+	OCT('0') 					AS oct3,
+	OCT('64') 					AS oct4,
+	OCT(12.9) 					AS oct5,
+	OCT(-12.9) 					AS oct6,
+	OCT('abc') 					AS oct7,
+	OCT('123abc') 				AS oct8,
+	OCT(0x41) 					AS oct9,
+	OCT(9223372036854775807) 	AS oct10,
+	OCT(-1) 					AS oct11,
+	OCT(-64) 					AS oct12,
+	OCT('') 					AS oct13,
+	OCT(NULL) 					AS oct14;
+/* End Bug#Z5690 */

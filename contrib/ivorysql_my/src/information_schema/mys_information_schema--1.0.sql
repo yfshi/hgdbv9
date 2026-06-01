@@ -1872,7 +1872,7 @@ SELECT
 	END::varchar(64)                                                          AS "COLLATION_NAME",
 
 	-- Full parameter data_type descriptor
-	mys_information_schema.mys_format_type(t.oid)::varchar(64)                AS "DTD_IDENTIFIER",
+	mys_information_schema.mys_format_type(t.oid)::longtext              	  AS "DTD_IDENTIFIER",
 
 	-- Type of routine: FUNCTION or PROCEDURE
 	'FUNCTION'::varchar(9)                                                    AS "ROUTINE_TYPE"
@@ -1985,7 +1985,7 @@ SELECT
 	END::varchar(64)                                                          AS "COLLATION_NAME",
 
 	-- Full parameter data_type descriptor
-	mys_information_schema.mys_format_type(t.oid)::varchar(64)                AS "DTD_IDENTIFIER",
+	mys_information_schema.mys_format_type(t.oid)::longtext                	  AS "DTD_IDENTIFIER",
 
 	-- Type of routine: FUNCTION or PROCEDURE
 	CASE ss.prokind

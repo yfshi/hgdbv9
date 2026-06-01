@@ -4005,10 +4005,53 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.oct(ivymy.mysbit)
+CREATE FUNCTION ivymy.oct(bigint)
 RETURNS varchar
 AS $$
 	SELECT ivymy.oct($1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.oct(ivymy.mysbit)
+RETURNS varchar
+AS $$
+	SELECT ivymy.oct($1::bigint);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+CREATE FUNCTION ivymy.oct(ivy_hex)
+RETURNS varchar
+AS $$
+	SELECT ivymy.oct($1::text);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+CREATE FUNCTION ivymy.oct(numeric)
+RETURNS varchar
+AS $$
+	SELECT ivymy.oct($1::bigint);
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+CREATE FUNCTION ivymy.oct(double precision)
+RETURNS varchar
+AS $$
+	SELECT ivymy.oct($1::bigint);
 $$
 LANGUAGE SQL
 STRICT
