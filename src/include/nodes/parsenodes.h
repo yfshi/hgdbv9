@@ -2755,6 +2755,7 @@ typedef struct CopyStmt
 	 */
 	bool	select_into;
 	/* End - bug#z7477 */
+	bool	is_load_data;	/* BUG#z7537 */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 } CopyStmt;
 

@@ -2872,6 +2872,20 @@ CopyReadAttributesCSV(CopyFromState cstate)
 							cur_ptr++;
 							continue;
 						}
+
+						/* Begin - BUG#z7537 */
+						/*
+						 * 'BOS"Boston'     --> BOS"Boston
+						 * 'ATL""Atlanta'   --> ATL""Atlanta
+						 * 'CHI"""Chicago'  --> CHI"""Chicago
+						 */
+						if (compatible_mode == MYS_MODE && cstate->is_load_data && escapec != quotec)
+						{
+							*output_ptr++ = nextc;
+							cur_ptr++;
+							continue;
+						}
+						/* End - BUG#z7537 */
 					}
 				}
 				}
