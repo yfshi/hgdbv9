@@ -2179,11 +2179,95 @@ create table t (a int, b int);
 select a as b from t group by b having b = 1; 	
 select min(a) as b from t group by b having b = 1;
 select min(a) + 1 as b from t group by b having b = 1;
+drop table t;
 
+set  sql_mode = replace(@@sql_mode, ',ONLY_FULL_GROUP_BY', '');
+CREATE TABLE t1 (a INT, b INT) ;
+INSERT INTO t1 VALUES (1,2),(1,3),(2,3),(2,4),(2,5),(3,4),(4,5),(4,100);
+CREATE TABLE t2 (a INT) ;
+INSERT INTO t2 VALUES (1),(2),(3),(4);
+--(1, 5)(2, 12)(4, 105)
+SELECT a as a, SUM(b) AS b FROM t1 GROUP BY a HAVING b > (SELECT MAX(a) FROM t2);
+-- (4, 5)
+SELECT a as a, b AS b FROM t1 GROUP BY a HAVING a >= 4;
+-- (4, 5)
+SELECT a as A, b AS b FROM t1 GROUP BY a HAVING a >= 4;
+--| Warning | 1052 | Column 'B' in group statement is ambiguous                                                               |
+--| Warning | 1052 | Column 'b' in having clause is ambiguous 
+-- 2 2 4
+SELECT a as b FROM t1 GROUP BY B HAVING b >= 4;
+--| Warning | 1052 | Column 'B' in group statement is ambiguous                                                               |
+--| Warning | 1052 | Column 'b' in having clause is ambiguous 
+-- 2 2 4
+SELECT a as b FROM t1 GROUP BY b HAVING b >= 4;
+-- 4
+SELECT a as b FROM t1 GROUP BY B HAVING a >= 4;
+-- (4, 5)(4, 100)
+SELECT a as b , b as b FROM t1  HAVING a >= 4;
+-- error: Column 'b' in having clause is ambiguous
+SELECT a as b , b as b FROM t1  HAVING b >= 4;
+-- error: Column 'a' in having clause is ambiguous
+select t1.a , t2.a from t1, t2 having a > 0;
+-- ok
+select t1.a as x , t2.a as y , t1.a + 1 as a from t1, t2 having a > 4;
+-- error: Column 'a' in having clause is ambiguous
+select t1.a as x , t2.a as y from t1, t2 having a > 4;
+
+drop table t1, t2;
+
+
+-- typecast connot distinguish resname and realname
+SELECT starelid::regclass FROM pg_statistic group by starelid limit 1;
+-- error: Unknown column 'starelid' in 'having clause'
+SELECT starelid::regclass FROM pg_statistic having starelid > 1 limit 1;
+
+create table t(a char, b int);
+-- ok , no waning;
+select cast(a as SIGNED) from t group by a ;
+-- error: Unknown column 'a' in 'having clause'
+select cast(a as SIGNED) from t having a = 1 ;
+-- ok , no waning;
+select cast(a as SIGNED) from t group by a  having a = 'a';
+select cast(a as SIGNED) as a  from t having a = 1;
+select cast(a as SIGNED) as gg  from t having gg = 1;
+
+drop table t;
+
+create domain pp as int check(value > 0);
+create table domain_t(a int);
+-- ok , no waning;
+select a::pp from domain_t group by a;
+drop table domain_t;
+
+
+
+
+
+--BUG#M7840
+create table  product (
+id int primary key,
+name varchar(20),
+price int,
+category varchar(20));
+insert into  product values
+(1,'Apple',10,'Fruit'),
+(2,'Banana',20,'Fruit'),
+(3,'Orange',30,'Fruit'),
+(4,'Book',50,'Book'),
+(5,'Pen',5,'Book');
+SELECT name AS PNAME FROM product HAVING pname = 'Apple';
+
+
+--BUG#M7839
+SELECT name,total AS price
+FROM (SELECT name,SUM(price) AS total FROM product GROUP BY name) t
+HAVING total > 15;
+
+
+SELECT name, total AS price,price AS original_price
+FROM (SELECT name, SUM(price) AS total,price  FROM product GROUP BY name,price) t
+HAVING price > 15;
 
 
 set sql_mode = default;
 set mysql.at_or_atat = off;
-
-
-

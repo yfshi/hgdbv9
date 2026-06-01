@@ -1113,7 +1113,7 @@ orarow_heap_form_tuple(Datum type,
 		foreach(lc, ora_rec_type->args)
 		{
 			PLiSQL_ora_record_argitem *argitem = (PLiSQL_ora_record_argitem *) lfirst(lc);
-			Datum	src_value;
+			Datum	src_value = 0;
 			Oid 	src_oid;
 
 			src_oid = SPI_gettypeid(tupleDesc, i + 1);

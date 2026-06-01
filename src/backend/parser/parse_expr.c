@@ -103,7 +103,7 @@ static Node *transformBooleanTest(ParseState *pstate, BooleanTest *b);
 static Node *transformCurrentOfExpr(ParseState *pstate, CurrentOfExpr *cexpr);
 static Node *transformColumnRef(ParseState *pstate, ColumnRef *cref);
 /* Begin: Req:SRS-MYSQL-SQL-Select */
-static char *get_var_namespace_aliasname(ParseState *pstate, Var *var);
+void get_tablename_colname_from_var(ParseState *pstate, Var *var, char **colname, char **tabname);
 static bool can_find_targetList_and_groupList(ParseState *pstate);
 static bool current_in_having_clause(ParseState *pstate);
 static Node *resolve_having_ref(ParseState *pstate, ColumnRef *cref);
@@ -1888,22 +1888,22 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 
 /* Begin: Req:SRS-MYSQL-SQL-Select */
 /*
- * get_var_namespace_aliasname
+ * get_tablename_colname_from_var
  *		Find the namespace alias name that exposed a Var.
  *
  * This is the inverse lookup for ordinary column Vars produced by
  * colNameToVar(): given a Var and the ParseState where it was seen, locate
- * the visible ParseNamespaceItem at varlevelsup and return its p_names
- * aliasname.  The returned string is owned by the ParseState.
+ * the visible ParseNamespaceItem at varlevelsup and return
+ * table name and column name.  The returned string is owned by the ParseState.
  */
-static char *
-get_var_namespace_aliasname(ParseState *pstate, Var *var)
+void
+get_tablename_colname_from_var(ParseState *pstate, Var *var, char **colName, char **tabName)
 {
 	ParseState *level_pstate = pstate;
 	ListCell   *lc;
 
 	if (pstate == NULL || var == NULL)
-		return NULL;
+		return;
 
 	foreach(lc, level_pstate->p_namespace)
 	{
@@ -1926,11 +1926,16 @@ get_var_namespace_aliasname(ParseState *pstate, Var *var)
 
 			if (nscol->p_varnosyn == var->varnosyn &&
 				nscol->p_varattnosyn == var->varattnosyn)
-				return nsitem->p_names->aliasname;
+			{
+				if (colName)
+					*colName = strVal(list_nth(nsitem->p_names->colnames, i));
+				if(tabName)
+					*tabName = nsitem->p_names->aliasname;
+				return ;
+			}
 		}
 	}
 
-	return NULL;
 }
 
 static Node *
@@ -1941,51 +1946,130 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 								int sublevels_up,
 								bool second_parsing)
 {
-	/* Per-level rule: prefer targetList alias, then try GROUP BY name. */
+	/* Per-level rule: prefer targetList alias, then try GROUP BY found_name. */
 	Node *target_result = NULL;
 	Node *group_result = NULL;
+	TargetEntry *found = NULL;
+	TargetEntry *found_unaliased = NULL;
+	bool found_unaliased_non_uniq = false;
 	ListCell *lc;
-	const char *name = strVal(llast(cref->fields));
+	const char *found_name = strVal(llast(cref->fields));
 
 	if (level_pstate->p_targetlist)
 	{
 		foreach (lc, *(level_pstate->p_targetlist))
 		{
 			TargetEntry *tle = (TargetEntry *)lfirst(lc);
+			/* Begin - BUG#M7840 M7839 */
+			char *orig_name = NULL;
+			char *alias_name = tle->resname;
+			bool alias_name_match = false;
+			bool orig_name_match = false;
 			/**
-			 * invisible to users
-			 * tle->resname == NULL --> strcmp(tle->resname, name) != 0  origin colname not equal to name
-			 * if is second parsing. only comparing the original colname is the same,and not alias
-			*/
-			if (tle->resjunk || tle->resname == NULL ||
-				strcmp(tle->resname, name) != 0)
+			 * invisible  not to users, continue.
+			 * If found != NULL， Directly use high priority candidates(alias).
+			 * If found == NULL, then look at found_unaliased(table col).
+			 * If the found_unaliased is not unique and there are no high priority candidates(alias), it will be reported as ambiguous.
+			 *
+			 * if is second parsing. only comparing the original colname is the same,and not alias.
+			 */
+			if (tle->resjunk)
+				continue;
+
+			alias_name_match = (alias_name != NULL && pg_strcasecmp(alias_name, found_name) == 0);
+
+			/* Olny contain one col that targetList item, eg: a as b */
+			if (IsA(tle->expr, Var))
 			{
-					continue;
-			}
-			else if(tle->resname != NULL && strcmp(tle->resname, name) == 0)
-			{
-				if (second_parsing && tle->resname_is_alias)
+				get_tablename_colname_from_var(level_pstate, (Var *)tle->expr, &orig_name, NULL);
+				orig_name_match = (orig_name != NULL && pg_strcasecmp(orig_name, found_name) == 0);
+
+				/* scan the targetList once and record the tle with the same alias expr */
+				if (!second_parsing && alias_name_match)
 				{
-					continue;
+					if (found != NULL)
+					{
+						if (equal((Node *)found->expr, (Node *)tle->expr))
+							continue;
+
+						ereport(ERROR,
+								(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+								 errmsg("Column \"%s\" in %s clause is ambiguous",
+										found_name,
+										ParseExprKindName(orig_pstate->p_expr_kind)),
+								 parser_errposition(orig_pstate, location)));
+					}
+					found = tle;
+				}
+				/* scan the targetList once and record the tle with the same table col expr */
+				else if (orig_name_match)
+				{
+					if (found_unaliased != NULL)
+					{
+						if (equal((Node *)found_unaliased->expr,
+								  (Node *)tle->expr))
+							continue;
+
+						found_unaliased_non_uniq = true;
+					}
+					found_unaliased = tle;
 				}
 			}
-
-			if (target_result != NULL)
+			/* The target item is not a regular field, such as aggregation, func, expression, strong conversion */
+			else
 			{
-				if (!equal(target_result, (Node *)tle->expr))
+				if (found && alias_name_match)
+				{
+					if (equal((Node *)found->expr, (Node *)tle->expr))
+						continue;
+
 					ereport(ERROR,
 							(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-							errmsg("Column \"%s\" in %s clause is ambiguous",
-									name,
+							 errmsg("Column \"%s\" in %s clause is ambiguous",
+									found_name,
 									ParseExprKindName(orig_pstate->p_expr_kind)),
-							parser_errposition(orig_pstate, location)));
-				continue;
+							 parser_errposition(orig_pstate, location)));
+				}
+				/* strong conversion : cast(a as int) as  a , cast(a as int)
+				 * both tle->resname=a, deistinction should be tle->resname_is_alias.
+				 * cast(a as int) as  a -> tle->resname_is_alias=true.
+				 * cast(a as int)		-> tle->resname_is_alias=false.
+				 * 
+				 * cast(a as int) the resname from the expression in FigUreColname();
+				 * cast(a as int) as  a  the resname from As a is an alias explicitly written by the user,
+				 * at the TargetEntry level.
+				 * 
+				 * Mysql does not consider cast(a as int) to be an alias match.
+				 */
+				if (tle->resname_is_alias && alias_name_match)
+					found = tle;
 			}
+		}
 
-			target_result = copyObject((Node *)tle->expr);
+		/* If the found is empty, it means that no alias was found that is the same tle, so check low priority table col */
+		if (second_parsing || found == NULL)
+		{
+			/* just no alias to choose low priority table col to return judge ambiguous */
+			if (found_unaliased_non_uniq)
+				ereport(ERROR,
+						(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+						 errmsg("Column \"%s\" in %s clause is ambiguous",
+								found_name,
+								ParseExprKindName(orig_pstate->p_expr_kind)),
+						 parser_errposition(orig_pstate, location)));
+
+			found = found_unaliased;
+		}
+		/**
+		 * copy the high priority and first same alias expr
+		 */
+		if (found != NULL)
+		{
+			target_result = copyObject((Node *)found->expr);
 			IncrementVarSublevelsUp(target_result, sublevels_up, 0);
 		}
 	}
+	/* End - BUG#M7840 M7839 */
 
 	foreach (lc, level_pstate->p_group_clauses)
 	{
@@ -1993,11 +2077,13 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 		Node *group_expr;
 
 		if (!IsA(gexpr, ColumnRef) ||
-			list_length(((ColumnRef *)gexpr)->fields) != 1 ||
-			strcmp(strVal(linitial(((ColumnRef *)gexpr)->fields)), name) != 0)
+			list_length(((ColumnRef *)gexpr)->fields) != 1)
 			continue;
 
-		group_expr = colNameToVar(level_pstate, name, false, cref->has_outer_join, location);
+		if (pg_strcasecmp(strVal(linitial(((ColumnRef *)gexpr)->fields)), found_name) != 0)
+			continue;
+
+		group_expr = colNameToVar(level_pstate, found_name, false, cref->has_outer_join, location);
 		if (group_expr == NULL)
 			continue;
 		IncrementVarSublevelsUp(group_expr, sublevels_up, 0);
@@ -2017,7 +2103,7 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 		{
 			ereport(WARNING,
 					(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-					 errmsg("column reference \"%s\" in HAVING is ambiguous", name),
+					 errmsg("column reference \"%s\" in HAVING is ambiguous", found_name),
 					 parser_errposition(orig_pstate, location)));
 
 			if (orig_pstate->p_expr_kind == EXPR_KIND_HAVING)
@@ -2146,7 +2232,7 @@ resolve_having_field(ParseState *pstate, ColumnRef *cref)
 		{
 			if (sublevels_up > 0)
 			{
-				matched_refname = get_var_namespace_aliasname(level_pstate, (Var *)result);
+				get_tablename_colname_from_var(level_pstate, (Var *)result, NULL, &matched_refname);
 				if (level_pstate->p_expr_kind == EXPR_KIND_HAVING && matched_refname != NULL)
 				{
 					ColumnRef *qualified_cref = makeNode(ColumnRef);

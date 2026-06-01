@@ -6,9 +6,9 @@ set sql_mode = 'REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,STR
 show sql_mode;
 CREATE TABLE regexp_test_text (
     id          INT PRIMARY KEY,
-    txt         TEXT,
-    txt2        TEXT,
-    note        TEXT
+    txt         TEXT  collate utf8_general_ci,
+    txt2        TEXT  collate utf8_general_ci,
+    note        TEXT collate utf8_general_ci
 );
 
 INSERT INTO regexp_test_text (id, txt, txt2, note) VALUES
@@ -325,7 +325,7 @@ DROP TABLE regexp_test_null;
 DROP TABLE regexp_test_edge;
 DROP TABLE regexp_test_text;
 
-
+-- pg default collate is incasesencitive
 select 'ABC' regexp 'abc';
 
 SELECT 'abc' REGEXP 'a.c' AS regexp_ok;
@@ -468,3 +468,8 @@ create table t1(regexp int);
 ----right
 create table t1(`regexp` int);
 drop table t1;
+
+--BUG#M7845
+select 'abc' REGEXP binary 'ABC' ;
+
+select 'abc' REGEXP 'ABC' collate utf8_general_ci;
