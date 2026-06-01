@@ -973,6 +973,7 @@ set_min_quota_internal(Oid targetoid, int64 min_limit_mb, QuotaType type)
 	int64 current_quota_limit_mb = -1;
 	int64 used_bytes = 0;
 	int64 reserve_bytes = 0;
+	int64 old_reserve_bytes = 0; /* BUG#Z8153 */
 	uint64 total = 0;
 	uint64 free = 0;
 	StringInfoData buf;
@@ -983,12 +984,16 @@ set_min_quota_internal(Oid targetoid, int64 min_limit_mb, QuotaType type)
 	/* End - BUG#Z7633 */
 
 	get_disk_space(DataDir, &total, &free);
-	if ((uint64)(min_limit_mb + diskquota_min_quota_free_space) * 1024 * 1024 > free)
+	/* Begin - BUG#Z8153 */
+	old_reserve_bytes = get_min_quota_reserve_file_size(type, targetoid);
+	if ((uint64)(min_limit_mb + diskquota_min_quota_free_space) * 1024 * 1024 >
+		(free + old_reserve_bytes))
 		elog(ERROR,
 			"The current available disk space is %ld MB,"
 			"required remaining free space is %d MB,"
 			"cannot set `min quota` to %ld MB.",
-			free / (1024 * 1024), diskquota_min_quota_free_space, min_limit_mb);
+			(free + old_reserve_bytes) / (1024 * 1024), diskquota_min_quota_free_space, min_limit_mb);
+	/* End - BUG#Z8153 */
 
 	initStringInfo(&buf);
 	appendStringInfo(&buf,
