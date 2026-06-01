@@ -195,7 +195,8 @@ MYS_REGRESS = numeric_to_times \
 			  mys_select_hint \
 			  charset_binary \
 			  sql_mode \
-			  proc
+			  proc \
+			  hex_serialization_deserialization
 
 
 MYS_JDBC_REGRESS =	proto_jdbc \

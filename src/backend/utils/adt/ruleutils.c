@@ -565,7 +565,6 @@ static char *ora_get_subpartkeydef_worker(Oid relid, int prettyFlags, bool attrs
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 static void ora_get_const_expr(Const *constval, deparse_context *context, int showtype); /* bug#7786 */
 
-
 /* ----------
  * pg_get_ruledef		- Do it all and return a text
  *				  that could be used as a statement
@@ -12175,6 +12174,22 @@ get_const_expr(Const *constval, deparse_context *context, int showtype)
 			else
 				appendStringInfoString(buf, "false");
 			break;
+		/* Begin OA:2415 */
+		case IVY_HEXOID:
+		{
+			bytea *hex = (bytea *)DatumGetByteaPP(constval->constvalue);
+			const char *data = (const char *)VARDATA_ANY(hex);
+			int len = VARSIZE_ANY_EXHDR(hex);
+
+			appendStringInfoString(buf, "0x");
+			enlargeStringInfo(buf, len * 2);
+
+			buf->len += hex_encode(data, len, buf->data + buf->len);
+			appendStringInfoString(buf, "\0");
+
+			return;
+		}
+		/* End OA:2415 */
 
 		default:
 			simple_quote_literal(buf, extval);
