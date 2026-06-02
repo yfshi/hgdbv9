@@ -29,9 +29,8 @@
 #include "parser/parse_node.h"
 
 
-extern bool pg_compatible_mysql_switch(void);
 extern bool pg_compatible_mysql_lower(void);
-extern obj_lower pg_compatible_mysql_ojblower(void);
+extern MysLowerCaseMode pg_compatible_mysql_ojblower(void);
 
 
 extern char *pg_compatible_mysql_case(char *str);

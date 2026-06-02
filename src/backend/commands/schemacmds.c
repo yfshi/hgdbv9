@@ -85,8 +85,8 @@ CreateSchemaCommand(CreateSchemaStmt *stmt, const char *queryString,
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->schemaname != NULL)
 		orischemaName = pstrdup(stmt->schemaname);
-	if (mysql_objlower_hook && mysql_string_case_hook &&
-		stmt->schemaname != NULL && (lower_two == mysql_objlower_hook()))
+	if (compatible_mode == MYS_MODE &&
+		stmt->schemaname != NULL && (MYS_LOWER_MIXED == mysql_objlower_hook()))
 	{
 		stmt->schemaname = mysql_string_case_hook(stmt->schemaname);
 		schemaName = stmt->schemaname;

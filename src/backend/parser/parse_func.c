@@ -2873,13 +2873,13 @@ LookupFuncWithArgs(ObjectType objtype, ObjectWithArgs *func, bool missing_ok)
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	if (compatible_mode == MYS_MODE)
 	{
 		if (mysql_lower_hook())
 		{
 			mysql_list_case_hook(func->objname);
 		}
-		else if (mysql_switch_hook())
+		else
 		{
 			ListCell *cell = llast(func->objname);
 

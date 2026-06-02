@@ -231,7 +231,7 @@ DefineType(ParseState *pstate, List *names, List *parameters)
 	(void) fit_namespace_owner(typeNamespace, &objectOwner); /* ReqID:SRS-SQL-SCHEMA */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 		typeName = mysql_string_case_hook(typeName);
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -753,7 +753,7 @@ DefineDomain(CreateDomainStmt *stmt)
 														&domainName);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 		domainName = mysql_string_case_hook(domainName);
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -1177,7 +1177,7 @@ DefineEnum(CreateEnumStmt *stmt)
 													  &enumName);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 		enumName = mysql_string_case_hook(enumName);
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -1431,14 +1431,14 @@ DefineRange(CreateRangeStmt *stmt)
 	/* All created types must be converted to lowercase,
 	 * and the schema depends on the situation.
 	 */
-	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	if (compatible_mode == MYS_MODE)
 	{
 		/*orifuncname = pstrdup(strVal(llast(stmt->typeName)));*/
 		if (mysql_lower_hook())
 		{
 			mysql_list_case_hook(stmt->typeName);
 		}
-		else if (mysql_switch_hook())
+		else
 		{
 			ListCell *cell = llast(stmt->typeName);
 
@@ -2654,7 +2654,7 @@ DefineCompositeType(RangeVar *typevar, List *coldeflist)
 	createStmt->if_not_exists = false;
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 		createStmt->relation->relname = mysql_string_case_hook(createStmt->relation->relname);
 	/* End - ReqID:SRS-MYSQL-CASE */
 

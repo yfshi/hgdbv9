@@ -2467,78 +2467,39 @@ proc_conditions	: proc_conditions K_OR proc_condition
 
 proc_condition	: any_identifier
 						{
-							/* Begin - ReqID:SRS-MYSQL-CASE */
-							if (mysql_switch_hook && mysql_switch_hook())
+							char *str = mysql_string_case_hook(pstrdup($1));
+
+							if (strcmp(str, "sqlstate") != 0)
 							{
-								char *str = mysql_string_case_hook(pstrdup($1));
-
-								if (strcmp(str, "sqlstate") != 0)
-								{
-									$$ = plmysql_parse_err_condition($1);
-								}
-								else
-								{
-									PLmySQL_condition *new;
-									char   *sqlstatestr;
-
-									/* next token should be a string literal */
-									if (yylex() != SCONST)
-										yyerror("syntax error");
-									sqlstatestr = yylval.str;
-
-									if (strlen(sqlstatestr) != 5)
-										yyerror("invalid SQLSTATE code");
-									if (strspn(sqlstatestr, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") != 5)
-										yyerror("invalid SQLSTATE code");
-
-									new = palloc(sizeof(PLmySQL_condition));
-									new->sqlerrstate =
-										MAKE_SQLSTATE(sqlstatestr[0],
-													  sqlstatestr[1],
-													  sqlstatestr[2],
-													  sqlstatestr[3],
-													  sqlstatestr[4]);
-									new->condname = sqlstatestr;
-									new->next = NULL;
-
-									$$ = new;
-								}
+								$$ = plmysql_parse_err_condition($1);
 							}
 							else
 							{
-								if (strcmp($1, "sqlstate") != 0)
-								{
-									$$ = plmysql_parse_err_condition($1);
-								}
-								else
-								{
-									PLmySQL_condition *new;
-									char   *sqlstatestr;
+								PLmySQL_condition *new;
+								char   *sqlstatestr;
 
-									/* next token should be a string literal */
-									if (yylex() != SCONST)
-										yyerror("syntax error");
-									sqlstatestr = yylval.str;
+								/* next token should be a string literal */
+								if (yylex() != SCONST)
+									yyerror("syntax error");
+								sqlstatestr = yylval.str;
 
-									if (strlen(sqlstatestr) != 5)
-										yyerror("invalid SQLSTATE code");
-									if (strspn(sqlstatestr, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") != 5)
-										yyerror("invalid SQLSTATE code");
+								if (strlen(sqlstatestr) != 5)
+									yyerror("invalid SQLSTATE code");
+								if (strspn(sqlstatestr, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ") != 5)
+									yyerror("invalid SQLSTATE code");
 
-									new = palloc(sizeof(PLmySQL_condition));
-									new->sqlerrstate =
-										MAKE_SQLSTATE(sqlstatestr[0],
-													  sqlstatestr[1],
-													  sqlstatestr[2],
-													  sqlstatestr[3],
-													  sqlstatestr[4]);
-									new->condname = sqlstatestr;
-									new->next = NULL;
+								new = palloc(sizeof(PLmySQL_condition));
+								new->sqlerrstate =
+									MAKE_SQLSTATE(sqlstatestr[0],
+													sqlstatestr[1],
+													sqlstatestr[2],
+													sqlstatestr[3],
+													sqlstatestr[4]);
+								new->condname = sqlstatestr;
+								new->next = NULL;
 
-									$$ = new;
-								}
+								$$ = new;
 							}
-							/* End - ReqID:SRS-MYSQL-CASE */
 						}
 				;
 

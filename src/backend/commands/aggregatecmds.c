@@ -114,13 +114,13 @@ DefineAggregate(ParseState *pstate,
 	if (name != NIL && IsA(llast(name), String))
 			orifuncname = pstrdup(strVal(llast(name)));
 
-	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	if (compatible_mode == MYS_MODE)
 	{
 		if (mysql_lower_hook())
 		{
 			mysql_list_case_hook(name);
 		}
-		else if (mysql_switch_hook())
+		else
 		{
 			ListCell *cell = llast(name);
 

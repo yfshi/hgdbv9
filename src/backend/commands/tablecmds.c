@@ -3296,7 +3296,7 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 			ColumnDef  *restdef = list_nth_node(ColumnDef, schema, restpos);
 
 			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (mysql_switch_hook && mysql_switch_hook())
+			if (compatible_mode == MYS_MODE)
 			{
 				if (pg_strcasecmp(coldef->colname, restdef->colname) == 0)
 				{
@@ -4556,7 +4556,7 @@ renameatt_internal(Oid myrelid,
 
 	/* new name should not already exist */
 	/* Begin - BUG#Z00004315/4316 */
-	if (mysql_check_for_column_name_collision && mysql_switch_hook && mysql_switch_hook())
+	if (mysql_check_for_column_name_collision && compatible_mode == MYS_MODE)
 		mysql_check_for_column_name_collision(targetrelation, newattname, true, true);
 	else
 		(void) check_for_column_name_collision(targetrelation, newattname, false);
@@ -8338,7 +8338,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	/* skip if the name already exists and if_not_exists is true */
 	/* Begin - BUG#Z00004315/4316 */
-	if (mysql_check_for_column_name_collision && mysql_switch_hook && mysql_switch_hook())
+	if (mysql_check_for_column_name_collision && compatible_mode == MYS_MODE)
 	{
 		if (!mysql_check_for_column_name_collision(rel, colDef->colname, if_not_exists, false))
 		{

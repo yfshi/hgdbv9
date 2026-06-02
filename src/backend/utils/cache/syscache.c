@@ -1742,8 +1742,7 @@ SearchSysCacheAttName(Oid relid, const char *attname)
 							ObjectIdGetDatum(relid),
 							CStringGetDatum(attname));
 	/* Begin - BUG:Z4315 Z4316 */
-	if (!HeapTupleIsValid(tuple) && mysql_get_attName_hook != NULL &&
-			mysql_switch_hook != NULL && mysql_switch_hook())
+	if (!HeapTupleIsValid(tuple) && compatible_mode == MYS_MODE)
 	{
 		tuple = mysql_get_attName_hook(relid, pstrdup(attname));
 	}

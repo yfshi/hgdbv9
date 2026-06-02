@@ -4186,7 +4186,7 @@ SplitIdentifierString(char *rawstring, char separator,
 			 */
 			len = endp - curname;
 			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+			if (compatible_mode == MYS_MODE)
 				downname = original_truncate_identifier(curname, len, false);
 			else
 				downname = downcase_truncate_identifier(curname, len, false);

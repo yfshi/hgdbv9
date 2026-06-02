@@ -58,7 +58,7 @@ CreateConversionCommand(CreateConversionStmt *stmt)
 													&conversion_name);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->conversion_name))
+	if (compatible_mode == MYS_MODE && list_length(stmt->conversion_name))
 		conversion_name = strVal(llast(stmt->conversion_name));
 	/* End - ReqID:SRS-MYSQL-CASE */
 

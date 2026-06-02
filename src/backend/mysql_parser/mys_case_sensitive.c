@@ -24,8 +24,6 @@
 #include "mysql_parser/mys_case_sensitive.h"
 #include "mysql_parser/mys_scanner.h"
 
-
-Mysql_case_switch_hook_type mysql_switch_hook = NULL;
 Mysql_case_switch_lower_hook_type mysql_lower_hook = NULL;
 Mysql_casesensitivestr_hook_type mysql_string_case_hook = NULL;
 Mysql_casesensitivelist_hook_type mysql_list_case_hook = NULL;
@@ -50,77 +48,39 @@ DefElem *mys_casemakeDefElem(char *name, int location)
 {
 	DefElem		   *res = NULL;
 
-	if (mysql_switch_hook && mysql_switch_hook())
+	if (pg_strcasecmp(name, "superuser") == 0)
+		res = makeDefElem("superuser", (Node *)makeInteger(true), location);
+	else if (pg_strcasecmp(name, "nosuperuser") == 0)
+		res = makeDefElem("superuser", (Node *)makeInteger(false), location);
+	else if (pg_strcasecmp(name, "createrole") == 0)
+		res = makeDefElem("createrole", (Node *)makeInteger(true), location);
+	else if (pg_strcasecmp(name, "nocreaterole") == 0)
+		res = makeDefElem("createrole", (Node *)makeInteger(false), location);
+	else if (pg_strcasecmp(name, "replication") == 0)
+		res = makeDefElem("isreplication", (Node *)makeInteger(true), location);
+	else if (pg_strcasecmp(name, "noreplication") == 0)
+		res = makeDefElem("isreplication", (Node *)makeInteger(false), location);
+	else if (pg_strcasecmp(name, "createdb") == 0)
+		res = makeDefElem("createdb", (Node *)makeInteger(true), location);
+	else if (pg_strcasecmp(name, "nocreatedb") == 0)
+		res = makeDefElem("createdb", (Node *)makeInteger(false), location);
+	else if (pg_strcasecmp(name, "login") == 0)
+		res = makeDefElem("canlogin", (Node *)makeInteger(true), location);
+	else if (pg_strcasecmp(name, "nologin") == 0)
+		res = makeDefElem("canlogin", (Node *)makeInteger(false), location);
+	else if (pg_strcasecmp(name, "bypassrls") == 0)
+		res = makeDefElem("bypassrls", (Node *)makeInteger(true), location);
+	else if (pg_strcasecmp(name, "nobypassrls") == 0)
+		res = makeDefElem("bypassrls", (Node *)makeInteger(false), location);
+	else if (pg_strcasecmp(name, "noinherit") == 0)
 	{
-		if (pg_strcasecmp(name, "superuser") == 0)
-			res = makeDefElem("superuser", (Node *)makeInteger(true), location);
-		else if (pg_strcasecmp(name, "nosuperuser") == 0)
-			res = makeDefElem("superuser", (Node *)makeInteger(false), location);
-		else if (pg_strcasecmp(name, "createrole") == 0)
-			res = makeDefElem("createrole", (Node *)makeInteger(true), location);
-		else if (pg_strcasecmp(name, "nocreaterole") == 0)
-			res = makeDefElem("createrole", (Node *)makeInteger(false), location);
-		else if (pg_strcasecmp(name, "replication") == 0)
-			res = makeDefElem("isreplication", (Node *)makeInteger(true), location);
-		else if (pg_strcasecmp(name, "noreplication") == 0)
-			res = makeDefElem("isreplication", (Node *)makeInteger(false), location);
-		else if (pg_strcasecmp(name, "createdb") == 0)
-			res = makeDefElem("createdb", (Node *)makeInteger(true), location);
-		else if (pg_strcasecmp(name, "nocreatedb") == 0)
-			res = makeDefElem("createdb", (Node *)makeInteger(false), location);
-		else if (pg_strcasecmp(name, "login") == 0)
-			res = makeDefElem("canlogin", (Node *)makeInteger(true), location);
-		else if (pg_strcasecmp(name, "nologin") == 0)
-			res = makeDefElem("canlogin", (Node *)makeInteger(false), location);
-		else if (pg_strcasecmp(name, "bypassrls") == 0)
-			res = makeDefElem("bypassrls", (Node *)makeInteger(true), location);
-		else if (pg_strcasecmp(name, "nobypassrls") == 0)
-			res = makeDefElem("bypassrls", (Node *)makeInteger(false), location);
-		else if (pg_strcasecmp(name, "noinherit") == 0)
-		{
-			/*
-			 * Note that INHERIT is a keyword, so it's handled by main parser, but
-			 * NOINHERIT is handled here.
-			 */
-			res = makeDefElem("inherit", (Node *)makeInteger(false), location);
-		}
+		/*
+		 * Note that INHERIT is a keyword, so it's handled by main parser, but
+		 * NOINHERIT is handled here.
+		 */
+		res = makeDefElem("inherit", (Node *)makeInteger(false), location);
 	}
-	else
-	{
-		if (strcmp(name, "superuser") == 0)
-			res = makeDefElem("superuser", (Node *)makeInteger(true), location);
-		else if (strcmp(name, "nosuperuser") == 0)
-			res = makeDefElem("superuser", (Node *)makeInteger(false), location);
-		else if (strcmp(name, "createrole") == 0)
-			res = makeDefElem("createrole", (Node *)makeInteger(true), location);
-		else if (strcmp(name, "nocreaterole") == 0)
-			res = makeDefElem("createrole", (Node *)makeInteger(false), location);
-		else if (strcmp(name, "replication") == 0)
-			res = makeDefElem("isreplication", (Node *)makeInteger(true), location);
-		else if (strcmp(name, "noreplication") == 0)
-			res = makeDefElem("isreplication", (Node *)makeInteger(false), location);
-		else if (strcmp(name, "createdb") == 0)
-			res = makeDefElem("createdb", (Node *)makeInteger(true), location);
-		else if (strcmp(name, "nocreatedb") == 0)
-			res = makeDefElem("createdb", (Node *)makeInteger(false), location);
-		else if (strcmp(name, "login") == 0)
-			res = makeDefElem("canlogin", (Node *)makeInteger(true), location);
-		else if (strcmp(name, "nologin") == 0)
-			res = makeDefElem("canlogin", (Node *)makeInteger(false), location);
-		else if (strcmp(name, "bypassrls") == 0)
-			res = makeDefElem("bypassrls", (Node *)makeInteger(true), location);
-		else if (strcmp(name, "nobypassrls") == 0)
-			res = makeDefElem("bypassrls", (Node *)makeInteger(false), location);
-		else if (strcmp(name, "noinherit") == 0)
-		{
-			/*
-			 * Note that INHERIT is a keyword, so it's handled by main parser, but
-			 * NOINHERIT is handled here.
-			 */
-			res = makeDefElem("inherit", (Node *)makeInteger(false), location);
-		}
-	}
-	
+
 	return res;
 }
 
@@ -132,15 +92,9 @@ DefElem *mys_casemakeDefElem(char *name, int location)
  */
 char *mys_lower_one_string_case(char *str)
 {
-	char	   *newstr = str;
-
-	if (mysql_objlower_hook && mysql_string_case_hook)
-	{
-		if (lower_one == mysql_objlower_hook())
-			newstr = mysql_string_case_hook(str);
-	}
-
-	return newstr;
+	if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook())
+		return mysql_string_case_hook(str);
+	return str;
 }
 
 /*
@@ -151,15 +105,9 @@ char *mys_lower_one_string_case(char *str)
  */
 char *mys_lower_two_string_case(char *str)
 {
-	char	   *newstr = str;
-
-	if (mysql_objlower_hook && mysql_string_case_hook)
-	{
-		if (lower_two == mysql_objlower_hook())
-			newstr = mysql_string_case_hook(str);
-	}
-
-	return newstr;
+	if (MYS_LOWER_MIXED == mysql_objlower_hook())
+		return mysql_string_case_hook(str);
+	return str;
 }
 
 /*
@@ -170,14 +118,9 @@ char *mys_lower_two_string_case(char *str)
  */
 char *mys_lower_string_case(char *str)
 {
-	char	   *newstr = str;
-
-	if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
-	{
-		newstr = mysql_string_case_hook(str);
-	}
-
-	return newstr;
+	if (mysql_lower_hook())
+		return mysql_string_case_hook(str);
+	return str;
 }
 
 /*
@@ -189,14 +132,11 @@ char *mys_lower_string_case(char *str)
  */
 void mysql_rvar_case(RangeVar *var)
 {
-	if (mysql_objlower_hook && mysql_string_case_hook && mysql_rvar_case_hook)
-	{
-		if (lower_one == mysql_objlower_hook() && var != NULL)
-			var->relname = mysql_string_case_hook(var->relname);
+	if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook() && var != NULL)
+		var->relname = mysql_string_case_hook(var->relname);
 
-		if (lower_two == mysql_objlower_hook() && var != NULL)
-			mysql_rvar_case_hook(var);
-	}
+	if (MYS_LOWER_MIXED == mysql_objlower_hook() && var != NULL)
+		mysql_rvar_case_hook(var);
 }
 
 /*
@@ -208,9 +148,9 @@ void mysql_rvar_case(RangeVar *var)
  */
 void mys_lower_two_rvarschecma_case(RangeVar *var)
 {
-	if (mysql_objlower_hook && mysql_string_case_hook && var != NULL)
+	if (var != NULL)
 	{
-		if (lower_two == mysql_objlower_hook())
+		if (MYS_LOWER_MIXED == mysql_objlower_hook())
 			var->schemaname = mysql_string_case_hook(var->schemaname);
 	}
 }
@@ -224,17 +164,14 @@ void mys_lower_two_rvarschecma_case(RangeVar *var)
  */
 void mys_case_DefElem(List *elemlist)
 {
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
-	{
-		ListCell	*cell;
+	ListCell	*cell;
 
-		foreach (cell, elemlist)
+	foreach (cell, elemlist)
+	{
+		if (nodeTag(lfirst(cell)) == T_DefElem)
 		{
-			if (nodeTag(lfirst(cell)) == T_DefElem)
-			{
-				DefElem *res = lfirst(cell);
-				res->defname = mysql_string_case_hook(res->defname);
-			}
+			DefElem *res = lfirst(cell);
+			res->defname = mysql_string_case_hook(res->defname);
 		}
 	}
 }
@@ -248,14 +185,7 @@ void mys_case_DefElem(List *elemlist)
  */
 char *mys_string_case(char *str)
 {
-	char	   *newstr = str;
-
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
-	{
-		newstr = mysql_string_case_hook(str);
-	}
-
-	return newstr;
+	return mysql_string_case_hook(str);
 }
 
 /*
@@ -267,20 +197,17 @@ char *mys_string_case(char *str)
  */
 void mys_createtb_rvar_case(RangeVar *var, RangeVar *varInheritorpart)
 {
-	if (mysql_objlower_hook && mysql_string_case_hook && mysql_list_case_hook)
+	if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook())
 	{
-		if (lower_one == mysql_objlower_hook())
-		{
-			if (var != NULL)
-				var->relname = mysql_string_case_hook(var->relname);
-			if (varInheritorpart != NULL)
-				mysql_rvar_case_hook(varInheritorpart);
-		}
-		if (lower_two == mysql_objlower_hook())
-		{
-			if (varInheritorpart != NULL)
-				mysql_rvar_case_hook(varInheritorpart);
-		}
+		if (var != NULL)
+			var->relname = mysql_string_case_hook(var->relname);
+		if (varInheritorpart != NULL)
+			mysql_rvar_case_hook(varInheritorpart);
+	}
+	if (MYS_LOWER_MIXED == mysql_objlower_hook())
+	{
+		if (varInheritorpart != NULL)
+			mysql_rvar_case_hook(varInheritorpart);
 	}
 }
 
@@ -293,20 +220,17 @@ void mys_createtb_rvar_case(RangeVar *var, RangeVar *varInheritorpart)
  */
 void mys_createtb_rvar_list_case(RangeVar *var, List *list)
 {
-	if (mysql_objlower_hook && mysql_string_case_hook && mysql_list_case_hook)
+	if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook())
 	{
-		if (lower_one == mysql_objlower_hook())
-		{
-			if (var != NULL)
-				var->relname = mysql_string_case_hook(var->relname);
-			if (list != NIL)
-				mysql_list_case_hook(list);
-		}
-		if (lower_two == mysql_objlower_hook())
-		{
-			if (list != NIL)
-				mysql_list_case_hook(list);
-		}
+		if (var != NULL)
+			var->relname = mysql_string_case_hook(var->relname);
+		if (list != NIL)
+			mysql_list_case_hook(list);
+	}
+	if (MYS_LOWER_MIXED == mysql_objlower_hook())
+	{
+		if (list != NIL)
+			mysql_list_case_hook(list);
 	}
 }
 
@@ -319,9 +243,9 @@ void mys_createtb_rvar_list_case(RangeVar *var, List *list)
  */
 void mys_lower_one_rvarrelname_case(RangeVar *var)
 {
-	if (mysql_objlower_hook && mysql_string_case_hook && var != NULL)
+	if (var != NULL)
 	{
-		if (lower_one == mysql_objlower_hook())
+		if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook())
 			var->relname = mysql_string_case_hook(var->relname);
 	}
 }
@@ -334,20 +258,15 @@ void mys_lower_one_rvarrelname_case(RangeVar *var)
  */
 char *mys_def_elem_case(char *str, Node *node)
 {
-	char	   *newstr = str;
+	char	   *newstr = mysql_string_case_hook(str);
 
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	if (node != NULL && nodeTag(node) == T_TypeName)
 	{
-		newstr = mysql_string_case_hook(str);
+		TypeName *n = (TypeName *)node;
 
-		if(node != NULL && nodeTag(node) == T_TypeName)
-		{
-			TypeName *n = (TypeName *)node;
-
-			if (list_length(n->names) == 1 && (!pg_strcasecmp(strVal(llast(n->names)), "SAFE") ||
-				!pg_strcasecmp(strVal(llast(n->names)), "RESTRICTED") || !pg_strcasecmp(strVal(llast(n->names)), "UNSAFE")))
-					strVal(llast(n->names)) = mysql_string_case_hook(strVal(llast(n->names)));
-		}
+		if (list_length(n->names) == 1 && (!pg_strcasecmp(strVal(llast(n->names)), "SAFE") ||
+			!pg_strcasecmp(strVal(llast(n->names)), "RESTRICTED") || !pg_strcasecmp(strVal(llast(n->names)), "UNSAFE")))
+				strVal(llast(n->names)) = mysql_string_case_hook(strVal(llast(n->names)));
 	}
 
 	return newstr;
@@ -361,7 +280,7 @@ char *mys_def_elem_case(char *str, Node *node)
  */
 void mys_tbvmftb_lowerlist_case(ObjectType obt, List *list)
 {
-	if (mysql_lower_hook && mysql_list_case_hook && mysql_lower_hook())
+	if (mysql_lower_hook())
 	{
 		if (obt == OBJECT_TABLE || obt == OBJECT_VIEW || obt == OBJECT_MATVIEW ||
 			obt == OBJECT_FOREIGN_TABLE || obt == OBJECT_SEQUENCE)
@@ -385,18 +304,15 @@ void mys_tbvmftb_lowerlist_case(ObjectType obt, List *list)
  */
 void mys_schemaandlanguage_list_case(ObjectType obt, List *list)
 {
-	if (mysql_lower_hook && mysql_list_case_hook && mysql_lower_hook())
+	if (mysql_lower_hook())
 	{
 		if (obt == OBJECT_SCHEMA)
 			mysql_list_case_hook(list);
 	}
-	if (mysql_switch_hook && mysql_switch_hook())
+	if (obt == OBJECT_LANGUAGE)
 	{
-		if (obt == OBJECT_LANGUAGE)
-		{
-			if (strVal(llast(list)))
-				strVal(llast(list)) = mysql_string_case_hook(strVal(llast(list)));
-		}
+		if (strVal(llast(list)))
+			strVal(llast(list)) = mysql_string_case_hook(strVal(llast(list)));
 	}
 }
 
@@ -408,7 +324,7 @@ void mys_schemaandlanguage_list_case(ObjectType obt, List *list)
  */
 void mys_lower_list_case(List *list)
 {
-	if (mysql_lower_hook && mysql_list_case_hook && mysql_lower_hook())
+	if (mysql_lower_hook())
 	{
 		if (list != NIL)
 			mysql_list_case_hook(list);
@@ -424,23 +340,20 @@ void mys_lower_list_case(List *list)
  */
 void mys_qualified_name_list_case(List *list)
 {
-	if (mysql_objlower_hook && mysql_string_case_hook && mysql_rvar_case_hook)
-	{
-		ListCell *cell;
-		RangeVar *r;
+	ListCell *cell;
+	RangeVar *r;
 
-		foreach(cell, list)
+	foreach(cell, list)
+	{
+		if (IsA(lfirst(cell), RangeVar))
 		{
-			if (IsA(lfirst(cell), RangeVar))
+			r = (RangeVar *)lfirst(cell);
+			if (r != NULL)
 			{
-				r = (RangeVar *)lfirst(cell);
-				if (r != NULL)
-				{
-					if (lower_one == mysql_objlower_hook())
-						((RangeVar *)lfirst(cell))->relname = mysql_string_case_hook(r->relname);
-					if (lower_two == mysql_objlower_hook())
-						mysql_rvar_case_hook((RangeVar *)lfirst(cell));
-				}
+				if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook())
+					((RangeVar *)lfirst(cell))->relname = mysql_string_case_hook(r->relname);
+				if (MYS_LOWER_MIXED == mysql_objlower_hook())
+					mysql_rvar_case_hook((RangeVar *)lfirst(cell));
 			}
 		}
 	}
@@ -456,13 +369,10 @@ char *mys_reindex_target_multitable_case(ReindexObjectType ridxtpy, char *str)
 {
 	char	   *newstr = str;
 
-	if (mysql_objlower_hook && mysql_string_case_hook)
+	if (ridxtpy == REINDEX_OBJECT_SCHEMA && str != NULL)
 	{
-		if (ridxtpy == REINDEX_OBJECT_SCHEMA && (str != NULL))
-		{
-			if (lower_one == mysql_objlower_hook() || lower_two == mysql_objlower_hook())
-				newstr = mysql_string_case_hook(str);
-		}
+		if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook() || MYS_LOWER_MIXED == mysql_objlower_hook())
+			newstr = mysql_string_case_hook(str);
 	}
 
 	return newstr;
@@ -478,19 +388,16 @@ char *mys_altertb_case(RangeVar *var, char *str)
 {
 	char	   *newstr = str;
 
-	if (mysql_objlower_hook && mysql_string_case_hook )
+	if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook())
 	{
-		if (lower_one == mysql_objlower_hook())
-		{
-			if (var != NULL)
-				var->relname = mysql_string_case_hook(var->relname);
+		if (var != NULL)
+			var->relname = mysql_string_case_hook(var->relname);
 
-			newstr = mysql_string_case_hook(str);
-		}
-		if (lower_two == mysql_objlower_hook() && var != NULL)
-		{
-			mysql_rvar_case_hook(var);
-		}
+		newstr = mysql_string_case_hook(str);
+	}
+	if (MYS_LOWER_MIXED == mysql_objlower_hook() && var != NULL)
+	{
+		mysql_rvar_case_hook(var);
 	}
 
 	return newstr;
@@ -504,7 +411,7 @@ char *mys_altertb_case(RangeVar *var, char *str)
  */
 Node *mys_specifyobject_case(char *object, Node *str)
 {
-	if ((lower_one == mysql_objlower_hook() || lower_two == mysql_objlower_hook()) &&
+	if ((MYS_LOWER_INSENSITIVE == mysql_objlower_hook() || MYS_LOWER_MIXED == mysql_objlower_hook()) &&
 											(object != NULL) && (str != NULL))
 	{
 		if (!pg_strcasecmp(object, "schema_name") || !pg_strcasecmp(object, "table_name"))
@@ -527,11 +434,10 @@ void mys_insertupdate_deal(List *list)
 {
 	ListCell *cell;
 	ResTarget *res;
-	obj_lower lowernum = lower_invalid;
+	MysLowerCaseMode lowernum = MYS_LOWER_INVALID;
 
-	if (mysql_objlower_hook && mysql_string_case_hook)
-		lowernum = mysql_objlower_hook();
-	if (lower_one == lowernum || lower_two == lowernum)
+	lowernum = mysql_objlower_hook();
+	if (MYS_LOWER_INSENSITIVE == lowernum || MYS_LOWER_MIXED == lowernum)
 	{
 		foreach(cell, list)
 		{
@@ -564,13 +470,12 @@ void mys_delete_clause_deal(List *collist,  List *usinglist)
 {
 	ColumnRef *cref = NULL;
 	RangeVar *rvar = NULL;
-	obj_lower lowernum = lower_invalid;
+	MysLowerCaseMode lowernum = MYS_LOWER_INVALID;
 	ListCell *tbcell;
 	ListCell *ucell;
 
-	if (mysql_objlower_hook && mysql_string_case_hook)
-		lowernum = mysql_objlower_hook();
-	if (lower_one != lowernum && lower_two != lowernum)
+	lowernum = mysql_objlower_hook();
+	if (MYS_LOWER_INSENSITIVE != lowernum && MYS_LOWER_MIXED != lowernum)
 		return;
 
 	foreach(tbcell, collist)

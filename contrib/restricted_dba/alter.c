@@ -237,51 +237,7 @@ alter_object_schema_check(AlterObjectSchemaStmt *stmt,
 		case OBJECT_TSDICTIONARY:
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
-			{
-				// Relation	catalog;
-				// Relation	relation;
-				// Oid			classId;
-				// Oid			nspOid;
-
-				// /* Begin - ReqID:SRS-MYSQL-CASE */
-				// if (mysql_switch_hook && mysql_objlower_hook &&
-				// 	mysql_string_case_hook && mysql_switch_hook())
-				// {
-				// 	if ((lower_two == mysql_objlower_hook()))
-				// 		stmt->newschema = mysql_string_case_hook(stmt->newschema);
-				// }
-				// /* End - ReqID:SRS-MYSQL-CASE */
-
-				// address = get_object_address(stmt->objectType,
-				// 							 stmt->object,
-				// 							 &relation,
-				// 							 AccessExclusiveLock,
-				// 							 false);
-				// Assert(relation == NULL);
-				// classId = address.classId;
-				// catalog = table_open(classId, RowExclusiveLock);
-				// nspOid = LookupCreationNamespace(stmt->newschema);
-
-				// oldNspOid = AlterObjectNamespace_internal(catalog, address.objectId,
-				// 										  nspOid);
-
-				// /* Begin - ReqID:SRS-MYSQL-CASE */
-				// if (pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
-				// {
-				// 	if (stmt->objectType == OBJECT_AGGREGATE ||
-				// 		stmt->objectType == OBJECT_FUNCTION ||
-				// 		stmt->objectType == OBJECT_PROCEDURE)
-				// 	{
-				// 		PgObjectInfo oriinf = NULL;
-
-				// 		if ((oriinf = pg_object_get_ori_infor_hook(address)) != NULL)
-				// 			pg_object_alter_obj_hook(address, oriinf->oriname, nspOid, oriinf->orioption, NULL);
-				// 	}
-				// }
-				// /* End - ReqID:SRS-MYSQL-CASE */
-
-				// table_close(catalog, RowExclusiveLock);
-			}
+			/*nothing*/
 			break;
 
 		default:

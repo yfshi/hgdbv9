@@ -77,7 +77,7 @@ DefineCollation(ParseState *pstate, List *names, List *parameters, bool if_not_e
 
 	collNamespace = QualifiedNameGetCreationNamespace(names, &collName);
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+	if (compatible_mode == MYS_MODE && list_length(names))
 		collName = strVal(llast(names));
 	/* End - ReqID:SRS-MYSQL-CASE */
 

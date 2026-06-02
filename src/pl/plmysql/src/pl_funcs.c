@@ -145,78 +145,34 @@ plmysql_ns_lookup(PLmySQL_nsitem *ns_cur, bool localmode,
 			 nsitem->itemtype != PLMYSQL_NSTYPE_LABEL;
 			 nsitem = nsitem->prev)
 		{
-			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (mysql_switch_hook && mysql_switch_hook())
+			if (pg_strcasecmp(nsitem->name, name1) == 0)
 			{
-				if (pg_strcasecmp(nsitem->name, name1) == 0)
+				if (name2 == NULL ||
+					nsitem->itemtype != PLMYSQL_NSTYPE_VAR)
 				{
-					if (name2 == NULL ||
-						nsitem->itemtype != PLMYSQL_NSTYPE_VAR)
-					{
-						if (names_used)
-							*names_used = 1;
-						return nsitem;
-					}
+					if (names_used)
+						*names_used = 1;
+					return nsitem;
 				}
 			}
-			else
-			{
-				if (strcmp(nsitem->name, name1) == 0)
-				{
-					if (name2 == NULL ||
-						nsitem->itemtype != PLMYSQL_NSTYPE_VAR)
-					{
-						if (names_used)
-							*names_used = 1;
-						return nsitem;
-					}
-				}
-			}
-			/* End - ReqID:SRS-MYSQL-CASE */
 		}
 
 		/* Check this level for qualified match to variable name */
-		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_switch_hook && mysql_switch_hook())
+		if (name2 != NULL &&
+			pg_strcasecmp(nsitem->name, name1) == 0)
 		{
-			if (name2 != NULL &&
-				pg_strcasecmp(nsitem->name, name1) == 0)
+			for (nsitem = ns_cur;
+					nsitem->itemtype != PLMYSQL_NSTYPE_LABEL;
+					nsitem = nsitem->prev)
 			{
-				for (nsitem = ns_cur;
-					 nsitem->itemtype != PLMYSQL_NSTYPE_LABEL;
-					 nsitem = nsitem->prev)
+				if (strcmp(nsitem->name, name2) == 0)
 				{
-					if (strcmp(nsitem->name, name2) == 0)
+					if (name3 == NULL ||
+						nsitem->itemtype != PLMYSQL_NSTYPE_VAR)
 					{
-						if (name3 == NULL ||
-							nsitem->itemtype != PLMYSQL_NSTYPE_VAR)
-						{
-							if (names_used)
-								*names_used = 2;
-							return nsitem;
-						}
-					}
-				}
-			}
-		}
-		else
-		{
-			if (name2 != NULL &&
-				strcmp(nsitem->name, name1) == 0)
-			{
-				for (nsitem = ns_cur;
-					 nsitem->itemtype != PLMYSQL_NSTYPE_LABEL;
-					 nsitem = nsitem->prev)
-				{
-					if (strcmp(nsitem->name, name2) == 0)
-					{
-						if (name3 == NULL ||
-							nsitem->itemtype != PLMYSQL_NSTYPE_VAR)
-						{
-							if (names_used)
-								*names_used = 2;
-							return nsitem;
-						}
+						if (names_used)
+							*names_used = 2;
+						return nsitem;
 					}
 				}
 			}

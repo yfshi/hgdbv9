@@ -380,8 +380,7 @@ ExecRenameStmt(RenameStmt *stmt)
 			/* End - ReqID:SRS-MYSQL-CASE */
 
 			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (mysql_string_case_hook && mysql_objlower_hook &&
-				lower_two == mysql_objlower_hook())
+			if (compatible_mode == MYS_MODE && MYS_LOWER_MIXED == mysql_objlower_hook())
 			{
 				alterobj = true;
 				newname = pstrdup(stmt->newname);
@@ -462,7 +461,7 @@ ExecRenameStmt(RenameStmt *stmt)
 				/* End - ReqID:SRS-MYSQL-CASE */
 
 				/* Begin - ReqID:SRS-MYSQL-CASE */
-				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+				if (compatible_mode == MYS_MODE)
 				{
 					if (stmt->renameType == OBJECT_AGGREGATE ||
 						stmt->renameType == OBJECT_FUNCTION ||
@@ -636,10 +635,9 @@ ExecAlterObjectSchemaStmt(AlterObjectSchemaStmt *stmt,
 				Oid			nspOid;
 
 				/* Begin - ReqID:SRS-MYSQL-CASE */
-				if (mysql_switch_hook && mysql_objlower_hook &&
-					mysql_string_case_hook && mysql_switch_hook())
+				if (compatible_mode == MYS_MODE)
 				{
-					if ((lower_two == mysql_objlower_hook()))
+					if ((MYS_LOWER_MIXED == mysql_objlower_hook()))
 						stmt->newschema = mysql_string_case_hook(stmt->newschema);
 				}
 				/* End - ReqID:SRS-MYSQL-CASE */

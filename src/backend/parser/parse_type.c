@@ -212,7 +212,7 @@ LookupTypeNameExtended(ParseState *pstate,
 		DeconstructQualifiedName(typeName->names, &schemaname, &typname);
 
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_switch_hook && mysql_get_typoid_hook && mysql_switch_hook())
+		if (compatible_mode == MYS_MODE)
 		{
 			typoid = mysql_get_typoid_hook(pstate, typeName, temp_ok,
 										   schemaname, typname, missing_ok);
@@ -1105,7 +1105,7 @@ LookupOraTypeNameExtended(ParseState *pstate,
 		DeconstructQualifiedName(typeName->names, &schemaname, &typname);
 
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_switch_hook && mysql_get_typoid_hook && mysql_switch_hook())
+		if (compatible_mode == MYS_MODE)
 		{
 			typoid = mysql_get_typoid_hook(pstate, typeName, temp_ok,
 										   schemaname, typname, missing_ok);

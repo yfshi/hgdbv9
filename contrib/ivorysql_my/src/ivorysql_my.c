@@ -37,7 +37,6 @@ PG_MODULE_MAGIC;
 
 /* Begin - ReqID:SRS-MYSQL-CASE */
 /* Saved hook value in case of unload */
-static Mysql_case_switch_hook_type pre_mysql_switch_hook = NULL;
 static Mysql_case_switch_lower_hook_type pre_mysql_lower_hook = NULL;
 static Mysql_casesensitivestr_hook_type pre_mysql_string_case_hook = NULL;
 static Mysql_casesensitivelist_hook_type pre_mysql_list_case_hook = NULL;
@@ -116,8 +115,6 @@ _PG_init(void)
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	pre_mysql_switch_hook = mysql_switch_hook;
-	mysql_switch_hook = pg_compatible_mysql_switch;
 	pre_mysql_lower_hook = mysql_lower_hook;
 	mysql_lower_hook = pg_compatible_mysql_lower;
 	pre_mysql_string_case_hook = mysql_string_case_hook;
@@ -223,7 +220,6 @@ void
 _PG_fini(void)
 {
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	mysql_switch_hook = pre_mysql_switch_hook;
 	mysql_lower_hook = pre_mysql_lower_hook;
 	mysql_string_case_hook = pre_mysql_string_case_hook;
 	mysql_list_case_hook = pre_mysql_list_case_hook;

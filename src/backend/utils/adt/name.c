@@ -256,7 +256,7 @@ namestrcmp(Name name, const char *str)
 	if (!str)
 		return 1;				/* NULL < anything */
 	/* BEGIN - mysql case sensitive indentify */
-	if (mysql_switch_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 		return pg_strncasecmp(NameStr(*name), str, NAMEDATALEN);
 	else
 		return strncmp(NameStr(*name), str, NAMEDATALEN);
