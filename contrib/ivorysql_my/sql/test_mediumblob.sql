@@ -1579,3 +1579,10 @@ INSERT INTO my_mediumblob_t1 VALUES ('123', '123', '1234', 'abcd', 'ABCD', '', '
 
 -- should get (0, 0, 0, 0, 1, 0, 0, 0, NULL, NULL) and warnings
 select c1 XOR c1, c1 XOR c2, c1 XOR c3, c2 XOR c3, c3 XOR c4, c4 XOR c5, c5 XOR c6, c6 XOR c7, c4 XOR c8, c6 XOR c8 from my_mediumblob_t1;
+
+/* Begin - Bug#Z5202 */
+create table tb_mediumblob(c1 mediumblob);
+insert into tb_mediumblob values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as float) from tb_mediumblob;
+drop table tb_mediumblob;
+/* End - Bug#Z5202 */

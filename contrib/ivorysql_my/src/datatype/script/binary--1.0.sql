@@ -4493,6 +4493,86 @@ WITH FUNCTION ivymy.numeric_binary(numeric)
 AS ASSIGNMENT;
 /* End - bug#z5800 */
 
+/* Begin - Bug#Z5202 */
+-- cast binary to float4
+CREATE FUNCTION ivymy.binary_float4(ivymy.binary, integer, boolean, int8)
+RETURNS float4
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.binary AS float4)
+WITH FUNCTION ivymy.binary_float4(ivymy.binary, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast varbinary to float4
+CREATE FUNCTION ivymy.varbinary_float4(ivymy.varbinary, integer, boolean, int8)
+RETURNS float4
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS float4)
+WITH FUNCTION ivymy.varbinary_float4(ivymy.varbinary, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast myblob to float4
+CREATE FUNCTION ivymy.myblob_float4(ivymy.myblob, integer, boolean, int8)
+RETURNS float4
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.myblob AS float4)
+WITH FUNCTION ivymy.myblob_float4(ivymy.myblob, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast tinyblob to float4
+CREATE FUNCTION ivymy.tinyblob_float4(ivymy.tinyblob, integer, boolean, int8)
+RETURNS float4
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.tinyblob AS float4)
+WITH FUNCTION ivymy.tinyblob_float4(ivymy.tinyblob, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast mediumblob to float4
+CREATE FUNCTION ivymy.mediumblob_float4(ivymy.mediumblob, integer, boolean, int8)
+RETURNS float4
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.mediumblob AS float4)
+WITH FUNCTION ivymy.mediumblob_float4(ivymy.mediumblob, integer, boolean, int8)
+AS ASSIGNMENT;
+
+-- cast longblob to float4
+CREATE FUNCTION ivymy.longblob_float4(ivymy.longblob, integer, boolean, int8)
+RETURNS float4
+AS 'MODULE_PATHNAME','varlena_float4'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.longblob AS float4)
+WITH FUNCTION ivymy.longblob_float4(ivymy.longblob, integer, boolean, int8)
+AS ASSIGNMENT;
+/* End - Bug#Z5202 */
+
 -- cast binary to double
 CREATE FUNCTION ivymy.binary_double(ivymy.binary, integer, boolean, int8)
 RETURNS double

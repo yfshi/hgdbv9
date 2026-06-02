@@ -2076,7 +2076,7 @@ RESET sql_mode;
 /* End - bug#z5465 */
 /* Begin - bug#5184 */
 drop table tb_varbinary;
-create table tb_varbinary(c1 binary(10));
+create table tb_varbinary(c1 varbinary(10));
 insert into tb_varbinary values('1234'), ('abcd'), ('1q2w'), ('q1w2');
 select cast(c1 as date) from tb_varbinary;
 WARNING:  Incorrect datetime value: '1234'
@@ -2149,6 +2149,18 @@ WARNING:  Truncated incorrect INTEGER value: 'q1w2'
  0
  1
  0
+(4 rows)
+
+select cast(c1 as float) from tb_varbinary;
+WARNING:  Truncated incorrect FLOAT value: 'abcd'
+WARNING:  Truncated incorrect FLOAT value: '1q2w'
+WARNING:  Truncated incorrect FLOAT value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
 (4 rows)
 
 drop table tb_varbinary;

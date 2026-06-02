@@ -1744,3 +1744,20 @@ WARNING:  Truncated incorrect INTEGER value: ''
  f        | f        | f        | f        | t        | f        | f        | f        | NULL     | NULL
 (1 row)
 
+/* Begin - Bug#Z5202 */
+create table tb_longblob(c1 longblob);
+insert into tb_longblob values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as float) from tb_longblob;
+WARNING:  Truncated incorrect FLOAT value: 'abcd'
+WARNING:  Truncated incorrect FLOAT value: '1q2w'
+WARNING:  Truncated incorrect FLOAT value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
+drop table tb_longblob;
+/* End - Bug#Z5202 */
