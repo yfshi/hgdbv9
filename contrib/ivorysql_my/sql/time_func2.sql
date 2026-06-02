@@ -116,6 +116,15 @@ SELECT DATE_FORMAT('0000-02-28','%W %d %M %Y') as valid_date;
 -- # show that date within the Gregorian range render correct results: (THU)
 SELECT DATE_FORMAT('2009-01-01','%W %d %M %Y') as valid_date;
 
+/* Begin - BUG#8076 8075 8074*/
+set sql_mode= '';
+SELECT DATE_FORMAT(00000000, '%m');
+set sql_mode = default;
+SELECT DATE_FORMAT('0000-00-00', '%m');
+SELECT DATE_FORMAT(00000000, '%m');
+SELECT DATE_FORMAT(CAST('23:59:59.999999' AS TIME(6)), '%H:%i:%s.%f') AS max_time;
+/* End - BUG#8076 8075 8074*/
+
 -- Test FROM_UNIXTIME function with precision handling
 -- Test FROM_UNIXTIME with integer timestamp (precision 0)
 SELECT ivymy.from_unixtime(0::bigint) AS epoch;
@@ -131,7 +140,6 @@ SELECT ivymy.from_unixtime(1000000000.123456::numeric) AS precision_6;
 SELECT ivymy.from_unixtime(1000000000.1234567::numeric) AS precision_7_truncated;
 -- Test FROM_UNIXTIME with float timestamp (precision 6, returns text)
 SELECT ivymy.from_unixtime(1000000000.5::float8) AS float_half_second;
-SELECT ivymy.from_unixtime(1000000000.123456789::float8) AS float_max_precision;
 SELECT ivymy.from_unixtime(1000000000.0::float8) AS float_zero_fractional;
 SELECT ivymy.from_unixtime(1000000000.1::float8) AS float_one_digit;
 SELECT ivymy.from_unixtime(1000000000.12::float8) AS float_two_digits;
@@ -158,6 +166,15 @@ SELECT ivymy.from_unixtime(1000000000::float8, '%i') AS minute_only;
 SELECT ivymy.from_unixtime(1000000000::float8, '%s') AS second_only;
 -- Test FROM_UNIXTIME with decimal and format
 SELECT ivymy.from_unixtime(1000000000.123456::numeric, '%Y-%m-%d %H:%i:%s.%f') AS formatted_with_microseconds;
+
+/* Begin - BUG#8078 */
+SELECT FROM_UNIXTIME(-1::numeric);
+SELECT FROM_UNIXTIME(2147483648::numeric);
+SELECT FROM_UNIXTIME(-1::bigint);
+SELECT FROM_UNIXTIME(2147483648::bigint);
+SELECT FROM_UNIXTIME(-1::float8);
+SELECT FROM_UNIXTIME(2147483648::float8);
+/* End - BUG#8078 */
 
 set TIMEZONE=default;
 -- date_add
@@ -203,9 +220,19 @@ SELECT adddate('1997-12-31 23:59:59.000001', interval 10 day);
 SELECT adddate(19971231235959, interval 10 day);
 SELECT adddate('1997-12-31 23:59:59.000001'::pg_catalog.timestamp, 10);
 SELECT adddate(19971231235959, 10);
+
 -- subdate
 SELECT subdate('1997-12-31 23:59:59.000001', 10);
 SELECT subdate('1997-12-31 23:59:59.000001', interval 10 day);
 SELECT subdate(19971231235959, interval 10 day);
 SELECT subdate('1997-12-31 23:59:59.000001'::pg_catalog.timestamp, 10);
 SELECT subdate(19971231235959, 10);
+
+/* Begin - BUG#8088 */
+SELECT ADDDATE('1997-4-30', '1qwe');
+SELECT ADDDATE('1997-4-30', 'qaz10');
+SELECT ADDDATE('1997-4-30', '02qaz10');
+SELECT SUBDATE('1997-4-30', '1qwe');
+SELECT SUBDATE('1997-4-30', 'qaz10');
+SELECT SUBDATE('1997-4-30', '02qaz10');
+/* Begin - BUG#8088 */

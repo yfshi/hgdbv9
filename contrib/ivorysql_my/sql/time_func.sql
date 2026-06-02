@@ -724,6 +724,9 @@ select to_seconds(cast('2025-04-21 10:12:12.6999992' as datetime(6)));--63912449
 select to_seconds();--error
 select to_seconds(NULL);--NULL
 select to_seconds(1,2);--error
+/* Begin - BUG#8127 */
+SELECT TO_SECONDS('0000-01-01 00:00:00');
+/* End - BUG#8127 */
 
 --dayname
 set lc_time_names to default;
