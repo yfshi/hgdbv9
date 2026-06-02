@@ -93,6 +93,7 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 	/* set pstate->mys_load_local, will used in BeginCopyFrom() */
 	pstate->mys_load_local = stmt->mys_load_local;
 	pstate->select_into = stmt->select_into;	/* bug#z7477 */
+	pstate->is_load_data = stmt->is_load_data;	/* BUG#z7537 */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
 	/*

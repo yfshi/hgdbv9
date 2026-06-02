@@ -4175,6 +4175,7 @@ CopyStmt:	COPY BINARY qualified_name opt_column_list
 
 					n->attlist = $11;
 
+					n->is_load_data = true;	/* BUG#z7537 */
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */

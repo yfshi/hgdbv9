@@ -190,6 +190,7 @@ typedef struct CopyFromStateData
 	/* End - OA-REQ-1488, OA-REQ-1541 */
 
 	bool    mys_load_local;	/* ReqID:SRS-MYSQL-SQL-LOADDATA */
+	bool	is_load_data;	/* BUG#z7537 */
 
 } CopyFromStateData;
 

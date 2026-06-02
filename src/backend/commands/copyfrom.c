@@ -1733,6 +1733,12 @@ BeginCopyFrom(ParseState *pstate,
 	{
 		pipe = pstate->mys_load_local;
 	}
+	/* Begin - BUG#z7537 */
+	if (compatible_mode == MYS_MODE && pstate)
+	{
+		cstate->is_load_data = pstate->is_load_data;
+	}
+	/* End - BUG#z7537 */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADATA */
 
 	/* Process the target relation */

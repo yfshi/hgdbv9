@@ -76,6 +76,16 @@ select * from test_7540;
 drop table test_7540;
 reset sql_mode;
 
+---- bug#z7537
+create table test_7537(id int primary key auto_increment, name varchar(50) not null, city varchar(100), create_time date);
+LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_7537_1.csv' INTO TABLE test_7537 FIELDS TERMINATED BY ',' ENCLOSED BY E'\'' ESCAPED BY '"';
+select * from test_7537;
+delete from test_7537;
+LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_7537_2.csv' INTO TABLE test_7537 FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"';
+select * from test_7537;
+delete from test_7537;
+drop table test_7537;
+
 -- clean up
 \c contrib_regression
 drop database gbk_copy;
