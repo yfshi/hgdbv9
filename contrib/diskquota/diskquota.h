@@ -154,6 +154,7 @@ extern int64 get_current_usage_bytes(Oid targetoid, QuotaType type);
 extern void reconcile_min_quota_reserve_files(void);
 extern void clear_min_quota_reserve_files(void);
 extern void resize_min_quota_reserve_file(QuotaType type, Oid targetoid, int64 target_bytes);
+extern int64 get_min_quota_reserve_file_size(QuotaType type, Oid targetoid); /* BUG#Z8153 */
 
 extern void update_shared_quota_state(Oid targetoid, int64 quota_limit_mb, QuotaType type);
 extern void refresh_relation_quota_state(Oid relid);

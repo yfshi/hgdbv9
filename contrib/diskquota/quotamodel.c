@@ -15,6 +15,7 @@
 
 #include <unistd.h>
 #include <fcntl.h>
+#include <sys/stat.h> /* BUG#Z8153 */
 
 #include "access/heapam.h"
 #include "access/htup_details.h"
@@ -1182,6 +1183,33 @@ clear_min_quota_reserve_files(void)
 	FreeDir(d);
 	pfree(dir);
 }
+
+/* Begin - BUG#Z8153 */
+int64
+get_min_quota_reserve_file_size(QuotaType type, Oid targetoid)
+{
+	char *dir = get_min_quota_reserve_dir();
+	char path[MAXPGPATH];
+	struct stat st;
+	int64 size = 0;
+
+	snprintf(path, sizeof(path), "%s/%s_%u_%u.reserve",
+			 dir,
+			 type == NAMESPACE_QUOTA ? "nsp" : "rol",
+			 MyDatabaseId,
+			 targetoid);
+
+	if (stat(path, &st) == 0)
+		size = st.st_size;
+	else if (errno != ENOENT)
+		ereport(ERROR,
+				(errcode_for_file_access(),
+				 errmsg("could not stat reserve file \"%s\": %m", path)));
+
+	pfree(dir);
+	return size;
+}
+/* End - BUG#Z8153 */
 
 /*
  * Given table oid, search for namespace and owner.
