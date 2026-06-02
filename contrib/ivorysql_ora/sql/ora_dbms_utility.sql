@@ -1158,3 +1158,38 @@ CALL DBMS_UTILITY.ANALYZE_PART_OBJECT('TEST_SCH_1', 'TEST_part_1');
 
 DROP SCHEMA test_SCH_1 CASCADE;
 DROP SCHEMA "test_SCH" CASCADE;
+
+
+-- ==============================================================
+-- ANALYZE_SCHEMA
+-- ==============================================================
+CREATE USER system WITH superuser;
+CREATE USER enrol11 superuser;
+\c - enrol11
+SET ivorysql.identifier_case_switch TO interchange;
+
+CREATE SCHEMA test_sch_1;
+CREATE SCHEMA "test_SCH";
+CREATE TABLE "test_SCH".test_tb(id int, name text);
+CREATE TABLE "test_SCH"."TEST_tb_1"(id int, name text);
+
+CREATE TABLE test_sch_1.test_tb(id int, name text);
+CREATE TABLE test_sch_1."TEST_tb_1"(id int, name text);
+
+CALL DBMS_UTILITY.ANALYZE_SCHEMA('TEST_SCH_1');
+CALL DBMS_UTILITY.ANALYZE_SCHEMA('test_SCH');
+
+DROP SCHEMA test_sch_1 CASCADE;
+DROP SCHEMA "test_SCH" CASCADE;
+
+\c - system
+drop user enrol11;
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+
+DROP USER system;
