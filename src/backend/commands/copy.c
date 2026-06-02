@@ -501,6 +501,34 @@ ProcessCopyOptions(ParseState *pstate,
 						 parser_errposition(pstate, defel->location)));
 			opts_out->quote = defGetString(defel);
 		}
+		/* Begin - BUG#z7476 */
+		else if (strcmp(defel->defname, "op_enclosed_by_quote") == 0)
+		{
+			if (opts_out->quote)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			opts_out->quote = defGetString(defel);
+		}
+		else if (strcmp(defel->defname, "enclosed_by_quote") == 0)
+		{
+			if (opts_out->quote)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			opts_out->quote = defGetString(defel);
+
+			if (opts_out->force_quote || opts_out->force_quote_all)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			if (!is_from)
+				opts_out->force_quote_all = true;
+		}
+		/* End - BUG#z7476 */
 		else if (strcmp(defel->defname, "escape") == 0)
 		{
 			if (opts_out->escape)

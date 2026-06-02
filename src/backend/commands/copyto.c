@@ -23,6 +23,7 @@
 #include "access/tableam.h"
 #include "access/xact.h"
 #include "access/xlog.h"
+#include "catalog/pg_type.h"	/* BUG#z7476 */
 #include "commands/copy.h"
 #include "commands/progress.h"
 #include "executor/execdesc.h"
@@ -97,6 +98,8 @@ typedef struct CopyToStateData
 	FmgrInfo   *out_functions;	/* lookup info for output functions */
 	MemoryContext rowcontext;	/* per-row evaluation context */
 	uint64		bytes_processed;	/* number of bytes processed so far */
+
+	bool	is_selectinto_outfile;		/* BUG#z7476 */
 
 } CopyToStateData;
 
@@ -416,6 +419,11 @@ BeginCopyTo(ParseState *pstate,
 
 	/* Extract options from the statement node tree */
 	ProcessCopyOptions(pstate, &cstate->opts, false /* is_from */ , options);
+
+	/* Begin - BUG#z7476 */
+	if (compatible_mode == MYS_MODE && pstate->select_into)
+		cstate->is_selectinto_outfile = true;
+	/* End - BUG#z7476 */
 
 	/* Process the source/target relation or query */
 	if (rel)
@@ -828,6 +836,22 @@ DoCopyTo(CopyToState cstate)
 							  &out_func_oid,
 							  &isvarlena);
 		fmgr_info(out_func_oid, &cstate->out_functions[attnum - 1]);
+
+		/* Begin - BUG#z7476 */
+		if (compatible_mode == MYS_MODE && cstate->opts.csv_mode && cstate->is_selectinto_outfile)
+		{
+			char	typcategory;
+			bool	typispreferred;
+
+			get_type_category_preferred(attr->atttypid,
+									&typcategory,
+									&typispreferred);
+
+			if (typcategory != TYPCATEGORY_NUMERIC && typcategory != TYPCATEGORY_BOOLEAN)
+				cstate->opts.force_quote_flags[attnum - 1] = true;
+
+		}
+		/* End - BUG#z7476 */
 	}
 
 	/*
