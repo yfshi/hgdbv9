@@ -94,7 +94,6 @@ main(int argc, char **argv)
 	Ivyconn    *conn1;
 	IvyPreparedStatement *stmt1;
 	IvyBindOutInfo bindinfos[3];
-	Ivyresult  *res;
 
 	char conninfo[100]="user=system dbname=template1 port="; /* BUG#M0000075: When the license is enabled, the default library is changed from postgres to highgo. */
 	const char *oraport = argv[1];
@@ -117,15 +116,6 @@ main(int argc, char **argv)
 		exit_nicely(conn1);
 	}
 	init_data(conn1);
-	/* set guc vorysql.result_first to false */
-	res = Ivyexec(conn1, "set ivorysql.result_first = false;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "set guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely(conn1);
-	}
-	Ivyclear(res);
 
 	stmt1 = init_statement();
 	/* init bindinfos */
@@ -136,6 +126,7 @@ main(int argc, char **argv)
 	bindinfos[0].var = first_parameter;
 	bindinfos[0].indp = NULL;
 	bindinfos[0].val_size = 256;
+	bindinfos[0].ivy_mode = argmode_out; /* bug#00008129 */
 
 	/* second out parameter */
 	bindinfos[1].next = &bindinfos[2];
@@ -144,6 +135,7 @@ main(int argc, char **argv)
 	bindinfos[1].var = second_parameter;
 	bindinfos[1].indp = NULL;
 	bindinfos[1].val_size = 256;
+	bindinfos[1].ivy_mode = argmode_out; /* bug#00008129 */
 
 	/* third out parameter */
 	bindinfos[2].next = NULL;
@@ -152,6 +144,7 @@ main(int argc, char **argv)
 	bindinfos[2].var = &third_parameter;
 	bindinfos[2].indp = NULL;
 	bindinfos[2].val_size = sizeof(int);
+	bindinfos[2].ivy_mode = argmode_out; /* bug#00008129 */
 
 	memset(first_parameter,0x00,256);
 	memset(second_parameter,0x00,256);
@@ -163,15 +156,6 @@ main(int argc, char **argv)
 	/* close the connection to the database and cleanup */
 	IvyFreePreparedStatement(stmt1);
 
-	/* reset guc vorysql.result_first */
-	res = Ivyexec(conn1, "reset ivorysql.result_first;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "reset guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely(conn1);
-	}
-	Ivyclear(res);
 	Ivyfinish(conn1);
 	return 0;
 }

@@ -234,7 +234,7 @@ recheck:
 		/* We have a compiled function, but is it still valid? */
 		if (function->fn_xmin == HeapTupleHeaderGetRawXmin(procTup->t_data) &&
 			ItemPointerEquals(&function->fn_tid, &procTup->t_self) &&
-			(!OidIsValid(rettypeoid) || rettypeoid == function->fn_rettype)) /* ReqID:SRS-SQL-PACKAGE */
+			(!OidIsValid(rettypeoid) || rettypeoid == function->fn_orig_rettype)) /* bug#00008129 */
 			function_valid = true;
 		else
 		{
@@ -836,6 +836,10 @@ do_compile(FunctionCallInfo fcinfo,
 			/* End - ReqID:SRS-SQL-PACKAGE */
 			else
 				rettypeid = procStruct->prorettype;
+
+			/* Begin - bug#00008129 */
+			function->fn_orig_rettype = rettypeid;
+			/* End - bug#00008129 */
 
 			/* Begin - ReqID:SRS-SQL-FUNCOUT */
 			/*Build a '_retval_' varaible for the function return value */

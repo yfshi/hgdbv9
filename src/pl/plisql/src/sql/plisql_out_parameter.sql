@@ -1653,3 +1653,6 @@ drop function test_f1;
 drop function test_f0;
 drop table test_tb;
 
+--bug#8192
+--error,shoud not change
+set ivorysql.result_first = false;

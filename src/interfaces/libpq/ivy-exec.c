@@ -45,6 +45,10 @@ static Ivylist *IvyremoveValueFromList(Ivylist *list, void *value);
 static void	IvyremoveStmtHandleRelation(IvyPreparedStatement *stmtHandle);
 static void IvyremoveConnRelation(Ivyconn *tconn);
 static void Ivyfreelist(Ivylist *list);
+/* Begin - bug#00008129 */
+static void IvySetResultFirst(Ivyconn *tconn);
+/* End - bug#00008129 */
+
 
 /* Begin - ReqID:SRS-SQL-LIBPQOUT */
 typedef enum IVY_VALUE_TYPE
@@ -164,6 +168,14 @@ Ivyconnectdb(const char *conninfo)
 
 	ivyconn->conn = conn;
 	ivyconn->IvystmtHandleList = NULL;
+	/* Begin - bug#00008129 */
+	/*
+	 * cache server ivorysql.result_first, which
+	 * decide result value position in return tuple
+	 */
+	IvySetResultFirst(ivyconn);
+	/* End - bug#00008129 */
+
 	return ivyconn;
 }
 
@@ -206,6 +218,13 @@ Ivyconnectdb2(PGconn *conn)
 
 	ivyconn->conn = conn;
 	ivyconn->IvystmtHandleList = NULL;
+	/* Begin - bug#00008129 */
+	/*
+	 * cache server ivorysql.result_first
+	 */
+	IvySetResultFirst(ivyconn);
+	/* End - bug#00008129 */
+
 	return ivyconn;
 }
 
@@ -518,7 +537,19 @@ IvyexecPreparedStatement(Ivyconn *tconn,
 	}
 	PGSemaphoreUnlock(&tconn->lock);
 
-	tresult->off = stmtHandle->noutvars;
+	/* Begin - bug#00008129 */
+	/*
+	 * assign result off for result_first
+	 * if server put the result in the first
+	 * we set off to zero, others, we should
+	 * set it to all out parameters afters
+	 */
+	if (tconn->result_first)
+		tresult->off = 0;
+	else
+		tresult->off = stmtHandle->noutvars;
+	tresult->noutparams = stmtHandle->noutvars;
+	/* End - bug#00008129 */
 
 	/* send query */
 	if (!PQsendQueryPrepared(conn, stmtHandle->stmtName, nParams, paramValues,
@@ -812,11 +843,27 @@ IvyexecPreparedStatement2(Ivyconn *tconn,
 		IvyBindOutInfo *tmp = NULL;
 
 		for (tmp = bindinfos; tmp != NULL; tmp = tmp->next)
-			noutvars++;
-		tresult->off = noutvars;
+		{
+			/* Begin - bug#00008129 */
+			if (tmp->ivy_mode != argmode_in)
+				noutvars++;
+			/* End - bug#00008129 */
+		}
+		/* Begin - bug#00008129 */
+		if (tconn->result_first)
+			tresult->off = 0;
+		else
+			tresult->off = noutvars;
+		tresult->noutparams = noutvars;
+		/* End - bug#00008129 */
 	}
 	else
+	{
 		tresult->off = 0;
+		/* Begin - bug#00008129 */
+		tresult->noutparams = 0;
+		/* End - bug#00008129 */
+	}
 
 	/* send query */
 	if (!PQsendQueryPrepared(conn, stmtHandle->stmtName, nParams, paramValues,
@@ -1042,6 +1089,9 @@ Ivyexec(Ivyconn *tconn, const char *query)
 	}
 	tresult->result =  PQexecFinish(tconn->conn);
 	tresult->off = 0;
+	/* Begin - bug#00008129 */
+	tresult->noutparams = 0;
+	/* End - bug#00008129 */
 
 	/* unlock its self lock */
 	PGSemaphoreUnlock(&tconn->self_lock);
@@ -1069,7 +1119,7 @@ Ivynfields(const Ivyresult *res)
 {
 	if (!res || !res->result)
 		return 0;
-	return res->result->numAttributes - res->off;
+	return res->result->numAttributes - res->noutparams; /* bug#00008129 */
 }
 
 /*
@@ -1353,6 +1403,9 @@ IvybindOutParameterByPosInternel(IvyPreparedStatement *stmthandle,
 	(*bindinfo)->position = position;
 	(*bindinfo)->val_size = val_size;
 	(*bindinfo)->var = var;
+	/* Begin - bug#00008129 */
+	(*bindinfo)->ivy_mode = argmode_inout;
+	/* End - bug#00008129 */
 
 	/* lock the stmt, so that we don't bind in two threads at the same time */
 	if (need_lock)
@@ -1382,6 +1435,11 @@ IvybindOutParameterByPosInternel(IvyPreparedStatement *stmthandle,
 		/* find this bind which maps to resultcolumnno */
 		for (serbind = stmthandle->outbind; serbind != NULL; prebind = serbind, serbind = serbind->next)
 		{
+			/* Begin - bug#00008129 */
+			/* ignore not out paramter */
+			if (serbind->ivy_mode == argmode_in)
+				continue;
+			/* End - bug#00008129 */
 			if (serbind->position < position)
 				resultcolumnno++;
 			else if (serbind->position > position)
@@ -1487,6 +1545,9 @@ IvyBindByPosInternel(IvyPreparedStatement *stmtHandle,
 	(*bindinfo)->maxarr_len = maxarr_len;
 	(*bindinfo)->curelep = curelep;
 	(*bindinfo)->mode = mode;
+	/* Begin - bug#00008129 */
+	(*bindinfo)->ivy_mode = argmode_in;
+	/* End - bug#00008129 */
 
 	/* lock the stmt, so that we don't bind in two threads at the same time */
 	if (need_lock)
@@ -2821,11 +2882,38 @@ IvyassignOutParameters(const Ivyresult *tres, IvyBindOutInfo *outbind)
 	{
 		IvyBindOutInfo *serbind;
 		PGresult	*res = tres->result;
+		/* Begin - bug#00008129 */
+		int		outoff = 0; /* bug#00008129 */
+
+		/*
+		 * maybe result is placed at first or end which
+		 * is decide by ivorysql.result_first, but return void
+		 * which has not return'value, so we should check
+		 * return attribute is not match the outparams
+		 */
+		if (res != NULL && res->numAttributes != tres->noutparams)
+		{
+			/*
+			 * there, result off is 0, so outoff should ignore
+			 * result off
+			 */
+			if (tres->off == 0)
+				outoff = 1;
+		}
+		/* End - bug#00008129 */
 
 		for (serbind = outbind; serbind != NULL; serbind = serbind->next)
 		{
+			/* Begin - bug#00008129 */
+			int out_filednum = serbind->resultcolumnno + outoff;
+
+			/* ignore not out paramter */
+			if (serbind->ivy_mode == argmode_in)
+				continue;
+			/* End - bug#00008129 */
+
 			/* position is not right */
-			if (!check_field_number(res, serbind->resultcolumnno))
+			if (!check_field_number(res, out_filednum)) /* bug#00008129 */
 			{
 				if (serbind->indp != NULL)
 					*(serbind->indp) = -1;
@@ -2834,7 +2922,7 @@ IvyassignOutParameters(const Ivyresult *tres, IvyBindOutInfo *outbind)
 			{
 				struct pgresAttValue *attrvalue;
 
-				attrvalue = &res->tuples[0][serbind->resultcolumnno];
+				attrvalue = &res->tuples[0][out_filednum]; /* bug#00008129 */
 				if (attrvalue->len > 0 && attrvalue->len > serbind->val_size)
 				{
 					unsigned int diff = attrvalue->len - serbind->val_size;
@@ -3127,6 +3215,48 @@ Ivyfreelist(Ivylist *list)
 	}
 	return;
 }
+
+/* Begin - bug#00008129 */
+/*
+ * get ivorysql.result_first from server
+ */
+static void
+IvySetResultFirst(Ivyconn *tconn)
+{
+	Ivyresult *res;
+	char *value;
+
+	if (tconn == NULL)
+		return;
+
+	/* default value */
+	tconn->result_first = true;
+
+	res = Ivyexec(tconn, "show ivorysql.result_first;");
+
+	if (IvyresultStatus(res) != PGRES_TUPLES_OK)
+	{
+		if (res != NULL)
+			Ivyclear(res);
+		return;
+	}
+	value = Ivygetvalue(res, 0, 0);
+
+	if (value == NULL)
+	{
+		Ivyclear(res);
+		return;
+	}
+	if (strcmp(value, "true") == 0 || strcmp(value, "on") == 0)
+		tconn->result_first = true;
+	else
+		tconn->result_first = false;
+	Ivyclear(res);
+
+	return;
+}
+/* End - bug#00008129 */
+
 
 /*
  * like IvyassignOutParameters, but we assign by _column_%d
