@@ -970,3 +970,11 @@ FROM dual;  -- ABC
 SELECT sys.empty_clob IS NULL AS result FROM DUAL;
 SELECT sys.empty_blob IS NULL AS result FROM DUAL;
 /* End - ReqID: OA-2348 */
+
+/* Begin - OA-REQ-2348 */
+select regexp_substr('barbcr', '(b[^b]+)') from dual;	-- bar
+select regexp_substr('barbcr', '(b[^b]+)', 1.9) from dual;	-- bar
+select regexp_substr('barbcr', '(b[^b]+)', 2.9, 1.9) from dual;	-- bcr
+select regexp_substr('barbcr', '(b[^b]+)', 2.9, 1.9, 'i') from dual;	-- bcr
+select regexp_substr('barbcr', '(b[^b]+)', 2.9, 1.9, 'i', 1.9) from dual;	-- bcr
+/* End - OA-REQ-2348 */

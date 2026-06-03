@@ -526,15 +526,20 @@ ora_regexp_substr(PG_FUNCTION_ARGS)
 	 		pattern_arg = PG_GETARG_TEXT_PP(1);	
 	}
 
-	if (PG_NARGS() >= 3 )
+	if (PG_NARGS() >= 3)
 	{	
-		if(!PG_ARGISNULL(2))
-		{	
-			start_posn = PG_GETARG_INT32(2);
-			if(start_posn <= 0)
+		if (!PG_ARGISNULL(2))
+		{
+			/* Begin - OA-REQ-2348 */
+			Numeric	floor_num = DatumGetNumeric(DirectFunctionCall1(numeric_floor,
+												 NumericGetDatum(PG_GETARG_NUMERIC(2))));
+			start_posn = numeric_int4_opt_error(floor_num, NULL);
+
+			if (start_posn <= 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					errmsg("argument '%d' is out of range",start_posn)));
+					 errmsg("argument '%d' is out of range", start_posn)));
+			/* End - OA-REQ-2348 */
 		}
 		/*
 		 *the third parameter  is empty
@@ -546,13 +551,18 @@ ora_regexp_substr(PG_FUNCTION_ARGS)
 	
 	if (PG_NARGS() >= 4)
 	{	
-		if(!PG_ARGISNULL(3))
+		if (!PG_ARGISNULL(3))
 		{
-			occur_posn = PG_GETARG_INT32(3);
-			if(occur_posn <= 0)
+			/* Begin - OA-REQ-2348 */
+			Numeric	floor_num = DatumGetNumeric(DirectFunctionCall1(numeric_floor,
+												 NumericGetDatum(PG_GETARG_NUMERIC(3))));
+			occur_posn = numeric_int4_opt_error(floor_num, NULL);
+
+			if (occur_posn <= 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					errmsg("argument '%d' is out of range",occur_posn)));
+					 errmsg("argument '%d' is out of range", occur_posn)));
+			/* End - OA-REQ-2348 */
 		}	
 		/*
 		 *the forth parameter  is empty
@@ -579,12 +589,17 @@ ora_regexp_substr(PG_FUNCTION_ARGS)
 	{
 		if (!PG_ARGISNULL(5))
 		{
-			subexpr_pos = PG_GETARG_INT32(5);
-			if(subexpr_pos < 0)
+			/* Begin - OA-REQ-2348 */
+			Numeric	floor_num = DatumGetNumeric(DirectFunctionCall1(numeric_floor,
+												 NumericGetDatum(PG_GETARG_NUMERIC(5))));
+			subexpr_pos = numeric_int4_opt_error(floor_num, NULL);
+
+			if (subexpr_pos < 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					errmsg("argument '%d' is out of range", subexpr_pos)));
-			else if(subexpr_pos > 9)
+					 errmsg("argument '%d' is out of range", subexpr_pos)));
+			/* End - OA-REQ-2348 */
+			else if (subexpr_pos > 9)
 				PG_RETURN_NULL();			
 		}
 		else
@@ -595,7 +610,7 @@ ora_regexp_substr(PG_FUNCTION_ARGS)
 						match_para,PG_GET_COLLATION(),
 						start_posn, occur_posn,
 						subexpr_pos,&substr );
-	if(find_subpattern == true)
+	if (find_subpattern == true)
 		return substr;
 	else
 		PG_RETURN_NULL();
