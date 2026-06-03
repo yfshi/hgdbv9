@@ -855,11 +855,7 @@ SynnameGetPkgoid_recursive(const char *synname, Oid nspkg, List **synoids)
 			}
 			else
 				pkgoid = SynnameGetPkgoid_recursive(obj_name, objnspoid, synoids);
-				
-			if (!OidIsValid(pkgoid))
-					ereport(ERROR,
-							(errcode(ERRCODE_UNDEFINED_OBJECT),
-					 		errmsg("synonym translation is no longer valid")));
+
 			pfree(objnsp);
 			pfree(obj_name);
 			list_free(tmp);
