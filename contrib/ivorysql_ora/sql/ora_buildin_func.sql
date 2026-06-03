@@ -969,4 +969,196 @@ FROM dual;  -- ABC
 /* Begin - ReqID: OA-2348 */
 SELECT sys.empty_clob IS NULL AS result FROM DUAL;
 SELECT sys.empty_blob IS NULL AS result FROM DUAL;
+
+--
+-- test TRANSLATE function, TRANSLATE(expr, from_string, to_string)
+--
+----test expr
+SELECT TRANSLATE('Hello 123 World', '0123456789', '') FROM DUAL;
+SELECT TRANSLATE('Hello 123 World', '0123456789', NULL) FROM DUAL;
+SELECT TRANSLATE('Hello 123 World', '0123456789', ' ') FROM DUAL;
+SELECT TRANSLATE('Hello 123 World', 'z0123456789', 'z') FROM DUAL;
+SELECT TRANSLATE('abc123', 'abc123', 'xyzabc') FROM DUAL;
+SELECT TRANSLATE('Hello 123 World', 'HlHl', 'hL') FROM DUAL;
+SELECT TRANSLATE('SQL*Plus User''s Guide', ' */''', '___') FROM DUAL;
+SELECT TRANSLATE(12345, '12', 'hL') FROM DUAL;
+SELECT TRANSLATE('12345'::number, '12', 'hL') FROM DUAL;
+SELECT TRANSLATE(to_date('2026-6-2', 'YYYY-MM-DD'), '26', '62') FROM DUAL;
+SELECT TRANSLATE(to_char(123456789), '123', 'AB') FROM DUAL;
+SELECT TRANSLATE(timestamp'1949-1-1 12:34:56', '19', '26') FROM DUAL;
+
+CREATE TABLE t1(id int, val number(38,10));
+INSERT INTO t1 VALUES (TRANSLATE(123456789::int, '123', '321'), TRANSLATE('16397.038491'::number(38,10), '391', '139'));
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(id number);
+INSERT INTO t1 VALUES (4.87);
+UPDATE t1 SET id = TRANSLATE(id, '478',  '874');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(id binary_float);
+INSERT INTO t1 VALUES ('1.2345678901234e-20');
+UPDATE t1 SET id = TRANSLATE(id, '123', '321');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+
+CREATE TABLE t1(id binary_double);
+INSERT INTO t1 VALUES ('1.2345678901234e-20');
+UPDATE t1 SET id = TRANSLATE(id, '123', '321');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name varchar2(20));
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name varchar2(20 byte));
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name char(32 byte));
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name char(32 char));
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name nchar(20));
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name nvarchar2(20));
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name CLOB);
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(name NCLOB);
+INSERT INTO t1 VALUES('Hello 123 World');
+UPDATE t1 SET name = TRANSLATE(name, 'z0123456789', 'z');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(id interval year(4) to month);
+INSERT INTO t1 VALUES(interval'29-10' year to month);
+UPDATE t1 SET id = TRANSLATE(id, '29', '13');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(id interval day(4) to second(6));
+INSERT INTO t1 VALUES(interval '1 11:11:11' day(4) to second(6));
+UPDATE t1 SET id = TRANSLATE(id, '11', '12');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(id DATE);
+INSERT INTO t1 VALUES(TRANSLATE(TO_DATE('2026-6-2', 'YYYY-MM-DD'), '16', '62'));
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1(id TIMESTAMP);
+INSERT INTO t1 VALUES(TRANSLATE(TIMESTAMP'2015-9-12 13:20:45.1201111', '2', '1'));
+SELECT * FROM t1;
+DROP TABLE t1;
+
+CREATE TABLE t1 (data LONG);
+INSERT INTO t1 VALUES ('HELLO-LONG-TEXT');
+UPDATE t1 SET data = TRANSLATE(data, 'LONG', 'long');
+SELECT * FROM t1;
+DROP TABLE t1;
+
+----test from_string and to_string
+SELECT
+    TRANSLATE('HELLO-WORLD', 'EO', 'eo') AS case1_char_expr,
+    TRANSLATE(CAST('HELLO-WORLD' AS CHAR(30)), 'EO', 'eo') AS case1_char_param1,
+    TRANSLATE('HELLO-WORLD', CAST('EO' AS CHAR(10)), 'eo') AS case1_char_param2,
+    TRANSLATE('HELLO-WORLD', 'EO', CAST('eo' AS CHAR(10))) AS case1_char_param3
+FROM DUAL;
+
+SELECT
+    TRANSLATE('HELLO-WORLD', 'EO', 'eo') AS case2_varchar2_expr,
+    TRANSLATE(CAST('HELLO-WORLD' AS VARCHAR2(30)), 'EO', 'eo') AS case2_varchar2_param1,
+    TRANSLATE('HELLO-WORLD', CAST('EO' AS VARCHAR2(10)), 'eo') AS case2_varchar2_param2,
+    TRANSLATE('HELLO-WORLD', 'EO', CAST('eo' AS VARCHAR2(10))) AS case2_varchar2_param3
+FROM DUAL;
+
+SELECT
+    TRANSLATE('HELLO-WORLD', 'EO', 'eo') AS case3_nchar_expr,
+    TRANSLATE(CAST('HELLO-WORLD' AS NCHAR(30)), 'EO', 'eo') AS case3_nchar_param1,
+    TRANSLATE('HELLO-WORLD', CAST('EO' AS NCHAR(10)), 'eo') AS case3_nchar_param2,
+    TRANSLATE('HELLO-WORLD', 'EO', CAST('eo' AS NCHAR(10))) AS case3_nchar_param3
+FROM DUAL;
+
+SELECT
+    TRANSLATE('HELLO-WORLD', 'EO', 'eo') AS case4_nvarchar2_expr,
+    TRANSLATE(CAST('HELLO-WORLD' AS NVARCHAR2(30)), 'EO', 'eo') AS case4_nvarchar2_param1,
+    TRANSLATE('HELLO-WORLD', CAST('EO' AS NVARCHAR2(10)), 'eo') AS case4_nvarchar2_param2,
+    TRANSLATE('HELLO-WORLD', 'EO', CAST('eo' AS NVARCHAR2(10))) AS case4_nvarchar2_param3
+FROM DUAL;
+
+SELECT
+    TRANSLATE(123456789, '456', 'ABC') AS case5_number_expr,
+    TRANSLATE(123456789, CAST(456 AS NUMBER), 'ABC') AS case5_number_param2
+FROM DUAL;
+
+SELECT
+    TRANSLATE(1.23e1F, '1e', 'Xy') AS case6_bfloat_expr,
+    TRANSLATE(1.23e1F, CAST(1.23e1F AS BINARY_FLOAT), 'Xy') AS case6_bfloat_param2
+FROM DUAL;
+
+SELECT
+    TRANSLATE(4.56e2F, '4e', 'Zz') AS case7_bdouble_expr,
+    TRANSLATE(4.56e2F, CAST(4.56e2F AS BINARY_DOUBLE), 'Zz') AS case7_bdouble_param2
+FROM DUAL;
+
+SELECT
+    TRANSLATE('2026-6-2-2026-6-2', TO_DATE('2026-6-2', 'YYYY-MM-DD'), TO_DATE('1012-2-6', 'YYYY-MM-DD')) AS case8_date_param2
+FROM DUAL;
+
+SELECT
+    TRANSLATE('2015-9-20 13:20:45', TO_TIMESTAMP('2015-9-20 13:20:45', 'YYYY-MM-DD HH24:MI:SS.FF6'),
+	TO_TIMESTAMP('1025-9-10', 'YYYY-MM-DD HH24:MI:SS.FF6')) AS case9_timestamp_param2
+FROM DUAL;
+
+SELECT
+	 TRANSLATE('1 01:02:03, 1 01:02:03', INTERVAL '1 01:02:03' DAY TO SECOND, INTERVAL '9 23:22:23' DAY TO SECOND)
+FROM DUAL;
+
+SELECT
+    TRANSLATE(TO_CLOB('HELLO-CLOB-WORLD'), 'CLO', 'clo') AS case11_clob_expr,
+    TRANSLATE(TO_CLOB('HELLO-CLOB-WORLD'), CAST('CLO' AS CLOB), 'clo') AS case11_clob_param2,
+    TRANSLATE(TO_CLOB('HELLO-CLOB-WORLD'), 'CLO', CAST('clo' AS CLOB)) AS case11_clob_param3
+FROM DUAL;
+
+SELECT
+    TRANSLATE(CAST('HELLO-NCLOB-WORLD' AS NCLOB), 'NCLO', 'nclo') AS case12_nclob_expr,
+    TRANSLATE(CAST('HELLO-NCLOB-WORLD' AS NCLOB), CAST('NCLO' AS NCLOB), 'nclo') AS case12_nclob_param2,
+    TRANSLATE(CAST('HELLO-NCLOB-WORLD' AS NCLOB), 'NCLO', CAST('nclo' AS NCLOB)) AS case12_nclob_param3
+FROM DUAL;
+
+SELECT
+    TRANSLATE(CAST('HELLO-LONG-WORLD' AS long), 'LONG', 'long') AS case13_long_expr,
+    TRANSLATE(CAST('HELLO-LONG-WORLD' AS long), CAST('LONG' AS long), 'long') AS case13_long_param2,
+    TRANSLATE(CAST('HELLO-LONG-WORLD' AS long), 'LONG', CAST('long' AS long)) AS case13_long_param3
+FROM DUAL;
 /* End - ReqID: OA-2348 */
