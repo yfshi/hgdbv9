@@ -4677,6 +4677,39 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 		estate->rettype = VOIDOID;
 	}
 
+	/* Begin - BUG#Z8111 */
+	/*
+	 * ORA compatible row trigger use RETURN without an expression to exit
+	 * the trigger body, while the row operation continues. trigger functions
+	 * must return the row for BEFORE row triggers, so map the bare RETURN
+	 * to the current NEW/OLD record.
+	 */
+	if (estate->trigdata != NULL &&
+		estate->func->fn_is_trigger == PLISQL_DML_TRIGGER &&
+		TRIGGER_FIRED_FOR_ROW(estate->trigdata->tg_event))
+	{
+		PLiSQL_datum	*retval	= NULL;
+
+		if (TRIGGER_FIRED_BY_INSERT(estate->trigdata->tg_event) ||
+			TRIGGER_FIRED_BY_UPDATE(estate->trigdata->tg_event))
+			retval = estate->datums[estate->func->new_varno];
+		else if (TRIGGER_FIRED_BY_DELETE(estate->trigdata->tg_event))
+			retval = estate->datums[estate->func->old_varno];
+
+		if (retval != NULL)
+		{
+			PLiSQL_rec 	*rec = (PLiSQL_rec *) retval;
+
+			if (rec->erh && !ExpandedRecordIsEmpty(rec->erh))
+			{
+				estate->retval = ExpandedRecordGetDatum(rec->erh);
+				estate->retisnull = false;
+				estate->rettype = rec->rectypeid;
+			}
+		}
+	}
+	/* End - BUG#Z8111 */
+
 	return PLISQL_RC_RETURN;
 }
 

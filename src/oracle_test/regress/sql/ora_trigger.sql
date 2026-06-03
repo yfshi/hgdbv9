@@ -1382,3 +1382,54 @@ DROP VIEW emp_v_7657;
 DROP TABLE emp_logs_7657;
 DROP TABLE emp_7657;
 /* End - BUG#7657 */
+
+/* Begin - BUG#Z8111 / OA-REQ-2395 */
+CREATE TABLE m_dangan(chushengriqi date);
+
+CREATE TRIGGER trg_m_dangan_csrq_ins_upd
+BEFORE INSERT OR UPDATE ON public.m_dangan
+FOR EACH ROW ENABLE
+DECLARE
+  pri_csrq date;
+BEGIN
+ IF lengthb(:new.chushengriqi) = 8 THEN
+   BEGIN
+     pri_csrq := to_date(:new.chushengriqi,'yyyy-mm-dd');
+   EXCEPTION
+      WHEN OTHERS THEN
+      BEGIN
+       raise_application_error(-20003,'The date of birth format is incorrect. ');
+	     END;
+   END;
+   IF pri_csrq > SYSDATE THEN
+     raise_application_error(-20001,'The date of birth cannot be later than the current date. ');
+     RETURN;
+   END IF;
+ ELSE
+   raise_application_error(-20002,'Date of birth length is invalid. ');
+   RETURN;
+ END IF;
+END TRG_M_DANGAN_CSRQ_INS_UPD;
+/
+
+CREATE TABLE t8111(id INT);
+
+CREATE OR REPLACE TRIGGER trg_f_8111
+BEFORE INSERT OR UPDATE ON t8111
+FOR EACH ROW ENABLE
+DECLARE
+BEGIN
+  RETURN;
+END;
+/
+
+INSERT INTO t8111 VALUES(100);
+
+SELECT * FROM t8111;
+
+--cleanup
+DROP TRIGGER trg_m_dangan_csrq_ins_upd;
+DROP TABLE m_dangan;
+DROP TRIGGER trg_f_8111;
+DROP TABLE t8111;
+/* End - BUG#Z8111 / OA-REQ-2395 */

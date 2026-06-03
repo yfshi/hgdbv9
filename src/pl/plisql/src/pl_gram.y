@@ -152,6 +152,9 @@ static	PLiSQL_type	*parse_datatype(const char *string, int location);
 static	void			 check_labels(const char *start_label,
 									  const char *end_label,
 									  int end_location);
+/* Begin - OA-REQ-2395 */
+static bool ora_trigger_end_label_compat(const char *start_label, const char *end_label);
+/* End - OA-REQ-2395 */
 static	PLiSQL_expr	*read_cursor_args(PLiSQL_var *cursor,
 										  int until,
 										  int *outdno); /* ReqID:SRS-PLSQL-CURSOR */
@@ -5358,7 +5361,7 @@ read_sql_construct(int until,
 		*endtoken = tok;
 
 	/* give helpful complaint about empty input */
-	if (startlocation >= yylloc && !hascollect && !has_curAttr) /* ReqID:SRS-PLSQL-CURSOR */
+	if (startlocation >= yylloc)
 	{
 		if (isexpression)
 			yyerror("missing expression");
@@ -6203,8 +6206,21 @@ make_return_stmt(int location)
 			 * Note that a well-formed expression is _required_ here;
 			 * anything else is a compile-time error.
 			 */
-			plisql_push_back_token(tok);
-			new->expr = read_sql_expression(';', ";");
+			/* Begin - BUG#Z8111 */
+			if ((plisql_curr_compile->fn_is_trigger == PLISQL_DML_TRIGGER) && tok == ';')
+			{
+				/*
+				 * For ORA compatible trigger, RETURN without an expression
+				 * exists the trigger body. The executor function exec_stmt_return will
+				 * maps it to OLD/NEW as appropriate for row-level triggers.
+				 */
+			}
+			else
+			{
+			/* End - BUG#Z8111 */
+				plisql_push_back_token(tok);
+				new->expr = read_sql_expression(';', ";");
+			}
 		}
 	}
 
@@ -6944,13 +6960,76 @@ check_labels(const char *start_label, const char *end_label, int end_location)
 					 parser_errposition(end_location)));
 
 		if (strcmp(start_label, end_label) != 0)
+		{
+			/* Begin - OA-REQ-2395 */
+			/*
+			 * For ORA compatible CREATE TRIGGER, the generated function name is
+			 * usually "<tigger_name>_<table_name>_func[_N]". Oracle allows END <trigger_name>
+			 */
+			if (plisql_curr_compile->fn_is_trigger == PLISQL_DML_TRIGGER &&
+				ora_trigger_end_label_compat(start_label, end_label))
+				return;
+			/* End - OA-REQ-2395 */
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
 					 errmsg("end identifier '%s' must match '%s'",	/* BUG#7364 */
 							end_label, start_label),
 					 parser_errposition(end_location)));
+		}
 	}
 }
+
+/* Begin - OA-REQ-2395 */
+static bool
+ora_trigger_end_label_compat(const char *start_label, const char *end_label)
+{
+	size_t	elen;
+	size_t	slen;
+	char	*func_pos = NULL;
+
+	if (start_label == NULL || end_label == NULL)
+		return false;
+
+	elen = strlen(end_label);
+	slen = strlen(start_label);
+
+	if (slen <= elen + 1)
+		return false;
+
+	/*
+	 * Expected generated pattern:
+	 *	<end_label>_<table_name>_func
+	 *	<end_label>_<table_name>_func_<N>
+	 */
+	if (pg_strncasecmp(start_label, end_label, elen) != 0 || start_label[elen] != '_')
+		return false;
+
+	func_pos = strstr(start_label + elen + 1, "_func");
+	if (func_pos == NULL)
+		return false;
+
+	if (func_pos[5] == '\0')
+		return true;
+
+	if (func_pos[5] == '_')
+	{
+		const char *p = func_pos + 6;
+
+		if (*p == '\0')
+			return false;
+
+		while (*p)
+		{
+			if (!isdigit((unsigned char)*p))
+				return false;
+			p++;
+		}
+		return true;
+	}
+
+	return false;
+}
+/* End - OA-REQ-2395 */
 
 /*
  * Read the arguments (if any) for a cursor, followed by the until token
