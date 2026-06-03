@@ -461,6 +461,7 @@ typedef struct FuncCall
 	/* Begin - BUG#M0000376 */
 	List		*rawargs;		/* the arguments (list of exprs), not ne transformed */
 	/* End - BUG#M0000376 */
+	int			ignore_nulls;	/* ignore nulls for window function */ /* OA-REQ-2348 */
 } FuncCall;
 
 /*

@@ -11741,7 +11741,12 @@ get_windowfunc_expr(WindowFunc *wfunc, deparse_context *context)
 		get_rule_expr((Node *) wfunc->aggfilter, context, false);
 	}
 
-	appendStringInfoString(buf, ") OVER ");
+	/* Begin - OA-REQ-2348 */
+	appendStringInfoString(buf, ") ");
+	if (wfunc->ignore_nulls == PARSER_IGNORE_NULLS)
+		appendStringInfoString(buf, "IGNORE NULLS ");
+	appendStringInfoString(buf, "OVER ");
+	/* End - OA-REQ-2348 */
 
 	foreach(l, context->windowClause)
 	{

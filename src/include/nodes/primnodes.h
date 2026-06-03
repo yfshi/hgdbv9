@@ -458,6 +458,18 @@ typedef struct GroupingFunc
 /*
  * WindowFunc
  */
+/* Begin - OA-REQ-2348 */
+/*
+ * Null Treatment options. If specified, initially set to PARSER_IGNORE_NULLS
+ * which is then converted to IGNORE_NULLS if the window function allows the
+ * null treatment clause.
+ */
+#define NO_NULLTREATMENT 0
+#define PARSER_IGNORE_NULLS 1
+#define PARSER_RESPECT_NULLS 2
+#define IGNORE_NULLS 3
+/* End - OA-REQ-2348 */
+
 typedef struct WindowFunc
 {
 	Expr		xpr;
@@ -470,6 +482,7 @@ typedef struct WindowFunc
 	Index		winref;			/* index of associated WindowClause */
 	bool		winstar;		/* true if argument list was really '*' */
 	bool		winagg;			/* is function a simple aggregate? */
+	int			ignore_nulls;	/* ignore nulls. One of the Null Treatment options */ /* OA-REQ-2348 */
 	int			location;		/* token location, or -1 if unknown */
 } WindowFunc;
 

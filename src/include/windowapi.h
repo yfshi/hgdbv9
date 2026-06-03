@@ -27,6 +27,7 @@
  */
 #ifndef WINDOWAPI_H
 #define WINDOWAPI_H
+#include "fmgr.h"	/* OA-REQ-2348 */
 
 /* values of "seektype" */
 #define WINDOW_SEEK_CURRENT 0
@@ -40,6 +41,12 @@ typedef struct WindowObjectData *WindowObject;
 
 #define WindowObjectIsValid(winobj) \
 	((winobj) != NULL && IsA(winobj, WindowObjectData))
+
+/* Begin - OA-REQ-2348 */
+extern void WinCheckAndInitializeNullTreatment(WindowObject winobj,
+											   bool allowNullTreatment,
+											   FunctionCallInfo fcinfo);
+/* End - OA-REQ-2348 */
 
 extern void *WinGetPartitionLocalMemory(WindowObject winobj, Size sz);
 

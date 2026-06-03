@@ -329,6 +329,7 @@ _equalWindowFunc(const WindowFunc *a, const WindowFunc *b)
 	COMPARE_SCALAR_FIELD(winref);
 	COMPARE_SCALAR_FIELD(winstar);
 	COMPARE_SCALAR_FIELD(winagg);
+	COMPARE_SCALAR_FIELD(ignore_nulls); /* OA-REQ-2348 */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
@@ -2982,6 +2983,7 @@ _equalFuncCall(const FuncCall *a, const FuncCall *b)
 	COMPARE_COERCIONFORM_FIELD(funcformat);
 	COMPARE_LOCATION_FIELD(location);
 	COMPARE_NODE_FIELD(rawargs);	/* BUG#M0000376 */
+	COMPARE_SCALAR_FIELD(ignore_nulls); /* OA-REQ-2348 */
 
 	return true;
 }

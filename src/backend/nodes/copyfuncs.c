@@ -1692,6 +1692,7 @@ _copyWindowFunc(const WindowFunc *from)
 	COPY_SCALAR_FIELD(winref);
 	COPY_SCALAR_FIELD(winstar);
 	COPY_SCALAR_FIELD(winagg);
+	COPY_SCALAR_FIELD(ignore_nulls); /* OA-REQ-2348 */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -3058,6 +3059,7 @@ _copyFuncCall(const FuncCall *from)
 	COPY_SCALAR_FIELD(funcformat);
 	COPY_LOCATION_FIELD(location);
 	COPY_NODE_FIELD(rawargs);	/* BUG#M0000376 */
+	COPY_SCALAR_FIELD(ignore_nulls); /* OA-REQ-2348 */
 
 	return newnode;
 }
