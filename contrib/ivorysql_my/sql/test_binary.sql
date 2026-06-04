@@ -1756,5 +1756,6 @@ select cast(c1 as datetime) from tb_binary;
 select cast(c1 as decimal(4, 0)) from tb_binary;
 select cast(c1 as signed) from tb_binary;
 select cast(c1 as unsigned) from tb_binary;
+select cast(c1 as float) from tb_binary;
 drop table tb_binary;
 /* End - bug#5184 */

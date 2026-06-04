@@ -1945,3 +1945,20 @@ WARNING:  Truncated incorrect INTEGER value: ''
  f        | f        | f        | f        | t        | f        | f        | f        | NULL     | NULL
 (1 row)
 
+/* Begin - Bug#Z5202 */
+create table tb_blob(c1 blob);
+insert into tb_blob values('1234'), ('abcd'), ('1q2w'), ('q1w2');
+select cast(c1 as float) from tb_blob;
+WARNING:  Truncated incorrect FLOAT value: 'abcd'
+WARNING:  Truncated incorrect FLOAT value: '1q2w'
+WARNING:  Truncated incorrect FLOAT value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
+drop table tb_blob;
+/* End - Bug#Z5202 */

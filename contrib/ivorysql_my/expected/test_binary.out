@@ -2306,5 +2306,17 @@ WARNING:  Truncated incorrect INTEGER value: 'q1w2'
  0
 (4 rows)
 
+select cast(c1 as float) from tb_binary;
+WARNING:  Truncated incorrect FLOAT value: 'abcd'
+WARNING:  Truncated incorrect FLOAT value: '1q2w'
+WARNING:  Truncated incorrect FLOAT value: 'q1w2'
+  c1  
+------
+ 1234
+    0
+    1
+    0
+(4 rows)
+
 drop table tb_binary;
 /* End - bug#5184 */
