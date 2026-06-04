@@ -4783,7 +4783,33 @@ _tocEntryRequired(TocEntry *te, teSection curSection, ArchiveHandle *AH)
 					return 0;
 			}
 			else
-				return 0;
+			{
+				/* Begin #BUG8213
+				 * When restore data for a specific table, hg security label TOC
+				 * entries should not be filtered out here; they need to be handled
+				 * later according to the scenario.
+				 */
+				if (ropt->is_restore)
+				{
+					if (strcmp(te->desc, "DUMP HG SECLABEL") == 0 ||
+						strcmp(te->desc, "HG SECURITY LABEL") == 0 ||
+						strcmp(te->desc, "HG ROW SECURITY") == 0 ||
+						strcmp(te->desc, "CLEAN HG SECLABEL") == 0)
+						;
+					else if (strcmp(te->desc, "POLICY") == 0)
+					{
+						if (strstr(te->tag, "__Policydel") ||
+							strstr(te->tag, "__Policyins") ||
+							strstr(te->tag, "__Policysel") ||
+							strstr(te->tag, "__Policyupd"))
+							;
+					}
+					else
+						return 0;
+				} /* End #BUG8213 */
+				else
+					return 0;
+			}
 		}
 	}
 
