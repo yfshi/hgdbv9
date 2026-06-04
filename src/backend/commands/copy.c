@@ -809,7 +809,18 @@ ProcessCopyOptions(ParseState *pstate,
 		if (!opts_out->quote)
 			opts_out->quote = "\"";
 		if (!opts_out->escape)
-			opts_out->escape = opts_out->quote;
+		{
+			/* Begin - BUG#z8225 */
+			/*
+			 * for load data, if not set 'escaped by' option
+			 * set it to default  escaped by '"'
+			 */
+			if (compatible_mode == MYS_MODE && pstate && pstate->is_load_data)
+				opts_out->escape = "\"";
+			else
+			/* End - BUG#z8225 */
+				opts_out->escape = opts_out->quote;
+		}
 	}
 
 	/* Only single-byte delimiter strings are supported. */

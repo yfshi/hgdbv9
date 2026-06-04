@@ -86,6 +86,15 @@ select * from test_7537;
 delete from test_7537;
 drop table test_7537;
 
+---- bug#z8225
+create table test_8225(id int primary key auto_increment, name varchar(50) not null, city varchar(100), create_time date);
+LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_7537_1.csv' INTO TABLE test_8225 FIELDS TERMINATED BY ',' ENCLOSED BY E'\'' ESCAPED BY '"';
+select * from test_8225;
+delete from test_8225;
+LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_7537_1.csv' INTO TABLE test_8225 FIELDS TERMINATED BY ',' ENCLOSED BY E'\'';
+select * from test_8225;
+drop table test_8225;
+
 -- clean up
 \c contrib_regression
 drop database gbk_copy;
