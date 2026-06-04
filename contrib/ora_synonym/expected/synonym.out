@@ -340,3 +340,21 @@ create synonym test for test1;
 alter synonym test compile;
 drop synonym test;
 reset log_statement;
+--/* Begin - 0A-2431 */
+create table a (a int, b int);
+insert into a values (1, 100);
+create synonym syn_1 for a;
+create or replace procedure syn_test_proc()
+as
+	b_value int;
+begin
+	select b into b_value from syn_1 where syn_1.a=1;
+	raise info 'b_value is: %', b_value;
+end;
+/
+call syn_test_proc();
+INFO:  b_value is: 100
+drop procedure syn_test_proc;
+drop synonym syn_1;
+drop table a;
+-- /* End - OA-2431 */
