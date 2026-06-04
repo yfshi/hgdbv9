@@ -1279,10 +1279,22 @@ void
 escape_json(StringInfo buf, const char *str)
 {
 	const char *p;
+	/* Begin - bug#8228 */
+	int		mb_len = 0;
+	bool	is_single_byte_char = true;
+	/* End - bug#8228 */
 
 	appendStringInfoCharMacro(buf, '"');
 	for (p = str; *p; p++)
 	{
+		/* Begin - bug#8228 */
+		if (GetDatabaseEncoding() != PG_UTF8 && mb_len == 0)
+		{
+			mb_len = pg_encoding_mblen(GetDatabaseEncoding(), p);
+			is_single_byte_char = mb_len == 1 ? true : false;
+		}
+		/* End - bug#8228 */
+
 		switch (*p)
 		{
 			case '\b':
@@ -1304,7 +1316,16 @@ escape_json(StringInfo buf, const char *str)
 				appendStringInfoString(buf, "\\\"");
 				break;
 			case '\\':
-				appendStringInfoString(buf, "\\\\");
+				/* Begin - bug#8228 */
+				if (is_single_byte_char)
+					appendStringInfoString(buf, "\\\\");
+				else
+					/*
+					 * Do not escape if the current byte
+					 * is part of a multi-byte character.
+					 */
+					appendStringInfoCharMacro(buf, *p);
+				/* End - bug#8228 */
 				break;
 			default:
 				if ((unsigned char) *p < ' ')
@@ -1313,6 +1334,7 @@ escape_json(StringInfo buf, const char *str)
 					appendStringInfoCharMacro(buf, *p);
 				break;
 		}
+		mb_len--;	/* bug#8228 */
 	}
 	appendStringInfoCharMacro(buf, '"');
 }
