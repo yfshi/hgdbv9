@@ -3472,20 +3472,20 @@ die(SIGNAL_ARGS)
 #ifdef ENABLE_DKY_BETA_FEATURE
 	snprintf(audit_msg, MAXPGPATH, "rollback transaction");
 
-	if (audit_aborted_hook)
-		(*audit_aborted_hook)();
-
-	if (is_audit_enable && (*is_audit_enable)() && IsTransactionOrTransactionBlock())
-	{
-		AbortCurrentTransaction();
-		StartTransactionCommand();
-		UserAbortTransactionBlock(false);
-		CommitTransactionCommand();
-	}
-
 	/* Begin - Z7903 */
-	if (MyBgworkerEntry != NULL && strcmp(MyBgworkerEntry->bgw_name, AUDIT_LAUNCHER_S) != 0)
+	if (MyProcPort != NULL)
 	{
+		if (audit_aborted_hook)
+			(*audit_aborted_hook)();
+
+		if (is_audit_enable && (*is_audit_enable)() && IsTransactionOrTransactionBlock())
+		{
+			AbortCurrentTransaction();
+			StartTransactionCommand();
+			UserAbortTransactionBlock(false);
+			CommitTransactionCommand();
+		}
+
 		if (audit_WriteRecord_hook)
 			(*audit_WriteRecord_hook)();
 	}

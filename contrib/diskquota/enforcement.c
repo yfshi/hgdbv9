@@ -27,6 +27,7 @@
 
 #include "diskquota.h"
 #include "activetable.h"
+#include "pg_contrib_audit.h"  // ReqID:SRS-SECURITY-AUDIT
 
 static bool quota_check_ExecCheckRTPerms(List *rangeTable, bool ereport_on_violation);
 static bool quota_check_ReadBufferExtendCheckPerms(Relation reln, ForkNumber forkNum,
@@ -302,6 +303,14 @@ reserve_quota_target(Oid targetoid, QuotaType type, int64 bytes,
 		entry->limit_bytes))
 	{
 		LWLockRelease(diskquota_locks.quota_state_lock);
+			/* Begin - ReqID:SRS-SECURITY-AUDIT */
+			#ifdef USE_SQLITE
+			if (sqlite_open_db_for_audit_hook)
+				sqlite_open_db_for_audit_hook(type == NAMESPACE_QUOTA ? SYSTEMAUDIT_EVENT_DISK_LIMIT_SCHEMA : SYSTEMAUDIT_EVENT_DISK_LIMIT_ROLE,
+						 AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+			#endif
+			/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		ereport(ERROR,
 				(errcode(ERRCODE_DISK_FULL),
 				 errmsg("%s's disk space quota exceeded",
