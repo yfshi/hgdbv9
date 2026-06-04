@@ -3554,7 +3554,9 @@ insert into test_alter_col values(1, 'x');
 insert into test_alter_col values(2, 'y');
 insert into test_alter_col values(4, 'y');
 alter table test_alter_col alter myjob type alterenum;
-ERROR:  Data truncated for column
+WARNING:  Data truncated for column
+WARNING:  Data truncated for column
+WARNING:  Data truncated for column
 drop table test_alter_col;
 drop type alterenum;
 set SQL_MODE=default;
