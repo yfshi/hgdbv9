@@ -873,3 +873,7 @@ SELECT
 	OCT('') 					AS oct13,
 	OCT(NULL) 					AS oct14;
 /* End Bug#Z5690 */
+
+/* Begin Bug#Z7502 */
+SELECT AES_DECRYPT(AES_ENCRYPT(123, 'a'), 'a');
+/* End Bug#Z7502 */

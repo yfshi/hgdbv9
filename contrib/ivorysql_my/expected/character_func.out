@@ -3578,3 +3578,11 @@ SELECT
 (1 row)
 
 /* End Bug#Z5690 */
+/* Begin Bug#Z7502 */
+SELECT AES_DECRYPT(AES_ENCRYPT(123, 'a'), 'a');
+ AES_DECRYPT 
+-------------
+ 123
+(1 row)
+
+/* End Bug#Z7502 */

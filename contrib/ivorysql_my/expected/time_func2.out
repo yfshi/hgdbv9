@@ -278,9 +278,9 @@ select date_format('2004-01-01','%W (%a), %e %M (%b) %Y');
 set lc_time_names=ru_RU;
 set names koi8r;
 select date_format('2004-01-01','%W (%a), %e %M (%b) %Y');
-             date_format              
---------------------------------------
- Thursday (Thu), 1 January (Jan) 2004
+            date_format             
+------------------------------------
+ Четверг (Чтв), 1 Января (Янв) 2004
 (1 row)
 
 set lc_time_names=de_DE;
@@ -288,7 +288,7 @@ set names latin1;
 select date_format('2004-01-01','%W (%a), %e %M (%b) %Y');
              date_format              
 --------------------------------------
- Thursday (Thu), 1 January (Jan) 2004
+ Donnerstag (Do), 1 Januar (Jan) 2004
 (1 row)
 
 set names latin1;
@@ -364,6 +364,28 @@ SELECT DATE_FORMAT(CAST('23:59:59.999999' AS TIME(6)), '%H:%i:%s.%f') AS max_tim
     max_time     
 -----------------
  23:59:59.999999
+(1 row)
+
+/* End - BUG#8076 8075 8074*/
+/* Begin - BUG#8071*/
+SELECT DATE_FORMAT('1999-01-01', '%X');
+ DATE_FORMAT 
+-------------
+ 1998
+(1 row)
+
+/* End - BUG#8071*/
+/* Begin - BUG#8076 8075 8074*/
+SELECT DATE_FORMAT('2025-01-01', '%U');
+ DATE_FORMAT 
+-------------
+ 00
+(1 row)
+
+SELECT DATE_FORMAT('2025-01-01', '%V');
+ DATE_FORMAT 
+-------------
+ 52
 (1 row)
 
 /* End - BUG#8076 8075 8074*/
@@ -475,9 +497,9 @@ SELECT ivymy.from_unixtime(1000000000::float8, '%H:%i:%s') AS time_only;
 (1 row)
 
 SELECT ivymy.from_unixtime(1000000000::float8, '%W %M %Y') AS weekday_month_year;
-  weekday_month_year   
------------------------
- Sunday September 2001
+   weekday_month_year    
+-------------------------
+ Saturday September 2001
 (1 row)
 
 -- Test FROM_UNIXTIME with NULL
@@ -910,3 +932,64 @@ WARNING:  Truncated incorrect INTEGER value: '02qaz10'
 (1 row)
 
 /* Begin - BUG#8088 */
+/* Begin - bug#z8089 #z8084 */
+SELECT ADDDATE('9999-12-31', 1);
+WARNING:  Datetime function: datetime field overflow
+ ADDDATE 
+---------
+ 
+(1 row)
+
+SELECT ADDDATE('1994-07-03', 9999999);
+WARNING:  Datetime function: datetime field overflow
+ ADDDATE 
+---------
+ 
+(1 row)
+
+SELECT ADDDATE('1994-07-03', -9999999);
+WARNING:  Datetime function: datetime field overflow
+ ADDDATE 
+---------
+ 
+(1 row)
+
+/* End - bug#z8089 #z8084 */
+/* Begin - bug#z8126 */
+SELECT UNIX_TIMESTAMP('1970-01-01 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+          28800
+(1 row)
+
+SELECT UNIX_TIMESTAMP('1969-12-31 23:59:59');
+ UNIX_TIMESTAMP 
+----------------
+          28799
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:07');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2038-01-19 03:14:08');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('1900-01-01 00:00:00');
+ UNIX_TIMESTAMP 
+----------------
+              0
+(1 row)
+
+SELECT UNIX_TIMESTAMP('2037-12-31 23:59:59');
+ UNIX_TIMESTAMP 
+----------------
+     2145945599
+(1 row)
+
+/* End - bug#z8126 */

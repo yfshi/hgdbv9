@@ -933,6 +933,7 @@ datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result
 	size_t format_len;
 	int result_len = 0;
 	size_t remaining;
+	MyLocale   *locale = NULL;
 
 	format_len = strlen(format);
 
@@ -1027,14 +1028,16 @@ datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result
 				break;
 			case 'W': /* Weekday name (Sunday-Saturday) */
 			{
-				const char *weekday_names[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
-				result_len += snprintf(result + result_len, remaining, "%s", weekday_names[tm->tm_wday]);
+				if (locale == NULL)
+					locale = MyLocaleSearch(lc_time_names);
+				result_len += snprintf(result + result_len, remaining, "%s", locale->day_names[tm->tm_wday - 1]);
 				break;
 			}
 			case 'a': /* Abbreviated weekday name (Sun-Sat) */
 			{
-				const char *ab_weekday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-				result_len += snprintf(result + result_len, remaining, "%s", ab_weekday_names[tm->tm_wday]);
+				if (locale == NULL)
+					locale = MyLocaleSearch(lc_time_names);
+				result_len += snprintf(result + result_len, remaining, "%s", locale->ab_day_names[tm->tm_wday - 1]);
 				break;
 			}
 			case 'w': /* Weekday (0=Sunday, 6=Saturday) */
@@ -1042,16 +1045,16 @@ datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result
 				break;
 			case 'M': /* Month name (January-December) */
 			{
-				const char *month_names[] = {"January", "February", "March", "April", "May", "June",
-												"July", "August", "September", "October", "November", "December"};
-				result_len += snprintf(result + result_len, remaining, "%s", month_names[tm->tm_mon - 1]);
+				if (locale == NULL)
+					locale = MyLocaleSearch(lc_time_names);
+				result_len += snprintf(result + result_len, remaining, "%s", locale->month_names[tm->tm_mon - 1]);
 				break;
 			}
 			case 'b': /* Abbreviated month name (Jan-Dec) */
 			{
-				const char *ab_month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-												"Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-				result_len += snprintf(result + result_len, remaining, "%s", ab_month_names[tm->tm_mon - 1]);
+				if (locale == NULL)
+					locale = MyLocaleSearch(lc_time_names);
+				result_len += snprintf(result + result_len, remaining, "%s", locale->ab_month_names[tm->tm_mon - 1]);
 				break;
 			}
 			case 'D': /* Day with suffix (1st, 2nd, 3rd, etc) */
@@ -1075,22 +1078,41 @@ datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result
 				break;
 			}
 			case 'U': /* Week number (00-53), Sunday as first day of week */
+			{
+				int week_number = calc_week(tm, WEEK_FIRST_WEEKDAY, &(tm->tm_year));
+				result_len += snprintf(result + result_len, remaining, "%02d", week_number);
+				break;
+			}
 			case 'V': /* Week number (01-53), Sunday as first day of week */
+			{
+				int week_number = calc_week(tm, (WEEK_YEAR | WEEK_FIRST_WEEKDAY), &(tm->tm_year));
+				result_len += snprintf(result + result_len, remaining, "%02d", week_number);
+				break;
+			}
 			case 'u': /* Week number (00-53), Monday as first day of week */
+			{
+				int week_number = calc_week(tm, WEEK_MONDAY_FIRST, &(tm->tm_year));
+				result_len += snprintf(result + result_len, remaining, "%02d", week_number);
+				break;
+			}
 			case 'v': /* Week number (01-53), Monday as first day of week */
 			{
-				/* Calculate week number */
-				int week_number = (tm->tm_yday / 7) + 1;
-				if (format[i] == 'U' || format[i] == 'u')
-					result_len += snprintf(result + result_len, remaining, "%02d", week_number);
-				else
-					result_len += snprintf(result + result_len, remaining, "%02d", week_number);
+				int week_number = calc_week(tm, (WEEK_YEAR | WEEK_MONDAY_FIRST), &(tm->tm_year));
+				result_len += snprintf(result + result_len, remaining, "%02d", week_number);
 				break;
 			}
 			case 'X': /* Year for week number (4 digits), Sunday as first day of week */
-			case 'x': /* Year for week number (4 digits), Monday as first day of week */
+			{
+				calc_week(tm, (WEEK_YEAR | WEEK_FIRST_WEEKDAY), &(tm->tm_year));
 				result_len += snprintf(result + result_len, remaining, "%04d", tm->tm_year);
 				break;
+			}
+			case 'x': /* Year for week number (4 digits), Monday as first day of week */
+			{
+				calc_week(tm, (WEEK_YEAR | WEEK_MONDAY_FIRST), &(tm->tm_year));
+				result_len += snprintf(result + result_len, remaining, "%04d", tm->tm_year);
+				break;
+			}
 			case '%': /* Literal % */
 				result[result_len++] = '%';
 				break;
@@ -1360,7 +1382,7 @@ from_unixtime_format(PG_FUNCTION_ARGS)
 
 	/* Get format string */
 	format = text_to_cstring(PG_GETARG_TEXT_PP(1));
-	tm->tm_wday = j2day(date2j(tm->tm_year, tm->tm_mon, tm->tm_mday));
+	tm->tm_wday = calc_weekday(calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday), false);
 	tm->tm_yday = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) - date2j(tm->tm_year, 1, 1) + 1;
 
 	datetimes_format_str(tm, format, result, MAXDATELEN, fsec);
@@ -3910,6 +3932,12 @@ unix_timestamp(PG_FUNCTION_ARGS)
 	result = input - epoch
 			- tmx->tm_gmtoff * USECS_PER_SEC /* Subtract timezone offset */
 			+ tmx->tm_isdst * SECS_PER_HOUR * USECS_PER_SEC; /* Add back DST hour if active */
+
+	/* Begin - bug#z8126 */
+	if ((result / USECS_PER_SEC) > UNIXTIME_MAX || (result / USECS_PER_SEC) < UNIXTIME_MIN)
+		PG_RETURN_NUMERIC(DirectFunctionCall1(int8_numeric, 0));
+	/* End - bug#z8126 */
+	
 	PG_RETURN_NUMERIC(DirectFunctionCall2(numeric_trunc,
 										DirectFunctionCall2(numeric_div,
 															DirectFunctionCall1(int8_numeric, result),
@@ -4332,33 +4360,69 @@ get_format(PG_FUNCTION_ARGS)
 	/* End - BUGZ5533 */
 }
 
-static char *
-adddate_interval(Timestamp timestamp, Interval *span, bool is_add, int dec)
+static bool
+adddate_interval(char **str, Timestamp timestamp, Interval *span, bool is_add, int dec)
 {
-	char *str;
 	Timestamp tsResult;
 	Numeric		num;
+	MemoryContext ccxt = CurrentMemoryContext;
+	bool	out_of_range = false;
 
-	if (is_add)
+	PG_TRY();
 	{
-		tsResult = DirectFunctionCall2(timestamp_pl_interval,
-									   TimestampGetDatum(timestamp),
-									   PointerGetDatum(span));
+		if (is_add)
+		{
+			tsResult = DirectFunctionCall2(timestamp_pl_interval,
+										TimestampGetDatum(timestamp),
+										PointerGetDatum(span));
+		}
+		else
+		{
+			tsResult = DirectFunctionCall2(timestamp_mi_interval,
+										TimestampGetDatum(timestamp),
+										PointerGetDatum(span));
+		}
 	}
-	else
+	PG_CATCH();
 	{
-		tsResult = DirectFunctionCall2(timestamp_mi_interval,
-									   TimestampGetDatum(timestamp),
-									   PointerGetDatum(span));
+		ErrorData  *errdata;
+
+		MemoryContextSwitchTo(ccxt);
+		
+		errdata = CopyErrorData();
+		
+		switch (errdata->sqlerrcode)
+		{
+			case ERRCODE_DATETIME_VALUE_OUT_OF_RANGE:
+				out_of_range = true;
+				FlushErrorState();
+				break;
+			default:
+				PG_RE_THROW();
+				break;
+		}
+
+		FreeErrorData(errdata);
 	}
+	PG_END_TRY();
+
+	/* Begin - bug#z8089 #z8084 */
+	if (tsResult < FORMAT_TIMESTAMP_MIN_VALUE || tsResult > FORMAT_TIMESTAMP_MAX_VALUE
+		|| out_of_range)
+	{
+		ereport(WARNING, errmsg("Datetime function: datetime field overflow"));
+		return false;
+	}
+	/* End - bug#z8089 #z8084*/
 
 	num = DatumGetNumeric(DirectFunctionCall2(pgtimestamp_mysdatetimes,
 											  TimestampGetDatum(tsResult),
 											  Int32GetDatum(dec)));
 
-	str = DatumGetCString(DirectFunctionCall1(mysdatetimes_out,
+	*str = DatumGetCString(DirectFunctionCall1(mysdatetimes_out,
 											  NumericGetDatum(num)));
-	return str;
+
+	return true;
 }
 
 Datum
@@ -4366,9 +4430,12 @@ timestamp_adddate_interval(PG_FUNCTION_ARGS)
 {
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	Interval *span = PG_GETARG_INTERVAL_P(1);
-	char *str;
+	char *str = NULL;
 
-	str = adddate_interval(timestamp, span, true, 0);
+	if (!adddate_interval(&str, timestamp, span, true, 0))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4380,7 +4447,7 @@ datetimes_adddate_interval(PG_FUNCTION_ARGS)
 	Timestamp timestamp;
 	struct pg_tm tt, *tm = &tt;
 	fsec_t fsec = 0;
-	char *str;
+	char *str = NULL;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
@@ -4388,7 +4455,10 @@ datetimes_adddate_interval(PG_FUNCTION_ARGS)
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	str = adddate_interval(timestamp, span, true, 6);
+	if (!adddate_interval(&str, timestamp, span, true, 6))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4401,7 +4471,7 @@ date_adddate_interval(PG_FUNCTION_ARGS)
 	DateADT dateResult;
 	struct pg_tm tt, *tm = &tt;
 	fsec_t fsec;
-	char *str;
+	char *str = NULL;
 
 	MYS_ZERO_tm(tm);
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
@@ -4422,7 +4492,10 @@ date_adddate_interval(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		str = adddate_interval(timestamp, span, true, 6);
+		if (!adddate_interval(&str, timestamp, span, true, 6))
+		{
+			PG_RETURN_NULL();
+		}
 	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
@@ -4434,7 +4507,7 @@ timestamp_adddate_days(PG_FUNCTION_ARGS)
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	int32 days = PG_GETARG_INT32(1);
 	Interval *span;
-	char *str;
+	char *str = NULL;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
@@ -4442,7 +4515,10 @@ timestamp_adddate_days(PG_FUNCTION_ARGS)
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
 
-	str = adddate_interval(timestamp, span, true, 0);
+	if (!adddate_interval(&str, timestamp, span, true, 0))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4455,7 +4531,7 @@ datetimes_adddate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str;
+	char *str = NULL;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4463,7 +4539,10 @@ datetimes_adddate_days(PG_FUNCTION_ARGS)
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	str = adddate_interval(timestamp, span, true, 6);
+	if (!adddate_interval(&str, timestamp, span, true, 6))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4476,7 +4555,7 @@ date_adddate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str;
+	char *str = NULL;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4484,7 +4563,10 @@ date_adddate_days(PG_FUNCTION_ARGS)
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	str = adddate_interval(timestamp, span, true, 0);
+	if (!adddate_interval(&str, timestamp, span, true, 0))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4494,9 +4576,12 @@ timestamp_subdate_interval(PG_FUNCTION_ARGS)
 {
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	Interval *span = PG_GETARG_INTERVAL_P(1);
-	char *str;
+	char *str = NULL;
 
-	str = adddate_interval(timestamp, span, false, 6);
+	if (!adddate_interval(&str, timestamp, span, false, 6))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4508,12 +4593,15 @@ datetimes_subdate_interval(PG_FUNCTION_ARGS)
 	Timestamp timestamp;
 	struct pg_tm tt, *tm = &tt;
 	fsec_t fsec = 0;
-	char *str;
+	char *str = NULL;
 
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	str = adddate_interval(timestamp, span, false, 6);
+	if (!adddate_interval(&str, timestamp, span, false, 6))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4525,7 +4613,7 @@ date_subdate_interval(PG_FUNCTION_ARGS)
 	Timestamp timestamp, tsResult;
 	DateADT dateResult;
 	struct pg_tm tt, *tm = &tt;
-	char *str;
+	char *str = NULL;
 
 	MYS_ZERO_tm(tm);
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
@@ -4545,7 +4633,10 @@ date_subdate_interval(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		str = adddate_interval(timestamp, span, false, 6);
+		if (!adddate_interval(&str, timestamp, span, false, 6))
+		{
+			PG_RETURN_NULL();
+		}
 	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
@@ -4557,12 +4648,15 @@ timestamp_subdate_days(PG_FUNCTION_ARGS)
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	int32 days = PG_GETARG_INT32(1);
 	Interval *span;
-	char *str;
+	char *str = NULL;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
 
-	str = adddate_interval(timestamp, span, false, 0);
+	if (!adddate_interval(&str, timestamp, span, false, 0))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4575,7 +4669,7 @@ datetimes_subdate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str;
+	char *str = NULL;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4583,7 +4677,10 @@ datetimes_subdate_days(PG_FUNCTION_ARGS)
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	str = adddate_interval(timestamp, span, false, 6);
+	if (!adddate_interval(&str, timestamp, span, false, 6))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
@@ -4596,7 +4693,7 @@ date_subdate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str;
+	char *str = NULL;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4604,7 +4701,10 @@ date_subdate_days(PG_FUNCTION_ARGS)
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	str = adddate_interval(timestamp, span, false, 0);
+	if (!adddate_interval(&str, timestamp, span, false, 0))
+	{
+		PG_RETURN_NULL();
+	}
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
