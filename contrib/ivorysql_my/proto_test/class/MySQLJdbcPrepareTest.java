@@ -112,7 +112,7 @@ public class MySQLJdbcPrepareTest {
                 "c32 enum('a', 'b')," +
                 "c33 enum('a', 'b')," +
                 "c34 char," +
-                "c35 name" +
+                "c35 varchar(100)" +
                 ")");
             
             PreparedStatement p2 = connection.prepareStatement("select * from t3 where c1=?");
@@ -173,9 +173,9 @@ public class MySQLJdbcPrepareTest {
             resultSet.close();
 
             statement.execute("set sql_mode = 'STRICT_TRANS_TABLES,ansi_quotes'");
-            statement.executeUpdate("insert into t3(c3) values(0)");
+            statement.executeUpdate("insert into t3(c3) values(65)");
             PreparedStatement p3 = connection.prepareStatement("select * from t3 where c3=?");
-            p3.setString(1, "abc");
+            p3.setString(1, "65abc");
             resultSet = p3.executeQuery();
             resultSetMetaData = resultSet.getMetaData();
             while (resultSet.next()) {

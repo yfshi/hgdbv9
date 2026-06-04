@@ -237,7 +237,8 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     }
     else if (tag == CMDTAG_SELECT    ||
              tag == CMDTAG_SHOW      ||
-             tag == CMDTAG_EXPLAIN)
+             tag == CMDTAG_EXPLAIN   ||
+             tag == CMDTAG_FETCH /* OA-2043 */)
     {
         send_eof(0, status);
     }
@@ -590,6 +591,32 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
             // Data send with COM_SEND_LONG_DATA
             return;
         }
+        /**
+         * Begin - bug#7873
+         * Data from jdbc's setBytes()
+         */
+        case MYSQL_TYPE_VAR_STRING:
+        {
+            bytea   *ret;
+            char    *data;
+            uint32   length;
+            int      bc;
+
+            data = mq_get_string_lenenc(buf, &length, NULL);
+
+            bc = VARHDRSZ + length;
+            ret = palloc(bc);
+            
+            memcpy(VARDATA(ret), data, length);
+
+            SET_VARSIZE(ret, bc);
+
+            value = PointerGetDatum(ret);
+
+            src_type = VARBINARYOID;
+            break;
+        }
+        /* End - bug#7873 */
         default: // string
         {
             Oid		typinput;
@@ -642,7 +669,7 @@ parse_com_stmt_execute_params(StringInfo buf, PreparedStatement *entry, com_stmt
         int                 len = (param_count + 7) / 8;
         ParamListInfo       paramLI = req->paramLI; // from portal
         ParamExternData     *params = paramLI->params;
-        int                 *flags = entry->plansource->param_type_and_flags;
+        uint32              *flags = entry->plansource->param_type_and_flags;
 
         null_bitmap = mq_get_string_len(buf, len);
         
@@ -653,7 +680,7 @@ parse_com_stmt_execute_params(StringInfo buf, PreparedStatement *entry, com_stmt
             for (int i = 0; i < param_count; i++)
             {
                 // parameter type
-                mq_get_int2(buf, (uint32 *) &flags[i]);
+                mq_get_int2(buf, &flags[i]);
 
                 // parameter name
                 if (has_client_capabilities(CLIENT_QUERY_ATTRIBUTES))
@@ -881,6 +908,16 @@ execute_com_stmt_prepare(char *client_sql)
     PrepareStmt *pstmt;
     ParseState  *pstate;
     
+    /* Begin - bug#7873 */
+    if (IsAbortedTransactionBlockState())
+    {
+        ereport(ERROR,
+                (errcode(ERRCODE_IN_FAILED_SQL_TRANSACTION),
+                 errmsg("current transaction is aborted, "
+                        "commands ignored until end of transaction block")));
+    }
+    /* End - bug#7873 */
+
     /* Set statement_timestamp() */
     SetCurrentStatementStartTimestamp();
     start_xact_command();

@@ -67,13 +67,6 @@ varbinary_internel(FunctionCallInfo fcinfo, bool isPg2My)
 	int32 	typmod = PG_GETARG_INT32(1);
 	bool 	isExplicit = PG_GETARG_BOOL(2);
 
-	if (isExplicit && !isPg2My)
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-				 errmsg("ERROR 1064 (42000): You have an error in your SQL syntax; check the cast")));
-	}
-
 	len = VARSIZE_ANY_EXHDR(source);
 	maxlen = typmod - VARHDRSZ;
 
