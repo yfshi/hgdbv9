@@ -215,48 +215,15 @@ LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-/*regexp_substr*/
-CREATE FUNCTION sys.regexp_substr(varchar2, varchar2, integer, integer, varchar2, integer)
+/* Begin - OA-REQ-2348 */
+/* regexp_substr */
+CREATE FUNCTION sys.regexp_substr(varchar2, varchar2, number default 1, number default 1, varchar2 default null, number default 0)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_substr'
 LANGUAGE C
 PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION sys.regexp_substr(varchar2, varchar2, integer, integer, varchar2)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','ora_regexp_substr'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION sys.regexp_substr(varchar2, varchar2, integer, integer)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','ora_regexp_substr'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION sys.regexp_substr(varchar2, varchar2, integer)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','ora_regexp_substr'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION sys.regexp_substr(varchar2, varchar2)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','ora_regexp_substr'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE FUNCTION sys.regexp_substr(varchar2)
-RETURNS varchar2
-AS 'MODULE_PATHNAME','ora_regexp_substr'
-LANGUAGE C
-PARALLEL SAFE
-IMMUTABLE;
+STABLE;
+/* End - OA-REQ-2348 */
 
 /*regexp_instr*/
 CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, integer, integer, integer, varchar2, integer)

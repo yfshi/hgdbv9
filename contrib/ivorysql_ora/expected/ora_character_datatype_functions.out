@@ -832,11 +832,20 @@ select regexp_substr('345 REGEXP_substr 789', '[0-9]+', 1, 1, 'i', NULL) from  d
 
 --Too few parameters
 select regexp_substr('') from  dual;
-ERROR:  not enough arguments for function
+ERROR:  function regexp_substr(unknown) does not exist
+LINE 1: select regexp_substr('') from  dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select regexp_substr(NULL) from  dual;
-ERROR:  not enough arguments for function
+ERROR:  function regexp_substr(unknown) does not exist
+LINE 1: select regexp_substr(NULL) from  dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select regexp_substr('345 REGEXP_substr 789') from  dual;
-ERROR:  not enough arguments for function
+ERROR:  function regexp_substr(unknown) does not exist
+LINE 1: select regexp_substr('345 REGEXP_substr 789') from  dual;
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 --Returns the first string matched
 select regexp_substr('345 REGEXP_substr 789', '[0-9]+') from  dual;
  regexp_substr 
