@@ -215,4 +215,28 @@ SELECT 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_bin');
 -- expected 0
 SELECT _binary 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_bin');
 
+-- bug#7845
+create table users (
+            id int primary key auto_increment,
+            name varchar(50)  collate utf8_general_ci,
+            phone varchar(20),
+            email varchar(100)
+            );
+insert into   users (name, phone, email) values
+            ('tony', '13800138000', 'tony@test.com'),
+            ('Tony', '13900139000', 'Tony@test.com'),
+            ('tony123', '15000150000', 'tony123@test.com'),
+            ('tom', '18600186000', 'tom@test.com'),
+            ('jerry', '', 'jerry@test.com'),
+            ('', '13100131000', ''),
+            (NULL, '13200132000', NULL);
+
+-- uncasesencitive
+SELECT name FROM users WHERE name REGEXP 'TONY';
+-- casesencitive
+SELECT name FROM users WHERE name REGEXP binary 'TONY';
+SELECT name FROM users WHERE name REGEXP  ('TONY' collate utf8_bin);
+-- error
+SELECT name FROM users WHERE name REGEXP  ('TONY' collate binary);
+
 set sql_mode = default;

@@ -110,6 +110,12 @@ add_compiled_collation(const CHARSET_INFO *cs)
     const char  *collname = cs->coll_name;
     const char  *collcollate;
 
+    /* Begin - BUG#M7845 */
+    if (strcmp(cs->csname, "binary") == 0)
+    {
+        collencoding = -1;
+    }
+    /* End - BUG#M7845 */
 
     // Encoding is -1 or collate name is end of '_bin'
     if (collencoding == -1 || has_suffix(collname, "_bin"))

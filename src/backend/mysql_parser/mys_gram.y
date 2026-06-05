@@ -17840,7 +17840,11 @@ a_expr:		c_expr									{ $$ = $1; }
 			/* Begin - bug#6011 */
 			| BINARY a_expr %prec COLLATE
 				{
-					$$ = makeTypeCast($2, MySQLSystemTypeName("varbinary"), @2);
+					CollateClause *n = makeNode(CollateClause);
+					n->arg = makeTypeCast($2, MySQLSystemTypeName("varbinary"), @2);
+					n->collname = list_make1(makeString(pstrdup("binary")));
+					n->location = @1;
+					$$ = (Node *) n;
 				}
 			/* End - bug#6011 */
 		;
