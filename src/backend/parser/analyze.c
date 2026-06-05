@@ -3971,6 +3971,12 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			}
 			else
 			{
+				/* Begin - BUG#8279 */
+				if (enable_setoperation_null && ORA_MODE == compatible_mode &&
+					lcoltype == UNKNOWNOID && !OidIsValid(get_typcollation(rescoltype)))
+					exprSetCollation(lcolnode, InvalidOid);
+				/* End - BUG#8279 */
+
 				rescolcoll = select_common_collation(pstate,
 								list_make2(lcolnode, rcolnode),
 								(op->op == SETOP_UNION && op->all));

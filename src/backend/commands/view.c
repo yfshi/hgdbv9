@@ -838,6 +838,31 @@ DefineView(ViewStmt *stmt, const char *queryString,
 						view->relname)));
 	}
 
+	/* Begin - BUG#8279 */
+	if (enable_setoperation_null && compatible_mode == ORA_MODE)
+	{
+		ListCell   *targetList;
+		Oid			ptype;
+		foreach(targetList, viewParse->targetList)
+		{
+			TargetEntry *tle = lfirst_node(TargetEntry, targetList);
+			/* junk columns don't get aliases */
+			if (tle->resjunk)
+				continue;
+			ptype = exprType((Node *) tle->expr);
+			if (ptype == UNKNOWNOID && IsA(tle->expr, Var))
+			{
+				if (nls_length_semantics == NLS_LENGTH_BYTE)
+					ptype = ORAVARCHARBYTEOID;
+				else
+					ptype = ORAVARCHARCHAROID;
+				((Var *)tle->expr)->vartype = ptype;
+
+			}
+		}
+	}
+	/* End - BUG#8279 */
+
 	/*
 	 * Create the view relation
 	 *
