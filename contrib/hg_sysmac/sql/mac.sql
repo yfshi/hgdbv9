@@ -230,6 +230,8 @@ DROP USER u1,u2,u3;
 -- also be able to set seclabel for users.
 --
 CREATE USER usr1 WITH PASSWORD 'usr1@123';
+CREATE USER usr2 WITH PASSWORD 'usr2@123';
+
 SELECT hg_security.set_user_seclabel('usr1'::regrole, 's0');
 ALTER SYSTEM SET se_feature.mode TO ON;
 ALTER SYSTEM SET se_feature.restricted_dba TO ON;
@@ -242,6 +244,13 @@ SHOW se_feature.mode;
 SHOW se_feature.restricted_dba;
 SELECT hg_security.set_user_seclabel('usr1'::regrole, 's1');
 
+-- Begin #BUG8275 --
+grant syssso_role to usr2;
+\c - usr2
+SELECT hg_security.set_user_seclabel('usr1'::regrole, 's2');
+-- End #BUG8275 --
+
+\c - syssso
 ALTER SYSTEM SET se_feature.mode TO OFF;
 ALTER SYSTEM SET se_feature.restricted_dba TO OFF;
 SELECT pg_reload_conf();
@@ -249,4 +258,5 @@ SELECT pg_sleep(1);
 
 \c - :boot_user
 DROP USER usr1;
+DROP USER usr2;
 -- End #BUG7896 --
