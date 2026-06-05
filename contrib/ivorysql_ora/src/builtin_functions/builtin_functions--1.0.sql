@@ -1544,4 +1544,12 @@ IMMUTABLE PARALLEL SAFE
 AS $$
     SELECT ''::BLOB;
 $$;
+
+CREATE OR REPLACE FUNCTION sys.translate(varchar2, varchar2, varchar2)
+RETURNS varchar2
+LANGUAGE SQL
+IMMUTABLE PARALLEL SAFE
+AS $$
+  SELECT pg_catalog.translate($1,  $2,  $3);
+$$;
 /* End - ReqID: OA-2348 */
