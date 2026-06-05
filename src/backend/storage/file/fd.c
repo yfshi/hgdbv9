@@ -163,6 +163,8 @@ bool		data_sync_retry = false;
 /* How SyncDataDirectory() should do its job. */
 int			recovery_init_sync_method = RECOVERY_INIT_SYNC_METHOD_FSYNC;
 
+FileWrite_hook_type FileWrite_hook = NULL; /* BUG#Z8288 */
+
 /* Debugging.... */
 
 #ifdef FDDEBUG
@@ -2119,6 +2121,11 @@ FileWrite(File file, char *buffer, int amount, off_t offset,
 								temp_file_limit)));
 		}
 	}
+
+	/* Begin - BUG#Z8288 */
+	if (FileWrite_hook != NULL)
+		FileWrite_hook(file, amount, offset, wait_event_info);
+	/* End - BUG#Z8288 */
 
 retry:
 	errno = 0;
