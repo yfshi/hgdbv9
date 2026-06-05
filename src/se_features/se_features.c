@@ -110,10 +110,28 @@ show_secure_param(PG_FUNCTION_ARGS)
 	TupleDesc tupdesc;
 	AttInMetadata *attinmeta;
 	MemoryContext oldcontext;
-
 	Oid role_oid = GetUserId();
-	if (!IS_SYSSSO(role_oid))
-		elog(ERROR, "permission denied, only member of syssso_role has privilege");
+
+	/* Begin bug#z8069 */
+	if (se_feature_mode)
+	{
+		if (!IS_SYSSSO(role_oid))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied, only role=syssso_role can run this function")));
+		}
+	}
+	else
+	{
+		if (!superuser())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied, only superuser can run this function")));
+		}
+	}
+	/* End bug#z8069 */
 
 	/* stuff done only on the first call of the function */
 	if (SRF_IS_FIRSTCALL())

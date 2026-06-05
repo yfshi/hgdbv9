@@ -10509,22 +10509,28 @@ ShowGUCConfigOption(const char *name, DestReceiver *dest)
 	char	   *value;
 
 #ifdef ENABLE_DKY_BETA_FEATURE
+	/* Begin bug#z8069 */
 	/*judge if show secure parameters*/
 	Oid role_oid = GetUserId();
-	if (!IS_SYSSSO(role_oid))
+	if (se_feature_mode)
 	{
-		int i = 0;
-		for (i = 0; security_parameters[i] != NULL; i++)
+		if (!IS_SYSSSO(role_oid))
 		{
-			const char *secure_name = (char *)security_parameters[i];
-			if (strcmp(secure_name, name) == 0)
-			{
-				ereport(ERROR,
-						(errcode(ERRCODE_UNDEFINED_OBJECT),
-						 errmsg("unrecognized configuration parameter \"%s\"", name)));
-			}
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied")));
 		}
 	}
+	else
+	{
+		if (!superuser())
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+					 errmsg("permission denied")));
+		}
+	}
+	/* End bug#z8069 */
 #endif
 
 	/* Get the value and canonical spelling of name */
