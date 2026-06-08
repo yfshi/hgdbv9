@@ -156,7 +156,7 @@ determine_backup_type(void)
  * Full restore points are dropped after 2 * db_flashback_retention_target minutes
  * (to allow dependent diffs to be cleaned up first).
  *
- * Uses skip_backup=true since pgbackrest expire handles backup data cleanup.
+ * Expires the associated pgBackRest backup before removing the metadata.
  */
 static void
 drop_expired_restore_points(void)
@@ -237,7 +237,7 @@ drop_expired_restore_points(void)
             if (names[i] != NULL)
             {
                 Oid         argtypes[2] = {TEXTOID, BOOLOID};
-                Datum       values[2]   = {CStringGetTextDatum(names[i]), BoolGetDatum(true)};
+                Datum       values[2]   = {CStringGetTextDatum(names[i]), BoolGetDatum(false)};
 
                 SetCurrentStatementStartTimestamp();
                 StartTransactionCommand();
