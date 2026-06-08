@@ -799,10 +799,11 @@ show variables like 'sql_mode';
 
 --fix bug#Z5978
 SET GLOBAL time_zone = NULL;
+ERROR:  Unknown or incorrect time zone: ''
 SHOW GLOBAL VARIABLES LIKE 'time_zone';
- Variable_name | Value 
----------------+-------
- time_zone     | 
+ Variable_name | Value  
+---------------+--------
+ time_zone     | SYSTEM
 (1 row)
 
 --fix bug#Z5975
