@@ -85,3 +85,8 @@ GRANT EXECUTE ON FUNCTION check_se_param_change TO PUBLIC;
 GRANT EXECUTE ON FUNCTION set_backend_se_param TO PUBLIC;
 GRANT EXECUTE ON FUNCTION reset_all_se_param TO PUBLIC;
 /* End bug#z6859 */
+
+/* Begin bug#z8069 */
+ALTER FUNCTION hg_security.show_secure_param OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.show_secure_param TO syssso_role;
+/* End bug#z8069 */

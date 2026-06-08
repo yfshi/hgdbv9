@@ -304,4 +304,21 @@ select setting from pg_settings where name = 'se_feature.restricted_dba';
 \c template1 sysdba_u1
 drop database testdb;
 
+
+create user show_user;
+
 select * from hg_security.show_secure_param();
+show se_feature.mode;
+
+set role show_user;
+select * from hg_security.show_secure_param();
+show se_feature.mode;
+reset role;
+
+set role syssso;
+select * from hg_security.show_secure_param();
+show se_feature.mode;
+reset role;
+
+
+drop user show_user;

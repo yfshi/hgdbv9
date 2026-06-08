@@ -460,6 +460,7 @@ select setting from pg_settings where name = 'se_feature.restricted_dba';
 
 \c template1 sysdba_u1
 drop database testdb;
+create user show_user;
 select * from hg_security.show_secure_param();
                        name                       | setting 
 --------------------------------------------------+---------
@@ -519,3 +520,30 @@ select * from hg_security.show_secure_param();
  idle_session_timeout                             | 0
 (54 rows)
 
+show se_feature.mode;
+ se_feature.mode 
+-----------------
+ off
+(1 row)
+
+set role show_user;
+select * from hg_security.show_secure_param();
+ERROR:  permission denied, only superuser can run this function
+show se_feature.mode;
+ se_feature.mode 
+-----------------
+ off
+(1 row)
+
+reset role;
+set role syssso;
+select * from hg_security.show_secure_param();
+ERROR:  permission denied, only superuser can run this function
+show se_feature.mode;
+ se_feature.mode 
+-----------------
+ off
+(1 row)
+
+reset role;
+drop user show_user;
