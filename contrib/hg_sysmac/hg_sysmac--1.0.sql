@@ -132,7 +132,7 @@ CREATE FUNCTION compare_seclabel(seclabel,seclabel)
 RETURNS int
 AS 'MODULE_PATHNAME', 'seclabel_cmp'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
-ALTER FUNCTION compare_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION compare_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 -- row-level function
 
@@ -174,37 +174,37 @@ CREATE FUNCTION get_user_seclabel(oid)
 RETURNS text
 AS 'MODULE_PATHNAME', 'get_user_seclabel'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
-ALTER FUNCTION get_user_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION get_user_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION set_user_seclabel(oid, text)
 RETURNS text
 AS 'MODULE_PATHNAME', 'set_user_seclabel'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
-ALTER FUNCTION set_user_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION set_user_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION get_table_seclabel(oid)
 RETURNS text
 AS 'MODULE_PATHNAME', 'get_table_seclabel'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
-ALTER FUNCTION get_table_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION get_table_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION set_table_seclabel(oid, text)
 RETURNS text
 AS 'MODULE_PATHNAME', 'set_table_seclabel'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
-ALTER FUNCTION set_table_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION set_table_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION get_column_seclabel(oid, int4)
 RETURNS text
 AS 'MODULE_PATHNAME', 'get_column_seclabel'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
-ALTER FUNCTION get_column_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION get_column_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION set_column_seclabel(oid, int4, text)
 RETURNS text
 AS 'MODULE_PATHNAME', 'set_column_seclabel'
 LANGUAGE C VOLATILE STRICT PARALLEL SAFE;
-ALTER FUNCTION set_column_seclabel OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION set_column_seclabel OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 --  policy set functions
 
@@ -212,7 +212,7 @@ CREATE FUNCTION apply_row_policy(oid, text)
 RETURNS text
 AS 'MODULE_PATHNAME', 'apply_row_policy'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-ALTER FUNCTION apply_row_policy(oid, text) OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION apply_row_policy(oid, text) OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 /*
  * parameter:
@@ -222,7 +222,7 @@ CREATE FUNCTION apply_row_policy(oid, text, bool)
 RETURNS text
 AS 'MODULE_PATHNAME', 'apply_row_policy'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
-ALTER FUNCTION apply_row_policy(oid, text, bool) OWNER TO syssso; /* BUG#Z7896 */
+ALTER FUNCTION apply_row_policy(oid, text, bool) OWNER TO syssso_role; /* BUG#Z7896 BUG#Z8275 */
 
 /*
  * Create Mandatory Access Control (MAC) row-level policies:
