@@ -48,14 +48,22 @@ plisql_build_ora_collection_type(char *refname, int lineno,
 
 	/* Begin - ReqID:SRS-PLSQL-FORALL */
 	/* the index datatype supports PLS_INTEGER */
-	if (pg_strcasecmp(keytype->typname, "PLS_INTEGER") == 0)
+	if (pg_strcasecmp(keytype->typname, "PLS_INTEGER") == 0 ||
+		/* Begin - OA-REQ-2456 */
+		pg_strcasecmp(keytype->typname, "BINARY_INTEGER") == 0 ||
+		pg_strcasecmp(keytype->typname, "SIMPLE_INTEGER") == 0)
+		/* End - OA-REQ-2456 */
 	{
 		pfree(keytype);
 		keytype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
 	}
 
 	/* the element datatype supports PLS_INTEGER */
-	if (pg_strcasecmp(valuetype->typname, "PLS_INTEGER") == 0)
+	if (pg_strcasecmp(valuetype->typname, "PLS_INTEGER") == 0 ||
+		/* Begin - OA-REQ-2456 */
+		pg_strcasecmp(keytype->typname, "BINARY_INTEGER") == 0 ||
+		pg_strcasecmp(keytype->typname, "SIMPLE_INTEGER") == 0)
+		/* End - OA-REQ-2456 */
 	{
 		pfree(valuetype);
 		valuetype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
