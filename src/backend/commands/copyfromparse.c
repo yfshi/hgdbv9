@@ -467,6 +467,20 @@ have_loading_data_rest:
 
 						if (buf->len > 0)
 						{
+							/* Begin - bug#z8301 */
+							/*
+							 * when read new package data,
+							 * reset buffer cstate->fe_msgbuf, the same with pq_getmessage()
+							 * avoid buffer getting bigger
+							 */
+							/*
+							 * there is no regress test case
+							 * because need load load file using dbeaver and need file > 1GB
+							 * test it manaully
+							 */
+							resetStringInfo(cstate->fe_msgbuf);
+							/* End - bug#z8301 */
+
 							appendBinaryStringInfo(cstate->fe_msgbuf, buf->data, buf->len);
 						}
 						else if (buf->len == 0)
