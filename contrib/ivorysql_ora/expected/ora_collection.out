@@ -8108,6 +8108,79 @@ emp_rows(1).ename = SMITH
 depts(2).dname = RESEARCH
 DROP TABLE emp;
 --/* End - BUG#7704 */
+--/* Begin - OA-REQ-2456 */
+CREATE OR REPLACE PACKAGE MY_DBMS_RANDOM AS
+  TYPE B_ARRAY IS TABLE OF NUMBER INDEX BY BINARY_INTEGER;
+  TYPE S_ARRAY IS TABLE OF INT INDEX BY SIMPLE_INTEGER;
+
+  PROCEDURE print_var_type (x b_array);
+  PROCEDURE print_var_type2 (x s_array);
+END MY_DBMS_RANDOM;
+/
+CREATE OR REPLACE PACKAGE BODY MY_DBMS_RANDOM AS
+  PROCEDURE print_var_type (x b_array) IS
+    idx BINARY_INTEGER;
+  BEGIN
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('the associative array is null');
+	  RETURN;
+	END IF;
+	idx := x.FIRST;
+    WHILE idx IS NOT NULL LOOP
+	  DBMS_OUTPUT.PUT_LINE('x(' || idx || ') = ' || x(idx));
+	  idx := x.NEXT(idx);
+    END LOOP;
+  END;
+
+  PROCEDURE print_var_type2 (x s_array) IS
+    idx SIMPLE_INTEGER;
+  BEGIN
+    IF x.COUNT = 0 THEN
+	  DBMS_OUTPUT.PUT_LINE('the associative array is null');
+	  RETURN;
+	END IF;
+	idx := x.FIRST;
+    WHILE idx IS NOT NULL LOOP
+	  DBMS_OUTPUT.PUT_LINE('x(' || idx || ') = ' || x(idx));
+	  idx := x.NEXT(idx);
+    END LOOP;
+  END;
+END MY_DBMS_RANDOM;
+/
+DECLARE
+  num_words  my_dbms_random.b_array;
+  dyn_stmt   VARCHAR2(3000);
+BEGIN
+  num_words(0) := 10;
+  num_words(1) := 8;
+  num_words(2) := 7;
+  num_words(-1) := 9;
+  dyn_stmt := 'BEGIN my_dbms_random.print_var_type(:x); END;';
+  EXECUTE IMMEDIATE dyn_stmt USING num_words;
+END;
+/
+x(-1) = 9
+x(0) = 10
+x(1) = 8
+x(2) = 7
+DECLARE
+  num_words  my_dbms_random.s_array;
+  dyn_stmt   VARCHAR2(3000);
+BEGIN
+  num_words(0) := 10;
+  num_words(1) := 8;
+  num_words(2) := 7;
+  num_words(-1) := 9;
+  dyn_stmt := 'BEGIN my_dbms_random.print_var_type2(:x); END;';
+  EXECUTE IMMEDIATE dyn_stmt USING num_words;
+END;
+/
+x(-1) = 9
+x(0) = 10
+x(1) = 8
+x(2) = 7
+DROP PACKAGE MY_DBMS_RANDOM;
+--/* End - OA-REQ-2456 */
 SET SERVEROUTPUT OFF
 DROP TABLE t1;
 DROP TABLE t2;
