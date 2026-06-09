@@ -91,6 +91,7 @@ cleansql:
 #REGRESS_OPTS = --port=1521
 ORA_REGRESS = \
 	ora_character \
+	ora_char_copy \
 	ora_datetime \
 	ora_interval \
 	ora_number \

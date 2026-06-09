@@ -1,0 +1,52 @@
+/* Begin Bug#Z7338 */
+SET ivorysql.enable_store_nullterminator_char = on;
+CREATE TABLE t_ora_char_copy (
+    c1 char(10 char),
+    c2 char(10 byte),
+    c3 varchar2(20 char),
+    c4 varchar2(20 byte)
+);
+INSERT INTO t_ora_char_copy VALUES ('hello', 'world', 'foo', 'bar');
+INSERT INTO t_ora_char_copy VALUES ('中文', '测试', '数据', 'abc');
+-- text COPY round-trip
+COPY t_ora_char_copy TO '@abs_builddir@/results/ivorysql_ora_char_copy.tsv';
+TRUNCATE t_ora_char_copy;
+COPY t_ora_char_copy FROM '@abs_builddir@/results/ivorysql_ora_char_copy.tsv';
+SELECT * FROM t_ora_char_copy ORDER BY c1;
+      c1      |     c2     |  c3  | c4  
+--------------+------------+------+-----
+ hello        | world      | foo  | bar
+ 中文         | 测试       | 数据 | abc
+(2 rows)
+
+-- CSV COPY round-trip
+TRUNCATE t_ora_char_copy;
+INSERT INTO t_ora_char_copy VALUES ('hello', 'world', 'foo', 'bar');
+INSERT INTO t_ora_char_copy VALUES ('中文', '测试', '数据', 'abc');
+COPY t_ora_char_copy TO '@abs_builddir@/results/ivorysql_ora_char_copy.csv' CSV;
+TRUNCATE t_ora_char_copy;
+COPY t_ora_char_copy FROM '@abs_builddir@/results/ivorysql_ora_char_copy.csv' CSV;
+SELECT * FROM t_ora_char_copy ORDER BY c1;
+      c1      |     c2     |  c3  | c4  
+--------------+------------+------+-----
+ hello        | world      | foo  | bar
+ 中文         | 测试       | 数据 | abc
+(2 rows)
+
+-- binary COPY round-trip
+TRUNCATE t_ora_char_copy;
+INSERT INTO t_ora_char_copy VALUES ('hello', 'world', 'foo', 'bar');
+INSERT INTO t_ora_char_copy VALUES ('中文', '测试', '数据', 'abc');
+COPY t_ora_char_copy TO '@abs_builddir@/results/ivorysql_ora_char_copy.bin' BINARY;
+TRUNCATE t_ora_char_copy;
+COPY t_ora_char_copy FROM '@abs_builddir@/results/ivorysql_ora_char_copy.bin' BINARY;
+SELECT * FROM t_ora_char_copy ORDER BY c1;
+      c1      |     c2     |  c3  | c4  
+--------------+------------+------+-----
+ hello        | world      | foo  | bar
+ 中文         | 测试       | 数据 | abc
+(2 rows)
+
+DROP TABLE t_ora_char_copy;
+SET ivorysql.enable_store_nullterminator_char = off;
+/* End Bug#Z7338 */
