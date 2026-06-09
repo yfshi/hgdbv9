@@ -128,7 +128,6 @@ bool		enable_ignore_columns_list = false;
 /* End - BUG#Z1434 */
 bool		mysql_convert = false;		/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
 int			lower_case_table_names = 0;		/* ReqID:SRS-MYSQL-CASE */
-bool		mys_in_extension_install = false;	/* ReqID:SRS-MYSQL-CASE */
 bool		not_mode_pad_char_to_full = true;	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CHAR(n) */
 int			div_precision_increment = 4;			/* ReqID: SRS-MYSQL-NUMBERICTYPE */
 int			auto_increment_increment = 1;			/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */

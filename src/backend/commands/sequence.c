@@ -3272,9 +3272,9 @@ process_owned_by(Relation seqrel, List *owned_by, bool for_identity)
 		/* Open and lock rel to ensure it won't go away meanwhile */
 		rel = makeRangeVarFromNameList(relname);
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_objlower_hook && mysql_string_case_hook && mysql_rvar_case_hook)
+		if (compatible_mode == MYS_MODE)
 		{
-			if (lower_zero != mysql_objlower_hook() && rel != NULL)
+			if (MYS_LOWER_SENSITIVE != mysql_objlower_hook() && rel != NULL)
 				mysql_rvar_case_hook(rel);
 		}
 		/* End - ReqID:SRS-MYSQL-CASE */

@@ -49,20 +49,6 @@
 #include "nodes/value.h"
 
 
-/* pg_compatible_mysql_switch()
- * Get whether the system is mysql and whether uppercase
- * and lowercase letters are turned on.
- *
- * return a bool value
- */
-bool pg_compatible_mysql_switch(void)
-{
-	if (compatible_mode == MYS_MODE && !mys_in_extension_install)
-		return true;
-
-	return false;
-}
-
 /* pg_compatible_mysql_lower()
  * Get whether the system is mysql and whether uppercase
  * and lowercase letters are turned on, database, schema and
@@ -72,11 +58,7 @@ bool pg_compatible_mysql_switch(void)
  */
 bool pg_compatible_mysql_lower(void)
 {
-	if (compatible_mode == MYS_MODE && !mys_in_extension_install &&
-		(lower_case_table_names == 1 || lower_case_table_names == 2))
-		return true;
-
-	return false;
+	return lower_case_table_names == 1 || lower_case_table_names == 2;
 }
 
 /* pg_compatible_mysql_ojblower()
@@ -86,18 +68,16 @@ bool pg_compatible_mysql_lower(void)
  *
  * return a enum value
  */
-obj_lower pg_compatible_mysql_ojblower(void)
+MysLowerCaseMode pg_compatible_mysql_ojblower(void)
 {
-	if (compatible_mode == MYS_MODE && !mys_in_extension_install)
-	{
-		if (lower_case_table_names == 0)
-			return lower_zero;
-		if (lower_case_table_names == 1)
-			return lower_one;
-		if (lower_case_table_names == 2)
-			return lower_two;
-	}
-	return lower_invalid;
+	if (lower_case_table_names == 0)
+		return MYS_LOWER_SENSITIVE;
+	if (lower_case_table_names == 1)
+		return MYS_LOWER_INSENSITIVE;
+	if (lower_case_table_names == 2)
+		return MYS_LOWER_MIXED;
+
+	return MYS_LOWER_INVALID;
 }
 
 /* pg_compatible_mysql_case()
@@ -264,7 +244,7 @@ Oid mysql_get_namespace_oid(const char *nspname)
 	if (!nspname)
 		return oid;
 
-	if (compatible_mode == MYS_MODE && !mys_in_extension_install)
+	if (compatible_mode == MYS_MODE)
 	{
 		/* BUG#5975, If the schema is information_schema, and MySQL
 		 * case sensitivity is enabled, convert it entirely to lowercase.

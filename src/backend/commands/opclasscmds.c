@@ -370,7 +370,7 @@ DefineOpClass(CreateOpClassStmt *stmt)
 	namespaceoid = QualifiedNameGetCreationNamespace(stmt->opclassname,
 													 &opcname);
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->opclassname))
+	if (compatible_mode == MYS_MODE && list_length(stmt->opclassname))
 		opcname = strVal(llast(stmt->opclassname));
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -796,7 +796,7 @@ DefineOpFamily(CreateOpFamilyStmt *stmt)
 													 &opfname);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->opfamilyname))
+	if (compatible_mode == MYS_MODE && list_length(stmt->opfamilyname))
 		opfname = strVal(llast(stmt->opfamilyname));
 	/* End - ReqID:SRS-MYSQL-CASE */
 

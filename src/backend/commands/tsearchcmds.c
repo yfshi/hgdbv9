@@ -207,7 +207,7 @@ DefineTSParser(List *names, List *parameters)
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &prsname);
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+	if (compatible_mode == MYS_MODE && list_length(names))
 		prsname = strVal(llast(names));
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -421,7 +421,7 @@ DefineTSDictionary(List *names, List *parameters)
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &dictname);
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+	if (compatible_mode == MYS_MODE && list_length(names))
 		dictname = strVal(llast(names));
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -723,7 +723,7 @@ DefineTSTemplate(List *names, List *parameters)
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &tmplname);
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+	if (compatible_mode == MYS_MODE && list_length(names))
 		tmplname = strVal(llast(names));
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -935,7 +935,7 @@ DefineTSConfiguration(List *names, List *parameters, ObjectAddress *copied)
 	/* Convert list of names to a name and namespace */
 	namespaceoid = QualifiedNameGetCreationNamespace(names, &cfgname);
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook() && list_length(names))
+	if (compatible_mode == MYS_MODE && list_length(names))
 		cfgname = strVal(llast(names));
 	/* End - ReqID:SRS-MYSQL-CASE */
 

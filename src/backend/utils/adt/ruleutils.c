@@ -2088,7 +2088,7 @@ pg_get_statisticsobj_worker(Oid statextid, bool columns_only, bool missing_ok)
 	{
 		nsp = get_namespace_name(statextrec->stxnamespace);
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_get_objnameinfo_hook && mysql_switch_hook && mysql_switch_hook())
+		if (compatible_mode == MYS_MODE)
 		{
 			char	*objname;
 			char	*schema;
@@ -3342,7 +3342,7 @@ pg_get_functiondef_internal(PG_FUNCTION_ARGS)
 	nsp = get_namespace_name(proc->pronamespace);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_get_objnameinfo_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 	{
 		char	   *fucname = NULL;
 		char	   *fucschema = NULL;
@@ -3665,7 +3665,7 @@ mys_get_functiondef_internal(PG_FUNCTION_ARGS)
 	nsp = get_namespace_name(proc->pronamespace);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_get_objnameinfo_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 	{
 		char	   *fucname = NULL;
 		char	   *fucschema = NULL;

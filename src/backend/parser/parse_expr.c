@@ -1382,11 +1382,13 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				relname = strVal(field1);
 
 				/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
-				if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
-					relname = mysql_string_case_hook(relname);
-				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook() &&
-					!pg_strcasecmp(relname, "excluded"))
-					relname = mysql_string_case_hook(relname);
+				if (compatible_mode == MYS_MODE)
+				{
+					if (mysql_lower_hook())
+						relname = mysql_string_case_hook(relname);
+					if (!pg_strcasecmp(relname, "excluded"))
+						relname = mysql_string_case_hook(relname);
+				}
 				/* End - ReqID:SRS-SRS-MYSQL-CASE */
 
 				/* Locate the referenced nsitem */
@@ -1530,14 +1532,16 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				relname = strVal(field2);
 
 				/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
-				if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook())
+				if (compatible_mode == MYS_MODE)
 				{
-					nspname = mysql_string_case_hook(nspname);
-					relname = mysql_string_case_hook(relname);
+					if (mysql_lower_hook())
+					{
+						nspname = mysql_string_case_hook(nspname);
+						relname = mysql_string_case_hook(relname);
+					}
+					if (!pg_strcasecmp(relname, "excluded"))
+						relname = mysql_string_case_hook(relname);
 				}
-				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook() &&
-					!pg_strcasecmp(relname, "excluded"))
-					relname = mysql_string_case_hook(relname);
 				/* End - ReqID:SRS-SRS-MYSQL-CASE */
 
 				/* Locate the referenced nsitem */
@@ -1650,15 +1654,16 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				relname = strVal(field3);
 
 				/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
-				if (mysql_lower_hook && mysql_string_case_hook && mysql_lower_hook()
-					&& !pg_strcasecmp(relname, "excluded"))
+				if (compatible_mode == MYS_MODE)
 				{
-					nspname = mysql_string_case_hook(nspname);
-					relname = mysql_string_case_hook(relname);
+					if (mysql_lower_hook())
+					{
+						nspname = mysql_string_case_hook(nspname);
+						relname = mysql_string_case_hook(relname);
+					}
+					if (!pg_strcasecmp(relname, "excluded"))
+						relname = mysql_string_case_hook(relname);
 				}
-				if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook() &&
-					!pg_strcasecmp(relname, "excluded"))
-					relname = mysql_string_case_hook(relname);
 				/* End - ReqID:SRS-SRS-MYSQL-CASE */
 				/*
 				 * We check the catalog name and then ignore it.

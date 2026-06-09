@@ -177,8 +177,8 @@ CreateStatistics(CreateStatsStmt *stmt, bool check_rights)
 	{
 		namespaceId = QualifiedNameGetCreationNamespace(stmt->defnames,
 														&namestr);
-		if (mysql_switch_hook && mysql_switch_hook() && list_length(stmt->defnames))
-				namestr = strVal(llast(stmt->defnames));
+		if (compatible_mode == MYS_MODE && list_length(stmt->defnames))
+			namestr = strVal(llast(stmt->defnames));
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 	else

@@ -21,29 +21,30 @@
 #ifndef MYS_CASE_SENSITIVE_H
 #define MYS_CASE_SENSITIVE_H
 
+#include "c.h"
 #include "postgres.h"
 
-#include "c.h"
 #include "access/htup.h"
-#include "nodes/pg_list.h"
-#include "nodes/parsenodes.h"
 #include "catalog/objectaddress.h"
+#include "nodes/parsenodes.h"
+#include "nodes/pg_list.h"
 #include "parser/parse_node.h"
+#include "utils/guc.h"
+#include "utils/ora_compatible.h"
 
-
-typedef enum obj_lower
+typedef enum MysLowerCaseMode
 {
-	lower_zero,
-	lower_one,
-	lower_two,
-	lower_invalid
-}obj_lower;
+	MYS_LOWER_SENSITIVE,		/* lower_case_table_names = 0 */
+	MYS_LOWER_INSENSITIVE,		/* lower_case_table_names = 1 */
+	MYS_LOWER_MIXED,			/* lower_case_table_names = 2 */
+	MYS_LOWER_INVALID
+} MysLowerCaseMode;
 
 
 /* Hook for plugins to get control in all mysql case sensitive */
 typedef bool (*Mysql_case_switch_hook_type) (void);
 typedef bool (*Mysql_case_switch_lower_hook_type) (void);
-typedef obj_lower (*Mysql_case_switch_createobjlower_hook_type) (void);
+typedef MysLowerCaseMode (*Mysql_case_switch_createobjlower_hook_type) (void);
 
 /* Hook for plugins to get control in all mysql case sensitive */
 typedef char * (*Mysql_casesensitivestr_hook_type) (char *);
@@ -70,7 +71,6 @@ typedef bool (*Mysql_check_for_column_name_collision_hook_type) (Relation rel,
 /* End - BUG#Z00004315/4316 */
 
 
-extern PGDLLIMPORT Mysql_case_switch_hook_type mysql_switch_hook;
 extern PGDLLIMPORT Mysql_case_switch_lower_hook_type mysql_lower_hook;
 extern PGDLLIMPORT Mysql_casesensitivestr_hook_type mysql_string_case_hook;
 extern PGDLLIMPORT Mysql_casesensitivelist_hook_type mysql_list_case_hook;

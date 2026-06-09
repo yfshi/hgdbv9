@@ -1246,9 +1246,9 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 		/* use exact schema given */
 		namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_objlower_hook && mysql_string_case_hook && !OidIsValid(namespaceId))
+		if (compatible_mode == MYS_MODE && !OidIsValid(namespaceId))
 		{
-			if (lower_one == mysql_objlower_hook() || lower_two == mysql_objlower_hook())
+			if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook() || MYS_LOWER_MIXED == mysql_objlower_hook())
 			{
 				schemaname = mysql_string_case_hook(schemaname);
 				namespaceId = LookupExplicitNamespace(schemaname, missing_ok);
@@ -1267,7 +1267,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 	}
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_string_case_hook)
+	if (compatible_mode == MYS_MODE)
 	{
 		bool nottransfor = false;
 
@@ -1281,7 +1281,7 @@ FuncnameGetCandidates(List *names, int nargs, List *argnames,
 			nottransfor = true;
 		}
 
-		if (mysql_switch_hook() && !nottransfor)
+		if (!nottransfor)
 			funcname = mysql_string_case_hook(funcname);
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */

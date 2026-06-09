@@ -2298,58 +2298,26 @@ plmysql_parse_err_condition(char *condname)
 	 * OTHERS is represented as code 0 (which would map to '00000', but we
 	 * have no need to represent that as an exception condition).
 	 */
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_switch_hook())
+	if (pg_strcasecmp(condname, "others") == 0)
 	{
-		if (pg_strcasecmp(condname, "others") == 0)
-		{
-			new = palloc(sizeof(PLmySQL_condition));
-			new->sqlerrstate = 0;
-			new->condname = condname;
-			new->next = NULL;
-			return new;
-		}
+		new = palloc(sizeof(PLmySQL_condition));
+		new->sqlerrstate = 0;
+		new->condname = condname;
+		new->next = NULL;
+		return new;
 	}
-	else
-	{
-		if (strcmp(condname, "others") == 0)
-		{
-			new = palloc(sizeof(PLmySQL_condition));
-			new->sqlerrstate = 0;
-			new->condname = condname;
-			new->next = NULL;
-			return new;
-		}
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
 
 	prev = NULL;
 	for (i = 0; exception_label_map[i].label != NULL; i++)
 	{
-		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_switch_hook && mysql_switch_hook())
+		if (pg_strcasecmp(condname, exception_label_map[i].label) == 0)
 		{
-			if (pg_strcasecmp(condname, exception_label_map[i].label) == 0)
-			{
-				new = palloc(sizeof(PLmySQL_condition));
-				new->sqlerrstate = exception_label_map[i].sqlerrstate;
-				new->condname = condname;
-				new->next = prev;
-				prev = new;
-			}
+			new = palloc(sizeof(PLmySQL_condition));
+			new->sqlerrstate = exception_label_map[i].sqlerrstate;
+			new->condname = condname;
+			new->next = prev;
+			prev = new;
 		}
-		else
-		{
-			if (strcmp(condname, exception_label_map[i].label) == 0)
-			{
-				new = palloc(sizeof(PLmySQL_condition));
-				new->sqlerrstate = exception_label_map[i].sqlerrstate;
-				new->condname = condname;
-				new->next = prev;
-				prev = new;
-			}
-		}
-		/* End - ReqID:SRS-MYSQL-CASE */
 	}
 
 	if (!prev)

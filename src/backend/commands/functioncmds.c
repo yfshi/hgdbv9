@@ -612,7 +612,7 @@ interpret_function_parameter_list(ParseState *pstate,
 					 fpmode == FUNC_PARAM_TABLE))
 					continue;
 				/* Begin - ReqID:SRS-MYSQL-CASE */
-				if (mysql_switch_hook && mysql_switch_hook())
+				if (compatible_mode == MYS_MODE)
 				{
 					if (prevfp->name && prevfp->name[0] &&
 						pg_strcasecmp(prevfp->name, fp->name) == 0)
@@ -1777,14 +1777,13 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	if (stmt->funcname != NIL && IsA(llast(stmt->funcname), String))
 		orifuncname = pstrdup(strVal(llast(stmt->funcname)));
 
-	if (mysql_switch_hook && mysql_lower_hook &&
-		mysql_list_case_hook && mysql_string_case_hook)
+	if (compatible_mode == MYS_MODE)
 	{
 		if (mysql_lower_hook())
 		{
 			mysql_list_case_hook(stmt->funcname);
 		}
-		else if (mysql_switch_hook())
+		else
 		{
 			ListCell *cell = llast(stmt->funcname);
 
@@ -2658,14 +2657,14 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_lower_hook && mysql_list_case_hook && mysql_string_case_hook)
+	if (compatible_mode == MYS_MODE)
 	{
 		/*orifuncname = pstrdup(strVal(llast(stmt->funcname)));*/
 		if (mysql_lower_hook())
 		{
 			mysql_list_case_hook(stmt->func->objname);
 		}
-		else if (mysql_switch_hook())
+		else
 		{
 			ListCell *cell = llast(stmt->func->objname);
 

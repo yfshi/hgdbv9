@@ -923,7 +923,7 @@ scanRTEForColumn(ParseState *pstate, RangeTblEntry *rte,
 
 		attnum++;
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_switch_hook && mysql_switch_hook())
+		if (compatible_mode == MYS_MODE)
 		{
 			if (pg_strcasecmp(attcolname, colname) == 0)
 			{

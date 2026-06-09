@@ -11481,13 +11481,8 @@ AlterObjectSchemaStmt:
 			| ALTER PROCEDURE function_with_argtypes SET SCHEMA name
 				{
 					AlterObjectSchemaStmt *n = makeNode(AlterObjectSchemaStmt);
-					/* Begin - ReqID:SRS-MYSQL-CASE */
-					if (mysql_objlower_hook && mysql_string_case_hook)
-					{
-						if (lower_one == mysql_objlower_hook() && $6 != NULL)
-							$6 = mysql_string_case_hook($6);
-					}
-					/* End - ReqID:SRS-MYSQL-CASE */
+					if (MYS_LOWER_INSENSITIVE == mysql_objlower_hook() && $6 != NULL)
+						$6 = mysql_string_case_hook($6);
 					n->objectType = OBJECT_PROCEDURE;
 					n->object = (Node *) $3;
 					n->newschema = $6;
@@ -20268,62 +20263,31 @@ RoleSpec:	NonReservedWord
 						 * be treated specially here.
 						 */
 						RoleSpec *n;
-						/* Begin - ReqID:SRS-MYSQL-CASE */
-						if (mysql_switch_hook && mysql_switch_hook())
-						{
-							char *str = mysql_string_case_hook(pstrdup($1));
+						char *str = mysql_string_case_hook(pstrdup($1));
 
-							if (strcmp(str, "public") == 0)
-							{
-								n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
-								n->roletype = ROLESPEC_PUBLIC;
-							}
-							/* Begin - BUG#Z6309 */
-							else if (strcmp(str, "user") == 0)
-							{
-								n = makeRoleSpec(ROLESPEC_CURRENT_USER, @1);
-							}
-							/* End - BUG#Z6309 */
-							else if (strcmp(str, "none") == 0)
-							{
-								ereport(ERROR,
-										(errcode(ERRCODE_RESERVED_NAME),
-										 errmsg("role name \"%s\" is reserved",
-												"none"),
-										 parser_errposition(@1)));
-							}
-							else
-							{
-								n = makeRoleSpec(ROLESPEC_CSTRING, @1);
-								n->rolename = pstrdup($1);
-							}
-						}
-						else 
+						if (strcmp(str, "public") == 0)
 						{
-							if (strcmp($1, "public") == 0)
-							{
-								n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
-								n->roletype = ROLESPEC_PUBLIC;
-							}
-							/* Begin - BUG#Z6309 */
-							else if (strcmp($1, "user") == 0)
-							{
-								n = makeRoleSpec(ROLESPEC_CURRENT_USER, @1);
-							}
-							/* End - BUG#Z6309 */
-							else if (strcmp($1, "none") == 0)
-							{
-								ereport(ERROR,
-										(errcode(ERRCODE_RESERVED_NAME),
-										 errmsg("role name \"%s\" is reserved",
-												"none"),
-										 parser_errposition(@1)));
-							}
-							else
-							{
-								n = makeRoleSpec(ROLESPEC_CSTRING, @1);
-								n->rolename = pstrdup($1);
-							}
+							n = (RoleSpec *) makeRoleSpec(ROLESPEC_PUBLIC, @1);
+							n->roletype = ROLESPEC_PUBLIC;
+						}
+						/* Begin - BUG#Z6309 */
+						else if (strcmp(str, "user") == 0)
+						{
+							n = makeRoleSpec(ROLESPEC_CURRENT_USER, @1);
+						}
+						/* End - BUG#Z6309 */
+						else if (strcmp(str, "none") == 0)
+						{
+							ereport(ERROR,
+									(errcode(ERRCODE_RESERVED_NAME),
+										errmsg("role name \"%s\" is reserved",
+											"none"),
+										parser_errposition(@1)));
+						}
+						else
+						{
+							n = makeRoleSpec(ROLESPEC_CSTRING, @1);
+							n->rolename = pstrdup($1);
 						}
 						/* End - ReqID:SRS-MYSQL-CASE */
 						$$ = n;
@@ -21707,18 +21671,14 @@ makeColumnRef(char *colname, List *indirection,
 	int		nfields = 0;
 	ListCell *l;
 
-	/* Begin - ReqID:SRS-MYSQL-CASE, the trigger in merge.sql */
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
-	{
-		if (!pg_strcasecmp(colname, "tg_name") || !pg_strcasecmp(colname, "tg_when")
-			|| !pg_strcasecmp(colname, "tg_level") || !pg_strcasecmp(colname, "tg_op")
-			|| !pg_strcasecmp(colname, "tg_relid") || !pg_strcasecmp(colname, "tg_relname")
-			|| !pg_strcasecmp(colname, "tg_table_name") || !pg_strcasecmp(colname, "tg_table_schema")
-			|| !pg_strcasecmp(colname, "tg_nargs") || !pg_strcasecmp(colname, "tg_argv")
-			|| !pg_strcasecmp(colname, "tg_event") || !pg_strcasecmp(colname, "tg_tag")
-			|| !pg_strcasecmp(colname, "found") || !pg_strcasecmp(colname, "group_size"))
-			colname = mysql_string_case_hook (colname);
-	}
+	if (!pg_strcasecmp(colname, "tg_name") || !pg_strcasecmp(colname, "tg_when")
+		|| !pg_strcasecmp(colname, "tg_level") || !pg_strcasecmp(colname, "tg_op")
+		|| !pg_strcasecmp(colname, "tg_relid") || !pg_strcasecmp(colname, "tg_relname")
+		|| !pg_strcasecmp(colname, "tg_table_name") || !pg_strcasecmp(colname, "tg_table_schema")
+		|| !pg_strcasecmp(colname, "tg_nargs") || !pg_strcasecmp(colname, "tg_argv")
+		|| !pg_strcasecmp(colname, "tg_event") || !pg_strcasecmp(colname, "tg_tag")
+		|| !pg_strcasecmp(colname, "found") || !pg_strcasecmp(colname, "group_size"))
+		colname = mysql_string_case_hook (colname);
 	/* End - ReqID:SRS-MYSQL-CASE, the trigger in merge.sql */
 
 	c->location = location;

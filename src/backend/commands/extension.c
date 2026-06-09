@@ -102,10 +102,7 @@ typedef struct ExtensionControlFile
 	bool		trusted;		/* allow becoming superuser on the fly? */
 	int			encoding;		/* encoding of the script file, or -1 */
 	List	   *requires;		/* names of prerequisite extensions */
-	char	   *parse_options;	/* can be create by pg/oracle parser  bug:z676,z776*/
-	bool		mys_case_switch;	/* When creating an extension,
-									 * whether mysql case is turned on,
-									 * the default is off. ReqID:SRS-MYSQL-CASE*/
+	char	   *parse_options;	/* can be create by pg/oracle/mysql parser  bug:z676,z776,z8030*/
 } ExtensionControlFile;
 
 /*
@@ -737,22 +734,12 @@ parse_extension_control_file(ExtensionControlFile *control,
 								item->name)));
 			}
 		}
-		/* begin - bug:z676,z776 */
+		/* begin - bug:z676,z776,z8030 */
 		else if (strcmp(item->name, "parse_options") == 0)
 		{
 			control->parse_options = pstrdup(item->value);
 		}
-		/* end - bug:z676,z776  */
-		/* Begin - ReqID:SRS-MYSQL-CASE */
-		else if (strcmp(item->name, "mys_case_switch") == 0)
-		{
-			if (!parse_bool(item->value, &control->mys_case_switch))
-				ereport(ERROR,
-							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-							 errmsg("parameter \"%s\" requires a Boolean value",
-									item->name)));
-		}
-		/* End - ReqID:SRS-MYSQL-CASE */
+		/* end - bug:z676,z776,z8030  */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_SYNTAX_ERROR),
@@ -788,7 +775,6 @@ read_extension_control_file(const char *extname)
 	control->trusted = false;
 	control->encoding = -1;
 	control->parse_options = NULL;		/* bug: z676,z776*/
-	control->mys_case_switch = false;	/* ReqID:SRS-MYSQL-CASE */
 
 	/*
 	 * Parse the primary control file.
@@ -1575,7 +1561,7 @@ CreateExtensionInternal(char *extensionName,
 	Oid			extensionOid;
 	ObjectAddress address;
 	ListCell   *lc;
-	volatile bool	modify_flag = false;	/* BUG#Z830 */
+	volatile const char *restore_mode = NULL;	/* BUG#Z830 */
 	Oid			objectOwner = extowner;	/* ReqID:SRS-SQL-SCHEMA */
 
 
@@ -1586,12 +1572,15 @@ CreateExtensionInternal(char *extensionName,
 	 */
 	pcontrol = read_extension_control_file(extensionName);
 
-	/* begin - bug:z676,z776 */
+	/* begin - bug:z676,z776,z8030 */
 	/* If parser_options is pg, it can only be created extension when it's pg parser. 
 	 * Therefore, you need to change the compatibale_mode to pg when creating extension.
 	 *
 	 * If parser_options is oracle, it can only be created extension when it's oracle parser. 
 	 * Therefore, you need to change the compatibale_mode to oracle when creating extension.
+	 * 
+	 * If parser_options is mysql, it can only be created extension when it's mysql parser. 
+	 * Therefore, you need to change the compatibale_mode to mysql when creating extension.
 	 * 
 	 * If parser_options is empty, it can only be created extension when it's pg parser. 
 	 * Therefore, you need to change the compatibale_mode to pg when creating extension.
@@ -1602,53 +1591,18 @@ CreateExtensionInternal(char *extensionName,
 	 */
 	PG_TRY();
 	{
-		if (DB_ORACLE == database_mode )
+		if (DB_ORACLE == database_mode || DB_MYSQL == database_mode)
 		{
 			if (pcontrol->parse_options != NULL)
 			{
-				if (strcmp(pcontrol->parse_options, "all") == 0)
-					;
-				else if (strcmp(pcontrol->parse_options, "pg") == 0)
+				/* parse_options = "all": no change the compatibale_mode */
+				if (strcmp(pcontrol->parse_options, "all") != 0)
 				{
-					if (PG_MODE == compatible_mode)
-						;
-					else
-					{
-						SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z830 */
-						modify_flag = true;
-					}
-				}
-				else if (strcmp(pcontrol->parse_options, "oracle") == 0)
-				{
-					if (ORA_MODE == compatible_mode)
-						;
-					else
-					{
-						SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z830 */
-						modify_flag = true;
-					}
-				}
-
-			}
-			else
-			{
-				if (PG_MODE == compatible_mode)
-					;
-				else
-				{
-					SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z830 */
-					modify_flag = true;
+					restore_mode = GetConfigOption("ivorysql.compatible_mode", false, false);
+					SetConfigOption("ivorysql.compatible_mode", pcontrol->parse_options, PGC_USERSET, PGC_S_SESSION);
 				}
 			}
 		}
-		/* end - bug:z676,z776 */
-		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (DB_MYSQL == database_mode && MYS_MODE == compatible_mode &&
-			!pcontrol->mys_case_switch)
-		{
-			mys_in_extension_install = true;
-		}
-		/* End - ReqID:SRS-MYSQL-CASE */
 
 		/*
 		* Determine the version to install
@@ -1861,21 +1815,13 @@ CreateExtensionInternal(char *extensionName,
 	}
 	PG_FINALLY();
 	{
-		if(modify_flag)
+		if (restore_mode != NULL)
 		{
-			Assert(database_mode == DB_ORACLE || database_mode == DB_PG);
-			if (compatible_mode == ORA_MODE)
-				SetConfigOption("ivorysql.compatible_mode", "pg", PGC_USERSET, PGC_S_OVERRIDE);
-			else if (compatible_mode == PG_MODE)
-				SetConfigOption("ivorysql.compatible_mode", "oracle", PGC_USERSET, PGC_S_OVERRIDE);
-			else
-				; /* Maybe there is another database_mode in the future, we will handle it at here or send an error message right now */
-		/* End - BUG#Z830 */
-			modify_flag = false;
+			SetConfigOption("ivorysql.compatible_mode", (const char *) restore_mode, PGC_USERSET, PGC_S_SESSION);
+			restore_mode = NULL;
 		}
-
-		mys_in_extension_install = false;
 	}
+	/* End - BUG#Z830 */
 	PG_END_TRY();
 	/* end - bug:z676,z776 */
 
@@ -1992,7 +1938,6 @@ CreateExtension(ParseState *pstate, CreateExtensionStmt *stmt)
 					 errmsg("extension \"%s\" already exists",
 							stmt->extname)));
 	}
-
 	/*
 	 * We use global variables to track the extension being created, so we can
 	 * create only one extension at the same time.
@@ -2420,8 +2365,8 @@ get_available_versions_for_extension(ExtensionControlFile *pcontrol,
 	{
 		ExtensionVersionInfo *evi = (ExtensionVersionInfo *) lfirst(lc);
 		ExtensionControlFile *control;
-		Datum		values[10];	/* ReqID:SRS-MYSQL-CASE */
-		bool		nulls[10];	/* ReqID:SRS-MYSQL-CASE */
+		Datum		values[9];	/* BUG#Z8030 */
+		bool		nulls[9];	/* BUG#Z8030 */
 		ListCell   *lc2;
 
 		if (!evi->installable)
@@ -2469,10 +2414,6 @@ get_available_versions_for_extension(ExtensionControlFile *pcontrol,
 		else
 			values[8] = CStringGetTextDatum(control->parse_options);
 		/* end - bug:z676,z776 */
-
-		/* Begin - ReqID:SRS-MYSQL-CASE */
-		values[9] = BoolGetDatum(control->mys_case_switch);
-		/* End - ReqID:SRS-MYSQL-CASE */
 
 		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
 

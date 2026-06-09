@@ -613,9 +613,9 @@ makeDefElem(char *name, Node *arg, int location)
 	DefElem    *res = makeNode(DefElem);
 
 	/* Begin - ReqID:SRS-SRS-MYSQL-CASE */
-	if (mysql_switch_hook && mysql_string_case_hook && mysql_switch_hook())
+	if (compatible_mode == MYS_MODE)
 	{
-		name = mysql_string_case_hook (name);
+		name = mysql_string_case_hook(name);
 	}
 	/* End - ReqID:SRS-SRS-MYSQL-CASE */
 

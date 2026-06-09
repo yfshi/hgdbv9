@@ -874,7 +874,7 @@ generateSerialExtraStmts(CreateStmtContext *cxt, ColumnDef *column,
 		}
 		snamespace = get_namespace_name(snamespaceid);
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_objlower_hook && mysql_string_case_hook && lower_two == mysql_objlower_hook())
+		if (compatible_mode == MYS_MODE && MYS_LOWER_MIXED == mysql_objlower_hook())
 			sname = ChooseRelationName(mysql_string_case_hook(cxt->relation->relname),
 								   column->colname,
 								   "seq",
@@ -1157,7 +1157,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		char	   *typname = strVal(linitial(column->typeName->names));
 
 		/* Begin - ReqID:SRS-MYSQL-CASE */
-		if (mysql_switch_hook && mysql_switch_hook())
+		if (compatible_mode == MYS_MODE)
 		{
 			if (pg_strcasecmp(typname, "smallserial") == 0 ||
 				pg_strcasecmp(typname, "serial2") == 0)
