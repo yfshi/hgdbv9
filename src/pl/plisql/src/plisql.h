@@ -1279,6 +1279,11 @@ typedef struct PLiSQL_function
 	/* Begin - ReqID:SRS-PLSQL-RECORD */
 	bool		fn_hasudtype;	/* the function arguments have an Oracle record type or another udt type? */
 	PLiSQL_type	*rettype;		/* NOT NULL if function return'type is from a package */
+	/* Begin - bug#00008129 */
+	Oid			fn_orig_rettype;	/* out parametr maybe chanage function fn_rettype. so we record
+									 * orgin type from pg_proc
+									 */
+	/* End - bug#00008129 */
 	/* End - ReqID:SRS-PLSQL-RECORD */
 	/* Begin - ReqID:SRS-PLSQL-DSQL */
 	void 	   *paramCheck;		/* parameter check hook */

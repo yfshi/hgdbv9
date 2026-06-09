@@ -175,7 +175,6 @@ main(int argc, char **argv)
 	/* Step1: making connection */
 	Ivyconn    *conn1;
 	Ivyconn    *conn3;
-	Ivyresult  *res;
 
 	char conninfo[100]="user=system dbname=template1 port="; /* BUG#M0000075: When the license is enabled, the default library is changed from postgres to highgo. */
 	const char *oraport = argv[1];
@@ -211,23 +210,6 @@ main(int argc, char **argv)
 	init_data(conn1);
 	init_statement();
 
-	/* set guc vorysql.result_first to false */
-	res = Ivyexec(conn1, "set ivorysql.result_first = false;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "set guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely();
-	}
-	Ivyclear(res);
-	res = Ivyexec(conn3, "set ivorysql.result_first = false;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "set guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely();
-	}
-	Ivyclear(res);
 
 	for (i = 0; i < 1; i++)
 	{
@@ -240,23 +222,6 @@ main(int argc, char **argv)
 	IvyFreePreparedStatement(thread_data.stmt1);
 	IvyFreePreparedStatement(thread_data.stmt3);
 
-	/* reset guc vorysql.result_first */
-	res = Ivyexec(conn1, "reset ivorysql.result_first;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "reset guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely();
-	}
-	Ivyclear(res);
-	res = Ivyexec(conn3, "reset ivorysql.result_first;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "reset guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely();
-	}
-	Ivyclear(res);
 
 	Ivyfinish(conn1);
 	Ivyfinish(conn3);

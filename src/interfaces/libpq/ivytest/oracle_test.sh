@@ -21,7 +21,40 @@ standard_initdb() {
 	then
 		cat "$TEMP_CONFIG" >> "$PGDATA/postgresql.conf"
 	fi
+	#/* Begin - bug#00008129 */
+	if [ $1 -eq 1 ]; then
+		echo "ivorysql.result_first = off" >> "$PGDATA/postgresql.conf"
+	fi
+	# /* End - bug#00008129 */
 }
+
+#/* Begin - bug#00008129 */
+run_regression() {
+	standard_initdb $1
+	pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS -p $PGPORT -o $ORAPORT" -w
+
+	#test regression
+	if [ ! -d results ] ; then
+		mkdir results
+	fi
+	cat regression.txt|while read line
+	do
+		./$line $ORAPORT >results/$line.out
+	done
+	pg_ctl -m fast stop
+
+	#get result
+	cat regression.txt|while read line
+	do
+		if diff expected/$line.out results/$line.out >$line.diffs; then
+			echo "$line passed"
+		else
+			echo "$line failed see details about $line.diffs"
+			exit 1
+		fi
+	done
+}
+# /* End - bug#00008129 */
 
 # Establish how the server will listen for connections
 testhost=`uname -s`
@@ -156,27 +189,12 @@ set -x
 PGDATA=$BASE_PGDATA
 export PGDATA
 
-standard_initdb
-pg_ctl start -l "$logdir/postmaster1.log" -o "$POSTMASTER_OPTS -p $PGPORT -o $ORAPORT" -w
+#/* Begin - bug#00008129 */
+run_regression 0
+rm -rf $PGDATA
+rm -rf "$logdir"
+mkdir "$logdir"
+run_regression 1
+#/* End - bug#00008129 */
 
-#test regression
-if [ ! -d results ] ; then
-	mkdir results
-fi
-cat regression.txt|while read line
-do
- ./$line $ORAPORT >results/$line.out
-done
-pg_ctl -m fast stop
-
-#get result
-cat regression.txt|while read line
-do
-if diff expected/$line.out results/$line.out >$line.diffs; then
-	echo "$line passed"
-else
-	echo "$line failed see details about $line.diffs"
-	exit 1
-fi
-done
 exit 0

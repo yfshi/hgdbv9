@@ -1,0 +1,13 @@
+
+bindvar[0]=1,bindvar[1]=-32768,bindvar[2]=0,bindvar[2]=0
+0,0,-1
+
+name           statement      prepare_time   parameter_typesfrom_sql       generic_plans  custom_plans   
+test_stmt      
+select * from short_proc($1,$2,$3);
+prepare time is always change
+{smallint,smallint,smallint}
+f              
+0              
+1              
+

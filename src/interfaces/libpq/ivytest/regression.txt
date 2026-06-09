@@ -16,3 +16,4 @@ testlibpq_number
 testlibpq_refcursor_out_ora
 testlibpq_prepare_plsql_dml
 testlibpq_prepare_anonlymous_parameter
+testlibpq_returnvoid

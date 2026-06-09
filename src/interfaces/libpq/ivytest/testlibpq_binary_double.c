@@ -159,15 +159,6 @@ main(int argc, char **argv)
 	res = Ivyexec(conn,function_str);
 	Ivyclear(res);
 
-	/* set guc vorysql.result_first to false */
-	res = Ivyexec(conn, "set ivorysql.result_first = false;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "set guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely(conn);
-	}
-	Ivyclear(res);
 
 	/* start a transaction block */
 	res = Ivyexec(conn, "BEGIN");
@@ -188,15 +179,6 @@ main(int argc, char **argv)
 	res = Ivyexec(conn, "drop function test_binary_double(integer, binary_double, binary_double[], binary_double);");
 	Ivyclear(res);
 
-	/* reset guc vorysql.result_first */
-	res = Ivyexec(conn, "reset ivorysql.result_first;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "reset guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely(conn);
-	}
-	Ivyclear(res);
 	Ivyfinish(conn);
 	return 0;
 }

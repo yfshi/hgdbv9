@@ -556,9 +556,11 @@ static struct config_bool Ivy_ConfigureNamesBool[] =
 	 * followed by function result.
 	 * If ivorysql.result_first is true, the first in tuple is the function result,
 	 * followed by out parameter values.
+	 *
+	 * bug#00008129: change PGC_USERSET to PGC_BACKEND
 	 */
 	{
-		{"ivorysql.result_first", PGC_USERSET, DEVELOPER_OPTIONS,
+		{"ivorysql.result_first", PGC_BACKEND, DEVELOPER_OPTIONS,
 			gettext_noop("the function result precedes or follows the out parameter values."),
 			NULL,
 			GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE

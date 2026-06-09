@@ -60,15 +60,6 @@ main(int argc, char **argv)
 		exit_nicely(conn);
 	}
 
-	/* set guc vorysql.result_first to false */
-	res = Ivyexec(conn, "set ivorysql.result_first = false;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "set guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely(conn);
-	}
-	Ivyclear(res);
 
 	/* start a transaction block */
 	res = Ivyexec(conn, "BEGIN");
@@ -196,15 +187,6 @@ main(int argc, char **argv)
 	/* Step 3, looking for cached status of prepared statements */
 	IvyFreePreparedStatement(stmthandle);
 
-	/* reset guc vorysql.result_first */
-	res = Ivyexec(conn, "reset ivorysql.result_first;");
-	if (IvyresultStatus(res) != PGRES_COMMAND_OK)
-	{
-		fprintf(stderr, "reset guc ivorysql.result_first failed\n");
-		Ivyclear(res);
-		exit_nicely(conn);
-	}
-	Ivyclear(res);
 	Ivyfinish(conn);
 	return 0;
 }

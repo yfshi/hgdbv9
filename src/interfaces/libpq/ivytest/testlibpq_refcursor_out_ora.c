@@ -48,7 +48,7 @@ exec_prepare(Ivyconn *conn, int byname)
 	int		c3 = 24;
 	char	c4[256] = "welcome to zhaojiacun";
 	IvyBindInfo *bindinfo[5] = {NULL, NULL,NULL,NULL,NULL};
-	char fetchstr[256];
+	char fetchstr[1024];
 	char ref_cursor1[256];
 	int index[5] = {0,0,0,0,0};
 	int	run = 0;

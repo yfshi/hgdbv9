@@ -1820,3 +1820,7 @@ drop function test_f2(integer,varchar2,varchar2);
 drop function test_f1;
 drop function test_f0;
 drop table test_tb;
+--bug#8192
+--error,shoud not change
+set ivorysql.result_first = false;
+ERROR:  parameter "ivorysql.result_first" cannot be set after connection start

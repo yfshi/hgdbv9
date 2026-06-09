@@ -54,6 +54,9 @@ typedef struct IvyBindOutInfo
 	int *indp;			/* index the value copy status */
 	size_t val_size;	/* the size of var */
 	unsigned int		dtype;		/* the type of parameter */
+	/* Begin - bug#00008129 */
+	Ivyargmode			ivy_mode;	/* the bind paramter mode */
+	/* End - bug#00008129 */
 
 	/*
 	 * these parameter copy from OCI,
@@ -108,13 +111,19 @@ typedef struct
 	PGSemaphoreData self_lock;	/* modify conn should add this lock */
 	PGSemaphoreData lock;		/* modify IvystmtHandleList should add this lock */
 	Ivylist *IvystmtHandleList;
+	/* Begin - bug#00008129 */
+	bool	result_first;		/* come from server ivorysql.result_first */
+	/* End - bug#00008129 */
 } Ivyconn;
 
 /* like PGresult */
 typedef struct
 {
 	PGresult *result;
-	int		off;		/* out parameter offset */
+	int		off;		/* return parameter offset */ /* bug#00008129 */
+	/* Begin - bug#00008129 */
+	int		noutparams;	/* the number of out parameters */
+	/* End - bug#00008129 */
 } Ivyresult;
 
 /* similar to jdbc statement handle */
