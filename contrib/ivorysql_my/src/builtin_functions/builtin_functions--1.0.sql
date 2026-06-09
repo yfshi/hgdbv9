@@ -4074,6 +4074,17 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
+/* Begin Bug#Z7502 */
+CREATE FUNCTION ivymy.aes_encrypt(numeric, text, text default '', text default '', text default '', text default '')
+RETURNS varbinary
+AS $$
+SELECT ivymy.aes_encrypt($1::text, $2, $3, $4, $5, $6);
+$$
+LANGUAGE sql
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+/* End Bug#Z7502 */
 
 /* Begin - OA#2098  Not Full Group */
 CREATE FUNCTION ivymy.any_value_transfn(internal, anyelement)
