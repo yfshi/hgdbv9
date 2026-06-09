@@ -108,6 +108,16 @@ static text *ora_substr(Datum str, int start, int len);
 static int ora_instr(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463 */);
 /* End - BUG:M0000084 */
 
+/* Begin - OA-REQ-2451 */
+static int32
+ora_number_arg_to_int32(Datum arg)
+{
+	return DatumGetInt32(DirectFunctionCall1(numeric_int4,
+						 DirectFunctionCall2(numeric_trunc, arg,
+											Int32GetDatum(0))));
+}
+/* End - OA-REQ-2451 */
+
 /*
  * length/lengthb function for 'oracharchar' and 'oracharbyte' type.
  */
@@ -422,7 +432,7 @@ ora_regexp_replace(PG_FUNCTION_ARGS)
 	{	
 		if(!PG_ARGISNULL(3))
 		{	
-			start_posn = PG_GETARG_INT32(3);
+			start_posn = ora_number_arg_to_int32(PG_GETARG_DATUM(3));	/* OA-REQ-2451 */
 			if(start_posn <= 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -440,7 +450,7 @@ ora_regexp_replace(PG_FUNCTION_ARGS)
 	{	
 		if(!PG_ARGISNULL(4))
 		{
-			occur_posn = PG_GETARG_INT32(4);
+			occur_posn = ora_number_arg_to_int32(PG_GETARG_DATUM(4));	/* OA-REQ-2451 */
 			if(occur_posn < 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -656,7 +666,7 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 	{
 		if(!PG_ARGISNULL(2))
 		{
-			start_posn = PG_GETARG_INT32(2);
+			start_posn = ora_number_arg_to_int32(PG_GETARG_DATUM(2));	/* OA-REQ-2451 */
 			if(start_posn <= 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -670,7 +680,7 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 	{
 		if(!PG_ARGISNULL(3))
 		{
-			occur_posn = PG_GETARG_INT32(3);
+			occur_posn = ora_number_arg_to_int32(PG_GETARG_DATUM(3));	/* OA-REQ-2451 */
 			if(occur_posn <= 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -684,7 +694,7 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 	{
 		if(!PG_ARGISNULL(4))
 		{
-			ret_opt = PG_GETARG_INT32(4);
+			ret_opt = ora_number_arg_to_int32(PG_GETARG_DATUM(4));	/* OA-REQ-2451 */
 			if(ret_opt < 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -711,7 +721,7 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 	{
 		if (!PG_ARGISNULL(6))
 		{
-			subexpr_pos = PG_GETARG_INT32(6);
+			subexpr_pos = ora_number_arg_to_int32(PG_GETARG_DATUM(6));	/* OA-REQ-2451 */
 			if(subexpr_pos < 0)
 				ereport(ERROR,
 					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -936,8 +946,8 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 		PG_RETURN_NULL();
 
 	/* get the value of the parameters safely */
-	position = DatumGetInt32(DirectFunctionCall1(numeric_int4, DirectFunctionCall2(numeric_trunc, PG_GETARG_DATUM(2),Int32GetDatum(0))));
-	
+	position = ora_number_arg_to_int32(PG_GETARG_DATUM(2));	/* OA-REQ-2451 */
+
 	/* position and occurrence must be positive integer */
 	if (position <= 0)
 		ereport(ERROR,
