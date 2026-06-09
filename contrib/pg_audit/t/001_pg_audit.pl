@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use PostgresNode;
 use TestLib;
-use Test::More tests => 103;
+use Test::More tests => 109;
 
 my $node = get_new_node('test');
 $node->init;
@@ -367,6 +367,67 @@ is($audit_group_fun, '1', 'count');
 
 $node->safe_psql('postgres', "drop role u2;");
 
+# audit diskquota schema
+$node->append_conf(
+                'postgresql.conf', "
+shared_preload_libraries = 'gb18030_2022, restricted_dba, pg_audit, credcheck, hg_sysmac, hg_antitamper, hg_rolstatus, hg_integrity_check, sqlite_fdw, liboracle_parser, pg_object, diskquota'");
+$node->append_conf('postgresql.conf', "diskquota.naptime = 1");
+$node->append_conf('postgresql.conf', "autovacuum = off");
+$node->append_conf('postgresql.conf', "fsync = on");
+$node->append_conf('postgresql.conf', "diskquota.enable = on");
+$node->safe_psql('postgres', "alter system set audit.systemopers = 'all';");
+
+$node->stop;
+$node->start;
+
+$node->safe_psql(
+        'postgres', q{
+                CREATE EXTENSION diskquota;
+                create schema s1;
+                select hg_security.set_schema_quota('s1', '1 MB');
+                create table s1.a(i int);
+        });
+
+$node->safe_psql('postgres', "truncate hg_security.sqlite_audit_log ;");
+
+$node->safe_psql('postgres',
+        q{insert into s1.a select generate_series(1,5000);});
+
+pass('setup wrote data past the configured schema quota');
+
+my ($ret, $stdout, $stderr);
+my $quota_error_seen = 0;
+
+for my $attempt (1 .. 1)
+{
+        ($ret, $stdout, $stderr) = $node->psql(
+                'postgres',
+                q{INSERT INTO s1.a SELECT generate_series(0, 50000);},
+                on_error_stop => 1);
+
+        if ($ret == 0)
+        {
+                $node->safe_psql('postgres', q{SELECT pg_sleep(1);});
+                next;
+        }
+
+        $quota_error_seen = $stderr =~
+          /schema's disk space quota exceeded/;
+        last;
+}
+
+ok($quota_error_seen, 'subsequent write is rejected with schema quota error');
+is($ret, 3, 'psql returned SQL error for the rejected write');
+like(
+        $stderr,
+        qr/schema's disk space quota exceeded/,
+        'error message reports the exceeded schema name');
+
+my $audit_diskquota_count = $node->safe_psql('postgres', "select count(*) from hg_security.sqlite_audit_log;");
+is($audit_diskquota_count, '1', 'count');
+
+my $audit_diskquota = $node->safe_psql('postgres', "select actionname from hg_security.sqlite_audit_log;");
+is($audit_diskquota, 'DISK LIMIT EXCEEDED(SCHEMA)', 'actionname');
 
 $node->stop;
 
