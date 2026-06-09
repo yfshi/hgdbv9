@@ -1192,6 +1192,7 @@ IndexScanOK(CatCache *cache, ScanKey cur_skey)
 		case AUTHMEMMEMROLE:
 		case DATABASEOID:
 		case MFAAUTHOID:			/* ReqID:SRS-SECURITY-IDENTITYAUTH */
+		case SHSECLABELOBJECT:
 
 			/*
 			 * Protect authentication lookups occurring before relcache has
