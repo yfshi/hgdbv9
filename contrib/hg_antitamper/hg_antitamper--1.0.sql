@@ -916,7 +916,9 @@ create view hg_security.antitamper_class as
 	'hist_' || oid::text as hist_table_name
 	from pg_class
 	where reloptions is not null
-	and 'antitamper=true' = any(reloptions);
+	and ('antitamper=true' = any(reloptions) 
+		or 'antitamper=on' = any(reloptions) 
+		or 'antitamper=1' = any(reloptions));
 
 -- table view : show antitamper table
 create view hg_security.antitamper_namespace as

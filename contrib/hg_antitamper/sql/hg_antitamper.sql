@@ -1052,6 +1052,12 @@ create table test6part2 partition of test6 for values from (0) to (1000) ;
 create table test6part3 partition of test6 for values from (1000) to (2000);
 create table test6part4 partition of test6 for values from (2000) to (3000);
 
+CREATE TABLE public.t1 (id int, id2 int8) WITH(antitamper=1);
+CREATE TABLE public.t2 (id int, id2 int8) WITH(antitamper=on);
+CREATE TABLE public.t3 (id int, id2 int8) WITH(antitamper=true);
+CREATE TABLE public.t4 (id int, id2 int8) WITH(antitamper='on');
+CREATE TABLE public.t5 (id int, id2 int8) WITH(antitamper='true');
+
 select relname from hg_security.antitamper_class order by relname;
 select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;
 
@@ -1059,6 +1065,13 @@ drop table secure_schema1.test1, secure_schema2.test2, secure_schema3.test3;
 drop table secure_schema1.test4;
 drop table test5,test6;
 drop schema secure_schema1,secure_schema2,secure_schema3;
+
+drop table public.t1;
+drop table public.t2;
+drop table public.t3;
+drop table public.t4;
+drop table public.t5;
+
 select relname from hg_security.antitamper_class order by relname;
 select nspname,isantitamper from hg_security.antitamper_namespace where nspname like '%secure_schema%' order by nspname;
 
