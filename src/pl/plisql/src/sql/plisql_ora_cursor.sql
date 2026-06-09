@@ -9496,3 +9496,442 @@ SET SERVEROUTPUT OFF
 --clean data
 drop table tb2;
 drop table tb1;
+
+
+--bug#Z8311
+--test open cursor for
+create table test_select(id integer, name varchar2(256));
+
+insert into test_select values(1, 'hello open for');
+
+--open for sconst
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for 'select * from test_select';
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--open for with
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for with t1 as(select * from test_select),t2 as (select * from test_select)
+                  select * from t1 union all select * from t2;
+  LOOP
+    fetch var1 into var2;
+	exit when var1%notfound;
+    raise info '%', var2;
+  end loop;
+  close var1;
+end;
+/
+
+--open for datum
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 varchar2(256) := 'select * from test_select';
+begin
+  open var1 for var3;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--open for '(' ')'
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for ('select * from test_select');
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for ('select * from test_select'));
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for (with t1 as(select * from test_select),t2 as (select * from test_select)
+            select * from t1 union all select * from t2);
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 varchar2(256) := 'select * from test_select';
+begin
+  open var1 for (var3);
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 varchar2(256) := 'select * from test_select';
+begin
+  open var1 for (var3));
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for (select * from test_select);
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for select * from test_select;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--test using
+--common select
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+begin
+  var3 := 1;
+  open var1 for select * from test_select where id = :x using var3;
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+begin
+  var3 := 1;
+  open var1 for select * from test_select where id = :x using 1;
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+begin
+  var3 := 1;
+  open var1 for 'select * from test_select where id = :x' using 1;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+begin
+  var3 := 1;
+  open var1 for ('select * from test_select where id = :x' using 1);
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+begin
+  var3 := 1;
+  open var1 for ('select * from test_select where id = :x') using 1;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+  var4 varchar2(256) := 'select * from test_select where id = :1';
+begin
+  var3 := 1;
+  open var1 for (var4) using 1;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--ok
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+  var4 varchar2(256) := 'select * from test_select where id = :1';
+begin
+  var3 := 1;
+  open var1 for var4 using 1;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--error
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  var3 integer;
+  var4 varchar2(256) := 'select * from test_select where id = :1';
+begin
+  var3 := 1;
+  open var1 for (var4 using 1);
+  fetch var1 into var2;
+  close var1;
+end;
+/
+
+CREATE TABLE dept_test (
+    dept_id   NUMBER PRIMARY KEY,
+    dept_name VARCHAR2(50)
+);
+
+CREATE TABLE emp_test (
+    emp_id    NUMBER PRIMARY KEY,
+    emp_name  VARCHAR2(50),
+    salary    NUMBER,
+    dept_id   NUMBER REFERENCES dept_test(dept_id)
+);
+
+INSERT INTO dept_test VALUES (10, 'ACCOUNTING');
+INSERT INTO dept_test VALUES (20, 'RESEARCH');
+INSERT INTO dept_test VALUES (30, 'SALES');
+INSERT INTO dept_test VALUES (40, 'OPERATIONS');
+
+INSERT INTO emp_test VALUES (1, 'SMITH',  800,  20);
+INSERT INTO emp_test VALUES (2, 'ALLEN',  1600, 30);
+INSERT INTO emp_test VALUES (3, 'WARD',   1250, 30);
+INSERT INTO emp_test VALUES (4, 'JONES',  2975, 20);
+INSERT INTO emp_test VALUES (5, 'MARTIN', 1250, 30);
+INSERT INTO emp_test VALUES (6, 'BLAKE',  2850, 30);
+INSERT INTO emp_test VALUES (7, 'CLARK',  2450, 10);
+INSERT INTO emp_test VALUES (8, 'SCOTT',  3000, 20);
+INSERT INTO emp_test VALUES (9, 'KING',   5000, 10);
+INSERT INTO emp_test VALUES (10, 'TURNER', 1500, 30);
+INSERT INTO emp_test VALUES (11, 'ADAMS',  1100, 20);
+INSERT INTO emp_test VALUES (12, 'JAMES',   950, 30);
+INSERT INTO emp_test VALUES (13, 'FORD',   3000, 20);
+INSERT INTO emp_test VALUES (14, 'MILLER', 1300, 10);
+
+
+CREATE OR REPLACE PACKAGE pkg_cursor_with_demo IS
+    PROCEDURE proc_show_dept_salary_rank;
+END pkg_cursor_with_demo;
+/
+
+
+CREATE OR REPLACE PACKAGE BODY pkg_cursor_with_demo IS
+    PROCEDURE proc_show_dept_salary_rank IS
+        cur SYS_REFCURSOR;
+        v_emp_id         emp_test.emp_id%TYPE;
+        v_emp_name       emp_test.emp_name%TYPE;
+        v_salary         emp_test.salary%TYPE;
+        v_dept_name      dept_test.dept_name%TYPE;
+        v_dept_avg_salary NUMBER;
+        v_dept_rank      NUMBER;
+    BEGIN
+        raise info '=== salary of part order  =====';
+        raise info '%', RPAD('EMP_ID',6) || ' ' ||
+                             RPAD('NAME',10) || ' ' ||
+                             RPAD('SALARY',8) || ' ' ||
+                             RPAD('DEPT',15) || ' ' ||
+                             RPAD('DEPT_AVG',10) || ' ' ||
+                             'DEPT_RANK';
+        raise info '--------------------------------------------------------------';
+
+        OPEN cur FOR
+            WITH dept_avg_salary AS (
+                SELECT dept_id,
+                       AVG(salary) AS avg_sal
+                FROM emp_test
+                GROUP BY dept_id
+            ),
+            dept_salary_rank AS (
+                SELECT dept_id,
+                       avg_sal,
+                       DENSE_RANK() OVER (ORDER BY avg_sal DESC) AS dept_rank
+                FROM dept_avg_salary
+            )
+            SELECT e.emp_id,
+                   e.emp_name,
+                   e.salary,
+                   d.dept_name,
+                   r.avg_sal AS dept_avg_salary,
+                   r.dept_rank
+            FROM emp_test e
+            JOIN dept_test d ON e.dept_id = d.dept_id
+            JOIN dept_salary_rank r ON e.dept_id = r.dept_id
+            ORDER BY r.dept_rank, e.salary DESC,e.emp_name;
+
+        LOOP
+            FETCH cur INTO v_emp_id, v_emp_name, v_salary,
+                          v_dept_name, v_dept_avg_salary, v_dept_rank;
+            EXIT WHEN cur%NOTFOUND;
+
+            raise info '%',
+                RPAD(v_emp_id, 6) || ' ' ||
+                RPAD(v_emp_name, 10) || ' ' ||
+                RPAD(v_salary, 8) || ' ' ||
+                RPAD(v_dept_name, 15) || ' ' ||
+                RPAD(TO_CHAR(v_dept_avg_salary, '99990.99'), 10) || ' ' ||
+                v_dept_rank;
+        END LOOP;
+
+        CLOSE cur;
+
+        raise info '===== finish output =====';
+    EXCEPTION
+        WHEN OTHERS THEN
+            IF cur%ISOPEN THEN
+                CLOSE cur;
+            END IF;
+            raise info '%', 'exception happend: ' || SQLERRM;
+            RAISE;
+    END proc_show_dept_salary_rank;
+
+END pkg_cursor_with_demo;
+/
+
+--ok
+EXEC pkg_cursor_with_demo.proc_show_dept_salary_rank;
+
+
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  type t is record(id integer,name varchar2(256));
+  var3 t;
+begin
+  var3.name := 'select * from test_select';
+  open var1 for var3.name;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--collection
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+  type t is record(id integer,name varchar2(256));
+  type mt is table of t index by pls_integer;
+  var3 t;
+  var4 mt;
+begin
+  var3.name := 'select * from test_select';
+  var4(1) := var3;
+  open var1 for var4(1).name;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--use package global name
+create or replace package test_pkg_var is
+  type tr is record(id integer,name varchar2(256));
+  type mt is table of tr index by pls_integer;
+  var3 tr;
+  var4 mt;
+  function test_f(id integer) return integer;
+end;
+/
+
+
+create or replace package body test_pkg_var is
+  function test_f(id integer) return integer is
+  begin
+    return 1;
+  end;
+begin
+  var3.name := 'select * from test_select';
+  var4(1) := var3;
+end;
+/
+
+declare
+  var1 sys_refcursor;
+  var2 test_select%rowtype;
+begin
+  open var1 for test_pkg_var.var3.name;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+  open var1 for test_pkg_var.var4(1).name;
+  fetch var1 into var2;
+  raise info '%', var2;
+  close var1;
+end;
+/
+
+--clean data
+drop package pkg_cursor_with_demo;
+drop table emp_test;
+drop table dept_test;
+drop table test_select;
+drop package test_pkg_var;

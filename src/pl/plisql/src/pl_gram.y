@@ -3933,9 +3933,20 @@ stmt_open		: opt_stmt_label K_OPEN cursor_variable
 							 */
 							if (tok != K_EXECUTE)
 							{
-								if (tok != K_SELECT)
-									tok = K_EXECUTE;
+								/* Begin - bug#00008311 */
+								/*
+								 * This could be a WITH clause or a normal
+								 * SELECT statement, or it could be a dynamic
+								 * statement. However, WITH is not a keyword, so
+								 * use another approach to determine whether it is
+								 * a dynamic statement, which could be a string, a
+								 * variable, or enclosed in parentheses
+								 */
 								plisql_push_back_token(tok);
+								if (tok == SCONST || tok == '(' ||
+									tok == T_DATUM)
+									tok = K_EXECUTE;
+								/* End - bug#00008311 */
 							}
 							/* End - ReqID:SRS-PLSQL-CURSOR */
 							if (tok == K_EXECUTE)
