@@ -165,39 +165,114 @@ SELECT         c1::binary(10)     FROM my_binary_t01;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as varbinary(10)) FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT convert(c1, varbinary(10)) FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT         c1::varbinary(10)  FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as blob)          FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT convert(c1, blob)          FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT         c1::blob           FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as tinyblob)      FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT convert(c1, tinyblob)      FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT         c1::tinyblob       FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as mediumblob)    FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT convert(c1, mediumblob)    FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT         c1::mediumblob     FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as longblob)      FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT convert(c1, longblob)      FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 SELECT         c1::longblob       FROM my_binary_t01;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364000000000000
+(2 rows)
+
 --------------------------------------------------------------------------------
 -- use cast "mysql varbinary" to "mysql other binary"
 -- EXPECT: ok
@@ -325,32 +400,92 @@ SELECT         c1::varbinary(10)  FROM my_varbinary_t02;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as blob)          FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, blob)          FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::blob           FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as tinyblob)      FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, tinyblob)      FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::tinyblob       FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as mediumblob)    FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, mediumblob)    FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::mediumblob     FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as longblob)      FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, longblob)      FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::longblob       FROM my_varbinary_t02;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 --------------------------------------------------------------------------------
 -- use cast "mysql blob" to "mysql other binary"
 -- EXPECT: ok
@@ -455,11 +590,26 @@ SELECT         c1::binary(10)     FROM my_blob_t03;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as varbinary(10)) FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, varbinary(10)) FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::varbinary(10)  FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as blob)          FROM my_blob_t03;
@@ -485,25 +635,70 @@ SELECT         c1::blob           FROM my_blob_t03;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as tinyblob)      FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, tinyblob)      FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::tinyblob       FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as mediumblob)    FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, mediumblob)    FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::mediumblob     FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as longblob)      FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, longblob)      FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::longblob       FROM my_blob_t03;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 --------------------------------------------------------------------------------
 -- use cast "mysql tinyblob" to "mysql other binary"
 -- EXPECT: ok
@@ -608,18 +803,48 @@ SELECT         c1::binary(10)     FROM my_tinyblob_t04;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as varbinary(10)) FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, varbinary(10)) FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::varbinary(10)  FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as blob)          FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, blob)          FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::blob           FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as tinyblob)      FROM my_tinyblob_t04;
@@ -645,18 +870,48 @@ SELECT         c1::tinyblob       FROM my_tinyblob_t04;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as mediumblob)    FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, mediumblob)    FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::mediumblob     FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as longblob)      FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, longblob)      FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::longblob       FROM my_tinyblob_t04;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 --------------------------------------------------------------------------------
 -- use cast "mysql mediumblob" to "mysql other binary"
 -- EXPECT: ok
@@ -761,25 +1016,70 @@ SELECT         c1::binary(10)     FROM my_mediumblob_t05;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as varbinary(10)) FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, varbinary(10)) FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::varbinary(10)  FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as blob)          FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, blob)          FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::blob           FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as tinyblob)      FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, tinyblob)      FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::tinyblob       FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as mediumblob)    FROM my_mediumblob_t05;
@@ -805,11 +1105,26 @@ SELECT         c1::mediumblob     FROM my_mediumblob_t05;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as longblob)      FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, longblob)      FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::longblob       FROM my_mediumblob_t05;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 --------------------------------------------------------------------------------
 -- use cast "mysql longblob" to "mysql other binary"
 -- EXPECT: ok
@@ -914,32 +1229,92 @@ SELECT         c1::binary(10)     FROM my_longblob_t06;
 
 -- EXPECT: syntax error
 SELECT  cast(c1 as varbinary(10)) FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, varbinary(10)) FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::varbinary(10)  FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as blob)          FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, blob)          FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::blob           FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as tinyblob)      FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, tinyblob)      FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::tinyblob       FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 SELECT  cast(c1 as mediumblob)    FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT convert(c1, mediumblob)    FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 SELECT         c1::mediumblob     FROM my_longblob_t06;
-ERROR:  ERROR 1064 (42000): You have an error in your SQL syntax; check the cast
+           c1           
+------------------------
+ \x31323334353637383930
+ \x61626364
+(2 rows)
+
 -- EXPECT: syntax error
 -- TODO[TD003]: ok
 SELECT  cast(c1 as longblob)      FROM my_longblob_t06;

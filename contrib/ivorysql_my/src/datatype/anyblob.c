@@ -50,13 +50,6 @@ cast_to_anyblob(bytea *source, int64 max_length,
 	char 	*r;
 	int64 	len;
 
-	if (isExplicit && !isPg2My)
-	{
-		ereport(ERROR,
-				(errcode(ERRCODE_STRING_DATA_RIGHT_TRUNCATION),
-					errmsg("ERROR 1064 (42000): You have an error in your SQL syntax; check the cast")));
-	}
-
 	len = VARSIZE_ANY_EXHDR(source);
 
 	if (len <= max_length)

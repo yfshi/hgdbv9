@@ -138,7 +138,7 @@ Default:VARCHAR:null
 Extra:VARCHAR:
 c1:INT:null
 c2:INT UNSIGNED:null
-c3:TINYINT:0
+c3:TINYINT:65
 c4:TINYINT UNSIGNED:null
 c5:SMALLINT:null
 c6:SMALLINT UNSIGNED:null
@@ -165,11 +165,7 @@ c29:VARCHAR:null
 c32:CHAR:null
 c33:CHAR:null
 c34:VARCHAR:null
-c35:CHAR:null
-select * from t3;
-ERROR:  relation "t3" does not exist
-LINE 1: select * from t3;
-                      ^
+c35:VARCHAR:null
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcAutoCommitTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 select relname from pg_class where relname like '%autocommit_test%' order by relname;
  relname 
@@ -448,6 +444,9 @@ BIT PASS size=28542477 md5=7686b82e8947ed4a9da1a00bce970464
 XML PASS size=943 md5=8cae243a5f3f99b0e748c20d778459bf
 HTML PASS size=515245 md5=07e72dab71ee08a5ca7186fe585495f1
 ALL TEST PASSED
+-- Begin : OA-2043
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcFetchTest2 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+-- End : OA-2043
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

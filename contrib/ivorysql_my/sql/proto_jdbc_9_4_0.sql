@@ -17,8 +17,6 @@ set ivorysql.compatible_mode = MYSQL;
 
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcPrepareTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 
-select * from t3;
-
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcAutoCommitTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 
 select relname from pg_class where relname like '%autocommit_test%' order by relname;
@@ -84,6 +82,10 @@ ALTER USER proto_user WITH NOSUPERUSER;
 
 -- TIME/DATETIME/TIMESTAMP fractional seconds
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcTimeDecimalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+
+-- Begin : OA-2043
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcFetchTest2 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+-- End : OA-2043
 
 -- final clean
 RESET ROLE;

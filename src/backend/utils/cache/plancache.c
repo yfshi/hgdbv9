@@ -460,7 +460,7 @@ CompleteCachedPlan(CachedPlanSource *plansource,
 	/* Begin - SRS-MYSQL-PROTOCOL */
 	if (num_params > 0)
 	{
-		plansource->param_type_and_flags = (int32 *) palloc0(num_params * sizeof(int32));
+		plansource->param_type_and_flags = (uint32 *) palloc0(num_params * sizeof(uint32));
 	}
 	/* End - SRS-MYSQL-PROTOCOL */
 

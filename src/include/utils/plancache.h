@@ -136,7 +136,7 @@ typedef struct CachedPlanSource
 	int64		num_custom_plans;	/* # of custom plans included in total */
 	int64		num_generic_plans;	/* # of generic plans */
 	/* Begin - SRS-MYSQL-PROTOCOL */
-	int32		*param_type_and_flags;			/* record mysql param type and flag */
+	uint32		*param_type_and_flags;			/* record mysql param type and flag */
 	/* End - SRS-MYSQL-PROTOCOL */
 } CachedPlanSource;
 

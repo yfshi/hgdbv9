@@ -1972,7 +1972,7 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 			bool orig_name_match = false;
 			/**
 			 * invisible  not to users, continue.
-			 * If found != NULL， Directly use high priority candidates(alias).
+			 * If found != NULL, Directly use high priority candidates(alias).
 			 * If found == NULL, then look at found_unaliased(table col).
 			 * If the found_unaliased is not unique and there are no high priority candidates(alias), it will be reported as ambiguous.
 			 *
