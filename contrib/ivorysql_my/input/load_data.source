@@ -95,6 +95,18 @@ LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_7537_1.csv' INTO TABLE test_8
 select * from test_8225;
 drop table test_8225;
 
+---- bug#8274
+create table test_8274(id int primary key auto_increment, name varchar(50) not null, city varchar(100), create_time date default current_date );
+-- strict mode
+LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_8274.csv' INTO TABLE test_8274 FIELDS TERMINATED BY ',';
+-- no-strict mode
+set sql_mode='REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
+LOAD DATA INFILE '@abs_srcdir@/data/test_load_data_8274.csv' INTO TABLE test_8274 FIELDS TERMINATED BY ',';
+select * from test_8274;
+delete from test_8274;
+drop table test_8274;
+reset sql_mode;
+
 -- clean up
 \c contrib_regression
 drop database gbk_copy;

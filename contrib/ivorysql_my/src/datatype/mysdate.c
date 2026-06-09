@@ -154,6 +154,7 @@ mysdate_in(PG_FUNCTION_ARGS)
 {
 	char *str = PG_GETARG_CSTRING(0);
 	DateADT date = MYSQL_INVAILD_DATE;
+	bool is_insert = CALL_IN_INSERT();	/* bug#z8274 */
 	fsec_t fsec = 0;
 	struct pg_tm tt,
 		*tm = &tt;
@@ -184,7 +185,14 @@ mysdate_in(PG_FUNCTION_ARGS)
 		else if (MYSQL_TIME_WARN_ZERO_IN_DATE & warn)
 			ereport(WARNING, (errmsg("Truncated incorrect datetime value: '%s'", str)));
 		else
-			ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", str)));
+		{
+			/* Begin - bug#z8274 */
+			if (is_insert)
+				ereport(is_strict_mode() ? ERROR : WARNING, (errmsg("Incorrect datetime value: '%s'", str)));
+			/* End - bug#z8274 */
+			else
+				ereport(WARNING, (errmsg("Incorrect datetime value: '%s'", str)));
+		}
 
 		// ERROR 1064 (42000): You have an error in your SQL syntax
 		if (dterr < 0 || nonsec)
