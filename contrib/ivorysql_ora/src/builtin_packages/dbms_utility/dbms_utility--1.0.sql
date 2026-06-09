@@ -128,24 +128,22 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
                             estimate_percent IN NUMBER DEFAULT NULL, method_opt IN VARCHAR2 DEFAULT NULL) AS
     DECLARE
         tup RECORD;
-        normalized_method_opt TEXT;
-        tbl_name TEXT;
         schName VARCHAR2 := ORA_CASE_TRANS(schema);
     BEGIN
-        normalized_method_opt := UPPER(TRIM(method_opt));
         IF NOT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = schName) THEN      -- BUG #z7926
-            RAISE EXCEPTION 'invalid schema';
+            RAISE EXCEPTION 'invalid schema: %', schName;
         END IF;
 
-        FOR tup IN
+        /* Begin - BUG #z7923 */
+         FOR tup IN
             SELECT oid, relname, relowner FROM pg_class WHERE oid::integer >= (get_macro_value('FirstNormalObjectId'))::integer AND relkind IN ('r', 'p')
-                                            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = schName)      -- BUG #z7926
+                                            AND relnamespace = (SELECT oid FROM pg_namespace WHERE nspname = ORA_CASE_TRANS(schema))      -- BUG #z7926
         LOOP
-            tbl_name := FORMAT('%I.%I', schName, tup.relname);      -- BUG #z7926
-            IF tup.relowner = current_user::regrole THEN
-                EXECUTE FORMAT('ANALYZE %I', tbl_name);
+            /* End - BUG #z7923 */
+            IF PG_GET_USERBYID(tup.relowner) = current_user THEN
+                EXECUTE FORMAT('ANALYZE %I.%I', schName, tup.relname);
             ELSE
-                RAISE NOTICE 'You have insufficient privileges for object "%" in this schema, skip it.', tbl_name;
+                RAISE NOTICE 'You have insufficient privileges for object "%.%" in this schema, skip it.', schName, tup.relname;
             END IF;
         END LOOP;
     END;

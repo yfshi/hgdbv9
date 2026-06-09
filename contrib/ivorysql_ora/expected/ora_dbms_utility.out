@@ -214,7 +214,7 @@ BEGIN
     END IF;
 END $$;
 ERROR:  name [ERROR_TB] is already used by an existing object
-CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 278 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 276 at RAISE
 SQL statement "CALL DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC', 'error_tb')"
 PL/iSQL function inline_code_block line 3 at CALL
 /
@@ -226,7 +226,7 @@ BEGIN
     END IF;
 END $$;
 ERROR:  schema [public1] does not exist
-CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 275 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.create_alter_type_error_table line 273 at RAISE
 SQL statement "CALL DBMS_UTILITY.CREATE_ALTER_TYPE_ERROR_TABLE('PUBLIC1', 'error_tb')"
 PL/iSQL function inline_code_block line 3 at CALL
 /
@@ -1913,7 +1913,7 @@ parameter value: read committed
 length of parameter value: 14
 ---------------param: invalid_parameter_name-------------------
 ERROR:  get_parameter_value: invalid or unsupported parameter "invalid_parameter_name"
-CONTEXT:  PL/iSQL function sys.dbms_utility.get_parameter_value line 1132 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.get_parameter_value line 1130 at RAISE
 PL/iSQL function inline_code_block line 17 at assignment
 /
 -- ==============================================================
@@ -1940,10 +1940,10 @@ select * from dbms_utility.is_bit_set('\x0101', 8);
 
 select * from dbms_utility.is_bit_set('\x0101', -1);
 ERROR:  index out of range
-CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1171 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1169 at RAISE
 select * from dbms_utility.is_bit_set('\x0101', 65);
 ERROR:  index out of range
-CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1171 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1169 at RAISE
 -- ==============================================================
 -- ANALYZE_PART_OBJECT
 -- ==============================================================
@@ -1965,3 +1965,36 @@ DROP SCHEMA "test_SCH" CASCADE;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to table "test_SCH".test_part
 drop cascades to table "test_SCH"."TEST_part_1"
+-- ==============================================================
+-- ANALYZE_SCHEMA
+-- ==============================================================
+CREATE USER system WITH superuser;
+CREATE USER enrol11 superuser;
+\c - enrol11
+SET ivorysql.identifier_case_switch TO interchange;
+CREATE SCHEMA test_sch_1;
+CREATE SCHEMA "test_SCH";
+CREATE TABLE "test_SCH".test_tb(id int, name text);
+CREATE TABLE "test_SCH"."TEST_tb_1"(id int, name text);
+CREATE TABLE test_sch_1.test_tb(id int, name text);
+CREATE TABLE test_sch_1."TEST_tb_1"(id int, name text);
+CALL DBMS_UTILITY.ANALYZE_SCHEMA('TEST_SCH_1');
+CALL DBMS_UTILITY.ANALYZE_SCHEMA('test_SCH');
+DROP SCHEMA test_sch_1 CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table test_sch_1.test_tb
+drop cascades to table test_sch_1."TEST_tb_1"
+DROP SCHEMA "test_SCH" CASCADE;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to table "test_SCH".test_tb
+drop cascades to table "test_SCH"."TEST_tb_1"
+\c - system
+drop user enrol11;
+declare
+    name text;
+begin
+        select into name 10::regrole;
+		execute format('set session authorization %s;',name);
+end;
+/
+DROP USER system;
