@@ -23,6 +23,20 @@ AS 'MODULE_PATHNAME', 'dbms_utility_exec_ddl_statement'
 LANGUAGE C;
 
 CREATE OR REPLACE PACKAGE SYS.DBMS_UTILITY AUTHID CURRENT_USER AS
+    -- Begin - ReqID: OA-2455
+    TYPE INSTANCE_RECORD IS RECORD (
+        inst_number NUMBER,
+        inst_name VARCHAR2(60)
+    );
+    TYPE DBLINK_ARRAY IS TABLE OF VARCHAR2(128) INDEX BY INTEGER;
+    TYPE INDEX_TABLE_TYPE IS TABLE OF BINARY_INTEGER INDEX BY INTEGER;
+    TYPE INSTANCE_TABLE IS TABLE OF INSTANCE_RECORD INDEX BY INTEGER;
+    TYPE LNAME_ARRAY IS TABLE OF VARCHAR2(4000) INDEX BY INTEGER;
+    TYPE NAME_ARRAY IS TABLE OF VARCHAR2(30) INDEX BY INTEGER;
+    TYPE NUMBER_ARRAY IS TABLE OF NUMBER INDEX BY INTEGER;
+    TYPE UNCL_ARRAY IS TABLE OF VARCHAR2(227) INDEX BY INTEGER;
+    -- End - ReqID: OA-2455
+
     PROCEDURE ANALYZE_DATABASE(method IN VARCHAR2 DEFAULT NULL, estimate_rows IN NUMBER DEFAULT NULL,
                             estimate_percent IN NUMBER DEFAULT NULL, method_opt IN VARCHAR2 DEFAULT NULL);
     PROCEDURE ANALYZE_PART_OBJECT(schema IN VARCHAR2 DEFAULT NULL, object_name IN VARCHAR2 DEFAULT NULL,
@@ -63,6 +77,11 @@ CREATE OR REPLACE PACKAGE SYS.DBMS_UTILITY AUTHID CURRENT_USER AS
     FUNCTION PORT_STRING RETURN VARCHAR2;
     FUNCTION SQLID_TO_SQLHASH(sql_id IN VARCHAR2) RETURN NUMBER;
     FUNCTION WAIT_ON_PENDING_DML(tables IN VARCHAR2, timeout IN BINARY_INTEGER, txnid IN OUT INTEGER) RETURN BOOLEAN;
+
+    -- Begin - ReqID: OA-2455
+    PROCEDURE COMMA_TO_TABLE(list IN VARCHAR2, tablen OUT BINARY_INTEGER, tab OUT LNAME_ARRAY);
+    PROCEDURE TABLE_TO_COMMA(tab IN LNAME_ARRAY, tablen OUT BINARY_INTEGER, list OUT VARCHAR2);
+    -- End - ReqID: OA-2455
 END;
 
 
@@ -1344,6 +1363,60 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         END LOOP;
         RETURN false;
     END;
+
+    -- Begin - ReqID: OA-2455
+    PROCEDURE COMMA_TO_TABLE(list IN VARCHAR2, tablen OUT BINARY_INTEGER, tab OUT LNAME_ARRAY) AS
+    DECLARE
+        tables VARCHAR2[];
+    BEGIN
+        IF list IS NULL OR trim(list) = '' THEN
+            RAISE EXCEPTION 'comma-separated list invalid';
+        END IF;
+
+        SELECT
+            COALESCE(array_agg(unnest)::VARCHAR2[], '{}'),
+            COALESCE(COUNT(*), 0)::BINARY_INTEGER
+        INTO tables, tablen
+        FROM regexp_split_to_table(list, ',(?=(?:[^"]*"[^"]*")*[^"]*$)') AS unnest;
+
+        tables := ARRAY(
+            SELECT unnest FROM unnest(tables) WITH ORDINALITY AS t(unnest, idx) ORDER BY idx
+        );
+
+        IF tables IS NULL THEN
+            tables := '{}';
+            tablen := 0;
+        END IF;
+
+        tab.delete;
+        FOR i IN 1 .. tablen LOOP
+            tab(i) = tables[i];
+        END LOOP;
+    END;
+
+    PROCEDURE TABLE_TO_COMMA(tab IN LNAME_ARRAY, tablen OUT BINARY_INTEGER, list OUT VARCHAR2) AS
+    DECLARE
+        v_idx INTEGER;
+        v_first BOOLEAN := TRUE;
+    BEGIN
+        tablen := 0;
+        list := '';
+        tablen := tab.count;
+
+        IF tab IS NULL OR tablen = 0 THEN
+            RETURN;
+        END IF;
+
+        FOR v_idx IN 1 .. tablen LOOP
+            IF v_first THEN
+                list := tab(v_idx);
+                v_first := FALSE;
+            ELSE
+                list := list || ',' || tab(v_idx);
+            END IF;
+        END LOOP;
+    END;
+    -- End - ReqID: OA-2455
 END;
 
 GRANT EXECUTE ON PACKAGE SYS.DBMS_UTILITY TO PUBLIC;
