@@ -7761,8 +7761,10 @@ audit_change_where_clause(const char *sourcetext, Node *clause)
 		{
 			text = sourcetext;
 
-			if (strstr(text, "/* AUDIT_ARCHIVE_COPY */") != NULL && audit_GUC.audit_archdir && 
-				audit_GUC.audit_archdir[0] != '\0' && strstr(text, audit_GUC.audit_archdir) != NULL)
+			if (strstr(text, "/* AUDIT_ARCHIVE_COPY */") != NULL && ((audit_GUC.audit_archdir && 
+				audit_GUC.audit_archdir[0] != '\0' && strstr(text, audit_GUC.audit_archdir) != NULL) ||
+				(audit_GUC.remote_archdir && audit_GUC.remote_archdir[0] != '\0' && 
+				strstr(text, audit_GUC.remote_archdir) != NULL)))
 			{
 				return clause;
 			}
