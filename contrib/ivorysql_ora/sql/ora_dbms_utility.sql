@@ -1182,6 +1182,83 @@ CALL DBMS_UTILITY.ANALYZE_SCHEMA('test_SCH');
 DROP SCHEMA test_sch_1 CASCADE;
 DROP SCHEMA "test_SCH" CASCADE;
 
+-- ==============================================================
+-- BUG #z8323: GET_DEPENDENCY
+-- ==============================================================
+SET SERVEROUTPUT ON;
+CREATE TABLE test_table (
+    id INT PRIMARY KEY
+);
+
+CREATE VIEW test_view AS
+    SELECT id FROM test_table;
+
+CREATE OR REPLACE TRIGGER test_trigger
+BEFORE INSERT ON test_table
+BEGIN
+    NULL;
+END;
+/
+
+CREATE OR REPLACE FUNCTION test_function RETURN NUMBER IS
+v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM test_table;
+    RETURN v_count;
+END;
+/
+
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('TABLE', 'ENROL11', 'TEST_TABLE');
+END;
+/
+
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('VIEW', 'ENROL11', 'TEST_VIEW');
+END;
+/
+
+CREATE TABLE "test_TABLE_1" (
+    id INT PRIMARY KEY
+);
+
+CREATE VIEW "test_VIEW_1" AS
+    SELECT id FROM "test_TABLE_1";
+
+CREATE OR REPLACE TRIGGER "test_TRIGGER_1"
+BEFORE INSERT ON "test_TABLE_1"
+BEGIN
+    NULL;
+END;
+/
+
+CREATE OR REPLACE FUNCTION "test_FUNCTION_1" RETURN NUMBER IS
+v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM "test_TABLE_1";
+    RETURN v_count;
+END;
+/
+
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('TABLE', 'ENROL11', 'test_TABLE_1');
+END;
+/
+
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('VIEW', 'ENROL11', 'test_VIEW_1');
+END;
+/
+
+DROP FUNCTION test_function;
+DROP TRIGGER test_trigger;
+DROP VIEW test_view;
+DROP TABLE test_table;
+DROP FUNCTION "test_FUNCTION_1";
+DROP TRIGGER "test_TRIGGER_1";
+DROP VIEW "test_VIEW_1";
+DROP TABLE "test_TABLE_1";
+
 \c - system
 drop user enrol11;
 declare
