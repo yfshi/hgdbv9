@@ -35,6 +35,7 @@
 
 static Oid	enum_endpoint(Oid enumtypoid, ScanDirection direction);
 static ArrayType *enum_range_internal(Oid enumtypoid, Oid lower, Oid upper);
+static Oid check_enumlabel_value(Oid enumtypid, char *enumlabel);
 
 /* Begin - ReqID:SRS-MYSQL-ENUMTYPE */
 /* covert a string to a number */
@@ -1151,27 +1152,13 @@ enum_to_enum(PG_FUNCTION_ARGS)
 	Oid			oid = PG_GETARG_OID(0);
 	Oid	enumtypeoid = PG_GETARG_OID(1);
 	Oid	enumelenmentoid;
-	float8		val;
 
 	if (oid == InvalidOid)
-	{
-		val = 0;
-	}
-	else
-	{
-		val = get_enum_sortorder(oid);
-	}
+		PG_RETURN_OID(InvalidOid);
 
-	enumelenmentoid = get_enum_oid(enumtypeoid, (int32) val);
-
+	enumelenmentoid = check_enumlabel_value(enumtypeoid, get_enum_label(oid));
 	ENUM_INSERT_CHECK(enumelenmentoid);
 
-	if (0 != compare_two_enum_value(oid, enumelenmentoid))
-	{
-		ereport(ERROR, (errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
-						errmsg("Data truncated for column")));
-	}
-	
 	PG_RETURN_OID(enumelenmentoid);
 }
 

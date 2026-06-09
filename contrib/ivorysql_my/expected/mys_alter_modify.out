@@ -1863,7 +1863,6 @@ alter table test_enum modify color enum('111', '222', '333', '444');
 ERROR:  Data truncated for column
 -- succ
 alter table test_enum modify color enum('111', 'bbb', '333', 'ccc', '444');
-ERROR:  Data truncated for column
 select * from test_enum;
  a  | color 
 ----+-------
@@ -1877,7 +1876,7 @@ select * from test_enum;
  a  | color 
 ----+-------
  10 |     2
- 11 |     3
+ 11 |     4
 (2 rows)
 
 drop table test_enum;
@@ -2344,7 +2343,6 @@ alter table test_name change color_new color_new enum('111','bbb','ccc','444','5
  color_new | test_name_color_new_anonymous_enum |           |          |         | plain   |              | 
 
 alter table test_name change color_new color enum('123','bbb','456','ccc');
-ERROR:  Data truncated for column
 drop table test_name;
 -- change enum name, but enum value not match
 -- fail
@@ -2989,7 +2987,6 @@ CREATE TABLE t1(a INT AUTO_INCREMENT PRIMARY KEY,
   b ENUM('a', 'b', 'c') NOT NULL);
 INSERT INTO t1 (b) VALUES ('a'), ('c'), ('b'), ('b'), ('a');
 ALTER TABLE t1 MODIFY b ENUM('a', 'z', 'b', 'c') NOT NULL;
-ERROR:  Data truncated for column
 SELECT * FROM t1;
  a | b 
 ---+---
