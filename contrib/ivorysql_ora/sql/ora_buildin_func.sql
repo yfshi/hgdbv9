@@ -1170,3 +1170,26 @@ select regexp_substr('barbcr', '(b[^b]+)', 2.9, 1.9) from dual;	-- bcr
 select regexp_substr('barbcr', '(b[^b]+)', 2.9, 1.9, 'i') from dual;	-- bcr
 select regexp_substr('barbcr', '(b[^b]+)', 2.9, 1.9, 'i', 1.9) from dual;	-- bcr
 /* End - OA-REQ-2348 */
+
+/* Begin - OA-REQ-2451 */
+
+CREATE TABLE TEST_REPLACE(A NUMBER);
+
+SELECT REPLACE(A,1000,2000) + 0 AS AAA FROM TEST_REPLACE;
+
+CREATE OR REPLACE FUNCTION FN_REGEXP_SUBSTR
+RETURN VARCHAR2
+AS
+   V_RESULT VARCHAR2(100);
+BEGIN
+   SELECT 'ABB' INTO V_RESULT FROM DUAL;
+   RETURN V_RESULT;
+END;
+/
+
+SELECT REGEXP_SUBSTR(FN_REGEXP_SUBSTR(),'[^,]+',1, ROWNUM) FROM DUAL CONNECT BY ROWNUM <= 5;
+
+--cleanup
+DROP table TEST_REPLACE;
+DROP FUNCTION FN_REGEXP_SUBSTR;
+/* Begin - OA-REQ-2451 */

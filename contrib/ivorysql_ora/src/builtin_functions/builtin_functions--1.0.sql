@@ -164,21 +164,21 @@ IMMUTABLE;
 
 /* Begin - SRS-CKC-Oracle-SupportOra_Regexp_245 */
 /* regexp_replace */
-CREATE FUNCTION sys.regexp_replace(varchar2, varchar2, varchar2, integer,integer,varchar2)
+CREATE FUNCTION sys.regexp_replace(varchar2, varchar2, varchar2, number, number, varchar2)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_replace'
 LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.regexp_replace(varchar2, varchar2, varchar2, integer,integer)
+CREATE FUNCTION sys.regexp_replace(varchar2, varchar2, varchar2, number, number)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_replace'
 LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.regexp_replace(varchar2, varchar2, varchar2, integer)
+CREATE FUNCTION sys.regexp_replace(varchar2, varchar2, varchar2, number)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_replace'
 LANGUAGE C
@@ -226,35 +226,35 @@ STABLE;
 /* End - OA-REQ-2348 */
 
 /*regexp_instr*/
-CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, integer, integer, integer, varchar2, integer)
+CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, number, number, number, varchar2, number)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_instr'
 LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, integer, integer, integer, varchar2)
+CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, number, number, number, varchar2)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_instr'
 LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, integer, integer, integer)
+CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, number, number, number)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_instr'
 LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, integer, integer)
+CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, number, number)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_instr'
 LANGUAGE C
 PARALLEL SAFE
 STABLE;
 
-CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, integer)
+CREATE FUNCTION sys.regexp_instr(varchar2, varchar2, number)	/* OA-REQ-2451 */
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_regexp_instr'
 LANGUAGE C
@@ -322,7 +322,7 @@ STRICT
 IMMUTABLE;
 
 CREATE FUNCTION sys.replace(varchar, varchar, varchar default NULL)
-RETURNS text
+RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_replace'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
