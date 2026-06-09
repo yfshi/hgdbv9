@@ -88,6 +88,10 @@ typedef struct check_target_tbname_context
 {
 	ParseState *cur_pstate;	/* current ParseState */
 	char *tbname;		/* current check tbname */
+	/* Begin - bug#00008247 */
+	int sublevel;		/* subselect level */
+	ParseState *child_pstate;	/* child ParseState */
+	/* End - bug#00008247 */
 } check_target_tbname_context;
 
 static Node *check_target_tname_walker(Node *node, void *context);
@@ -106,6 +110,9 @@ typedef struct add_tabreference_context
 	/* End - BUG#Z00005447 */
 	ParseState *child_pstate;
 	bool child_hasconnectby;
+	/* Begin - bug#00008247 */
+	int	sublevel;		/* subselect level */
+	/* End - bug#00008247 */
 } add_tabreference_context;
 
 static Node *add_tabreference_walker(Node *node, void *context);
@@ -139,6 +146,9 @@ typedef struct replace_series_context
 	List **prior_columlist;
 	ParseState *child_pstate;
 	bool child_hasconnectby;
+	/* Begin - bug#00008247 */
+	int sublevel;	/* subselect levle */
+	/* End - bug#00008247 */
 } replace_series_context;
 
 
@@ -157,6 +167,10 @@ typedef struct remove_tabreference_context
 	List **columnlist;
 	char *prefix_str;
 	ParseState *child_pstate;
+	/* Begin - bug#00008247 */
+	bool only_replace;	/* is only replace table reference */
+	int sublevel;	/* subselect levle */
+	/* End - bug#00008247 */
 } remove_tabreference_context;
 
 
@@ -430,8 +444,17 @@ parsetree_tree_walker(Node *node, Node* (*walker) (),
 			break;
 
 		case T_FuncCall:
-			((FuncCall *) node)->args = (List *) parsetree_tree_walker((Node *) ((FuncCall *) node)->args, walker, context);
-			break;
+			{
+				/* Begin - bug#00008247 */
+				FuncCall *fc = (FuncCall *) node;
+
+				fc->args = (List *) parsetree_tree_walker((Node *) fc->args, walker, context);
+				fc->agg_filter = parsetree_tree_walker(fc->agg_filter, walker, context);
+				fc->agg_order = (List *) parsetree_tree_walker((Node *) fc->agg_order, walker, context);
+				fc->over = (struct WindowDef *) parsetree_tree_walker((Node *) fc->over, walker, context);
+				/* End - bug#00008247 */
+				break;
+			}
 
 		case T_ColumnRefOrFuncCall:
 			{
@@ -569,6 +592,19 @@ parsetree_tree_walker(Node *node, Node* (*walker) (),
 																walker, context);
 			break;
 		/* End - BUG#7712 */
+		/* Begin - bug#00008247 */
+		case T_WindowDef:
+			{
+				WindowDef *wf = (WindowDef *) node;
+
+				wf->partitionClause = (List *) parsetree_tree_walker((Node *) wf->partitionClause, walker, context);
+				wf->orderClause = (List *) parsetree_tree_walker((Node *) wf->orderClause, walker, context);
+				wf->startOffset = parsetree_tree_walker( wf->startOffset, walker, context);
+				wf->endOffset = parsetree_tree_walker(wf->endOffset, walker, context);
+
+				break;
+			}
+		/* End - bug#00008247 */
 		default:
 			break;
 	}
@@ -691,21 +727,46 @@ check_target_tname_walker(Node *node, void *context)
 				/* ignore * */
 				if (IsA(llast(r->fields), A_Star))
 					connectby_col = true;
-				else if (ctx->cur_pstate != NULL)
-				{
-					Node *tnode;
-					ColumnRef *tmpref = copyObject(r);
-
-					tnode = IvyTransformColumnRef(ctx->cur_pstate, tmpref, true);
-
-					if (tnode == NULL)
-						 connectby_col = true;
-					if (tnode != NULL)
-						pfree(tnode);
-					pfree(tmpref);
-				}
 				else
-					connectby_col = true;
+				{
+					/* Begin - bug#00008247 */
+					if (ctx->child_pstate != NULL)
+					{
+						Node *tnode;
+						ColumnRef *tmpref = copyObject(r);
+
+						tnode = IvyTransformColumnRef(ctx->child_pstate, tmpref, true);
+
+						if (tnode == NULL ||
+							nodeTag(tnode) != T_Var ||
+							((Var *) tnode)->varlevelsup == ctx->sublevel)
+							connectby_col = true;
+
+						if (tnode != NULL)
+							pfree(tnode);
+						pfree(tmpref);
+					}
+					else
+						connectby_col = true;
+
+					if (connectby_col && ctx->cur_pstate != NULL)
+					{
+						Node *tnode;
+						ColumnRef *tmpref = copyObject(r);
+
+						tnode = IvyTransformColumnRef(ctx->cur_pstate, tmpref, true);
+
+						if (tnode != NULL &&
+							(nodeTag(tnode) != T_Var||
+							((Var *) tnode)->varlevelsup != 0))
+							connectby_col = false;
+
+						if (tnode != NULL)
+							pfree(tnode);
+						pfree(tmpref);
+					}
+					/* End - bug#00008247 */
+				}
 
 				if (connectby_col && list_length(r->fields) > 1)
 				{
@@ -755,7 +816,7 @@ check_target_tname_walker(Node *node, void *context)
 				List *from_clause;
 				/* End - BUG#Z00005447 */
 	
-				newpstate = make_parsestate(NULL);
+				newpstate = make_parsestate(ctx->child_pstate == NULL ? ctx->cur_pstate : ctx->child_pstate); /* bug#00008247 */
 				newpstate->p_sourcetext = NULL;
 
 				/* Begin - BUG#Z00005447 */
@@ -770,8 +831,11 @@ check_target_tname_walker(Node *node, void *context)
 				/* End - BUG#Z00005447 */
 				newpstate->p_expr_kind = EXPR_KIND_SELECT_TARGET;
 
-				saved_state = ctx->cur_pstate;
-				ctx->cur_pstate = newpstate;
+				/* Begin - bug#00008247 */
+				saved_state = ctx->child_pstate;
+				ctx->child_pstate = newpstate;
+				ctx->sublevel++;
+				/* End - bug#00008247 */
 
 				parsetree_tree_walker((Node *) stmt->targetList, check_target_tname_walker,
 											context);
@@ -795,7 +859,10 @@ check_target_tname_walker(Node *node, void *context)
 				parsetree_tree_walker(stmt->havingClause, check_target_tname_walker,
 									context);
 				free_parsestate(newpstate);
-				ctx->cur_pstate = saved_state;
+				/* Begin - bug#00008247 */
+				ctx->child_pstate = saved_state;
+				ctx->sublevel--;
+				/* End - bug#00008247 */
 				break;
 			}
 		case T_PriorAexpr:
@@ -848,9 +915,13 @@ add_tabreference_walker(Node *node, void *context)
 
 						tnode = IvyTransformColumnRef(ctx->child_pstate, tmpref, true);
 
-						if (tnode == NULL)
+						/* Begin - bug#00008247 */
+						if (tnode == NULL ||
+							nodeTag(tnode) != T_Var ||
+							((Var *) tnode)->varlevelsup == ctx->sublevel)
 							connectby_col = true;
-						else
+						/* End - bug#00008247 */
+						if (tnode != NULL)
 							pfree(tnode);
 						pfree(tmpref);
 					}
@@ -864,11 +935,13 @@ add_tabreference_walker(Node *node, void *context)
 						ColumnRef *tmpref = copyObject(r);
 
 						tnode = IvyTransformColumnRef(ctx->cur_pstate, tmpref, true);
-						if (tnode != NULL  &&
+
+						if (tnode != NULL &&
 							(nodeTag(tnode) != T_Var ||
-							 ((Var *) tnode)->varlevelsup != 0))
-							 connectby_col = false;
-						if (tnode)
+							((Var *) tnode)->varlevelsup != 0))
+							connectby_col = false;
+
+						if (tnode != NULL)
 							pfree(tnode);
 						pfree(tmpref);
 					}
@@ -953,7 +1026,7 @@ add_tabreference_walker(Node *node, void *context)
 				List		*copy_fromclause = NIL;
 				/* End - BUG#Z00005447 */
 
-				newpstate = make_parsestate(NULL);
+				newpstate = make_parsestate(ctx->child_pstate == NULL ? ctx->cur_pstate : ctx->child_pstate); /* bug#00008247 */
 				newpstate->p_sourcetext = NULL;
 
 				/* Begin - BUG#Z00005447 */
@@ -973,6 +1046,7 @@ add_tabreference_walker(Node *node, void *context)
 
 				ctx->child_hasconnectby = child_has_connectby;
 				ctx->child_pstate = newpstate;
+				ctx->sublevel++; /* bug#00008247 */
 
 				stmt->targetList = (List *) parsetree_tree_walker((Node *) stmt->targetList,
 									add_tabreference_walker, context);
@@ -999,6 +1073,7 @@ add_tabreference_walker(Node *node, void *context)
 
 				ctx->child_hasconnectby = saved_has_connectby;
 				ctx->child_pstate = save_child_pstate;
+				ctx->sublevel--; /* bug#00008247 */
 				break;
 			}
 		case T_PriorAexpr:
@@ -1050,9 +1125,13 @@ remove_tabreference_walker(Node *node, void *context)
 
 						tnode = IvyTransformColumnRef(ctx->child_pstate, tmpref, true);
 
-						if (tnode == NULL)
+						/* Begin - bug#00008247 */
+						if (tnode == NULL ||
+							(nodeTag(tnode) != T_Var ||
+							((Var *) tnode)->varlevelsup == ctx->sublevel))
 							connectby_col = true;
-						else
+						/* End - bug#00008247 */
+						if (tnode != NULL)
 							pfree(tnode);
 						pfree(tmpref);
 					}
@@ -1066,10 +1145,11 @@ remove_tabreference_walker(Node *node, void *context)
 						ColumnRef *tmpref = copyObject(r);
 
 						tnode = IvyTransformColumnRef(ctx->cur_pstate, tmpref, true);
+
 						if (tnode != NULL  &&
 							(nodeTag(tnode) != T_Var ||
-							 ((Var *) tnode)->varlevelsup != 0))
-							 connectby_col = false;
+							((Var *) tnode)->varlevelsup != 0))
+							connectby_col = false;
 						if (tnode)
 							pfree(tnode);
 						pfree(tmpref);
@@ -1114,7 +1194,8 @@ remove_tabreference_walker(Node *node, void *context)
 						r->fields = list_make2(makeString(pstrdup(ctx->tbname)),
 									makeString(strinfo.data));
 					}
-					else if (list_length(r->fields) == 1)
+					else if (list_length(r->fields) == 1 &&
+						!ctx->only_replace) /* bug#00008247 */
 					{
 						Node *strnode;
 
@@ -1153,10 +1234,11 @@ remove_tabreference_walker(Node *node, void *context)
 				List *from_clause;
 				/* End - BUG#Z00005447 */
 
-				newpstate = make_parsestate(NULL);
+				newpstate = make_parsestate(ctx->child_pstate == NULL ? ctx->cur_pstate : ctx->child_pstate); /* bug#00008247 */
 				newpstate->p_sourcetext = NULL;
 
 				ctx->child_pstate = newpstate;
+				ctx->sublevel++; /* bug#00008247 */
 
 				/* Begin - BUG#Z00005447 */
 				/*
@@ -1199,6 +1281,7 @@ remove_tabreference_walker(Node *node, void *context)
 				free_parsestate(newpstate);
 
 				ctx->child_pstate = saved_child_pstate;
+				ctx->sublevel--; /* bug#00008247 */
 				break;
 			}
 		case T_PriorAexpr:
@@ -2384,9 +2467,13 @@ replace_series_walker(Node *node, void *context)
 
 							tnode = IvyTransformColumnRef(ctx->child_pstate, tmpref, true);
 
-							if (tnode == NULL)
+							/* Begin - bug#00008247 */
+							if (tnode == NULL ||
+								nodeTag(tnode) != T_Var ||
+								((Var *) tnode)->varlevelsup == ctx->sublevel)
 								connectby_col = true;
-							else
+							/* End - bug#00008247 */
+							if (tnode != NULL)
 								pfree(tnode);
 							pfree(tmpref);
 						}
@@ -2402,8 +2489,8 @@ replace_series_walker(Node *node, void *context)
 							tnode = IvyTransformColumnRef(ctx->cur_pstate, tmpref, true);
 							if (tnode != NULL  &&
 								(nodeTag(tnode) != T_Var ||
-								 ((Var *) tnode)->varlevelsup != 0))
-								 connectby_col = false;
+								((Var *) tnode)->varlevelsup != 0))
+								connectby_col = false;
 							if (tnode)
 								pfree(tnode);
 							pfree(tmpref);
@@ -2453,7 +2540,7 @@ replace_series_walker(Node *node, void *context)
 				List *from_clause;
 				/* End - BUG#Z00005447 */
 
-				newpstate = make_parsestate(NULL);
+				newpstate = make_parsestate(ctx->child_pstate == NULL ? ctx->cur_pstate : ctx->child_pstate); /* bug#00008247 */
 				newpstate->p_sourcetext = NULL;
 
 				/* Begin - BUG#Z00005447 */
@@ -2470,6 +2557,7 @@ replace_series_walker(Node *node, void *context)
 
 				ctx->child_hasconnectby = child_has_connectby;
 				ctx->child_pstate = newpstate;
+				ctx->sublevel++; /* bug#00008247 */
 
 				stmt->targetList = (List *) parsetree_tree_walker((Node *) stmt->targetList,
 								replace_series_walker, context);
@@ -2501,6 +2589,7 @@ replace_series_walker(Node *node, void *context)
 
 				ctx->child_hasconnectby = saved_child_hasconnectby;
 				ctx->child_pstate = saved_child_pstate;
+				ctx->sublevel--; /* bug#00008247 */
 			}
 			break;
 		case T_PseudoColumnRef:
@@ -3000,6 +3089,10 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 	replace_priorcolname_context replace_prior_ctx;
 	replace_series_context replace_series_ctx;
 	remove_tabreference_context remove_tab_ctx;
+	/* Begin - bug#00008247 */
+	List	   *distinctClause = NIL;
+	IntoClause *intoClause = NULL;
+	/* End - bug#00008247 */
 
 	/* save related field name to ignoreStr */
 	*ignoreStr = (IgnoreStr*)palloc0(sizeof (IgnoreStr));
@@ -3042,6 +3135,9 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 	/* End - BUG#Z00005447 */
 	tab_ctx.cur_pstate = cur_pstate;
 	tab_ctx.tbname = internel_priorname;
+	/* Begin - bug#00008247 */
+	tab_ctx.sublevel = 0;
+	/* End - bug#00008247 */
 
 	replace_prior_ctx.flags = &psecol_flags;
 	replace_prior_ctx.resultlist = &prior_colname_list;
@@ -3057,12 +3153,17 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 	replace_series_ctx.found_prior = &prior_found;
 	replace_series_ctx.recurse_flag = &level_replace_flag;
 	replace_series_ctx.cur_pstate = cur_pstate;
+	replace_series_ctx.sublevel = 0; /* bug#00008247 */
 
 	remove_tab_ctx.child_pstate = NULL;
 	remove_tab_ctx.prefix_str = prefix_table;
 	remove_tab_ctx.columnlist = &table_column_list;
 	remove_tab_ctx.tbname = allfinalname;
 	remove_tab_ctx.cur_pstate = cur_pstate;
+	/* Begin - bug#00008247 */
+	remove_tab_ctx.only_replace = false;
+	remove_tab_ctx.sublevel = 0;
+	/* End - bug#00008247 */
 
 	origin_start_with = copyObject(lq->start_with);
 
@@ -3101,6 +3202,12 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 		stmt->havingClause = NULL;
 		windowClause = stmt->windowClause;
 		stmt->windowClause = NIL;
+		/* Begin - bug#00008247 */
+		distinctClause = stmt->distinctClause;
+		stmt->distinctClause = NULL;
+		intoClause = stmt->intoClause;
+		stmt->intoClause = NULL;
+		/* End - bug#00008247 */
 	}
 
 
@@ -3156,6 +3263,12 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 						replace_priorcolname_walker, &replace_prior_ctx);
 	havingClause = parsetree_tree_walker(havingClause,
 						replace_priorcolname_walker, &replace_prior_ctx);
+	/* Begin - bug#00008247 */
+	distinctClause = (List *) parsetree_tree_walker((Node *) distinctClause,
+						replace_priorcolname_walker, &replace_prior_ctx);
+	windowClause = (List *) parsetree_tree_walker((Node *) windowClause,
+						replace_priorcolname_walker, &replace_prior_ctx);
+	/* End - bug#00008247 */
 
 	/* check fromClause */
 	if (list_length(stmt->fromClause) >= 2 ||
@@ -3276,18 +3389,31 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 
 		whereClause = parsetree_tree_walker(whereClause,
 					remove_tabreference_walker, &remove_tab_ctx);
+		/* Begin - bug#00008247 */
+		/*
+		 * there, sortclause groupclause,havingclause maybe reference
+		 * alias, so we need not to add tab reference
+		 */
+		remove_tab_ctx.only_replace = true;
 		sortClause = (List *) parsetree_tree_walker((Node *) sortClause,
 					remove_tabreference_walker, &remove_tab_ctx);
+		groupClause = (List *) parsetree_tree_walker((Node *) groupClause,
+			remove_tabreference_walker, &remove_tab_ctx);
+		havingClause = parsetree_tree_walker(havingClause,
+					remove_tabreference_walker, &remove_tab_ctx);
+		remove_tab_ctx.only_replace = false;
+
 		limitOffset = parsetree_tree_walker(limitOffset,
 					remove_tabreference_walker, &remove_tab_ctx);
 		limitCount = parsetree_tree_walker(limitCount,
 					remove_tabreference_walker, &remove_tab_ctx);
 		lockingClause = (List *) parsetree_tree_walker((Node *) lockingClause, 
 					remove_tabreference_walker, &remove_tab_ctx);
-		groupClause = (List *) parsetree_tree_walker((Node *) groupClause,
-			remove_tabreference_walker, &remove_tab_ctx);
-		havingClause = parsetree_tree_walker(havingClause,
-					remove_tabreference_walker, &remove_tab_ctx);
+		distinctClause = (List *) parsetree_tree_walker((Node *) distinctClause,
+							remove_tabreference_walker, &remove_tab_ctx);
+		windowClause = (List *) parsetree_tree_walker((Node *) windowClause,
+							remove_tabreference_walker, &remove_tab_ctx);
+		/* End - bug#00008247 */
 
 		remove_tab_ctx.tbname = internel_priorname;
 		stmt->whereClause = parsetree_tree_walker(stmt->whereClause,
@@ -3395,6 +3521,12 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 			replace_pseduocol_walker, &pseudocol_ctx);
 	havingClause = parsetree_tree_walker(havingClause,
 		replace_pseduocol_walker, &pseudocol_ctx);
+	/* Begin - bug#00008247 */
+	distinctClause = (List *) parsetree_tree_walker((Node *) distinctClause,
+						replace_pseduocol_walker, &pseudocol_ctx);
+	windowClause = (List *) parsetree_tree_walker((Node *) windowClause,
+						replace_pseduocol_walker, &pseudocol_ctx);
+	/* End - bug#00008247 */
 
 	allfinaltarget = (List *) copyObject(oldtarget);
 
@@ -3409,6 +3541,10 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 
 		check_tbname_context.cur_pstate = cur_pstate;
 		check_tbname_context.tbname = tbname;
+		/* Begin - bug#00008247 */
+		check_tbname_context.sublevel = 0;
+		check_tbname_context.child_pstate = NULL;
+		/* End - bug#00008247 */
 
 		oldtarget = (List *) parsetree_tree_walker((Node *) oldtarget,
 				check_target_tname_walker, (void *) &check_tbname_context);
@@ -4479,6 +4615,10 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 	allfinalstmt->groupClause = groupClause;
 	allfinalstmt->windowClause = windowClause;
 	allfinalstmt->havingClause = havingClause;
+	/* Begin - bug#00008247 */
+	allfinalstmt->intoClause = intoClause;
+	allfinalstmt->distinctClause = distinctClause;
+	/* End - bug#00008247 */
 
 	free_parsestate(cur_pstate);
 
