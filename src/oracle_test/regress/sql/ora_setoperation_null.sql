@@ -170,3 +170,22 @@ select distinct null as col from dual union select 'abc' from dual order by col;
 select distinct null as col from dual intersect select 'abc' from dual order by col;
 select distinct null as col from dual except select 'abc' from dual order by col;
 select distinct null as col from dual minus select 'abc' from dual order by col;
+
+-- Begin - Bug#8279 --
+-- test view
+create or replace view test_v1 as select null union select null;
+\d test_v1
+drop view test_v1;
+create or replace view test_v1 as select null union select null union select null;
+\d test_v1
+drop view test_v1;
+create or replace view test_v1 as select null union select null union select 1;
+\d test_v1
+drop view test_v1;
+create or replace view test_v1 as select 1 union select null union select null;
+\d test_v1
+drop view test_v1;
+create or replace view test_v1 as select null union select 1 union select null;
+\d test_v1
+drop view test_v1;
+-- End - Bug#8279 --

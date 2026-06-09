@@ -707,3 +707,46 @@ select distinct null as col from dual minus select 'abc' from dual order by col;
  
 (1 row)
 
+-- Begin - Bug#8279 --
+-- test view
+create or replace view test_v1 as select null union select null;
+\d test_v1
+                View "public.test_v1"
+  Column  |   Type   | Collation | Nullable | Default 
+----------+----------+-----------+----------+---------
+ ?column? | varchar2 |           |          | 
+
+drop view test_v1;
+create or replace view test_v1 as select null union select null union select null;
+\d test_v1
+                View "public.test_v1"
+  Column  |   Type   | Collation | Nullable | Default 
+----------+----------+-----------+----------+---------
+ ?column? | varchar2 |           |          | 
+
+drop view test_v1;
+create or replace view test_v1 as select null union select null union select 1;
+\d test_v1
+                View "public.test_v1"
+  Column  |  Type   | Collation | Nullable | Default 
+----------+---------+-----------+----------+---------
+ ?column? | integer |           |          | 
+
+drop view test_v1;
+create or replace view test_v1 as select 1 union select null union select null;
+\d test_v1
+                View "public.test_v1"
+  Column  |  Type   | Collation | Nullable | Default 
+----------+---------+-----------+----------+---------
+ ?column? | integer |           |          | 
+
+drop view test_v1;
+create or replace view test_v1 as select null union select 1 union select null;
+\d test_v1
+                View "public.test_v1"
+  Column  |  Type   | Collation | Nullable | Default 
+----------+---------+-----------+----------+---------
+ ?column? | integer |           |          | 
+
+drop view test_v1;
+-- End - Bug#8279 --
