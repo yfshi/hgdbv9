@@ -86,6 +86,7 @@ extern void RecyclebinRead(RbObjDesc *desc, HeapTuple rbtup);
 extern void RbOperFetch(const char* schemaname, const char* relname, 
         RbObjType type, RbObjDesc *desc, RbOperMode operMode);
 extern bool RbFetchAny(RbObjDesc *desc);
+extern void RecyclebinDeleteNamespace(Oid nspId);
 
 #endif /* PG_RECYCLEBIN_H */
 

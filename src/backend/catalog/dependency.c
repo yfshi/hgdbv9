@@ -1889,7 +1889,6 @@ doDeletion(const ObjectAddress *object, int flags)
 		case OCLASS_AM:
 		case OCLASS_AMOP:
 		case OCLASS_AMPROC:
-		case OCLASS_SCHEMA:
 		case OCLASS_TSPARSER:
 		case OCLASS_TSDICT:
 		case OCLASS_TSTEMPLATE:
@@ -1898,6 +1897,11 @@ doDeletion(const ObjectAddress *object, int flags)
 		case OCLASS_DEFACL:
 		case OCLASS_EVENT_TRIGGER:
 		case OCLASS_TRANSFORM:
+			DropObjectById(object);
+			break;
+
+		case OCLASS_SCHEMA:
+			RecyclebinDeleteNamespace(object->objectId);
 			DropObjectById(object);
 			break;
 
