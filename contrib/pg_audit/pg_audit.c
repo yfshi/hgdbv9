@@ -9631,10 +9631,6 @@ audit_get_objtype(char *key)
 		type = OBJECT_PROCEDURE;
 	else if (pg_strcasecmp(key, FUNCTION_S) == 0)
 		type = OBJECT_FUNCTION;
-	/* Begin - BUG#Z5807 */
-	else if (pg_strcasecmp(key, SYNONYM_S) == 0)
-		type = OBJECT_SYNONYM;
-	/* End - BUG#Z5807 */
 	else
 		type = -1;
 
@@ -10065,51 +10061,6 @@ audit_get_options_on_object(ObjectType objtype, List *optionlist)
 					}
 				}
 				break;
-			/* Begin - BUG#Z5807 */
-			case OBJECT_SYNONYM:
-				auditevent = lfirst_int(list_head(optionlist));
-				if(auditevent == ALL_T)
-				{
-					options = list_make5_int(INSERT_T, UPDATE_T, DELETE_T, SELECT_T, LOCK_T);
-					options = lappend_int(options, ALTER_TABLE);
-					options = lappend_int(options, COMMENT_T);
-					options = lappend_int(options, TRUNCATE_T);
-					options = lappend_int(options, ALTER_INDEX);
-					options = lappend_int(options, DROP_INDEX);
-					options = lappend_int(options, CALL_T);
-					options = lappend_int(options, ALTER_SEQUENCE);
-					options = lappend_int(options, ALTER_PROCEDURE);
-					options = lappend_int(options, ALTER_FUNCTION);
-					break;
-				}
-				options = optionlist;
-				foreach(auditeventcell, options)
-				{
-					auditevent = lfirst_int(auditeventcell);
-					switch(auditevent)
-					{
-						case INSERT_T:
-						case UPDATE_T:
-						case DELETE_T:
-						case SELECT_T:
-						case LOCK_T:
-						case COMMENT_T:
-						case TRUNCATE_T:
-						case ALTER_TABLE:
-						case ALTER_INDEX:
-						case DROP_INDEX:
-						case CALL_T:
-						case ALTER_SEQUENCE:
-						case ALTER_PROCEDURE:
-						case ALTER_FUNCTION:
-							break;
-						default:
-							ereport(ERROR,
-									(errmsg("option %s on synonym is not supported to audit", audit_stmttype_to_string(auditevent))));
-					}
-				}
-				break;
-				/* End - BUG#Z5807 */
 			default:
 				ereport(ERROR,
 							 (errmsg("object %d is not supported to audit", objtype)));
