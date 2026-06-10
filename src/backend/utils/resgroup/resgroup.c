@@ -3333,6 +3333,20 @@ get_group_memory_limit(void)
 	ResGroupCaps   *caps;
 	int64			queryMem = -1;
 
+	/* Begin - #BUG8282 */
+	/*
+	 * InitResGroups() acquires ResGroupLock exclusively before allocating
+	 * memory. The allocation path may invoke get_group_memory_limit(),
+	 * which also tries to acquires ResGroupLock. Since LWlocks are not
+	 * reentrant, this would result in a self-deadlock.
+	 *
+	 * As a workaround, get_group_memory_limit() returns -1 when
+	 * ResGroupLock is already held in LW_EXCLUSIVE mode.
+	 */
+	if (LWLockHeldByMeInMode(ResGroupLock, LW_EXCLUSIVE))
+		return queryMem;
+	/* End - #BUG8282 */
+
 	LWLockAcquire(ResGroupLock, LW_SHARED);
 
 	if (!self || !self->group || self->group->caps.concurrency <= 0)
