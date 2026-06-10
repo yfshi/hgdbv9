@@ -17,7 +17,7 @@
 #pragma execution_character_set("utf-8")
 #endif
  
- #include <stdio.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 
@@ -51,6 +51,7 @@
 #include "storage/procarray.h"
 #include "storage/proc.h"
 #include "storage/shm_toc.h"
+#include "mb/pg_wchar.h"	/* bug#z8277 */
 #include "utils/backend_status.h"
 #include "utils/builtins.h"
 #include "utils/elog.h"
@@ -3181,6 +3182,13 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 
 	StringInfoData  report;
 	const char *hgdb_version;
+
+	/* Begin - bug#z8277 */
+#ifdef USE_LICENSE
+	const char *hgdb_version_tmp;
+#endif
+	/* End - bug#z8277 */
+
 	StringInfoData	buf_tmp;
 
 	Oid             relOid;
@@ -3281,7 +3289,15 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 	 */
 	hg_set_is_with_title(false);
 	/* End - BUG#z6426 */
-	hgdb_version = hg_get_highgoVersion();
+	/* Begin - bug#z8277 */
+	/*
+	 * the html charset is UTF-8
+	 * so if the database version string is not utf-8
+	 * transfer the string to utf-8
+	 */
+	hgdb_version_tmp = hg_get_highgoVersion();
+	hgdb_version = (char *) pg_server_to_any(hgdb_version_tmp, strlen(hgdb_version_tmp), PG_UTF8);
+	/* End - bug#z8277 */
 #else
 	hgdb_version = "Highgo database";
 #endif

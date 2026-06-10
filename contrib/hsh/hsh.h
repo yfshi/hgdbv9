@@ -1,7 +1,6 @@
 ﻿/* 
  * this file format is utf-8 BOM
- * for windows, set html charset to gbk
- * for linux, set html charset to utf-8
+ * for linux and windows, always set html charset to utf-8
  */
 
 /* html report template */
@@ -9,12 +8,9 @@
 /*
  * report style
  */
-/* BUG#6989 */
-#ifdef WIN32
-const char *html_style = "<html><head><meta charset=\"GBK\"><title>Highgo Activity Session Report</title>";
-#else
+/* bug#z8277 */
+/* no regress test case, test it manually on windows and linux */
 const char *html_style = "<html><head><meta charset=\"UTF-8\"><title>Highgo Activity Session Report</title>";
-#endif
 
 const char *html_header = "<style> table {width: 1000;} table,th,td {border: 1px solid gray; border-collapse: collapse; padding: 1px;} table tr td.value,table tr td.mono{font-family: Monospace;text-align: right}table tr.parent td:not(.relhdr) {background-color: #D8E8C2;}table tr.child td {background-color: #BBDD97; border-top-style: hidden;}table tr:nth-child(even){background-color: #eee;}table tr:nth-child(odd){background-color: #fff;}table tr:hover td:not(.relhdr) {background-color:#d9ffcc}table th {color: white; background-color: #003366;}table tr:target td{background-color: #EBEDFF;}table tr:target td:first-of-type {font-weight: bold;}td.top_sql_query {text-align: left; text-overflow: ellipsis; white-space: nowrap; overflow: hidden;}</style> </head>";
 
