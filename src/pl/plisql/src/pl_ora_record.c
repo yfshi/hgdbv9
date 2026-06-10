@@ -72,11 +72,11 @@ plisql_build_ora_rec_type(char *refname, int lineno, List *args)
 		ora_rec->type.typname = pstrdup(refname);
 
 	/* The maximum number of record fields is 100 */
-	if (list_length(args) > FUNC_MAX_ARGS)
+	if (list_length(args) > max_record_fields /* OA-REQ-2466 */)
 		ereport(ERROR,
 				(errcode(ERRCODE_TOO_MANY_ARGUMENTS),
 				 errmsg("record cannot have more than %d fields",
-							   FUNC_MAX_ARGS)));
+							   max_record_fields /* OA-REQ-2466 */)));
 
 	ora_rec->type.typoid = ORARECORDOID;
 	ora_rec->type.ttype = PLISQL_TTYPE_ORARECORD_TYPE;
@@ -415,7 +415,6 @@ plisql_ora_record_construct_ref(ParseState *pstate, List *recname, List *fargs,
 	char *name3 = NULL;
 	int list_len = list_length(recname);
 	int	len_recargs;
-	PLiSQL_datum_udt_type *datum_type = NULL;
 	PLiSQL_ora_record_type *ora_rec_type;
 	List		*orarecargs;
 	ListCell 	*l = NULL;
@@ -457,27 +456,48 @@ plisql_ora_record_construct_ref(ParseState *pstate, List *recname, List *fargs,
 							name1, name2, name3,
 							NULL);
 
-	if (nse == NULL || nse->itemtype != PLISQL_NSTYPE_TYPE)
+	/* Begin - OA-REQ-2466 */
+	if (nse == NULL)
+	{
+		PkgType *pkgtype;
+
+		pkgtype = LookupPkgTypeByTypename(recname, true);
+		if (pkgtype != NULL)
+		{
+			ora_rec_type = (PLiSQL_ora_record_type *) pkgtype->value;
+			pfree(pkgtype);
+			if (ora_rec_type == NULL)
+				return NULL;
+		}
+		else
+			return NULL;
+	}
+	/* End - OA-REQ-2466 */
+	else if (nse->itemtype == PLISQL_NSTYPE_TYPE)
+	{
+		PLiSQL_datum_udt_type *datum_type = NULL;
+
+		datum_type = (PLiSQL_datum_udt_type *) expr->func->datums[nse->itemno];
+		ora_rec_type = (PLiSQL_ora_record_type *)(datum_type->udt_type);
+	}
+	else
 		return NULL;
 
-	datum_type = (PLiSQL_datum_udt_type *) expr->func->datums[nse->itemno];
-	ora_rec_type = (PLiSQL_ora_record_type *)(datum_type->udt_type);
 	orarecargs = ora_rec_type->args;
 	len_recargs = list_length(orarecargs);
 
 	/*
-	 * Most of the rest of the parser just assumes that Oracle records do not have
-	 * more than FUNC_MAX_ARGS parameters.  We have to test here to protect
-	 * against array overruns, etc.  Of course, this may not be a record,
-	 * but the test doesn't hurt.
+	 * Oracle records do not have
+	 * more than max_record_fields parameters.  We have to test here to protect
+	 * against array overruns, etc.
 	 */
-	if (list_length(fargs) > FUNC_MAX_ARGS)
+	if (list_length(fargs) > max_record_fields /* OA-REQ-2466 */)
 		ereport(ERROR,
 				(errcode(ERRCODE_TOO_MANY_ARGUMENTS),
 				 errmsg_plural("cannot pass more than %d argument to a record",
 							   "cannot pass more than %d arguments to a record",
-							   FUNC_MAX_ARGS,
-							   FUNC_MAX_ARGS),
+							   max_record_fields /* OA-REQ-2466 */,
+							   max_record_fields /* OA-REQ-2466 */),
 				 parser_errposition(pstate, location)));
 
 	/*

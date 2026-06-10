@@ -607,6 +607,10 @@ extern PGDLLIMPORT int session_limit;
 #endif
 /* End - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
 
+/* Begin - OA-REQ-2466 */
+extern PGDLLIMPORT int max_record_fields;
+/* End - OA-REQ-2466 */
+
 /*
  * Functions exported by guc.c
  */
