@@ -58,7 +58,11 @@
  */
 bool pg_compatible_mysql_lower(void)
 {
-	return lower_case_table_names == 1 || lower_case_table_names == 2;
+	if (compatible_mode == MYS_MODE &&
+		(lower_case_table_names == 1 || lower_case_table_names == 2))
+		return true;
+
+	return false;
 }
 
 /* pg_compatible_mysql_ojblower()
