@@ -1267,3 +1267,92 @@ drop table agg_hash_2;
 drop table agg_hash_3;
 drop table agg_hash_4;
 reset ivorysql.enable_emptystring_to_null;
+
+--bug#Z8188
+--group by null like oracle
+-- test group by NULL order by NULL
+create table test_id(id integer,name varchar2(256));
+
+insert into test_id values(1,'one');
+insert into test_id values(2,'one');
+insert into test_id values(3,'two');
+insert into test_id values(4,'two');
+
+insert into test_id values(1,'three');
+insert into test_id values(2,'four');
+insert into test_id values(3,'five');
+insert into test_id values(4,'six');
+
+insert into test_id(id) values(2);
+insert into test_id(name) values('four');
+insert into test_id(id) values(35);
+insert into test_id(name) values('max');
+
+--error
+select id from test_id group by NULL;
+
+--all const
+--ok
+select ALL + 1 from test_id group by NULL;
+
+--oracle not support distinct,but we success
+select ALL + 1 from test_id group by distinct NULL;
+
+create or replace function test_f(id integer) return integer is
+begin
+  return id;
+end;
+/
+
+--error
+select test_f(id) from test_id group by NULL;
+
+--23
+select test_f(23) from test_id group by NULL;
+
+--12
+select count(*) from test_id group by NULL;
+
+---group by id,NULL or NULL,id;
+--6 rows
+select id,count(*) from test_id group by id order by id;
+
+--6 rows
+select id,count(*) from test_id group by id,NULL order by id;
+
+--6 rows
+select id,count(*) from test_id group by NULL,id order by id;
+
+--12
+select count(*) from test_id group by NULL,NULL,NULL;
+
+--6 rows
+select count(*) as id from test_id group by GROUPING SETS(id), NULL,NULL,NULL order by
+id;
+
+--6 rows
+select count(*) as id from test_id group by GROUPING SETS(id) order by id;
+
+---test order by
+--12
+select count(*) from test_id order by NULL;
+
+--12 rows
+select * from test_id order by NULL,id,name;
+
+-- 12
+select count(*) as id from test_id group by GROUPING SETS(NULL);
+
+--7 rows
+select count(*) as id from test_id group by GROUPING SETS(id,NULL) order by id;
+
+--13 rows
+select count(*) as id from test_id group by GROUPING SETS(id,NULL,(id,NULL)) order by id;
+
+--14 rows
+select count(*) as id from test_id group by GROUPING SETS(id,NULL,(NULL),(id,NULL)) order by id;
+
+
+--clean data
+drop function test_f;
+drop table test_id;

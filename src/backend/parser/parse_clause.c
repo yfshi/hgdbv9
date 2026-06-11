@@ -3146,8 +3146,15 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 		/* 
 		 * Begin - SRS-SQL-NLSSORT 
 		 * for Oracle's `ORDER BY NULL`
+		 * bug#00008188:
+		 * only for not pg and only for group by or order by
 		 */
-		if(IsA(val, Null)) {
+		if(compatible_mode != PG_MODE &&
+			(exprKind == EXPR_KIND_GROUP_BY ||
+			exprKind == EXPR_KIND_ORDER_BY ||
+			exprKind == EXPR_KIND_GROUP_BY_DISTINCT) &&
+			IsA(val, Null))
+		{
 			return NULL;
 		}
 		/* End - SRS-SQL-NLSSORT */
@@ -4345,10 +4352,17 @@ transformGroupingSet(List **flatresult,
 													   exprKind,
 													   useSQL99,
 													   false);
-
-			content = lappend(content, makeGroupingSet(GROUPING_SET_SIMPLE,
+			/* Begin - bug#00008188 */
+			if (compatible_mode != PG_MODE &&
+				ref == 0)
+				content = lappend(content, makeGroupingSet(GROUPING_SET_EMPTY,
+													   NIL,
+													   exprLocation(n)));
+			else
+				content = lappend(content, makeGroupingSet(GROUPING_SET_SIMPLE,
 													   list_make1_int(ref),
 													   exprLocation(n)));
+			/* End - bug#00008188 */
 		}
 	}
 
@@ -4414,6 +4428,9 @@ transformGroupClause(ParseState *pstate, List *grouplist, List **groupingSets,
 	ListCell   *gl;
 	bool		hasGroupingSets = false;
 	Bitmapset  *seen_local = NULL;
+	/* Begin - bug#00008188 */
+	bool has_groupby_null = false;
+	/* End - bug#00008188 */
 
 	/*
 	 * Recursively flatten implicit RowExprs. (Technically this is only needed
@@ -4481,6 +4498,14 @@ transformGroupClause(ParseState *pstate, List *grouplist, List **groupingSets,
 													list_make1_int(ref),
 													exprLocation(gexpr)));
 			}
+			/* Begin - bug#00008188 */
+			/*
+			 * maybe has group by null
+			 */
+			else if (compatible_mode != PG_MODE &&
+				!has_groupby_null)
+				has_groupby_null = true;
+			/* End - bug#00008188 */
 		}
 	}
 
@@ -4489,6 +4514,26 @@ transformGroupClause(ParseState *pstate, List *grouplist, List **groupingSets,
 
 	if (groupingSets)
 		*groupingSets = gsets;
+
+	/* Begin - bug#00008188 */
+	/*
+	 * there,if has only group by null
+	 * we should consider all rows in a group
+	 * use group by ()
+	 */
+	if (compatible_mode != PG_MODE &&
+		gsets == NIL &&
+		result == NIL &&
+		has_groupby_null)
+	{
+		GroupingSet *empty_set = makeGroupingSet(GROUPING_SET_EMPTY,
+													NIL,
+													exprLocation((Node *) grouplist));
+		gsets = lappend(gsets, empty_set);
+		if (groupingSets)
+			*groupingSets = gsets;
+	}
+	/*End - bug#00008188 */
 
 	return result;
 }
