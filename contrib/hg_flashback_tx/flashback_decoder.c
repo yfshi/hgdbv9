@@ -6,8 +6,11 @@
 #include "access/htup_details.h"
 #include "miscadmin.h"
 #include "utils/builtins.h"
-#include "utils/json.h"
+#include "utils/datum.h"
+#include "utils/guc.h"
+#include "utils/hsearch.h"
 #include "utils/lsyscache.h"
+#include "utils/memutils.h"
 #include "utils/rel.h"
 #include "utils/relcache.h"
 #include "catalog/pg_type.h"
@@ -31,21 +34,67 @@ static void flashback_change_cb(LogicalDecodingContext *ctx,
 								ReorderBufferChange *change);
 static int	flashback_get_locator_attnums(Relation relation, TupleDesc desc,
 									 AttrNumber *attnums, int max_attnums);
-static void flashback_json_add_string_field(StringInfo out, bool *first,
-											const char *key, const char *val);
-static void flashback_json_add_int64_field(StringInfo out, bool *first,
-										   const char *key, int64 val);
-static void flashback_append_json_locator_array(StringInfo out, const char *key,
-												HeapTuple tuple, TupleDesc desc,
-												AttrNumber *attnums, int nattnums);
-static void flashback_append_json_rowid(StringInfo out, const char *key,
+static void flashback_wire_begin_record(StringInfo out, char op,
+										int64 commit_time, const char *nspname,
+										const char *relname, const char *ownername);
+static void flashback_wire_add_string(StringInfo out, const char *val);
+static void flashback_wire_add_int64(StringInfo out, int64 val);
+static void flashback_append_wire_locator_array(StringInfo out, HeapTuple tuple,
+												TupleDesc desc,
+												AttrNumber *attnums,
+												int nattnums);
+static void flashback_append_wire_rowid(StringInfo out,
 										const char *rowid_literal);
-static void flashback_append_json_all_cols_array(StringInfo out, const char *key,
-												 HeapTuple tuple, TupleDesc desc);
+static int flashback_append_wire_cols(StringInfo out, HeapTuple oldtuple,
+									  HeapTuple newtuple, TupleDesc desc,
+									  bool only_changed);
 static char *flashback_get_tuple_value_literal(HeapTuple tuple, TupleDesc desc,
 											   int attnum);
 static char *flashback_get_value_literal(Datum value, Oid typid, bool isnull);
 static Datum makeRowIdTupleHeader(Oid tableoid, Datum rowid);
+static const char *flashback_get_include_tables(void);
+static bool flashback_table_name_matches_filter(const char *filter,
+												const char *nspname,
+												const char *relname);
+static void flashback_mark_txn(TransactionId xid);
+static bool flashback_txn_marked(TransactionId xid, bool remove);
+
+typedef struct FlashbackTypeCacheEntry
+{
+	Oid			typid;
+	Oid			typoutput;
+	bool		typisvarlena;
+	bool		quote_literal;
+} FlashbackTypeCacheEntry;
+
+typedef struct FlashbackRelCacheEntry
+{
+	Oid			relid;
+	TupleDesc	desc;
+	Oid			namespace_id;
+	Oid			owner_id;
+	Oid			pkindex;
+	bool		has_rowid;
+	int			natts;
+	int			locator_natts;
+	AttrNumber *locator_attnums;
+	char	   *nspname;
+	char	   *relname;
+	char	   *ownername;
+	char	   *filter_config;
+	bool		included;
+} FlashbackRelCacheEntry;
+
+typedef struct FlashbackTxnFilterEntry
+{
+	TransactionId xid;
+} FlashbackTxnFilterEntry;
+
+static HTAB *flashback_type_cache = NULL;
+static HTAB *flashback_rel_cache = NULL;
+static HTAB *flashback_txn_filter_hash = NULL;
+static FlashbackTypeCacheEntry *flashback_get_type_cache_entry(Oid typid);
+static FlashbackRelCacheEntry *flashback_get_rel_cache_entry(Relation relation);
 
 void
 _PG_output_plugin_init(OutputPluginCallbacks *cb)
@@ -75,40 +124,107 @@ flashback_startup_cb(LogicalDecodingContext *ctx, OutputPluginOptions *opt,
 static void
 flashback_begin_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn)
 {
-	bool		first = true;
-
-	/* Emit explicit begin marker for downstream xid-grouping logic. */
-	OutputPluginPrepareWrite(ctx, true);
-	resetStringInfo(ctx->out);
-	appendStringInfoChar(ctx->out, '{');
-	flashback_json_add_string_field(ctx->out, &first, "op", "B");
-	flashback_json_add_int64_field(ctx->out, &first, "xid", (int64) txn->xid);
-	flashback_json_add_int64_field(ctx->out, &first, "first_lsn",
-								   (int64) txn->first_lsn);
-	appendStringInfoChar(ctx->out, '}');
-	OutputPluginWrite(ctx, true);
+	/* Keep begin callback silent; commit is emitted only for captured xids. */
 }
 
 static void
 flashback_commit_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 					XLogRecPtr commit_lsn)
 {
-	bool		first = true;
+	if (!flashback_txn_marked(txn->xid, true))
+		return;
 
-	/* Emit explicit commit marker so consumer flushes only committed xid groups. */
+	/* Emit commit marker so consumer flushes only xid groups with payload. */
 	OutputPluginPrepareWrite(ctx, true);
 	resetStringInfo(ctx->out);
-	appendStringInfoChar(ctx->out, '{');
-	flashback_json_add_string_field(ctx->out, &first, "op", "C");
-	flashback_json_add_int64_field(ctx->out, &first, "xid", (int64) txn->xid);
-	flashback_json_add_int64_field(ctx->out, &first, "commit_lsn",
-								   (int64) commit_lsn);
-	flashback_json_add_int64_field(ctx->out, &first, "end_lsn",
-								   (int64) txn->end_lsn);
-	flashback_json_add_int64_field(ctx->out, &first, "commit_time",
-								   (int64) txn->commit_time);
-	appendStringInfoChar(ctx->out, '}');
+	flashback_wire_begin_record(ctx->out, 'C', (int64) txn->commit_time,
+								"", "", "");
+	flashback_wire_add_int64(ctx->out, 0);
+	flashback_wire_add_int64(ctx->out, 0);
 	OutputPluginWrite(ctx, true);
+}
+
+static const char *
+flashback_get_include_tables(void)
+{
+	const char *include_tables;
+
+	include_tables = GetConfigOption("hg_flashback_tx.include_tables", true, false);
+	if (include_tables == NULL)
+		return "";
+	return include_tables;
+}
+
+static bool
+flashback_table_name_matches_filter(const char *filter, const char *nspname,
+									const char *relname)
+{
+	char	   *raw;
+	char	   *token;
+	char		qualified[NAMEDATALEN * 2 + 2];
+
+	if (filter == NULL || filter[0] == '\0')
+		return true;
+	if (nspname == NULL || relname == NULL)
+		return false;
+
+	snprintf(qualified, sizeof(qualified), "%s.%s", nspname, relname);
+	raw = pstrdup(filter);
+
+	token = strtok(raw, ", \t\r\n");
+	while (token != NULL)
+	{
+		if (strcmp(token, qualified) == 0 ||
+			(strchr(token, '.') == NULL && strcmp(token, relname) == 0))
+		{
+			pfree(raw);
+			return true;
+		}
+		token = strtok(NULL, ", \t\r\n");
+	}
+
+	pfree(raw);
+	return false;
+}
+
+static void
+flashback_mark_txn(TransactionId xid)
+{
+	FlashbackTxnFilterEntry *entry;
+	bool		found;
+
+	if (!TransactionIdIsValid(xid))
+		return;
+
+	if (flashback_txn_filter_hash == NULL)
+	{
+		HASHCTL		ctl;
+
+		memset(&ctl, 0, sizeof(ctl));
+		ctl.keysize = sizeof(TransactionId);
+		ctl.entrysize = sizeof(FlashbackTxnFilterEntry);
+		ctl.hcxt = TopMemoryContext;
+		flashback_txn_filter_hash = hash_create("flashback_decoder xid filter",
+												128, &ctl,
+												HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+	}
+
+	entry = hash_search(flashback_txn_filter_hash, &xid, HASH_ENTER, &found);
+	if (!found)
+		entry->xid = xid;
+}
+
+static bool
+flashback_txn_marked(TransactionId xid, bool remove)
+{
+	bool		found;
+
+	if (!TransactionIdIsValid(xid) || flashback_txn_filter_hash == NULL)
+		return false;
+
+	(void) hash_search(flashback_txn_filter_hash, &xid,
+					   remove ? HASH_REMOVE : HASH_FIND, &found);
+	return found;
 }
 
 static int
@@ -166,129 +282,284 @@ flashback_get_locator_attnums(Relation relation, TupleDesc desc,
 	return nkeys;
 }
 
-static void
-flashback_json_add_string_field(StringInfo out, bool *first, const char *key,
-								const char *val)
+static FlashbackTypeCacheEntry *
+flashback_get_type_cache_entry(Oid typid)
 {
-	if (!*first)
-		appendStringInfoChar(out, ',');
-	*first = false;
-	escape_json(out, key);
-	appendStringInfoChar(out, ':');
-	escape_json(out, val ? val : "");
+	FlashbackTypeCacheEntry *entry;
+	bool		found;
+
+	if (flashback_type_cache == NULL)
+	{
+		HASHCTL		ctl;
+
+		memset(&ctl, 0, sizeof(ctl));
+		ctl.keysize = sizeof(Oid);
+		ctl.entrysize = sizeof(FlashbackTypeCacheEntry);
+		ctl.hcxt = TopMemoryContext;
+		flashback_type_cache = hash_create("flashback_decoder type cache",
+										   128, &ctl,
+										   HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+	}
+
+	entry = hash_search(flashback_type_cache, &typid, HASH_ENTER, &found);
+	if (!found)
+	{
+		Oid			base_typid;
+		TYPCATEGORY category;
+
+		entry->typid = typid;
+		base_typid = getBaseType(typid);
+		getTypeOutputInfo(typid, &entry->typoutput, &entry->typisvarlena);
+		category = TypeCategory(base_typid);
+		entry->quote_literal = (category != TYPCATEGORY_NUMERIC);
+	}
+
+	return entry;
+}
+
+static FlashbackRelCacheEntry *
+flashback_get_rel_cache_entry(Relation relation)
+{
+	FlashbackRelCacheEntry *entry;
+	TupleDesc	desc = RelationGetDescr(relation);
+	Oid			relid = RelationGetRelid(relation);
+	Oid			namespace_id = RelationGetNamespace(relation);
+	Oid			owner_id = RelationGetForm(relation)->relowner;
+	Oid			pkindex = RelationGetPrimaryKeyIndex(relation);
+	bool		has_rowid = relation->rd_rel->relhasrowid;
+	const char *filter_config = flashback_get_include_tables();
+	bool		found;
+	bool		stale;
+	MemoryContext oldcxt;
+
+	if (flashback_rel_cache == NULL)
+	{
+		HASHCTL		ctl;
+
+		memset(&ctl, 0, sizeof(ctl));
+		ctl.keysize = sizeof(Oid);
+		ctl.entrysize = sizeof(FlashbackRelCacheEntry);
+		ctl.hcxt = TopMemoryContext;
+		flashback_rel_cache = hash_create("flashback_decoder relation cache",
+										  128, &ctl,
+										  HASH_ELEM | HASH_BLOBS | HASH_CONTEXT);
+	}
+
+	entry = hash_search(flashback_rel_cache, &relid, HASH_ENTER, &found);
+	stale = !found ||
+		entry->desc != desc ||
+		entry->namespace_id != namespace_id ||
+		entry->owner_id != owner_id ||
+		entry->pkindex != pkindex ||
+		entry->has_rowid != has_rowid ||
+		entry->natts != desc->natts ||
+		entry->filter_config == NULL ||
+		strcmp(entry->filter_config, filter_config) != 0;
+
+	if (!stale)
+		return entry;
+
+	if (found)
+	{
+		if (entry->locator_attnums)
+			pfree(entry->locator_attnums);
+		if (entry->nspname)
+			pfree(entry->nspname);
+		if (entry->relname)
+			pfree(entry->relname);
+		if (entry->ownername)
+			pfree(entry->ownername);
+		if (entry->filter_config)
+			pfree(entry->filter_config);
+	}
+
+	oldcxt = MemoryContextSwitchTo(TopMemoryContext);
+	memset(entry, 0, sizeof(FlashbackRelCacheEntry));
+	entry->relid = relid;
+	entry->desc = desc;
+	entry->namespace_id = namespace_id;
+	entry->owner_id = owner_id;
+	entry->pkindex = pkindex;
+	entry->has_rowid = has_rowid;
+	entry->natts = desc->natts;
+	entry->nspname = pstrdup(get_namespace_name(namespace_id));
+	entry->relname = pstrdup(RelationGetRelationName(relation));
+	entry->ownername = pstrdup(GetUserNameFromId(owner_id, false));
+	entry->filter_config = pstrdup(filter_config);
+	entry->included = flashback_table_name_matches_filter(filter_config,
+														  entry->nspname,
+														  entry->relname);
+
+	if (!has_rowid)
+	{
+		entry->locator_attnums = palloc(sizeof(AttrNumber) * desc->natts);
+		entry->locator_natts = flashback_get_locator_attnums(relation, desc,
+															 entry->locator_attnums,
+															 desc->natts);
+	}
+	MemoryContextSwitchTo(oldcxt);
+
+	return entry;
 }
 
 static void
-flashback_json_add_int64_field(StringInfo out, bool *first, const char *key,
-							   int64 val)
+flashback_wire_add_string(StringInfo out, const char *val)
 {
-	if (!*first)
-		appendStringInfoChar(out, ',');
-	*first = false;
-	escape_json(out, key);
-	appendStringInfo(out, ":%lld", (long long) val);
+	size_t		len;
+
+	if (val == NULL)
+		val = "";
+	len = strlen(val);
+	appendStringInfo(out, "%lu:", (unsigned long) len);
+	appendBinaryStringInfo(out, val, len);
 }
 
 static void
-flashback_append_json_locator_array(StringInfo out, const char *key,
-									HeapTuple tuple, TupleDesc desc,
-									AttrNumber *attnums, int nattnums)
+flashback_wire_add_int64(StringInfo out, int64 val)
+{
+	char		buf[64];
+
+	snprintf(buf, sizeof(buf), "%lld", (long long) val);
+	flashback_wire_add_string(out, buf);
+}
+
+static void
+flashback_wire_begin_record(StringInfo out, char op, int64 commit_time,
+							const char *nspname, const char *relname,
+							const char *ownername)
+{
+	char		opbuf[2];
+
+	opbuf[0] = op;
+	opbuf[1] = '\0';
+	appendStringInfoString(out, "FB1");
+	flashback_wire_add_string(out, opbuf);
+	flashback_wire_add_int64(out, commit_time);
+	flashback_wire_add_string(out, nspname);
+	flashback_wire_add_string(out, relname);
+	flashback_wire_add_string(out, ownername);
+}
+
+static void
+flashback_append_wire_locator_array(StringInfo out, HeapTuple tuple,
+									TupleDesc desc, AttrNumber *attnums,
+									int nattnums)
 {
 	int			i;
 
-	appendStringInfoChar(out, ',');
-	escape_json(out, key);
-	appendStringInfoString(out, ":[");
+	flashback_wire_add_int64(out, nattnums);
 	for (i = 0; i < nattnums; i++)
 	{
 		const char *colname = NameStr(TupleDescAttr(desc, attnums[i] - 1)->attname);
 		char	   *val = flashback_get_tuple_value_literal(tuple, desc, attnums[i]);
 
-		if (i > 0)
-			appendStringInfoChar(out, ',');
-		appendStringInfoChar(out, '{');
-		escape_json(out, "name");
-		appendStringInfoChar(out, ':');
-		escape_json(out, colname);
-		appendStringInfoChar(out, ',');
-		escape_json(out, "val");
-		appendStringInfoChar(out, ':');
-		escape_json(out, val);
-		appendStringInfoChar(out, '}');
+		flashback_wire_add_string(out, colname);
+		flashback_wire_add_string(out, val);
 		pfree(val);
 	}
-	appendStringInfoChar(out, ']');
 }
 
 static void
-flashback_append_json_rowid(StringInfo out, const char *key,
-							const char *rowid_literal)
+flashback_append_wire_rowid(StringInfo out, const char *rowid_literal)
 {
-	appendStringInfoChar(out, ',');
-	escape_json(out, key);
-	appendStringInfoString(out, ":[");
-	appendStringInfoChar(out, '{');
-	escape_json(out, "name");
-	appendStringInfoChar(out, ':');
-	escape_json(out, "rowid");
-	appendStringInfoChar(out, ',');
-	escape_json(out, "val");
-	appendStringInfoChar(out, ':');
-	escape_json(out, rowid_literal);
-	appendStringInfoChar(out, '}');
-	appendStringInfoChar(out, ']');
+	flashback_wire_add_int64(out, 1);
+	flashback_wire_add_string(out, "rowid");
+	flashback_wire_add_string(out, rowid_literal);
 }
 
-static void
-flashback_append_json_all_cols_array(StringInfo out, const char *key,
-									 HeapTuple tuple, TupleDesc desc)
+static bool
+flashback_attr_changed(Form_pg_attribute attr, Datum oldval, bool oldnull,
+					   Datum newval, bool newnull)
+{
+	if (oldnull != newnull)
+		return true;
+	if (oldnull)
+		return false;
+
+	/*
+	 * This is an image comparison. For toasted values it may report "changed"
+	 * more often than logically necessary, which preserves correctness and only
+	 * reduces the size-saving opportunity for those values.
+	 */
+	return !datumIsEqual(oldval, newval, attr->attbyval, attr->attlen);
+}
+
+static int
+flashback_build_wire_cols(StringInfo cols, HeapTuple oldtuple,
+						  HeapTuple newtuple, TupleDesc desc,
+						  bool only_changed)
 {
 	Datum	   *values;
+	Datum	   *newvalues = NULL;
 	bool	   *nulls;
+	bool	   *newnulls = NULL;
 	int			natts;
 	int			i;
-	bool		first = true;
+	int			count = 0;
 
 	natts = desc->natts;
 	values = palloc(sizeof(Datum) * natts);
 	nulls = palloc(sizeof(bool) * natts);
-	heap_deform_tuple(tuple, desc, values, nulls);
+	heap_deform_tuple(oldtuple, desc, values, nulls);
+	if (only_changed && newtuple != NULL)
+	{
+		newvalues = palloc(sizeof(Datum) * natts);
+		newnulls = palloc(sizeof(bool) * natts);
+		heap_deform_tuple(newtuple, desc, newvalues, newnulls);
+	}
 
-	appendStringInfoChar(out, ',');
-	escape_json(out, key);
-	appendStringInfoString(out, ":[");
 	for (i = 0; i < natts; i++)
 	{
 		Form_pg_attribute attr = TupleDescAttr(desc, i);
 		const char *colname;
-		const char *val;
+		char	   *val;
 
 		if (attr->attisdropped)
 			continue;
+		if (only_changed && newtuple != NULL &&
+			!flashback_attr_changed(attr, values[i], nulls[i],
+									newvalues[i], newnulls[i]))
+			continue;
 
 		colname = NameStr(attr->attname);
-		if (nulls[i])
-			val = "NULL";
-		else
-			val = flashback_get_value_literal(values[i], attr->atttypid, false);
+		val = flashback_get_value_literal(values[i], attr->atttypid, nulls[i]);
 
-		if (!first)
-			appendStringInfoChar(out, ',');
-		first = false;
-		appendStringInfoChar(out, '{');
-		escape_json(out, "name");
-		appendStringInfoChar(out, ':');
-		escape_json(out, colname);
-		appendStringInfoChar(out, ',');
-		escape_json(out, "val");
-		appendStringInfoChar(out, ':');
-		escape_json(out, val);
-		appendStringInfoChar(out, '}');
+		flashback_wire_add_string(cols, colname);
+		flashback_wire_add_string(cols, val);
+		pfree(val);
+		count++;
 	}
-	appendStringInfoChar(out, ']');
 
 	pfree(values);
 	pfree(nulls);
+	if (newvalues)
+		pfree(newvalues);
+	if (newnulls)
+		pfree(newnulls);
+	return count;
+}
+
+static int
+flashback_append_wire_cols(StringInfo out, HeapTuple oldtuple,
+						   HeapTuple newtuple, TupleDesc desc,
+						   bool only_changed)
+{
+	StringInfoData cols;
+	int			count;
+
+	initStringInfo(&cols);
+	count = flashback_build_wire_cols(&cols, oldtuple, newtuple, desc,
+									  only_changed);
+	if (only_changed && count == 0)
+	{
+		resetStringInfo(&cols);
+		count = flashback_build_wire_cols(&cols, oldtuple, NULL, desc, false);
+	}
+
+	flashback_wire_add_int64(out, count);
+	appendBinaryStringInfo(out, cols.data, cols.len);
+	pfree(cols.data);
+	return count;
 }
 
 static char *
@@ -314,26 +585,17 @@ flashback_get_tuple_value_literal(HeapTuple tuple, TupleDesc desc, int attnum)
 static char *
 flashback_get_value_literal(Datum value, Oid typid, bool isnull)
 {
-	Oid			typoutput;
-	bool		typisvarlena;
 	char	   *outstr;
-	Oid			base_typid;
-	TYPCATEGORY category;
+	FlashbackTypeCacheEntry *type_entry;
 
 	if (isnull)
 		return pstrdup("NULL");
 
-	/* Get base type for domain types */
-	base_typid = getBaseType(typid);
-
-	getTypeOutputInfo(typid, &typoutput, &typisvarlena);
-	outstr = OidOutputFunctionCall(typoutput, value);
-
-	/* Use type category to determine if quotes are needed */
-	category = TypeCategory(base_typid);
+	type_entry = flashback_get_type_cache_entry(typid);
+	outstr = OidOutputFunctionCall(type_entry->typoutput, value);
 
 	/* Numeric category doesn't need quotes (includes int2/4/8, float4/8, numeric, etc.) */
-	if (category == TYPCATEGORY_NUMERIC)
+	if (!type_entry->quote_literal)
 		return outstr;
 
 	/* Other types need quotes; free temporary text representation after quoting. */
@@ -356,15 +618,15 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	ReorderBufferTupleBuf *newtuple;
 	ReorderBufferTupleBuf *oldtuple;
 	TupleDesc	desc;
-	int			natts;
 	bool		has_rowid;
 	char	   *rowid_literal = NULL;
-	int			pk_natts;
-	bool		first = true;
+	int			pk_natts = 0;
+	FlashbackRelCacheEntry *relcache;
 
-	relname = RelationGetRelationName(relation);
-	nspname = get_namespace_name(RelationGetNamespace(relation));
-	ownername = GetUserNameFromId(RelationGetForm(relation)->relowner, false);
+	relcache = flashback_get_rel_cache_entry(relation);
+	relname = relcache->relname;
+	nspname = relcache->nspname;
+	ownername = relcache->ownername;
 
 	/*
 	 * Avoid decoding changes generated by internal schemas.
@@ -377,19 +639,21 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 		 strcmp(nspname, "information_schema") == 0))
 		return;
 
+	if (!relcache->included)
+		return;
+
 	newtuple = change->data.tp.newtuple;
 	oldtuple = change->data.tp.oldtuple;
 	desc = RelationGetDescr(relation);
-	natts = desc->natts;
 
 	/* use rowid as locator if it exist */
-	has_rowid = relation->rd_rel->relhasrowid;
+	has_rowid = relcache->has_rowid;
 	if (has_rowid)
 	{
 		Datum	rowid;
 		Datum 	rowidTup;
-		Oid		rowid_output;
-		bool	rowid_isvalena;
+		FlashbackTypeCacheEntry *rowid_type;
+		char   *rowid_output_str;
 
 		if (oldtuple == NULL && newtuple == NULL)
 			elog(ERROR, "flashback_decoder: both oldtuple and newtuple unavailable in %s.%s",
@@ -400,21 +664,23 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 		else
 			rowid = HeapTupleGetRowId(&newtuple->tuple);
 		rowidTup = makeRowIdTupleHeader(RelationGetRelid(relation), rowid);
-		getTypeOutputInfo(ROWIDOID, &rowid_output, &rowid_isvalena);
-		rowid_literal = quote_literal_cstr(OidOutputFunctionCall(rowid_output, rowidTup));
+		rowid_type = flashback_get_type_cache_entry(ROWIDOID);
+		rowid_output_str = OidOutputFunctionCall(rowid_type->typoutput, rowidTup);
+		rowid_literal = quote_literal_cstr(rowid_output_str);
+		pfree(rowid_output_str);
+		pfree(DatumGetPointer(rowidTup));
 
 		locator_attnums = NULL;
 	}
 	else
 	{
-		locator_attnums = palloc(sizeof(AttrNumber) * natts);
-		pk_natts = flashback_get_locator_attnums(relation, desc, locator_attnums, natts);
+		locator_attnums = relcache->locator_attnums;
+		pk_natts = relcache->locator_natts;
 
 		if (pk_natts <= 0)
 		{
 			elog(LOG, "flashback_decoder: skip %s.%s without usable locator columns",
 				nspname, relname);
-			pfree(locator_attnums);
 			return;
 		}
 	}
@@ -430,6 +696,7 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 	 * PrepareWrite is intentionally placed after early-return validations to keep
 	 * each prepare/write pair balanced.
 	 */
+	flashback_mark_txn(txn->xid);
 	OutputPluginPrepareWrite(ctx, true);
 	resetStringInfo(ctx->out);
 	/*
@@ -440,20 +707,14 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 
 	if (change->action == REORDER_BUFFER_CHANGE_INSERT && newtuple != NULL)
 	{
-		appendStringInfoChar(ctx->out, '{');
-		flashback_json_add_string_field(ctx->out, &first, "op", "I");
-		flashback_json_add_string_field(ctx->out, &first, "nsp", nspname);
-		flashback_json_add_string_field(ctx->out, &first, "rel", relname);
-		flashback_json_add_string_field(ctx->out, &first, "owner", ownername);
-		flashback_json_add_int64_field(ctx->out, &first, "commit_time",
-									   (int64) txn->commit_time);
+		flashback_wire_begin_record(ctx->out, 'I', (int64) txn->commit_time,
+									nspname, relname, ownername);
 		if (has_rowid)
-			flashback_append_json_rowid(ctx->out, "locator", rowid_literal);
+			flashback_append_wire_rowid(ctx->out, rowid_literal);
 		else
-			flashback_append_json_locator_array(ctx->out, "locator",
-												&newtuple->tuple, desc,
+			flashback_append_wire_locator_array(ctx->out, &newtuple->tuple, desc,
 												locator_attnums, pk_natts);
-		appendStringInfoString(ctx->out, ",\"cols\":[]}");
+		flashback_wire_add_int64(ctx->out, 0);
 	}
 	else if (change->action == REORDER_BUFFER_CHANGE_UPDATE &&
 			 newtuple != NULL)
@@ -470,22 +731,15 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 					 nspname, relname);
 			oldtuple = newtuple;
 		}
-		appendStringInfoChar(ctx->out, '{');
-		flashback_json_add_string_field(ctx->out, &first, "op", "U");
-		flashback_json_add_string_field(ctx->out, &first, "nsp", nspname);
-		flashback_json_add_string_field(ctx->out, &first, "rel", relname);
-		flashback_json_add_string_field(ctx->out, &first, "owner", ownername);
-		flashback_json_add_int64_field(ctx->out, &first, "commit_time",
-									   (int64) txn->commit_time);
+		flashback_wire_begin_record(ctx->out, 'U', (int64) txn->commit_time,
+									nspname, relname, ownername);
 		if (has_rowid)
-			flashback_append_json_rowid(ctx->out, "locator", rowid_literal);
+			flashback_append_wire_rowid(ctx->out, rowid_literal);
 		else
-			flashback_append_json_locator_array(ctx->out, "locator",
-												&newtuple->tuple, desc,
+			flashback_append_wire_locator_array(ctx->out, &newtuple->tuple, desc,
 												locator_attnums, pk_natts);
-		flashback_append_json_all_cols_array(ctx->out, "cols",
-											 &oldtuple->tuple, desc);
-		appendStringInfoChar(ctx->out, '}');
+		flashback_append_wire_cols(ctx->out, &oldtuple->tuple, &newtuple->tuple,
+								   desc, true);
 	}
 	else if (change->action == REORDER_BUFFER_CHANGE_DELETE &&
 			 oldtuple != NULL)
@@ -493,35 +747,26 @@ flashback_change_cb(LogicalDecodingContext *ctx, ReorderBufferTXN *txn,
 		/*
 		 * DELETE: emit primary key value and old column values for re-insert undo.
 		 */
-		appendStringInfoChar(ctx->out, '{');
-		flashback_json_add_string_field(ctx->out, &first, "op", "D");
-		flashback_json_add_string_field(ctx->out, &first, "nsp", nspname);
-		flashback_json_add_string_field(ctx->out, &first, "rel", relname);
-		flashback_json_add_string_field(ctx->out, &first, "owner", ownername);
-		flashback_json_add_int64_field(ctx->out, &first, "commit_time",
-									   (int64) txn->commit_time);
+		flashback_wire_begin_record(ctx->out, 'D', (int64) txn->commit_time,
+									nspname, relname, ownername);
 		if (has_rowid)
-			flashback_append_json_rowid(ctx->out, "locator", rowid_literal);
+			flashback_append_wire_rowid(ctx->out, rowid_literal);
 		else
-			flashback_append_json_locator_array(ctx->out, "locator",
-												&oldtuple->tuple, desc,
+			flashback_append_wire_locator_array(ctx->out, &oldtuple->tuple, desc,
 												locator_attnums, pk_natts);
-		flashback_append_json_all_cols_array(ctx->out, "cols",
-											 &oldtuple->tuple, desc);
-		appendStringInfoChar(ctx->out, '}');
+		flashback_append_wire_cols(ctx->out, &oldtuple->tuple, NULL, desc, false);
 	}
 	else
 	{
-		appendStringInfoChar(ctx->out, '{');
-		flashback_json_add_string_field(ctx->out, &first, "op", "UNKNOWN");
-		flashback_json_add_string_field(ctx->out, &first, "nsp", nspname);
-		flashback_json_add_string_field(ctx->out, &first, "rel", relname);
-		appendStringInfoChar(ctx->out, '}');
+		flashback_wire_begin_record(ctx->out, 'X', (int64) txn->commit_time,
+									nspname, relname, ownername);
+		flashback_wire_add_int64(ctx->out, 0);
+		flashback_wire_add_int64(ctx->out, 0);
 	}
 
 	OutputPluginWrite(ctx, true);
-	if (locator_attnums)
-		pfree(locator_attnums);
+	if (rowid_literal)
+		pfree(rowid_literal);
 }
 
 /* copied from heap_getsysattr */

@@ -59,10 +59,23 @@ $node->safe_psql('postgres', q[
 TRUNCATE hg_flashback_tx.flashback_transaction_query;
 ]);
 
-my $s1 = $node->background_psql('postgres');
-my $s2 = $node->background_psql('postgres');
+my $psql = $node->installed_command('psql');
+my $connstr = $node->connstr('postgres');
+sub start_background_sql
+{
+	my ($sql) = @_;
+	my $pid = fork();
+	die "could not fork background psql" unless defined $pid;
+	if ($pid == 0)
+	{
+		exec $psql, '-XAtq', '-d', $connstr, '-v', 'ON_ERROR_STOP=1',
+		  '-c', $sql;
+		die "could not exec background psql: $!";
+	}
+	return $pid;
+}
 
-$s1->query_safe(q[
+my $s1_pid = start_background_sql(q[
 BEGIN;
 INSERT INTO public.hg_fb_concurrent(id, v, note) VALUES (10001, 100010, 's1_i1');
 INSERT INTO public.hg_fb_concurrent(id, v, note) VALUES (10002, 100020, 's1_i2');
@@ -73,10 +86,11 @@ UPDATE public.hg_fb_concurrent SET v = v + 1, note = note || '_u1' WHERE id BETW
 UPDATE public.hg_fb_concurrent SET v = v + 2, note = note || '_u2' WHERE id BETWEEN 10004 AND 10005;
 DELETE FROM public.hg_fb_concurrent WHERE id = 10001;
 DELETE FROM public.hg_fb_concurrent WHERE id = 10002;
+SELECT pg_sleep(1);
 COMMIT;
 ]);
 
-$s2->query_safe(q[
+my $s2_pid = start_background_sql(q[
 BEGIN;
 INSERT INTO public.hg_fb_concurrent(id, v, note) VALUES (20001, 200010, 's2_i1');
 INSERT INTO public.hg_fb_concurrent(id, v, note) VALUES (20002, 200020, 's2_i2');
@@ -87,11 +101,15 @@ UPDATE public.hg_fb_concurrent SET v = v + 10, note = note || '_u1' WHERE id BET
 UPDATE public.hg_fb_concurrent SET v = v + 20, note = note || '_u2' WHERE id BETWEEN 20004 AND 20005;
 DELETE FROM public.hg_fb_concurrent WHERE id = 20001;
 DELETE FROM public.hg_fb_concurrent WHERE id = 20002;
+SELECT pg_sleep(1);
 COMMIT;
 ]);
 
-$s1->quit;
-$s2->quit;
+for my $pid ($s1_pid, $s2_pid)
+{
+	waitpid($pid, 0);
+	die "background psql failed with status $?" if $? != 0;
+}
 
 $node->poll_query_until(
 	'postgres',

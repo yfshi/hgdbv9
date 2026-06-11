@@ -4,7 +4,18 @@ use strict;
 use warnings;
 use PostgresNode;
 use TestLib;
-use Test::More tests => 14;
+use Test::More tests => 20;
+
+sub wait_for_slot_catchup
+{
+	my ($node) = @_;
+	my $lsn = $node->safe_psql('postgres', "SELECT pg_current_wal_lsn()");
+
+	$node->poll_query_until(
+		'postgres',
+		"SELECT COALESCE((SELECT confirmed_flush_lsn >= '$lsn'::pg_lsn FROM pg_replication_slots WHERE slot_name = 'hg_flashback_tx_slot_postgres'), false)"
+	) or die "timed out waiting for hg_flashback_tx slot to catch up";
+}
 
 my $node = get_new_node('hg_flashback_tx');
 $node->init(allows_streaming => 'logical');
@@ -124,8 +135,8 @@ like($all,
 	qr/^D\|.*INSERT INTO public\.hg_flashback_t \(id, i, note\) VALUES \(1, 1001, 'b'\)$/m,
 	'DELETE generates INSERT undo SQL');
 like($all,
-	qr/^U\|.*UPDATE public\.hg_flashback_t SET id=1, i=1000, note='a' WHERE id = 1$/m,
-	'UPDATE generates UPDATE undo SQL using primary key with correct old values');
+	qr/^U\|.*UPDATE public\.hg_flashback_t SET i=1000, note='a' WHERE id = 1$/m,
+	'UPDATE generates UPDATE undo SQL using primary key with changed old values');
 like($all,
 	qr/^I\|.*DELETE FROM public\.hg_flashback_t WHERE id = 1$/m,
 	'INSERT generates DELETE undo SQL using primary key');
@@ -154,8 +165,8 @@ SELECT operation, undo_sql
 ]);
 my $cpk_all = join("\n", split(/\n/, $cpk_result));
 like($cpk_all,
-	qr/^U\|.*UPDATE public\.hg_fb_cpk SET id1=1, id2=2, v=100, note='x' WHERE id1 = 1 AND id2 = 2$/m,
-	'composite primary key: UPDATE undo SQL contains full PK predicate and old values');
+	qr/^U\|.*UPDATE public\.hg_fb_cpk SET v=100, note='x' WHERE id1 = 1 AND id2 = 2$/m,
+	'composite primary key: UPDATE undo SQL contains full PK predicate and changed old values');
 
 # Test 4: no primary key fallback uses full-row locator
 $node->safe_psql('postgres', q[
@@ -181,7 +192,7 @@ SELECT operation, undo_sql
 ]);
 my $nopk_all = join("\n", split(/\n/, $nopk_result));
 like($nopk_all,
-	qr/^U\|.*UPDATE public\.hg_fb_nopk SET id=7, v=70, note='p' WHERE id = 7 AND v = 71 AND note = 'q'$/m,
+	qr/^U\|.*UPDATE public\.hg_fb_nopk SET v=70, note='p' WHERE id = 7 AND v = 71 AND note = 'q'$/m,
 	'no primary key: UPDATE undo SQL falls back to full-row locator');
 
 # Test 6: Multi-change transaction keeps per-xid sequential undo_change#
@@ -349,5 +360,141 @@ SELECT
  WHERE xid = (SELECT xid FROM latest);
 ]);
 is($multi_check2, 't', 'multi-change txn (coverage): sequential undo_change# for same xid');
+
+# Test 14: include_tables records only the configured table.
+$node->safe_psql('postgres',
+	"ALTER SYSTEM SET hg_flashback_tx.include_tables = 'public.hg_fb_pk'");
+$node->safe_psql('postgres', "SELECT pg_reload_conf()");
+sleep 2;
+$node->safe_psql('postgres', q[
+TRUNCATE hg_flashback_tx.flashback_transaction_query;
+DELETE FROM public.hg_fb_pk WHERE id IN (40, 41);
+DELETE FROM public.hg_flashback_t WHERE id IN (40, 41);
+BEGIN;
+INSERT INTO public.hg_fb_pk(id, v, note) VALUES (40, 400, 'whitelist');
+UPDATE public.hg_fb_pk SET note = 'whitelist-updated' WHERE id = 40;
+INSERT INTO public.hg_flashback_t(id, i, note) VALUES (40, 400, 'skipped');
+UPDATE public.hg_flashback_t SET note = 'skipped-updated' WHERE id = 40;
+COMMIT;
+]);
+
+$node->poll_query_until(
+	'postgres',
+	"SELECT count(*) >= 2 FROM hg_flashback_tx.flashback_transaction_query"
+) or die "timed out waiting for whitelist records";
+
+my $whitelist_check = $node->safe_psql(
+	'postgres',
+	q[
+SELECT count(*) = 2 AND bool_and(table_name = 'hg_fb_pk')
+  FROM hg_flashback_tx.flashback_transaction_query;
+]);
+is($whitelist_check, 't', 'include_tables records only matching table changes');
+
+# Test 15: non-whitelisted-only transactions produce no undo rows.
+$node->safe_psql('postgres', q[
+TRUNCATE hg_flashback_tx.flashback_transaction_query;
+INSERT INTO public.hg_flashback_t(id, i, note) VALUES (41, 410, 'skipped-only');
+UPDATE public.hg_flashback_t SET note = 'skipped-only-updated' WHERE id = 41;
+DELETE FROM public.hg_flashback_t WHERE id = 41;
+]);
+wait_for_slot_catchup($node);
+
+my $nonwhitelist_count = $node->safe_psql(
+	'postgres',
+	"SELECT count(*) FROM hg_flashback_tx.flashback_transaction_query");
+is($nonwhitelist_count, '0', 'include_tables suppresses non-matching transactions');
+
+# Test 16: include_tables reload changes cached table match results.
+$node->safe_psql('postgres',
+	"ALTER SYSTEM SET hg_flashback_tx.include_tables = 'public.hg_flashback_t'");
+$node->safe_psql('postgres', "SELECT pg_reload_conf()");
+sleep 2;
+$node->safe_psql('postgres', q[
+TRUNCATE hg_flashback_tx.flashback_transaction_query;
+INSERT INTO public.hg_fb_pk(id, v, note) VALUES (42, 420, 'old-filter');
+INSERT INTO public.hg_flashback_t(id, i, note) VALUES (42, 420, 'new-filter');
+]);
+
+$node->poll_query_until(
+	'postgres',
+	"SELECT count(*) >= 1 FROM hg_flashback_tx.flashback_transaction_query"
+) or die "timed out waiting for reloaded whitelist records";
+
+my $reload_filter_check = $node->safe_psql(
+	'postgres',
+	q[
+SELECT count(*) = 1 AND bool_and(table_name = 'hg_flashback_t')
+  FROM hg_flashback_tx.flashback_transaction_query;
+]);
+is($reload_filter_check, 't', 'include_tables reload changes cached table match results');
+
+# Test 17: include_tables works with subtransactions.
+$node->safe_psql('postgres',
+	"ALTER SYSTEM SET hg_flashback_tx.include_tables = 'public.hg_fb_pk'");
+$node->safe_psql('postgres', "SELECT pg_reload_conf()");
+sleep 2;
+$node->safe_psql('postgres', q[
+TRUNCATE hg_flashback_tx.flashback_transaction_query;
+BEGIN;
+SAVEPOINT s1;
+INSERT INTO public.hg_fb_pk(id, v, note) VALUES (43, 430, 'sub-commit');
+RELEASE SAVEPOINT s1;
+INSERT INTO public.hg_flashback_t(id, i, note) VALUES (43, 430, 'sub-skip');
+COMMIT;
+]);
+
+$node->poll_query_until(
+	'postgres',
+	"SELECT count(*) >= 1 FROM hg_flashback_tx.flashback_transaction_query"
+) or die "timed out waiting for subtransaction whitelist records";
+
+my $subxact_commit_check = $node->safe_psql(
+	'postgres',
+	q[
+SELECT count(*) = 1 AND bool_and(table_name = 'hg_fb_pk')
+  FROM hg_flashback_tx.flashback_transaction_query;
+]);
+is($subxact_commit_check, 't', 'include_tables records committed subtransaction changes');
+
+$node->safe_psql('postgres', q[
+TRUNCATE hg_flashback_tx.flashback_transaction_query;
+BEGIN;
+SAVEPOINT s1;
+INSERT INTO public.hg_fb_pk(id, v, note) VALUES (44, 440, 'sub-rollback');
+ROLLBACK TO SAVEPOINT s1;
+COMMIT;
+]);
+wait_for_slot_catchup($node);
+
+my $subxact_rollback_count = $node->safe_psql(
+	'postgres',
+	"SELECT count(*) FROM hg_flashback_tx.flashback_transaction_query");
+is($subxact_rollback_count, '0', 'rolled-back subtransaction changes are not recorded');
+
+# Test 18: auto_replica_identity only applies to whitelisted new tables.
+$node->safe_psql('postgres',
+	"ALTER SYSTEM SET hg_flashback_tx.include_tables = 'public.hg_fb_whitelist_new'");
+$node->safe_psql('postgres', "SELECT pg_reload_conf()");
+sleep 2;
+$node->safe_psql('postgres', q[
+DROP TABLE IF EXISTS public.hg_fb_whitelist_new;
+DROP TABLE IF EXISTS public.hg_fb_not_whitelist_new;
+CREATE TABLE public.hg_fb_whitelist_new(id int PRIMARY KEY, v int);
+CREATE TABLE public.hg_fb_not_whitelist_new(id int PRIMARY KEY, v int);
+]);
+
+my $auto_ri_check = $node->safe_psql(
+	'postgres',
+	q[
+SELECT bool_and(
+	CASE relname
+		WHEN 'hg_fb_whitelist_new' THEN relreplident = 'f'
+		WHEN 'hg_fb_not_whitelist_new' THEN relreplident <> 'f'
+	END)
+  FROM pg_class
+ WHERE relname IN ('hg_fb_whitelist_new', 'hg_fb_not_whitelist_new');
+]);
+is($auto_ri_check, 't', 'auto_replica_identity follows include_tables');
 
 $node->stop;
