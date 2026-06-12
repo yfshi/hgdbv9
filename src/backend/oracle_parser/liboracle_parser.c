@@ -529,7 +529,6 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 	{
 		int beginpos = yyextra->body_start;		
 		int blocklevel = yyextra->body_level;
-		bool found_begin = false;
 		/* Begin - SRS-PLSQL-SUBPROC */
 		bool found_foreign_begin = false;
 		int subproc_define_level = 0;
@@ -537,7 +536,6 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 		
 		if (blocklevel > 0)
 		{
-			found_begin = true;
 			/* Begin - SRS-PLSQL-SUBPROC */
 			found_foreign_begin = true;
 			/* End - SRS-PLSQL-SUBPROC */
@@ -572,7 +570,6 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				if (cur_token != ';' && cur_token != '(')
 				{
 					blocklevel++;
-					found_begin = true;
 					/* Begin - SRS-PLSQL-SUBPROC */
 					if (subproc_define_level == 0)
 						found_foreign_begin = true;
@@ -580,43 +577,68 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				}
 			}
 
-			if (found_begin)
+			/* Begin - OA#2463 */
+			/*
+			 * Directly handle the case
+			 */
+			if (cur_token == CASE)
 			{
-				if (cur_token == CASE)
+				int inter_level = 1;
+
+				/* Begin - OA#2463 */
+				/*
+				 * Directly handle the case
+				 */
+				while (true)
 				{
-					blocklevel++;
-				}
-				else if (cur_token == END_P)
-				{
-					if (blocklevel > 0)
+					cur_token = internal_yylex(yyscanner, llocp, &aux1);
+					if (cur_token == CASE)
+						inter_level++;
+					else if (cur_token == BEGIN_P)
+						inter_level++;
+					else if (cur_token == END_P)
 					{
 						cur_token = internal_yylex(yyscanner, llocp, &aux1);
-						if (cur_token == ';')
-						{
-							blocklevel--;
-						}
-						else if (cur_token == 0)
-						{
-							blocklevel--;
-							break;
-						}
-						else if (cur_token != LOOP_P && cur_token != IF_P) /* SRS-PLSQL-SUBPROC */
-						{
-							blocklevel--;
+						if (cur_token != LOOP_P && cur_token != IF_P)
+							inter_level--;
+					}
 
-						}
-					}
-					/* Begin - SRS-PLSQL-SUBPROC */
-					/* only find end, we can finish */
-					if (blocklevel == 0)
-					{
-						if (found_foreign_begin && subproc_define_level == 0)
-							break;
-						else if (subproc_define_level > 0)
-							subproc_define_level--;
-					}
-					/* End - SRS-PLSQL-SUBPROC */
+					if (cur_token == 0 || inter_level == 0)
+						break;
 				}
+			}
+			/* End - OA#2463 */
+
+			if (cur_token == END_P)
+			{
+				if (blocklevel > 0)
+				{
+					cur_token = internal_yylex(yyscanner, llocp, &aux1);
+					if (cur_token == ';')
+					{
+						blocklevel--;
+					}
+					else if (cur_token == 0)
+					{
+						blocklevel--;
+						break;
+					}
+					else if (cur_token != LOOP_P && cur_token != IF_P) /* SRS-PLSQL-SUBPROC */
+					{
+						blocklevel--;
+
+					}
+				}
+				/* Begin - SRS-PLSQL-SUBPROC */
+				/* only find end, we can finish */
+				if (blocklevel == 0)
+				{
+					if (found_foreign_begin && subproc_define_level == 0)
+						break;
+					else if (subproc_define_level > 0)
+						subproc_define_level--;
+				}
+				/* End - SRS-PLSQL-SUBPROC */
 			}
 
 			cur_token = internal_yylex(yyscanner, llocp, &aux1);
@@ -687,9 +709,33 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 
 			if (cur_token == CASE)
 			{
-				blocklevel++;
+				int inter_level = 1;
+
+				/* Begin - OA#2463 */
+				/*
+				 * Directly handle the case
+				 */
+				while (true)
+				{
+					cur_token = internal_yylex(yyscanner, llocp, &aux1);
+					if (cur_token == CASE)
+						inter_level++;
+					else if (cur_token == BEGIN_P)
+						inter_level++;
+					else if (cur_token == END_P)
+					{
+						cur_token = internal_yylex(yyscanner, llocp, &aux1);
+						if (cur_token != LOOP_P && cur_token != IF_P)
+							inter_level--;
+					}
+
+					if (cur_token == 0 || inter_level == 0)
+						break;
+				}
+				/* End - OA#2463 */
 			}
-			else if (cur_token == END_P)
+
+			if (cur_token == END_P)
 			{
 				if (blocklevel > 0)
 				{

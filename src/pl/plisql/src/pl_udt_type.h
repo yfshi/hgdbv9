@@ -162,8 +162,6 @@ extern PLiSQL_rec *plisql_build_record_for_cursorrowtype(const char *refname,
 										int lineno,
 										PLiSQL_type *dtype,
 										bool add2namespace);
-extern TupleDesc plisql_get_cursor_tupdesc_incompile(PLiSQL_expr *cursor_expr,
-													int cursor_options);
 extern PLiSQL_explicit_cursor_type *plisql_build_explicit_cursor_type(TupleDesc retdesc);
 extern bool is_plisql_rowtype_record(PLiSQL_rec *rec);
 extern void set_plisql_cursorvar_nsitem_typoid(PLiSQL_variable *variable,

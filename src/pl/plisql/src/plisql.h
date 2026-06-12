@@ -1832,4 +1832,10 @@ extern void plisql_register_label(const char *name);
 extern void plisql_register_goto(PLiSQL_stmt_goto *stmt);
 /* End - ReqID:SRS-PLSQL-GOTO */
 
+/* Begin - OA#2463 */
+extern TupleDesc plisql_get_cursor_tupdesc_incompile(PLiSQL_expr *cursor_expr,
+													int cursor_options);
+
+/* End - OA#2463 */
+
 #endif							/* PLPGSQL_H */
