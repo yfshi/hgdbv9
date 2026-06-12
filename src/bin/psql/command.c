@@ -3283,14 +3283,6 @@ do_connect(enum trivalue reuse_previous_specification,
 	bool		has_connection_string;
 	bool		reuse_previous;
 
-	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (1 == mysql_lower_num() || 2 == mysql_lower_num())
-	{
-		if (dbname)
-			dbname = mysql_psql_downcase_identifier(dbname, strlen(dbname));
-	}
-	/* End - ReqID:SRS-MYSQL-CASE */
-
 	has_connection_string = dbname ?
 		recognized_connection_string(dbname) : false;
 
