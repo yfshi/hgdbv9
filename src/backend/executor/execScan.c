@@ -367,12 +367,11 @@ ExecFlashbackTimestamp(ScanState* ss)
 {
 	if (!ss->flashback_snapshot_set)
 	{
-		TimestampTz undo_cutoff_ts = GetCurrentTimestamp() - ((int64) undo_retention * USECS_PER_SEC);
-
 		if (ss->asofExpr)
 		{
 			Datum		val;
 			bool		isNull;
+			TimestampTz undo_cutoff_ts = GetCurrentTimestamp() - ((int64) undo_retention * USECS_PER_SEC);
 
 			val = ExecEvalExprSwitchContext(ss->asofExpr,
 											ss->ps.ps_ExprContext,
@@ -401,6 +400,7 @@ ExecFlashbackTimestamp(ScanState* ss)
 		{
 			Datum		Lval, Uval;
 			bool		LisNull, UisNull;
+			TimestampTz undo_cutoff_ts = GetCurrentTimestamp() - ((int64) undo_retention * USECS_PER_SEC);
 
 			Lval = ExecEvalExprSwitchContext(ss->versionsLowerExpr,
 											ss->ps.ps_ExprContext,
