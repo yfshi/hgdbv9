@@ -304,3 +304,7 @@ test: ora_nested_agg
 #/* Begin - OA-REQ-2248 */
 test: ora_readonly_view
 #/* End - OA-REQ-2248 */
+
+#/* Begin - OA-REQ-2464 */
+test: ora_flexible_group_having_order
+#/* End - OA-REQ-2464 */

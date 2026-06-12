@@ -149,6 +149,16 @@ typedef struct GroupClause
 	List   *list;
 } GroupClause;
 
+/* Begin - OA-REQ-2464 */
+/* Private struct for Oracle's flexible GROUP BY/HAVING order */
+typedef struct GroupHavingClause
+{
+	bool	distinct;
+	List	*groupClause;
+	Node	*havingClause;
+} GroupHavingClause;
+/* End - OA-REQ-2464 */
+
 typedef struct OraTrgOrder
 {
 	bool	is_follows;
@@ -303,6 +313,7 @@ static bool isAconstNode(Node *node);
 	struct SelectLimit	*selectlimit;
 	SetQuantifier	 setquantifier;
 	struct GroupClause  *groupclause;
+	struct GroupHavingClause *grouphavingclause;	/* OA-REQ-2464 */
 	struct OraTrgOrder	*oratrgorder;
 	MergeWhenClause		*mergewhen;	/* ReqID:SRS-SQL-MERGE */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -484,7 +495,8 @@ static bool isAconstNode(Node *node);
 				numeric_opt_type_modifiers /* ReqID:SRS-GKC-DATATYPE_001 */
 
 %type <node>	opt_routine_body
-%type <groupclause> group_clause
+%type <groupclause> group_clause nonempty_group_clause	/* OA-REQ-2464 */
+%type <grouphavingclause> group_having_clause	/* OA-REQ-2464 */
 %type <list>	group_by_list
 %type <node>	group_by_item empty_grouping_set rollup_clause cube_clause
 %type <node>	grouping_sets_clause
@@ -16318,7 +16330,7 @@ select_clause:
 simple_select:
 			SELECT opt_all_clause opt_target_list
 			into_clause from_clause where_clause opt_hierarchical_clause
-			group_clause having_clause window_clause
+			group_having_clause window_clause
 				{
 					SelectStmt *n = makeNode(SelectStmt);
 					n->targetList = $3;
@@ -16328,15 +16340,15 @@ simple_select:
 					/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 					n->connect_by = (HierarQueryClause *) $7;
 					/* End - ReqID:SRS-SQL-HierarchicalQueries */
-					n->groupClause = ($8)->list;
+					n->groupClause = ($8)->groupClause;		/* OA-REQ-2464 */
 					n->groupDistinct = ($8)->distinct;
-					n->havingClause = $9;
-					n->windowClause = $10;
+					n->havingClause = ($8)->havingClause;	/* OA-REQ-2464 */
+					n->windowClause = $9;					/* OA-REQ-2464 */
 					$$ = (Node *)n;
 				}
 			| SELECT distinct_clause target_list
 			into_clause from_clause where_clause opt_hierarchical_clause
-			group_clause having_clause window_clause
+			group_having_clause window_clause
 				{
 					SelectStmt *n = makeNode(SelectStmt);
 					n->distinctClause = $2;
@@ -16347,10 +16359,10 @@ simple_select:
 					/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 					n->connect_by = (HierarQueryClause *) $7;
 					/* End - ReqID:SRS-SQL-HierarchicalQueries */
-					n->groupClause = ($8)->list;
+					n->groupClause = ($8)->groupClause;		/* OA-REQ-2464 */
 					n->groupDistinct = ($8)->distinct;
-					n->havingClause = $9;
-					n->windowClause = $10;
+					n->havingClause = ($8)->havingClause;	/* OA-REQ-2464 */
+					n->windowClause = $9;					/* OA-REQ-2464 */
 					$$ = (Node *)n;
 				}
 			| values_clause							{ $$ = $1; }
@@ -16825,13 +16837,11 @@ first_or_next: FIRST_P								{ $$ = 0; }
  * GroupingSet node of some type.
  */
 group_clause:
-			GROUP_P BY set_quantifier group_by_list
+			/* Begin - OA-REQ-2464 */
+			nonempty_group_clause
 				{
-					GroupClause *n = (GroupClause *) palloc(sizeof(GroupClause));
-					n->distinct = $3 == SET_QUANTIFIER_DISTINCT;
-					n->list = $4;
-					$$ = n;
-				}
+					$$ = $1;
+				} /* Begin - OA-REQ-2464 */
 			| /*EMPTY*/
 				{
 					GroupClause *n = (GroupClause *) palloc(sizeof(GroupClause));
@@ -16839,7 +16849,54 @@ group_clause:
 					n->list = NIL;
 					$$ = n;
 				}
+			;
+
+/* Begin - OA-REQ-2464 */
+nonempty_group_clause:
+			GROUP_P BY set_quantifier group_by_list
+				{
+					GroupClause *n = (GroupClause *) palloc(sizeof(GroupClause));
+					n->distinct = $3 == SET_QUANTIFIER_DISTINCT;
+					n->list = $4;
+					$$ = n;
+				}
 		;
+
+group_having_clause:
+			nonempty_group_clause having_clause
+				{
+					GroupHavingClause	*n = (GroupHavingClause *) palloc(sizeof(GroupHavingClause));
+					n->distinct = ($1)->distinct;
+					n->groupClause = ($1)->list;
+					n->havingClause = $2;
+					$$ = n;
+				}
+			| HAVING a_expr nonempty_group_clause
+				{
+					GroupHavingClause	*n = (GroupHavingClause *) palloc(sizeof(GroupHavingClause));
+					n->distinct = ($3)->distinct;
+					n->groupClause = ($3)->list;
+					n->havingClause = $2;
+					$$ = n;
+				}
+			| HAVING a_expr
+				{
+					GroupHavingClause	*n = (GroupHavingClause *) palloc(sizeof(GroupHavingClause));
+					n->distinct = false;
+					n->groupClause = NIL;
+					n->havingClause = $2;
+					$$ = n;
+				}
+			| /*EMPTY*/
+				{
+					GroupHavingClause	*n = (GroupHavingClause *) palloc(sizeof(GroupHavingClause));
+					n->distinct = false;
+					n->groupClause = NIL;
+					n->havingClause = NULL;
+					$$ = n;
+				}
+		;
+/* End - OA-REQ-2464 */
 
 group_by_list:
 			group_by_item							{ $$ = list_make1($1); }
