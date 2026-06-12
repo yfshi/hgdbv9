@@ -196,7 +196,8 @@ MYS_REGRESS = numeric_to_times \
 			  charset_binary \
 			  sql_mode \
 			  proc \
-			  hex_serialization_deserialization
+			  hex_serialization_deserialization \
+			  mysql_timestamp
 
 
 MYS_JDBC_REGRESS =	proto_jdbc \
