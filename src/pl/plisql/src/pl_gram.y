@@ -3858,6 +3858,22 @@ stmt_execsql	: opt_stmt_label K_IMPORT
 						}
 						plisql_register_label($1);	/* ReqID:SRS-PLSQL-GOTO */
 					}
+				/* Begin - OA-REQ-2454 */
+				| opt_stmt_label K_LOG
+					{
+						int 	tok;
+
+						tok =  yylex();
+						plisql_push_back_token(tok);
+
+						if (tok == '(' || tok == ';')
+							$$ = build_call_expr(K_LOG, $2, @2);
+						else
+							$$ = make_execsql_stmt(K_LOG, @2);
+
+						plisql_register_label($1);
+					}
+				/* End - OA-REQ-2454 */
 				;
 
 stmt_dynexecute : opt_stmt_label K_EXECUTE
