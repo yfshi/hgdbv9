@@ -1193,3 +1193,423 @@ end;
 /
 
 DROP USER system;
+
+-- ==============================================================
+-- ReqID - OA-2455  self-defined type
+-- ==============================================================
+SET SERVEROUTPUT ON;
+
+CREATE OR REPLACE PACKAGE test_lname_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.LNAME_ARRAY);
+    FUNCTION get_values RETURN DBMS_UTILITY.LNAME_ARRAY;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_lname_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.LNAME_ARRAY) IS
+    BEGIN
+        p_arr.DELETE;
+        p_arr(1) := 'proc_out_param';
+        p_arr(2) := 'schema.obj';
+    END;
+
+    FUNCTION get_values RETURN DBMS_UTILITY.LNAME_ARRAY IS
+        v_arr DBMS_UTILITY.LNAME_ARRAY;
+    BEGIN
+        v_arr(1) := 'func_return_val';
+        v_arr(2) := 'another_obj';
+        RETURN v_arr;
+    END;
+END;
+/
+
+DECLARE
+    v_out_arr  DBMS_UTILITY.LNAME_ARRAY;
+    v_ret_arr  DBMS_UTILITY.LNAME_ARRAY;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== [1] LNAME_ARRAY TEST ===');
+
+    test_lname_util.set_values(v_out_arr);
+    DBMS_OUTPUT.PUT_LINE('-- OUT PARAM --');
+    FOR i IN v_out_arr.FIRST .. v_out_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_out_arr(i));
+    END LOOP;
+
+    v_ret_arr := test_lname_util.get_values();
+    DBMS_OUTPUT.PUT_LINE('-- FUNC RETURN --');
+    FOR i IN v_ret_arr.FIRST .. v_ret_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_ret_arr(i));
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE PACKAGE test_name_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.NAME_ARRAY);
+    FUNCTION get_values RETURN DBMS_UTILITY.NAME_ARRAY;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_name_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.NAME_ARRAY) IS
+    BEGIN
+        p_arr.DELETE;
+        p_arr(1) := 'EMPLOYEES';
+        p_arr(2) := 'DEPARTMENTS';
+    END;
+
+    FUNCTION get_values RETURN DBMS_UTILITY.NAME_ARRAY IS
+        v_arr DBMS_UTILITY.NAME_ARRAY;
+    BEGIN
+        v_arr(1) := 'LOCATIONS';
+        v_arr(2) := 'JOBS';
+        RETURN v_arr;
+    END;
+END;
+/
+
+DECLARE
+    v_out_arr  DBMS_UTILITY.NAME_ARRAY;
+    v_ret_arr  DBMS_UTILITY.NAME_ARRAY;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== [2] NAME_ARRAY TEST ===');
+
+    test_name_util.set_values(v_out_arr);
+    DBMS_OUTPUT.PUT_LINE('-- OUT PARAM --');
+    FOR i IN v_out_arr.FIRST .. v_out_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_out_arr(i));
+    END LOOP;
+
+    v_ret_arr := test_name_util.get_values();
+    DBMS_OUTPUT.PUT_LINE('-- FUNC RETURN --');
+    FOR i IN v_ret_arr.FIRST .. v_ret_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_ret_arr(i));
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE PACKAGE test_uncl_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.UNCL_ARRAY);
+    FUNCTION get_values RETURN DBMS_UTILITY.UNCL_ARRAY;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_uncl_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.UNCL_ARRAY) IS
+    BEGIN
+        p_arr.DELETE;
+        p_arr(1) := 'HR';
+        p_arr(2) := 'OE';
+    END;
+
+    FUNCTION get_values RETURN DBMS_UTILITY.UNCL_ARRAY IS
+        v_arr DBMS_UTILITY.UNCL_ARRAY;
+    BEGIN
+        v_arr(1) := 'SH';
+        v_arr(2) := 'IX';
+        RETURN v_arr;
+    END;
+END;
+/
+
+DECLARE
+    v_out_arr  DBMS_UTILITY.UNCL_ARRAY;
+    v_ret_arr  DBMS_UTILITY.UNCL_ARRAY;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('=== [3] UNCL_ARRAY TEST ===');
+
+    test_uncl_util.set_values(v_out_arr);
+    DBMS_OUTPUT.PUT_LINE('-- OUT PARAM --');
+    FOR i IN v_out_arr.FIRST .. v_out_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_out_arr(i));
+    END LOOP;
+
+    v_ret_arr := test_uncl_util.get_values();
+    DBMS_OUTPUT.PUT_LINE('-- FUNC RETURN --');
+    FOR i IN v_ret_arr.FIRST .. v_ret_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_ret_arr(i));
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE PACKAGE test_num_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.NUMBER_ARRAY);
+    FUNCTION get_values RETURN DBMS_UTILITY.NUMBER_ARRAY;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_num_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.NUMBER_ARRAY) IS
+    BEGIN
+        p_arr.DELETE;
+        p_arr(1) := 100;
+        p_arr(2) := -42.5;
+    END;
+
+    FUNCTION get_values RETURN DBMS_UTILITY.NUMBER_ARRAY IS
+        v_arr DBMS_UTILITY.NUMBER_ARRAY;
+    BEGIN
+        v_arr(1) := 3.14;
+        v_arr(2) := 999;
+        RETURN v_arr;
+    END;
+END;
+/
+
+DECLARE
+    v_out_arr  DBMS_UTILITY.NUMBER_ARRAY;
+    v_ret_arr  DBMS_UTILITY.NUMBER_ARRAY;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(CHR(10)||'=== [2] NUMBER_ARRAY TEST ===');
+
+    test_num_util.set_values(v_out_arr);
+    DBMS_OUTPUT.PUT_LINE('-- OUT PARAM --');
+    FOR i IN v_out_arr.FIRST .. v_out_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_out_arr(i));
+    END LOOP;
+
+    v_ret_arr := test_num_util.get_values();
+    DBMS_OUTPUT.PUT_LINE('-- FUNC RETURN --');
+    FOR i IN v_ret_arr.FIRST .. v_ret_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_ret_arr(i));
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE PACKAGE test_dblink_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.DBLINK_ARRAY);
+    FUNCTION get_values RETURN DBMS_UTILITY.DBLINK_ARRAY;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_dblink_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.DBLINK_ARRAY) IS
+    BEGIN
+        p_arr.DELETE;
+        p_arr(1) := 'remote_db.us.example.com';
+        p_arr(2) := 'prod_link_ha';
+    END;
+
+    FUNCTION get_values RETURN DBMS_UTILITY.DBLINK_ARRAY IS
+        v_arr DBMS_UTILITY.DBLINK_ARRAY;
+    BEGIN
+        v_arr(1) := 'staging.link.internal';
+        v_arr(2) := 'backup_dblink';
+        RETURN v_arr;
+    END;
+END;
+/
+
+DECLARE
+    v_out_arr  DBMS_UTILITY.DBLINK_ARRAY;
+    v_ret_arr  DBMS_UTILITY.DBLINK_ARRAY;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(CHR(10)||'=== [3] DBLINK_ARRAY TEST ===');
+
+    test_dblink_util.set_values(v_out_arr);
+    DBMS_OUTPUT.PUT_LINE('-- OUT PARAM --');
+    FOR i IN v_out_arr.FIRST .. v_out_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_out_arr(i));
+    END LOOP;
+
+    v_ret_arr := test_dblink_util.get_values();
+    DBMS_OUTPUT.PUT_LINE('-- FUNC RETURN --');
+    FOR i IN v_ret_arr.FIRST .. v_ret_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = '||v_ret_arr(i));
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE PACKAGE test_inst_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.INSTANCE_TABLE);
+    FUNCTION get_values RETURN DBMS_UTILITY.INSTANCE_TABLE;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_inst_util AS
+    PROCEDURE set_values(p_arr OUT DBMS_UTILITY.INSTANCE_TABLE) IS
+        r_rec DBMS_UTILITY.INSTANCE_RECORD;
+    BEGIN
+        p_arr.DELETE;
+        r_rec.inst_number := 1;
+        r_rec.inst_name   := 'ORCLCDB1';
+        p_arr(1) := r_rec;
+    END;
+
+    FUNCTION get_values RETURN DBMS_UTILITY.INSTANCE_TABLE IS
+        v_arr DBMS_UTILITY.INSTANCE_TABLE;
+        r_rec DBMS_UTILITY.INSTANCE_RECORD;
+    BEGIN
+        r_rec.inst_number := 2;
+        r_rec.inst_name   := 'ORCLPDB1';
+        v_arr(1) := r_rec;
+        RETURN v_arr;
+    END;
+END;
+/
+
+DECLARE
+    v_out_arr  DBMS_UTILITY.INSTANCE_TABLE;
+    v_ret_arr  DBMS_UTILITY.INSTANCE_TABLE;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(CHR(10)||'=== [4] INSTANCE_TABLE TEST ===');
+
+    test_inst_util.set_values(v_out_arr);
+    DBMS_OUTPUT.PUT_LINE('-- OUT PARAM --');
+    FOR i IN v_out_arr.FIRST .. v_out_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = NUM:'||v_out_arr(i).inst_number||' NAME:'||v_out_arr(i).inst_name);
+    END LOOP;
+
+    v_ret_arr := test_inst_util.get_values();
+    DBMS_OUTPUT.PUT_LINE('-- FUNC RETURN --');
+    FOR i IN v_ret_arr.FIRST .. v_ret_arr.LAST LOOP
+        DBMS_OUTPUT.PUT_LINE('['||i||'] = NUM:'||v_ret_arr(i).inst_number||' NAME:'||v_ret_arr(i).inst_name);
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE PACKAGE test_c2t_uncl AS
+    PROCEDURE run_test;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_c2t_uncl AS
+    PROCEDURE run_test IS
+        v_tablen BINARY_INTEGER;
+        v_tab    DBMS_UTILITY.UNCL_ARRAY;
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('=== [4] COMMA_TO_TABLE (UNCL_ARRAY) TEST ===');
+
+        DBMS_UTILITY.COMMA_TO_TABLE(
+            list   => 'HR,OE,SH,IX',
+            tablen => v_tablen,
+            tab    => v_tab
+        );
+
+        DBMS_OUTPUT.PUT_LINE('-- RESULT (tablen=' || v_tablen || ') --');
+        FOR i IN 1 .. v_tablen LOOP
+            DBMS_OUTPUT.PUT_LINE('[' || i || '] = ' || v_tab(i));
+        END LOOP;
+    END;
+END;
+/
+
+BEGIN
+    test_c2t_uncl.run_test;
+END;
+/
+
+
+CREATE OR REPLACE PACKAGE test_c2t_lname AS
+    PROCEDURE run_test;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_c2t_lname AS
+    PROCEDURE run_test IS
+        v_tablen BINARY_INTEGER;
+        v_tab    DBMS_UTILITY.LNAME_ARRAY;
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('=== [5] COMMA_TO_TABLE (LNAME_ARRAY) TEST ===');
+        DBMS_UTILITY.COMMA_TO_TABLE(
+            list   => 'HR.EMPLOYEES,OE.ORDERS,SH.SALES,SYS.DUAL',
+            tablen => v_tablen,
+            tab    => v_tab
+        );
+
+        DBMS_OUTPUT.PUT_LINE('-- RESULT (tablen=' || v_tablen || ') --');
+        FOR i IN 1 .. v_tablen LOOP
+            DBMS_OUTPUT.PUT_LINE('[' || i || '] = ' || v_tab(i));
+        END LOOP;
+    END;
+END;
+/
+
+BEGIN
+    test_c2t_lname.run_test;
+END;
+/
+
+
+CREATE OR REPLACE PACKAGE test_t2c_uncl AS
+    PROCEDURE run_test;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_t2c_uncl AS
+    PROCEDURE run_test IS
+        v_tab      DBMS_UTILITY.UNCL_ARRAY;
+        v_tablen   BINARY_INTEGER;
+        v_list     VARCHAR2(32767);
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('=== [6] TABLE_TO_COMMA (UNCL_ARRAY) TEST ===');
+
+        v_tab(1) := 'HR';
+        v_tab(2) := 'OE';
+        v_tab(3) := 'SH';
+        v_tab(4) := 'IX';
+
+        DBMS_UTILITY.TABLE_TO_COMMA(
+            tab    => v_tab,
+            tablen => v_tablen,
+            list   => v_list
+        );
+
+        DBMS_OUTPUT.PUT_LINE('-- RESULT --');
+        DBMS_OUTPUT.PUT_LINE('tablen = ' || v_tablen);
+        DBMS_OUTPUT.PUT_LINE('list   = ' || v_list);
+    END;
+END;
+/
+
+BEGIN
+    test_t2c_uncl.run_test;
+END;
+/
+
+
+CREATE OR REPLACE PACKAGE test_t2c_lname AS
+    PROCEDURE run_test;
+END;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_t2c_lname AS
+    PROCEDURE run_test IS
+        v_tab      DBMS_UTILITY.LNAME_ARRAY;
+        v_tablen   BINARY_INTEGER;
+        v_list     VARCHAR2(32767);
+    BEGIN
+        DBMS_OUTPUT.PUT_LINE('=== [7] TABLE_TO_COMMA (LNAME_ARRAY) TEST ===');
+
+        v_tab(1) := 'HR.EMPLOYEES';
+        v_tab(2) := 'OE.ORDERS';
+        v_tab(3) := 'SH.SALES';
+        v_tab(4) := 'SYS.DUAL';
+
+        DBMS_UTILITY.TABLE_TO_COMMA(
+            tab    => v_tab,
+            tablen => v_tablen,
+            list   => v_list
+        );
+
+        DBMS_OUTPUT.PUT_LINE('-- RESULT --');
+        DBMS_OUTPUT.PUT_LINE('tablen = ' || v_tablen);
+        DBMS_OUTPUT.PUT_LINE('list   = ' || v_list);
+    END;
+END;
+/
+
+BEGIN
+    test_t2c_lname.run_test;
+END;
+/
+
+DROP PACKAGE test_lname_util;
+DROP PACKAGE test_name_util;
+DROP PACKAGE test_uncl_util;
+DROP PACKAGE test_num_util;
+DROP PACKAGE test_dblink_util;
+DROP PACKAGE test_inst_util;
+DROP PACKAGE test_c2t_uncl;
+DROP PACKAGE test_c2t_lname;
+DROP PACKAGE test_t2c_lname;
+DROP PACKAGE test_t2c_uncl;
