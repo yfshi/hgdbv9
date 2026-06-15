@@ -3585,6 +3585,7 @@ WinGetFuncArgInPartition(WindowObject winobj, int argno,
 	int			notnull_offset;
 	int			notnull_relpos;
 	int			forward;
+	bool		myisout;
 	/* End - OA-REQ-2348 */
 
 	Assert(WindowObjectIsValid(winobj));
@@ -3632,12 +3633,17 @@ WinGetFuncArgInPartition(WindowObject winobj, int argno,
 	if (!null_treatment)		/* IGNORE NULLS is not specified */
 	{
 		datum = gettuple_eval_partition(winobj, argno,
-										abs_pos, isnull, isout);
-		if (!*isout && set_mark)
+										abs_pos, isnull, &myisout);
+		if (!myisout && set_mark)
 			WinSetMarkPosition(winobj, abs_pos);
+		if (isout)
+			*isout = myisout;
 
 		return datum;
 	}
+
+	myisout = false;
+	datum = 0;
 
 	/*
 	 * Get the next nonnull value in the partition, moving forward or backward
@@ -3664,7 +3670,7 @@ WinGetFuncArgInPartition(WindowObject winobj, int argno,
 				{
 					/* prepare to exit this loop */
 					datum = gettuple_eval_partition(winobj, argno,
-													abs_pos, isnull, isout);
+													abs_pos, isnull, &myisout);
 				}
 				break;
 			case NN_NULL:		/* this row is known to be NULL */
@@ -3675,8 +3681,10 @@ WinGetFuncArgInPartition(WindowObject winobj, int argno,
 				break;
 			default:			/* need to check NULL or not */
 				datum = gettuple_eval_partition(winobj, argno,
-												abs_pos, isnull, isout);
-				if (*isout)		/* out of partition? */
+												abs_pos, isnull, &myisout);
+				if (isout)
+					*isout = myisout;
+				if (myisout)		/* out of partition? */
 					return datum;
 
 				if (!*isnull)
@@ -3687,8 +3695,10 @@ WinGetFuncArgInPartition(WindowObject winobj, int argno,
 		}
 	} while (notnull_offset < notnull_relpos);
 
-	if (!*isout && set_mark)
+	if (!myisout && set_mark)
 		WinSetMarkPosition(winobj, abs_pos);
+	if (isout)
+		*isout = myisout;
 
 	return datum;
 	/* End - OA-REQ-2348 */
