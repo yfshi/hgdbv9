@@ -262,6 +262,10 @@ bool convert_multiinsert_with_cte = false;
 
 bool enable_multi_step_partition = false;	/* ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - OA-REQ-2466 */
+int		max_record_fields = 200;
+/* End - OA-REQ-2466 */
+
 #endif
 
 #ifdef IVY_GUC_VAR_STRUCT
@@ -1291,6 +1295,18 @@ static struct config_int Ivy_ConfigureNamesInt[] =
 		NULL, NULL, NULL
 	},
 	/* End - bug#5514 */
+	/* Begin - OA-REQ-2466 */
+	{
+		{"ivorysql.max_record_fields", PGC_USERSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("specifies the maximum number of record fields."),
+			NULL,
+			GUC_NOT_IN_SAMPLE | GUC_NO_SHOW_ALL
+		},
+		&max_record_fields,
+		200, 0, 65535,
+		NULL, NULL, NULL
+	},
+	/* End - OA-REQ-2466 */
 #endif
 #if 0
 	/* End-of-list marker */
