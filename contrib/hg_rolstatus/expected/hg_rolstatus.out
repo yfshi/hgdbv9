@@ -5,6 +5,12 @@ SELECT PG_RELOAD_CONF();
  t
 (1 row)
 
+select pg_sleep(2);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 --==============================================================================================--
 -- test rolstatus, enable/disable role. 
 --     test user acl
@@ -379,6 +385,12 @@ SELECT PG_RELOAD_CONF();
  t
 (1 row)
 
+select pg_sleep(2);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 create role role1;
 create user user2; 
 grant role1 to user2;
@@ -473,6 +485,12 @@ SELECT PG_RELOAD_CONF();
  pg_reload_conf 
 ----------------
  t
+(1 row)
+
+select pg_sleep(2);
+ pg_sleep 
+----------
+ 
 (1 row)
 
 --==============================================================================================--
@@ -614,23 +632,9 @@ select hg_security.get_role_status('syssao_role');
  t
 (1 row)
 
-ALTER SYSTEM SET hg_rolstatus.enable TO OFF;
-SELECT PG_RELOAD_CONF();
- pg_reload_conf 
-----------------
- t
-(1 row)
-
 --==============================================================================================--
 -- test seesion
 --==============================================================================================--
-ALTER SYSTEM SET hg_rolstatus.enable TO ON;
-SELECT PG_RELOAD_CONF();
- pg_reload_conf 
-----------------
- t
-(1 row)
-
 create role role1;
 create user user1;
 grant role1 to user1;

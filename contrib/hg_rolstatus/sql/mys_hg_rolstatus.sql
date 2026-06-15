@@ -1,5 +1,6 @@
 ALTER SYSTEM SET hg_rolstatus.enable TO ON;
 SELECT PG_RELOAD_CONF();
+select pg_sleep(2);
 --==============================================================================================--
 -- test rolstatus, enable/disable role. 
 --     test user acl
@@ -130,6 +131,7 @@ drop role role1;
 --==============================================================================================--
 ALTER SYSTEM SET hg_rolstatus.enable TO OFF;
 SELECT PG_RELOAD_CONF();
+select pg_sleep(2);
 create role role1;
 create user user2; 
 
@@ -179,7 +181,7 @@ drop role role1;
 
 ALTER SYSTEM SET hg_rolstatus.enable TO ON;
 SELECT PG_RELOAD_CONF();
-
+select pg_sleep(2);
 --==============================================================================================--
 -- test rolstatus, enable/disable role. 
 --     test set user
@@ -256,14 +258,9 @@ select hg_security.get_role_status('sysdba_role');
 select hg_security.get_role_status('syssso_role');
 select hg_security.get_role_status('syssao_role');
 
-ALTER SYSTEM SET hg_rolstatus.enable TO OFF;
-SELECT PG_RELOAD_CONF();
-
 --==============================================================================================--
 -- test seesion
 --==============================================================================================--
-ALTER SYSTEM SET hg_rolstatus.enable TO ON;
-SELECT PG_RELOAD_CONF();
 create role role1;
 create user user1;
 grant role1 to user1;
