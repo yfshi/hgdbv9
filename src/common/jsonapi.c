@@ -691,6 +691,10 @@ json_lex_string(JsonLexContext *lex)
 	char	   *const end = lex->input + lex->input_length;
 	int			len;
 	int			hi_surrogate = -1;
+	/* Begin - bug#8228 */
+	int			mb_len = 0;
+	bool		is_single_byte_char = true;
+	/* End - bug#8228 */
 
 	/* Convenience macros for error exits */
 #define FAIL_AT_CHAR_START(code) \
@@ -718,6 +722,14 @@ json_lex_string(JsonLexContext *lex)
 	{
 		s++;
 		len++;
+		/* Begin - bug#8228 */
+		if (lex->input_encoding != PG_UTF8 && mb_len == 0)
+		{
+			mb_len = pg_encoding_mblen(lex->input_encoding, s);
+			is_single_byte_char = mb_len == 1 ? true : false;
+		}
+		/* End - bug#8228 */
+
 		/* Premature end of the string. */
 		if (len >= lex->input_length)
 			FAIL_AT_CHAR_START(JSON_INVALID_TOKEN);
@@ -729,7 +741,7 @@ json_lex_string(JsonLexContext *lex)
 			/* Since *s isn't printable, exclude it from the context string */
 			FAIL_AT_CHAR_START(JSON_ESCAPING_REQUIRED);
 		}
-		else if (*s == '\\')
+		else if (*s == '\\' && is_single_byte_char /* bug#8228 */)
 		{
 			/* OK, we have an escape character. */
 			s++;
@@ -887,6 +899,8 @@ json_lex_string(JsonLexContext *lex)
 
 			appendStringInfoChar(lex->strval, *s);
 		}
+
+		mb_len--;	/* bug#8228 */
 
 	}
 

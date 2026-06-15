@@ -851,4 +851,20 @@ select ts_headline('english', '{"a": "aaa bbb", "b": {"c": "ccc ddd fff", "c1": 
 select ts_headline('null'::json, tsquery('aaa & bbb'));
 select ts_headline('{}'::json, tsquery('aaa & bbb'));
 select ts_headline('[]'::json, tsquery('aaa & bbb'));
+
+/* Begin - bug#8228 */
+-- Do not escape '\'(0x5C) if it is part of a multi-byte character
+CREATE DATABASE json_gb18030 encoding='gb18030' LC_COLLATE='C' LC_CTYPE='C' TEMPLATE=template0;
+\c json_gb18030
+
+SET client_encoding=UTF8;
+SELECT json'{"ja": "カナダ、アメリカ合衆国"}' AS noescape;	-- ok
+SELECT jsonb'{"ja": "カナダ、アメリカ合衆国"}' AS noescape;	-- ok
+
+SELECT json'{"合衆国": "カナダ、アメリカ合衆国"}' AS noescape;	-- ok
+SELECT jsonb'{"合衆国": "カナダ、アメリカ合衆国"}' AS noescape;	-- ok
+
+\c postgres
+DROP DATABASE json_gb18030;
+/* End - bug#8228 */
 reset ivorysql.enable_emptystring_to_null;
