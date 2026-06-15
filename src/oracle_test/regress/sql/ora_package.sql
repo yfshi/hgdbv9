@@ -8836,3 +8836,182 @@ end;
 DROP USER system;
 
 
+--OA#2463
+--cursor support case end in package body
+create table test_ob(id integer,name varchar2(256));
+
+insert into test_ob values(1,'one');
+insert into test_ob values(2,'two');
+
+create or replace function test_f(ids integer) return integer is
+  var1 integer;
+  function test_ff(ids integer) return integer is
+   begin
+      return 23;
+   end;
+  function f_mds(ids integer) return integer is
+     CURSOR CUR1 is
+    SELECT *
+      FROM test_ob
+     WHERE  1 = CASE
+             WHEN id = '1' THEN
+              1
+             ELSE
+              0
+           END;
+	  CURSOR CUR2 is
+	  select case when id = 1 then 2 when id = 2 then 3 else 4 end,name
+      FROM test_ob
+     WHERE  1 = CASE
+             WHEN id = '1' THEN
+              1
+             ELSE
+              0
+           END order by id,name;
+	 cursor cur3 is select 1;
+     var1 cur1%rowtype;
+	 var2 cur1%rowtype;
+	 var3 cur3%rowtype;
+  begin
+     open cur1;
+	 LOOP
+	   fetch cur1 into var1;
+	   exit when cur1%notfound;
+	   raise info 'cur1-%', var1;
+	 end loop;
+	 close cur1;
+	 open cur2;
+	 loop
+	   fetch cur2 into var2;
+	   exit when cur2%notfound;
+	   raise info 'cur2-%', var2;
+	 end loop;
+	 close cur2;
+	 open cur3;
+	 loop
+	   fetch cur3 into var3;
+	   exit when cur3%notfound;
+	   raise info 'cur3-%', var3;
+	 end loop;
+	 close cur3;
+	 return 23;
+  end;
+begin
+    var1 := f_mds(23);
+	return var1;
+end;
+/
+
+
+create or replace package test_pkg is
+ function test_f(ids integer) return integer;
+end;
+/
+
+
+create or replace package body test_pkg is
+  function test_f(ids integer) return integer is
+     CURSOR CUR1 is
+    SELECT *
+      FROM test_ob
+     WHERE  1 = CASE
+             WHEN id = '1' THEN
+              1
+             ELSE
+              0
+           END;
+	  CURSOR CUR2 is
+	  select case when id = 1 then 2 when id = 2 then 3 else 4 end,name
+      FROM test_ob
+     WHERE  1 = CASE
+             WHEN id = '1' THEN
+              1
+             ELSE
+              0
+           END order by id,name;
+	 cursor cur3 is select 1;
+     var1 cur1%rowtype;
+	 var2 cur1%rowtype;
+	 var3 cur3%rowtype;
+  begin
+     open cur1;
+	 LOOP
+	   fetch cur1 into var1;
+	   exit when cur1%notfound;
+	   raise info 'cur1-%', var1;
+	 end loop;
+	 close cur1;
+	 open cur2;
+	 loop
+	   fetch cur2 into var2;
+	   exit when cur2%notfound;
+	   raise info 'cur2-%', var2;
+	 end loop;
+	 close cur2;
+	 open cur3;
+	 loop
+	   fetch cur3 into var3;
+	   exit when cur3%notfound;
+	   raise info 'cur3-%', var3;
+	 end loop;
+	 close cur3;
+	 return 23;
+  end;
+end;
+/
+
+select test_pkg.test_f(23) from dual;
+select test_f(23) from dual;
+
+
+declare
+  cursor c1 is select 1;
+  var1 c1%rowtype;
+  var2 c1%rowtype;
+begin
+  open c1;
+  fetch c1 into var1;
+  raise info '%', var1;
+end;
+/
+
+create or replace package test_pkg1 is
+  cursor c1 is select 1;
+  procedure test_open(id integer);
+  procedure test_close(id integer);
+end;
+/
+
+
+create or replace package body test_pkg1 IS
+  procedure test_open(id integer) IS
+  BEGIN
+    open c1;
+  end;
+  procedure test_close(id integer) IS
+  BEGIN
+   close c1;
+  end;
+end;
+/
+
+set ivorysql.enable_get_oraparam_mod = false;
+
+DECLARE
+  var1 test_pkg1.c1%rowtype;
+  var2 test_pkg1.c1%rowtype;
+BEGIN
+  for id in 1 .. 10 LOOP
+	test_pkg1.test_open(23);
+	fetch test_pkg1.c1 into var1;
+	test_pkg1.test_close(id);
+    commit;
+  end loop;
+end;
+/
+
+--clean
+drop package test_pkg;
+drop function test_f;
+drop table test_ob;
+drop package test_pkg1;

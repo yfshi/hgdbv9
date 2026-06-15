@@ -14445,3 +14445,90 @@ plisql_param_eval_forall_var(ExprState *state, ExprEvalStep *op,
 		plisql_param_eval_var(state, op, econtext);
 }
 /* End - BUG#Z7822 */
+
+
+/* Begin - OA#2463 */
+
+/*
+ * get cursor tupdesc
+ */
+TupleDesc
+plisql_get_cursor_tupdesc_incompile(PLiSQL_expr *cursor_expr,
+													int cursor_options)
+{
+	/*
+	 * plsql_get_cursor_tupdesc has change memorycontext
+	 * we should save currentMemoryContext and when we return
+	 * function, we should change memoryContext to old
+	 */
+	MemoryContext old;
+	TupleDesc desc;
+	TupleDesc retdesc = NULL;
+	PLiSQL_execstate estate;
+	bool	reset_cur_estate = false;
+	PLiSQL_datum **saved_datums;
+	int saved_ndatums;
+	int saved_nsubprocfuncs;
+	PLiSQL_subproc_function **saved_subprocfuncs;
+	PLiSQL_execstate *save_estate = NULL;
+
+	saved_datums = plisql_curr_compile->datums;
+	saved_ndatums = plisql_curr_compile->ndatums;
+	saved_nsubprocfuncs = plisql_curr_compile->nsubprocfuncs;
+	saved_subprocfuncs = plisql_curr_compile->subprocfuncs;
+	PG_TRY();
+	{
+		plisql_curr_compile->datums = plisql_Datums;
+		plisql_curr_compile->ndatums = plisql_nDatums;
+		plisql_curr_compile->nsubprocfuncs = plisql_nsubprocFuncs;
+		plisql_curr_compile->subprocfuncs = plisql_subprocFuncs;
+
+		if (plisql_curr_compile->cur_estate != NULL)
+		{
+			reset_cur_estate = true;
+			save_estate = plisql_curr_compile->cur_estate;
+		}
+
+		/* Begin - OA#2463 */
+		plisql_estate_setup(&estate, plisql_curr_compile, NULL, NULL, NULL);
+		/* curvar maybe use datums */
+		estate.ndatums = plisql_nDatums;
+		estate.datums = plisql_Datums;
+
+		/*
+		 * Make local execution copies of all the datums
+		 */
+		estate.err_text = gettext_noop("during plisql_get_cursor_tupdesc_incompile");		/* End - OA#2463 */
+
+		old = MemoryContextSwitchTo(plisql_compile_tmp_cxt);
+
+		plisql_push_compile_global_proper();
+
+		desc = plisql_get_cursor_tupdesc(&estate,
+										cursor_expr,
+										cursor_options);
+		MemoryContextSwitchTo(old);
+		retdesc = CreateTupleDescCopy(desc);
+		FreeTupleDesc(desc);
+		/* Begin - OA#2463 */
+		plisql_destroy_econtext(&estate);
+		exec_eval_cleanup(&estate);
+		/* End - OA#2463 */
+	}
+	PG_FINALLY();
+	{
+		plisql_pop_compile_global_proper();
+		plisql_curr_compile->datums = saved_datums;
+		plisql_curr_compile->ndatums = saved_ndatums;
+		plisql_curr_compile->nsubprocfuncs = saved_nsubprocfuncs;
+		plisql_curr_compile->subprocfuncs = saved_subprocfuncs;
+	}
+	PG_END_TRY();
+
+	/* curvar maybe use datums */
+	if (reset_cur_estate)
+		estate.func->cur_estate = save_estate;
+	return retdesc;
+}
+/* End - OA#2463 */
+
