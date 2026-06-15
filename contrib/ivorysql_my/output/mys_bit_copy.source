@@ -1,0 +1,31 @@
+/* Begin Bug#Z7338 */
+CREATE TABLE t_bit_copy (b1 mysbit(8), b2 mysbit(32));
+INSERT INTO t_bit_copy VALUES (0x41, 0x12345678);
+INSERT INTO t_bit_copy VALUES (0x01, 0x00000001);
+-- text COPY round-trip
+COPY t_bit_copy TO '@abs_builddir@/results/ivorysql_mysbit_copy.tsv';
+TRUNCATE t_bit_copy;
+COPY t_bit_copy FROM '@abs_builddir@/results/ivorysql_mysbit_copy.tsv';
+SELECT * FROM t_bit_copy ORDER BY b1;
+  b1  |     b2     
+------+------------
+ 0x01 | 0x00000001
+ 0x41 | 0x12345678
+(2 rows)
+
+-- binary COPY round-trip
+TRUNCATE t_bit_copy;
+INSERT INTO t_bit_copy VALUES (0x41, 0x12345678);
+INSERT INTO t_bit_copy VALUES (0x01, 0x00000001);
+COPY t_bit_copy TO '@abs_builddir@/results/ivorysql_mysbit_copy.bin' BINARY;
+TRUNCATE t_bit_copy;
+COPY t_bit_copy FROM '@abs_builddir@/results/ivorysql_mysbit_copy.bin' BINARY;
+SELECT * FROM t_bit_copy ORDER BY b1;
+  b1  |     b2     
+------+------------
+ 0x01 | 0x00000001
+ 0x41 | 0x12345678
+(2 rows)
+
+DROP TABLE t_bit_copy;
+/* End Bug#Z7338 */

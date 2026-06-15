@@ -1970,28 +1970,28 @@ BeginCopyFrom(ParseState *pstate,
 							 &in_func_oid, &typioparams[attnum - 1]);
 		
 		/* Begin - BUG#M0000414 */
-		if (enable_store_nullterminator_char)
+		if (!cstate->opts.binary && enable_store_nullterminator_char)
 		{
 			switch (att->atttypid)
 			{
 				/* 9000 */
 				case ORACHARCHAROID:
-					getTypeInputInfo(9052,
+					getTypeInputInfo(ORACHARCHAR_2OID,
 							&in_func_oid, &typioparams[attnum - 1]);
 					break;
 				/* 9001 */
 				case ORACHARBYTEOID:
-					getTypeInputInfo(9054,
+					getTypeInputInfo(ORACHARBYTE_2OID,
 							&in_func_oid, &typioparams[attnum - 1]);
 					break;
 				/* 9002 */
 				case ORAVARCHARCHAROID:
-					getTypeInputInfo(9056,
+					getTypeInputInfo(ORAVARCHARCHAR_2OID,
 							&in_func_oid, &typioparams[attnum - 1]);
 					break;
 				/* 9003 */
 				case ORAVARCHARBYTEOID:
-					getTypeInputInfo(9058,
+					getTypeInputInfo(ORAVARCHARBYTE_2OID,
 							&in_func_oid, &typioparams[attnum - 1]);
 					break;
 			}
@@ -2000,7 +2000,7 @@ BeginCopyFrom(ParseState *pstate,
 		/* End - BUG#M0000414 */
 
 		/* Begin - ReqID:SRS-MYSQL-BITTYPE */
-		if (att->atttypid == MYSBITOID)
+		if (att->atttypid == MYSBITOID && !cstate->opts.binary)
 		{
 			getTypeInputInfo(MYSBIT_2OID,
 						&in_func_oid, &typioparams[attnum - 1]);

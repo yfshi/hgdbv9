@@ -2327,6 +2327,11 @@ CopyReadAttributesText(CopyFromState cstate)
 			cstate->max_fields *= 2;
 			cstate->raw_fields =
 				repalloc(cstate->raw_fields, cstate->max_fields * sizeof(char *));
+
+			/* Begin Bug#Z7338*/
+			cstate->raw_fields_lens =
+				repalloc(cstate->raw_fields_lens, cstate->max_fields * sizeof(uint32));
+			/* End Bug#Z7338*/
 		}
 
 		/* Remember start of field on both input and output sides */
@@ -2510,6 +2515,10 @@ CopyReadAttributesText(CopyFromState cstate)
 
 		/* Terminate attribute value in output area */
 		*output_ptr++ = '\0';
+
+		/* Begin Bug#Z7338*/
+		cstate->raw_fields_lens[fieldno] = (output_ptr - cstate->raw_fields[fieldno] - 1);
+		/* End Bug#Z7338*/
 
 		fieldno++;
 		/* Done if we hit EOL instead of a delim */
