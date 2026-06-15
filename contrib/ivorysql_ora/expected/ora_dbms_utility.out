@@ -1913,7 +1913,7 @@ parameter value: read committed
 length of parameter value: 14
 ---------------param: invalid_parameter_name-------------------
 ERROR:  get_parameter_value: invalid or unsupported parameter "invalid_parameter_name"
-CONTEXT:  PL/iSQL function sys.dbms_utility.get_parameter_value line 1130 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.get_parameter_value line 1126 at RAISE
 PL/iSQL function inline_code_block line 17 at assignment
 /
 -- ==============================================================
@@ -1940,10 +1940,10 @@ select * from dbms_utility.is_bit_set('\x0101', 8);
 
 select * from dbms_utility.is_bit_set('\x0101', -1);
 ERROR:  index out of range
-CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1169 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1165 at RAISE
 select * from dbms_utility.is_bit_set('\x0101', 65);
 ERROR:  index out of range
-CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1169 at RAISE
+CONTEXT:  PL/iSQL function sys.dbms_utility.is_bit_set line 1165 at RAISE
 -- ==============================================================
 -- ANALYZE_PART_OBJECT
 -- ==============================================================
@@ -1988,6 +1988,102 @@ DROP SCHEMA "test_SCH" CASCADE;
 NOTICE:  drop cascades to 2 other objects
 DETAIL:  drop cascades to table "test_SCH".test_tb
 drop cascades to table "test_SCH"."TEST_tb_1"
+-- ==============================================================
+-- BUG #z8323: GET_DEPENDENCY
+-- ==============================================================
+SET SERVEROUTPUT ON;
+CREATE TABLE test_table (
+    id INT PRIMARY KEY
+);
+CREATE VIEW test_view AS
+    SELECT id FROM test_table;
+CREATE OR REPLACE TRIGGER test_trigger
+BEFORE INSERT ON test_table
+BEGIN
+    NULL;
+END;
+/
+CREATE OR REPLACE FUNCTION test_function RETURN NUMBER IS
+v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM test_table;
+    RETURN v_count;
+END;
+/
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('TABLE', 'ENROL11', 'TEST_TABLE');
+END;
+/
+DEPENDENCIES ON "ENROL11"."test_table"
+--------------------------------------
+*TABLE    ENROL11.TEST_TABLE()
+*    COMPOSITE TYPE    ENROL11.TEST_TABLE()
+*    PRIMARY KEY    ENROL11.TEST_TABLE_PKEY()
+*    RULE    ENROL11._return()
+*    TRIGGER    ENROL11.TEST_TRIGGER()
+*        BASE TYPE    ENROL11._TEST_TABLE()
+*        FUNCTION    ENROL11.TEST_TRIGGER_TEST_TABLE_FUNC()
+*        INDEX    ENROL11.TEST_TABLE_PKEY()
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('VIEW', 'ENROL11', 'TEST_VIEW');
+END;
+/
+DEPENDENCIES ON "ENROL11"."test_view"
+-------------------------------------
+*VIEW    ENROL11.TEST_VIEW()
+*    COMPOSITE TYPE    ENROL11.TEST_VIEW()
+*    RULE    ENROL11._return()
+*        BASE TYPE    ENROL11._TEST_VIEW()
+CREATE TABLE "test_TABLE_1" (
+    id INT PRIMARY KEY
+);
+CREATE VIEW "test_VIEW_1" AS
+    SELECT id FROM "test_TABLE_1";
+CREATE OR REPLACE TRIGGER "test_TRIGGER_1"
+BEFORE INSERT ON "test_TABLE_1"
+BEGIN
+    NULL;
+END;
+/
+CREATE OR REPLACE FUNCTION "test_FUNCTION_1" RETURN NUMBER IS
+v_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO v_count FROM "test_TABLE_1";
+    RETURN v_count;
+END;
+/
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('TABLE', 'ENROL11', 'test_TABLE_1');
+END;
+/
+DEPENDENCIES ON "ENROL11"."test_TABLE_1"
+----------------------------------------
+*TABLE    ENROL11.TEST_TABLE_1()
+*    COMPOSITE TYPE    ENROL11.test_TABLE_1()
+*    PRIMARY KEY    ENROL11.test_TABLE_1_pkey()
+*    RULE    ENROL11._return()
+*    TRIGGER    ENROL11.test_TRIGGER_1()
+*        BASE TYPE    ENROL11._test_TABLE_1()
+*        FUNCTION    ENROL11.test_TRIGGER_1_test_TABLE_1_func()
+*        INDEX    ENROL11.test_TABLE_1_pkey()
+BEGIN
+    DBMS_UTILITY.GET_DEPENDENCY('VIEW', 'ENROL11', 'test_VIEW_1');
+END;
+/
+DEPENDENCIES ON "ENROL11"."test_VIEW_1"
+---------------------------------------
+*VIEW    ENROL11.TEST_VIEW_1()
+*    COMPOSITE TYPE    ENROL11.test_VIEW_1()
+*    RULE    ENROL11._return()
+*        BASE TYPE    ENROL11._test_VIEW_1()
+DROP FUNCTION test_function;
+DROP TRIGGER test_trigger;
+DROP VIEW test_view;
+DROP TABLE test_table;
+DROP FUNCTION "test_FUNCTION_1";
+DROP TRIGGER "test_TRIGGER_1";
+DROP VIEW "test_VIEW_1";
+DROP TABLE "test_TABLE_1";
 \c - system
 drop user enrol11;
 declare

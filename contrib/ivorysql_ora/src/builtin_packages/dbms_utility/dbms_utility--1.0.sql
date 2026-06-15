@@ -406,16 +406,12 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         rec RECORD;
         visited TEXT[];
         current_key TEXT;
-        -- Begin - BUG #z7923
-        objOwner VARCHAR2 := ORA_CASE_TRANS(object_owner);
-        objName VARCHAR2 := ORA_CASE_TRANS(object_name);
-        -- End - BUG #z7923
     BEGIN
-        header := 'DEPENDENCIES ON ' || UPPER(QUOTE_IDENT(object_owner)) || '.' || QUOTE_IDENT(objName);
+        header := 'DEPENDENCIES ON ' || UPPER(QUOTE_IDENT(object_owner)) || '.' || QUOTE_IDENT(object_name);
         DBMS_OUTPUT.PUT_LINE(header);
         DBMS_OUTPUT.PUT_LINE(REPEAT('-', LENGTH(header)));
         visited := ARRAY[]::TEXT[];
-        DBMS_OUTPUT.PUT_LINE(FORMAT('*%s    %s.%s()', UPPER(object_type), objOwner, UPPER(object_name)));
+        DBMS_OUTPUT.PUT_LINE(FORMAT('*%s    %s.%s()', UPPER(object_type), object_owner, UPPER(object_name)));
 
         FOR rec IN (
             WITH RECURSIVE dep_tree AS (
@@ -424,8 +420,8 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
                 FROM all_dependencies d
                 WHERE
                     UPPER(d.referenced_type) = UPPER(object_type)
-                    AND d.referenced_owner = objOwner   -- BUG #z7923
-                    AND d.referenced_name = objName     -- BUG #z7923
+                    AND d.referenced_owner = object_owner
+                    AND d.referenced_name = object_name
 
                 UNION ALL
 
@@ -449,7 +445,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
             current_key := rec.type || '|' || rec.owner || '|' || rec.name;
             IF NOT current_key = ANY(visited) THEN
                 visited := visited || current_key;
-                DBMS_OUTPUT.PUT_LINE(FORMAT('*%s%s    %s.%s()', REPEAT(' ', (rec.min_level) * 4), rec.type, UPPER(rec.owner), UPPER(rec.name)));
+                DBMS_OUTPUT.PUT_LINE(FORMAT('*%s%s    %s.%s()', REPEAT(' ', (rec.min_level) * 4), rec.type, rec.owner, rec.name));
             END IF;
         END LOOP;
     END;
