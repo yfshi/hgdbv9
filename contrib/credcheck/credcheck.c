@@ -95,6 +95,7 @@ static const uint32 PGPH_FILE_HEADER = 0x48504750;
 static const uint32 PGPH_VERSION = 100;
 #define PGPH_TRANCHE_NAME "credcheck_history"
 #define PGAF_TRANCHE_NAME "credcheck_auth_failure"
+#define ONE_YEAR  525600
 
 static bool statement_has_password = false;
 static int no_password_logging = 1;
@@ -1819,7 +1820,7 @@ void _PG_init(void)
 
 	DefineCustomIntVariable("credcheck.reset_time_min",
 							gettext_noop("the duration of the account lockout."),
-							NULL, &reset_time, 1440, 0, (INT_MAX / 1024), PGC_SIGHUP, GUC_UNIT_MIN,
+							NULL, &reset_time, 1440, 0, ONE_YEAR, PGC_SIGHUP, GUC_UNIT_MIN,
 							guc_int_check, NULL, NULL);
 
 	DefineCustomEnumVariable("credcheck.reset_superuser",
