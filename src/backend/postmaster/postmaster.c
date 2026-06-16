@@ -2424,7 +2424,7 @@ retry1:
 				char *database_name = pstrdup(valptr);
 
 				/* Begin - BUG#M0000171 */
-				if (DB_ORACLE == database_mode && database_name != NULL)
+				if (DB_ORACLE == database_mode && ORA_MODE == compatible_mode && database_name != NULL)	/* Bug#8341 */
 				/* End - BUG#M0000171 */
 				{
 					if (identifier_case_switch == LOWERCASE &&
@@ -2480,7 +2480,7 @@ retry1:
 				char *user_name = pstrdup(valptr);
 
 				/* Begin - BUG#M0000171 */
-				if (DB_ORACLE == database_mode && user_name != NULL)
+				if (DB_ORACLE == database_mode && ORA_MODE == compatible_mode && user_name != NULL)	/* Bug#8341 */
 				/* End - BUG#M0000171 */
 				{
 					if (identifier_case_switch == LOWERCASE &&
