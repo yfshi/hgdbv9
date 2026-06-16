@@ -24,6 +24,7 @@
 #include "utils/fmgroids.h"
 #include "utils/memutils.h"
 #include "utils/rel.h"
+#include "utils/syscache.h"
 
 typedef struct
 {
@@ -225,43 +226,27 @@ ExecSecLabelStmt(SecLabelStmt *stmt)
 static char *
 GetSharedSecurityLabel(const ObjectAddress *object, const char *provider)
 {
-	Relation	pg_shseclabel;
-	ScanKeyData keys[3];
-	SysScanDesc scan;
 	HeapTuple	tuple;
 	Datum		datum;
 	bool		isnull;
+	text	   *provider_text;
 	char	   *seclabel = NULL;
 
-	ScanKeyInit(&keys[0],
-				Anum_pg_shseclabel_objoid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(object->objectId));
-	ScanKeyInit(&keys[1],
-				Anum_pg_shseclabel_classoid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(object->classId));
-	ScanKeyInit(&keys[2],
-				Anum_pg_shseclabel_provider,
-				BTEqualStrategyNumber, F_TEXTEQ,
-				CStringGetTextDatum(provider));
-
-	pg_shseclabel = table_open(SharedSecLabelRelationId, AccessShareLock);
-
-	scan = systable_beginscan(pg_shseclabel, SharedSecLabelObjectIndexId,
-							  criticalSharedRelcachesBuilt, NULL, 3, keys);
-
-	tuple = systable_getnext(scan);
+	/* The syscache key is the unique key of pg_shseclabel. */
+	provider_text = cstring_to_text(provider);
+	tuple = SearchSysCache3(SHSECLABELOBJECT,
+							ObjectIdGetDatum(object->objectId),
+							ObjectIdGetDatum(object->classId),
+							PointerGetDatum(provider_text));
 	if (HeapTupleIsValid(tuple))
 	{
-		datum = heap_getattr(tuple, Anum_pg_shseclabel_label,
-							 RelationGetDescr(pg_shseclabel), &isnull);
+		datum = SysCacheGetAttr(SHSECLABELOBJECT, tuple,
+								 Anum_pg_shseclabel_label, &isnull);
 		if (!isnull)
 			seclabel = TextDatumGetCString(datum);
+		ReleaseSysCache(tuple);
 	}
-	systable_endscan(scan);
-
-	table_close(pg_shseclabel, AccessShareLock);
+	pfree(provider_text);
 
 	return seclabel;
 }
@@ -273,12 +258,10 @@ GetSharedSecurityLabel(const ObjectAddress *object, const char *provider)
 char *
 GetSecurityLabel(const ObjectAddress *object, const char *provider)
 {
-	Relation	pg_seclabel;
-	ScanKeyData keys[4];
-	SysScanDesc scan;
 	HeapTuple	tuple;
 	Datum		datum;
 	bool		isnull;
+	text	   *provider_text;
 	char	   *seclabel = NULL;
 
 	/* Shared objects have their own security label catalog. */
@@ -286,39 +269,21 @@ GetSecurityLabel(const ObjectAddress *object, const char *provider)
 		return GetSharedSecurityLabel(object, provider);
 
 	/* Must be an unshared object, so examine pg_seclabel. */
-	ScanKeyInit(&keys[0],
-				Anum_pg_seclabel_objoid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(object->objectId));
-	ScanKeyInit(&keys[1],
-				Anum_pg_seclabel_classoid,
-				BTEqualStrategyNumber, F_OIDEQ,
-				ObjectIdGetDatum(object->classId));
-	ScanKeyInit(&keys[2],
-				Anum_pg_seclabel_objsubid,
-				BTEqualStrategyNumber, F_INT4EQ,
-				Int32GetDatum(object->objectSubId));
-	ScanKeyInit(&keys[3],
-				Anum_pg_seclabel_provider,
-				BTEqualStrategyNumber, F_TEXTEQ,
-				CStringGetTextDatum(provider));
-
-	pg_seclabel = table_open(SecLabelRelationId, AccessShareLock);
-
-	scan = systable_beginscan(pg_seclabel, SecLabelObjectIndexId, true,
-							  NULL, 4, keys);
-
-	tuple = systable_getnext(scan);
+	provider_text = cstring_to_text(provider);
+	tuple = SearchSysCache4(SECLABELOBJECT,
+							ObjectIdGetDatum(object->objectId),
+							ObjectIdGetDatum(object->classId),
+							Int32GetDatum(object->objectSubId),
+							PointerGetDatum(provider_text));
 	if (HeapTupleIsValid(tuple))
 	{
-		datum = heap_getattr(tuple, Anum_pg_seclabel_label,
-							 RelationGetDescr(pg_seclabel), &isnull);
+		datum = SysCacheGetAttr(SECLABELOBJECT, tuple,
+								 Anum_pg_seclabel_label, &isnull);
 		if (!isnull)
 			seclabel = TextDatumGetCString(datum);
+		ReleaseSysCache(tuple);
 	}
-	systable_endscan(scan);
-
-	table_close(pg_seclabel, AccessShareLock);
+	pfree(provider_text);
 
 	return seclabel;
 }

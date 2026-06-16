@@ -1043,6 +1043,17 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		8
 	},
+	{SecLabelRelationId,		/* SECLABELOBJECT */
+		SecLabelObjectIndexId,
+		4,
+		{
+			Anum_pg_seclabel_objoid,
+			Anum_pg_seclabel_classoid,
+			Anum_pg_seclabel_objsubid,
+			Anum_pg_seclabel_provider
+		},
+		16
+	},
 	{SequenceRelationId,		/* SEQRELID */
 		SequenceRelidIndexId,
 		1,
@@ -1053,6 +1064,17 @@ static const struct cachedesc cacheinfo[] = {
 			0
 		},
 		32
+	},
+	{SharedSecLabelRelationId,	/* SHSECLABELOBJECT */
+		SharedSecLabelObjectIndexId,
+		3,
+		{
+			Anum_pg_shseclabel_objoid,
+			Anum_pg_shseclabel_classoid,
+			Anum_pg_shseclabel_provider,
+			0
+		},
+		16
 	},
 	{StatisticExtDataRelationId,	/* STATEXTDATASTXOID */
 		StatisticExtDataStxoidIndexId,
@@ -1966,8 +1988,6 @@ RelationInvalidatesSnapshotsOnly(Oid relid)
 		case SharedDependRelationId:
 		case DescriptionRelationId:
 		case SharedDescriptionRelationId:
-		case SecLabelRelationId:
-		case SharedSecLabelRelationId:
 			return true;
 		default:
 			break;

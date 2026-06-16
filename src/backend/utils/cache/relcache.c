@@ -6686,10 +6686,8 @@ write_item(const void *data, Size len, FILE *fp)
 bool
 RelationIdIsInInitFile(Oid relationId)
 {
-	if (relationId == SharedSecLabelRelationId ||
-		relationId == TriggerRelidNameIndexId ||
-		relationId == DatabaseNameIndexId ||
-		relationId == SharedSecLabelObjectIndexId)
+	if (relationId == TriggerRelidNameIndexId ||
+		relationId == DatabaseNameIndexId)
 	{
 		/*
 		 * If this Assert fails, we don't need the applicable special case
