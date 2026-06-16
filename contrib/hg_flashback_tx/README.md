@@ -109,7 +109,8 @@ CREATE TABLE hg_flashback_tx.flashback_transaction_query
 | `hg_flashback_tx.worker_poll_interval` | integer | 1 | 后台工作者轮询间隔（秒） |
 | `hg_flashback_tx.undo_retention` | integer | 0 | 撤销数据保留时间（秒），0 表示不自动清理 |
 | `hg_flashback_tx.databases` | string | postgres | 要监控的数据库列表（逗号分隔） |
-| `hg_flashback_tx.auto_replica_identity` | boolean | false | 自动为所有表设置 REPLICA IDENTITY FULL |
+| `hg_flashback_tx.include_tables` | string | 空字符串 | 要记录的表列表（逗号分隔，推荐 schema.table 格式），为空表示记录所有用户表 |
+| `hg_flashback_tx.auto_replica_identity` | boolean | false | 自动为被记录的新建表设置 REPLICA IDENTITY FULL |
 
 ## 使用方法
 
@@ -161,6 +162,9 @@ ALTER SYSTEM SET hg_flashback_tx.enable_flashback_transaction_query_auto_purge =
 -- 监控多个数据库
 ALTER SYSTEM SET hg_flashback_tx.databases = 'postgres, mydb';
 
+-- 只记录指定表；留空表示记录所有用户表
+ALTER SYSTEM SET hg_flashback_tx.include_tables = 'public.orders, public.order_items';
+
 -- 重新加载配置
 SELECT pg_reload_conf();
 ```
@@ -178,7 +182,7 @@ SELECT pg_reload_conf();
 
 **方式一：使用自动设置功能（推荐）**
 
-启用 `hg_flashback_tx.auto_replica_identity` 参数后，插件会自动为所有新建的表设置 `REPLICA IDENTITY FULL`：
+启用 `hg_flashback_tx.auto_replica_identity` 参数后，插件会自动为被记录的新建表设置 `REPLICA IDENTITY FULL`。如果 `hg_flashback_tx.include_tables` 为空，则等价于所有用户表；如果配置了白名单，则只处理白名单内的新建表。
 
 ```sql
 ALTER SYSTEM SET hg_flashback_tx.auto_replica_identity = on;
@@ -375,4 +379,3 @@ A: 检查以下几点：
 - `hg_flashback_tx.c`：主插件代码，包含后台工作者、逻辑解码集成、元数据管理
 - `flashback_decoder.c`：逻辑解码输出插件，负责解析 WAL 变更
 - `hg_flashback_tx--1.0.sql`：扩展安装脚本，创建元数据表和索引
-

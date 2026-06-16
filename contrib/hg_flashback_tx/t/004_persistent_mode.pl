@@ -64,14 +64,23 @@ my $before_lsn = $node->safe_psql(
 	'postgres',
 	"SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = 'hg_flashback_tx_slot_postgres'");
 
-my $bg = $node->background_psql('postgres');
-$bg->query_safe(q[
+my $psql = $node->installed_command('psql');
+my $connstr = $node->connstr('postgres');
+my $bg_pid = fork();
+die "could not fork background psql" unless defined $bg_pid;
+if ($bg_pid == 0)
+{
+	exec $psql, '-XAtq', '-d', $connstr, '-v', 'ON_ERROR_STOP=1', '-c', q[
 BEGIN;
 INSERT INTO public.hg_fb_persistent(id, v, note) VALUES (2, 20, 'x');
-]);
+SELECT pg_sleep(3);
+COMMIT;
+];
+	die "could not exec background psql: $!";
+}
 
 # wait for worker cycles while transaction is still open
-sleep 2;
+sleep 1;
 
 my $pre_commit_cnt = $node->safe_psql(
 	'postgres',
@@ -83,8 +92,8 @@ my $mid_lsn = $node->safe_psql(
 	"SELECT confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = 'hg_flashback_tx_slot_postgres'");
 like($mid_lsn, qr/^[0-9A-F]+\/[0-9A-F]+$/, 'confirmed_flush_lsn is a valid LSN before COMMIT');
 
-$bg->query_safe("COMMIT;");
-$bg->quit;
+waitpid($bg_pid, 0);
+die "background psql failed with status $?" if $? != 0;
 
 $node->poll_query_until(
 	'postgres',

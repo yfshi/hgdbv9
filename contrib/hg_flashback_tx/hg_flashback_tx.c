@@ -7,6 +7,7 @@
 #include "miscadmin.h"
 #include "postmaster/bgworker.h"
 #include "executor/spi.h"
+#include "access/htup_details.h"
 #include "access/xact.h"
 #include "access/transam.h"
 #include "catalog/pg_type.h"
@@ -15,7 +16,6 @@
 #include "catalog/pg_attribute.h"
 #include "catalog/namespace.h"
 #include "catalog/indexing.h"
-#include "common/jsonapi.h"
 #include "nodes/pg_list.h"
 #include "mb/pg_wchar.h"
 #include "parser/parse_relation.h"
@@ -33,7 +33,6 @@
 #include "utils/fmgroids.h"
 #include "utils/lsyscache.h"
 #include "utils/rel.h"
-#include "utils/jsonfuncs.h"
 #include "tcop/utility.h"
 #include "access/genam.h"
 #include "access/table.h"
@@ -57,6 +56,7 @@ static bool enable_flashback_transaction_query_auto_purge = false;
 static int worker_poll_interval = 1;
 static int undo_retention = 0;
 static char *flashback_databases = "";
+static char *flashback_include_tables = "";
 static bool enable_auto_replica_identity = false;
 
 static volatile sig_atomic_t got_sigterm = false;
@@ -100,10 +100,15 @@ static void hg_flashback_tx_free_entries(Tuplestorestate *entries);
 static void hg_flashback_tx_ensure_pending_entry_tupdesc(void);
 static void hg_flashback_tx_build_undo_column_lists_from_pairs(StringInfo colbuf, StringInfo valbuf,
 											 List *pairs, bool for_update);
-static bool hg_flashback_tx_parse_json_message(const char *json, char **op, char **nsp,
+static bool hg_flashback_tx_parse_wire_message(const char *data, Size data_len,
+								 char **op, char **nsp,
 								 char **relname, char **table_owner,
 								 TimestampTz *commit_time, List **locator_pairs,
 								 List **column_pairs);
+static Datum hg_flashback_tx_input_cstring(Oid typinput, Oid typioparam,
+										   int32 typmod, const char *str);
+static bool hg_flashback_tx_table_included(const char *nspname,
+										   const char *relname);
 
 typedef struct HgFlashbackSeqEntry
 {
@@ -116,6 +121,7 @@ typedef struct HgFlashbackRawMsg
 	XLogRecPtr	lsn;
 	TransactionId xid;
 	bool		last_write;
+	Size		len;
 	char	   *data;
 } HgFlashbackRawMsg;
 
@@ -124,30 +130,6 @@ typedef struct HgFlashbackNameVal
 	char	   *name;
 	char	   *val;
 } HgFlashbackNameVal;
-
-typedef enum HgFlashbackJsonArrayCtx
-{
-	HG_FB_JSON_ARR_NONE = 0,
-	HG_FB_JSON_ARR_LOCATOR,
-	HG_FB_JSON_ARR_COLS
-} HgFlashbackJsonArrayCtx;
-
-typedef struct HgFlashbackJsonState
-{
-	char	   *op;
-	char	   *nsp;
-	char	   *relname;
-	char	   *table_owner;
-	TimestampTz	commit_time;
-	List	   *locator_pairs;
-	List	   *column_pairs;
-	char	   *current_key;
-	char	   *pair_name;
-	char	   *pair_val;
-	bool		in_pair_object;
-	bool		malformed;
-	HgFlashbackJsonArrayCtx array_ctx;
-} HgFlashbackJsonState;
 
 typedef struct HgFlashbackCallbackData
 {
@@ -243,8 +225,19 @@ _PG_init(void)
 							   NULL,
 							   NULL);
 
+	DefineCustomStringVariable("hg_flashback_tx.include_tables",
+							   "Comma-separated list of tables to record for flashback. Empty records all user tables.",
+							   NULL,
+							   &flashback_include_tables,
+							   "",
+							   PGC_SIGHUP,
+							   GUC_LIST_INPUT,
+							   NULL,
+							   NULL,
+							   NULL);
+
 	DefineCustomBoolVariable("hg_flashback_tx.auto_replica_identity",
-							 "Automatically set REPLICA IDENTITY FULL for all tables.",
+							 "Automatically set REPLICA IDENTITY FULL for recorded tables.",
 							 NULL,
 							 &enable_auto_replica_identity,
 							 false,
@@ -678,7 +671,10 @@ hg_flashback_tx_decode_do_write(LogicalDecodingContext *ctx, XLogRecPtr lsn,
 	msg->lsn = lsn;
 	msg->xid = xid;
 	msg->last_write = last_write;
-	msg->data = pstrdup(ctx->out->data);
+	msg->len = ctx->out->len;
+	msg->data = palloc(msg->len + 1);
+	memcpy(msg->data, ctx->out->data, msg->len);
+	msg->data[msg->len] = '\0';
 	cb_data->raw_msgs = lappend(cb_data->raw_msgs, msg);
 	cb_data->write_calls++;
 	MemoryContextSwitchTo(oldcxt);
@@ -691,210 +687,182 @@ hg_flashback_tx_decode_update_progress(LogicalDecodingContext *ctx, XLogRecPtr l
 	/* Progress confirmation is handled after message processing in consume loop. */
 }
 
-static void
-hg_flashback_tx_json_object_start(void *state)
+static bool
+hg_flashback_tx_read_wire_field(const char **cursor, const char *end,
+								char **field)
 {
-	HgFlashbackJsonState *st = state;
+	const char *p = *cursor;
+	unsigned long len = 0;
+	char	   *buf;
 
-	if (st->array_ctx != HG_FB_JSON_ARR_NONE)
+	if (p == NULL || p >= end || *p < '0' || *p > '9')
+		return false;
+
+	while (p < end && *p >= '0' && *p <= '9')
 	{
-		if (st->in_pair_object)
-			st->malformed = true;
-		st->in_pair_object = true;
-		if (st->pair_name)
-			pfree(st->pair_name);
-		if (st->pair_val)
-			pfree(st->pair_val);
-		st->pair_name = NULL;
-		st->pair_val = NULL;
-	}
-}
+		unsigned long next = len * 10 + (unsigned long) (*p - '0');
 
-static void
-hg_flashback_tx_json_object_end(void *state)
-{
-	HgFlashbackJsonState *st = state;
-
-	if (st->in_pair_object)
-	{
-		HgFlashbackNameVal *pair;
-
-		if (st->pair_name == NULL || st->pair_val == NULL)
-		{
-			st->malformed = true;
-			return;
-		}
-
-		pair = palloc(sizeof(HgFlashbackNameVal));
-		pair->name = st->pair_name;
-		pair->val = st->pair_val;
-		st->pair_name = NULL;
-		st->pair_val = NULL;
-		if (st->array_ctx == HG_FB_JSON_ARR_LOCATOR)
-			st->locator_pairs = lappend(st->locator_pairs, pair);
-		else if (st->array_ctx == HG_FB_JSON_ARR_COLS)
-			st->column_pairs = lappend(st->column_pairs, pair);
-		else
-		{
-			st->malformed = true;
-			pfree(pair->name);
-			pfree(pair->val);
-			pfree(pair);
-		}
-		st->in_pair_object = false;
-	}
-}
-
-static void
-hg_flashback_tx_json_array_start(void *state)
-{
-	HgFlashbackJsonState *st = state;
-
-	if (st->current_key == NULL)
-	{
-		st->malformed = true;
-		return;
+		if (next < len)
+			return false;
+		len = next;
+		p++;
 	}
 
-	if (strcmp(st->current_key, "locator") == 0)
-		st->array_ctx = HG_FB_JSON_ARR_LOCATOR;
-	else if (strcmp(st->current_key, "cols") == 0)
-		st->array_ctx = HG_FB_JSON_ARR_COLS;
-	else
-		st->malformed = true;
+	if (p >= end || *p != ':')
+		return false;
+	p++;
 
-	pfree(st->current_key);
-	st->current_key = NULL;
-}
+	if ((Size) (end - p) < len)
+		return false;
 
-static void
-hg_flashback_tx_json_array_end(void *state)
-{
-	HgFlashbackJsonState *st = state;
-
-	st->array_ctx = HG_FB_JSON_ARR_NONE;
-}
-
-static void
-hg_flashback_tx_json_object_field_start(void *state, char *fname, bool isnull)
-{
-	HgFlashbackJsonState *st = state;
-
-	if (st->current_key)
-		pfree(st->current_key);
-	st->current_key = fname;
-	if (isnull)
-		st->malformed = true;
-}
-
-static void
-hg_flashback_tx_json_scalar(void *state, char *token, JsonTokenType tokentype)
-{
-	HgFlashbackJsonState *st = state;
-
-	if (st->current_key == NULL)
-	{
-		st->malformed = true;
-		pfree(token);
-		return;
-	}
-
-	if (st->in_pair_object)
-	{
-		if (strcmp(st->current_key, "name") == 0)
-		{
-			if (st->pair_name)
-				pfree(st->pair_name);
-			st->pair_name = token;
-			token = NULL;
-		}
-		else if (strcmp(st->current_key, "val") == 0)
-		{
-			if (st->pair_val)
-				pfree(st->pair_val);
-			st->pair_val = token;
-			token = NULL;
-		}
-		else
-			st->malformed = true;
-	}
-	else
-	{
-		if (strcmp(st->current_key, "op") == 0)
-		{
-			if (st->op)
-				pfree(st->op);
-			st->op = token;
-			token = NULL;
-		}
-		else if (strcmp(st->current_key, "nsp") == 0)
-		{
-			if (st->nsp)
-				pfree(st->nsp);
-			st->nsp = token;
-			token = NULL;
-		}
-		else if (strcmp(st->current_key, "rel") == 0)
-		{
-			if (st->relname)
-				pfree(st->relname);
-			st->relname = token;
-			token = NULL;
-		}
-		else if (strcmp(st->current_key, "owner") == 0)
-		{
-			if (st->table_owner)
-				pfree(st->table_owner);
-			st->table_owner = token;
-			token = NULL;
-		}
-		else if (strcmp(st->current_key, "commit_time") == 0)
-		{
-			st->commit_time = (TimestampTz) strtoull(token, NULL, 10);
-		}
-	}
-
-	if (token)
-		pfree(token);
-	pfree(st->current_key);
-	st->current_key = NULL;
+	buf = palloc(len + 1);
+	memcpy(buf, p, len);
+	buf[len] = '\0';
+	*field = buf;
+	*cursor = p + len;
+	return true;
 }
 
 static bool
-hg_flashback_tx_parse_json_message(const char *json, char **op, char **nsp,
+hg_flashback_tx_read_wire_uint(const char **cursor, const char *end,
+							   uint64 *value)
+{
+	char	   *field;
+	char	   *endptr;
+	unsigned long long parsed;
+
+	if (!hg_flashback_tx_read_wire_field(cursor, end, &field))
+		return false;
+
+	errno = 0;
+	parsed = strtoull(field, &endptr, 10);
+	if (errno != 0 || endptr == field || *endptr != '\0')
+	{
+		pfree(field);
+		return false;
+	}
+
+	*value = (uint64) parsed;
+	pfree(field);
+	return true;
+}
+
+static bool
+hg_flashback_tx_read_wire_pairs(const char **cursor, const char *end,
+								uint64 count, List **pairs)
+{
+	uint64		i;
+
+	if (count > MaxHeapAttributeNumber)
+		return false;
+
+	for (i = 0; i < count; i++)
+	{
+		HgFlashbackNameVal *pair;
+		char	   *name;
+		char	   *val;
+
+		if (!hg_flashback_tx_read_wire_field(cursor, end, &name))
+			return false;
+		if (!hg_flashback_tx_read_wire_field(cursor, end, &val))
+		{
+			pfree(name);
+			return false;
+		}
+
+		pair = palloc(sizeof(HgFlashbackNameVal));
+		pair->name = name;
+		pair->val = val;
+		*pairs = lappend(*pairs, pair);
+	}
+
+	return true;
+}
+
+static bool
+hg_flashback_tx_parse_wire_message(const char *data, Size data_len,
+								 char **op, char **nsp,
 								 char **relname, char **table_owner,
 								 TimestampTz *commit_time, List **locator_pairs,
 								 List **column_pairs)
 {
-	JsonLexContext *lex;
-	JsonSemAction sem;
-	JsonParseErrorType err;
-	HgFlashbackJsonState st;
+	const char *cursor = data;
+	const char *end = data + data_len;
+	char	   *commit_field;
+	char	   *endptr;
+	uint64		locator_count;
+	uint64		column_count;
+	long long	parsed_commit_time;
 
-	memset(&st, 0, sizeof(st));
-	memset(&sem, 0, sizeof(sem));
-	sem.semstate = &st;
-	sem.object_start = hg_flashback_tx_json_object_start;
-	sem.object_end = hg_flashback_tx_json_object_end;
-	sem.array_start = hg_flashback_tx_json_array_start;
-	sem.array_end = hg_flashback_tx_json_array_end;
-	sem.object_field_start = hg_flashback_tx_json_object_field_start;
-	sem.scalar = hg_flashback_tx_json_scalar;
+	if (cursor == NULL || data_len < 3 || strncmp(cursor, "FB1", 3) != 0)
+		return false;
+	cursor += 3;
 
-	lex = makeJsonLexContextCstringLen((char *) json, strlen(json),
-									   GetDatabaseEncoding(), true);
-	err = pg_parse_json(lex, &sem);
-	if (err != JSON_SUCCESS || st.malformed || st.op == NULL)
+	if (!hg_flashback_tx_read_wire_field(&cursor, end, op) || *op == NULL ||
+		(*op)[0] == '\0')
 		return false;
 
-	*op = st.op;
-	*nsp = st.nsp;
-	*relname = st.relname;
-	*table_owner = st.table_owner;
-	*commit_time = st.commit_time;
-	*locator_pairs = st.locator_pairs;
-	*column_pairs = st.column_pairs;
+	if (!hg_flashback_tx_read_wire_field(&cursor, end, &commit_field))
+		return false;
+	errno = 0;
+	parsed_commit_time = strtoll(commit_field, &endptr, 10);
+	if (errno != 0 || endptr == commit_field || *endptr != '\0')
+	{
+		pfree(commit_field);
+		return false;
+	}
+	*commit_time = (TimestampTz) parsed_commit_time;
+	pfree(commit_field);
+
+	if (!hg_flashback_tx_read_wire_field(&cursor, end, nsp))
+		return false;
+	if (!hg_flashback_tx_read_wire_field(&cursor, end, relname))
+		return false;
+	if (!hg_flashback_tx_read_wire_field(&cursor, end, table_owner))
+		return false;
+	if (!hg_flashback_tx_read_wire_uint(&cursor, end, &locator_count))
+		return false;
+	if (!hg_flashback_tx_read_wire_pairs(&cursor, end, locator_count, locator_pairs))
+		return false;
+	if (!hg_flashback_tx_read_wire_uint(&cursor, end, &column_count))
+		return false;
+	if (!hg_flashback_tx_read_wire_pairs(&cursor, end, column_count, column_pairs))
+		return false;
+	if (cursor != end)
+		return false;
+
 	return true;
+}
+
+static bool
+hg_flashback_tx_table_included(const char *nspname, const char *relname)
+{
+	char	   *raw;
+	char	   *token;
+	char		qualified[NAMEDATALEN * 2 + 2];
+
+	if (flashback_include_tables == NULL || flashback_include_tables[0] == '\0')
+		return true;
+	if (nspname == NULL || relname == NULL)
+		return false;
+
+	snprintf(qualified, sizeof(qualified), "%s.%s", nspname, relname);
+	raw = pstrdup(flashback_include_tables);
+
+	token = strtok(raw, ", \t\r\n");
+	while (token != NULL)
+	{
+		if (strcmp(token, qualified) == 0 ||
+			(strchr(token, '.') == NULL && strcmp(token, relname) == 0))
+		{
+			pfree(raw);
+			return true;
+		}
+		token = strtok(NULL, ", \t\r\n");
+	}
+
+	pfree(raw);
+	return false;
 }
 
 static void
@@ -960,10 +928,11 @@ hg_flashback_tx_process_raw_messages(void)
 		if (!TransactionIdIsValid(xid) || msg->data == NULL)
 			continue;
 
-		if (!hg_flashback_tx_parse_json_message(msg->data, &operation, &nspname,
-											 &relname, &table_owner,
-											 &commit_time, &locator_pairs,
-											 &column_pairs))
+		if (!hg_flashback_tx_parse_wire_message(msg->data, msg->len,
+												&operation, &nspname,
+												&relname, &table_owner,
+												&commit_time, &locator_pairs,
+												&column_pairs))
 		{
 			other_cnt++;
 			continue;
@@ -1163,6 +1132,16 @@ hg_flashback_tx_flush_committed_txns(List *committed_xids)
 {
 	ListCell   *lc;
 	uint64		flushed_entries = 0;
+	Relation	flashback_rel;
+	CatalogIndexState indstate;
+	MemoryContext row_mcxt;
+	SPIPlanPtr	max_seq_plan;
+	Oid			relid;
+	Oid			nspoid;
+	Oid			typinputs[12];
+	Oid			typioparams[12];
+	int32		typmods[12];
+	int			i;
 
 	if (committed_xids == NIL)
 		return 0;
@@ -1170,6 +1149,36 @@ hg_flashback_tx_flush_committed_txns(List *committed_xids)
 	if (SPI_connect() != SPI_OK_CONNECT)
 		elog(ERROR, "SPI_connect failed");
 	PushActiveSnapshot(GetTransactionSnapshot());
+
+	max_seq_plan = SPI_prepare(
+		"SELECT COALESCE(MAX(\"undo_change#\"), 0) "
+		"FROM hg_flashback_tx.flashback_transaction_query "
+		"WHERE xid = $1",
+		1, (Oid[]) { INT8OID });
+	if (max_seq_plan == NULL)
+		elog(ERROR, "SPI_prepare failed for undo_change lookup");
+
+	nspoid = get_namespace_oid("hg_flashback_tx", false);
+	relid = get_relname_relid("flashback_transaction_query", nspoid);
+	if (!OidIsValid(relid))
+		elog(ERROR, "hg_flashback_tx.flashback_transaction_query not found");
+
+	flashback_rel = table_open(relid, RowExclusiveLock);
+	if (RelationGetDescr(flashback_rel)->natts != 12)
+		elog(ERROR, "unexpected flashback_transaction_query column count");
+
+	for (i = 0; i < 12; i++)
+	{
+		Form_pg_attribute attr = TupleDescAttr(RelationGetDescr(flashback_rel), i);
+
+		getTypeInputInfo(attr->atttypid, &typinputs[i], &typioparams[i]);
+		typmods[i] = attr->atttypmod;
+	}
+
+	indstate = CatalogOpenIndexes(flashback_rel);
+	row_mcxt = AllocSetContextCreate(CurrentMemoryContext,
+									 "hg_flashback_tx insert row",
+									 ALLOCSET_DEFAULT_SIZES);
 
 	foreach(lc, committed_xids)
 	{
@@ -1184,58 +1193,44 @@ hg_flashback_tx_flush_committed_txns(List *committed_xids)
 			txn_entry->entries != NULL &&
 			txn_entry->entry_count > 0)
 		{
-			const int	batch_rows = 256;
-			Oid			argtypes[1];
-			Datum		values[1];
-			char		nulls[1];
+			Datum		spi_values[1];
+			char		spi_nulls[1];
 			uint64		seq = 0;
-			StringInfoData sql;
 			int			total_count = 0;
-			int			stmt_count = 0;
 			TupleTableSlot *slot;
 
-			argtypes[0] = INT8OID;
-			values[0] = Int64GetDatum((int64) xid);
-			nulls[0] = ' ';
-			if (SPI_execute_with_args(
-					"SELECT COALESCE(MAX(\"undo_change#\"), 0) "
-					"FROM hg_flashback_tx.flashback_transaction_query "
-					"WHERE xid = $1",
-					1, argtypes, values, nulls, true, 1) != SPI_OK_SELECT)
-				elog(ERROR, "SPI_execute_with_args failed for undo_change lookup");
+			spi_values[0] = Int64GetDatum((int64) xid);
+			spi_nulls[0] = ' ';
+			if (SPI_execute_plan(max_seq_plan, spi_values, spi_nulls, true, 1) != SPI_OK_SELECT)
+				elog(ERROR, "SPI_execute_plan failed for undo_change lookup");
 
 			if (SPI_processed == 1)
 			{
-				char	   *max_seq_str;
+				Datum		max_seq;
+				bool		isnull;
 
-				max_seq_str = SPI_getvalue(SPI_tuptable->vals[0],
-										   SPI_tuptable->tupdesc, 1);
-				if (max_seq_str != NULL)
-					seq = (uint64) strtoull(max_seq_str, NULL, 10);
+				max_seq = SPI_getbinval(SPI_tuptable->vals[0],
+										 SPI_tuptable->tupdesc, 1, &isnull);
+				if (!isnull)
+					seq = (uint64) DatumGetInt64(max_seq);
 			}
-
-			initStringInfo(&sql);
-			appendStringInfoString(&sql,
-								   "INSERT INTO hg_flashback_tx.flashback_transaction_query "
-								   "(xid, operation, table_name, table_owner, "
-								   "row_id, start_timestamp, commit_timestamp, undo_sql, "
-								   "\"undo_change#\") VALUES ");
 
 			slot = MakeSingleTupleTableSlot(pending_entry_tupdesc, &TTSOpsMinimalTuple);
 			tuplestore_rescan(txn_entry->entries);
 			while (tuplestore_gettupleslot(txn_entry->entries, true, false, slot))
 			{
 				Datum		datum;
+				Datum		row_values[12];
 				bool		isnull;
+				bool		row_nulls[12];
 				char	   *operation;
 				char	   *relname;
 				char	   *table_owner;
 				char	   *row_id;
 				char	   *undo_sql = NULL;
 				TimestampTz commit_time = 0;
-
-				if (stmt_count > 0)
-					appendStringInfoString(&sql, ", ");
+				HeapTuple	tuple;
+				MemoryContext oldcxt;
 
 				seq++;
 				datum = slot_getattr(slot, 1, &isnull);
@@ -1253,26 +1248,44 @@ hg_flashback_tx_flush_committed_txns(List *committed_xids)
 				if (!isnull)
 					commit_time = DatumGetTimestampTz(datum);
 
-				/* Keep row shape identical to legacy path for compatibility. */
+				oldcxt = MemoryContextSwitchTo(row_mcxt);
+				memset(row_values, 0, sizeof(row_values));
+				memset(row_nulls, true, sizeof(row_nulls));
+
+				row_values[0] = Int64GetDatum((int64) xid);
+				row_nulls[0] = false;
 				if (commit_time != 0)
-					appendStringInfo(&sql, "(%ld, %s, %s, %s, %s, NULL, %s, %s, %ld)",
-									 (long) xid,
-									 quote_literal_cstr(operation),
-									 quote_literal_cstr(relname),
-									 quote_literal_cstr(table_owner),
-									 quote_literal_cstr(row_id),
-									 quote_literal_cstr(timestamptz_to_str(commit_time)),
-									 undo_sql ? quote_literal_cstr(undo_sql) : "NULL",
-									 (long) seq);
-				else
-					appendStringInfo(&sql, "(%ld, %s, %s, %s, %s, NULL, NULL, %s, %ld)",
-									 (long) xid,
-									 quote_literal_cstr(operation),
-									 quote_literal_cstr(relname),
-									 quote_literal_cstr(table_owner),
-									 quote_literal_cstr(row_id),
-									 undo_sql ? quote_literal_cstr(undo_sql) : "NULL",
-									 (long) seq);
+				{
+					row_values[4] = TimestampTzGetDatum(commit_time);
+					row_nulls[4] = false;
+				}
+				row_values[6] = Int64GetDatum((int64) seq);
+				row_nulls[6] = false;
+				row_values[7] = hg_flashback_tx_input_cstring(typinputs[7], typioparams[7],
+															  typmods[7], operation);
+				row_nulls[7] = false;
+				row_values[8] = hg_flashback_tx_input_cstring(typinputs[8], typioparams[8],
+															  typmods[8], relname);
+				row_nulls[8] = false;
+				row_values[9] = hg_flashback_tx_input_cstring(typinputs[9], typioparams[9],
+															  typmods[9], table_owner);
+				row_nulls[9] = false;
+				row_values[10] = hg_flashback_tx_input_cstring(typinputs[10], typioparams[10],
+															   typmods[10], row_id);
+				row_nulls[10] = false;
+				if (undo_sql != NULL)
+				{
+					row_values[11] = hg_flashback_tx_input_cstring(typinputs[11], typioparams[11],
+																   typmods[11], undo_sql);
+					row_nulls[11] = false;
+				}
+
+				tuple = heap_form_tuple(RelationGetDescr(flashback_rel),
+										row_values, row_nulls);
+				CatalogTupleInsertWithInfo(flashback_rel, tuple, indstate);
+				heap_freetuple(tuple);
+				MemoryContextSwitchTo(oldcxt);
+				MemoryContextReset(row_mcxt);
 
 				pfree(operation);
 				pfree(relname);
@@ -1281,29 +1294,10 @@ hg_flashback_tx_flush_committed_txns(List *committed_xids)
 				if (undo_sql != NULL)
 					pfree(undo_sql);
 				ExecClearTuple(slot);
-				stmt_count++;
 				total_count++;
-
-				if (stmt_count >= batch_rows)
-				{
-					if (SPI_execute(sql.data, false, 0) != SPI_OK_INSERT)
-						elog(ERROR, "SPI_execute failed for persistent batch insert");
-					resetStringInfo(&sql);
-					appendStringInfoString(&sql,
-										   "INSERT INTO hg_flashback_tx.flashback_transaction_query "
-										   "(xid, operation, table_name, table_owner, "
-										   "row_id, start_timestamp, commit_timestamp, undo_sql, "
-										   "\"undo_change#\") VALUES ");
-					stmt_count = 0;
-				}
 			}
 			ExecDropSingleTupleTableSlot(slot);
-
-			if (stmt_count > 0 &&
-				SPI_execute(sql.data, false, 0) != SPI_OK_INSERT)
-				elog(ERROR, "SPI_execute failed for persistent batch insert");
 			flushed_entries += total_count;
-			pfree(sql.data);
 		}
 
 		/* xid is fully persisted (or recording disabled), safe to drop pending. */
@@ -1311,10 +1305,21 @@ hg_flashback_tx_flush_committed_txns(List *committed_xids)
 		hash_search(pending_txn_hash, &xid, HASH_REMOVE, NULL);
 	}
 
+	MemoryContextDelete(row_mcxt);
+	CatalogCloseIndexes(indstate);
+	table_close(flashback_rel, RowExclusiveLock);
 	PopActiveSnapshot();
 	SPI_finish();
 
 	return flushed_entries;
+}
+
+static Datum
+hg_flashback_tx_input_cstring(Oid typinput, Oid typioparam, int32 typmod,
+							  const char *str)
+{
+	return OidInputFunctionCall(typinput, unconstify(char *, str ? str : ""),
+								typioparam, typmod);
 }
 
 static void
@@ -1533,6 +1538,9 @@ hg_flashback_tx_utility_hook(PlannedStmt *pstmt,
 			strcmp(nspname, "information_schema") == 0 ||
 			strcmp(nspname, "hg_flashback_tx") == 0 ||
 			strcmp(nspname, "hg_security") == 0)
+			return;
+
+		if (!hg_flashback_tx_table_included(nspname, relname))
 			return;
 
 		tableOid = get_relname_relid(relname, nspOid);
