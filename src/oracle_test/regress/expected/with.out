@@ -3324,3 +3324,80 @@ select * from with_test;
 
 drop table with_test;
 reset ivorysql.enable_emptystring_to_null;
+with recursive t(lev, dummy, path) as (select 1, null, '_text' union select lev+1, null, path || '_text' from t where lev < 3) select path from t;
+      path       
+-----------------
+ _text
+ _text_text
+ _text_text_text
+(3 rows)
+
+select SYS_CONNECT_BY_PATH('test', '_') PATH from (select null union select null ) CONNECT BY level < 3;
+    path    
+------------
+ _test
+ _test_test
+(2 rows)
+
+CREATE TABLE BAS_FORMULA_OTHER(BFO_ID VARCHAR2(38) NOT NULL,
+MOF_DIV_CODE VARCHAR2(30),
+FORMULA_ID VARCHAR2(38),
+FORMULA_TYPE NUMBER(2,0),
+UPDATE_USER VARCHAR2(32),
+UPDATE_TIME TIMESTAMP(6),
+CREATE_USER VARCHAR2(32),
+CREATE_TIME TIMESTAMP(6),
+FBOE_DESC VARCHAR2(4000),
+FORMULA_NAME VARCHAR2(100),
+IS_TOTAL_CONTROL NUMBER(1,0) DEFAULT 1);
+INSERT INTO BAS_FORMULA_OTHER VALUES ('948F1F32DAF127FE2A1EDCF0A56879BF', '460000000', '697', '1', '940', '2005-10-24 14:07:34.000000', '548', '2018-04-20 18:27:27.000000', '741', '83', '0');
+INSERT INTO BAS_FORMULA_OTHER VALUES ('92DD5B82CEA61D3DAFAA396B561073A5', '460000000', '641', '1', '374', '2002-02-09 07:50:56.000000', '136', '2012-10-13 01:18:21.000000', '360', '441', '0');
+INSERT INTO BAS_FORMULA_OTHER VALUES ('F4396EBA9683555C5AD22220F370C6AF', '460000000', '671', '1', '773', '2014-02-03 02:04:12.000000', '783', '2020-03-21 20:37:33.000000', '8', '729', '0');
+INSERT INTO BAS_FORMULA_OTHER VALUES ('7FD267EC106BAB48836973363ACAF8C9', '460000000', '762', '0', '735', '2019-01-17 15:35:24.000000', '98', '2020-09-10 22:57:31.000000', '647', '559', '1');
+INSERT INTO BAS_FORMULA_OTHER VALUES ('1FA7C7B87D11D304EB26C1CA2CDE1565', '460000000', '664', '0', '445', '2008-12-19 02:41:59.000000', '880', '2020-05-09 17:16:45.000000', '359', '425', '1');
+INSERT INTO BAS_FORMULA_OTHER VALUES ('451F4A9036EBDE908D6464A7B838F34A', '460000000', '507', '1', '529', '2021-04-27 11:11:57.000000', '679', '2023-12-16 03:56:23.000000', '865', '804', '0');
+INSERT INTO BAS_FORMULA_OTHER VALUES ('E5CFE7FD8976AF4F016B74AB77BEA773', '460000000', '559', '1', '655', '2009-01-24 19:17:22.000000', '920', '2017-12-30 15:43:00.000000', '276', '691', '1');
+CREATE TABLE BAS_FORMULADEF(FORMULA_ID VARCHAR2(38) NOT NULL,
+FORMULA_NAME VARCHAR2(100),
+FORMULA_TYPE VARCHAR2(32),
+FORMULA_DEF CLOB,
+IS_DEFAULT NUMBER(1,0),
+FORMULA_DEFCHI CLOB,
+MOF_DIV_CODE VARCHAR2(9));
+CREATE TABLE BAS_FORMULA_AGENCY(FBFA_ID VARCHAR2(38) NOT NULL,
+AGENCY_ID VARCHAR2(38),
+FORMULA_ID VARCHAR2(38),
+UPDATE_USER VARCHAR2(32),
+UPDATE_TIME TIMESTAMP(6),
+CREATE_USER VARCHAR2(32),
+CREATE_TIME TIMESTAMP(6),
+MOF_DIV_CODE VARCHAR2(9));
+SELECT FBASEITEMNO, FSUPERNO, PRO_TYPE, FORMULA_ID, (SELECT COUNT(1) FROM BAS_FORMULA_AGENCY FA WHERE FA.FORMULA_ID = T.FORMULA_ID) AGENCY_CNT,
+ FORMULA_NAME, FORMULA_DEFCHI, FBPE_DESC FBPEDESC, FORMULA_TYPE, MODEL_ID, FORCOM_COL, LEVEL FLEVEL, CONNECT_BY_ISLEAF FISLEAF, 
+ SYS_CONNECT_BY_PATH(FBASEITEMNO, '_') PATH 
+ FROM (
+ 	SELECT '-1' FBASEITEMNO, NULL FSUPERNO, NULL MOF_DIV_CODE, '99' PRO_TYPE, NULL FORMULA_ID, NULL FORMULA_NAME, NULL FORMULA_DEFCHI, NULL FBPE_DESC,
+ 	 NULL FORMULA_TYPE, NULL MODEL_ID, NULL FORCOM_COL FROM DUAL 
+ 	 UNION ALL
+ 	 SELECT BO.BFO_ID FBASEITEMNO, '-1' FSUPERNO, BO.MOF_DIV_CODE, '99' PRO_TYPE, BO.FORMULA_ID, 
+ 	 NVL(F.FORMULA_NAME, BO.FORMULA_NAME) FORMULA_NAME, F.FORMULA_DEFCHI, BO.FBOE_DESC FBPE_DESC, BO.FORMULA_TYPE, BO.MODEL_ID, BO.FORCOM_COL 
+ 	 FROM (SELECT O.BFO_ID, O.MOF_DIV_CODE, O.FORMULA_ID, O.FBOE_DESC, O.FORMULA_NAME, O.FORMULA_TYPE, NULL MODEL_ID, NULL FORCOM_COL 
+ 	 	FROM BAS_FORMULA_OTHER O 
+ 	 	WHERE O.MOF_DIV_CODE = '460000000' AND O.MOF_DIV_CODE = '460000000'
+ 	 ) BO, BAS_FORMULADEF F WHERE BO.FORMULA_ID = F.FORMULA_ID(+)) T 
+ START WITH NVL(FSUPERNO, '0') = '0' CONNECT BY PRIOR FBASEITEMNO = FSUPERNO ORDER BY FLEVEL, FORMULA_TYPE, FORMULA_NAME;
+           fbaseitemno            | fsuperno | pro_type | formula_id | agency_cnt | formula_name | formula_defchi | fbpedesc | formula_type | model_id | forcom_col | flevel | fisleaf |                 path                 
+----------------------------------+----------+----------+------------+------------+--------------+----------------+----------+--------------+----------+------------+--------+---------+--------------------------------------
+ -1                               |          | 99       |            |          0 |              |                |          |              |          |            |      1 |       0 | _-1
+ 1FA7C7B87D11D304EB26C1CA2CDE1565 | -1       | 99       | 664        |          0 | 425          |                | 359      | 0            |          |            |      2 |       1 | _-1_1FA7C7B87D11D304EB26C1CA2CDE1565
+ 7FD267EC106BAB48836973363ACAF8C9 | -1       | 99       | 762        |          0 | 559          |                | 647      | 0            |          |            |      2 |       1 | _-1_7FD267EC106BAB48836973363ACAF8C9
+ 92DD5B82CEA61D3DAFAA396B561073A5 | -1       | 99       | 641        |          0 | 441          |                | 360      | 1            |          |            |      2 |       1 | _-1_92DD5B82CEA61D3DAFAA396B561073A5
+ E5CFE7FD8976AF4F016B74AB77BEA773 | -1       | 99       | 559        |          0 | 691          |                | 276      | 1            |          |            |      2 |       1 | _-1_E5CFE7FD8976AF4F016B74AB77BEA773
+ F4396EBA9683555C5AD22220F370C6AF | -1       | 99       | 671        |          0 | 729          |                | 8        | 1            |          |            |      2 |       1 | _-1_F4396EBA9683555C5AD22220F370C6AF
+ 451F4A9036EBDE908D6464A7B838F34A | -1       | 99       | 507        |          0 | 804          |                | 865      | 1            |          |            |      2 |       1 | _-1_451F4A9036EBDE908D6464A7B838F34A
+ 948F1F32DAF127FE2A1EDCF0A56879BF | -1       | 99       | 697        |          0 | 83           |                | 741      | 1            |          |            |      2 |       1 | _-1_948F1F32DAF127FE2A1EDCF0A56879BF
+(8 rows)
+
+drop table BAS_FORMULA_OTHER;
+drop table BAS_FORMULADEF;
+drop table BAS_FORMULA_AGENCY;
