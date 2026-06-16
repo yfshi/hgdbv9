@@ -65,7 +65,6 @@ varbinary_internel(FunctionCallInfo fcinfo, bool isPg2My)
 	int	 	len, maxlen;
 	bytea 	*source = PG_GETARG_BYTEA_PP(0);
 	int32 	typmod = PG_GETARG_INT32(1);
-	bool 	isExplicit = PG_GETARG_BOOL(2);
 
 	len = VARSIZE_ANY_EXHDR(source);
 	maxlen = typmod - VARHDRSZ;
