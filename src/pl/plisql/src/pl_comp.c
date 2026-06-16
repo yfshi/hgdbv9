@@ -3831,6 +3831,26 @@ plisql_parse_cwordtype(List *idents)
 		 * First word could also be a table name
 		 */
 		classOid = RelnameGetRelid(strVal(linitial(idents)));
+		/* Begin - OA-2465 */
+		/* Check for synonyms */
+		if (!OidIsValid(classOid) && SynnameGetRelname_hook)
+		{
+			List		*synoids = NIL;
+			char *objschema;
+			char *objname;
+			char *objdblnksrv;
+			Oid 		synoid;
+			Oid 		nspid;
+
+			synoid = SynnameGetRelname_hook(strVal(linitial(idents)), NULL, &objschema, &objname, &objdblnksrv, &synoids);
+			if (OidIsValid(synoid))
+			{
+				nspid = LookupExplicitNamespace(objschema, true);
+				if (OidIsValid(nspid))
+					classOid = get_relname_relid(objname, nspid);
+			}
+		}
+		/* End - OA-2465 */
 		if (!OidIsValid(classOid))
 			goto done;
 		fldname = strVal(lsecond(idents));
@@ -4080,6 +4100,26 @@ plisql_parse_wordrowtype(char *ident)
 	 * But we'll make a TypeName in case we have to do re-look-up of the type.
 	 */
 	classOid = RelnameGetRelid(ident);
+	/* Begin - OA-2465 */
+	/* Check for synonyms */
+	if (!OidIsValid(classOid) && SynnameGetRelname_hook)
+	{
+		List		*synoids = NIL;
+		char *objschema;
+		char *objname;
+		char *objdblnksrv;
+		Oid 		synoid;
+		Oid 		nspid;
+
+		synoid = SynnameGetRelname_hook(ident, NULL, &objschema, &objname, &objdblnksrv, &synoids);
+		if (OidIsValid(synoid))
+		{
+			nspid = LookupExplicitNamespace(objschema, missing_ok);
+			if (OidIsValid(nspid))
+				classOid = get_relname_relid(objname, nspid);
+		}
+	}
+	/* End - OA-2465 */
 	if (!OidIsValid(classOid))
 		ereport(ERROR,
 				(errcode(ERRCODE_UNDEFINED_TABLE),
