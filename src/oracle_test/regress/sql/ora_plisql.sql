@@ -3478,3 +3478,129 @@ select test_pkg1.test_f(23) from dual;
 drop function f_re11;
 drop procedure p_rel1;
 drop package test_pkg1;
+
+/* Begin - OA-REQ-2454 */
+
+CREATE TABLE log_table_2454 (
+    log_id      NUMBER PRIMARY KEY,
+    log_date    DATE,
+    log_message VARCHAR2(4000),
+    created_by  VARCHAR2(100)
+);
+
+CREATE SEQUENCE log_seq_2454 START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE PACKAGE test_pkg_2454 IS
+    PROCEDURE log(p_message VARCHAR2);
+
+    PROCEDURE run_demo(p_param VARCHAR2);
+END test_pkg_2454;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_pkg_2454 IS
+    PROCEDURE log(p_message VARCHAR2) IS
+        PRAGMA AUTONOMOUS_TRANSACTION;
+    BEGIN
+        INSERT INTO log_table_2454 (log_id, log_date, log_message, created_by)
+        VALUES (log_seq_2454.NEXTVAL, to_date('2026-06-09','yyyy-mm-dd'), p_message, 'Highgo');
+        COMMIT;
+    END log;
+
+    PROCEDURE run_demo(p_param VARCHAR2) IS
+    BEGIN
+        log('run_demo Start, Parameter = ' || p_param);
+        DBMS_OUTPUT.PUT_LINE('Exec run_demo, Parameter = ' || p_param);
+        log('run_demo Done, Parameter = ' || p_param);
+        COMMIT;
+    END run_demo;
+
+END test_pkg_2454;
+/
+
+
+SET SERVEROUTPUT ON;
+
+BEGIN
+    test_pkg_2454.run_demo('Test 1');
+    test_pkg_2454.run_demo('Test 2');
+END;
+/
+
+SELECT * FROM log_table_2454 ORDER BY log_id;
+
+
+truncate table log_table_2454;
+DROP PACKAGE test_pkg_2454;
+
+
+CREATE OR REPLACE PACKAGE test_pkg_2454
+IS
+    PROCEDURE log;
+    PROCEDURE run_demo(p_param VARCHAR2);
+END test_pkg_2454;
+/
+
+CREATE OR REPLACE PACKAGE BODY test_pkg_2454
+IS
+    PROCEDURE log IS
+        PRAGMA AUTONOMOUS_TRANSACTION;
+    BEGIN
+        INSERT INTO log_table_2454 (
+            log_id,
+            log_date,
+            log_message,
+            created_by
+        )
+        VALUES (
+            log_seq_2454.NEXTVAL,
+            to_date('2026-06-10','yyyy-mm-dd'),
+            'Parameterless log called',
+            'Highgo'
+        );
+
+        COMMIT;
+    END log;
+
+
+    PROCEDURE run_demo(p_param VARCHAR2) IS
+    BEGIN
+        log;
+
+        DBMS_OUTPUT.PUT_LINE('Exec run_demo, Parameter = ' || p_param);
+
+        log;
+
+        COMMIT;
+    END run_demo;
+
+END test_pkg_2454;
+/
+
+
+SET SERVEROUTPUT ON;
+
+BEGIN
+    test_pkg_2454.log;
+    test_pkg_2454.run_demo('Test 3');
+    test_pkg_2454.run_demo('Test 4');
+END;
+/
+
+
+CALL test_pkg_2454.log();
+
+
+SELECT log_id,
+       TO_CHAR(log_date, 'YYYY-MM-DD HH24:MI:SS') AS log_date,
+       log_message,
+       created_by
+FROM log_table_2454
+ORDER BY log_id;
+
+
+--cleanup
+DROP PACKAGE test_pkg_2454;
+DROP SEQUENCE log_seq_2454;
+DROP TABLE log_table_2454;
+SET SERVEROUTPUT OFF;
+/* End - OA-REQ-2454 */

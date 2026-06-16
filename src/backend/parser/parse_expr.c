@@ -5338,7 +5338,18 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 void
 transformFuncArg(ParseState *pstate, Node *func_arg)
 {
+	/* Begin - OA-REQ-2454 */
+	ParseExprKind	sv_expr_kind;
+
+	/* Save and restore identity of expression type we're parsing */
+	sv_expr_kind = pstate->p_expr_kind;
+	if (pstate->p_expr_kind == EXPR_KIND_NONE)
+		pstate->p_expr_kind = EXPR_KIND_CALL_ARGUMENT;
+
 	transformExprRecurse(pstate, func_arg);
+
+	pstate->p_expr_kind = sv_expr_kind;
+	/* End - OA-REQ-2454 */
 }
 /* End - BUG#M0000376 */
 
