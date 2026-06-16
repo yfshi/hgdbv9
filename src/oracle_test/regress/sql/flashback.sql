@@ -231,3 +231,17 @@ select rcyoperation, rcytype from pg_recyclebin order by 1,2;
 set ivorysql.enable_recycle_bin = off;
 
 select rcyoperation, rcytype from pg_recyclebin order by 1,2;
+
+-- 4. test drop schema deletes corresponding recyclebin entries.
+set ivorysql.enable_recycle_bin = on;
+create schema recycle_schema_drop;
+create table recycle_schema_drop.flashback_schema_drop_tab(a int);
+drop table recycle_schema_drop.flashback_schema_drop_tab;
+select count(*) from pg_recyclebin
+ where rcyoriginname = 'flashback_schema_drop_tab' and rcytype = 0;
+set client_min_messages = warning;
+drop schema recycle_schema_drop cascade;
+reset client_min_messages;
+select count(*) from pg_recyclebin
+ where rcyoriginname = 'flashback_schema_drop_tab';
+set ivorysql.enable_recycle_bin = off;

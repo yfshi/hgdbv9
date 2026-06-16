@@ -92,6 +92,35 @@ RecyclebinRead(RbObjDesc *desc, HeapTuple rbtup)
 	desc->authid = GetUserId();
 }
 
+/* Delete all recycle bin entries that belong to the specified namespace. */
+void
+RecyclebinDeleteNamespace(Oid nspId)
+{
+	Relation rbRel;
+	TableScanDesc scan;
+	ScanKeyData skey[1];
+	TupleTableSlot *slot;
+
+	rbRel = table_open(RecyclebinRelationId, RowExclusiveLock);
+	slot = table_slot_create(rbRel, NULL);
+	ScanKeyInit(&skey[0], Anum_pg_recyclebin_rcynamespace,
+				BTEqualStrategyNumber, F_OIDEQ, ObjectIdGetDatum(nspId));
+	scan = table_beginscan(rbRel, SnapshotSelf, 1, skey);
+
+	while (table_scan_getnextslot(scan, ForwardScanDirection, slot))
+	{
+		HeapTuple tup = ExecFetchSlotHeapTuple(slot, false, NULL);
+
+		CatalogTupleDelete(rbRel, &tup->t_self);
+	}
+
+	table_endscan(scan);
+	ExecDropSingleTupleTableSlot(slot);
+	table_close(rbRel, RowExclusiveLock);
+
+	CommandCounterIncrement();
+}
+
 static bool 
 RbFetchOrinameImpl(Oid nspId, const char *oriname, RbObjType type, 
 				   RbObjDesc *desc, RbOperMode operMode, bool useRcyName)
