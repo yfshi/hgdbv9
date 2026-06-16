@@ -6296,94 +6296,186 @@ getTables(Archive *fout, int *numTables)
 		/* END - ReqID:SRS-CMD-PGDUMP */
 		/* Begin - BUG#M229 */ /* BEGIN - ReqID:SRS-CMD-PGDUMP */
 		if (atooid(PQgetvalue(res_pgobject, 0, 0)) == 9251)	/* BUG#M0000404 */
-			appendPQExpBuffer(query,
-						  "SELECT c.tableoid, c.oid, c.relname, "
-						  "%s AS relacl, %s as rrelacl, "
-						  "%s AS initrelacl, %s as initrrelacl, "
-						  "c.relkind, c.relnamespace, "
-						  "(%s c.relowner) AS rolname, "
-						  "c.relchecks, c.relhastriggers, "
-						  "c.relhasindex, c.relhasrules, %s AS relhasoids, c.relhasrowid, "
-						  "c.relrowsecurity, c.relforcerowsecurity, "
-						  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
-						  "tc.relfrozenxid AS tfrozenxid, "
-						  "tc.relminmxid AS tminmxid, "
-						  "c.relpersistence, c.relispopulated, "
-						  "c.relreplident, c.relpages, am.amname, "
-						  "CASE WHEN c.relkind = 'f' THEN "
-						  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
-						  "ELSE 0 END AS foreignserver, "
-						  "c.reloftype, "
-						  "d.refobjid AS owning_tab, "
-						  "d.refobjsubid AS owning_col, "
-						  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
-						  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
-						  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
-						  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
-						  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
-						  "tc.reloptions AS toast_reloptions, "
-						  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
-						  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
-						  "(c.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_class'::regclass "
-						  "AND pip.objsubid = at.attnum)"
-						  "WHERE at.attrelid = c.oid AND ("
-						  "%s IS NOT NULL "
-						  "OR %s IS NOT NULL "
-						  "OR %s IS NOT NULL "
-						  "OR %s IS NOT NULL"
-						  "))"
-						  "AS changed_acl, "
-						  "%s AS ispartition, "
-						  "oj.option->>'INTERVAL' as isinterval, "	/* BUG#6400 */
-						  "oj.compatible_mode AS compatible_mode, "
-						  "oj.option->>'collation' as default_collation, " /* BUG#M478 */
-						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
-						  "tab_partition.partname AS ora_partname, "
-						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid) AS isorarootpart, "
-						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.composite is true) AS iscomposite, "
-						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.automatic is true) AS isautomatic, "
-						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.subpart_template is not null) AS hastemplate, "
-						  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.interval_expr is not null) AS isorainterval "
-						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
-						  "FROM pg_class c "
-						  "LEFT JOIN pg_depend d ON "
-						  "(c.relkind = '%c' AND "
-						  "d.classid = c.tableoid AND d.objid = c.oid AND "
-						  "d.objsubid = 0 AND "
-						  "d.refclassid = c.tableoid AND d.deptype IN ('a', 'i')) "
-						  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND c.relkind <> '%c') "
-						  "LEFT JOIN pg_am am ON (c.relam = am.oid) "
-						  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0 AND oj.refclassid = 'pg_class'::regclass) "	/* BUG#M0000394 */
-						  "LEFT JOIN pg_init_privs pip ON "
-						  "(c.oid = pip.objoid "
-						  "AND pip.classoid = 'pg_class'::regclass "
-						  "AND pip.objsubid = 0) "
-						  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
-						  "LEFT JOIN pg_ora_tab_partitions tab_partition ON (c.oid = tab_partition.part) "
-						  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
-						  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c', '%c') "
-						  "%s"	/* ReqID:SRS-CMD-PGDUMP */
-						  "ORDER BY c.oid",
-						  acl_subquery->data,
-						  racl_subquery->data,
-						  initacl_subquery->data,
-						  initracl_subquery->data,
-						  username_subquery,
-						  relhasoids,
-						  RELKIND_SEQUENCE,
-						  attacl_subquery->data,
-						  attracl_subquery->data,
-						  attinitacl_subquery->data,
-						  attinitracl_subquery->data,
-						  ispartition,
-						  RELKIND_SEQUENCE,
-						  RELKIND_PARTITIONED_TABLE,
-						  RELKIND_RELATION, RELKIND_SEQUENCE,
-						  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
-						  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE,
-						  RELKIND_PARTITIONED_TABLE,
-						  temp_query->data);	/* ReqID:SRS-CMD-PGDUMP */
+		{
+			/* Begin - bug#8256 */
+			/* the server version of highgo-905 is '140020' and oracle partitioned table added by highgo-920 */
+			if (fout->remoteVersion > 140020)
+				appendPQExpBuffer(query,
+							  "SELECT c.tableoid, c.oid, c.relname, "
+							  "%s AS relacl, %s as rrelacl, "
+							  "%s AS initrelacl, %s as initrrelacl, "
+							  "c.relkind, c.relnamespace, "
+							  "(%s c.relowner) AS rolname, "
+							  "c.relchecks, c.relhastriggers, "
+							  "c.relhasindex, c.relhasrules, %s AS relhasoids, c.relhasrowid, "
+							  "c.relrowsecurity, c.relforcerowsecurity, "
+							  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
+							  "tc.relfrozenxid AS tfrozenxid, "
+							  "tc.relminmxid AS tminmxid, "
+							  "c.relpersistence, c.relispopulated, "
+							  "c.relreplident, c.relpages, am.amname, "
+							  "CASE WHEN c.relkind = 'f' THEN "
+							  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
+							  "ELSE 0 END AS foreignserver, "
+							  "c.reloftype, "
+							  "d.refobjid AS owning_tab, "
+							  "d.refobjsubid AS owning_col, "
+							  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
+							  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
+							  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
+							  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+							  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
+							  "tc.reloptions AS toast_reloptions, "
+							  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
+							  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
+							  "(c.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_class'::regclass "
+							  "AND pip.objsubid = at.attnum)"
+							  "WHERE at.attrelid = c.oid AND ("
+							  "%s IS NOT NULL "
+							  "OR %s IS NOT NULL "
+							  "OR %s IS NOT NULL "
+							  "OR %s IS NOT NULL"
+							  "))"
+							  "AS changed_acl, "
+							  "%s AS ispartition, "
+							  "oj.option->>'INTERVAL' as isinterval, "	/* BUG#6400 */
+							  "oj.compatible_mode AS compatible_mode, "
+							  "oj.option->>'collation' as default_collation, " /* BUG#M478 */
+							  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+							  "tab_partition.partname AS ora_partname, "
+							  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid) AS isorarootpart, "
+							  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.composite is true) AS iscomposite, "
+							  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.automatic is true) AS isautomatic, "
+							  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.subpart_template is not null) AS hastemplate, "
+							  "EXISTS (SELECT 1 FROM pg_ora_part_tables opt WHERE c.oid = opt.partrelid AND opt.interval_expr is not null) AS isorainterval "
+							  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+							  "FROM pg_class c "
+							  "LEFT JOIN pg_depend d ON "
+							  "(c.relkind = '%c' AND "
+							  "d.classid = c.tableoid AND d.objid = c.oid AND "
+							  "d.objsubid = 0 AND "
+							  "d.refclassid = c.tableoid AND d.deptype IN ('a', 'i')) "
+							  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND c.relkind <> '%c') "
+							  "LEFT JOIN pg_am am ON (c.relam = am.oid) "
+							  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0 AND oj.refclassid = 'pg_class'::regclass) "	/* BUG#M0000394 */
+							  "LEFT JOIN pg_init_privs pip ON "
+							  "(c.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_class'::regclass "
+							  "AND pip.objsubid = 0) "
+							  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+							  "LEFT JOIN pg_ora_tab_partitions tab_partition ON (c.oid = tab_partition.part) "
+							  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+							  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c', '%c') "
+							  "%s"	/* ReqID:SRS-CMD-PGDUMP */
+							  "ORDER BY c.oid",
+							  acl_subquery->data,
+							  racl_subquery->data,
+							  initacl_subquery->data,
+							  initracl_subquery->data,
+							  username_subquery,
+							  relhasoids,
+							  RELKIND_SEQUENCE,
+							  attacl_subquery->data,
+							  attracl_subquery->data,
+							  attinitacl_subquery->data,
+							  attinitracl_subquery->data,
+							  ispartition,
+							  RELKIND_SEQUENCE,
+							  RELKIND_PARTITIONED_TABLE,
+							  RELKIND_RELATION, RELKIND_SEQUENCE,
+							  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
+							  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE,
+							  RELKIND_PARTITIONED_TABLE,
+							  temp_query->data);	/* ReqID:SRS-CMD-PGDUMP */
+			else
+				appendPQExpBuffer(query,
+							  "SELECT c.tableoid, c.oid, c.relname, "
+							  "%s AS relacl, %s as rrelacl, "
+							  "%s AS initrelacl, %s as initrrelacl, "
+							  "c.relkind, c.relnamespace, "
+							  "(%s c.relowner) AS rolname, "
+							  "c.relchecks, c.relhastriggers, "
+							  "c.relhasindex, c.relhasrules, %s AS relhasoids, c.relhasrowid, "
+							  "c.relrowsecurity, c.relforcerowsecurity, "
+							  "c.relfrozenxid, c.relminmxid, tc.oid AS toid, "
+							  "tc.relfrozenxid AS tfrozenxid, "
+							  "tc.relminmxid AS tminmxid, "
+							  "c.relpersistence, c.relispopulated, "
+							  "c.relreplident, c.relpages, am.amname, "
+							  "CASE WHEN c.relkind = 'f' THEN "
+							  "(SELECT ftserver FROM pg_catalog.pg_foreign_table WHERE ftrelid = c.oid) "
+							  "ELSE 0 END AS foreignserver, "
+							  "c.reloftype, "
+							  "d.refobjid AS owning_tab, "
+							  "d.refobjsubid AS owning_col, "
+							  "(SELECT spcname FROM pg_tablespace t WHERE t.oid = c.reltablespace) AS reltablespace, "
+							  "array_remove(array_remove(array_remove(c.reloptions,'check_option=local'),'check_option=cascaded'), 'read_only=true') AS reloptions, "	/* OA-REQ-2248 */
+							  "CASE WHEN 'check_option=local' = ANY (c.reloptions) THEN 'LOCAL'::text "
+							  "WHEN 'check_option=cascaded' = ANY (c.reloptions) THEN 'CASCADED'::text ELSE NULL END AS checkoption, "
+							  "CASE WHEN 'read_only=true' = ANY (c.reloptions) THEN 'true'::text ELSE NULL END AS readonly, "	/* OA-REQ-2248 */
+							  "tc.reloptions AS toast_reloptions, "
+							  "c.relkind = '%c' AND EXISTS (SELECT 1 FROM pg_depend WHERE classid = 'pg_class'::regclass AND objid = c.oid AND objsubid = 0 AND refclassid = 'pg_class'::regclass AND deptype = 'i') AS is_identity_sequence, "
+							  "EXISTS (SELECT 1 FROM pg_attribute at LEFT JOIN pg_init_privs pip ON "
+							  "(c.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_class'::regclass "
+							  "AND pip.objsubid = at.attnum)"
+							  "WHERE at.attrelid = c.oid AND ("
+							  "%s IS NOT NULL "
+							  "OR %s IS NOT NULL "
+							  "OR %s IS NOT NULL "
+							  "OR %s IS NOT NULL"
+							  "))"
+							  "AS changed_acl, "
+							  "%s AS ispartition, "
+							  "oj.option->>'INTERVAL' as isinterval, "	/* BUG#6400 */
+							  "oj.compatible_mode AS compatible_mode, "
+							  "oj.option->>'collation' as default_collation, " /* BUG#M478 */
+							  /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+							  "NULL AS ora_partname, "
+							  "false AS isorarootpart, "
+							  "false AS iscomposite, "
+							  "false AS isautomatic, "
+							  "false AS hastemplate, "
+							  "false AS isorainterval "
+							  /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+							  "FROM pg_class c "
+							  "LEFT JOIN pg_depend d ON "
+							  "(c.relkind = '%c' AND "
+							  "d.classid = c.tableoid AND d.objid = c.oid AND "
+							  "d.objsubid = 0 AND "
+							  "d.refclassid = c.tableoid AND d.deptype IN ('a', 'i')) "
+							  "LEFT JOIN pg_class tc ON (c.reltoastrelid = tc.oid AND c.relkind <> '%c') "
+							  "LEFT JOIN pg_am am ON (c.relam = am.oid) "
+							  "LEFT JOIN pg_object oj ON (c.oid = oj.obj_oid AND oj.objsubid = 0 AND oj.refclassid = 'pg_class'::regclass) "	/* BUG#M0000394 */
+							  "LEFT JOIN pg_init_privs pip ON "
+							  "(c.oid = pip.objoid "
+							  "AND pip.classoid = 'pg_class'::regclass "
+							  "AND pip.objsubid = 0) "
+							  "WHERE c.relkind in ('%c', '%c', '%c', '%c', '%c', '%c', '%c') "
+							  "%s"	/* ReqID:SRS-CMD-PGDUMP */
+							  "ORDER BY c.oid",
+							  acl_subquery->data,
+							  racl_subquery->data,
+							  initacl_subquery->data,
+							  initracl_subquery->data,
+							  username_subquery,
+							  relhasoids,
+							  RELKIND_SEQUENCE,
+							  attacl_subquery->data,
+							  attracl_subquery->data,
+							  attinitacl_subquery->data,
+							  attinitracl_subquery->data,
+							  ispartition,
+							  RELKIND_SEQUENCE,
+							  RELKIND_PARTITIONED_TABLE,
+							  RELKIND_RELATION, RELKIND_SEQUENCE,
+							  RELKIND_VIEW, RELKIND_COMPOSITE_TYPE,
+							  RELKIND_MATVIEW, RELKIND_FOREIGN_TABLE,
+							  RELKIND_PARTITIONED_TABLE,
+							  temp_query->data);	/* ReqID:SRS-CMD-PGDUMP */
+			/* End - bug#8256 */
+		}
 		else		/* End - BUG#M229 */
 			appendPQExpBuffer(query,
 						  "SELECT c.tableoid, c.oid, c.relname, "
