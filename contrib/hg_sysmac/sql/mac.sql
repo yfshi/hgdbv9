@@ -1,4 +1,5 @@
 ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+
 SELECT pg_reload_conf();
 SELECT pg_sleep(1);
 
@@ -248,6 +249,79 @@ SELECT hg_security.set_user_seclabel('usr1'::regrole, 's1');
 grant syssso_role to usr2;
 \c - usr2
 SELECT hg_security.set_user_seclabel('usr1'::regrole, 's2');
+SELECT hg_security.get_user_seclabel('usr1'::regrole);
+SELECT hg_security.compare_seclabel('s1:c0.c1023', 's0:c0.c1023');
+
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+\c - :boot_user
+CREATE USER u1 with password 'Hello@123';
+CREATE USER u2 with password 'Hello@123';
+CREATE USER u3 with password 'Hello@123';
+SET ROLE u1;
+CREATE TABLE tb1(id int);
+GRANT ALL ON tb1 TO u1,u2,u3;
+\c - usr2;
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's3');
+SELECT hg_security.apply_row_policy('tb1'::regclass, 'apply');
+SELECT hg_security.apply_row_policy('tb1'::regclass, 'enable');
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
+\c - u1;
+INSERT INTO tb1 VALUES (1);
+\c - u2;
+INSERT INTO tb1 VALUES (2);
+\c - u3;
+INSERT INTO tb1 VALUES (3);
+\c - u3;
+SELECT __hg_seclabel__,* FROM tb1;
+\c - u2;
+SELECT __hg_seclabel__,* FROM tb1;
+\c - u1;
+SELECT __hg_seclabel__,* FROM tb1;
+\c - u3;
+UPDATE tb1 SET id = 4 WHERE id = 1;
+SELECT __hg_seclabel__,* FROM tb1;
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT __hg_seclabel__,* FROM tb1;
+DELETE FROM tb1 WHERE id = 4;
+SELECT __hg_seclabel__,* FROM tb1;
+
+\c - usr2
+ALTER SYSTEM SET hg_sysmac.global_row_level TO OFF;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+\c - u1;
+TRUNCATE TABLE tb1;
+INSERT INTO tb1 VALUES (1);
+RESET ROLE;
+\c - u2;
+INSERT INTO tb1 VALUES (2);
+RESET ROLE;
+\c - u3;
+INSERT INTO tb1 VALUES (3);
+\c - u3;
+SELECT __hg_seclabel__,* FROM tb1;
+\c - u2;
+SELECT __hg_seclabel__,* FROM tb1;
+\c - u1;
+SELECT __hg_seclabel__,* FROM tb1;
+\c - u1;
+UPDATE tb1 SET id = 4 WHERE id = 1;
+SELECT __hg_seclabel__,* FROM tb1;
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT __hg_seclabel__,* FROM tb1;
+DELETE FROM tb1 WHERE id = 4;
+SELECT __hg_seclabel__,* FROM tb1;
+DROP TABLE tb1;
+\c - :boot_user
+DROP USER u1,u2,u3;
+
 -- End #BUG8275 --
 
 \c - syssso
