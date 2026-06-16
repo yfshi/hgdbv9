@@ -3711,6 +3711,8 @@ my_system_gmt_sec(struct pg_tm *tm, long *my_timezone, bool *in_dst_time_gap)
 
 	current_timezone= my_time_zone;
 	l_time = localtime(&tmp);
+	if (l_time == NULL)
+		return 0;
 
 	for (loop=0;
 		loop < 2 &&
@@ -3718,20 +3720,23 @@ my_system_gmt_sec(struct pg_tm *tm, long *my_timezone, bool *in_dst_time_gap)
 		t->tm_min != (uint32) l_time->tm_min ||
 		t->tm_sec != (uint32) l_time->tm_sec);
 		loop++)
-	{					/* One check should be enough ? */
+	{ /* One check should be enough ? */
 		/* Get difference in days */
-		int days= t->tm_mday - l_time->tm_mday;
+		int days = t->tm_mday - l_time->tm_mday;
 		if (days < -1)
-			days= 1;					/* Month has wrapped */
+			days = 1; /* Month has wrapped */
 		else if (days > 1)
-			days= -1;
-		diff=(3600L*(long) (days*24+((int) t->tm_hour - (int) l_time->tm_hour)) +
-				(long) (60*((int) t->tm_min - (int) l_time->tm_min)) +
-				(long) ((int) t->tm_sec - (int) l_time->tm_sec));
-		current_timezone+= diff+3600;		/* Compensate for -3600 above */
-		tmp+= (time_t) diff;
-		l_time = localtime(&tmp);
+			days = -1;
 
+		diff = (3600L * (long)(days * 24 + ((int)t->tm_hour - (int)l_time->tm_hour)) +
+				(long)(60 * ((int)t->tm_min - (int)l_time->tm_min)) +
+				(long)((int)t->tm_sec - (int)l_time->tm_sec));
+		current_timezone += diff + 3600; /* Compensate for -3600 above */
+		tmp += (time_t)diff;
+
+		l_time = localtime(&tmp);
+		if (l_time == NULL)
+			return 0;
 	}
 	/*
 	Fix that if we are in the non existing daylight saving time hour
