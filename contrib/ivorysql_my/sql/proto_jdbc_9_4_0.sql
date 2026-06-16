@@ -87,6 +87,10 @@ ALTER USER proto_user WITH NOSUPERUSER;
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcFetchTest2 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 -- End : OA-2043
 
+-- Begin : OA-2499
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcMultiSQLTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+-- End : OA-2499
+
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

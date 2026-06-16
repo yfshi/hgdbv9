@@ -124,10 +124,14 @@ FROM (
 			c.relname,
 			c.relnamespace,
 			c.relowner,
-			(aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner)))).grantee,
-			(aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner)))).privilege_type AS prtype,
-			(aclexplode(COALESCE(c.relacl, acldefault('r', c.relowner)))).is_grantable AS grantable
+			acl.grantee,
+    		acl.privilege_type AS prtype,
+    		acl.is_grantable AS grantable
 		FROM pg_class c
+		JOIN LATERAL
+			aclexplode(
+				COALESCE(c.relacl, acldefault('r', c.relowner))
+			) acl
 		WHERE c.relkind IN ('r', 'v', 'f', 'p')
 	) pr_c
 	JOIN pg_attribute a ON a.attrelid = pr_c.oid AND a.attnum > 0 AND NOT a.attisdropped
@@ -147,11 +151,15 @@ FROM (
 		SELECT
 			a.attrelid,
 			a.attname,
-			(aclexplode(COALESCE(a.attacl, acldefault('c', c.relowner)))).grantee,
-			(aclexplode(COALESCE(a.attacl, acldefault('c', c.relowner)))).privilege_type AS prtype,
-			(aclexplode(COALESCE(a.attacl, acldefault('c', c.relowner)))).is_grantable AS grantable
+			acl.grantee,
+    		acl.privilege_type AS prtype,
+    		acl.is_grantable AS grantable
 		FROM pg_attribute a
 		JOIN pg_class c ON a.attrelid = c.oid
+		JOIN LATERAL
+			aclexplode(
+				COALESCE(a.attacl, acldefault('c', c.relowner))
+			) acl
 		WHERE a.attnum > 0 AND NOT a.attisdropped
 	) pr_a
 	JOIN pg_class c ON pr_a.attrelid = c.oid AND c.relkind IN ('r', 'v', 'f', 'p')
@@ -170,130 +178,120 @@ WHERE x.prtype IN ('INSERT', 'SELECT', 'UPDATE', 'REFERENCES')
 	AND (pg_has_role(grantee.oid, 'USAGE') OR grantee.rolname = 'PUBLIC');
 
 GRANT SELECT ON mys_information_schema.showcolumn_privileges TO PUBLIC;
+
 --
 -- View: mys_information_schema.showcolumns
 --
 CREATE OR REPLACE VIEW mys_information_schema.showcolumns AS
 SELECT
-	'def'::varchar(512) AS "TABLE_CATALOG",                                    -- Name of the database catalog (def)
-	nc.nspname::varchar(64) AS "TABLE_SCHEMA",                                 -- Name of the schema containing the table
-	c.relname::varchar(64) AS "TABLE_NAME",                                    -- Table name
-	a.attname::varchar(64) AS "COLUMN_NAME",                                   -- Column name
-	CAST(a.attnum AS unsigned) AS "ORDINAL_POSITION",                          -- Position of column in table
-	pg_get_expr(ad.adbin, ad.adrelid)::longtext AS "COLUMN_DEFAULT",           -- Column default value, NULL if explicitly DEFAULT NULL or no default defined
-	CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END::varchar(3) AS "IS_NULLABLE",  -- Whether column allows NULL
-
-	-- DATA_TYPE logic compatible with MySQL conventions
+	c.relnamespace::regnamespace::varchar(64) AS "TABLE_SCHEMA",
+	c.relname::varchar(64) AS "TABLE_NAME",
+	a.attname::varchar(64) AS "COLUMN_NAME",
+	CAST(a.attnum AS unsigned) AS "ORDINAL_POSITION",
+	(
+		SELECT pg_get_expr(adbin, adrelid)::longtext
+			FROM pg_attrdef
+			WHERE
+				a.attrelid = adrelid AND
+				a.attnum = adnum
+	) AS "COLUMN_DEFAULT",
 	CASE
-		WHEN t.typtype = 'd' THEN
-			format_type(t.typbasetype, NULL)
+		WHEN a.attnotnull THEN
+			'NO'
 		ELSE
-			format_type(a.atttypid, NULL)
-	END::varchar(64) AS "DATA_TYPE",
-
-	-- Max character length for character types
-	CAST(information_schema._pg_char_max_length(
-		information_schema._pg_truetypid(a.*, t.*),
-		information_schema._pg_truetypmod(a.*, t.*)
-	) AS unsigned) AS "CHARACTER_MAXIMUM_LENGTH",
-
-	-- Max byte length
-	CAST(information_schema._pg_char_octet_length(
-		information_schema._pg_truetypid(a.*, t.*),
-		information_schema._pg_truetypmod(a.*, t.*)
-	) AS unsigned) AS "CHARACTER_OCTET_LENGTH",
-
-	-- Precision for numeric types
-	CAST(information_schema._pg_numeric_precision(
-		information_schema._pg_truetypid(a.*, t.*),
-		information_schema._pg_truetypmod(a.*, t.*)
-	) AS unsigned) AS "NUMERIC_PRECISION",
-
-	-- Scale for numeric types
-	CAST(information_schema._pg_numeric_scale(
-		information_schema._pg_truetypid(a.*, t.*),
-		information_schema._pg_truetypmod(a.*, t.*)
-		) AS unsigned) AS "NUMERIC_SCALE",
-
-	-- Precision for datetime types
-	CAST(information_schema._pg_datetime_precision(
-		information_schema._pg_truetypid(a.*, t.*),
-		information_schema._pg_truetypmod(a.*, t.*)
-		) AS unsigned) AS "DATETIME_PRECISION",
-
-	-- Character set name
-	pg_catalog.getdatabaseencoding()::varchar(32) AS "CHARACTER_SET_NAME",
+			'YES'
+	END::varchar(3) AS "IS_NULLABLE",
 
 	-- Collation name
-	CASE WHEN co.collname IS NOT NULL THEN co.collname ELSE NULL END::varchar(32) AS "COLLATION_NAME",
+	CASE
+		WHEN a.attcollation <> 0 THEN
+			a.attcollation::regcollation
+		ELSE
+			NULL
+	END::varchar(32) AS "COLLATION_NAME",
 
 	-- COLUMN_TYPE: complete type definition
 	format_type(a.atttypid, a.atttypmod)::longtext AS "COLUMN_TYPE",
 
 	-- COLUMN_KEY: PRI, UNI, MUL
 	CASE
-		WHEN pk.conname IS NOT NULL THEN 'PRI'
-		WHEN uq.conname IS NOT NULL THEN 'UNI'
-		WHEN idx.indexrelid IS NOT NULL AND idx.indisunique THEN 'UNI' /* BUG#Z6767 */
-		WHEN idx.indexrelid IS NOT NULL THEN 'MUL'
-		ELSE NULL
+		WHEN (
+			SELECT count(1)
+			FROM pg_constraint
+			WHERE
+				contype  = 'p' AND
+				conrelid = a.attrelid AND
+				a.attnum = ANY(conkey)
+		) > 0 THEN 'PRI'
+		WHEN (
+			SELECT count(1)
+			FROM pg_constraint
+			WHERE
+				contype  = 'u' AND
+				conrelid = a.attrelid AND
+				a.attnum = ANY(conkey)
+		) > 0 THEN 'UNI'
+		ELSE
+		(
+			SELECT
+				CASE
+					WHEN indexrelid IS NOT NULL THEN
+						CASE
+							WHEN indisunique THEN
+								'UNI'
+							ELSE
+								'MUL'
+						END
+					ELSE
+						NULL
+				END				
+			FROM pg_index
+			WHERE indrelid = a.attrelid AND a.attnum = any(indkey)
+			LIMIT 1
+		)
 	END::varchar(3) AS "COLUMN_KEY",
 
 	-- EXTRA: auto_increment, generated, etc.
 	trim(
 		both ' ' from (concat(
-		CASE WHEN a.attidentity IN ('a','d','m') THEN 'auto_increment ' ELSE '' END,
-		CASE WHEN a.attgenerated <> '' THEN 'STORED GENERATED ' ELSE '' END)
+			CASE
+				WHEN a.attidentity IN ('a','d','m') THEN
+					'auto_increment '
+				ELSE
+					'' 
+			END,
+			CASE
+				WHEN a.attgenerated <> '' THEN 
+					'STORED GENERATED '
+				ELSE
+					''
+			END)
 		)
-		)::varchar(30) AS "EXTRA",
+	)::varchar(30) AS "EXTRA",
 
 	-- PRIVILEGES: user privileges on this column
-	(SELECT string_agg("PRIVILEGE_TYPE", ',' ORDER BY "PRIVILEGE_TYPE")
+	(
+		SELECT string_agg("PRIVILEGE_TYPE", ',' ORDER BY "PRIVILEGE_TYPE")
 		FROM mys_information_schema.showcolumn_privileges cp
-		WHERE cp."TABLE_SCHEMA" = nc.nspname
-		AND cp."TABLE_NAME" = c.relname
-		AND cp."COLUMN_NAME" = a.attname
-		AND cp."GRANTEE" = concat(quote_literal(current_user), '@', quote_literal('localhost'))
+		WHERE
+			cp."TABLE_SCHEMA" = c.relnamespace::regnamespace::varchar(64) AND
+			cp."TABLE_NAME" = c.relname AND
+			cp."COLUMN_NAME" = a.attname AND
+			cp."GRANTEE" = concat(quote_literal(current_user), '@', quote_literal('localhost'))
 	)::varchar(80) AS "PRIVILEGES",
 
 	-- COLUMN_COMMENT: column-level comment
-	col_description(a.attrelid, a.attnum)::varchar(1024) AS "COLUMN_COMMENT",
-
-	-- GENERATION_EXPRESSION: if generated column
-	CASE WHEN a.attgenerated <> '' THEN pg_get_expr(ad.adbin, ad.adrelid) ELSE NULL END::longtext AS "GENERATION_EXPRESSION"
+	col_description(a.attrelid, a.attnum)::varchar(1024) AS "COLUMN_COMMENT"
 
 FROM pg_attribute a
-JOIN pg_class c ON a.attrelid = c.oid
-JOIN pg_namespace nc ON c.relnamespace = nc.oid
-JOIN pg_type t ON a.atttypid = t.oid
-LEFT JOIN pg_type bt ON t.typtype='d' AND t.typbasetype=bt.oid
-LEFT JOIN pg_namespace nbt ON bt.typnamespace=nbt.oid
-LEFT JOIN pg_namespace nt ON t.typnamespace=nt.oid
-LEFT JOIN pg_attrdef ad ON a.attrelid=ad.adrelid AND a.attnum=ad.adnum
-LEFT JOIN pg_collation co ON a.attcollation=co.oid AND (co.collname<>'default' OR co.collnamespace<>(SELECT oid FROM pg_namespace WHERE nspname='pg_catalog'))
--- PRIMARY KEY info
-LEFT JOIN (
-	SELECT conrelid, unnest(conkey) AS colnum, conname
-	FROM pg_constraint WHERE contype='p'
-) pk ON pk.conrelid=c.oid AND pk.colnum=a.attnum
--- UNIQUE KEY info
-LEFT JOIN (
-	SELECT conrelid, unnest(conkey) AS colnum, conname
-	FROM pg_constraint WHERE contype='u'
-) uq ON uq.conrelid=c.oid AND uq.colnum=a.attnum
--- MUL index info
-LEFT JOIN LATERAL (
-	SELECT i.indexrelid, i.indisunique /* BUG#Z6767 */
-	FROM pg_index i
-	WHERE i.indrelid=c.oid AND a.attnum = any(i.indkey) /* BUG#Z6281*/
-	LIMIT 1
-) idx ON true
-
-WHERE a.attnum > 0
-	AND NOT a.attisdropped
-	AND c.relkind IN ('r','p','v','f')  -- Only regular, partitioned, view, foreign tables
-	AND NOT pg_is_other_temp_schema(nc.oid)
-	AND (pg_has_role(c.relowner, 'USAGE') OR has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES'));
+JOIN pg_class c ON 	a.attrelid = c.oid AND
+					c.relkind IN ('r','p','v','f') AND
+					(pg_has_role(c.relowner, 'USAGE') OR
+					 has_column_privilege(c.oid, a.attnum, 'SELECT, INSERT, UPDATE, REFERENCES')) AND
+					NOT pg_is_other_temp_schema(c.relnamespace)
+WHERE
+	a.attnum > 0 AND
+	NOT a.attisdropped;
 
 GRANT SELECT ON mys_information_schema.showcolumns TO PUBLIC;
 -- End bug#Z5956
@@ -554,13 +552,17 @@ BEGIN
 
 	IF db_name IS NULL THEN
 		RETURN QUERY SELECT
-			COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, EXTRA, PRIVILEGES, COLUMN_COMMENT
+			COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, 
+			IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, 
+			EXTRA, PRIVILEGES, COLUMN_COMMENT
 		FROM mys_information_schema.showcolumns
 		WHERE table_name = tb_name
 		ORDER BY ORDINAL_POSITION;
 	ELSE
 		RETURN QUERY SELECT
-			COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, EXTRA, PRIVILEGES, COLUMN_COMMENT
+			COLUMN_NAME, COLUMN_TYPE, COLLATION_NAME, 
+			IS_NULLABLE, COLUMN_KEY, COLUMN_DEFAULT, 
+			EXTRA, PRIVILEGES, COLUMN_COMMENT
 		FROM mys_information_schema.showcolumns
 		WHERE table_name = tb_name AND
 			  table_schema = db_name
