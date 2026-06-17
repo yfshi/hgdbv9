@@ -4510,10 +4510,80 @@ END;
 set serveroutput on
 CALL "RPT_REPORT_HOME_PKG".doReportCalculate(1);
 DROP PACKAGE "RPT_REPORT_HOME_PKG";
-set serveroutput off
 /* End - OA-REQ-2466 */
 
+/* Begin - BUG#Z8399 */
+CREATE TABLE te ( emp_id NUMBER PRIMARY KEY, emp_name VARCHAR2(50), salary NUMBER );
+INSERT INTO te VALUES (101, 'sam', 8000);
+INSERT INTO te VALUES (102, 'amy', 9500);
+CREATE OR REPLACE SYNONYM emp_syn FOR te;
+
+CREATE OR REPLACE PACKAGE pkg_syn AS
+  TYPE emp_wrapper IS RECORD (
+  row_data emp_syn%ROWTYPE,
+  note VARCHAR2(100));
+  FUNCTION get_te_wrapper(p_id NUMBER) RETURN emp_wrapper;
+END pkg_syn;
+/
+
+CREATE OR REPLACE PACKAGE BODY pkg_syn AS
+  FUNCTION get_te_wrapper(p_id NUMBER) RETURN emp_wrapper IS
+    v_result emp_wrapper;
+  BEGIN
+    SELECT emp_id,emp_name,salary INTO v_result.row_data.emp_id,v_result.row_data.emp_name,
+    v_result.row_data.salary FROM emp_syn WHERE emp_id = p_id;
+    v_result.note := 'Successfully loaded';
+    RETURN v_result;
+  END get_te_wrapper;
+END pkg_syn;
+/
+
+DECLARE
+  v_wrap pkg_syn.emp_wrapper;
+BEGIN
+  v_wrap := pkg_syn.get_te_wrapper(102);
+  DBMS_OUTPUT.PUT('Name: '  || v_wrap.row_data.emp_name);
+  DBMS_OUTPUT.PUT_LINE(', Note: ' || v_wrap.note);
+END;
+/
+DROP PACKAGE pkg_syn;
+
+CREATE OR REPLACE PACKAGE pkg_syn AS
+  TYPE emp_wrapper IS RECORD (
+  row_data emp_syn%ROWTYPE,
+  note VARCHAR2(100));
+  TYPE emp_wrapper2 IS RECORD (w emp_wrapper);
+  FUNCTION get_te_wrapper(p_id NUMBER) RETURN emp_wrapper2;
+END pkg_syn;
+/
+
+CREATE OR REPLACE PACKAGE BODY pkg_syn AS
+  FUNCTION get_te_wrapper(p_id NUMBER) RETURN emp_wrapper2 IS
+    v_result emp_wrapper2;
+  BEGIN
+    SELECT emp_id,emp_name,salary INTO v_result.w.row_data.emp_id,v_result.w.row_data.emp_name,
+    v_result.w.row_data.salary FROM emp_syn WHERE emp_id = p_id;
+    v_result.w.note := 'Successfully loaded';
+    RETURN v_result;
+  END get_te_wrapper;
+END pkg_syn;
+/
+
+DECLARE
+  v_wrap pkg_syn.emp_wrapper2;
+BEGIN
+  v_wrap := pkg_syn.get_te_wrapper(102);
+  DBMS_OUTPUT.PUT('Name: '  || v_wrap.w.row_data.emp_name);
+  DBMS_OUTPUT.PUT_LINE(', Note: ' || v_wrap.w.note);
+END;
+/
+
+DROP PACKAGE pkg_syn;
+DROP TABLE te;
+/* End - BUG#Z8399 */
+
 reset ivorysql.identifier_case_switch;
+set serveroutput off
 
 --clean table
 drop table mds;

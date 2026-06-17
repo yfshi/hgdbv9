@@ -190,8 +190,10 @@ plisql_build_row_for_ora_record(const char *refname, int lineno,
 				((PLiSQL_var *) var)->notnull = argitem->notnull;
 				break;
 			case PLISQL_DTYPE_REC:
-				typoid = ROWPOINTEROID;
-				typmod = -1;
+				/* Begin - BUG#Z8399 */
+				typoid = ((PLiSQL_rec *) var)->datatype->typoid;
+				typmod = ((PLiSQL_rec *) var)->datatype->atttypmod;
+				/* End - BUG#Z8399 */
 				break;
 			case PLISQL_DTYPE_ROW:
 				{
