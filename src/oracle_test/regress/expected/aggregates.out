@@ -2855,3 +2855,220 @@ drop table agg_hash_2;
 drop table agg_hash_3;
 drop table agg_hash_4;
 reset ivorysql.enable_emptystring_to_null;
+--bug#Z8188
+--group by null like oracle
+-- test group by NULL order by NULL
+create table test_id(id integer,name varchar2(256));
+insert into test_id values(1,'one');
+insert into test_id values(2,'one');
+insert into test_id values(3,'two');
+insert into test_id values(4,'two');
+insert into test_id values(1,'three');
+insert into test_id values(2,'four');
+insert into test_id values(3,'five');
+insert into test_id values(4,'six');
+insert into test_id(id) values(2);
+insert into test_id(name) values('four');
+insert into test_id(id) values(35);
+insert into test_id(name) values('max');
+--error
+select id from test_id group by NULL;
+ERROR:  column "test_id.id" must appear in the GROUP BY clause or be used in an aggregate function
+LINE 1: select id from test_id group by NULL;
+               ^
+--all const
+--ok
+select ALL + 1 from test_id group by NULL;
+ ?column? 
+----------
+        1
+(1 row)
+
+--oracle not support distinct,but we success
+select ALL + 1 from test_id group by distinct NULL;
+ ?column? 
+----------
+        1
+(1 row)
+
+create or replace function test_f(id integer) return integer is
+begin
+  return id;
+end;
+/
+--error
+select test_f(id) from test_id group by NULL;
+ERROR:  column "test_id.id" must appear in the GROUP BY clause or be used in an aggregate function
+LINE 1: select test_f(id) from test_id group by NULL;
+                      ^
+--23
+select test_f(23) from test_id group by NULL;
+ test_f 
+--------
+     23
+(1 row)
+
+--12
+select count(*) from test_id group by NULL;
+ count 
+-------
+    12
+(1 row)
+
+---group by id,NULL or NULL,id;
+--6 rows
+select id,count(*) from test_id group by id order by id;
+ id | count 
+----+-------
+  1 |     2
+  2 |     3
+  3 |     2
+  4 |     2
+ 35 |     1
+    |     2
+(6 rows)
+
+--6 rows
+select id,count(*) from test_id group by id,NULL order by id;
+ id | count 
+----+-------
+  1 |     2
+  2 |     3
+  3 |     2
+  4 |     2
+ 35 |     1
+    |     2
+(6 rows)
+
+--6 rows
+select id,count(*) from test_id group by NULL,id order by id;
+ id | count 
+----+-------
+  1 |     2
+  2 |     3
+  3 |     2
+  4 |     2
+ 35 |     1
+    |     2
+(6 rows)
+
+--12
+select count(*) from test_id group by NULL,NULL,NULL;
+ count 
+-------
+    12
+(1 row)
+
+--6 rows
+select count(*) as id from test_id group by GROUPING SETS(id), NULL,NULL,NULL order by
+id;
+ id 
+----
+  1
+  2
+  2
+  2
+  2
+  3
+(6 rows)
+
+--6 rows
+select count(*) as id from test_id group by GROUPING SETS(id) order by id;
+ id 
+----
+  1
+  2
+  2
+  2
+  2
+  3
+(6 rows)
+
+---test order by
+--12
+select count(*) from test_id order by NULL;
+ count 
+-------
+    12
+(1 row)
+
+--12 rows
+select * from test_id order by NULL,id,name;
+ id | name  
+----+-------
+  1 | one
+  1 | three
+  2 | four
+  2 | one
+  2 | 
+  3 | five
+  3 | two
+  4 | six
+  4 | two
+ 35 | 
+    | four
+    | max
+(12 rows)
+
+-- 12
+select count(*) as id from test_id group by GROUPING SETS(NULL);
+ id 
+----
+ 12
+(1 row)
+
+--7 rows
+select count(*) as id from test_id group by GROUPING SETS(id,NULL) order by id;
+ id 
+----
+  1
+  2
+  2
+  2
+  2
+  3
+ 12
+(7 rows)
+
+--13 rows
+select count(*) as id from test_id group by GROUPING SETS(id,NULL,(id,NULL)) order by id;
+ id 
+----
+  1
+  1
+  2
+  2
+  2
+  2
+  2
+  2
+  2
+  2
+  3
+  3
+ 12
+(13 rows)
+
+--14 rows
+select count(*) as id from test_id group by GROUPING SETS(id,NULL,(NULL),(id,NULL)) order by id;
+ id 
+----
+  1
+  1
+  2
+  2
+  2
+  2
+  2
+  2
+  2
+  2
+  3
+  3
+ 12
+ 12
+(14 rows)
+
+--clean data
+drop function test_f;
+drop table test_id;
