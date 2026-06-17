@@ -34,7 +34,14 @@
 #define MYSQL_STMT_NAME_FMT                 "mysql_stmt_%d"
 #define MYSQL_PORTAL_NAME_FMT               "mysql_portal_%d"
 
+/* Begin - bug#m8406 */
+PG_FUNCTION_INFO_V1(row_count);
+/* End - bug#m8406 */
+
 static int statement_id = 0;
+/* Begin - bug#m8406 */
+static int64 mys_row_count = -1;
+/* End - bug#m8406 */
 
 static void
 send_err_packet(mysql_err_packet_t *err_packet)
@@ -221,6 +228,31 @@ send_com_stmt_prepare_ok_packet(int statementId, int columns, int params)
     DestroyStringInfo(buf);
 }
 
+/* Begin - bug#m8406 */
+static void
+update_row_count(const QueryCompletion *qc)
+{
+    CommandTag tag = qc->commandTag;
+    int64 nprocessed = (int64)qc->nprocessed;
+
+    if (tag == CMDTAG_SELECT)
+    {
+        mys_row_count = -1;
+    }
+    else if (tag == CMDTAG_CREATE_TABLE_AS)
+    {
+        mys_row_count = nprocessed;
+    }
+    else if (command_tag_display_rowcount(tag))
+    {
+        mys_row_count = nprocessed;
+    }
+    else
+        mys_row_count = 0;
+}
+
+/* End - bug#m8406 */
+
 void
 mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_output)
 {
@@ -230,7 +262,11 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
     CommandTag	tag = qc->commandTag;
 
     last_insert_id = DatumGetUInt64(DirectFunctionCall1(mys_get_lastval, (Datum) 0));
-    
+
+    /* Begin - bug#m8406 */
+    update_row_count(qc);
+    /* End - bug#m8406 */
+
     if (current_packet_type == COM_STMT_CLOSE)
     {
         // no response packet is sent to the client
@@ -1348,3 +1384,20 @@ has_client_load_local_capabilities(void)
 	return has_client_capabilities(CLIENT_LOCAL_FILES);
 }
 /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+
+/* Begin - bug#m8406 */
+/*
+ * row_count()
+ *	MySQL-compatible affected-row count for the previous top-level command.
+ */
+Datum
+row_count(PG_FUNCTION_ARGS)
+{
+    if (MyProcPort && !IsA(MyProcPort->protocol_config, ProtocolMysql))
+        ereport(ERROR,
+                (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                 errmsg("ROW_COUNT() is only supported in MySQL protocol")));
+
+    PG_RETURN_INT64(mys_row_count);
+}
+/* End - bug#m8406 */

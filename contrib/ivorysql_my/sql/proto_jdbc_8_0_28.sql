@@ -73,8 +73,11 @@ ALTER USER proto_user WITH NOSUPERUSER;
 -- very long sql
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLInsertLongData 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 
--- test DatabaseMetaData.getColumns
+-- test _binary introducer
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcTestIntroducer 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+
+-- test row_count
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcRowCountTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 
 -- TIME/DATETIME/TIMESTAMP fractional seconds
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcTimeDecimalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
