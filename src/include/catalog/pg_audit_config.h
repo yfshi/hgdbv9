@@ -53,6 +53,8 @@ DECLARE_UNIQUE_INDEX(pg_audit_config_confid_index, 6230, on pg_audit_config usin
 #define AuditConfigconfIdIndexId 6230
 DECLARE_UNIQUE_INDEX(pg_audit_config_actionname_objoid_classoid_type_index, 6231, on pg_audit_config using btree(actionname name_ops, objoid name_ops, classoid oid_ops, audittype char_ops));
 #define AuditConfigActionnameAudittypeIndexId 6231
+DECLARE_UNIQUE_INDEX(pg_audit_config_enable_index, 6238, on pg_audit_config using btree(enable bool_ops, confid oid_ops));
+#define AuditEnableIdIndexId 6238
 
 #endif							/* PG_AUDIT_CONFIG_H */
 

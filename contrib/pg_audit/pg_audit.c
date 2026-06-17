@@ -150,6 +150,7 @@
 #include "se_features_interface.h"
 #include "catalog/pg_authid.h"
 #include "libpq/ifaddr.h"
+#include "access/heapam.h"
 
 #ifdef PG_MODULE_MAGIC
 PG_MODULE_MAGIC;
@@ -194,6 +195,8 @@ AduitSwitchGUC audit_GUC = {0};
 int audit_spacelimit = 10240; //G
 char *audit_alarmemail = NULL;
 char *audit_space_alarm = NULL;
+
+bool test_poc = true;
 
 /*
  * Role with sysdba permissions
@@ -498,6 +501,7 @@ static bool audit_is_in_transaction(void);  // OA:2290
 static bool audit_insert_user_or_group(Relation audit_log, AuditEvent *auditevent, char *alter_action);
 static bool audit_drop_user_or_group(Relation audit_log, AuditEvent *auditevent, char *drop_action);
 static void audit_free_auditlist(void);  //BUG - Z7959
+static bool audit_config_have_data(void);
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -2074,9 +2078,7 @@ audit_write_record_system(AuditEvent *event)
  */
 static void 
 audit_CommandStart(void)
-{	
-	memset(audit_msg, '\0', MAXPGPATH);
-	
+{
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return;
 
@@ -2086,12 +2088,17 @@ audit_CommandStart(void)
 	/* SQL start execution time */
 	operstarttime = GetCurrentTimestamp();
 
+	if (test_poc)
+		return;
+
+	memset(audit_msg, '\0', MAXPGPATH);
+
 }
 
 static void 
 audit_WriteRecord(void)
 {
-	if (audit_GUC.audit_enable != AUDIT_ON)
+	if (audit_GUC.audit_enable != AUDIT_ON || test_poc)
 		return;
 
 	/* Read and send from auditlist */
@@ -2184,7 +2191,7 @@ audit_ExecutorStart_hook(QueryDesc *queryDesc, int eflags)
 
 	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
 	{
-		if (!internalStatement)
+		if (!internalStatement && audit_config_have_data())
 		{
 			char *actionname;
 			stackItem = stack_push();
@@ -3325,74 +3332,75 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 
 	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
 	{
-		audit_get_actionname_from_tree(pstmt->utilityStmt, event);
-
-		if (!internalStatement
-				&& (!IsAbortedTransactionBlockState()|| (IsAbortedTransactionBlockState()
-				&& (pg_strcasecmp(event,COMMIT_S)== 0 || pg_strcasecmp(event,ROLLBACK_S)== 0))))
+		if (!internalStatement && audit_config_have_data())
 		{
-			stackItem = stack_push();
+			audit_get_actionname_from_tree(pstmt->utilityStmt, event);
 
-			stackItem->auditEvent->useroid = GetUserId();
-			stackItem->auditEvent->audittime = operstarttime;
-			stackItem->auditEvent->sessionid = MyProcPid;
-			stackItem->auditEvent->commandid = GetCurrentCommandId(false);
-			audit_get_actionname_from_tree(pstmt->utilityStmt, stackItem->auditEvent->actionname);
-			stackItem->auditEvent->conftypes[0] = AUDIT_TYPE_INVALID;
-			
-			if (nodeTag(pstmt->utilityStmt) == T_AlterSystemStmt)
+			if ((!IsAbortedTransactionBlockState()|| (IsAbortedTransactionBlockState()
+					&& (pg_strcasecmp(event,COMMIT_S)== 0 || pg_strcasecmp(event,ROLLBACK_S)== 0))))
 			{
-				AlterSystemStmt *stmt = (AlterSystemStmt *) pstmt->utilityStmt;
-				
-				if (stmt->setstmt->kind == VAR_SET_VALUE)
+				stackItem = stack_push();
+
+				stackItem->auditEvent->useroid = GetUserId();
+				stackItem->auditEvent->audittime = operstarttime;
+				stackItem->auditEvent->sessionid = MyProcPid;
+				stackItem->auditEvent->commandid = GetCurrentCommandId(false);
+				audit_get_actionname_from_tree(pstmt->utilityStmt, stackItem->auditEvent->actionname);
+				stackItem->auditEvent->conftypes[0] = AUDIT_TYPE_INVALID;
+
+				if (nodeTag(pstmt->utilityStmt) == T_AlterSystemStmt)
 				{
-					VariableSetStmt *set = stmt->setstmt;
-					
-					contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
+					AlterSystemStmt *stmt = (AlterSystemStmt *) pstmt->utilityStmt;
 
-					stackItem->auditEvent->setname = pnstrdup(set->name, strlen(set->name));
-
-					if (set->args != NIL)
+					if (stmt->setstmt->kind == VAR_SET_VALUE)
 					{
-						Node *arg = (Node *)linitial(set->args);
+						VariableSetStmt *set = stmt->setstmt;
 
-						if (IsA(arg, A_Const))
+						contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
+
+						stackItem->auditEvent->setname = pnstrdup(set->name, strlen(set->name));
+
+						if (set->args != NIL)
 						{
-							A_Const *con = (A_Const *)arg;
+							Node *arg = (Node *)linitial(set->args);
 
-							if (con->val.type == T_String)
+							if (IsA(arg, A_Const))
 							{
-								stackItem->auditEvent->setvalue = pnstrdup(con->val.val.str, strlen(con->val.val.str));
-							}
-							else if (con->val.type == T_Integer)
-							{
-								char	val[MAXPGPATH] = {0};
-								
-								sprintf(val, "%d", con->val.val.ival);
-								stackItem->auditEvent->setvalue = pnstrdup(val, strlen(val)); /* BUG#Z6107 */
-							}
-							else if (con->val.type == T_Float)
-							{
-								stackItem->auditEvent->setvalue = pnstrdup(con->val.val.str, strlen(con->val.val.str));
+								A_Const *con = (A_Const *)arg;
+
+								if (con->val.type == T_String)
+								{
+									stackItem->auditEvent->setvalue = pnstrdup(con->val.val.str, strlen(con->val.val.str));
+								}
+								else if (con->val.type == T_Integer)
+								{
+									char	val[MAXPGPATH] = {0};
+									sprintf(val, "%d", con->val.val.ival);
+									stackItem->auditEvent->setvalue = pnstrdup(val, strlen(val)); /* BUG#Z6107 */
+								}
+								else if (con->val.type == T_Float)
+								{
+									stackItem->auditEvent->setvalue = pnstrdup(con->val.val.str, strlen(con->val.val.str));
+								}
 							}
 						}
+
+						MemoryContextSwitchTo(contextOld);
 					}
-
-					MemoryContextSwitchTo(contextOld);
 				}
+
+				contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
+
+				/* For excessively long SQL statements, truncation processing is used,
+				 * with a maximum of the first 1K lengths saved per SQL statement
+				 */
+				stackItem->auditEvent->sqltext = pnstrdup(queryString, 1023);
+
+				MemoryContextSwitchTo(contextOld);
+
+				//audit_check_statement(AUDITACTIONNAMEAUDITTYPEID, stackItem);
+
 			}
-
-			contextOld = MemoryContextSwitchTo(stackItem->auditEvent->auditContext);
-
-			/* For excessively long SQL statements, truncation processing is used, 
-			 * with a maximum of the first 1K lengths saved per SQL statement
-			 */
-			stackItem->auditEvent->sqltext = pnstrdup(queryString, 1023);
-
-			MemoryContextSwitchTo(contextOld);
-
-			//audit_check_statement(AUDITACTIONNAMEAUDITTYPEID, stackItem);
-
 		}
 	}
 
@@ -4277,7 +4285,7 @@ check_audit_table(List *rangeTabls)
 static bool audit_ExecutorCheckPerms_hook(List *rangeTabls, bool abort)
 {	
 	if (audit_GUC.audit_enable == AUDIT_ON && !internalStatement && auditEventStack
-		&& !IsAbortedTransactionBlockState())
+		&& !IsAbortedTransactionBlockState() && !test_poc)
 	{
 		log_select_dml(rangeTabls);
 	}
@@ -4494,7 +4502,7 @@ audit_object_access_hook(ObjectAccessType access,
 	AuditStmtType type = INVALID_STMT;
 	
 	if (audit_GUC.audit_enable == AUDIT_ON && !internalStatement && 
-		auditEventStack && !IsAbortedTransactionBlockState())
+		auditEventStack && !IsAbortedTransactionBlockState() && !test_poc)
 	{
 		switch (access)
 		{
@@ -4583,6 +4591,9 @@ audit_getobject(Oid relOid_in, Relation rel_in)
 	ObjectType objecttype = OBJECT_TABLE;
 
 	if (audit_GUC.audit_enable != AUDIT_ON)
+		return;
+
+	if (test_poc)
 		return;
 
 	if (internalStatement || !auditEventStack)
@@ -4832,7 +4843,7 @@ audit_drop_pgaudit(char *name)
 static void
 audit_alter_pg_auditlog(char *relname)
 {
-	if (audit_GUC.audit_enable != AUDIT_ON || relname == NULL)
+	if (audit_GUC.audit_enable != AUDIT_ON || relname == NULL || test_poc)
 		return;
 	
 	if (pg_strcasecmp(relname, "pg_audit_log") == 0)
@@ -5325,6 +5336,9 @@ audit_aborted(void)
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return;
 
+	if (test_poc)
+		return;
+
 	//xid = GetCurrentTransactionIdIfAny();
 
 	/* If there is still data in auditEventStack, it needs to be written to auditlist first */
@@ -5350,6 +5364,9 @@ audit_commited(void)
 	//TransactionId xid;
 
 	if (audit_GUC.audit_enable != AUDIT_ON)
+		return;
+
+	if (test_poc)
 		return;
 
 	/* If there is still data in auditEventStack, it needs to be written to auditlist first */
@@ -10747,7 +10764,7 @@ pg_audit_ddl_command_end(PG_FUNCTION_ARGS)
 {
 	const char *query;
 
-	if (audit_GUC.audit_enable != AUDIT_ON)
+	if (audit_GUC.audit_enable != AUDIT_ON || test_poc)
 		PG_RETURN_NULL();
 
 	/* Return objects affected by the (non drop) DDL statement */
@@ -10764,7 +10781,7 @@ pg_audit_sql_drop(PG_FUNCTION_ARGS)
 {
 	const char *query;
 
-	if (audit_GUC.audit_enable != AUDIT_ON)
+	if (audit_GUC.audit_enable != AUDIT_ON || test_poc)
 		PG_RETURN_NULL();
 
 	/* Return objects affected by the drop statement */
@@ -14920,3 +14937,30 @@ static void audit_free_auditlist(void)
 	auditlist = NIL;
 }
 /* End - BUG:7959 */
+
+/* check if pg_audit_config have data */
+static bool audit_config_have_data(void)
+{
+	static bool has_data = false;
+	CatCList *catlist = NULL;
+
+	if (has_data)
+	{
+		test_poc = false;
+		return has_data;
+	}
+
+	catlist = SearchSysCacheList1(AUDITENABLEINDEX, BoolGetDatum(AUDIT_EANBLE));
+	if (catlist->n_members > 0)
+	{
+		test_poc = false;
+		has_data = true;
+		ReleaseSysCacheList(catlist);
+		return true;
+	}
+
+	ReleaseSysCacheList(catlist);
+	test_poc = true;
+
+	return false;
+}
