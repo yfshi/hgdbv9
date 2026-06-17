@@ -151,6 +151,10 @@ bool enable_macandtime = false;
 check_connrules_hook_type check_rules_hook = NULL;
 /* End ReqID: SRS-CLIENT-AUTH */
 
+/* Begin - OA-2249 */
+bool is_last_parsetree = false;
+/* End - OA-2249 */
+
 /* ----------------
  *		private typedefs etc
  * ----------------
@@ -1489,6 +1493,17 @@ exec_simple_query(const char *query_string)
 			 */
 			disable_statement_timeout();
 		}
+
+		/**
+		 * Begin - OA-2249
+		 * When allowMultiQueries=true in MySQL JDBC, a request can contain multiple sql
+		 * statements, and the server will responsed to each SQL statement individually in
+		 * sequence.
+		 * If it is not the last SQL statement, the server status field of OK or EOF packet
+		 * needs to be set to SERVER_MORE_RESULTS_EXISTS.
+		 */
+		is_last_parsetree = (parsetree == llast_node(RawStmt, parsetree_list));
+		/* End - OA-2249 */
 
 		/*
 		 * Tell client that we're done with this query.  Note we emit exactly

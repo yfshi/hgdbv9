@@ -1068,7 +1068,7 @@ SHOW FULL COLUMNS FROM test_view;
     Field    |          Type          | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
 -------------+------------------------+-----------+------+-----+---------+-------+---------------------------------+---------
  id          | integer                |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
- name        | character varying(100) |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name        | character varying(100) | "default" | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
  create_time | timestamp              |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (3 rows)
 
@@ -1100,9 +1100,9 @@ SHOW FULL COLUMNS FROM test_table;
     Field    |          Type          | Collation | Null | Key |                Default                 | Extra |           Privileges            | Comment 
 -------------+------------------------+-----------+------+-----+----------------------------------------+-------+---------------------------------+---------
  id          | integer                |           | NO   | PRI | nextval('test_table_id_seq'::regclass) |       | INSERT,REFERENCES,SELECT,UPDATE | 
- name        | character varying(100) |           | NO   |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- email       | character varying(150) |           | YES  | UNI |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- department  | character varying(50)  |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name        | character varying(100) | "default" | NO   |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ email       | character varying(150) | "default" | YES  | UNI |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ department  | character varying(50)  | "default" | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
  salary      | numeric(10,2)          |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
  hire_date   | date                   |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
  create_time | timestamp              |           | YES  |     | "current_timestamp"()                  |       | INSERT,REFERENCES,SELECT,UPDATE | 
@@ -1992,7 +1992,7 @@ SHOW full COLUMNS FROM test_show;
  Field |         Type          | Collation | Null | Key |                    Default                     |     Extra      |           Privileges            | Comment 
 -------+-----------------------+-----------+------+-----+------------------------------------------------+----------------+---------------------------------+---------
  id1   | integer               |           | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment | INSERT,REFERENCES,SELECT,UPDATE | 
- name  | character varying(50) |           | YES  |     |                                                |                | INSERT,REFERENCES,SELECT,UPDATE | 
+ name  | character varying(50) | "default" | YES  |     |                                                |                | INSERT,REFERENCES,SELECT,UPDATE | 
 (2 rows)
 
 SHOW CREATE TABLE test_show;
@@ -2200,7 +2200,7 @@ show full columns from tb;
  Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
 -------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
  id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
- name  | text    |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name  | text    | "default" | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (2 rows)
 
 drop table tb;

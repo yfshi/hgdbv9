@@ -3,6 +3,7 @@
 
 #include "postgres.h"
 #include "postmaster/postmaster.h"
+#include "tcop/tcopprot.h"
 
 #define SCRAMBLE_LENGTH                         20
 #define CLIENT_PASSWORD_SHA256_TOKEN_LEN        32
@@ -68,7 +69,8 @@ enum SERVER_STATUS_flags_enum {
 };
 
 #define ServerStatus() ( \
-    mys_autocommit ? SERVER_STATUS_AUTOCOMMIT : 0 \
+    (mys_autocommit ? SERVER_STATUS_AUTOCOMMIT : 0) | \
+    (!is_last_parsetree ? SERVER_MORE_RESULTS_EXISTS : 0) /* OA-2499 */ \
 )
 
 // client capabilities

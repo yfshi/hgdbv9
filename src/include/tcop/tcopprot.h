@@ -31,6 +31,7 @@ extern int	max_stack_depth;
 extern int	PostAuthDelay;
 extern int	client_connection_check_interval;
 
+extern PGDLLIMPORT bool is_last_parsetree; /* OA-2249 */
 /* GUC-configurable parameters */
 
 typedef enum
