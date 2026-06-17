@@ -647,6 +647,226 @@ SELECT hg_security.set_user_seclabel('usr1'::regrole, 's2');
  set
 (1 row)
 
+SELECT hg_security.get_user_seclabel('usr1'::regrole);
+ get_user_seclabel 
+-------------------
+ s2
+(1 row)
+
+SELECT hg_security.compare_seclabel('s1:c0.c1023', 's0:c0.c1023');
+ compare_seclabel 
+------------------
+                2
+(1 row)
+
+ALTER SYSTEM SET hg_sysmac.global_row_level TO ON;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+\c - :boot_user
+CREATE USER u1 with password 'Hello@123';
+CREATE USER u2 with password 'Hello@123';
+CREATE USER u3 with password 'Hello@123';
+SET ROLE u1;
+CREATE TABLE tb1(id int);
+GRANT ALL ON tb1 TO u1,u2,u3;
+\c - usr2;
+SELECT hg_security.set_table_seclabel('tb1'::regclass, 's3');
+ set_table_seclabel 
+--------------------
+ set
+(1 row)
+
+SELECT hg_security.apply_row_policy('tb1'::regclass, 'apply');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+SELECT hg_security.apply_row_policy('tb1'::regclass, 'enable');
+ apply_row_policy 
+------------------
+ set
+(1 row)
+
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT hg_security.set_user_seclabel('u2'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT hg_security.set_user_seclabel('u3'::regrole, 's3');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+\c - u1;
+INSERT INTO tb1 VALUES (1);
+\c - u2;
+INSERT INTO tb1 VALUES (2);
+\c - u3;
+INSERT INTO tb1 VALUES (3);
+\c - u3;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+\c - u2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+(2 rows)
+
+\c - u1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+(1 row)
+
+\c - u3;
+UPDATE tb1 SET id = 4 WHERE id = 1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+DELETE FROM tb1 WHERE id = 4;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+\c - usr2
+ALTER SYSTEM SET hg_sysmac.global_row_level TO OFF;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+\c - u1;
+TRUNCATE TABLE tb1;
+INSERT INTO tb1 VALUES (1);
+RESET ROLE;
+\c - u2;
+INSERT INTO tb1 VALUES (2);
+RESET ROLE;
+\c - u3;
+INSERT INTO tb1 VALUES (3);
+\c - u3;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+\c - u2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+\c - u1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s1              |  1
+ s2              |  2
+ s3              |  3
+(3 rows)
+
+\c - u1;
+UPDATE tb1 SET id = 4 WHERE id = 1;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s2              |  2
+ s3              |  3
+ s1              |  4
+(3 rows)
+
+UPDATE tb1 SET id = 5 WHERE id = 2;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s3              |  3
+ s1              |  4
+ s2              |  5
+(3 rows)
+
+DELETE FROM tb1 WHERE id = 4;
+SELECT __hg_seclabel__,* FROM tb1;
+ __hg_seclabel__ | id 
+-----------------+----
+ s3              |  3
+ s2              |  5
+(2 rows)
+
+DROP TABLE tb1;
+\c - :boot_user
+DROP USER u1,u2,u3;
 -- End #BUG8275 --
 \c - syssso
 ALTER SYSTEM SET se_feature.mode TO OFF;

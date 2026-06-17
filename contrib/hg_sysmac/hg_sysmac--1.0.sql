@@ -11,11 +11,13 @@ CREATE FUNCTION seclabel_in(cstring)
 RETURNS seclabel
 AS 'MODULE_PATHNAME', 'seclabel_in'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_in(cstring) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION seclabel_out(seclabel)
 RETURNS cstring
 AS 'MODULE_PATHNAME', 'seclabel_out'
 LANGUAGE C IMMUTABLE STRICT PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_out(seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 -- The type itself.
 
@@ -36,31 +38,37 @@ CREATE FUNCTION seclabel_eq( seclabel, seclabel )
 RETURNS bool
 AS 'MODULE_PATHNAME', 'seclabel_eq'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_eq(seclabel, seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION seclabel_ne( seclabel, seclabel )
 RETURNS bool
 AS 'MODULE_PATHNAME', 'seclabel_ne'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_ne(seclabel, seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION seclabel_gt( seclabel, seclabel )
 RETURNS bool
 AS 'MODULE_PATHNAME', 'seclabel_gt'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_gt(seclabel, seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION seclabel_lt( seclabel, seclabel )
 RETURNS bool
 AS 'MODULE_PATHNAME', 'seclabel_lt'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_lt(seclabel, seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION seclabel_ge( seclabel, seclabel )
 RETURNS bool
 AS 'MODULE_PATHNAME', 'seclabel_ge'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_ge(seclabel, seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION seclabel_le( seclabel, seclabel )
 RETURNS bool
 AS 'MODULE_PATHNAME', 'seclabel_le'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION seclabel_le(seclabel, seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 --
 -- Operators.
@@ -140,26 +148,31 @@ CREATE FUNCTION mac_row_user_seclabel()
 RETURNS text
 AS 'MODULE_PATHNAME', 'mac_row_user_seclabel'
 LANGUAGE C VOLATILE  STRICT PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION mac_row_user_seclabel() TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION mac_row_select_policy(seclabel)
 RETURNS bool
 AS 'MODULE_PATHNAME', 'mac_row_select_policy'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION mac_row_select_policy(seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION mac_row_delete_policy(seclabel)
 RETURNS bool
 AS 'MODULE_PATHNAME', 'mac_row_delete_policy'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION mac_row_delete_policy(seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION mac_row_update_policy(seclabel)
 RETURNS bool
 AS 'MODULE_PATHNAME', 'mac_row_update_policy'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION mac_row_update_policy(seclabel) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 CREATE FUNCTION mac_row_insert_policy(Oid)
 RETURNS bool
 AS 'MODULE_PATHNAME', 'mac_row_insert_policy'
 LANGUAGE C IMMUTABLE PARALLEL SAFE;
+GRANT EXECUTE ON FUNCTION mac_row_insert_policy(Oid) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 --  unregister label provider for test
 
@@ -318,6 +331,7 @@ begin
 end;
 $$ language plpgsql
 security invoker;
+GRANT EXECUTE ON FUNCTION apply_table_policy(schema_name text, table_name text, is_partition bool, is_dump bool) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 
 create or replace function enable_table_policy(schema_name text, table_name text) returns void as $$
@@ -343,6 +357,7 @@ begin
 end;
 $$ language plpgsql
 security invoker;
+GRANT EXECUTE ON FUNCTION enable_table_policy(schema_name text, table_name text) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 create or replace function disable_table_policy(schema_name text, table_name text) returns void as $$
 declare
@@ -367,6 +382,7 @@ begin
 end;
 $$ language plpgsql
 security invoker;
+GRANT EXECUTE ON FUNCTION disable_table_policy(schema_name text, table_name text) TO public; /* BUG#Z7896 BUG#Z8275 */
 
 create or replace function drop_table_policy(schema_name text, table_name text) returns void as $$
 declare
@@ -427,3 +443,4 @@ begin
 end;
 $$ language plpgsql
 security invoker;
+GRANT EXECUTE ON FUNCTION drop_table_policy(schema_name text, table_name text) TO public; /* BUG#Z7896 BUG#Z8275 */
