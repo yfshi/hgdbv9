@@ -877,3 +877,7 @@ SELECT
 /* Begin Bug#Z7502 */
 SELECT AES_DECRYPT(AES_ENCRYPT(123, 'a'), 'a');
 /* End Bug#Z7502 */
+
+/* Begin Bug#Z7500 */
+SELECT AES_DECRYPT(AES_ENCRYPT('{name:test,value:123}', 'jsonkey'), 'jsonkey') AS result;
+/* End Bug#Z7500 */

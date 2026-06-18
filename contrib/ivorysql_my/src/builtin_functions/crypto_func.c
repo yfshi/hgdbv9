@@ -33,6 +33,7 @@
 
 PG_FUNCTION_INFO_V1(ivymy_aes_encrypt);
 PG_FUNCTION_INFO_V1(ivymy_aes_decrypt);
+PG_FUNCTION_INFO_V1(bytea_aes_decrypt);	/* bug#z7500 */
 
 #if USE_OPENSSL
 #define AES_IV_SIZE 16
@@ -694,3 +695,67 @@ ivymy_aes_decrypt(PG_FUNCTION_ARGS)
 #endif /* OPENSSL_VERSION_NUMBER >= 0x100020bfL */
 	PG_RETURN_NULL();
 }
+
+/* Begin Bug#Z7500 */
+Datum
+bytea_aes_decrypt(PG_FUNCTION_ARGS)
+{
+#if OPENSSL_VERSION_NUMBER >= 0x100020bfL
+
+	char *key;
+	char *arg3, *arg4, *arg5;
+	unsigned char *iv_str;
+	char *str_value;
+	int rkey_size, key_size, aes_length;
+	KDF_Option kdf_options;
+	KDF_Option null_kdf_options = {"","", "", -1};
+	bytea *bytea_data = PG_GETARG_BYTEA_PP(0);
+	size_t len = VARSIZE_ANY_EXHDR(bytea_data);
+	char *str = VARDATA_ANY(bytea_data);
+	char *sptr = palloc(len + 1);
+	const char *end = str + len;
+
+	memcpy(sptr, str, len);
+	sptr[len] = '\0';
+
+	if (aes_needs_iv(mys_block_encryption_mode))
+	{
+		if (text_length(PointerGetDatum(PG_GETARG_TEXT_PP(2)) < 16))
+			ereport(ERROR, 
+					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
+	}
+
+	key = text_to_cstring(PG_GETARG_TEXT_PP(1)); // key
+	iv_str = (unsigned char*)text_to_cstring(PG_GETARG_TEXT_PP(2));
+	arg3 = text_to_cstring(PG_GETARG_TEXT_PP(3));
+	arg4 = text_to_cstring(PG_GETARG_TEXT_PP(4));
+	arg5 = text_to_cstring(PG_GETARG_TEXT_PP(5));
+
+
+	kdf_options = retrieve_kdf_options(arg3, arg4, arg5);
+
+	rkey_size = aes_opmode_key_sizes[mys_block_encryption_mode] / 8;
+	key_size = strlen(key);
+	if ((key_size > rkey_size) && !size_of_kdf_option(&kdf_options))
+	{
+		ereport(WARNING,
+				(errmsg("AES key size should be %d bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, \
+						please provide exact AES key size or use KDF methods for better security.", rkey_size)));
+	}
+
+
+	str_value = (char *) palloc(len);
+	// finally encrypt directly to allocated buffer.
+
+
+	aes_length = aes_decrypt((unsigned char *)sptr, len,
+							(unsigned char *)str_value,
+							(unsigned char *)key, strlen(key),
+							mys_block_encryption_mode, iv_str, true,
+							(size_of_kdf_option(&kdf_options) > 0) ? &kdf_options : &null_kdf_options);
+	if (aes_length > 0)
+		PG_RETURN_TEXT_P(cstring_to_text_with_len(str_value, aes_length));
+#endif /* OPENSSL_VERSION_NUMBER >= 0x100020bfL */
+	PG_RETURN_NULL();
+}
+/* End Bug#Z7500 */

@@ -1174,11 +1174,9 @@ from_unixtime_int(PG_FUNCTION_ARGS)
 	Timestamp	timestamp;
 	int64		datetemp, time;
 	fsec_t		fsec = 0;
-	char buf[MAXDATELEN + 1] = {0};
 	TimeADT datetime = MYSQL_INVAILD_DATE;
-	Datum	result;
-	struct pg_tm tt, ttx,
-			   *tm = &tt, *tmx = &ttx;
+	struct pg_tm tt,
+			   *tm = &tt;
 
 	/* Begin - bug#z8078 */
 	if (seconds > UNIXTIME_MAX || seconds < UNIXTIME_MIN)
@@ -1186,14 +1184,12 @@ from_unixtime_int(PG_FUNCTION_ARGS)
 	/* End - bug#z8078 */
 
 	MYS_ZERO_tm(tm);
-	MYS_ZERO_tm(tmx);
 
 	/*
 	 * Convert Unix timestamp to pg_tm structure
 	 * Unix timestamp is seconds since 1970-01-01
 	 */
-	GetCurrentDateTime(tmx);
-	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
+	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + time_zone_offset * USECS_PER_SEC;
 	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
 
 	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
@@ -1201,12 +1197,7 @@ from_unixtime_int(PG_FUNCTION_ARGS)
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	datetime = datetemp + time;
 
-	snprintf(buf, MAXDATELEN, "%lld", (long long)datetime);
-
-	result = DirectFunctionCall1(mysdatetime_in,
-								 CStringGetDatum(buf));
-
-	PG_RETURN_NUMERIC(result);
+	PG_RETURN_TIMEADT(datetime);
 }
 
 /*
@@ -1231,8 +1222,8 @@ from_unixtime_numeric(PG_FUNCTION_ARGS)
 	fsec_t		fsec;
 	TimeADT datetime = MYSQL_INVAILD_DATE;
 	Numeric num;
-	struct pg_tm tt, ttx,
-			   *tm = &tt, *tmx = &ttx;
+	struct pg_tm tt,
+			   *tm = &tt;
 	int			precision, scale;
 	char buf[MAXDATELEN + 1] = {0};
 
@@ -1245,7 +1236,6 @@ from_unixtime_numeric(PG_FUNCTION_ARGS)
 	/* End - bug#z8078 */
 
 	MYS_ZERO_tm(tm);
-	MYS_ZERO_tm(tmx);
 
 	/* Extract decimal places from the numeric value */
 	scale = DatumGetInt32(DirectFunctionCall1(numeric_scale, NumericGetDatum(numeric_datum)));
@@ -1255,9 +1245,7 @@ from_unixtime_numeric(PG_FUNCTION_ARGS)
 	numeric_to_lldiv_t(DatumGetNumeric(numeric_datum), &lld);
 
 	/* Convert Unix timestamp to pg_tm structure */
-	GetCurrentDateTime(tmx);
-	timestamp = SetEpochTimestamp() + lld.quot * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
-
+	timestamp = SetEpochTimestamp() + lld.quot * USECS_PER_SEC + time_zone_offset * USECS_PER_SEC;
 	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
 
 	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
@@ -1296,8 +1284,8 @@ from_unixtime_float(PG_FUNCTION_ARGS)
 	Timestamp	timestamp;
 	Numeric num;
 	TimeADT datetime = MYSQL_INVAILD_DATE;
-	struct pg_tm tt, ttx,
-			   *tm = &tt, *tmx = &ttx;
+	struct pg_tm tt,
+			   *tm = &tt;
 	char buf[MAXDATELEN + 1] = {0};
 
 	/* Check for invalid timestamp */
@@ -1317,9 +1305,7 @@ from_unixtime_float(PG_FUNCTION_ARGS)
 	fsec = (fsec_t) rint((seconds - sec) * 1000000.0);
 
 	/* Convert Unix timestamp to pg_tm structure */
-	GetCurrentDateTime(tmx);
-	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
-
+	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + time_zone_offset * USECS_PER_SEC;
 	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
 
 	datetemp = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday);
@@ -1356,8 +1342,8 @@ from_unixtime_format(PG_FUNCTION_ARGS)
 	Timestamp timestamp;
 	int64 sec;
 	fsec_t fsec;
-	struct pg_tm tt, ttx,
-		*tm = &tt, *tmx = &ttx;
+	struct pg_tm tt,
+		*tm = &tt;
 	char *format;
 	char result[MAXDATELEN];
 
@@ -1376,8 +1362,7 @@ from_unixtime_format(PG_FUNCTION_ARGS)
 	fsec = (fsec_t) rint((seconds - sec) * 1000000);
 
 	/* Convert Unix timestamp to pg_tm structure */
-	GetCurrentDateTime(tmx);
-	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + tmx->tm_gmtoff * USECS_PER_SEC;
+	timestamp = SetEpochTimestamp() + seconds * USECS_PER_SEC + time_zone_offset * USECS_PER_SEC;
 	timestamp2tm(timestamp, NULL, tm, &fsec, NULL, NULL);
 
 	/* Get format string */
@@ -3930,7 +3915,7 @@ unix_timestamp(PG_FUNCTION_ARGS)
 
 	epoch = SetEpochTimestamp();
 	result = input - epoch
-			- tmx->tm_gmtoff * USECS_PER_SEC /* Subtract timezone offset */
+			- time_zone_offset * USECS_PER_SEC /* Subtract timezone offset */
 			+ tmx->tm_isdst * SECS_PER_HOUR * USECS_PER_SEC; /* Add back DST hour if active */
 
 	/* Begin - bug#z8126 */

@@ -914,7 +914,7 @@ static char *concatSconstList(List *strs);
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CURTIME CYCLE
 
-	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
+	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DAY_HOUR_P DAY_MICROSECOND_P DAY_MINUTE_P DAY_SECOND_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC DESCRIBE /* ReqID:SRS-MYSQL-SHOW */
 	DETACH
 	DETERMINISTIC /* SRS-MYSQL-PROC */
@@ -936,7 +936,7 @@ static char *concatSconstList(List *strs);
 	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
 	GROUP_CONCAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
-	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
+	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P HOUR_MINUTE_P HOUR_SECOND_P HOUR_MICROSECOND_P
 
 	IDENTITY_P IF_P IFNULL_P /* Bug - #z5512 */ IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INFILE /* ReqID:SRS-MYSQL-SQL-LOADDATA */ INHERIT INHERITS INITIALLY INLINE_P
@@ -952,7 +952,7 @@ static char *concatSconstList(List *strs);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LONGBLOB LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
-	MICROSECOND_P MINUTE_P MINVALUE MOD MODE
+	MICROSECOND_P MINUTE_P MINUTE_SECOND_P MINUTE_MICROSECOND_P MINVALUE MOD MODE
 	MODIFIES /* SRS-MYSQL-PROC */
 	MODIFY /* ReqID:SRS-MYSQL-SQL-Alter */
 	MONTH_P MOVE
@@ -980,7 +980,7 @@ static char *concatSconstList(List *strs);
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS ROW_FORMAT /* oa-2019 */ RULE
 
-	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECURITY SELECT
+	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECOND_MICROSECOND_P SECURITY SELECT
 	SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 	SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
@@ -1012,7 +1012,7 @@ static char *concatSconstList(List *strs);
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
 
 	XOR
-	YEAR YES_P
+	YEAR YEAR_MONTH_P YES_P
 
 	ZEROFILL ZONE
 
@@ -1074,7 +1074,7 @@ static char *concatSconstList(List *strs);
 
 %nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS
-%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA
+%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA WEEK_P MICROSECOND_P DAY_HOUR_P DAY_MICROSECOND_P DAY_MINUTE_P DAY_SECOND_P QUARTER_P
 %nonassoc	ESCAPE			/* ESCAPE must be just above LIKE/ILIKE/SIMILAR */
 /*
  * To support target_el without AS, it used to be necessary to assign IDENT an
@@ -17214,7 +17214,39 @@ opt_interval:
 		;
 
 not_empty_interval:
-			MONTH_P
+			WEEK_P
+				{
+					$$ = list_make1(makeString("week"));
+				}
+			| QUARTER_P
+				{
+					$$ = list_make1(makeString("quarter"));
+				}
+			| MICROSECOND_P
+				{
+					$$ = list_make1(makeString("microsecond"));
+				}
+			| SECOND_MICROSECOND_P
+				{
+					$$ = list_make2(makeIntConst(INTERVAL_MASK(SECOND), @1),
+									makeIntConst(6, @1));
+				}
+			| MINUTE_MICROSECOND_P
+				{
+					$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND), @1),
+									makeIntConst(6, @1));
+				}
+			| HOUR_MICROSECOND_P
+				{
+					$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND), @1),
+									makeIntConst(6, @1));
+				}
+			| DAY_MICROSECOND_P
+				{
+					$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND), @1),
+									makeIntConst(6, @1));
+				}
+			| MONTH_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); }
 			| DAY_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(DAY), @1)); }
@@ -17261,6 +17293,47 @@ not_empty_interval:
 					linitial($$) = makeIntConst(INTERVAL_MASK(MINUTE) |
 												INTERVAL_MASK(SECOND), @1);
 				}
+			/* Begin - bug#z8229 #z8235 */
+			| DAY_HOUR_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR), @1));
+				}
+			| DAY_MINUTE_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE), @1));
+				}
+			| DAY_SECOND_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+													INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+				}
+			| HOUR_MINUTE_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE), @1));
+				}
+			| HOUR_SECOND_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
+													INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+				}
+			| MINUTE_SECOND_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE) |
+													INTERVAL_MASK(SECOND), @1));
+				}
+			| YEAR_MONTH_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
+													INTERVAL_MASK(MONTH), @1));
+				}
+			/* End - bug#z8229 #z8235 */
 		;
 
 interval_second:
@@ -20175,15 +20248,178 @@ AexprConst: Iconst
 				}
 			| ConstInterval Sconst opt_interval
 				{
+					Node *result;
 					TypeName *t = $1;
-					t->typmods = $3;
-					$$ = makeStringConstCast($2, @2, t);
+					int multiple = -1;
+					int divisor = -1;
+
+					if ($3 != NULL)
+					{
+						if (nodeTag(linitial($3)) == T_String)
+						{
+							Value *unit = (Value *)linitial($3);
+							if (strcmp(unit->val.str, "week") == 0)
+							{
+								multiple = 7;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), @3));
+							}
+							else if (strcmp(strVal(unit), "quarter") == 0)
+							{
+								multiple = 3;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @3));
+							}
+							else if (strcmp(unit->val.str, "microsecond") == 0)
+							{
+								divisor = 1000000;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @3));
+							}
+						}
+					}
+
+					if (multiple > 0)
+					{
+						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", (Node *)makeStringConstCast($2, @2, t), (Node *)makeIntConst(multiple, -1), -1);
+					}
+					else if (divisor > 0)
+					{
+						TypeCast *int2Numeric = makeNode(TypeCast);
+						TypeName *numericType = makeTypeName(pstrdup("numeric"));
+
+						numericType->typmods = NIL;
+						numericType->location = -1;
+
+						int2Numeric->arg = (Node *)makeIntConst(divisor, -1);
+						int2Numeric->typeName = numericType;
+						int2Numeric->location = -1;
+
+						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", (Node *)makeStringConstCast($2, @2, t), (Node *)int2Numeric, -1);
+					}
+					else
+					{
+						t->typmods = $3;
+						result = makeStringConstCast($2, @2, t);
+					}
+					$$ = result;
 				}
+			/* Begin - bug#z8234 */
+			| ConstInterval FCONST opt_interval
+				{
+					Node *result;
+					TypeName *t = $1;
+					int multiple = -1;
+					int divisor = -1;
+
+					if ($3 != NULL)
+					{
+						if (nodeTag(linitial($3)) == T_String)
+						{
+							Value *unit = (Value *)linitial($3);
+							if (strcmp(unit->val.str, "week") == 0)
+							{
+								multiple = 7;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), @3));
+							}
+							else if (strcmp(strVal(unit), "quarter") == 0)
+							{
+								multiple = 3;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @3));
+							}
+							else if (strcmp(unit->val.str, "microsecond") == 0)
+							{
+								divisor = 1000000;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @3));
+							}
+						}
+					}
+
+					if (multiple > 0)
+					{
+						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", 
+															(Node *)makeStringConstCast(psprintf("%d", (int)round(atof($2))), @2, t), 
+															(Node *)makeIntConst(multiple, -1), -1);
+					}
+					else if (divisor > 0)
+					{
+						TypeCast *int2Numeric = makeNode(TypeCast);
+						TypeName *numericType = makeTypeName(pstrdup("numeric"));
+
+						numericType->typmods = NIL;
+						numericType->location = -1;
+
+						int2Numeric->arg = (Node *)makeIntConst(divisor, -1);
+						int2Numeric->typeName = numericType;
+						int2Numeric->location = -1;
+
+						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", 
+															(Node *)makeStringConstCast(psprintf("%d", (int)round(atof($2))), @2, t), 
+															(Node *)int2Numeric, -1);
+					}
+					else
+					{
+						t->typmods = $3;
+						result = makeStringConstCast(psprintf("%ld", (int64)round(atof($2))), @2, t);
+					}
+					$$ = result;
+				}
+			/* End - bug#z8234 */
 			| ConstInterval Iconst not_empty_interval
 				{
+					Node *result;
 					TypeName *t = $1;
-					t->typmods = $3;
-					$$ = makeStringConstCast(psprintf("%d", $2), @2, t);
+					int multiple = -1;
+					int divisor = -1;
+
+					if ($3 != NULL)
+					{
+						if (nodeTag(linitial($3)) == T_String)
+						{
+							Value *unit = (Value *)linitial($3);
+							if (strcmp(unit->val.str, "week") == 0)
+							{
+								multiple = 7;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), @3));
+							}
+							else if (strcmp(strVal(unit), "quarter") == 0)
+							{
+								multiple = 3;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @3));
+							}
+							else if (strcmp(unit->val.str, "microsecond") == 0)
+							{
+								divisor = 1000000;
+								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @3));
+							}
+						}
+					}
+
+					if (multiple > 0)
+					{
+						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", 
+															(Node *) makeStringConstCast(psprintf("%d", $2), @2, t), 
+															(Node *)makeIntConst(multiple, -1), -1);
+					}
+					else if (divisor > 0)
+					{
+						TypeCast *int2Numeric = makeNode(TypeCast);
+						TypeName *numericType = makeTypeName(pstrdup("numeric"));
+
+						numericType->typmods = NIL;
+						numericType->location = -1;
+
+						int2Numeric->arg = (Node *)makeIntConst(divisor, -1);
+						int2Numeric->typeName = numericType;
+						int2Numeric->location = -1;
+
+						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", 
+															(Node *) makeStringConstCast(psprintf("%d", $2), @2, t), 
+															(Node *)int2Numeric, -1);
+					}
+					else
+					{
+						t->typmods = $3;
+						result = makeStringConstCast(psprintf("%d", $2), @2, t);
+					}
+					$$ = result;
 				}
 			| ConstInterval '(' expr_list ')' opt_sconst
 				{
@@ -20537,6 +20773,10 @@ unreserved_keyword:
 			| DATA_P
 			| DATABASE
 			| DAY_P
+			| DAY_HOUR_P
+			| DAY_MICROSECOND_P
+			| DAY_MINUTE_P
+			| DAY_SECOND_P
 			| DEALLOCATE
 			| DECLARE
 			| DEFAULTS
@@ -20592,6 +20832,9 @@ unreserved_keyword:
 			| HEADER_P
 			| HOLD
 			| HOUR_P
+			| HOUR_MICROSECOND_P
+			| HOUR_MINUTE_P
+			| HOUR_SECOND_P
 			| IDENTITY_P
 			| IFNULL_P
 			| IMMEDIATE
@@ -20637,6 +20880,8 @@ unreserved_keyword:
 			| METHOD
 			| MICROSECOND_P
 			| MINUTE_P
+			| MINUTE_MICROSECOND_P
+			| MINUTE_SECOND_P
 			| MINVALUE
 			| MOD
 			| MODE
@@ -20734,6 +20979,7 @@ unreserved_keyword:
 			| SCROLL
 			| SEARCH
 			| SECOND_P
+			| SECOND_MICROSECOND_P
 			| SECURITY
 			| SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| SEQUENCE
@@ -20916,6 +21162,7 @@ col_name_keyword:
 			| XMLSERIALIZE
 			| XMLTABLE
 			| YEAR
+			| YEAR_MONTH_P
 			| ZEROFILL
 		;
 

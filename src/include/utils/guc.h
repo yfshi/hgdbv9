@@ -356,6 +356,10 @@ extern PGDLLIMPORT char *nls_dual_currency;
 extern PGDLLIMPORT char *nls_numeric_characters;
 /* End - ReqID:SRS-SQL-SYSFUNC */
 
+/* Begin - bug#z8081 */
+extern PGDLLIMPORT int64 time_zone_offset;
+/* End - bug#z8081 */
+
 /* Begin - ReqID:SRS-SQL-INSERT */
 extern PGDLLIMPORT bool insert_enable_alias;
 /* End - ReqID:SRS-SQL-INSERT */

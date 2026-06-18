@@ -46,6 +46,10 @@
 	static bool check_autocommit(bool *newval, void **extra, GucSource source);
 	static void assign_autocommit(bool newval, void *extra);
 	/* End - SRS-MYSQL-AutoCommit */
+	/* Begin - bug#z8081 */
+	static bool check_time_zone(char **newval, void **extra, GucSource source);
+	static void assign_time_zone(const char *newval, void *extra);
+	/* End - bug#z8081 */
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -108,6 +112,7 @@ char 	*license;
 char 	*performance_schema;
 char 	*system_time_zone;
 char 	*time_zone;
+int64	time_zone_offset; /* bug#z8081 */
 bool	mys_autocommit = true;
 /* End - Req: SRS-MYSQL-PROTOCOL */
 
@@ -722,7 +727,7 @@ bool		create_function_with_sql_mode;
 		},
 		&time_zone,
 		"SYSTEM",
-		NULL, NULL, NULL
+		check_time_zone, assign_time_zone, NULL
 	},
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
@@ -1412,4 +1417,91 @@ assign_autocommit(bool newval, void *extra)
 }
 /* End - SRS-MYSQL-AutoCommit */
 
+/* Begin - bug#z8081 */
+static bool
+check_time_zone(char **newval, void **extra, GucSource source)
+{
+	char *it = *newval;
+	if (!pg_strcasecmp(it, "SYSTEM"))
+	{
+		return true;
+	}
+	if (((*it != '+') && (*it != '-')) || (strlen(it) < 4))
+		ereport(ERROR,
+			errmsg("Unknown or incorrect time zone: '%s'", it));
+
+	return true;
+}
+
+/* 
+ * time_zone convert to offset seconds
+ * offset seconds = time_zone hour part * 3600 + time_zone minute part * 60 
+ */
+static void
+assign_time_zone(const char *newval, void *extra)
+{
+	int	length = strlen(newval);
+	const char *end = newval + length;
+	bool negative = false;
+	int64 number_tmp = 0;
+	int64 offset_tmp = 0;
+
+	if (!pg_strcasecmp(newval, "SYSTEM"))
+	{
+		time_zone_offset = 0;
+		return;
+	}
+
+	/* false = positive (east), true = negative (west) */
+	if (*newval == '+')
+		negative = false;
+	else if (*newval == '-')
+		negative = true;
+
+	newval++;
+
+	number_tmp = 0;
+
+	/* Parse the hour part */
+	while (newval < end && isdigit(*newval))
+	{
+		number_tmp = number_tmp * 10 + *newval - '0';
+		newval++;
+	}
+
+	/* Check the colon delimiter */
+	if (newval + 1 >= end || *newval != ':')
+		ereport(ERROR,
+			errmsg("Unknown or incorrect time zone: '%s'", newval));
+	newval++;
+
+	offset_tmp = number_tmp * 3600;
+	number_tmp = 0;
+
+	/* Parse the minute part */
+	while (newval < end && isdigit(*newval))
+	{
+		number_tmp = number_tmp * 10 + *newval - '0';
+		newval++;
+	}
+
+	if (newval != end)
+		ereport(ERROR,
+			errmsg("Unknown or incorrect time zone: '%s'", newval));
+
+	offset_tmp = offset_tmp + number_tmp * 60;
+
+	if (negative)
+		offset_tmp = -offset_tmp;
+
+	/* Check if offset is in range prescribed by standard (from -12:59 to 13:00) */
+	if (number_tmp > 59 || offset_tmp < -13 * SECS_PER_HOUR + 1 ||
+		offset_tmp > 13 * SECS_PER_HOUR)
+		ereport(ERROR,
+			errmsg("Unknown or incorrect time zone: '%s'", newval));
+
+	time_zone_offset = offset_tmp;
+	return;
+}
+/* End - bug#z8081  */
 #endif

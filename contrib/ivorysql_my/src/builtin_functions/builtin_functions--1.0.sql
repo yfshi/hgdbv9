@@ -4074,6 +4074,16 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 
+/* Begin Bug#Z7500 */
+CREATE FUNCTION ivymy.aes_decrypt(varbinary, text, text default '', text default '', text default '', text default '')
+RETURNS varbinary
+AS 'MODULE_PATHNAME','bytea_aes_decrypt'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+/* End Bug#Z7500 */
+
 /* Begin Bug#Z7502 */
 CREATE FUNCTION ivymy.aes_encrypt(numeric, text, text default '', text default '', text default '', text default '')
 RETURNS varbinary
@@ -4339,7 +4349,7 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.date_add(text, pg_catalog.interval)
 RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime, $2)'
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
