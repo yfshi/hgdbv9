@@ -61,8 +61,6 @@
 /* per database level max size of black list */
 #define MAX_LOCAL_DISK_QUOTA_BLACK_ENTRIES 8192
 
-#define MIN_QUOTA_RESERVE_DIR "diskquota_min_reserve"
-
 typedef struct TableSizeEntry TableSizeEntry;
 typedef struct NamespaceSizeEntry NamespaceSizeEntry;
 typedef struct RoleSizeEntry RoleSizeEntry;
@@ -1027,28 +1025,208 @@ resize_min_quota_reserve_file(QuotaType type, Oid targetoid, int64 target_bytes)
 	}
 	else
 	{
+		bool		allocated = true;
+
 #if defined(HAVE_POSIX_FALLOCATE) && defined(__linux__)
 		/*
 		 * Preallocate the reservation so the remaining free space cannot be
 		 * consumed by objects that do not have a min quota guarantee.
 		 */
-		if (posix_fallocate(FileGetRawDesc(file), 0, target_bytes) != 0)
+		int err = posix_fallocate(FileGetRawDesc(file), 0, target_bytes);
+		if (err != 0)
+		{
+			errno = err;
 			elog(WARNING, "cannot preallocate reserve file \"%s\": %m", path);
+			allocated = false;
+		}
 #else
 		/*
 		 * Windows has no posix_fallocate() equivalent, so write zeroes
 		 * to make the reserve file consume real space.
 		 */
 		if (write_zeroes_to_reserve_file(file, target_bytes) != 0)
+		{
 			elog(WARNING, "cannot preallocate reserve file \"%s\": %m", path);
+			allocated = false;
+		}
 #endif
-		if (FileTruncate(file, target_bytes, WAIT_EVENT_DATA_FILE_TRUNCATE) != 0)
+		if (allocated &&
+			FileTruncate(file, target_bytes, WAIT_EVENT_DATA_FILE_TRUNCATE) != 0)
 			elog(WARNING, "cannot resize reserve file \"%s\": %m", path);
 	}
 
 	FileClose(file);
 	pfree(dir);
 }
+
+/* Begin - BUG#Z8288 */
+/*
+ * Return the real filesystem blocks consumed by one reserve file.
+ *
+ * st_size can be larger than the space that is actually restorable if earlier
+ * fallocate attempts failed and left a sparse tail behind.
+ */
+static bool
+get_reserve_file_allocated_bytes(const char *path, int64 *allocated_bytes)
+{
+	struct stat st;
+
+	if (stat(path, &st) != 0)
+		return false;
+
+#if defined(HAVE_POSIX_FALLOCATE) && defined(__linux__)
+	/*
+	 * POSIX reports st_blocks in 512-byte units.  On Linux this can differ
+	 * from st_size when a failed fallocate left a sparse tail.
+	 */
+	*allocated_bytes = (int64) st.st_blocks * 512;
+#else
+	/*
+	 * Windows and other fallback paths build reserve files by writing zeroes,
+	 * so the logical size is the best portable measure of reserved space.
+	 */
+	*allocated_bytes = (int64) st.st_size;
+#endif
+
+	return true;
+}
+
+/*
+ * Release already-reserved filesystem space for one quota target.
+ *
+ * This shrinks the target's reserve file by up to bytes, but never below zero.
+ * The caller is expected to invoke it only when a real file-growth write is
+ * about to consume space on behalf of that target.
+ */
+int64
+release_min_quota_reserve_space(QuotaType type, Oid targetoid, int64 bytes)
+{
+	char	   *dir;
+	char		path[MAXPGPATH];
+	File		file;
+	off_t		current_size;
+	int64		allocated_bytes;
+	int64		allocated_after;
+	int64		restorable_bytes;
+	off_t		target_size;
+	int64		released_bytes = 0;
+
+	if (!OidIsValid(targetoid) || bytes <= 0)
+		return 0;
+
+	dir = get_min_quota_reserve_dir();
+	snprintf(path, sizeof(path), "%s/%s_%u_%u.reserve", dir,
+			 type == NAMESPACE_QUOTA ? "nsp" : "rol",
+			 MyDatabaseId,
+			 targetoid);
+
+	file = PathNameOpenFile(path, O_RDWR | PG_BINARY);
+	if (file < 0)
+	{
+		pfree(dir);
+		return 0;
+	}
+
+	current_size = FileSize(file);
+	if (current_size < 0)
+	{
+		elog(WARNING, "cannot stat reserve file \"%s\": %m", path);
+		FileClose(file);
+		pfree(dir);
+		return 0;
+	}
+
+	if (!get_reserve_file_allocated_bytes(path, &allocated_bytes))
+	{
+		elog(WARNING, "cannot stat reserve file \"%s\": %m", path);
+		FileClose(file);
+		pfree(dir);
+		return 0;
+	}
+
+	restorable_bytes = Min((int64) current_size, allocated_bytes);
+	target_size = Max(restorable_bytes - bytes, 0);
+	if (target_size != current_size &&
+		FileTruncate(file, target_size, WAIT_EVENT_DATA_FILE_TRUNCATE) != 0)
+		elog(WARNING, "cannot shrink reserve file \"%s\": %m", path);
+	else if (get_reserve_file_allocated_bytes(path, &allocated_after))
+		released_bytes = Max(allocated_bytes - allocated_after, 0);
+
+	FileClose(file);
+	pfree(dir);
+	return released_bytes;
+}
+
+/*
+ * Restore reserve space that was temporarily borrowed for files that do not
+ * remain part of the quota target's persistent usage, such as query temp files.
+ */
+void
+restore_min_quota_reserve_space(QuotaType type, Oid targetoid, int64 bytes)
+{
+	char	   *dir;
+	char		path[MAXPGPATH];
+	File		file;
+	off_t		current_size;
+
+	if (!OidIsValid(targetoid) || bytes <= 0)
+		return;
+
+	dir = get_min_quota_reserve_dir();
+	snprintf(path, sizeof(path), "%s/%s_%u_%u.reserve", dir,
+			 type == NAMESPACE_QUOTA ? "nsp" : "rol",
+			 MyDatabaseId,
+			 targetoid);
+
+	file = PathNameOpenFile(path, O_RDWR | PG_BINARY);
+	if (file < 0)
+	{
+		pfree(dir);
+		return;
+	}
+
+	current_size = FileSize(file);
+	FileClose(file);
+	if (current_size < 0)
+	{
+		elog(WARNING, "cannot stat reserve file \"%s\": %m", path);
+		pfree(dir);
+		return;
+	}
+
+	pfree(dir);
+	resize_min_quota_reserve_file(type, targetoid, current_size + bytes);
+}
+
+/*
+ * Cap a recomputed reserve target to currently available filesystem space.
+ *
+ * reconcile_min_quota_reserve_files() may run after a protected write aborts
+ * and releases less space than the configured minimum gap.  In that case,
+ * reserve whatever space is available instead of asking the resize primitive
+ * to allocate more than the filesystem can currently provide.
+ */
+static void
+cap_min_quota_reserve_to_available_space(QuotaType type,
+														   Oid targetoid,
+														   int64 *reserve_bytes)
+{
+	uint64 total = 0;
+	uint64 free = 0;
+	int64 current_bytes = 0;
+	int64 max_reserve_bytes;
+
+	get_disk_space(DataDir, &total, &free);
+	current_bytes = get_min_quota_reserve_file_size(type, targetoid);
+
+	if (*reserve_bytes <= current_bytes)
+		return;
+
+	max_reserve_bytes = current_bytes + free;
+	if (*reserve_bytes > max_reserve_bytes)
+		*reserve_bytes = max_reserve_bytes;
+}
+/* End - BUG#Z8288 */
 
 /*
  * Remove the stale reserve file that belongs to the given quota owner.
@@ -1113,6 +1291,7 @@ reconcile_min_quota_reserve_files(void)
 		if (reserve_bytes < 0)
 			reserve_bytes = 0;
 
+		cap_min_quota_reserve_to_available_space(NAMESPACE_QUOTA, quota_entry->targetoid, &reserve_bytes);
 		resize_min_quota_reserve_file(NAMESPACE_QUOTA, quota_entry->targetoid, reserve_bytes);
 	}
 
@@ -1142,6 +1321,7 @@ reconcile_min_quota_reserve_files(void)
 		if (reserve_bytes < 0)
 			reserve_bytes = 0;
 
+		cap_min_quota_reserve_to_available_space(ROLE_QUOTA, quota_entry->targetoid, &reserve_bytes);
 		resize_min_quota_reserve_file(ROLE_QUOTA, quota_entry->targetoid, reserve_bytes);
 	}
 }

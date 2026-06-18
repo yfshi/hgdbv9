@@ -8,6 +8,8 @@
 #define WAIT_TIME_COUNT  120
 #define QUOTA_MAX_DB_NUM 1024
 
+#define MIN_QUOTA_RESERVE_DIR "diskquota_min_reserve"
+
 typedef enum
 {
 	NAMESPACE_QUOTA,
@@ -153,6 +155,11 @@ extern void delete_pid_from_queue(DiskQuotaSessionPids *node);
 extern int64 get_current_usage_bytes(Oid targetoid, QuotaType type);
 extern void reconcile_min_quota_reserve_files(void);
 extern void clear_min_quota_reserve_files(void);
+/* Begin - BUG#Z8288 */
+extern void get_disk_space(const char *path, uint64 *total, uint64 *free);
+extern int64 release_min_quota_reserve_space(QuotaType type, Oid targetoid, int64 bytes);
+extern void restore_min_quota_reserve_space(QuotaType type, Oid targetoid, int64 bytes);
+/* End - BUG#Z8288 */
 extern void resize_min_quota_reserve_file(QuotaType type, Oid targetoid, int64 target_bytes);
 extern int64 get_min_quota_reserve_file_size(QuotaType type, Oid targetoid); /* BUG#Z8153 */
 

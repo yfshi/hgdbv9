@@ -24,6 +24,7 @@
 
 #include "access/tupdesc.h"
 #include "access/xact.h"
+#include "access/table.h"
 #include "catalog/indexing.h"
 #include "catalog/namespace.h"
 #include "catalog/objectaccess.h"
@@ -33,11 +34,14 @@
 #include "catalog/pg_type.h"
 #include "commands/dbcommands.h"
 #include "commands/extension.h"
+#include "executor/executor.h"
 #include "executor/spi.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
+#include "parser/parsetree.h"
 #include "pgstat.h"
 #include "postmaster/bgworker.h"
+#include "storage/fd.h"
 #include "storage/ipc.h"
 #include "tcop/utility.h"
 #include "utils/builtins.h"
@@ -100,12 +104,34 @@ struct DiskQuotaWorkerEntry
 	BackgroundWorkerHandle *handle;
 };
 
+/* Begin - BUG#Z8288 */
+typedef struct ActiveMinQuotaTarget
+{
+	/* Quota targets that should be allowed to borrow their min reserve. */
+	Oid namespaceoid;
+	Oid owneroid;
+	/* Temp writes borrow reserve only while their temp files exist. */
+	int64 namespace_temp_released;
+	int64 role_temp_released;
+	/* QueryDesc or utility parsetree that owns this stack frame. */
+	void *owner;
+	struct ActiveMinQuotaTarget *prev;
+} ActiveMinQuotaTarget;
+
+static ActiveMinQuotaTarget *active_min_quota_target = NULL;
+/* End - BUG#Z8288 */
+
 DiskQuotaLocks diskquota_locks;
 DiskquotaMessageBox * message_box = NULL;
 /* using hash table to support incremental update the table size entry.*/
 static HTAB *disk_quota_worker_map = NULL;
 static object_access_hook_type next_object_access_hook;
 static ProcessUtility_hook_type prev_ProcessUtility_hook = NULL;
+/* Begin - BUG#Z8288 */
+static ExecutorRun_hook_type prev_ExecutorRun_hook = NULL;
+static ExecutorEnd_hook_type prev_ExecutorEnd_hook = NULL;
+static FileWrite_hook_type prev_FileWrite_hook = NULL;
+/* End - BUG#Z8288 */
 static int num_db = 0;
 
 /* functions of disk quota*/
@@ -133,6 +159,14 @@ static void dq_process_utility(PlannedStmt *pstmt, const char *queryString,
 							   bool readOnlyTree, ProcessUtilityContext context,
 							   ParamListInfo params, QueryEnvironment *queryEnv,
 							   DestReceiver *dest, QueryCompletion *qc);
+/* Begin - BUG#Z8288 */
+static void dq_executor_run(QueryDesc *queryDesc, ScanDirection direction,
+							uint64 count, bool execute_once);
+static void dq_executor_end(QueryDesc *queryDesc);
+static void dq_filewrite_hook(File file, int amount, off_t offset,
+							  uint32 wait_event_info);
+static void dq_xact_callback(XactEvent event, void *arg);
+/* End - BUG#Z8288 */
 static const char *err_code_to_err_message(DiskquotaMessageResult code);
 extern void diskquota_invalidate_db(Oid dbid);
 
@@ -242,6 +276,19 @@ _PG_init(void)
 
 	prev_ProcessUtility_hook = ProcessUtility_hook;
 	ProcessUtility_hook = dq_process_utility;
+
+	/* Begin - BUG#Z8288 */
+	prev_ExecutorRun_hook = ExecutorRun_hook;
+	ExecutorRun_hook = dq_executor_run;
+
+	prev_ExecutorEnd_hook = ExecutorEnd_hook;
+	ExecutorEnd_hook = dq_executor_end;
+
+	prev_FileWrite_hook = FileWrite_hook;
+	FileWrite_hook = dq_filewrite_hook;
+
+	RegisterXactCallback(dq_xact_callback, NULL);
+	/* End - BUG#Z8288 */
 
 	if (diskquota_enable != AUOTA_ON)
 		return ;
@@ -848,7 +895,7 @@ set_schema_quota(PG_FUNCTION_ARGS)
 	PG_RETURN_VOID();
 }
 
-static void get_disk_space(const char *path, uint64 *total, uint64 *free)
+void get_disk_space(const char *path, uint64 *total, uint64 *free)
 {
 #ifdef _WIN32
 	ULARGE_INTEGER free_bytes, total_bytes, total_free_bytes;
@@ -1425,6 +1472,361 @@ out:
 				subId, arg);
 }
 
+/* Begin - BUG#Z8288 */
+/*
+ * Restore reserve that was borrowed only for temp files under one active
+ * target.  The counters hold the actual bytes released from reserve files, not
+ * the requested write delta, because sparse reserve files may release less.
+ */
+static void
+restore_active_min_quota_temp_release(ActiveMinQuotaTarget *target)
+{
+	if (target == NULL)
+		return;
+
+	/* No-op when this target did not borrow reserve for temp files. */
+	restore_min_quota_reserve_space(NAMESPACE_QUOTA,
+									target->namespaceoid,
+									target->namespace_temp_released);
+	restore_min_quota_reserve_space(ROLE_QUOTA,
+									target->owneroid,
+									target->role_temp_released);
+	target->namespace_temp_released = 0;
+	target->role_temp_released = 0;
+}
+
+/*
+ * Track the min-quota target currently allowed to borrow reserve space.
+ *
+ * FileWrite() does not know which relation or schema a write belongs to, so
+ * executor and utility hooks push the target before running code that may
+ * extend files.  TopMemoryContext keeps the frame alive across executor memory
+ * context resets until ExecutorEnd/ProcessUtility cleanup pops it.
+ */
+static void
+push_active_min_quota_target(Oid namespaceoid, Oid owneroid, void *owner)
+{
+	ActiveMinQuotaTarget *target;
+	MemoryContext oldcontext;
+
+	if (!OidIsValid(namespaceoid) && !OidIsValid(owneroid))
+		return;
+
+	/* The frame may outlive executor-local memory contexts. */
+	oldcontext = MemoryContextSwitchTo(TopMemoryContext);
+	target = palloc(sizeof(ActiveMinQuotaTarget));
+	MemoryContextSwitchTo(oldcontext);
+
+	target->namespaceoid = namespaceoid;
+	target->owneroid = owneroid;
+	target->namespace_temp_released = 0;
+	target->role_temp_released = 0;
+	target->owner = owner;
+	target->prev = active_min_quota_target;
+	active_min_quota_target = target;
+}
+
+/*
+ * Leave the active min-quota target and restore any reserve temporarily
+ * borrowed for temp files.  Persistent relation writes keep the borrowed space,
+ * because their new file blocks are now part of the target's real usage.
+ */
+static void
+pop_active_min_quota_target(void *owner)
+{
+	ActiveMinQuotaTarget *target = active_min_quota_target;
+
+	if (target == NULL)
+		return;
+
+	Assert(owner == NULL || target->owner == owner);
+
+	/* Only temp-file borrows are reversible at statement cleanup time. */
+	restore_active_min_quota_temp_release(target);
+	active_min_quota_target = target->prev;
+	pfree(target);
+}
+
+/*
+ * Transaction-end safety net for active min-quota frames.
+ *
+ * Normal cleanup should still happen in ExecutorEnd or ProcessUtility.  This
+ * callback prevents a missed path from leaving TopMemoryContext frames and stale
+ * FileWrite attribution behind for later transactions in the same backend.
+ */
+static void
+dq_xact_callback(XactEvent event, void *arg)
+{
+	switch (event)
+	{
+		case XACT_EVENT_COMMIT:
+		case XACT_EVENT_PARALLEL_COMMIT:
+		case XACT_EVENT_ABORT:
+		case XACT_EVENT_PARALLEL_ABORT:
+		case XACT_EVENT_PREPARE:
+			while (active_min_quota_target != NULL)
+				pop_active_min_quota_target(NULL);
+			break;
+		default:
+			break;
+	}
+}
+
+/*
+ * Resolve the quota target for DML statements.
+ *
+ * The FileWrite hook only sees storage writes.  For INSERT/UPDATE/DELETE, the
+ * result relation is the object whose namespace and owner should be allowed to
+ * consume its min-quota reserve when the filesystem is otherwise full.
+ */
+static bool
+get_query_min_quota_target(QueryDesc *queryDesc, Oid *namespaceoid, Oid *owneroid)
+{
+	PlannedStmt *plannedstmt;
+	RangeTblEntry *rte;
+	Relation	rel;
+	int			rtindex;
+
+	if (queryDesc == NULL || queryDesc->plannedstmt == NULL)
+		return false;
+
+	plannedstmt = queryDesc->plannedstmt;
+	if (plannedstmt->commandType != CMD_INSERT &&
+		plannedstmt->commandType != CMD_UPDATE &&
+		plannedstmt->commandType != CMD_DELETE)
+		return false;
+
+	if (plannedstmt->resultRelations == NIL)
+		return false;
+
+	/* Use the first result relation as the storage owner for this DML. */
+	rtindex = linitial_int(plannedstmt->resultRelations);
+	rte = rt_fetch(rtindex, plannedstmt->rtable);
+	if (rte == NULL || rte->rtekind != RTE_RELATION || !OidIsValid(rte->relid))
+		return false;
+
+	rel = table_open(rte->relid, AccessShareLock);
+	*namespaceoid = rel->rd_rel->relnamespace;
+	*owneroid = rel->rd_rel->relowner;
+	table_close(rel, AccessShareLock);
+	return true;
+}
+
+/*
+ * Resolve the quota target for utility statements that create or extend
+ * relation storage before regular quota refresh catches up.
+ */
+static bool
+get_utility_min_quota_target(Node *parsetree, Oid *namespaceoid, Oid *owneroid)
+{
+	Relation rel;
+
+	if (parsetree == NULL)
+		return false;
+
+	switch (nodeTag(parsetree))
+	{
+		case T_CreateStmt:
+			{
+				CreateStmt *stmt = (CreateStmt *) parsetree;
+
+				*namespaceoid = RangeVarGetCreationNamespace(stmt->relation);
+				*owneroid = GetUserId();
+				return true;
+			}
+		case T_CreateSeqStmt:
+			{
+				CreateSeqStmt *stmt = (CreateSeqStmt *) parsetree;
+
+				*namespaceoid = RangeVarGetCreationNamespace(stmt->sequence);
+				*owneroid = stmt->ownerId ? stmt->ownerId : GetUserId();
+				return true;
+			}
+		case T_IndexStmt:
+			{
+				IndexStmt *stmt = (IndexStmt *) parsetree;
+				Oid		relid;
+
+				relid = RangeVarGetRelid(stmt->relation, AccessShareLock, false);
+				rel = table_open(relid, AccessShareLock);
+				*namespaceoid = rel->rd_rel->relnamespace;
+				*owneroid = rel->rd_rel->relowner;
+				table_close(rel, AccessShareLock);
+				return true;
+			}
+		case T_CreateTableAsStmt:
+			{
+				CreateTableAsStmt *stmt = (CreateTableAsStmt *) parsetree;
+
+				if (stmt->into == NULL || stmt->into->rel == NULL)
+					return false;
+
+				/*
+				 * CTAS inserts through DestIntoRel while the utility command is
+				 * running, so the target must come from the IntoClause rather
+				 * than ExecutorRun's SELECT plan.
+				 */
+				*namespaceoid = RangeVarGetCreationNamespace(stmt->into->rel);
+				*owneroid = GetUserId();
+				return true;
+			}
+		default:
+			return false;
+	}
+}
+
+/*
+ * Identify PostgreSQL temp files by their path component.  fd.c does not expose
+ * the VFD temp flag to extensions, so the plugin uses the stable pgsql_tmp
+ * directory/prefix convention.
+ */
+static bool
+is_query_temp_file(File file)
+{
+	const char *path = FilePathName(file);
+
+	return path != NULL && strstr(path, PG_TEMP_FILE_PREFIX) != NULL;
+}
+
+/*
+ * ExecutorRun hook for DML file growth.
+ *
+ * Pushes the target before executor writes can reach FileWrite().  Successful
+ * execution is popped in ExecutorEnd so temp files can be cleaned up before
+ * borrowed temp reserve is restored.
+ */
+static void
+dq_executor_run(QueryDesc *queryDesc, ScanDirection direction,
+				uint64 count, bool execute_once)
+{
+	Oid namespaceoid = InvalidOid;
+	Oid owneroid = InvalidOid;
+	bool pushed = false;
+
+	if (diskquota_enable != AUOTA_ON)
+	{
+		if (prev_ExecutorRun_hook)
+			prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+		else
+			standard_ExecutorRun(queryDesc, direction, count, execute_once);
+		return;
+	}
+
+	if (get_query_min_quota_target(queryDesc, &namespaceoid, &owneroid))
+	{
+		/* Keep the target active until ExecutorEnd on the success path. */
+		push_active_min_quota_target(namespaceoid, owneroid, queryDesc);
+		pushed = true;
+	}
+
+	PG_TRY();
+	{
+		if (prev_ExecutorRun_hook)
+			prev_ExecutorRun_hook(queryDesc, direction, count, execute_once);
+		else
+			standard_ExecutorRun(queryDesc, direction, count, execute_once);
+	}
+	PG_CATCH();
+	{
+		/* Avoid leaving this backend attributing later writes to this query. */
+		if (pushed && active_min_quota_target != NULL &&
+			active_min_quota_target->owner == queryDesc)
+			pop_active_min_quota_target(queryDesc);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+}
+
+/*
+ * ExecutorEnd hook used as the normal cleanup point for executor targets.
+ */
+static void
+dq_executor_end(QueryDesc *queryDesc)
+{
+	if (diskquota_enable != AUOTA_ON)
+	{
+		if (prev_ExecutorEnd_hook)
+			prev_ExecutorEnd_hook(queryDesc);
+		else
+			standard_ExecutorEnd(queryDesc);
+		return;
+	}
+
+	PG_TRY();
+	{
+		if (prev_ExecutorEnd_hook)
+			prev_ExecutorEnd_hook(queryDesc);
+		else
+			standard_ExecutorEnd(queryDesc);
+	}
+	PG_FINALLY();
+	{
+		/* Run after standard ExecutorEnd so temp file cleanup has happened. */
+		if (active_min_quota_target != NULL &&
+			active_min_quota_target->owner == queryDesc)
+			pop_active_min_quota_target(queryDesc);
+	}
+	PG_END_TRY();
+}
+
+/*
+ * Storage write hook that releases min-quota reserve just before real file
+ * extension writes consume filesystem blocks.
+ *
+ * For temp files, the amount actually released is recorded so it can be
+ * restored after the temp file is removed.  For persistent files, reserve stays
+ * released because the target's real usage has grown.
+ */
+static void
+dq_filewrite_hook(File file, int amount, off_t offset,
+				  uint32 wait_event_info)
+{
+	off_t		current_size;
+	off_t		past_write;
+	int64		delta;
+	bool		is_temp;
+	int64		released;
+	const char *path;
+
+	if (prev_FileWrite_hook)
+		prev_FileWrite_hook(file, amount, offset, wait_event_info);
+
+	if (diskquota_enable != AUOTA_ON || active_min_quota_target == NULL)
+		return;
+
+	/* Ignore diskquota's own reserve-file writes. */
+	path = FilePathName(file);
+	if (path && strstr(path, MIN_QUOTA_RESERVE_DIR))
+		return;
+
+	current_size = FileSize(file);
+	if (current_size < 0)
+		return;
+
+	/* Reserve is needed only for writes that extend the file. */
+	past_write = offset + amount;
+
+	delta = past_write - current_size;
+	if (delta <= 0)
+		return;
+
+	is_temp = is_query_temp_file(file);
+
+	/* Namespace and role min quotas are independent reserve files. */
+	released = release_min_quota_reserve_space(NAMESPACE_QUOTA,
+											   active_min_quota_target->namespaceoid,
+											   delta);
+	if (is_temp)
+		active_min_quota_target->namespace_temp_released += released;
+
+	released = release_min_quota_reserve_space(ROLE_QUOTA,
+											   active_min_quota_target->owneroid,
+											   delta);
+	if (is_temp)
+		active_min_quota_target->role_temp_released += released;
+}
+/* End - BUG#Z8288 */
+
 /*
  * ProcessUtility hook used to refresh quota state after utility commands that
  * can shrink or rewrite relation storage.
@@ -1436,13 +1838,48 @@ dq_process_utility(PlannedStmt *pstmt, const char *queryString,
 				   DestReceiver *dest, QueryCompletion *qc)
 {
 	Node *parsetree = pstmt->utilityStmt;
+	/* Begin - BUG#Z8288 */
+	Oid namespaceoid = InvalidOid;
+	Oid owneroid = InvalidOid;
+	bool pushed = false;
 
-	if (prev_ProcessUtility_hook)
-		prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context,
-								 params, queryEnv, dest, qc);
-	else
-		standard_ProcessUtility(pstmt, queryString, readOnlyTree, context,
-								params, queryEnv, dest, qc);
+	if (diskquota_enable != AUOTA_ON)
+	{
+		if (prev_ProcessUtility_hook)
+			prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context,
+									 params, queryEnv, dest, qc);
+		else
+			standard_ProcessUtility(pstmt, queryString, readOnlyTree, context,
+									params, queryEnv, dest, qc);
+		return;
+	}
+
+	if (!IsBackgroundWorker &&
+		!creating_extension &&
+		get_utility_min_quota_target(parsetree, &namespaceoid, &owneroid))
+	{
+		/* Utility storage writes use the object being created or indexed. */
+		push_active_min_quota_target(namespaceoid, owneroid, parsetree);
+		pushed = true;
+	}
+
+	PG_TRY();
+	{
+		if (prev_ProcessUtility_hook)
+			prev_ProcessUtility_hook(pstmt, queryString, readOnlyTree, context,
+									 params, queryEnv, dest, qc);
+		else
+			standard_ProcessUtility(pstmt, queryString, readOnlyTree, context,
+									params, queryEnv, dest, qc);
+	}
+	PG_FINALLY();
+	{
+		/* Utility commands are not paired with ExecutorEnd. */
+		if (pushed)
+			pop_active_min_quota_target(parsetree);
+	}
+	PG_END_TRY();
+	/* End - BUG#Z8288 */
 
 	if (IsBackgroundWorker || creating_extension || parsetree == NULL)
 		return;
