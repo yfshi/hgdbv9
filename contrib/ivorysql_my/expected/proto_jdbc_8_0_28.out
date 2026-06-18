@@ -442,7 +442,7 @@ Insert success, data length is 16418556
 Insert success, data length is 16418556
 Content length is 29250924
 Content length is 16418556
--- test DatabaseMetaData.getColumns
+-- test _binary introducer
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcTestIntroducer 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 PASS 1
 PASS 2
@@ -454,6 +454,78 @@ BIT PASS size=28542477 md5=7686b82e8947ed4a9da1a00bce970464
 XML PASS size=943 md5=8cae243a5f3f99b0e748c20d778459bf
 HTML PASS size=515245 md5=07e72dab71ee08a5ca7186fe585495f1
 ALL TEST PASSED
+-- test row_count
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcRowCountTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
+=================================================
+CREATE TABLE rowcount_test(id INT PRIMARY KEY)
+ROW_COUNT() = 0, expected = 0
+=================================================
+ALTER TABLE rowcount_test ADD COLUMN name VARCHAR(20)
+ROW_COUNT() = 0, expected = 0
+=================================================
+DROP TABLE rowcount_test
+ROW_COUNT() = 0, expected = 0
+=================================================
+INSERT INTO rowcount_test VALUES (1),(2),(3)
+ROW_COUNT() = 3, expected = 3
+=================================================
+UPDATE rowcount_test SET val = 100 WHERE id <= 3
+ROW_COUNT() = 3, expected = 3
+=================================================
+UPDATE rowcount_test SET val = 100 WHERE id <= 3
+ROW_COUNT() = 3, expected = 0
+result is diff, expected=0, actual=3
+=================================================
+DELETE FROM rowcount_test WHERE id <= 3
+ROW_COUNT() = 3, expected = 3
+=================================================
+SELECT * FROM rowcount_test
+id = 1
+id = 2
+id = 3
+=================================================
+Case 8: SELECT result set
+ROW_COUNT() = -1, expected = -1
+=================================================
+CREATE TABLE rowcount_test2 AS SELECT * FROM rowcount_test
+ROW_COUNT() = 3, expected = 3
+=================================================
+INSERT INTO rowcount_test2 SELECT * FROM rowcount_test
+ROW_COUNT() = 3, expected = 3
+=================================================
+REPLACE INTO rowcount_test VALUES (1,'Tom')
+ROW_COUNT() = 1, expected = 1
+=================================================
+REPLACE INTO rowcount_test VALUES (1,'Jerry')
+ROW_COUNT() = 2, expected = 2
+=================================================
+INSERT INTO rowcount_test VALUES (1,'Tom') ON DUPLICATE KEY UPDATE name = 'Tom'
+ROW_COUNT() = 1, expected = 1
+=================================================
+INSERT INTO rowcount_test VALUES (1,'Jerry') ON DUPLICATE KEY UPDATE name = 'Jerry'
+ROW_COUNT() = 1, expected = 2
+result is diff, expected=2, actual=1
+=================================================
+INSERT INTO rowcount_test VALUES (1,'Tom') ON DUPLICATE KEY UPDATE name = 'Tom'
+ROW_COUNT() = 1, expected = 0
+result is diff, expected=0, actual=1
+=================================================
+Case 16: first SELECT ROW_COUNT() after INSERT
+ROW_COUNT() = 1, expected = 1
+=================================================
+Case 16: second SELECT ROW_COUNT() after first ROW_COUNT()
+ROW_COUNT() = -1, expected = -1
+=================================================
+Case 17: SELECT ROW_COUNT() call 1
+ROW_COUNT() = 1, expected = 1
+=================================================
+Case 17: SELECT ROW_COUNT() call 2
+ROW_COUNT() = -1, expected = -1
+=================================================
+Case 17: SELECT ROW_COUNT() call 3
+ROW_COUNT() = -1, expected = -1
+=================================================
+ALL ROW_COUNT() JDBC TESTS PASSED
 -- TIME/DATETIME/TIMESTAMP fractional seconds
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcTimeDecimalTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 === preferQueryMode=simple ===
