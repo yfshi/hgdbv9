@@ -13519,6 +13519,12 @@ static void audit_drop_table_partition(void)
 							save_sec_context | SECURITY_RESTRICTED_OPERATION);
 	}
 
+	/* Begin - BUG#Z8408 */
+	(void) set_config_option("search_path", "\"$user\", public, hg_security",
+						 PGC_USERSET, PGC_S_SESSION,
+						 GUC_ACTION_SET, true, 0, false);
+	/* End - BUG#Z8408 */
+
 	if (SPI_connect() != SPI_OK_CONNECT)
 	{
 		ereport(ERROR, errmsg("SPI_connect failed"));
