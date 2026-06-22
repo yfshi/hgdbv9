@@ -10516,18 +10516,31 @@ ShowGUCConfigOption(const char *name, DestReceiver *dest)
 	{
 		if (!IS_SYSSSO(role_oid))
 		{
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					 errmsg("permission denied")));
+			int i = 0;
+			for (i = 0; security_parameters[i] != NULL; i++)
+			{
+				const char *secure_name = (char *)security_parameters[i];
+				if (strcmp(secure_name, name) == 0)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied")));
+				}
+			}
 		}
-	}
-	else
-	{
-		if (!superuser())
+		if (!IS_SYSSAO(role_oid))
 		{
-			ereport(ERROR,
-					(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-					 errmsg("permission denied")));
+			int i = 0;
+			for (i = 0; audit_parameters[i] != NULL; i++)
+			{
+				const char *audit_name = (char *) audit_parameters[i];
+				if (strcmp(audit_name, name) == 0)
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+							 errmsg("permission denied")));
+				}
+			}
 		}
 	}
 	/* End bug#z8069 */
