@@ -679,3 +679,146 @@ update sch1.t_t_mutil_t1 as a ,sch1.t_t_mutil_t2 as b set a.col1 = 13, b.col1 = 
 select * from sch1.t_t_mutil_t1;
 select * from sch1.t_t_mutil_t2;
 drop schema sch1 cascade;
+
+-- begin -bug#z8393
+-- MySQL-compatible duplicate assignment rewrite in UPDATE targetlists.
+-- single-table UPDATE
+CREATE TABLE mys_update_chain_t1 (
+    id INT PRIMARY KEY,
+    a  INT,
+    b  INT
+);
+CREATE TABLE mys_update_chain_t2 (
+    id INT PRIMARY KEY,
+    x  INT
+);
+INSERT INTO mys_update_chain_t1 VALUES (1, 1, 2);
+INSERT INTO mys_update_chain_t2 VALUES (1, 10);
+
+UPDATE mys_update_chain_t1
+  SET a = a + b, b = 300, a = a + 1
+  WHERE id = 1;
+SELECT * FROM mys_update_chain_t1 ORDER BY id;
+
+-- multi-table UPDATE, verify rewrite for each updated table independently
+UPDATE mys_update_chain_t1, mys_update_chain_t2
+  SET mys_update_chain_t1.a = mys_update_chain_t1.a + mys_update_chain_t1.b,
+      mys_update_chain_t2.x = mys_update_chain_t2.x + 1,
+      mys_update_chain_t1.b = 300,
+      mys_update_chain_t1.a = mys_update_chain_t1.a + mys_update_chain_t2.x,
+      mys_update_chain_t2.x = mys_update_chain_t2.x + 2
+  WHERE mys_update_chain_t1.id = mys_update_chain_t2.id
+    AND mys_update_chain_t1.id = 1;
+SELECT * FROM mys_update_chain_t1 ORDER BY id;
+SELECT * FROM mys_update_chain_t2 ORDER BY id;
+
+DROP TABLE mys_update_chain_t1;
+DROP TABLE mys_update_chain_t2;
+
+-- single-table with multiple rows: per-row chain rewrite
+CREATE TABLE mys_upd_multi_t (id INT PRIMARY KEY, a INT, b INT);
+INSERT INTO mys_upd_multi_t VALUES (1, 1, 2), (2, 10, 20);
+UPDATE mys_upd_multi_t SET a = a + b, b = 300, a = a + 1;
+SELECT * FROM mys_upd_multi_t ORDER BY id;
+DROP TABLE mys_upd_multi_t;
+
+-- multi-table UPDATE, duplicate assignment only on one table
+-- (derived from MySQL 5.7 mysql-test/t/multi_update.test).
+CREATE TABLE mys_upd_one_t1 (id INT PRIMARY KEY, v INT);
+CREATE TABLE mys_upd_one_t2 (id INT PRIMARY KEY, v INT);
+INSERT INTO mys_upd_one_t1 VALUES (1, 100), (2, 200);
+INSERT INTO mys_upd_one_t2 VALUES (1, 5), (2, 7);
+UPDATE mys_upd_one_t1, mys_upd_one_t2
+  SET mys_upd_one_t1.v = mys_upd_one_t1.v + 1,
+      mys_upd_one_t2.v = mys_upd_one_t2.v * 2,
+      mys_upd_one_t1.v = mys_upd_one_t1.v + 100
+  WHERE mys_upd_one_t1.id = mys_upd_one_t2.id;
+SELECT * FROM mys_upd_one_t1 ORDER BY id;
+SELECT * FROM mys_upd_one_t2 ORDER BY id;
+DROP TABLE mys_upd_one_t1;
+DROP TABLE mys_upd_one_t2;
+
+-- multi-table UPDATE, duplicate assignment on both tables;
+-- cross-table reads on the right-hand side still see the OLD row values,
+-- matching MySQL's behavior (cf. mysql-test/t/multi_update.test scenarios
+-- "UPDATE t1,t2 SET t1.d=t2.d,t2.d=30").
+CREATE TABLE mys_upd_both_t1 (id INT PRIMARY KEY, v INT);
+CREATE TABLE mys_upd_both_t2 (id INT PRIMARY KEY, v INT);
+INSERT INTO mys_upd_both_t1 VALUES (1, 100);
+INSERT INTO mys_upd_both_t2 VALUES (1, 5);
+UPDATE mys_upd_both_t1, mys_upd_both_t2
+  SET mys_upd_both_t1.v = mys_upd_both_t1.v + mys_upd_both_t2.v,
+      mys_upd_both_t2.v = mys_upd_both_t2.v + 1,
+      mys_upd_both_t1.v = mys_upd_both_t1.v + 2,
+      mys_upd_both_t2.v = mys_upd_both_t2.v * 10
+  WHERE mys_upd_both_t1.id = mys_upd_both_t2.id;
+SELECT * FROM mys_upd_both_t1 ORDER BY id;
+SELECT * FROM mys_upd_both_t2 ORDER BY id;
+DROP TABLE mys_upd_both_t1;
+DROP TABLE mys_upd_both_t2;
+
+-- cross-column dependency with duplicate target column assignments:
+-- apply left-to-right substitution environment across target columns.
+CREATE TABLE mys_upd_cross_dup (a INT, b INT);
+INSERT INTO mys_upd_cross_dup VALUES (10, 20);
+UPDATE mys_upd_cross_dup
+  SET a = a + b, b = 300, a = a + b, a = a + b;
+SELECT * FROM mys_upd_cross_dup;
+DROP TABLE mys_upd_cross_dup;
+
+-- multi-table variant: keep per-table rewrite while preserving
+-- left-to-right substitution for duplicate assignments on one target table.
+CREATE TABLE mys_upd_cross_dup_mt_t1 (id INT PRIMARY KEY, a INT, b INT);
+CREATE TABLE mys_upd_cross_dup_mt_t2 (id INT PRIMARY KEY, x INT);
+INSERT INTO mys_upd_cross_dup_mt_t1 VALUES (1, 10, 20);
+INSERT INTO mys_upd_cross_dup_mt_t2 VALUES (1, 5);
+UPDATE mys_upd_cross_dup_mt_t1, mys_upd_cross_dup_mt_t2
+  SET mys_upd_cross_dup_mt_t1.a = mys_upd_cross_dup_mt_t1.a + mys_upd_cross_dup_mt_t1.b,
+      mys_upd_cross_dup_mt_t2.x = mys_upd_cross_dup_mt_t2.x + 1,
+      mys_upd_cross_dup_mt_t1.b = 300,
+      mys_upd_cross_dup_mt_t1.a = mys_upd_cross_dup_mt_t1.a + mys_upd_cross_dup_mt_t1.b,
+      mys_upd_cross_dup_mt_t1.a = mys_upd_cross_dup_mt_t1.a + mys_upd_cross_dup_mt_t1.b
+  WHERE mys_upd_cross_dup_mt_t1.id = mys_upd_cross_dup_mt_t2.id;
+SELECT * FROM mys_upd_cross_dup_mt_t1 ORDER BY id;
+SELECT * FROM mys_upd_cross_dup_mt_t2 ORDER BY id;
+DROP TABLE mys_upd_cross_dup_mt_t1;
+DROP TABLE mys_upd_cross_dup_mt_t2;
+
+-- multi-table stress case: duplicate assignment chains on both updated tables.
+CREATE TABLE mys_upd_both_dup_t1 (id INT PRIMARY KEY, a INT, b INT);
+CREATE TABLE mys_upd_both_dup_t2 (id INT PRIMARY KEY, x INT, y INT);
+INSERT INTO mys_upd_both_dup_t1 VALUES (1, 10, 20);
+INSERT INTO mys_upd_both_dup_t2 VALUES (1, 1, 2);
+UPDATE mys_upd_both_dup_t1, mys_upd_both_dup_t2
+  SET mys_upd_both_dup_t1.a = mys_upd_both_dup_t1.a + mys_upd_both_dup_t1.b,
+      mys_upd_both_dup_t2.x = mys_upd_both_dup_t2.x + mys_upd_both_dup_t2.y,
+      mys_upd_both_dup_t1.b = 300,
+      mys_upd_both_dup_t2.y = 400,
+      mys_upd_both_dup_t1.a = mys_upd_both_dup_t1.a + mys_upd_both_dup_t1.b,
+      mys_upd_both_dup_t2.x = mys_upd_both_dup_t2.x + mys_upd_both_dup_t2.y
+  WHERE mys_upd_both_dup_t1.id = mys_upd_both_dup_t2.id;
+SELECT * FROM mys_upd_both_dup_t1 ORDER BY id;
+SELECT * FROM mys_upd_both_dup_t2 ORDER BY id;
+DROP TABLE mys_upd_both_dup_t1;
+DROP TABLE mys_upd_both_dup_t2;
+
+-- type promotion in expression plus duplicate assignment rewrite:
+-- keep rewritten substitutions type-safe via coercion to original Var type.
+CREATE TABLE mys_upd_type_guard (a INT, b BIGINT);
+INSERT INTO mys_upd_type_guard VALUES (10, 20);
+UPDATE mys_upd_type_guard
+  SET a = a + CAST(b AS BIGINT),
+      b = CAST(30 AS BIGINT),
+      a = a + b;
+SELECT * FROM mys_upd_type_guard;
+DROP TABLE mys_upd_type_guard;
+
+-- cross-column dependency without duplicate target columns: every right-hand
+-- side reads the OLD row, just like MySQL when the target column list contains
+-- no repeats (cf. MySQL 5.7 mysql-test/t/update.test: "UPDATE t1 SET b=a, a=...").
+CREATE TABLE mys_upd_cross (a TEXT, b TEXT);
+INSERT INTO mys_upd_cross VALUES ('start trail', '');
+UPDATE mys_upd_cross SET b = a, a = 'inject';
+SELECT a, b FROM mys_upd_cross;
+DROP TABLE mys_upd_cross;
+-- end - bug#z8393

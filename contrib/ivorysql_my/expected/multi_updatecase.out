@@ -871,9 +871,13 @@ drop MATERIALIZED VIEW MATE_MULTIVIEW2;
 -- same relname
 begin;
 update T_T_MUTIL_T1 a,T_T_MUTIL_T1 b set a.col2=5,b.col2=4 where a.col1=b.col1;
-ERROR:  multiple assignments to same column "col2"
 select * from T_T_MUTIL_T1;
-ERROR:  current transaction is aborted, commands ignored until end of transaction block
+ col1 | col2 
+------+------
+    1 |    4
+    1 |    4
+(2 rows)
+
 rollback;
 update T_T_MUTIL_T1 a,T_T_MUTIL_T2 a set a.col2=5; --error
 ERROR:  table name "a" specified more than once
@@ -1340,7 +1344,8 @@ NOTICE:  table "T_MUTIL_PRIMARY" does not exist, skipping
 create table T_MUTIL_PRIMARY(col1 int primary key);
 insert into T_MUTIL_PRIMARY values(1),(2);
 update T_MUTIL_PRIMARY a,T_MUTIL_PRIMARY b set a.col1=3,b.col1=3;
-ERROR:  multiple assignments to same column "col1"
+ERROR:  duplicate key value violates unique constraint "T_MUTIL_PRIMARY_pkey"
+DETAIL:  Key (col1)=(3) already exists.
 -- col of one table is the name of the other table
 drop table if exists T_MUTIL_T1;
 drop table if exists T_MUTIL_T2;

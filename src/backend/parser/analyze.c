@@ -147,7 +147,12 @@ static List* transformUpdateSortClause(ParseState *pstate, UpdateStmt *stmt, Que
 static void CheckUpdateRelations(ParseState *pstate, UpdateStmt *stmt);
 static void transformMergeTargetList(RangeVar *rel,List **targetList, bool ismulti);
 static void transformMultiMergeTargetList(List *rellist, List **targetList);
-
+/* Begin - BUG#z8393 */
+static Node *mys_update_var_mutator(Node *node, void *context);
+static List *mys_rewrite_update_targetlist(ParseState *pstate, List *tlist, int target_varno);
+static void mys_rewrite_multi_update_targetlists(ParseState *pstate, List **target_lists,
+												   int target_lists_num);
+/* End - BUG#z8393 */
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
 /* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
@@ -211,6 +216,16 @@ static bool ora_find_marked_agg(Node *node, void *context);
 static Node *ora_build_nested_agg_outer_expr(Node *node, void *context);
 static Query *ora_rewrite_nested_agg_two_stage(ParseState *pstate, Query *inner_qry);
 /* End - OA-REQ-2252 */
+
+/* Begin - BUG#z8393 */
+typedef struct MysqlUpdateVarContext
+{
+	ParseState	*pstate;
+	int			target_varno;
+	int			maxattr;
+	Node		**expr_by_attr;
+} MysqlUpdateVarContext;
+/* End - BUG#z8393 */
 
 /*
  * parse_analyze
@@ -4497,7 +4512,12 @@ transformMultiMergeTargetList(List *rellist, List **targetList)
 		else
 			transformRemoveschemaInTargetlist(ret, targetList);
 		/* End - BUG#Z1324 */
-		transformMergeTargetList(ret, targetList, true);
+
+		/*
+		 * For MySQL multi-table UPDATE, duplicate target columns are
+		 * rewritten later on transformed expressions to preserve chained
+		 * assignment semantics, so do not pre-merge here.
+		 */
 	}
 	return;
 }
@@ -4523,7 +4543,11 @@ transformUpdateStmt(ParseState *pstate, UpdateStmt *stmt)
 		pstate->p_isupdate = true;
 		if (stmt->relation)
 		{
-			transformMergeTargetList(stmt->relation, &stmt->targetList, false);
+			/*
+			 * Duplicate target columns are rewritten later on transformed
+			 * expressions to preserve chained assignment semantics, so do
+			 * not pre-merge here for either single- or multi-table UPDATE.
+			 */
 			/* Begin - BUG#Z1324 */
 			transformRemoveschemaInTargetlist(stmt->relation, &stmt->targetList);
 			if (stmt->relation->alias)
@@ -5021,6 +5045,11 @@ transformMultiUpdateTargetList(ParseState *pstate, List *origTlist, List* result
 	 */
 	transformMergeMultiTargetList(pstate->p_target_rangetblentry, new_tle);
 
+	/* Begin - BUG#z8393 */
+	if (MYS_MODE == compatible_mode && pstate->p_isupdate)
+		mys_rewrite_multi_update_targetlists(pstate, new_tle, rangeTableNum);
+	/* End - BUG#z8393 */
+
 	if (targetRelationNum == 1)
 	{
 		int i = linitial_int(resultRelations);
@@ -5179,8 +5208,253 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 	if (orig_tl != NULL)
 		elog(ERROR, "UPDATE target count mismatch --- internal error");
 
+	/* Begin - BUG#z8393 */
+	if (MYS_MODE == compatible_mode && pstate->p_isupdate)
+		tlist = mys_rewrite_update_targetlist(pstate, tlist, pstate->p_target_nsitem->p_rtindex);
+	/* End - BUG#z8393 */
+
 	return tlist;
 }
+
+/* Begin - BUG#z8393 */
+/*
+ * mys_update_var_mutator -
+ *	expression_tree_mutator() callback that substitutes Vars of already-
+ *	assigned columns of the current MySQL UPDATE target table with their
+ *	running rewritten expression.
+ *
+ * Only Vars that reference ctx->target_varno, refer to a user column
+ * (attno > 0) within ctx->maxattr, sit at the same query level
+ * (varlevelsup == 0), and already have an entry in ctx->expr_by_attr are
+ * replaced; any other Var (including those inside subqueries) is left
+ * alone so the executor still reads the OLD row value.  When the
+ * replacement's type differs from the original Var's type an implicit
+ * cast is inserted; if no such cast exists, ERRCODE_DATATYPE_MISMATCH is
+ * raised with the offending expression's source location attached.
+ */
+static Node *
+mys_update_var_mutator(Node *node, void *context)
+{
+	MysqlUpdateVarContext *ctx = (MysqlUpdateVarContext *) context;
+
+	if (node == NULL)
+		return NULL;
+
+	if (IsA(node, Var))
+	{
+		Var	   *var = (Var *) node;
+
+		if (var->varno == ctx->target_varno &&
+			var->varattno > 0 &&
+			var->varattno <= ctx->maxattr &&
+			var->varlevelsup == 0 &&
+			ctx->expr_by_attr[var->varattno] != NULL)
+		{
+			Node	*replacement = copyObject(ctx->expr_by_attr[var->varattno]);
+			Oid	var_type = var->vartype;
+			Oid	repl_type = exprType(replacement);
+
+			if (var_type != repl_type)
+			{
+				replacement = coerce_to_target_type(ctx->pstate,
+													replacement,
+													repl_type,
+													var_type,
+													var->vartypmod,
+													COERCION_IMPLICIT,
+													COERCE_IMPLICIT_CAST,
+													-1);
+				if (replacement == NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							 errmsg("Highgo database UPDATE rewrite could not coerce expression of type %s to target column type %s",
+									format_type_be(repl_type),
+									format_type_be(var_type)),
+							 errhint("You will need to rewrite or cast the expression."),
+							 parser_errposition(ctx->pstate, exprLocation(node))));
+			}
+
+			return replacement;
+		}
+	}
+
+	return expression_tree_mutator(node, mys_update_var_mutator, context);
+}
+
+/*
+ * mys_update_chain_is_element_assignment -
+ *	return true when the assignment targets a sub-field or array element
+ *	(FieldStore/SubscriptingRef), possibly wrapped in CoerceToDomain for a
+ *	domain over a composite or array type.  Such per-element updates must be
+ *	left untouched by the duplicate-assignment rewrite.
+ */
+static bool
+mys_update_chain_is_element_assignment(Node *node)
+{
+	for (;;)
+	{
+		if (node == NULL)
+			return false;
+		if (IsA(node, FieldStore) || IsA(node, SubscriptingRef))
+			return true;
+		if (IsA(node, CoerceToDomain))
+			node = (Node *) ((CoerceToDomain *) node)->arg;
+		else
+			return false;
+	}
+}
+
+/*
+ * Rewrite duplicate assignments for MySQL UPDATE.
+ * Example-1:  SET a = a + b, b = 300, a = a + 30
+ * v9 becomes  SET b = 300,     a = (a + b) + 30.
+ *
+ * Example-2:  SET a = a + b, b = 300, a = a + b, a = a + b
+ * v9 becomes  SET b = 300,     a = ((a + b) + 300) + 300.
+ *
+ * Example-3:  SET a = RAND(), b = a.
+ * v9 becomes  SET a = RAND(), b = RAND().
+ * --- did not the same with mysql, mysql is:  SET a = RAND(), b = a(the same value with new a).
+ * --- if keep SET a = RAND(), b = a, b is not the same value of a ,its the old value of a under pg artch
+ *
+ * Vars inside a subquery (varlevelsup > 0) are intentionally not substituted;
+ * such RHS expressions fall back to executor evaluation.
+ *
+ * Per-element assignments (FieldStore/SubscriptingRef, including the
+ * CoerceToDomain-wrapped forms for domains over composite/array types) are
+ * left untouched so PostgreSQL's own subfield/element merge still applies.
+ */
+static List *
+mys_rewrite_update_targetlist(ParseState *pstate, List *tlist, int target_varno)
+{
+	int		maxattr = 0;
+	bool		has_duplicate_targets = false;
+	TargetEntry	**last_tle_by_attr;
+	Node		**prev_expr_by_attr;
+	bool		*skip_rewrite_by_attr;
+	ListCell	*lc;
+	MysqlUpdateVarContext ctx;
+
+	if (tlist == NIL)
+		return tlist;
+
+	/* Pass 1: find the largest target attno. */
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+		AttrNumber	attrno = tle->resno;
+
+		if (!tle->resjunk && attrno > maxattr)
+			maxattr = attrno;
+	}
+
+	if (maxattr <= 0)
+		return tlist;
+
+	last_tle_by_attr = (TargetEntry **) palloc0((maxattr + 1) * sizeof(TargetEntry *));
+	skip_rewrite_by_attr = (bool *) palloc0((maxattr + 1) * sizeof(bool));
+
+	/*
+	 * Pass 2: record the last TLE per attno and detect duplicates in a single
+	 * scan, without a separate counter array.
+	 */
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+		AttrNumber	attrno = tle->resno;
+
+		if (tle->resjunk || attrno <= 0 || attrno > maxattr ||
+				skip_rewrite_by_attr[attrno])
+			continue;
+
+		if (mys_update_chain_is_element_assignment((Node *) tle->expr))
+		{
+			skip_rewrite_by_attr[attrno] = true;
+			continue;
+		}
+
+		if (last_tle_by_attr[attrno] != NULL)
+			has_duplicate_targets = true;
+		last_tle_by_attr[attrno] = tle;
+	}
+
+	if (!has_duplicate_targets)
+	{
+		pfree(last_tle_by_attr);
+		pfree(skip_rewrite_by_attr);
+		return tlist;
+	}
+
+	/* prev_expr_by_attr is only needed once we know we must rewrite. */
+	prev_expr_by_attr = (Node **) palloc0((maxattr + 1) * sizeof(Node *));
+
+	ctx.pstate = pstate;
+	ctx.target_varno = target_varno;
+	ctx.maxattr = maxattr;
+	ctx.expr_by_attr = prev_expr_by_attr;
+
+	/*
+	 * Pass 3: rewrite each TLE's expression in left-to-right order, using the
+	 * running prev_expr_by_attr view to substitute Vars of already-assigned
+	 * target columns.
+	 */
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+		AttrNumber	attrno = tle->resno;
+
+		if (tle->resjunk || attrno <= 0 || attrno > maxattr)
+			continue;
+
+		tle->expr = (Expr *) expression_tree_mutator((Node *) tle->expr,
+													 mys_update_var_mutator,
+													 &ctx);
+		prev_expr_by_attr[attrno] = (Node *) tle->expr;
+	}
+
+	/*
+	 * Pass 4: drop non-last duplicate TLEs in place, preserving the original
+	 * left-to-right order of the remaining entries.
+	 */
+	foreach(lc, tlist)
+	{
+		TargetEntry *tle = (TargetEntry *) lfirst(lc);
+		AttrNumber	attrno = tle->resno;
+
+		if (tle->resjunk || attrno <= 0 || attrno > maxattr ||
+				skip_rewrite_by_attr[attrno])
+			continue;
+
+		if (last_tle_by_attr[attrno] != tle)
+			tlist = foreach_delete_current(tlist, lc);
+	}
+
+	pfree(last_tle_by_attr);
+	pfree(prev_expr_by_attr);
+	pfree(skip_rewrite_by_attr);
+
+	return tlist;
+}
+
+/*
+ * mys_rewrite_multi_update_targetlists -
+ *	apply mys_rewrite_update_targetlist() to every per-table target
+ *	list produced for a MySQL multi-table UPDATE.
+ *
+ * target_lists[i] is the targetlist for the relation whose range table
+ * index is (i + 1); empty (NIL) slots are handled as a no-op inside the
+ * per-table helper, so no extra guard is needed here.
+ */
+static void
+mys_rewrite_multi_update_targetlists(ParseState *pstate, List **target_lists,
+									   int target_lists_num)
+{
+	int			i;
+
+	for (i = 0; i < target_lists_num; i++)
+		target_lists[i] = mys_rewrite_update_targetlist(pstate, target_lists[i], i + 1);
+}
+/* End - BUG#z8393 */
 
 /*
  * transformReturningList -
