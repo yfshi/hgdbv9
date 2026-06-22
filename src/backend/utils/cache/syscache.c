@@ -298,6 +298,17 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		16
 	},
+	{AuditConfigRelationId, /* AUDITENABLEINDEX */
+		AuditEnableIdIndexId,
+		2,
+		{
+			Anum_pg_audit_config_enable,
+			Anum_pg_audit_config_confid,
+			0,
+			0
+		},
+		16
+	},
 	{AuditRuleRelationId, /* AUDITRULEID */
 		AuditRuleIndexId,
 		1,
