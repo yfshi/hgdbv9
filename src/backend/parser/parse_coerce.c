@@ -4013,8 +4013,22 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 			{
 				usetextoid = true;
 			}
+			else if (ptype == UNKNOWNOID && ntype == UNKNOWNOID && pstate->p_parent_cte)
+				ptype = TEXTOID;
 		}
 		/* End - ReqID:SRS-SQL-UNION */
+
+		/* Begin - Bug#8344*/
+		/*
+		 * cte output line, if UNKNOWN type, convert to text
+		 * see analyzeCTETargetList function
+		 */
+		else if (enable_setoperation_null && compatible_mode == ORA_MODE &&
+			ptype == UNKNOWNOID && ntype == UNKNOWNOID && pstate->p_parent_cte)
+		{
+			ptype = TEXTOID;
+		}
+		/* End - Bug#8344*/
 	}
 
 	/*
