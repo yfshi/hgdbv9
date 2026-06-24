@@ -196,7 +196,7 @@ int audit_spacelimit = 10240; //G
 char *audit_alarmemail = NULL;
 char *audit_space_alarm = NULL;
 
-bool test_poc = true;
+bool test_poc = false;
 
 /*
  * Role with sysdba permissions
@@ -14955,6 +14955,9 @@ static bool audit_config_have_data(void)
 		test_poc = false;
 		return has_data;
 	}
+
+	if (!IsTransactionState())
+		return has_data;
 
 	catlist = SearchSysCacheList1(AUDITENABLEINDEX, BoolGetDatum(AUDIT_EANBLE));
 	if (catlist->n_members > 0)
