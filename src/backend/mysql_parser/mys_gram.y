@@ -607,6 +607,7 @@ static char *concatSconstList(List *strs);
 
 /* Begin - ReqID:SRS-MYSQL-SQL-DELETE */
 %type <str>		opt_quick
+%type <range>		delete_only_relation	/* oa-2505 */
 /* End - ReqID:SRS-MYSQL-SQL-DELETE */
 
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */
@@ -13884,7 +13885,46 @@ DeleteStmt: opt_with_clause DELETE_P opt_lowpriority opt_quick opt_ignore opt_ta
 						checkMultiDelete(n);
 					$$ = (Node *)n;
 				}
+			/* Begin - oa-2505 */
+			| opt_with_clause DELETE_FROM opt_lowpriority opt_quick opt_ignore FROM delete_only_relation
+			using_clause where_or_current_clause returning_clause
+				{
+					DeleteStmt *n = makeNode(DeleteStmt);
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_DELETE_CLAUSE_DEAL_CASE(NIL, $8);
+					/* End - ReqID:SRS-MYSQL-CASE */
+					n->relation = $7;
+					n->usingClause = $8;
+					n->whereClause = $9;
+					n->returningList = $10;
+					n->withClause = $1;
+					$$ = (Node *)n;
+				}
+			/* End - oa-2505 */
 		;
+
+/* Begin - oa-2505 */
+delete_only_relation:
+			ONLY qualified_name opt_alias_clause
+				{
+					$$ = $2;
+					$$->inh = false;
+					$$->alias = $3;
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($$);
+					/* End - ReqID:SRS-MYSQL-CASE */
+				}
+			| ONLY '(' qualified_name ')' opt_alias_clause
+				{
+					$$ = $3;
+					$$->inh = false;
+					$$->alias = $5;
+					/* Begin - ReqID:SRS-MYSQL-CASE */
+					MYS_RVAR_CASE($$);
+					/* End - ReqID:SRS-MYSQL-CASE */
+				}
+		;
+/* End - oa-2505 */
 
 opt_table_target_list:
 				table_name_list						{ $$ = $1; }
@@ -13894,6 +13934,7 @@ table_name_list:
 				columnref							{ $$ = list_make1($1); }
 			| table_name_list ',' columnref			{ $$ = lappend($1, $3); }
 		;
+
 opt_quick:
 				QUICK								{ $$ = NULL; }
 			|/*EMPTY*/		%prec UNBOUNDED			{ $$ = NULL; }

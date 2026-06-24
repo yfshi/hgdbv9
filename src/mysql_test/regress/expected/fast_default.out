@@ -747,10 +747,6 @@ INSERT INTO leader VALUES (1, 1), (2, 2);
 ALTER TABLE leader ADD c int;
 ALTER TABLE leader DROP c;
 DELETE FROM leader;
-ERROR:  syntax error at or near "ONLY"
-LINE 1: DELETE FROM ONLY "fast_default"."follower" WHERE $1 OPERATOR...
-                    ^
-QUERY:  DELETE FROM ONLY "fast_default"."follower" WHERE $1 OPERATOR(pg_catalog.=) "a"
 -- check that ALTER TABLE ... ALTER TYPE does the right thing
 CREATE TABLE vtype( a integer);
 INSERT INTO vtype VALUES (1);

@@ -527,16 +527,12 @@ alter table parent_noinh_convalid add constraint check_a_is_2 check (a = 2) no i
 alter table parent_noinh_convalid validate constraint check_a_is_2;
 ERROR:  check constraint "check_a_is_2" of relation "parent_noinh_convalid" is violated by some row
 delete from only parent_noinh_convalid;
-ERROR:  syntax error at or near "only"
-LINE 1: delete from only parent_noinh_convalid;
-                    ^
 -- ok (parent itself contains no violating rows)
 alter table parent_noinh_convalid validate constraint check_a_is_2;
-ERROR:  check constraint "check_a_is_2" of relation "parent_noinh_convalid" is violated by some row
 select convalidated from pg_constraint where conrelid = 'parent_noinh_convalid'::regclass and conname = 'check_a_is_2';
  convalidated 
 --------------
- f
+ t
 (1 row)
 
 -- cleanup
