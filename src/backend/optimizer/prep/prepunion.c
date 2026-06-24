@@ -44,6 +44,7 @@
 #include "utils/rel.h"
 #include "utils/selfuncs.h"
 #include "utils/syscache.h"
+#include "utils/guc.h"
 
 
 static RelOptInfo *recurse_set_operations(Node *setOp, PlannerInfo *root,
@@ -1163,12 +1164,22 @@ generate_setop_tlist(List *colTypes, List *colCollations,
 		if (hack_constants && inputtle->expr && IsA(inputtle->expr, Const))
 			expr = (Node *) inputtle->expr;
 		else
+		{
 			expr = (Node *) makeVar(varno,
 									inputtle->resno,
 									exprType((Node *) inputtle->expr),
 									exprTypmod((Node *) inputtle->expr),
 									exprCollation((Node *) inputtle->expr),
 									0);
+			/* Begin - BUG#8430 */
+			if (compatible_mode == ORA_MODE &&
+				enable_setoperation_null &&
+				IsA(inputtle->expr, Var))
+			{
+				((Var*)expr)->union_null_res = ((Var*)(inputtle->expr))->union_null_res;
+			}
+			/* End - BUG#8430 */
+		}
 
 		if (exprType(expr) != colType)
 		{

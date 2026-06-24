@@ -3539,10 +3539,12 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 
 			if (compatible_mode == ORA_MODE)
 			{
-				if (nls_length_semantics == NLS_LENGTH_BYTE)
+				/* Begin - BUG#8431 */
+				if (nls_length_semantics == NLS_LENGTH_BYTE && !pstate->p_parent_cte)
 					unknown_type = ORAVARCHARBYTEOID;
 				else
 					unknown_type = ORAVARCHARCHAROID;
+				/* End - BUG#8431 */
 			}
 			else
 				unknown_type = TEXTOID;
@@ -3752,10 +3754,12 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	ptype = exprType(arg);
 	if (ptype == UNKNOWNOID)
 	{
-		if (nls_length_semantics == NLS_LENGTH_BYTE)
+		/* Begin - BUG#8431 */
+		if (nls_length_semantics == NLS_LENGTH_BYTE && !pstate->p_parent_cte)
 			ptype = ORAVARCHARBYTEOID;
 		else
 			ptype = ORAVARCHARCHAROID;
+		/* End - BUG#8431 */
 	}
 	/* Oracle noexist bigint data type, but I think add int8 would be better? */
 	else if (ptype == INT4OID || ptype == INT2OID || ptype == INT8OID)
@@ -3765,10 +3769,12 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 	restype = exprType(arg);
 	if (restype == UNKNOWNOID)
 	{
-		if (nls_length_semantics == NLS_LENGTH_BYTE)
+		/* Begin - BUG#8431 */
+		if (nls_length_semantics == NLS_LENGTH_BYTE && !pstate->p_parent_cte)
 			restype = ORAVARCHARBYTEOID;
 		else
 			restype = ORAVARCHARCHAROID;
+		/* End - BUG#8431 */
 	}
 	else if (restype == INT4OID || restype == INT2OID || restype == INT8OID)
 		restype = NUMBEROID;
@@ -3927,10 +3933,12 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 			/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 			else if (compatible_mode == ORA_MODE)
 			{
-				if (nls_length_semantics == NLS_LENGTH_BYTE) /* BUG#Z091 */
+				/* Begin - BUG#8431 */
+				if (nls_length_semantics == NLS_LENGTH_BYTE && !pstate->p_parent_cte) /* BUG#Z091 */
 					arg = coerce_to_common_type(pstate, arg, ORAVARCHARBYTEOID, "DECODE");
 				else
 					arg = coerce_to_common_type(pstate, arg, ORAVARCHARCHAROID, "DECODE");
+				/* End - BUG#8431 */
 			}
 		}
 

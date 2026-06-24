@@ -2004,6 +2004,9 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 					res_nscolumn->p_varnosyn = 0;
 					res_nscolumn->p_varattnosyn = res_colindex;
 					res_nscolumn->p_var_visible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
+					/* Begin - BUG#8430 */
+					res_nscolumn->union_null_res = false;
+					/* End - BUG#8430 */
 				}
 			}
 
@@ -2294,6 +2297,9 @@ buildVarFromNSColumn(ParseNamespaceColumn *nscol)
 	/* makeVar doesn't offer parameters for these, so set by hand: */
 	var->varnosyn = nscol->p_varnosyn;
 	var->varattnosyn = nscol->p_varattnosyn;
+	/* Begin - BUG#8430 */
+	var->union_null_res = nscol->union_null_res;
+	/* End - BUG#8430 */
 	return var;
 }
 
@@ -3389,7 +3395,7 @@ static inline void
 pseudo_collation_replace_SubLink(SubLink *sublink, pseudo_collation_replace_context *context)
 {
 	REPLACE_NODE_PSEUDO_COLLATION(sublink->testexpr);
-	REPLACE_NODE_PSEUDO_COLLATION(sublink->subselect);
+	//REPLACE_NODE_PSEUDO_COLLATION(sublink->subselect);/* bug#8450 */
 }
 
 static inline void 
@@ -5230,17 +5236,19 @@ addTargetToSortList(ParseState *pstate, TargetEntry *tle,
 	/* if tlist item is an UNKNOWN literal, change it to TEXT */
 	if (restype == UNKNOWNOID)
 	{
-		/* Begin - ReqID:SRS-SQL-UNION */
-		if (!(enable_setoperation_null && compatible_mode == ORA_MODE))
-		{
-			tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
-											 restype, TEXTOID, -1,
+		/* Begin - bug#00008431 */
+		Oid targetOid = TEXTOID;
+
+		if (ORA_MODE == compatible_mode)
+			targetOid = ORAVARCHARCHAROID;
+
+		tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
+											 restype, targetOid, -1,
 											 COERCION_IMPLICIT,
 											 COERCE_IMPLICIT_CAST,
 											 -1);
-		}
-		/* End - ReqID:SRS-SQL-UNION */
-		restype = TEXTOID;
+		restype = targetOid;
+		/* End - bug#00008431 */
 	}
 
 	/*
@@ -5375,18 +5383,19 @@ addTargetToGroupList(ParseState *pstate, TargetEntry *tle,
 	/* if tlist item is an UNKNOWN literal, change it to TEXT */
 	if (restype == UNKNOWNOID)
 	{
-		/* Begin - ReqID:SRS-SQL-UNION */
-		if (!(enable_setoperation_null && compatible_mode == ORA_MODE))
-		{
-			tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
-											restype, TEXTOID, -1,
+		/* Begin - bug#00008431 */
+		Oid targetOid = TEXTOID;
+
+		if (ORA_MODE == compatible_mode)
+			targetOid = ORAVARCHARCHAROID;
+
+		tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
+											restype, targetOid, -1,
 											COERCION_IMPLICIT,
 											COERCE_IMPLICIT_CAST,
 											-1);
-		}
-		// set distinct null to text
-		/* End - ReqID:SRS-SQL-UNION */
-		restype = TEXTOID;
+		restype = targetOid;
+		/* End - bug#00008431 */
 	}
 
 	/* avoid making duplicate grouplist entries */

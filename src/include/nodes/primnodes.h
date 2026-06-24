@@ -229,6 +229,9 @@ typedef struct Var
 	AttrNumber	varattnosyn;	/* syntactic attribute number */
 	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
+	/* Begin - BUG#8430 */
+	bool		union_null_res;  /* select null union select null, set true*/
+	/* End - BUG#8430 */
 } Var;
 
 /* Begin - ReqID:SRS-SQL-ROWNUM */
@@ -1617,6 +1620,9 @@ typedef struct TargetEntry
 	/* Begin: Req:SRS-MYSQL-SQL-Select */
 	bool		resname_is_alias;		/*Is resname an alias*/
 	/* End: Req:SRS-MYSQL-SQL-Select */
+	/* Begin - BUG#8430 */
+	bool		union_null_res;
+	/* End - BUG#8430 */
 } TargetEntry;
 
 

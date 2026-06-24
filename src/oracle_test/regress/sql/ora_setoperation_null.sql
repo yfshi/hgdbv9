@@ -171,6 +171,11 @@ select distinct null as col from dual intersect select 'abc' from dual order by 
 select distinct null as col from dual except select 'abc' from dual order by col;
 select distinct null as col from dual minus select 'abc' from dual order by col;
 
+-- Begin - Bug#8430 --
+select * from (select null union select null) union select null;
+select c1 from (select null as c1);
+-- End - Bug#8430 --
+
 -- Begin - Bug#8279 --
 -- test view
 create or replace view test_v1 as select null union select null;
@@ -189,3 +194,16 @@ create or replace view test_v1 as select null union select 1 union select null;
 \d test_v1
 drop view test_v1;
 -- End - Bug#8279 --
+
+--bug#Z8450
+CREATE TABLE test_union(val VARCHAR2(20), status NUMBER(1));
+
+INSERT INTO test_union VALUES ('A', 1);
+INSERT INTO test_union VALUES (NULL, 1);
+INSERT INTO test_union VALUES ('!', 1);
+INSERT INTO test_union VALUES ('B', 0);
+
+SELECT * FROM test_union WHERE val != (SELECT NULL FROM DUAL);
+
+--clean data
+drop table test_union;

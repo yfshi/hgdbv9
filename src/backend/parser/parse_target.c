@@ -339,10 +339,6 @@ void
 resolveTargetListUnknowns(ParseState *pstate, List *targetlist)
 {
 	ListCell   *l;
-	/* Begin - ReqID:SRS-SQL-UNION */
-	bool isselect = false;
-	bool isfirst = true;
-	/* End - ReqID:SRS-SQL-UNION */
 
 	foreach(l, targetlist)
 	{
@@ -362,22 +358,12 @@ resolveTargetListUnknowns(ParseState *pstate, List *targetlist)
 
 			if (compatible_mode == ORA_MODE)
 			{
-				/* Begin - ReqID:SRS-SQL-UNION */
-				if (enable_setoperation_null && IsA(tle->expr, Const) && ((Const *)tle->expr)->constisnull)
-				{
-					if (isfirst && pstate->p_sourcetext && pg_strncasecmp(pstate->p_sourcetext, "SELECT", strlen("SELECT")) == 0)
-					{
-						isselect = true;
-						isfirst = false;
-					}
-					if (isselect)
-						continue;
-				}
-				/* End - ReqID:SRS-SQL-UNION */
-				if (nls_length_semantics == NLS_LENGTH_BYTE)
+				/* Begin - BUG#8431 */
+				if (nls_length_semantics == NLS_LENGTH_BYTE && !pstate->p_parent_cte)
 					targetoid = ORAVARCHARBYTEOID;
 				else
 					targetoid = ORAVARCHARCHAROID;
+				/* End - BUG#8431 */
 			}
 			tle->expr = (Expr *) coerce_type(pstate, (Node *) tle->expr,
 											 restype, targetoid, -1,
