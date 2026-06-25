@@ -14792,6 +14792,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 					ScanKeyData skey[1];
 					SysScanDesc rcscan;
 					HeapTuple	tup;
+					HeapTuple	classTup;	/* OA-REQ-2513 */
 					Form_pg_rewrite rule;
 
 					ruleDesc = table_open(RewriteRelationId, AccessShareLock);
@@ -14817,15 +14818,24 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 					rule = (Form_pg_rewrite) GETSTRUCT(tup);
 
 					/* view ? */
-					if (strcmp(NameStr(rule->rulename), "_RETURN") == 0)
+					/* Begin - OA-REQ-2513 */
+					classTup = SearchSysCache1(RELOID, ObjectIdGetDatum(rule->ev_class));
+					if (!HeapTupleIsValid(classTup))
+						elog(ERROR, "cache lookup failed for relation %u", rule->ev_class);
+					/* End - OA-REQ-2513 */
+
+					if (strcmp(NameStr(rule->rulename), "_RETURN") == 0 &&
+						((Form_pg_class) GETSTRUCT(classTup))->relkind == RELKIND_VIEW /* OA-REQ-2513 */)
 					{
-						make_view_invalid(rule->ev_class);
+						make_view_invalid_recursive(rule->ev_class);	/* OA-REQ-2513 */
 						systable_endscan(rcscan);
 						table_close(ruleDesc, AccessShareLock);
+						ReleaseSysCache(classTup);	/* OA-REQ-2513 */
 						continue;
 					}
 					else
 					{
+						ReleaseSysCache(classTup);	/* OA-REQ-2513 */
 						ereport(ERROR,
 								(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 								 errmsg("cannot alter type of a column used by a view or rule"),

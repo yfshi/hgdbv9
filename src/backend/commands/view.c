@@ -48,6 +48,11 @@
 #include "parser/pg_object_hook.h"
 #include "catalog/pg_object.h"
 /* END - BUGM354 */
+/* Begin - OA-REQ-2513 */
+#include "access/genam.h"
+#include "catalog/pg_depend.h"
+#include "utils/fmgroids.h"
+/* End - OA-REQ-2513 */
 
 static void checkViewTupleDesc(TupleDesc newdesc, TupleDesc olddesc);
 
@@ -1702,3 +1707,173 @@ make_view_valid(List *tlist, Oid viewOid, List *options, Query *viewParse)
 	return true;
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
+
+/* Begin - OA-REQ-2513 */
+/*
+ * make_view_invalid_recursive
+ *
+ *		Recursively invalidate a view and all views that depend on it.
+ */
+void
+make_view_invalid_recursive(Oid viewoid)
+{
+	Relation	depRel;
+	ScanKeyData	key[2];
+	SysScanDesc	scan;
+	HeapTuple	depTup;
+	HeapTuple	classTup;
+	List		*views_to_invalidate = NIL;
+	ListCell	*lc;
+	Form_pg_class	classForm;
+
+	/* prevent stack overflow */
+	check_stack_depth();
+
+	/*
+	 * Check if the target view itself is a materialized view?
+	 * TODO: force view not support materialized view.
+	 */
+	classTup = SearchSysCache1(RELOID, ObjectIdGetDatum(viewoid));
+	if (!HeapTupleIsValid(classTup))
+		elog(ERROR, "cache lookup failed for relation %u", viewoid);
+
+	classForm = (Form_pg_class) GETSTRUCT(classTup);
+
+	if (classForm->relkind == RELKIND_MATVIEW)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot invalidate materialized view"),
+				 errdetail("materialized views cannot be invalidated currently.")));
+
+	ReleaseSysCache(classTup);
+
+	/* already be invalidated */
+	if (rel_is_force_view(viewoid))
+		return;
+
+	/*
+	 * Scan pg_depend to find all views that depend on the current view
+	 */
+	depRel = table_open(DependRelationId, AccessShareLock);
+
+	ScanKeyInit(&key[0],
+				Anum_pg_depend_refclassid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(RelationRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_depend_refobjid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(viewoid));
+
+	scan = systable_beginscan(depRel, DependReferenceIndexId, true,
+							  NULL, 2, key);
+
+	while (HeapTupleIsValid(depTup = systable_getnext(scan)))
+	{
+		Relation	rewriteRel_local;
+		SysScanDesc	rule_scan;
+		ScanKeyData	rule_key[1];
+		HeapTuple	rewriteTup;
+		Form_pg_rewrite	rewriteForm;
+		Form_pg_depend	depForm;
+		Oid			dependent_view_oid;
+
+		depForm = (Form_pg_depend) GETSTRUCT(depTup);
+
+		/* not a view? */
+		if (depForm->classid != RewriteRelationId || depForm->deptype != DEPENDENCY_NORMAL)
+			continue;
+
+		/*
+		 * Scan pg_rewrite table directly by rule OID to get ev_class
+		 * and rulename
+		 */
+		rewriteRel_local = table_open(RewriteRelationId, AccessShareLock);
+
+		ScanKeyInit(&rule_key[0],
+					Anum_pg_rewrite_oid,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(depForm->objid));
+
+		rule_scan = systable_beginscan(rewriteRel_local, RewriteOidIndexId, true,
+									   NULL, 1, rule_key);
+
+		rewriteTup = systable_getnext(rule_scan);
+
+		/* rule still valid? */
+		if (!HeapTupleIsValid(rewriteTup))
+		{
+			systable_endscan(rule_scan);
+			table_close(rewriteRel_local, AccessShareLock);
+			continue;
+		}
+
+		rewriteForm = (Form_pg_rewrite) GETSTRUCT(rewriteTup);
+		dependent_view_oid = rewriteForm->ev_class;
+
+		/* not a view */
+		if (strcmp(NameStr(rewriteForm->rulename), ViewSelectRuleName) != 0)
+		{
+			systable_endscan(rule_scan);
+			table_close(rewriteRel_local, AccessShareLock);
+			continue;
+		}
+
+		/* check if the dependent object is a materialized view */
+		classTup = SearchSysCache1(RELOID, ObjectIdGetDatum(dependent_view_oid));
+		if (!HeapTupleIsValid(classTup))
+		{
+			systable_endscan(rule_scan);
+			table_close(rewriteRel_local, AccessShareLock);
+			continue;
+		}
+
+		classForm = (Form_pg_class) GETSTRUCT(classTup);
+
+		/* currently materialized view is not support */
+		if (classForm->relkind == RELKIND_MATVIEW)
+		{
+			systable_endscan(rule_scan);
+			table_close(rewriteRel_local, AccessShareLock);
+			ReleaseSysCache(classTup);
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("cannot invalidate view because a materialized view depends on it"),
+					 errdetail("materialized view \"%s\" depends on view \"%s\".",
+							   get_rel_name(dependent_view_oid),
+							   get_rel_name(viewoid))));
+		}
+
+		if (classForm->relkind != RELKIND_VIEW ||
+			dependent_view_oid == viewoid)
+		{
+			systable_endscan(rule_scan);
+			table_close(rewriteRel_local, AccessShareLock);
+			ReleaseSysCache(classTup);
+			continue;
+		}
+
+		views_to_invalidate = list_append_unique_oid(views_to_invalidate,
+													 dependent_view_oid);
+
+		systable_endscan(rule_scan);
+		table_close(rewriteRel_local, AccessShareLock);
+		ReleaseSysCache(classTup);
+	}
+
+	systable_endscan(scan);
+	table_close(depRel, AccessShareLock);
+
+	/*
+	 * Recursively invalidate all dependent views
+	 */
+	foreach(lc, views_to_invalidate)
+		make_view_invalid_recursive(lfirst_oid(lc));
+
+	/*
+	 * Finally invalidate the target view
+	 */
+	make_view_invalid(viewoid);
+	list_free(views_to_invalidate);
+}
+/* End - OA-REQ-2513 */

@@ -31,5 +31,6 @@ extern bool compile_force_view(Oid viewoid);
 extern bool make_view_invalid(Oid viewid);
 extern bool make_view_valid(List *tlist, Oid viewOid, List *options, Query *viewParse);
 /* End - ReqID:SRS-SQL-FORCEVIEW */
+extern void make_view_invalid_recursive(Oid viewoid);	/* OA-REQ-2513 */
 
 #endif							/* VIEW_H */

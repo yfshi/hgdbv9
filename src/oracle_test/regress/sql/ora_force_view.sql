@@ -189,3 +189,35 @@ drop package bug_5707_ppp;
 drop view bug_5707_fvt;
 drop table bug_5707_t;
 /* End - BUG#5707 */
+
+/* Begin - OA-REQ-2513 */
+-- test from oa2513
+create table test_id(id integer,name varchar2(256));
+create materialized view test_mview as select * from test_id;
+create view test_view2 as select *from test_mview where id > 2;
+alter table test_id alter column id type number; -- error
+drop table test_id cascade;
+
+-- test recursive invalid views
+create table test_oa2513(a int, b int);
+create view vtest1 as select * from test_oa2513;
+create view vtest2 as select * from vtest1;
+create view vtest3 as select * from vtest2;
+create view vtest4 as select * from vtest3;
+create view vtest5 as select * from vtest4;
+alter table test_oa2513 alter column a type number; -- ok
+select count(1) >= 5 from pg_force_view; -- true
+select count(1) from vtest5;	-- compile all
+select count(1) >=5 from pg_force_view; -- false
+drop table test_oa2513 cascade;
+
+-- materialized view current not support
+create table test_oa2513(a int, b int);
+create view vtest1 as select * from test_oa2513;
+create view vtest2 as select * from vtest1;
+create view vtest3 as select * from vtest2;
+create materialized view vtest4 as select * from vtest3;
+create view vtest5 as select * from vtest4;
+alter table test_oa2513 alter column a type number; -- error
+drop table test_oa2513 cascade;
+/* End - OA-REQ-2513 */

@@ -398,3 +398,66 @@ drop package bug_5707_ppp;
 drop view bug_5707_fvt;
 drop table bug_5707_t;
 /* End - BUG#5707 */
+/* Begin - OA-REQ-2513 */
+-- test from oa2513
+create table test_id(id integer,name varchar2(256));
+create materialized view test_mview as select * from test_id;
+create view test_view2 as select *from test_mview where id > 2;
+alter table test_id alter column id type number; -- error
+ERROR:  cannot alter type of a column used by a view or rule
+DETAIL:  rule _RETURN on materialized view test_mview depends on column "id"
+drop table test_id cascade;
+NOTICE:  drop cascades to 2 other objects
+DETAIL:  drop cascades to materialized view test_mview
+drop cascades to view test_view2
+-- test recursive invalid views
+create table test_oa2513(a int, b int);
+create view vtest1 as select * from test_oa2513;
+create view vtest2 as select * from vtest1;
+create view vtest3 as select * from vtest2;
+create view vtest4 as select * from vtest3;
+create view vtest5 as select * from vtest4;
+alter table test_oa2513 alter column a type number; -- ok
+select count(1) >= 5 from pg_force_view; -- true
+ ?column? 
+----------
+ t
+(1 row)
+
+select count(1) from vtest5;	-- compile all
+ count 
+-------
+     0
+(1 row)
+
+select count(1) >=5 from pg_force_view; -- false
+ ?column? 
+----------
+ f
+(1 row)
+
+drop table test_oa2513 cascade;
+NOTICE:  drop cascades to 5 other objects
+DETAIL:  drop cascades to view vtest1
+drop cascades to view vtest2
+drop cascades to view vtest3
+drop cascades to view vtest4
+drop cascades to view vtest5
+-- materialized view current not support
+create table test_oa2513(a int, b int);
+create view vtest1 as select * from test_oa2513;
+create view vtest2 as select * from vtest1;
+create view vtest3 as select * from vtest2;
+create materialized view vtest4 as select * from vtest3;
+create view vtest5 as select * from vtest4;
+alter table test_oa2513 alter column a type number; -- error
+ERROR:  cannot invalidate view because a materialized view depends on it
+DETAIL:  materialized view "vtest4" depends on view "vtest3".
+drop table test_oa2513 cascade;
+NOTICE:  drop cascades to 5 other objects
+DETAIL:  drop cascades to view vtest1
+drop cascades to view vtest2
+drop cascades to view vtest3
+drop cascades to materialized view vtest4
+drop cascades to view vtest5
+/* End - OA-REQ-2513 */
