@@ -934,6 +934,19 @@ datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result
 	int result_len = 0;
 	size_t remaining;
 	MyLocale   *locale = NULL;
+	int 	tm_wday;
+	
+	/**
+	 * Begin - bug#8424
+	 * We caculate tm_wday with j2day, in which 0 is Sunday,
+	 * but in MySQL, 0 is Monday.
+	 * So we have to do this conversion.
+	 */
+	tm_wday = tm->tm_wday - 1;
+
+	if (tm_wday < 0)
+		tm_wday += 7;
+	/* End - bug#8424 */
 
 	format_len = strlen(format);
 
@@ -1030,14 +1043,14 @@ datetimes_format_str(struct pg_tm *tm, char *format, char *result, size_t result
 			{
 				if (locale == NULL)
 					locale = MyLocaleSearch(lc_time_names);
-				result_len += snprintf(result + result_len, remaining, "%s", locale->day_names[tm->tm_wday - 1]);
+				result_len += snprintf(result + result_len, remaining, "%s", locale->day_names[tm_wday]);
 				break;
 			}
 			case 'a': /* Abbreviated weekday name (Sun-Sat) */
 			{
 				if (locale == NULL)
 					locale = MyLocaleSearch(lc_time_names);
-				result_len += snprintf(result + result_len, remaining, "%s", locale->ab_day_names[tm->tm_wday - 1]);
+				result_len += snprintf(result + result_len, remaining, "%s", locale->ab_day_names[tm_wday]);
 				break;
 			}
 			case 'w': /* Weekday (0=Sunday, 6=Saturday) */
@@ -1367,7 +1380,7 @@ from_unixtime_format(PG_FUNCTION_ARGS)
 
 	/* Get format string */
 	format = text_to_cstring(PG_GETARG_TEXT_PP(1));
-	tm->tm_wday = calc_weekday(calc_day(tm->tm_year, tm->tm_mon, tm->tm_mday), false);
+	tm->tm_wday = j2day(date2j(tm->tm_year, tm->tm_mon, tm->tm_mday));
 	tm->tm_yday = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) - date2j(tm->tm_year, 1, 1) + 1;
 
 	datetimes_format_str(tm, format, result, MAXDATELEN, fsec);
@@ -4522,6 +4535,14 @@ datetimes_adddate_days(PG_FUNCTION_ARGS)
 	span->day = days;
 
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
+
+	/* Begin - bug#8084 */
+	if (tm->tm_year == 0)
+	{
+		PG_RETURN_TEXT_P(cstring_to_text("0000-00-00"));
+	}
+	/* End - bug#8084 */
+
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
 	if (!adddate_interval(&str, timestamp, span, true, 6))

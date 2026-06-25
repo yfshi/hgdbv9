@@ -137,29 +137,35 @@ numeric_mul_uint8(PG_FUNCTION_ARGS)
 Datum
 numeric_format(PG_FUNCTION_ARGS)
 {
-	Numeric	value = PG_GETARG_NUMERIC(0);
-	int64 	precision = PG_GETARG_INT64(1);
-	text *text_locale = PG_GETARG_TEXT_PP(2);
+    Numeric value;
+    int64 precision;
 	char *char_locale, *char_value, *rounded_val;
 	int has_minus, int_part_len, thousand_sep_num, buf_len;
 	int len, dec_point_index, acc;
 	char *buf, *buf_ptr, *val_ptr, *point;
 	MyLocale *locale = NULL;
 
+	/* Begin Bug#8445 8447 */
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
 		PG_RETURN_NULL();
 	}
 
+    value = PG_GETARG_NUMERIC(0);
+    precision = PG_GETARG_INT64(1);
+
 	precision = Min(MAX_PRECISION, Max(0, precision));
 
 	// if invalid locale received, set locale to 'en_US'
-	char_locale = text_to_cstring(text_locale);
+	if (PG_ARGISNULL(2))
+		char_locale = "en_US";
+	else
+		char_locale = text_to_cstring(PG_GETARG_TEXT_PP(2));
+	/* End Bug#8445 8447 */
+
 	locale = MyLocaleSearch(char_locale);
 	if (locale == NULL)
-	{
 		locale = MyLocaleSearch("en_US");
-	}
 
 	value = DatumGetNumeric(DirectFunctionCall2(numeric_round,
 												NumericGetDatum(value),

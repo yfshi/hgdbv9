@@ -497,9 +497,9 @@ SELECT ivymy.from_unixtime(1000000000::float8, '%H:%i:%s') AS time_only;
 (1 row)
 
 SELECT ivymy.from_unixtime(1000000000::float8, '%W %M %Y') AS weekday_month_year;
-   weekday_month_year    
--------------------------
- Saturday September 2001
+  weekday_month_year   
+-----------------------
+ Sunday September 2001
 (1 row)
 
 -- Test FROM_UNIXTIME with NULL
@@ -826,6 +826,36 @@ SELECT date_sub('0200-01-01 00:00:01', INTERVAL 1 SECOND);
  0200-01-01 00:00:00.000000
 (1 row)
 
+/* Begin - bug#8425 */
+SELECT SUBDATE('9999-10-27', INTERVAL '9990-99' YEAR_MONTH);
+          SUBDATE           
+----------------------------
+ 0001-07-27 00:00:00.000000
+(1 row)
+
+/* End - bug#8425 */
+/* Begin - bug#8426 */
+SELECT DATE_SUB('2023-01-01 10:00:00', INTERVAL '1-1' DAY_HOUR);
+          DATE_SUB          
+----------------------------
+ 2022-12-31 09:00:00.000000
+(1 row)
+
+SELECT DATE_SUB('2023-01-01 10:00:00', INTERVAL '1.1' DAY_HOUR);
+          DATE_SUB          
+----------------------------
+ 2022-12-31 09:00:00.000000
+(1 row)
+
+/* End - bug#8426 */
+/* Begin - bug#8084 */
+SELECT ADDDATE('0000-12-30', 1);
+  ADDDATE   
+------------
+ 0000-00-00
+(1 row)
+
+/* End - bug#8084 */
 -- adddate
 SELECT adddate('1997-12-31 23:59:59.000001', 10);
           adddate           
@@ -1115,3 +1145,47 @@ SELECT DATE_ADD('1967-12-31 00:00:00.000001', INTERVAL 999999 MICROSECOND);
 (1 row)
 
 /* End - bug#z8241 */
+/* Begin - bug#8424 */
+SELECT FROM_UNIXTIME(1672576434, '%a'); -- sun
+ FROM_UNIXTIME 
+---------------
+ Sun
+(1 row)
+
+SELECT FROM_UNIXTIME(1672662834, '%a'); -- mon
+ FROM_UNIXTIME 
+---------------
+ Mon
+(1 row)
+
+SELECT FROM_UNIXTIME(1672749234, '%a'); -- tue
+ FROM_UNIXTIME 
+---------------
+ Tue
+(1 row)
+
+SELECT FROM_UNIXTIME(1672835634, '%a'); -- wed
+ FROM_UNIXTIME 
+---------------
+ Wed
+(1 row)
+
+SELECT FROM_UNIXTIME(1672922034, '%a'); -- thu
+ FROM_UNIXTIME 
+---------------
+ Thu
+(1 row)
+
+SELECT FROM_UNIXTIME(1673008434, '%a'); -- fri
+ FROM_UNIXTIME 
+---------------
+ Fri
+(1 row)
+
+SELECT FROM_UNIXTIME(1673094834, '%a'); -- sat
+ FROM_UNIXTIME 
+---------------
+ Sat
+(1 row)
+
+/* End - bug#8424 */

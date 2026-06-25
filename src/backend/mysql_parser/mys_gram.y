@@ -348,6 +348,10 @@ makeRenameStmt(RangeVar *old_relation, RangeVar *new_relation, int location); /*
 /* Begin: Req:SRS-MYSQL-SQL-Select */
 static char *concatSconstList(List *strs);
 /* End: Req:SRS-MYSQL-SQL-Select */
+
+/* Begin - bug#8026 */
+static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
+/* End - bug#8084 */
 %}
 
 %pure-parser
@@ -17224,27 +17228,29 @@ not_empty_interval:
 				}
 			| MICROSECOND_P
 				{
-					$$ = list_make1(makeString("microsecond"));
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(MICROSECOND), @1));
 				}
 			| SECOND_MICROSECOND_P
 				{
-					$$ = list_make2(makeIntConst(INTERVAL_MASK(SECOND), @1),
-									makeIntConst(6, @1));
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @1));
 				}
 			| MINUTE_MICROSECOND_P
 				{
-					$$ = list_make2(makeIntConst(INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND), @1),
-									makeIntConst(6, @1));
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE) |
+												 INTERVAL_MASK(SECOND), @1));
 				}
 			| HOUR_MICROSECOND_P
 				{
-					$$ = list_make2(makeIntConst(INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND), @1),
-									makeIntConst(6, @1));
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
+												 INTERVAL_MASK(MINUTE) |
+												 INTERVAL_MASK(SECOND), @1));
 				}
 			| DAY_MICROSECOND_P
 				{
-					$$ = list_make2(makeIntConst(INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND), @1),
-									makeIntConst(6, @1));
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
+												 INTERVAL_MASK(HOUR) |
+												 INTERVAL_MASK(MINUTE) |
+												 INTERVAL_MASK(SECOND), @1));
 				}
 			| MONTH_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); }
@@ -17297,41 +17303,41 @@ not_empty_interval:
 			| DAY_HOUR_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-													INTERVAL_MASK(HOUR), @1));
+												 INTERVAL_MASK(HOUR), @1));
 				}
 			| DAY_MINUTE_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-													INTERVAL_MASK(HOUR) |
-													INTERVAL_MASK(MINUTE), @1));
+												 INTERVAL_MASK(HOUR) |
+												 INTERVAL_MASK(MINUTE), @1));
 				}
 			| DAY_SECOND_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-													INTERVAL_MASK(HOUR) |
-													INTERVAL_MASK(MINUTE) |
-													INTERVAL_MASK(SECOND), @1));
+												 INTERVAL_MASK(HOUR) |
+												 INTERVAL_MASK(MINUTE) |
+												 INTERVAL_MASK(SECOND), @1));
 				}
 			| HOUR_MINUTE_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
-													INTERVAL_MASK(MINUTE), @1));
+												 INTERVAL_MASK(MINUTE), @1));
 				}
 			| HOUR_SECOND_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
-													INTERVAL_MASK(MINUTE) |
-													INTERVAL_MASK(SECOND), @1));
+												 INTERVAL_MASK(MINUTE) |
+												 INTERVAL_MASK(SECOND), @1));
 				}
 			| MINUTE_SECOND_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE) |
-													INTERVAL_MASK(SECOND), @1));
+												 INTERVAL_MASK(SECOND), @1));
 				}
 			| YEAR_MONTH_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
-													INTERVAL_MASK(MONTH), @1));
+												 INTERVAL_MASK(MONTH), @1));
 				}
 			/* End - bug#z8229 #z8235 */
 		;
@@ -19615,7 +19621,7 @@ timestamp_units:
 			| MINUTE_P 			{ $$ = DTK_MINUTE; }
 			| SECOND_P 			{ $$ = DTK_SECOND; }
 			| MONTH_P 			{ $$ = DTK_MONTH; }
-			| QUARTER_P 			{ $$ = DTK_QUARTER; }
+			| QUARTER_P 		{ $$ = DTK_QUARTER; }
 			| WEEK_P 			{ $$ = DTK_WEEK; }
 			/* Begin - bug#6410 */
 			| SQL_TSI_YEAR 	{ $$ = DTK_YEAR; }
@@ -20248,178 +20254,21 @@ AexprConst: Iconst
 				}
 			| ConstInterval Sconst opt_interval
 				{
-					Node *result;
-					TypeName *t = $1;
-					int multiple = -1;
-					int divisor = -1;
-
-					if ($3 != NULL)
-					{
-						if (nodeTag(linitial($3)) == T_String)
-						{
-							Value *unit = (Value *)linitial($3);
-							if (strcmp(unit->val.str, "week") == 0)
-							{
-								multiple = 7;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), @3));
-							}
-							else if (strcmp(strVal(unit), "quarter") == 0)
-							{
-								multiple = 3;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @3));
-							}
-							else if (strcmp(unit->val.str, "microsecond") == 0)
-							{
-								divisor = 1000000;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @3));
-							}
-						}
-					}
-
-					if (multiple > 0)
-					{
-						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", (Node *)makeStringConstCast($2, @2, t), (Node *)makeIntConst(multiple, -1), -1);
-					}
-					else if (divisor > 0)
-					{
-						TypeCast *int2Numeric = makeNode(TypeCast);
-						TypeName *numericType = makeTypeName(pstrdup("numeric"));
-
-						numericType->typmods = NIL;
-						numericType->location = -1;
-
-						int2Numeric->arg = (Node *)makeIntConst(divisor, -1);
-						int2Numeric->typeName = numericType;
-						int2Numeric->location = -1;
-
-						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", (Node *)makeStringConstCast($2, @2, t), (Node *)int2Numeric, -1);
-					}
-					else
-					{
-						t->typmods = $3;
-						result = makeStringConstCast($2, @2, t);
-					}
-					$$ = result;
+					$$ = makeIntervalExpr($1, $2, $3);
 				}
 			/* Begin - bug#z8234 */
 			| ConstInterval FCONST opt_interval
-				{
-					Node *result;
-					TypeName *t = $1;
-					int multiple = -1;
-					int divisor = -1;
-
-					if ($3 != NULL)
-					{
-						if (nodeTag(linitial($3)) == T_String)
-						{
-							Value *unit = (Value *)linitial($3);
-							if (strcmp(unit->val.str, "week") == 0)
-							{
-								multiple = 7;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), @3));
-							}
-							else if (strcmp(strVal(unit), "quarter") == 0)
-							{
-								multiple = 3;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @3));
-							}
-							else if (strcmp(unit->val.str, "microsecond") == 0)
-							{
-								divisor = 1000000;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @3));
-							}
-						}
-					}
-
-					if (multiple > 0)
-					{
-						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", 
-															(Node *)makeStringConstCast(psprintf("%d", (int)round(atof($2))), @2, t), 
-															(Node *)makeIntConst(multiple, -1), -1);
-					}
-					else if (divisor > 0)
-					{
-						TypeCast *int2Numeric = makeNode(TypeCast);
-						TypeName *numericType = makeTypeName(pstrdup("numeric"));
-
-						numericType->typmods = NIL;
-						numericType->location = -1;
-
-						int2Numeric->arg = (Node *)makeIntConst(divisor, -1);
-						int2Numeric->typeName = numericType;
-						int2Numeric->location = -1;
-
-						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", 
-															(Node *)makeStringConstCast(psprintf("%d", (int)round(atof($2))), @2, t), 
-															(Node *)int2Numeric, -1);
-					}
-					else
-					{
-						t->typmods = $3;
-						result = makeStringConstCast(psprintf("%ld", (int64)round(atof($2))), @2, t);
-					}
-					$$ = result;
+				{	
+					$$ = makeIntervalExpr($1,
+										  psprintf("%ld", (int64)round(atof($2))),
+										  $3);
 				}
 			/* End - bug#z8234 */
 			| ConstInterval Iconst not_empty_interval
 				{
-					Node *result;
-					TypeName *t = $1;
-					int multiple = -1;
-					int divisor = -1;
-
-					if ($3 != NULL)
-					{
-						if (nodeTag(linitial($3)) == T_String)
-						{
-							Value *unit = (Value *)linitial($3);
-							if (strcmp(unit->val.str, "week") == 0)
-							{
-								multiple = 7;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), @3));
-							}
-							else if (strcmp(strVal(unit), "quarter") == 0)
-							{
-								multiple = 3;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @3));
-							}
-							else if (strcmp(unit->val.str, "microsecond") == 0)
-							{
-								divisor = 1000000;
-								t->typmods = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @3));
-							}
-						}
-					}
-
-					if (multiple > 0)
-					{
-						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "*", 
-															(Node *) makeStringConstCast(psprintf("%d", $2), @2, t), 
-															(Node *)makeIntConst(multiple, -1), -1);
-					}
-					else if (divisor > 0)
-					{
-						TypeCast *int2Numeric = makeNode(TypeCast);
-						TypeName *numericType = makeTypeName(pstrdup("numeric"));
-
-						numericType->typmods = NIL;
-						numericType->location = -1;
-
-						int2Numeric->arg = (Node *)makeIntConst(divisor, -1);
-						int2Numeric->typeName = numericType;
-						int2Numeric->location = -1;
-
-						result = (Node *) makeSimpleA_Expr(AEXPR_OP, "/", 
-															(Node *) makeStringConstCast(psprintf("%d", $2), @2, t), 
-															(Node *)int2Numeric, -1);
-					}
-					else
-					{
-						t->typmods = $3;
-						result = makeStringConstCast(psprintf("%d", $2), @2, t);
-					}
-					$$ = result;
+					$$ = makeIntervalExpr($1,
+										  psprintf("%d", $2),
+										  $3);
 				}
 			| ConstInterval '(' expr_list ')' opt_sconst
 				{
@@ -23924,4 +23773,44 @@ add_sql_mode_to_proconfig(List *proconfig)
 	return lappend(proconfig, (Node *) elem);
 }
 
+/* Begin - bug#8026 */
+static Node *
+makeIntervalExpr(TypeName *t, char *val, List *typmods)
+{
+	Node *result;
+	int multiple = 0;
+
+	if (typmods != NULL)
+	{
+		Value *unit = (Value *)linitial(typmods);
+		
+		if (IsA(unit, String) && strcmp(strVal(unit), "week") == 0)
+		{
+			multiple = 7;
+			t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), -1));
+		}
+
+		if (IsA(unit, String) && strcmp(strVal(unit), "quarter") == 0)
+		{
+			multiple = 3;
+			t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), -1));
+		}
+	}
+
+	if (multiple != 0)
+	{
+		result = (Node *) makeSimpleA_Expr(AEXPR_OP, 
+										   "*",
+										   (Node *) makeStringConstCast(val, -1, t),
+										   (Node *) makeIntConst(multiple, -1), -1);
+	}
+	else
+	{
+		t->typmods = typmods;
+		result = makeStringConstCast(val, -1, t);
+	}
+
+	return result;
+}
+/* End - bug#8026 */
 /* End - ReqID:SRS-MYSQL-SQL-PROC */

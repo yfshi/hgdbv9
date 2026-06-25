@@ -596,15 +596,33 @@ ivymy_aes_encrypt(PG_FUNCTION_ARGS)
 
 	if (aes_needs_iv(mys_block_encryption_mode))
 	{
-		if (PG_ARGISNULL(2) || text_length(PointerGetDatum(PG_GETARG_TEXT_PP(2)) < 16) || (PG_NARGS() <= 2))
-			ereport(ERROR, 
+		/* Begin - bug#8443 */
+		if (PG_ARGISNULL(2))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("Incorrect parameter count in the call to native function 'aes_encrypt'")));
+		}
+		/* End - bug#8443 */
+
+		if (text_length(PG_GETARG_DATUM(2)) < 16)
+		{
+
+			ereport(ERROR,
 					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
+		}
 	}
 
 	sptr = text_to_cstring(PG_GETARG_TEXT_PP(0)); // String to encrypt
 	key = text_to_cstring(PG_GETARG_TEXT_PP(1)); // key
 
-	iv_str = (unsigned char*)text_to_cstring(PG_GETARG_TEXT_PP(2));
+	/* Begin - bug#8443 */
+	if (PG_ARGISNULL(2))
+		iv_str = NULL;
+	else
+		iv_str = (unsigned char *) text_to_cstring(PG_GETARG_TEXT_PP(2));
+	/* End - bug#8443 */
+
 	arg3 = text_to_cstring(PG_GETARG_TEXT_PP(3));
 	arg4 = text_to_cstring(PG_GETARG_TEXT_PP(4));
 	arg5 = text_to_cstring(PG_GETARG_TEXT_PP(5));
@@ -656,7 +674,7 @@ ivymy_aes_decrypt(PG_FUNCTION_ARGS)
 
 	if (aes_needs_iv(mys_block_encryption_mode))
 	{
-		if (PG_ARGISNULL(2) || text_length(PointerGetDatum(PG_GETARG_TEXT_PP(2)) < 16) || (PG_NARGS() <= 2))
+		if (PG_ARGISNULL(2) || (text_length(PG_GETARG_DATUM(2)) < 16))
 			ereport(ERROR, 
 					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
 	}
@@ -713,14 +731,13 @@ bytea_aes_decrypt(PG_FUNCTION_ARGS)
 	size_t len = VARSIZE_ANY_EXHDR(bytea_data);
 	char *str = VARDATA_ANY(bytea_data);
 	char *sptr = palloc(len + 1);
-	const char *end = str + len;
 
 	memcpy(sptr, str, len);
 	sptr[len] = '\0';
 
 	if (aes_needs_iv(mys_block_encryption_mode))
 	{
-		if (text_length(PointerGetDatum(PG_GETARG_TEXT_PP(2)) < 16))
+		if (text_length(PG_GETARG_DATUM(2)) < 16)
 			ereport(ERROR, 
 					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
 	}

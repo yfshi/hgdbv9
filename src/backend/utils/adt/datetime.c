@@ -4655,6 +4655,11 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 						case INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 							type = DTK_SECOND;
 							break;
+						/* Begin - bug#8026 */
+						case INTERVAL_MASK(MICROSECOND):
+							type = DTK_MICROSEC;
+							break;
+						/* End - bug#8026 */
 						default:
 							type = DTK_SECOND;
 							break;
@@ -4666,7 +4671,39 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 				if (errno == ERANGE)
 					return DTERR_FIELD_OVERFLOW;
 
-				if (*cp == '-')
+				/* Begin - bug#8026 */
+				if (compatible_mode == MYS_MODE &&
+					(range == (INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR)) ||
+					 range == (INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH))))
+				{
+					int			val2 = 0;
+					int 		mulit;
+
+					if (type == DTK_HOUR)
+						mulit = HOURS_PER_DAY;
+					else if (type == DTK_MONTH)
+						mulit = MONTHS_PER_YEAR;
+
+					if (*cp != '\0')
+					{
+						val2 = strtoint(cp + 1, &cp, 10);
+						if (errno == ERANGE || val2 < 0)
+							return DTERR_FIELD_OVERFLOW;
+						if (*cp != '\0')
+							return DTERR_BAD_FORMAT;
+						
+						if (*field[i] == '-')
+							val2 = -val2;
+						
+						if (((double) val * mulit + val2) > INT_MAX ||
+							((double) val * mulit + val2) < INT_MIN)
+							return DTERR_FIELD_OVERFLOW;
+						val = val * mulit + val2;
+						fval = 0;
+					}
+				}
+				/* End - bug#8026 */
+				else if (*cp == '-')
 				{
 					/* SQL "years-months" syntax */
 					int			val2;
