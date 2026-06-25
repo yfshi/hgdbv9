@@ -244,9 +244,9 @@ LINE 1: SELECT relname, d.* FROM ONLY d, pg_class where d.tableoid =...
                                       ^
 UPDATE a SET aa='new';
 DELETE FROM ONLY c WHERE aa='new';
-ERROR:  syntax error at or near "ONLY"
+ERROR:  relation "c" does not exist
 LINE 1: DELETE FROM ONLY c WHERE aa='new';
-                    ^
+                         ^
 SELECT relname, a.* FROM a, pg_class where a.tableoid = pg_class.oid;
  relname | aa  
 ---------+-----
@@ -998,25 +998,19 @@ ERROR:  relation "inh_fk_2_child" does not exist
 LINE 1: insert into inh_fk_2_child values (111, 1), (222, 2);
                     ^
 delete from inh_fk_1 where a = 1;
-ERROR:  syntax error at or near "ONLY"
-LINE 1: DELETE FROM ONLY "public"."inh_fk_2" WHERE $1 OPERATOR(pg_ca...
-                    ^
-QUERY:  DELETE FROM ONLY "public"."inh_fk_2" WHERE $1 OPERATOR(pg_catalog.=) "y"
 select * from inh_fk_1 order by 1;
  a 
 ---
- 1
  2
  3
-(3 rows)
+(2 rows)
 
 select * from inh_fk_2 order by 1, 2;
  x  | y 
 ----+---
- 11 | 1
  22 | 2
  33 | 3
-(3 rows)
+(2 rows)
 
 drop table inh_fk_1, inh_fk_2, inh_fk_2_child;
 ERROR:  table "inh_fk_2_child" does not exist

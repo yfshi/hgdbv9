@@ -661,3 +661,40 @@ select * from person_3_1;
 select * from person_3_2;
 
 drop table person_3;
+
+-- OA-2505: test case
+CREATE TABLE students(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    parent_id INT,
+    name VARCHAR(50)
+) ENGINE=InnoDB;
+
+CREATE TABLE student_courses (
+    student_id INT,
+    score INT,
+    PRIMARY KEY (student_id),
+    FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+INSERT INTO students (id,parent_id,name) VALUES (1,1,'张'),(2,1,'李');
+INSERT INTO student_courses (student_id,score) VALUES (1,1),(2,1);
+SELECT * FROM students;
+SELECT * FROM student_courses;
+DELETE FROM students where id=2;
+SELECT * FROM students;
+SELECT * FROM student_courses;
+DROP TABLE student_courses;
+DROP TABLE students;
+
+-- bug#z6538: test case
+create table test10pk(x varchar(10) primary key);
+insert into test10pk values('abc');
+create table test10fk (x varchar(10)  references test10pk (x) on update cascade on delete cascade);
+insert into test10fk values('abc');
+select * from test10pk;
+select * from test10fk;
+delete from test10pk where x = 'abc';
+select * from test10pk;
+select * from test10fk;
+drop table test10fk;
+drop table test10pk;

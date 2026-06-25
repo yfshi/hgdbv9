@@ -1588,14 +1588,8 @@ UPDATE rw_view2 SET a = a*10 WHERE a IN (-3, 3); -- Should produce -30 only
 UPDATE ONLY rw_view2 SET a = a*10 WHERE a IN (-4, 4); -- Should produce -40 only
 DELETE FROM rw_view1 WHERE a IN (-5, 5); -- Should delete -5 and 5
 DELETE FROM ONLY rw_view1 WHERE a IN (-6, 6); -- Should delete -6 and 6
-ERROR:  syntax error at or near "ONLY"
-LINE 1: DELETE FROM ONLY rw_view1 WHERE a IN (-6, 6);
-                    ^
 DELETE FROM rw_view2 WHERE a IN (-7, 7); -- Should delete -7 only
 DELETE FROM ONLY rw_view2 WHERE a IN (-8, 8); -- Should delete -8 only
-ERROR:  syntax error at or near "ONLY"
-LINE 1: DELETE FROM ONLY rw_view2 WHERE a IN (-8, 8);
-                    ^
 SELECT * FROM ONLY base_tbl_parent ORDER BY a;
   a   
 ------
@@ -1605,11 +1599,9 @@ SELECT * FROM ONLY base_tbl_parent ORDER BY a;
   -30
   -20
   -10
-   -8
-   -6
   100
   200
-(10 rows)
+(8 rows)
 
 SELECT * FROM base_tbl_child ORDER BY a;
 ERROR:  relation "base_tbl_child" does not exist
@@ -1649,11 +1641,9 @@ SELECT * FROM ONLY base_tbl_parent ORDER BY a;
   -30
   -20
   -10
-   -8
-   -6
   100
  1200
-(10 rows)
+(8 rows)
 
 SELECT * FROM base_tbl_child ORDER BY a;
 ERROR:  relation "base_tbl_child" does not exist
@@ -2186,8 +2176,6 @@ ERROR:  relation "rw_view1" already exists
 SELECT * FROM rw_view1;
   a   
 ------
-    2
-    4
   -90
   110
  -190
@@ -2212,7 +2200,7 @@ SELECT * FROM rw_view1;
    13
    15
    25
-(26 rows)
+(24 rows)
 
 EXPLAIN (costs off) DELETE FROM rw_view1 WHERE id = 1 AND snoop(data);
 ERROR:  column "id" does not exist
