@@ -1,0 +1,67 @@
+/* Begin Bug#Z7338 */
+CREATE TABLE t_bit_copy (b1 mysbit(8), b2 mysbit(32));
+INSERT INTO t_bit_copy VALUES (0x41, 0x12345678);
+INSERT INTO t_bit_copy VALUES (0x01, 0x00000001);
+-- text COPY round-trip
+COPY t_bit_copy TO '@abs_builddir@/results/ivorysql_mysbit_copy.tsv';
+TRUNCATE t_bit_copy;
+COPY t_bit_copy FROM '@abs_builddir@/results/ivorysql_mysbit_copy.tsv';
+SELECT * FROM t_bit_copy ORDER BY b1;
+  b1  |     b2     
+------+------------
+ 0x01 | 0x00000001
+ 0x41 | 0x12345678
+(2 rows)
+
+-- binary COPY round-trip
+TRUNCATE t_bit_copy;
+INSERT INTO t_bit_copy VALUES (0x41, 0x12345678);
+INSERT INTO t_bit_copy VALUES (0x01, 0x00000001);
+COPY t_bit_copy TO '@abs_builddir@/results/ivorysql_mysbit_copy.bin' BINARY;
+TRUNCATE t_bit_copy;
+COPY t_bit_copy FROM '@abs_builddir@/results/ivorysql_mysbit_copy.bin' BINARY;
+SELECT * FROM t_bit_copy ORDER BY b1;
+  b1  |     b2     
+------+------------
+ 0x01 | 0x00000001
+ 0x41 | 0x12345678
+(2 rows)
+
+SET datestyle TO 'ISO,MDY'; 
+CREATE TABLE t_dt_copy (
+    id int,
+    a mysdatetimes(3),
+    b mystimestamps(3),
+    c mystimes(3)
+);
+INSERT INTO t_dt_copy VALUES (1, '11-11-11 11:11:11.111', '11-11-11 11:11:11.111', '11:11:11.111');
+INSERT INTO t_dt_copy VALUES (2, '99-08-22 23:59:59.999', '99-08-22 23:59:59.999', '23:59:59.999');
+-- text COPY round-trip
+COPY t_dt_copy TO '@abs_builddir@/results/ivorysql_mysdate_copy.tsv';
+TRUNCATE t_dt_copy;
+COPY t_dt_copy FROM '@abs_builddir@/results/ivorysql_mysdate_copy.tsv';
+SELECT * FROM t_dt_copy ORDER BY id;
+ id |            a            |            b            |      c       
+----+-------------------------+-------------------------+--------------
+  1 | 2011-11-11 11:11:11.111 | 2011-11-11 11:11:11.111 | 11:11:11.111
+  2 | 1999-08-22 23:59:59.999 | 1999-08-23 00:00:00.999 | 23:59:59.999
+(2 rows)
+
+-- binary COPY round-trip
+TRUNCATE t_dt_copy;
+INSERT INTO t_dt_copy VALUES (1, '11-11-11 11:11:11.111', '11-11-11 11:11:11.111', '11:11:11.111');
+INSERT INTO t_dt_copy VALUES (2, '99-08-22 23:59:59.999', '99-08-22 23:59:59.999', '23:59:59.999');
+COPY t_dt_copy TO '@abs_builddir@/results/ivorysql_mysdate_copy.bin' BINARY;
+TRUNCATE t_dt_copy;
+COPY t_dt_copy FROM '@abs_builddir@/results/ivorysql_mysdate_copy.bin' BINARY;
+SELECT * FROM t_dt_copy ORDER BY id;
+ id |            a            |            b            |      c       
+----+-------------------------+-------------------------+--------------
+  1 | 2011-11-11 11:11:11.111 | 2011-11-11 11:11:11.111 | 11:11:11.111
+  2 | 1999-08-22 23:59:59.999 | 1999-08-22 23:59:59.999 | 23:59:59.999
+(2 rows)
+
+SET datestyle TO default;
+DROP TABLE t_bit_copy;
+DROP TABLE t_dt_copy;
+/* End Bug#Z7338 */
