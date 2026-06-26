@@ -10158,12 +10158,46 @@ dumpDumpableObjectPg(Archive *fout, const DumpableObject *dobj)
 static bool
 isAntiTamperNamespace(Archive *fout, char* qnspname)
 {
-	PQExpBuffer query = createPQExpBuffer();
+	PQExpBuffer query;
 	PGresult *res;
 	int i_antitamper;
 	char *antitamperstr = NULL;
 	bool is_antitamper = false;
 
+	PQExpBuffer schemaquery;
+	PQExpBuffer funcquery;
+	char *  schema_exists = NULL;
+	char *  func_exists = NULL;
+
+	/* check exists hg_security */
+	schemaquery = createPQExpBuffer();
+	appendPQExpBuffer(schemaquery, "SELECT EXISTS(SELECT 1 FROM pg_namespace WHERE nspname = 'hg_security') AS exists");
+	res = ExecuteSqlQueryForSingleRow(fout, schemaquery->data);
+	schema_exists = pg_strdup(PQgetvalue(res, 0, PQfnumber(res, "exists")));
+	PQclear(res);
+	destroyPQExpBuffer(schemaquery);
+	if (strcmp(schema_exists, "t"))
+	{
+		return false;
+	}
+
+	/* check exists func check_schema_is_antitamper */
+	funcquery = createPQExpBuffer();
+	appendPQExpBuffer(funcquery, "SELECT EXISTS ("
+								"SELECT 1 FROM pg_proc p JOIN pg_namespace n ON p.pronamespace = n.oid "
+								"WHERE n.nspname = 'hg_security' AND p.proname = 'check_schema_is_antitamper' "
+								"AND p.proargtypes[0] = 'oid'::regtype AND p.prorettype = 'bool'::regtype"
+								") AS exists");
+	res = ExecuteSqlQueryForSingleRow(fout, funcquery->data);
+	func_exists = pg_strdup(PQgetvalue(res, 0, PQfnumber(res, "exists")));
+	PQclear(res);
+	destroyPQExpBuffer(funcquery);
+	if (strcmp(func_exists, "t"))
+	{
+		return false;
+	}
+
+	query = createPQExpBuffer();
 	/* retrieve name of foreign server and generic options */
 	appendPQExpBuffer(query,
 					  "SELECT hg_security.check_schema_is_antitamper( "
