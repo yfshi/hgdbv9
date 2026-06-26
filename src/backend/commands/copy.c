@@ -810,15 +810,15 @@ ProcessCopyOptions(ParseState *pstate,
 			opts_out->quote = "\"";
 		if (!opts_out->escape)
 		{
-			/* Begin - BUG#z8225 */
+			/* Begin - BUG#z8225, bug#z8452 */
 			/*
 			 * for load data, if not set 'escaped by' option
 			 * set it to default  escaped by '"'
 			 */
-			if (compatible_mode == MYS_MODE && pstate && pstate->is_load_data)
+			if (compatible_mode == MYS_MODE && pstate && (pstate->is_load_data || pstate->select_into))
 				opts_out->escape = "\"";
 			else
-			/* End - BUG#z8225 */
+			/* End - BUG#z8225, bug#z8452 */
 				opts_out->escape = opts_out->quote;
 		}
 	}
