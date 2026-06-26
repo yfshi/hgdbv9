@@ -1981,19 +1981,11 @@ Datum
 mysdatetimes_recv(PG_FUNCTION_ARGS)
 {
 	StringInfo	buf = (StringInfo) PG_GETARG_POINTER(0);
-	TimeADT		result = -1;
 
-	result = (TimeADT)pq_getmsgint64(buf);
-
-	/* Limit to the same range that date_in() accepts. */
-	if (DATE_NOT_FINITE(result))
-		/* ok */;
-	else if (!IS_VALID_DATE(result))
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("datetime out of range")));
-
-	PG_RETURN_TIMEADT(result);
+	return DirectFunctionCall3(numeric_recv, 
+							   NumericGetDatum(buf),
+							   ObjectIdGetDatum(InvalidOid),
+							   Int32GetDatum(-1));
 }
 
 /*
@@ -2002,12 +1994,9 @@ mysdatetimes_recv(PG_FUNCTION_ARGS)
 Datum
 mysdatetimes_send(PG_FUNCTION_ARGS)
 {
-	TimeADT		datetime = PG_GETARG_TIMEADT(0);
-	StringInfoData buf;
+	Numeric		datetime = PG_GETARG_NUMERIC(0);
 
-	pq_begintypsend(&buf);
-	pq_sendint64(&buf, datetime);
-	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+	return DirectFunctionCall1(numeric_send, NumericGetDatum(datetime));
 }
 
 /* common code for mysdatetime_typmodin */
@@ -4264,19 +4253,11 @@ Datum
 mystimestamps_recv(PG_FUNCTION_ARGS)
 {
 	StringInfo	buf = (StringInfo) PG_GETARG_POINTER(0);
-	TimeADT		result;
 
-	result = (TimeADT)pq_getmsgint64(buf);
-
-	/* Limit to the same range that date_in() accepts. */
-	if (DATE_NOT_FINITE(result))
-		/* ok */;
-	else if (!IS_VALID_DATE(result))
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("timestamp out of range")));
-
-	PG_RETURN_TIMEADT(result);
+	return DirectFunctionCall3(numeric_recv, 
+							   NumericGetDatum(buf),
+							   ObjectIdGetDatum(InvalidOid),
+							   Int32GetDatum(-1));
 }
 
 /*
@@ -4285,12 +4266,9 @@ mystimestamps_recv(PG_FUNCTION_ARGS)
 Datum
 mystimestamps_send(PG_FUNCTION_ARGS)
 {
-	TimeADT		timestamp = PG_GETARG_TIMEADT(0);
-	StringInfoData buf;
+	Numeric         datetime = PG_GETARG_NUMERIC(0);
 
-	pq_begintypsend(&buf);
-	pq_sendint64(&buf, timestamp);
-	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+	return DirectFunctionCall1(numeric_send, NumericGetDatum(datetime));
 }
 
 /* common code for mysdatetime_typmodin */
@@ -6011,19 +5989,11 @@ Datum
 mystimes_recv(PG_FUNCTION_ARGS)
 {
 	StringInfo	buf = (StringInfo) PG_GETARG_POINTER(0);
-	TimeADT		result;
 
-	result = (TimeADT) pq_getmsgint64(buf);
-
-	/* Limit to the same range that date_in() accepts. */
-	if (DATE_NOT_FINITE(result))
-		 /* ok */ ;
-	else if (!IS_VALID_DATE(result))
-		ereport(ERROR,
-				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
-				 errmsg("datetime out of range")));
-
-	PG_RETURN_TIMEADT(result);
+	return DirectFunctionCall3(numeric_recv, 
+							   NumericGetDatum(buf),
+							   ObjectIdGetDatum(InvalidOid),
+							   Int32GetDatum(-1));
 }
 
 /*
@@ -6032,12 +6002,9 @@ mystimes_recv(PG_FUNCTION_ARGS)
 Datum
 mystimes_send(PG_FUNCTION_ARGS)
 {
-	TimeADT		datetime = PG_GETARG_TIMEADT(0);
-	StringInfoData buf;
+	Numeric         datetime = PG_GETARG_NUMERIC(0);
 
-	pq_begintypsend(&buf);
-	pq_sendint64(&buf, datetime);
-	PG_RETURN_BYTEA_P(pq_endtypsend(&buf));
+	return DirectFunctionCall1(numeric_send, NumericGetDatum(datetime));
 }
 
 /* common code for mysdatetime_typmodin */

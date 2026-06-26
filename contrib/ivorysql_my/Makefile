@@ -158,7 +158,7 @@ MYS_REGRESS = numeric_to_times \
 			  mys_float \
 			  mys_numeric \
 			  mys_bit \
-			  mys_bit_copy \
+			  mys_copy \
 			  mys-char-varchar \
 			  character_func \
 			  time_func	\
