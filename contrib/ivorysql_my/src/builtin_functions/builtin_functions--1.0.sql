@@ -3984,7 +3984,6 @@ RETURNS text
 AS 'MODULE_PATHNAME','numeric_format'
 LANGUAGE C
 PARALLEL SAFE
-STRICT
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.format(text, integer, text default 'en_US')
@@ -3994,8 +3993,38 @@ AS $$
 $$
 LANGUAGE SQL
 PARALLEL SAFE
-STRICT
 IMMUTABLE;
+
+/* Begin Bug#8445 8447 */
+CREATE OR REPLACE FUNCTION ivymy.format(numeric, numeric, text DEFAULT 'en_US')
+RETURNS text
+AS $$
+    SELECT ivymy.format($1, trunc($2)::integer, $3);
+$$
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION ivymy.format(boolean, integer, text DEFAULT 'en_US'::text)
+RETURNS text
+AS $$
+    SELECT ivymy.format(CASE WHEN $1 THEN 1::numeric ELSE 0::numeric END, $2, $3);
+$$
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION ivymy.format(boolean, numeric, text DEFAULT 'en_US'::text)
+RETURNS text
+AS $$
+    SELECT ivymy.format(CASE WHEN $1 THEN 1::numeric ELSE 0::numeric END,
+                        trunc($2)::integer,
+                        $3);
+$$
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE;
+/* End Bug#8445 8447 */
 
 CREATE FUNCTION ivymy.oct(text)
 RETURNS varchar
@@ -4040,7 +4069,9 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.oct(numeric)
 RETURNS varchar
 AS $$
-	SELECT ivymy.oct($1::bigint);
+	/* Begin Bug#8448 */
+	SELECT ivymy.oct(trunc($1)::bigint);
+	/* End Bug#8448 */
 $$
 LANGUAGE SQL
 STRICT
@@ -4051,19 +4082,20 @@ IMMUTABLE;
 CREATE FUNCTION ivymy.oct(double precision)
 RETURNS varchar
 AS $$
-	SELECT ivymy.oct($1::bigint);
+	/* Begin Bug#8448 */
+	SELECT ivymy.oct(trunc($1)::bigint);
+	/* End Bug#8448 */
 $$
 LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE FUNCTION ivymy.aes_encrypt(text, text, text default '', text default '', text default '', text default '')
+CREATE FUNCTION ivymy.aes_encrypt(text, text, text default NULL, text default '', text default '', text default '')
 RETURNS varbinary
 AS 'MODULE_PATHNAME','ivymy_aes_encrypt'
 LANGUAGE C
 PARALLEL SAFE
-STRICT
 IMMUTABLE;
 
 CREATE FUNCTION ivymy.aes_decrypt(text, text, text default '', text default '', text default '', text default '')
@@ -4085,14 +4117,13 @@ IMMUTABLE;
 /* End Bug#Z7500 */
 
 /* Begin Bug#Z7502 */
-CREATE FUNCTION ivymy.aes_encrypt(numeric, text, text default '', text default '', text default '', text default '')
+CREATE FUNCTION ivymy.aes_encrypt(numeric, text, text default NULL, text default '', text default '', text default '')
 RETURNS varbinary
 AS $$
 SELECT ivymy.aes_encrypt($1::text, $2, $3, $4, $5, $6);
 $$
 LANGUAGE sql
 PARALLEL SAFE
-STRICT
 IMMUTABLE;
 /* End Bug#Z7502 */
 
@@ -4494,6 +4525,16 @@ LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
+
+/* Begin - bug#8427 */
+CREATE FUNCTION ivymy.date_sub(numeric, pg_catalog.interval)
+RETURNS text
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#8427 */
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - ReqID: SRS-MYSQL-PROC */

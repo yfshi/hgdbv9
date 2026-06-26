@@ -3163,9 +3163,9 @@ SELECT format(12345678901234567890.123, 3);
 (1 row)
 
 SELECT format(12345678901234567890.123, 3, NULL);
- format 
---------
- 
+             format             
+--------------------------------
+ 12,345,678,901,234,567,890.123
 (1 row)
 
 SELECT format(12345678901234567890.123, 3, 'ar_AE');
@@ -3574,7 +3574,7 @@ SELECT
 	OCT(NULL) 					AS oct14;
  oct1 | oct2 | oct3 | oct4 | oct5 |          oct6          | oct7 | oct8 | oct9 |         oct10         |         oct11          |         oct12          | oct13 | oct14 
 ------+------+------+------+------+------------------------+------+------+------+-----------------------+------------------------+------------------------+-------+-------
- 0    | 100  | 0    | 100  | 15   | 1777777777777777777763 | 0    | 173  | 0    | 777777777777777777777 | 1777777777777777777777 | 1777777777777777777700 | 0     | 
+ 0    | 100  | 0    | 100  | 14   | 1777777777777777777764 | 0    | 173  | 0    | 777777777777777777777 | 1777777777777777777777 | 1777777777777777777700 | 0     | 
 (1 row)
 
 /* End Bug#Z5690 */
@@ -3594,3 +3594,318 @@ SELECT AES_DECRYPT(AES_ENCRYPT('{name:test,value:123}', 'jsonkey'), 'jsonkey') A
 (1 row)
 
 /* End Bug#Z7500 */
+-- BUG#8448
+-- 14
+SELECT OCT(12.9);
+ OCT 
+-----
+ 14
+(1 row)
+
+SELECT OCT(12.9);   -- 14
+ OCT 
+-----
+ 14
+(1 row)
+
+SELECT OCT(12.1);   -- 14
+ OCT 
+-----
+ 14
+(1 row)
+
+SELECT OCT(-12.9);  -- 1777777777777777777764
+          OCT           
+------------------------
+ 1777777777777777777764
+(1 row)
+
+SELECT OCT(0.9);    -- 0
+ OCT 
+-----
+ 0
+(1 row)
+
+-- 15
+SELECT ivymy.oct(12.9::bigint);
+ oct 
+-----
+ 15
+(1 row)
+
+SELECT
+  12.9::bigint AS pg_cast,
+  trunc(12.9)::bigint AS mysql_like,
+  ivymy.oct(12.9::bigint) AS current_result,
+  ivymy.oct(trunc(12.9)::bigint) AS fixed_result;
+ pg_cast | mysql_like | current_result | fixed_result 
+---------+------------+----------------+--------------
+      13 |         12 | 15             | 14
+(1 row)
+
+-- ---------+------------+----------------+--------------
+--       13 |         12 | 15             | 14
+-- BUG#8445
+-- empty
+SELECT FORMAT(NULL, 2);
+ FORMAT 
+--------
+ 
+(1 row)
+
+-- empty
+SELECT FORMAT(1234.56, NULL);
+ FORMAT 
+--------
+ 
+(1 row)
+
+-- 1,234.56
+SELECT FORMAT(1234.56, 2, NULL);
+  FORMAT  
+----------
+ 1,234.56
+(1 row)
+
+-- -9,876.54
+SELECT FORMAT(-9876.543, 2);
+  FORMAT   
+-----------
+ -9,876.54
+(1 row)
+
+-- -1,234,567,890.12
+SELECT FORMAT(-1234567890.123, 2);
+      FORMAT       
+-------------------
+ -1,234,567,890.12
+(1 row)
+
+-- BUG#8444
+-- 1. AES-128-CBC mode with IV  -- CBC test 128
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('CBC test 128', 'cbckey128bit!@#', '1234567890123456'), 'cbckey128bit!@#', '1234567890123456') AS result;
+    result    
+--------------
+ CBC test 128
+(1 row)
+
+-- 2. AES-192-CBC mode with IV  -- CBC test 192
+SET block_encryption_mode = 'aes-192-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('CBC test 192', 'cbckey192!@#%^&*()123456', '1234567890123456'), 'cbckey192!@#%^&*()123456', '1234567890123456') AS result;
+    result    
+--------------
+ CBC test 192
+(1 row)
+
+-- 3. AES-256-CBC mode with IV -- CBC test 256
+SET block_encryption_mode = 'CBC test 256';
+ERROR:  invalid value for parameter "block_encryption_mode": "CBC test 256"
+HINT:  Available values: aes-128-ecb, aes-192-ecb, aes-256-ecb, aes-128-cbc, aes-192-cbc, aes-256-cbc, aes-128-cfb1, aes-192-cfb1, aes-256-cfb1, aes-128-cfb8, aes-192-cfb8, aes-256-cfb8, aes-128-cfb128, aes-192-cfb128, aes-256-cfb128, aes-128-ofb, aes-192-ofb, aes-256-ofb.
+SELECT AES_DECRYPT(AES_ENCRYPT('CBC test 256', 'cbckey256!@#%^&*()1234567890ab', '1234567890123456'), 'cbckey256!@#%^&*()1234567890ab', '1234567890123456') AS result;
+WARNING:  AES key size should be 24 bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, 						please provide exact AES key size or use KDF methods for better security.
+WARNING:  AES key size should be 24 bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, 						please provide exact AES key size or use KDF methods for better security.
+    result    
+--------------
+ CBC test 256
+(1 row)
+
+-- 4. CBC mode not IV
+-- ERROR 1582 (42000): Incorrect parameter count in the call to native function 'aes_encrypt'
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('missing IV', 'cbckey'), 'cbckey') AS result;
+ERROR:  Incorrect parameter count in the call to native function 'aes_encrypt'
+-- 5. CBC mode IV length not 16 byte 
+-- ERROR 1882 (HY000): The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('short IV', 'cbckey', '12345'), 'cbckey', '12345') AS result;
+ERROR:  The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+-- 6. CBC mode IV over 16 byte -- long IV
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('long IV', 'cbckey', '12345678901234567890'), 'cbckey', '12345678901234567890') AS result;
+ result  
+---------
+ long IV
+(1 row)
+
+-- BUG#8443
+-- 1. AES-128-CFB mode with IV -- CFB test 128
+SET block_encryption_mode = 'aes-128-cfb1';
+SELECT AES_DECRYPT(AES_ENCRYPT('CFB test 128', 'cfbkey128bit!@#', 'iv16bytes1234567'), 'cfbkey128bit!@#', 'iv16bytes1234567') AS result;
+    result    
+--------------
+ CFB test 128
+(1 row)
+
+-- 2. AES-192-CFB mode with IV -- CFB test 192
+SET block_encryption_mode = 'aes-192-cfb1';
+SELECT AES_DECRYPT(AES_ENCRYPT('CFB test 192', 'cfbkey192!@#%^&*()123456', 'iv16bytes1234567'), 'cfbkey192!@#%^&*()123456', 'iv16bytes1234567') AS result;
+WARNING:  AES key size should be 16 bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, 						please provide exact AES key size or use KDF methods for better security.
+WARNING:  AES key size should be 16 bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, 						please provide exact AES key size or use KDF methods for better security.
+    result    
+--------------
+ CFB test 192
+(1 row)
+
+-- 3. AES-256-CFB mode with IV -- CFB test 256
+SET block_encryption_mode = 'aes-256-cfb1';
+SELECT AES_DECRYPT(AES_ENCRYPT('CFB test 256', 'cfbkey256!@#%^&*()1234567890ab', 'iv16bytes1234567'), 'cfbkey256!@#%^&*()1234567890ab', 'iv16bytes1234567') AS result;
+WARNING:  AES key size should be 16 bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, 						please provide exact AES key size or use KDF methods for better security.
+WARNING:  AES key size should be 16 bytes length or secure KDF methods hkdf or pbkdf2_hmac should be used, 						please provide exact AES key size or use KDF methods for better security.
+    result    
+--------------
+ CFB test 256
+(1 row)
+
+-- BUG#8447
+SELECT FORMAT(1234.56, -1);
+ FORMAT 
+--------
+ 1,235
+(1 row)
+
+SELECT FORMAT(1234.56, 0);
+ FORMAT 
+--------
+ 1,235
+(1 row)
+
+SELECT FORMAT(1234.56, 30);
+                FORMAT                
+--------------------------------------
+ 1,234.560000000000000000000000000000
+(1 row)
+
+SELECT FORMAT(0, 2);
+ FORMAT 
+--------
+ 0.00
+(1 row)
+
+SELECT FORMAT(0.001, 2);
+ FORMAT 
+--------
+ 0.00
+(1 row)
+
+SELECT FORMAT(0.001, 3);
+ FORMAT 
+--------
+ 0.001
+(1 row)
+
+SELECT FORMAT(9999999999999.99, 2);
+        FORMAT        
+----------------------
+ 9,999,999,999,999.99
+(1 row)
+
+SELECT FORMAT(0.000001, 6);
+  FORMAT  
+----------
+ 0.000001
+(1 row)
+
+SELECT FORMAT(1.23E+10, 2);
+      FORMAT       
+-------------------
+ 12,300,000,000.00
+(1 row)
+
+SELECT FORMAT(-5.67E-5, 6); 
+  FORMAT   
+-----------
+ -0.000057
+(1 row)
+
+SELECT FORMAT(1234.56, 3.14);
+  FORMAT   
+-----------
+ 1,234.560
+(1 row)
+
+SELECT FORMAT(1234.56, NULL);
+ FORMAT 
+--------
+ 
+(1 row)
+
+SELECT FORMAT(1234.56, '你好');
+WARNING:  Truncated incorrect DECIMAL value: '你好'
+LINE 1: SELECT FORMAT(1234.56, '你好');
+                               ^
+ FORMAT 
+--------
+ 1,235
+(1 row)
+
+SELECT FORMAT(1234.56, 'ab1');
+WARNING:  Truncated incorrect DECIMAL value: 'ab1'
+LINE 1: SELECT FORMAT(1234.56, 'ab1');
+                               ^
+ FORMAT 
+--------
+ 1,235
+(1 row)
+
+SELECT FORMAT('1234.56', 2);
+  FORMAT  
+----------
+ 1,234.56
+(1 row)
+
+-- missing warnings
+SELECT 'abc'::numeric;
+WARNING:  Truncated incorrect DECIMAL value: 'abc'
+LINE 1: SELECT 'abc'::numeric;
+               ^
+ numeric 
+---------
+       0
+(1 row)
+
+SELECT FORMAT('abc', 2);
+WARNING:  Truncated incorrect DECIMAL value: 'abc'
+ FORMAT 
+--------
+ 0.00
+(1 row)
+
+SELECT FORMAT('123abc', 2); 
+ FORMAT 
+--------
+ 123.00
+(1 row)
+
+SELECT FORMAT(TRUE, 2);
+ FORMAT 
+--------
+ 1.00
+(1 row)
+
+SELECT FORMAT(TRUE, 2.1);
+ FORMAT 
+--------
+ 1.00
+(1 row)
+
+SELECT FORMAT(FALSE, 2);
+ FORMAT 
+--------
+ 0.00
+(1 row)
+
+SELECT FORMAT('', 2);
+WARNING:  Truncated incorrect DECIMAL value: ''
+ FORMAT 
+--------
+ 0.00
+(1 row)
+
+SELECT FORMAT('abc123', 2);
+WARNING:  Truncated incorrect DECIMAL value: 'abc123'
+ FORMAT 
+--------
+ 0.00
+(1 row)
+

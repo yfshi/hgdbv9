@@ -881,3 +881,106 @@ SELECT AES_DECRYPT(AES_ENCRYPT(123, 'a'), 'a');
 /* Begin Bug#Z7500 */
 SELECT AES_DECRYPT(AES_ENCRYPT('{name:test,value:123}', 'jsonkey'), 'jsonkey') AS result;
 /* End Bug#Z7500 */
+
+-- BUG#8448
+-- 14
+SELECT OCT(12.9);
+SELECT OCT(12.9);   -- 14
+SELECT OCT(12.1);   -- 14
+SELECT OCT(-12.9);  -- 1777777777777777777764
+SELECT OCT(0.9);    -- 0
+
+-- 15
+SELECT ivymy.oct(12.9::bigint);
+
+SELECT
+  12.9::bigint AS pg_cast,
+  trunc(12.9)::bigint AS mysql_like,
+  ivymy.oct(12.9::bigint) AS current_result,
+  ivymy.oct(trunc(12.9)::bigint) AS fixed_result;
+-- ---------+------------+----------------+--------------
+--       13 |         12 | 15             | 14
+
+-- BUG#8445
+-- empty
+SELECT FORMAT(NULL, 2);
+-- empty
+SELECT FORMAT(1234.56, NULL);
+-- 1,234.56
+SELECT FORMAT(1234.56, 2, NULL);
+-- -9,876.54
+SELECT FORMAT(-9876.543, 2);
+-- -1,234,567,890.12
+SELECT FORMAT(-1234567890.123, 2);
+
+-- BUG#8444
+-- 1. AES-128-CBC mode with IV  -- CBC test 128
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('CBC test 128', 'cbckey128bit!@#', '1234567890123456'), 'cbckey128bit!@#', '1234567890123456') AS result;
+
+-- 2. AES-192-CBC mode with IV  -- CBC test 192
+SET block_encryption_mode = 'aes-192-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('CBC test 192', 'cbckey192!@#%^&*()123456', '1234567890123456'), 'cbckey192!@#%^&*()123456', '1234567890123456') AS result;
+
+-- 3. AES-256-CBC mode with IV -- CBC test 256
+SET block_encryption_mode = 'CBC test 256';
+SELECT AES_DECRYPT(AES_ENCRYPT('CBC test 256', 'cbckey256!@#%^&*()1234567890ab', '1234567890123456'), 'cbckey256!@#%^&*()1234567890ab', '1234567890123456') AS result;
+
+-- 4. CBC mode not IV
+-- ERROR 1582 (42000): Incorrect parameter count in the call to native function 'aes_encrypt'
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('missing IV', 'cbckey'), 'cbckey') AS result;
+
+-- 5. CBC mode IV length not 16 byte 
+-- ERROR 1882 (HY000): The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('short IV', 'cbckey', '12345'), 'cbckey', '12345') AS result;
+
+-- 6. CBC mode IV over 16 byte -- long IV
+SET block_encryption_mode = 'aes-128-cbc';
+SELECT AES_DECRYPT(AES_ENCRYPT('long IV', 'cbckey', '12345678901234567890'), 'cbckey', '12345678901234567890') AS result;
+
+
+-- BUG#8443
+-- 1. AES-128-CFB mode with IV -- CFB test 128
+SET block_encryption_mode = 'aes-128-cfb1';
+SELECT AES_DECRYPT(AES_ENCRYPT('CFB test 128', 'cfbkey128bit!@#', 'iv16bytes1234567'), 'cfbkey128bit!@#', 'iv16bytes1234567') AS result;
+
+-- 2. AES-192-CFB mode with IV -- CFB test 192
+SET block_encryption_mode = 'aes-192-cfb1';
+SELECT AES_DECRYPT(AES_ENCRYPT('CFB test 192', 'cfbkey192!@#%^&*()123456', 'iv16bytes1234567'), 'cfbkey192!@#%^&*()123456', 'iv16bytes1234567') AS result;
+
+-- 3. AES-256-CFB mode with IV -- CFB test 256
+SET block_encryption_mode = 'aes-256-cfb1';
+SELECT AES_DECRYPT(AES_ENCRYPT('CFB test 256', 'cfbkey256!@#%^&*()1234567890ab', 'iv16bytes1234567'), 'cfbkey256!@#%^&*()1234567890ab', 'iv16bytes1234567') AS result;
+
+
+
+-- BUG#8447
+
+SELECT FORMAT(1234.56, -1);
+SELECT FORMAT(1234.56, 0);
+SELECT FORMAT(1234.56, 30);
+SELECT FORMAT(0, 2);
+SELECT FORMAT(0.001, 2);
+SELECT FORMAT(0.001, 3);
+SELECT FORMAT(9999999999999.99, 2);
+SELECT FORMAT(0.000001, 6);
+SELECT FORMAT(1.23E+10, 2);
+SELECT FORMAT(-5.67E-5, 6); 
+SELECT FORMAT(1234.56, 3.14);
+SELECT FORMAT(1234.56, NULL);
+
+SELECT FORMAT(1234.56, '你好');
+SELECT FORMAT(1234.56, 'ab1');
+SELECT FORMAT('1234.56', 2);
+-- missing warnings
+SELECT 'abc'::numeric;
+SELECT FORMAT('abc', 2);
+SELECT FORMAT('123abc', 2); 
+
+SELECT FORMAT(TRUE, 2);
+SELECT FORMAT(TRUE, 2.1);
+SELECT FORMAT(FALSE, 2);
+SELECT FORMAT('', 2);
+SELECT FORMAT('abc123', 2);
