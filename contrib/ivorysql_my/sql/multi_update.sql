@@ -821,4 +821,20 @@ INSERT INTO mys_upd_cross VALUES ('start trail', '');
 UPDATE mys_upd_cross SET b = a, a = 'inject';
 SELECT a, b FROM mys_upd_cross;
 DROP TABLE mys_upd_cross;
+
+create table update_t(a int, b int);
+insert into update_t values (1, 3);
+select * from update_t;
+update update_t set a = 2, b = 2, a = a + b;
+-- 4, 2
+select * from update_t;
+
+update update_t set a = 4, b = 3, a = a + 1;
+-- 5, 3
+select * from update_t;
+
+update update_t set b = a + 1, a = a + 1, a = b;
+-- 6, 6
+select * from update_t;
+drop table update_t;
 -- end - bug#z8393

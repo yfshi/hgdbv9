@@ -5406,9 +5406,7 @@ mys_rewrite_update_targetlist(ParseState *pstate, List *tlist, int target_varno)
 		if (tle->resjunk || attrno <= 0 || attrno > maxattr)
 			continue;
 
-		tle->expr = (Expr *) expression_tree_mutator((Node *) tle->expr,
-													 mys_update_var_mutator,
-													 &ctx);
+		tle->expr = (Expr *) mys_update_var_mutator((Node *) tle->expr, &ctx);
 		prev_expr_by_attr[attrno] = (Node *) tle->expr;
 	}
 

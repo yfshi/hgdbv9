@@ -341,6 +341,31 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7538_2.csv');
 
 drop table test_7538;
 \! rm -rf @abs_builddir@/results/test_select_into_7538*
+-- bug#z8452
+create table test_8452(id int primary key auto_increment, name varchar(50), age tinyint, city varchar(100));
+insert into test_8452(name, age, city) values('Alice', 25, 'AL""Atlanta'), ('Bob', 30, 'BOS"Boston'), ('Charlie', 28, 'CHI""Chicago');
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_8452_1.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' FROM test_8452;
+select pg_read_file('@abs_builddir@/results/test_select_into_8452_1.csv');
+            pg_read_file             
+-------------------------------------
+ |1|,|Alice|,|25|,|AL""""Atlanta|   +
+ |2|,|Bob|,|30|,|BOS""Boston|       +
+ |3|,|Charlie|,|28|,|CHI""""Chicago|+
+ 
+(1 row)
+
+SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_8452_2.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_8452;
+select pg_read_file('@abs_builddir@/results/test_select_into_8452_2.csv');
+            pg_read_file             
+-------------------------------------
+ |1|,|Alice|,|25|,|AL""""Atlanta|   +
+ |2|,|Bob|,|30|,|BOS""Boston|       +
+ |3|,|Charlie|,|28|,|CHI""""Chicago|+
+ 
+(1 row)
+
+drop table test_8452;
+\! rm -rf @abs_builddir@/results/test_select_into_8452*
 -- clean up
 \c contrib_regression
 drop database select_into_gbk;
