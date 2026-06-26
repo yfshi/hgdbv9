@@ -196,7 +196,7 @@ int audit_spacelimit = 10240; //G
 char *audit_alarmemail = NULL;
 char *audit_space_alarm = NULL;
 
-bool test_poc = false;
+static bool test_poc = false;
 
 /*
  * Role with sysdba permissions
@@ -257,6 +257,7 @@ typedef enum AuditParameter
         AUDIT_TIME,
         AUDIT_IP,
         AUDIT_IGNORE_SYNC_LSN,
+        AUDIT_POC,
         NUM_AUDIT_PARAMS
 } AuditParameter;
 /* End - BUG#Z6092 */
@@ -1205,6 +1206,17 @@ static void audit_define_GUC(void)
 					 NULL,
 					 NULL);
 	 /* End OA:2290 */
+	DefineCustomEnumVariable(audit_parameters[AUDIT_POC],
+						"turn on or off pg_audit",
+						NULL,
+						(int *)&(audit_GUC.poc),
+						AUDIT_OFF,
+						audit_turn_options,
+						PGC_SIGHUP,
+						0,
+						NULL,
+						NULL,
+						NULL);
 
 
 	MemoryContextSwitchTo(oldContext);
@@ -1763,8 +1775,11 @@ audit_insert_log(Relation log, AuditEvent *event, AuditEvent_Obj *object, int i)
 		appendStringInfo(&buf, "%s_%s", PG_AUDIT_LOG, date_str);
 
 		relOid = get_relname_relid(buf.data, log->rd_rel->relnamespace);
+
 		if (relOid == InvalidOid)
-			elog(ERROR, " could not get oid of relation %s", buf.data);
+		{
+			elog(ERROR, " could not get oid of relation %d,%s", log->rd_rel->relnamespace, buf.data);
+		}
 
 		audit_log = table_open(relOid, RowExclusiveLock);
 
@@ -2087,9 +2102,6 @@ audit_CommandStart(void)
 
 	/* SQL start execution time */
 	operstarttime = GetCurrentTimestamp();
-
-	if (test_poc)
-		return;
 
 	memset(audit_msg, '\0', MAXPGPATH);
 
@@ -2880,6 +2892,13 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 
 		case T_CreatedbStmt:
 			strcpy(buf, CREATE_DATABASE_S);
+			/* Begin - BUG:8442 */
+#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+			/* create database, must set test_poc = false */
+			if (audit_GUC.poc != AUDIT_ON)
+				test_poc = false;
+#endif
+		/* End - BUG:8442 */
 			break;
 
 		case T_AlterDatabaseStmt:
@@ -3332,11 +3351,11 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 
 	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
 	{
-		if (!internalStatement && audit_config_have_data())
+		if (!internalStatement)
 		{
 			audit_get_actionname_from_tree(pstmt->utilityStmt, event);
 
-			if ((!IsAbortedTransactionBlockState()|| (IsAbortedTransactionBlockState()
+			if ((!test_poc || audit_config_have_data()) && (!IsAbortedTransactionBlockState()|| (IsAbortedTransactionBlockState()
 					&& (pg_strcasecmp(event,COMMIT_S)== 0 || pg_strcasecmp(event,ROLLBACK_S)== 0))))
 			{
 				stackItem = stack_push();
@@ -3399,7 +3418,6 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 				MemoryContextSwitchTo(contextOld);
 
 				//audit_check_statement(AUDITACTIONNAMEAUDITTYPEID, stackItem);
-
 			}
 		}
 	}
@@ -6340,9 +6358,10 @@ audit_pgagent_job(char *user)
 			if (is_pgagent_live(cmd))
 				continue;
 #else
-			/* Begin - BUG#00004708 */
-			sprintf(cmd, "pgagent.exe host=localhost dbname=%s port=%d user=%s ", dbname, PostPortNumber, cur_user);
-			/* End - BUG#00004708 */
+			/* Begin - BUG#8451 */
+			/* Because of windows use pgagent.exe comples. temporarily useing "pgagent.exe DEBUG...." */
+			sprintf(cmd, "pgagent.exe DEBUG -l 2 \"host=localhost dbname=%s port=%d user=%s \" ", dbname, PostPortNumber, cur_user);
+			/* End - BUG#8451 */
 
 			/* TODO: check the pgagent is live */
 #endif
@@ -6393,7 +6412,7 @@ audit_arch_job(void)
 	uint64		proc;
 	int			elemno;
 	int			noids = 0;
-	Oid 	   *oids;
+	Oid 	   *oids = NULL;
 
 	if (RecoveryInProgress())
 		return;

@@ -503,6 +503,7 @@ typedef struct AduitSwitchGUC
 	char *exclude_ips;
 	List *exclude_ips_list;
 	AuditSwitch ignore_sync_lsn;
+	AuditSwitch poc;
 }AduitSwitchGUC;
 
 extern bool receive_sighup;
