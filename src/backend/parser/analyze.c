@@ -3393,11 +3393,17 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 					  colTypmod,
 					  colCollation,
 					  0);
+		/* Begin - BUG#8430 */
+		var->union_null_res = lefttle->union_null_res;
+		/* End - BUG#8430 */
 		var->location = exprLocation((Node *) lefttle->expr);
 		tle = makeTargetEntry((Expr *) var,
 							  (AttrNumber) pstate->p_next_resno++,
 							  colName,
 							  false);
+		/* Begin - BUG#8430 */
+		tle->union_null_res = lefttle->union_null_res;
+		/* End - BUG#8430 */
 		qry->targetList = lappend(qry->targetList, tle);
 		targetvars = lappend(targetvars, var);
 		targetnames = lappend(targetnames, makeString(colName));
@@ -3408,6 +3414,9 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 		sortnscolumns[sortcolindex].p_varcollid = colCollation;
 		sortnscolumns[sortcolindex].p_varnosyn = leftmostRTI;
 		sortnscolumns[sortcolindex].p_varattnosyn = lefttle->resno;
+		/* Begin - BUG#8430 */
+		sortnscolumns[sortcolindex].union_null_res = lefttle->union_null_res;
+		/* End - BUG#8430 */
 		sortcolindex++;
 	}
 
@@ -3874,12 +3883,96 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			int32		rescoltypmod;
 			Oid			rescolcoll;
 			Oid			rawcolcoll = InvalidOid; /* BUG#Z1461 */
+			/* Begin - BUG#8430 */
 
 			/* select common type, same as CASE et al */
+			if (compatible_mode == ORA_MODE &&
+				enable_setoperation_null)
+			{
+				if (ltle->union_null_res && IsA(lcolnode, SetToDefault))
+				{
+					((SetToDefault *)lcolnode)->typeId = UNKNOWNOID;
+					lcoltype = UNKNOWNOID;
+					exprSetCollation(lcolnode, InvalidOid);
+				}
+				else if (ltle->union_null_res && IsA(lcolnode, Const))
+				{
+					((Const *)lcolnode)->consttype = UNKNOWNOID;
+					lcoltype = UNKNOWNOID;
+					exprSetCollation(lcolnode, InvalidOid);
+				}
+				else if (IsA(lcolnode, Var) && ((Var*)lcolnode)->union_null_res)
+				{
+					((Var*)lcolnode)->vartype = UNKNOWNOID;
+					lcoltype = UNKNOWNOID;
+					exprSetCollation(lcolnode, InvalidOid);
+				}
+
+				if (rtle->union_null_res && IsA(rcolnode, SetToDefault))
+				{
+					((SetToDefault *)rcolnode)->typeId = UNKNOWNOID;
+					rcoltype = UNKNOWNOID;
+					exprSetCollation(rcolnode, InvalidOid);
+				}
+				else if (rtle->union_null_res && IsA(rcolnode, Const))
+				{
+					((Const *)rcolnode)->consttype = UNKNOWNOID;
+					rcoltype = UNKNOWNOID;
+					exprSetCollation(rcolnode, InvalidOid);
+				}
+				else if (IsA(rcolnode, Var) && ((Var*)rcolnode)->union_null_res)
+				{
+					((Var*)rcolnode)->vartype = UNKNOWNOID;
+					rcoltype = UNKNOWNOID;
+					exprSetCollation(rcolnode, InvalidOid);
+				}
+
+				/*
+				 * check one is null and another is
+				 * not null, we set null to UNKNOWOID
+				 * oid
+				 */
+				if (IsA(lcolnode, Const))
+				{
+					Const *cst = (Const *) lcolnode;
+
+					if (cst->constisnull && cst->consttype != rcoltype)
+					{
+						cst->consttype = UNKNOWNOID;
+						lcoltype = UNKNOWNOID;
+						exprSetCollation(lcolnode, InvalidOid);
+					}
+				}
+				else if (IsA(rcolnode, Const))
+				{
+					Const *cst = (Const *) rcolnode;
+
+					if (cst->constisnull && cst->consttype != lcoltype)
+					{
+						cst->consttype = UNKNOWNOID;
+						rcoltype = UNKNOWNOID;
+						exprSetCollation(rcolnode, InvalidOid);
+					}
+				}
+			}
+			/* End - BUG#8430 */
 			rescoltype = select_common_type(pstate,
 											list_make2(lcolnode, rcolnode),
 											context,
 											&bestexpr);
+			/* Begin - BUG#8430 */
+			if (compatible_mode == ORA_MODE &&
+				enable_setoperation_null &&
+				lcoltype == UNKNOWNOID &&
+				rcoltype== UNKNOWNOID)
+			{
+				if ((IsA(lcolnode, Const) && ((Const *) lcolnode)->constisnull) &&
+					(IsA(rcolnode, Const) && ((Const *) rcolnode)->constisnull))
+				{
+					ltle->union_null_res = true;
+				}
+			}
+			/* End - BUG#8430 */
 			bestlocation = exprLocation(bestexpr);
 
 			/*
@@ -3969,34 +4062,9 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			 * if something at a higher query level wants to use the column's
 			 * collation.)
 			 */
-			/* Begin - ReqID:SRS-SQL-UNION */
-			if (enable_setoperation_null &&	ORA_MODE == compatible_mode &&
-				lcoltype == UNKNOWNOID && rescoltype == UNKNOWNOID) {
-				if (IsA(lcolnode, Const))
-				{
-					((Const *) lcolnode)->constcollid = DEFAULT_COLLATION_OID;
-
-				}
-				if (IsA(rcolnode, Const))
-				{
-					((Const *) rcolnode)->constcollid = DEFAULT_COLLATION_OID;
-
-				}
-				rescolcoll = DEFAULT_COLLATION_OID;
-			}
-			else
-			{
-				/* Begin - BUG#8279 */
-				if (enable_setoperation_null && ORA_MODE == compatible_mode &&
-					lcoltype == UNKNOWNOID && !OidIsValid(get_typcollation(rescoltype)))
-					exprSetCollation(lcolnode, InvalidOid);
-				/* End - BUG#8279 */
-
-				rescolcoll = select_common_collation(pstate,
-								list_make2(lcolnode, rcolnode),
-								(op->op == SETOP_UNION && op->all));
-			}
-			/* End - ReqID:SRS-SQL-UNION */
+			rescolcoll = select_common_collation(pstate,
+							list_make2(lcolnode, rcolnode),
+							(op->op == SETOP_UNION && op->all));
 
 			/* emit results */
 			op->colTypes = lappend_oid(op->colTypes, rescoltype);
@@ -4022,25 +4090,8 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 				setup_parser_errposition_callback(&pcbstate, pstate,
 												  bestlocation);
 
-				/* Begin - ReqID:SRS-SQL-UNION */
-				/*
-				 * If it's a recursive union, we need to require hashing support.
-				 * for unkonw type, use text type for comparison
-				 */
-				if (enable_setoperation_null &&	ORA_MODE == compatible_mode &&
-					lcoltype == UNKNOWNOID && rescoltype == UNKNOWNOID &&
-					(op->op == SETOP_UNION || op->op == SETOP_INTERSECT || op->op == SETOP_EXCEPT))
-				{
-					op->groupClauses = lappend(op->groupClauses,
-								makeSortGroupClauseForSetOp(TEXTOID, recursive));
-				}
-				else
-				{
-					op->groupClauses = lappend(op->groupClauses,
+				op->groupClauses = lappend(op->groupClauses,
 								makeSortGroupClauseForSetOp(rescoltype, recursive));
-				}
-				/* End - ReqID:SRS-SQL-UNION */
-
 				cancel_parser_errposition_callback(&pcbstate);
 			}
 
@@ -4062,6 +4113,13 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 										 0, /* no need to set resno */
 										 NULL,
 										 false);
+				/* Begin - BUG#8430 */
+				if (compatible_mode == ORA_MODE &&
+					enable_setoperation_null &&
+					ltle->union_null_res)
+					restle->union_null_res = true;
+				/* End - BUG#8430 */
+
 				*targetlist = lappend(*targetlist, restle);
 			}
 		}

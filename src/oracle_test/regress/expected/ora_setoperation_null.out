@@ -264,7 +264,7 @@ LINE 1: select null as col from dual minus select 'abc' from dual un...
 select pg_typeof(value) from (select distinct null from dual) as subquery(value);
  pg_typeof 
 -----------
- text
+ varchar2
 (1 row)
 
 select null as col from dual union select DATE '2026-03-24' from dual union select 1 from dual order by col;
@@ -284,35 +284,35 @@ ERROR:  EXCEPT types date and integer cannot be matched
 LINE 1: ...s select DATE '2026-03-24' from dual minus select 1 from dua...
                                                              ^
 select distinct null as col from dual union select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
-ERROR:  UNION types text and timestamp with time zone cannot be matched
+ERROR:  UNION types varchar2 and timestamp with time zone cannot be matched
 LINE 1: select distinct null as col from dual union select TIMESTAMP...
           ^
 select distinct null as col from dual intersect select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
-ERROR:  INTERSECT types text and timestamp with time zone cannot be matched
+ERROR:  INTERSECT types varchar2 and timestamp with time zone cannot be matched
 LINE 1: select distinct null as col from dual intersect select TIMES...
           ^
 select distinct null as col from dual except select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
-ERROR:  EXCEPT types text and timestamp with time zone cannot be matched
+ERROR:  EXCEPT types varchar2 and timestamp with time zone cannot be matched
 LINE 1: select distinct null as col from dual except select TIMESTAM...
           ^
 select distinct null as col from dual minus select TIMESTAMP '2026-03-24 00:52:08.067033 -07:00' from dual order by col;
-ERROR:  EXCEPT types text and timestamp with time zone cannot be matched
+ERROR:  EXCEPT types varchar2 and timestamp with time zone cannot be matched
 LINE 1: select distinct null as col from dual minus select TIMESTAMP...
           ^
 select distinct null as col from dual union select 1 from dual order by col;
-ERROR:  UNION types text and integer cannot be matched
+ERROR:  UNION types varchar2 and integer cannot be matched
 LINE 1: ...elect distinct null as col from dual union select 1 from dua...
                                                              ^
 select distinct null as col from dual intersect select 1 from dual order by col;
-ERROR:  INTERSECT types text and integer cannot be matched
+ERROR:  INTERSECT types varchar2 and integer cannot be matched
 LINE 1: ...t distinct null as col from dual intersect select 1 from dua...
                                                              ^
 select distinct null as col from dual except select 1 from dual order by col;
-ERROR:  EXCEPT types text and integer cannot be matched
+ERROR:  EXCEPT types varchar2 and integer cannot be matched
 LINE 1: ...lect distinct null as col from dual except select 1 from dua...
                                                              ^
 select distinct null as col from dual minus select 1 from dual order by col;
-ERROR:  EXCEPT types text and integer cannot be matched
+ERROR:  EXCEPT types varchar2 and integer cannot be matched
 LINE 1: ...elect distinct null as col from dual minus select 1 from dua...
                                                              ^
 select distinct null as col from dual union select 'abc' from dual order by col;
@@ -432,13 +432,13 @@ select pg_typeof(value) from (select 'abc' from dual minus select null from dual
 select pg_typeof(value) from (select null from dual union select null from dual) as subquery(value);
  pg_typeof 
 -----------
- unknown
+ varchar2
 (1 row)
 
 select pg_typeof(value) from (select null from dual intersect select null from dual) as subquery(value);
  pg_typeof 
 -----------
- unknown
+ varchar2
 (1 row)
 
 select pg_typeof(value) from (select null from dual except select null from dual) as subquery(value);
@@ -616,7 +616,7 @@ LINE 1: select null as col from dual minus select 'abc' from dual un...
 select pg_typeof(value) from (select distinct null from dual) as subquery(value);
  pg_typeof 
 -----------
- unknown
+ varchar2
 (1 row)
 
 select null as col from dual union select DATE '2026-03-24' from dual union select 1 from dual order by col;
@@ -707,6 +707,20 @@ select distinct null as col from dual minus select 'abc' from dual order by col;
  
 (1 row)
 
+-- Begin - Bug#8430 --
+select * from (select null union select null) union select null;
+ ?column? 
+----------
+ 
+(1 row)
+
+select c1 from (select null as c1);
+ c1 
+----
+ 
+(1 row)
+
+-- End - Bug#8430 --
 -- Begin - Bug#8279 --
 -- test view
 create or replace view test_v1 as select null union select null;
@@ -750,3 +764,16 @@ create or replace view test_v1 as select null union select 1 union select null;
 
 drop view test_v1;
 -- End - Bug#8279 --
+--bug#Z8450
+CREATE TABLE test_union(val VARCHAR2(20), status NUMBER(1));
+INSERT INTO test_union VALUES ('A', 1);
+INSERT INTO test_union VALUES (NULL, 1);
+INSERT INTO test_union VALUES ('!', 1);
+INSERT INTO test_union VALUES ('B', 0);
+SELECT * FROM test_union WHERE val != (SELECT NULL FROM DUAL);
+ val | status 
+-----+--------
+(0 rows)
+
+--clean data
+drop table test_union;

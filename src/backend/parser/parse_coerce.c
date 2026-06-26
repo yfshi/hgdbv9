@@ -2881,15 +2881,84 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 		return result;
 	}
+
 	/* Begin - ReqID:SRS-SQL-UNION */
 	/*
 	 * select null union select null union select 1
 	 * select c1 from (select null as c1)
 	 */
-	else if (compatible_mode == ORA_MODE && enable_setoperation_null &&
-		 inputTypeId == UNKNOWNOID && IsA(node, Var))
+	if (compatible_mode == ORA_MODE &&
+		enable_setoperation_null &&
+		inputTypeId == UNKNOWNOID &&
+		IsA(node, Var) &&
+		((Var *) node)->union_null_res)
 	{
-		return node;
+		/* construct null const */
+		Const	   *newcon = makeNode(Const);
+		Oid 		baseTypeId;
+		int32		baseTypeMod;
+		int32		inputTypeMod;
+		Type		baseType;
+
+		/*
+		 * If the target type is a domain, we want to call its base type's
+		 * input routine, not domain_in().	This is to avoid premature failure
+		 * when the domain applies a typmod: existing input routines follow
+		 * implicit-coercion semantics for length checks, which is not always
+		 * what we want here.  The needed check will be applied properly
+		 * inside coerce_to_domain().
+		 */
+		baseTypeMod = targetTypeMod;
+		baseTypeId = getBaseTypeAndTypmod(targetTypeId, &baseTypeMod);
+
+		/*
+		 * For most types we pass typmod -1 to the input routine, because
+		 * existing input routines follow implicit-coercion semantics for
+		 * length checks, which is not always what we want here.  Any length
+		 * constraint will be applied later by our caller.	An exception
+		 * however is the INTERVAL type, for which we *must* pass the typmod
+		 * or it won't be able to obey the bizarre SQL-spec input rules. (Ugly
+		 * as sin, but so is this part of the spec...)
+		 */
+		 /*
+		   * Begin - ReqID:SRS-GKC-DATATYPE_001
+		   * TIMESTAMP/TIMESTAMPTZ/TIMESTAMPLTZ type,  we *must* pass
+		   * the typmod, and be used in oratimestamp_in function.
+		   */
+		if (baseTypeId == INTERVALOID ||
+			baseTypeId == ORATIMESTAMPOID ||
+			baseTypeId == ORATIMESTAMPTZOID ||
+			baseTypeId == ORATIMESTAMPLTZOID ||
+			baseTypeId == YMINTERVALOID ||
+			baseTypeId == DSINTERVALOID)
+			inputTypeMod = baseTypeMod;
+		/* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
+		else if (baseTypeId == BINARYOID)
+		{
+			inputTypeMod = baseTypeMod;
+		}
+		/* End - ReqID:SRS-MYSQL-BINARYTYPE */
+		else
+			inputTypeMod = -1;
+		/* End - ReqID:SRS-GKC-DATATYPE_001 */
+
+		baseType = typeidType(baseTypeId);
+
+		newcon->consttype = baseTypeId;
+		newcon->consttypmod = inputTypeMod;
+		newcon->constcollid = typeTypeCollation(baseType);
+		newcon->constlen = typeLen(baseType);
+		newcon->constbyval = typeByVal(baseType);
+		newcon->constisnull = true;
+		ReleaseSysCache(baseType);
+
+		/*
+		 * We use the original literal's location regardless of the position
+		 * of the coercion.  This is a change from pre-9.2 behavior, meant to
+		 * simplify life for pg_stat_statements.
+		 */
+		newcon->location = ((Var *) node)->location;
+		return (Node *) newcon;
 	}
 	/* End - ReqID:SRS-SQL-UNION */
 
@@ -3872,17 +3941,13 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 	TYPCATEGORY pcategory;
 	bool		pispreferred;
 	ListCell   *lc;
-	bool 		usetextoid = true; /* ReqID:SRS-SQL-UNION */
+
 	/* Begin - Bug#M0000331 */
 	bool		issetop = false;
 	if (context && (strcmp(context, "UNION") == 0 || strcmp(context, "INTERSECT") == 0
 					|| strcmp(context, "EXCEPT") == 0 || strcmp(context, "MINUS") == 0))
 		issetop = true;
 	/* End - Bug#M0000331 */
-	/* Begin - ReqID:SRS-SQL-UNION */
-	if (enable_setoperation_null && issetop)
-		usetextoid = false;
-	/* End - ReqID:SRS-SQL-UNION */
 
 	Assert(exprs != NIL);
 	pexpr = (Node *) linitial(exprs);
@@ -3996,39 +4061,6 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 			}
 			/* End - Bug#M0000331 */
 		}
-		/* Begin - ReqID:SRS-SQL-UNION */
-		/*
-		 * select null union select 'a'; a is unkonwn type,
-		 * but in oracle mode, need return varchar2.
-		 * so need set usetextoid to true
-		 */
-		else if (enable_setoperation_null && compatible_mode == ORA_MODE &&
-			 issetop &&
-			 IsA(nexpr, Const) &&
-			 !usetextoid)
-		{
-			if (ptype == UNKNOWNOID && ntype == UNKNOWNOID &&
-				(IsA(pexpr, Const) &&
-				((Const *) pexpr)->constisnull) && !((Const *) nexpr)->constisnull)
-			{
-				usetextoid = true;
-			}
-			else if (ptype == UNKNOWNOID && ntype == UNKNOWNOID && pstate->p_parent_cte)
-				ptype = TEXTOID;
-		}
-		/* End - ReqID:SRS-SQL-UNION */
-
-		/* Begin - Bug#8344*/
-		/*
-		 * cte output line, if UNKNOWN type, convert to text
-		 * see analyzeCTETargetList function
-		 */
-		else if (enable_setoperation_null && compatible_mode == ORA_MODE &&
-			ptype == UNKNOWNOID && ntype == UNKNOWNOID && pstate->p_parent_cte)
-		{
-			ptype = TEXTOID;
-		}
-		/* End - Bug#8344*/
 	}
 
 	/*
@@ -4053,23 +4085,7 @@ select_common_type(ParseState *pstate, List *exprs, const char *context,
 		 */
 		if (context && strcmp(context, "ARRAY") && compatible_mode == ORA_MODE)
 		{
-			/* Begin - ReqID:SRS-SQL-UNION */
-			/*
-			 * select 'a' union select null. need return varchar2.
-			 * so set usetextoid to true
-			 */
-			if (enable_setoperation_null && issetop && !usetextoid)
-			{
-				if (IsA(pexpr, Const) && !((Const *)pexpr)->constisnull)
-				{
-					usetextoid = true;
-				}
-			}
-
-			if (!usetextoid)
-			{}
-			/* End - ReqID:SRS-SQL-UNION */
-			else if (nls_length_semantics == NLS_LENGTH_BYTE)
+			if (nls_length_semantics == NLS_LENGTH_BYTE && !pstate->p_parent_cte)
 				ptype = ORAVARCHARBYTEOID;
 			else
 				ptype = ORAVARCHARCHAROID;

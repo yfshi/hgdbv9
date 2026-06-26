@@ -2328,9 +2328,11 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 	int			numaliases;
 	List	   *coltypes,
 			   *coltypmods,
-			   *colcollations;
+			   *colcollations,
+			   *colunionnulls;
 	int			varattno;
 	ListCell   *tlistitem;
+	bool		hasunionnull = false;
 
 	Assert(pstate != NULL);
 
@@ -2342,7 +2344,7 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 	numaliases = list_length(eref->colnames);
 
 	/* fill in any unspecified alias columns, and extract column type info */
-	coltypes = coltypmods = colcollations = NIL;
+	coltypes = coltypmods = colcollations = colunionnulls = NIL;
 	varattno = 0;
 	foreach(tlistitem, subquery->targetList)
 	{
@@ -2365,6 +2367,16 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 								 exprTypmod((Node *) te->expr));
 		colcollations = lappend_oid(colcollations,
 									exprCollation((Node *) te->expr));
+		/* Begin - BUG#8430 */
+		if (compatible_mode == ORA_MODE &&
+			enable_setoperation_null)
+		{
+			colunionnulls = lappend_int(colunionnulls,
+										te->union_null_res ? 1 : 0);
+			if (te->union_null_res)
+				hasunionnull = true;
+		}
+		/* End - BUG#8430 */
 	}
 	if (varattno < numaliases)
 		ereport(ERROR,
@@ -2401,8 +2413,30 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 	 * Build a ParseNamespaceItem, but don't add it to the pstate's namespace
 	 * list --- caller must do that if appropriate.
 	 */
-	return buildNSItemFromLists(rte, list_length(pstate->p_rtable),
-								coltypes, coltypmods, colcollations);
+	/* Begin - BUG#8430 */
+	if (compatible_mode == ORA_MODE &&
+		enable_setoperation_null &&
+		hasunionnull)
+	{
+		ParseNamespaceItem * parseNamespaceItem = buildNSItemFromLists(rte, list_length(pstate->p_rtable),
+									coltypes, coltypmods, colcollations);
+		if (parseNamespaceItem)
+		{
+			ListCell   *colunionnull;
+			varattno = 0;
+			foreach (colunionnull, colunionnulls)
+			{
+				bool res = lfirst_int(colunionnull) == 1 ? true : false;
+				parseNamespaceItem->p_nscolumns[varattno].union_null_res = res;
+				varattno++;
+			}
+		}
+		return parseNamespaceItem;
+	}
+	else
+		return buildNSItemFromLists(rte, list_length(pstate->p_rtable),
+									coltypes, coltypmods, colcollations);
+	/* End - BUG#8430 */
 }
 
 /*
@@ -3891,6 +3925,9 @@ expandNSItemVars(ParseNamespaceItem *nsitem,
 						  nscol->p_vartypmod,
 						  nscol->p_varcollid,
 						  sublevels_up);
+			/* Begin - BUG#8430 */
+			var->union_null_res = nscol->union_null_res;
+			/* End - BUG#8430 */
 			/* makeVar doesn't offer parameters for these, so set by hand: */
 			var->varnosyn = nscol->p_varnosyn;
 			var->varattnosyn = nscol->p_varattnosyn;

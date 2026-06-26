@@ -1201,6 +1201,10 @@ _outVar(StringInfo str, const Var *node)
 	WRITE_UINT_FIELD(varnosyn);
 	WRITE_INT_FIELD(varattnosyn);
 	WRITE_LOCATION_FIELD(location);
+	/* Begin - BUG#8430 */
+	WRITE_BOOL_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	WRITE_BOOL_FIELD(union_null_res);
+	/* End - BUG#8430 */
 }
 
 /* Begin - ReqID:SRS-SQL-ROWNUM */
@@ -1824,6 +1828,10 @@ _outTargetEntry(StringInfo str, const TargetEntry *node)
 	WRITE_UINT_FIELD(rtindex);
 	WRITE_INT_FIELD(relattno);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - BUG#8430 */
+	WRITE_BOOL_FIELD(resname_is_alias);
+	WRITE_BOOL_FIELD(union_null_res);
+	/* End - BUG#8430 */
 }
 
 static void

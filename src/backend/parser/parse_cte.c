@@ -25,6 +25,7 @@
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"
 #include "utils/typcache.h"
+#include "utils/guc.h"  // BUG#8431
 
 
 /* Enumeration of contexts in which a self-reference is disallowed */
@@ -628,7 +629,12 @@ analyzeCTETargetList(ParseState *pstate, CommonTableExpr *cte, List *tlist)
 		 */
 		if (cte->cterecursive && coltype == UNKNOWNOID)
 		{
-			coltype = TEXTOID;
+			/* Begin - BUG#8431 */
+			if (compatible_mode == ORA_MODE)
+				coltype = ORAVARCHARCHAROID;
+			else
+				coltype = TEXTOID;
+			/* End - BUG#8431 */
 			coltypmod = -1;		/* should be -1 already, but be sure */
 			if (!OidIsValid(colcoll))
 				colcoll = DEFAULT_COLLATION_OID;

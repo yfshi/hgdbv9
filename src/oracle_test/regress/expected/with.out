@@ -157,12 +157,12 @@ UNION ALL
 SELECT n, pg_typeof(n) FROM t;
             n            | pg_typeof 
 -------------------------+-----------
- foo                     | text
- foo bar                 | text
- foo bar bar             | text
- foo bar bar bar         | text
- foo bar bar bar bar     | text
- foo bar bar bar bar bar | text
+ foo                     | varchar2
+ foo bar                 | varchar2
+ foo bar bar             | varchar2
+ foo bar bar bar         | varchar2
+ foo bar bar bar bar     | varchar2
+ foo bar bar bar bar bar | varchar2
 (6 rows)
 
 -- In a perfect world, this would work and resolve the literal as int ...
@@ -173,10 +173,10 @@ UNION ALL
     SELECT n+1 FROM t WHERE n < 10
 )
 SELECT n, pg_typeof(n) FROM t;
-ERROR:  operator does not exist: text + integer
-LINE 4:     SELECT n+1 FROM t WHERE n < 10
-                    ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR:  recursive query "t" column 1 has type varchar2 in non-recursive term but type number overall
+LINE 2:     SELECT '7'
+                   ^
+HINT:  Cast the output of the non-recursive term to the correct type.
 -- Deeply nested WITH caused a list-munging problem in v13
 -- Detection of cross-references and self-references
 WITH RECURSIVE w1(c1) AS
@@ -2309,7 +2309,7 @@ WITH RECURSIVE
       SELECT 0, 'base', 17
     UNION ALL (
       WITH remaining(id_key, row_type, link, min) AS (
-        SELECT tab.id_key, 'true'::text, iter.link, MIN(tab.id_key) OVER ()
+        SELECT tab.id_key, 'true', iter.link, MIN(tab.id_key) OVER ()
         FROM tab INNER JOIN iter USING (link)
         WHERE tab.id_key > iter.id_key
       ),
@@ -2319,7 +2319,44 @@ WITH RECURSIVE
         WHERE id_key=min
       ),
       effect AS (
-        SELECT tab.id_key, 'new'::text, tab.link
+        SELECT tab.id_key, 'new', tab.link
+        FROM first_remaining e INNER JOIN tab ON e.id_key=tab.id_key
+        WHERE e.row_type = 'false'
+      )
+      SELECT * FROM first_remaining
+      UNION ALL SELECT * FROM effect
+    )
+  )
+SELECT * FROM iter;
+ id_key | row_type | link 
+--------+----------+------
+      0 | base     |   17
+      1 | true     |   17
+      2 | true     |   17
+      3 | true     |   17
+      4 | true     |   17
+      5 | true     |   17
+      6 | true     |   17
+(7 rows)
+
+-- Begin - Bug#8431 --
+WITH RECURSIVE
+  tab(id_key,link) AS (VALUES (1,17), (2,17), (3,17), (4,17), (6,17), (5,17)),
+  iter (id_key, row_type, link) AS (
+      SELECT 0, 'base', 17
+    UNION (
+      WITH remaining(id_key, row_type, link, min) AS (
+        SELECT tab.id_key, 'true', iter.link, MIN(tab.id_key) OVER ()
+        FROM tab INNER JOIN iter USING (link)
+        WHERE tab.id_key > iter.id_key
+      ),
+      first_remaining AS (
+        SELECT id_key, row_type, link
+        FROM remaining
+        WHERE id_key=min
+      ),
+      effect AS (
+        SELECT tab.id_key, 'new', tab.link
         FROM first_remaining e INNER JOIN tab ON e.id_key=tab.id_key
         WHERE e.row_type = 'false'
       )
@@ -2343,9 +2380,9 @@ WITH RECURSIVE
   tab(id_key,link) AS (VALUES (1,17), (2,17), (3,17), (4,17), (6,17), (5,17)),
   iter (id_key, row_type, link) AS (
       SELECT 0, 'base', 17
-    UNION (
+    UNION ALL (
       WITH remaining(id_key, row_type, link, min) AS (
-        SELECT tab.id_key, 'true'::text, iter.link, MIN(tab.id_key) OVER ()
+        SELECT tab.id_key, 'true'::varchar(20 char), iter.link, MIN(tab.id_key) OVER ()
         FROM tab INNER JOIN iter USING (link)
         WHERE tab.id_key > iter.id_key
       ),
@@ -2355,7 +2392,7 @@ WITH RECURSIVE
         WHERE id_key=min
       ),
       effect AS (
-        SELECT tab.id_key, 'new'::text, tab.link
+        SELECT tab.id_key, 'new'::varchar(20 char), tab.link
         FROM first_remaining e INNER JOIN tab ON e.id_key=tab.id_key
         WHERE e.row_type = 'false'
       )
@@ -2375,6 +2412,65 @@ SELECT * FROM iter;
       6 | true     |   17
 (7 rows)
 
+WITH RECURSIVE
+  tab(id_key,link) AS (VALUES (1,17), (2,17), (3,17), (4,17), (6,17), (5,17)),
+  iter (id_key, row_type, link) AS (
+      SELECT 0, 'base', 17
+    UNION ALL (
+      WITH remaining(id_key, row_type, link, min) AS (
+        SELECT tab.id_key, 'true'::varchar(20), iter.link, MIN(tab.id_key) OVER ()
+        FROM tab INNER JOIN iter USING (link)
+        WHERE tab.id_key > iter.id_key
+      ),
+      first_remaining AS (
+        SELECT id_key, row_type, link
+        FROM remaining
+        WHERE id_key=min
+      ),
+      effect AS (
+        SELECT tab.id_key, 'new'::varchar(20), tab.link
+        FROM first_remaining e INNER JOIN tab ON e.id_key=tab.id_key
+        WHERE e.row_type = 'false'
+      )
+      SELECT * FROM first_remaining
+      UNION ALL SELECT * FROM effect
+    )
+  )
+SELECT * FROM iter;
+ERROR:  recursive query "iter" column 2 has type varchar2 in non-recursive term but type varchar2 overall
+LINE 4:       SELECT 0, 'base', 17
+                        ^
+HINT:  Cast the output of the non-recursive term to the correct type.
+WITH RECURSIVE
+  tab(id_key,link) AS (VALUES (1,17), (2,17), (3,17), (4,17), (6,17), (5,17)),
+  iter (id_key, row_type, link) AS (
+      SELECT 0, 'base', 17
+    UNION ALL (
+      WITH remaining(id_key, row_type, link, min) AS (
+        SELECT tab.id_key, 'true'::varchar(20 byte), iter.link, MIN(tab.id_key) OVER ()
+        FROM tab INNER JOIN iter USING (link)
+        WHERE tab.id_key > iter.id_key
+      ),
+      first_remaining AS (
+        SELECT id_key, row_type, link
+        FROM remaining
+        WHERE id_key=min
+      ),
+      effect AS (
+        SELECT tab.id_key, 'new'::varchar(20 byte), tab.link
+        FROM first_remaining e INNER JOIN tab ON e.id_key=tab.id_key
+        WHERE e.row_type = 'false'
+      )
+      SELECT * FROM first_remaining
+      UNION ALL SELECT * FROM effect
+    )
+  )
+SELECT * FROM iter;
+ERROR:  recursive query "iter" column 2 has type varchar2 in non-recursive term but type varchar2 overall
+LINE 4:       SELECT 0, 'base', 17
+                        ^
+HINT:  Cast the output of the non-recursive term to the correct type.
+-- End - Bug#8431 --
 --
 -- Data-modifying statements in WITH
 --

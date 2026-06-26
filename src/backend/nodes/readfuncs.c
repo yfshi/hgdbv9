@@ -713,6 +713,10 @@ _readVar(void)
 	READ_UINT_FIELD(varnosyn);
 	READ_INT_FIELD(varattnosyn);
 	READ_LOCATION_FIELD(location);
+	/* Begin - BUG#8430 */
+	READ_BOOL_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	READ_BOOL_FIELD(union_null_res);
+	/* End - BUG#8430 */
 
 	READ_DONE();
 }
@@ -1524,6 +1528,10 @@ _readTargetEntry(void)
 	READ_UINT_FIELD(rtindex);
 	READ_INT_FIELD(relattno);
 	/* End - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - BUG#8430 */
+	READ_BOOL_FIELD(resname_is_alias);
+	READ_BOOL_FIELD(union_null_res);
+	/* End - BUG#8430 */
 
 	READ_DONE();
 }
