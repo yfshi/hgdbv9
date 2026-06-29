@@ -838,6 +838,9 @@ scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
 					  nscol->p_vartypmod,
 					  nscol->p_varcollid,
 					  sublevels_up);
+		/* Begin - bug#00008497 */
+		var->varisnull = nscol->p_var_isnull;
+		/* End - bug#00008497 */
 		/* makeVar doesn't offer parameters for these, so set them by hand: */
 		var->varnosyn = nscol->p_varnosyn;
 		var->varattnosyn = nscol->p_varattnosyn;
@@ -2333,11 +2336,14 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 	int			numaliases;
 	List	   *coltypes,
 			   *coltypmods,
-			   *colcollations,
-			   *colunionnulls;
+			   *colcollations;
 	int			varattno;
 	ListCell   *tlistitem;
-	bool		hasunionnull = false;
+	/* Begin - bug#00008497 */
+	List	*colnulls = NIL;
+	bool		hasnulls = false;
+	ParseNamespaceItem *parsenames;
+	/* End - bug#00008497 */
 
 	Assert(pstate != NULL);
 
@@ -2349,7 +2355,7 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 	numaliases = list_length(eref->colnames);
 
 	/* fill in any unspecified alias columns, and extract column type info */
-	coltypes = coltypmods = colcollations = colunionnulls = NIL;
+	coltypes = coltypmods = colcollations = NIL;
 	varattno = 0;
 	foreach(tlistitem, subquery->targetList)
 	{
@@ -2372,16 +2378,38 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 								 exprTypmod((Node *) te->expr));
 		colcollations = lappend_oid(colcollations,
 									exprCollation((Node *) te->expr));
-		/* Begin - BUG#8430 */
-		if (compatible_mode == ORA_MODE &&
+		/* Begin - bug#00008497 */
+		/*
+		 * check col is null const
+		 */
+		if (ORA_MODE == compatible_mode &&
 			enable_setoperation_null)
 		{
-			colunionnulls = lappend_int(colunionnulls,
-										te->union_null_res ? 1 : 0);
-			if (te->union_null_res)
-				hasunionnull = true;
+			bool isnull = false;
+
+			if (IsA(te->expr, Const))
+			{
+				Const *cst = (Const *) te->expr;
+
+				isnull = cst->constisnull;
+			}
+			else if (IsA(te->expr, Var))
+			{
+				Var *var = (Var *) te->expr;
+
+				isnull = var->varisnull;
+			}
+			else if (IsA(te->expr, SetToDefault))
+			{
+				SetToDefault *st = (SetToDefault *) te->expr;
+
+				isnull = st->isnull;
+			}
+			if (isnull)
+				hasnulls = true;
+			colnulls = lappend_int(colnulls, isnull ? 1 : 0);
 		}
-		/* End - BUG#8430 */
+		/* End - bug#00008497 */
 	}
 	if (varattno < numaliases)
 		ereport(ERROR,
@@ -2418,30 +2446,25 @@ addRangeTableEntryForSubquery(ParseState *pstate,
 	 * Build a ParseNamespaceItem, but don't add it to the pstate's namespace
 	 * list --- caller must do that if appropriate.
 	 */
-	/* Begin - BUG#8430 */
-	if (compatible_mode == ORA_MODE &&
-		enable_setoperation_null &&
-		hasunionnull)
+	parsenames = buildNSItemFromLists(rte, list_length(pstate->p_rtable),
+									coltypes, coltypmods, colcollations);
+	/* Begin - bug#00008497 */
+	if (hasnulls)
 	{
-		ParseNamespaceItem * parseNamespaceItem = buildNSItemFromLists(rte, list_length(pstate->p_rtable),
-									coltypes, coltypmods, colcollations);
-		if (parseNamespaceItem)
+		ListCell *lc;
+		int	varattno = 0;
+
+		foreach (lc, colnulls)
 		{
-			ListCell   *colunionnull;
-			varattno = 0;
-			foreach (colunionnull, colunionnulls)
-			{
-				bool res = lfirst_int(colunionnull) == 1 ? true : false;
-				parseNamespaceItem->p_nscolumns[varattno].union_null_res = res;
-				varattno++;
-			}
+			bool isnull = lfirst_int(lc) == 1 ? true : false;
+
+			parsenames->p_nscolumns[varattno].p_var_isnull = isnull;
+			varattno++;
 		}
-		return parseNamespaceItem;
 	}
-	else
-		return buildNSItemFromLists(rte, list_length(pstate->p_rtable),
-									coltypes, coltypmods, colcollations);
-	/* End - BUG#8430 */
+	list_free(colnulls);
+	/* End - bug#00008497 */
+	return parsenames;
 }
 
 /*
@@ -3929,9 +3952,9 @@ expandNSItemVars(ParseNamespaceItem *nsitem,
 						  nscol->p_vartypmod,
 						  nscol->p_varcollid,
 						  sublevels_up);
-			/* Begin - BUG#8430 */
-			var->union_null_res = nscol->union_null_res;
-			/* End - BUG#8430 */
+			/* Begin - bug#00008497 */
+			var->varisnull = nscol->p_var_isnull;
+			/* End - bug#00008497 */
 			/* makeVar doesn't offer parameters for these, so set by hand: */
 			var->varnosyn = nscol->p_varnosyn;
 			var->varattnosyn = nscol->p_varattnosyn;

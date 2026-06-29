@@ -812,6 +812,9 @@ _equalSetToDefault(const SetToDefault *a, const SetToDefault *b)
 	COMPARE_SCALAR_FIELD(typeId);
 	COMPARE_SCALAR_FIELD(typeMod);
 	COMPARE_SCALAR_FIELD(collation);
+	/* Begin - bug#00008497 */
+	COMPARE_SCALAR_FIELD(isnull);
+	/* End - bug#00008497 */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;

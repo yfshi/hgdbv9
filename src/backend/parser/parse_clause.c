@@ -2004,9 +2004,6 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 					res_nscolumn->p_varnosyn = 0;
 					res_nscolumn->p_varattnosyn = res_colindex;
 					res_nscolumn->p_var_visible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
-					/* Begin - BUG#8430 */
-					res_nscolumn->union_null_res = false;
-					/* End - BUG#8430 */
 				}
 			}
 
@@ -2297,9 +2294,9 @@ buildVarFromNSColumn(ParseNamespaceColumn *nscol)
 	/* makeVar doesn't offer parameters for these, so set by hand: */
 	var->varnosyn = nscol->p_varnosyn;
 	var->varattnosyn = nscol->p_varattnosyn;
-	/* Begin - BUG#8430 */
-	var->union_null_res = nscol->union_null_res;
-	/* End - BUG#8430 */
+	/* Begin - bug#00008497 */
+	var->varisnull = nscol->p_var_isnull;
+	/* End - bug#00008497 */
 	return var;
 }
 
