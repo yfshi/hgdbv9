@@ -651,6 +651,11 @@ static bool isAconstNode(Node *node);
 %type <rolespec> OptTableSpaceOwner
 %type <ival>	opt_check_option
 
+/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+%type <ival>    OptResultCache
+%type <ival>    result_cache_mode_option
+/* End - ReqID:SRS-MISC-RESULT_CACHE */
+
 %type <str>		opt_provider security_label
 
 %type <target>	xml_attribute_el
@@ -3714,6 +3719,14 @@ alter_table_cmd:
 					$$ = (Node *) n;
 				}
 			/* End - ReqID:SRS-SQL-NLSSORT */
+			/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+			| RESULT_CACHE '(' MODE result_cache_mode_option ')'
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype       = AT_ResultCache;
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MISC-RESULT_CACHE */
 		;
 
 alter_column_default:
@@ -4603,7 +4616,7 @@ PurgeStmt:
 
 CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OptPartitionSpec table_access_method_clause OptWith
-			default_collation_option OnCommitOption OptTableSpace
+			default_collation_option OnCommitOption OptTableSpace OptResultCache
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -4629,7 +4642,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name '('
 			OptTableElementList ')' OptInherit OptPartitionSpec table_access_method_clause
-			OptWith default_collation_option OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace OptResultCache
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$7->relpersistence = $2;
@@ -4655,7 +4668,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 				}
 		| CREATE OptTemp TABLE qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
-			OptWith default_collation_option OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace OptResultCache
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -4682,7 +4695,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name OF any_name
 			OptTypedTableElementList OptPartitionSpec table_access_method_clause
-			OptWith default_collation_option OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace OptResultCache
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$7->relpersistence = $2;
@@ -4763,7 +4776,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		 */
 		| CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit table_partitioning_clauses table_access_method_clause
-			OptWith default_collation_option OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace OptResultCache
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -4787,7 +4800,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 		/* Begin - bug#7304 */
 		| CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OraPreTableSpace table_partitioning_clauses table_access_method_clause
-			OptWith default_collation_option OnCommitOption OptTableSpace
+			OptWith default_collation_option OnCommitOption OptTableSpace OptResultCache
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -4844,6 +4857,34 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 						parser_yyerror("syntax error");
 				}
 		;
+
+/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+OptResultCache:
+        RESULT_CACHE '(' MODE result_cache_mode_option ')'
+		    {
+				$$ = $4;
+			}
+		| /* EMPTY */
+		    {
+				$$ = 0;
+			}
+	    ;
+
+result_cache_mode_option:
+        DEFAULT
+		    {
+				$$ = 0;
+			}
+		| MANUAL
+		    {
+				$$ = 1;
+			}
+		| FORCE
+		    {
+				$$ = 2;
+			}
+		;
+/* End - ReqID:SRS-MISC-RESULT_CACHE */
 
 /* only to support pg_dump */
 OnlyOraclePartitionSpec:
@@ -6696,7 +6737,7 @@ CreateAsStmt:
 
 create_as_target:
 			qualified_name opt_column_list table_access_method_clause
-			OptWith OnCommitOption OptTableSpace
+			OptWith OnCommitOption OptTableSpace OptResultCache
 				{
 					$$ = makeNode(IntoClause);
 					$$->rel = $1;

@@ -2503,8 +2503,9 @@ typedef enum AlterTableType
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
 	AT_ModifyColumn,
-	AT_ChangeColumn
+	AT_ChangeColumn,
 	/* End - ReqID:SRS-MYSQL-SQL-Alter */
+	AT_ResultCache              /* ReqID:SRS-MISC-RESULT_CACHE */
 } AlterTableType;
 
 typedef struct ReplicaIdentityStmt
