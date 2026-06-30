@@ -1791,10 +1791,10 @@ select
   trim(E'\\000'::bytea from E'\\000Tom\\000'::bytea) as btb,
   trim(leading E'\\000'::bytea from E'\\000Tom\\000'::bytea) as ltb,
   trim(trailing E'\\000'::bytea from E'\\000Tom\\000'::bytea) as rtb;
-ERROR:  operator does not exist: date + interval
+ERROR:  function pg_catalog.timezone(unknown, datetime) does not exist
 LINE 3:   ('2022-12-01'::date + '1 day'::interval) at time zone 'UTC...
-                              ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+                                                   ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
 select pg_get_viewdef('tt201v', true);
 ERROR:  relation "tt201v" does not exist
 -- corner cases with empty join conditions

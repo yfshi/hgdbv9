@@ -374,30 +374,49 @@ ExecRenameStmt(RenameStmt *stmt)
 		case OBJECT_SCHEMA:
 		{
 			/* Begin - ReqID:SRS-MYSQL-CASE */
-			char		   *newname;
+			char		   *objname;
 			bool			alterobj = false;
 			ObjectAddress	address;
 			/* End - ReqID:SRS-MYSQL-CASE */
 
-			/* Begin - ReqID:SRS-MYSQL-CASE */
-			if (compatible_mode == MYS_MODE && MYS_LOWER_MIXED == mysql_objlower_hook())
+			/* Begin - bug#Z8459 */
+			/*
+			 * MySQL lower_case_table_names determines how rename updates
+			 * pg_namespace (stmt->newname) and pg_object (objname):
+			 *
+			 *      lower | pg_namespace | pg_object
+			 *      ------+--------------+-----------
+			 *        0   |   original   |  original
+			 *        1   |   lowercase  |  lowercase
+			 *        2   |   lowercase  |  original
+			 */
+			if (compatible_mode == MYS_MODE)
 			{
 				alterobj = true;
-				newname = pstrdup(stmt->newname);
-				stmt->newname = mysql_string_case_hook(stmt->newname);
+				objname = pstrdup(stmt->newname);
+
+				if (mysql_objlower_hook)
+				{
+					int lower = mysql_objlower_hook();
+
+					if (lower == MYS_LOWER_INSENSITIVE || lower == MYS_LOWER_MIXED)
+						stmt->newname = mysql_string_case_hook(stmt->newname);
+					if (lower == MYS_LOWER_INSENSITIVE)
+						objname = pstrdup(stmt->newname);
+				}
 			}
 
-			address =  RenameSchema(stmt->subname, stmt->newname);
+			address = RenameSchema(stmt->subname, stmt->newname);
 			if (alterobj && pg_object_alter_obj_hook && pg_object_get_ori_infor_hook)
 			{
 				PgObjectInfo oriinf = NULL;
 
 				if ((oriinf = pg_object_get_ori_infor_hook(address)) != NULL)
-					pg_object_alter_obj_hook(address, newname, oriinf->orischema, oriinf->orioption, NULL);
+					pg_object_alter_obj_hook(address, objname, oriinf->orischema, oriinf->orioption, NULL);
 			}
 
 			return address;
-			/* End - ReqID:SRS-MYSQL-CASE */
+			/* End - bug#Z8459 */
 		}
 
 		case OBJECT_TABLESPACE:

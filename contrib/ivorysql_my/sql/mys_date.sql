@@ -1345,3 +1345,14 @@ SELECT d, CAST(d AS DOUBLE) , pg_typeof(CAST(d AS DOUBLE))  FROM tb_test;
 
 SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
 drop TABLE tb_test;
+
+/* Begin bug#Z8459 */
+select cast('2026-06-29' as pg_catalog.date) - interval '14 days' as d_sub_14d;
+select cast('2026-06-29' as date) + interval '14 days' as d_add_14d;
+select cast('2026-06-29' as date) - interval '1 month' as d_sub_1mon;
+select cast('2026-06-29' as date) + interval '1 year'  as d_add_1yr;
+select cast('2026-06-29' as date) - interval '2 hours' as d_sub_2h;
+select pg_typeof(cast('2026-06-29' as date) - interval '14 days') as result_type;
+select (cast('2026-06-29' as date) - interval '14 days')::pg_catalog.timestamp::pg_catalog.date as back_to_date;
+select cast(null as date) - interval '14 days' as null_in;
+/* End bug#Z8459 */

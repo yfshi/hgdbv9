@@ -4699,7 +4699,7 @@ LINE 1: select cast('2022-01-21' as date) +  cast('2022-02-32' as da...
 select cast('2022-01-21' as date) +  NULL ;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select cast('2022-01-21' as date) +  cast('9999-02-30' as date);--NULL warning
@@ -4793,7 +4793,7 @@ LINE 1: select cast('2022-01-21' as date) -  cast('2022-02-32' as da...
 select cast('2022-01-21' as date) -  NULL;--NULL
  ?column? 
 ----------
-         
+ 
 (1 row)
 
 select cast('2022-01-21' as date) -  cast('9999-02-30' as date);--NULL warning
@@ -6256,3 +6256,53 @@ SELECT d, CAST(d AS float4) , pg_typeof(CAST(d AS float4))  FROM tb_test;
 (4 rows)
 
 drop TABLE tb_test;
+/* Begin bug#Z8459 */
+select cast('2026-06-29' as pg_catalog.date) - interval '14 days' as d_sub_14d;
+      d_sub_14d      
+---------------------
+ 2026-06-15 00:00:00
+(1 row)
+
+select cast('2026-06-29' as date) + interval '14 days' as d_add_14d;
+      d_add_14d      
+---------------------
+ 2026-07-13 00:00:00
+(1 row)
+
+select cast('2026-06-29' as date) - interval '1 month' as d_sub_1mon;
+     d_sub_1mon      
+---------------------
+ 2026-05-29 00:00:00
+(1 row)
+
+select cast('2026-06-29' as date) + interval '1 year'  as d_add_1yr;
+      d_add_1yr      
+---------------------
+ 2027-06-29 00:00:00
+(1 row)
+
+select cast('2026-06-29' as date) - interval '2 hours' as d_sub_2h;
+      d_sub_2h       
+---------------------
+ 2026-06-28 22:00:00
+(1 row)
+
+select pg_typeof(cast('2026-06-29' as date) - interval '14 days') as result_type;
+ result_type 
+-------------
+ datetime
+(1 row)
+
+select (cast('2026-06-29' as date) - interval '14 days')::pg_catalog.timestamp::pg_catalog.date as back_to_date;
+ back_to_date 
+--------------
+ 2026-06-15
+(1 row)
+
+select cast(null as date) - interval '14 days' as null_in;
+ null_in 
+---------
+ 
+(1 row)
+
+/* End bug#Z8459 */

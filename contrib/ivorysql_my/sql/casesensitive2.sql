@@ -295,8 +295,14 @@ DROP SEQUENCE sc.NEWSEQUENCE;
 DROP SEQUENCE SC.NEWSEQUENCE;	--err
 DROP SCHEMA SC;
 
-
-
+/* Begin #Z8459 */
+-- Test with lower_case_table_names = 2 (case-insensitive, store original)
+CREATE SCHEMA "RenSchema2";
+ALTER SCHEMA "RenSchema2" RENAME TO "RenSchema2_New";
+SELECT nspname AS pg_ns FROM pg_namespace WHERE nspname LIKE 'renschema2%' OR nspname LIKE 'RenSchema2%' ORDER BY nspname;
+SELECT objname AS pg_obj FROM pg_object WHERE objname LIKE '%RenSchema2%' OR objname LIKE '%renschema2%' ORDER BY objname;
+DROP SCHEMA "RenSchema2_New";
+/* End #Z8459 */
 
 reset ivorysql.compatible_mode;
 reset lower_case_table_names;

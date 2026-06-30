@@ -201,7 +201,7 @@ ReconnectToServerMysql(ArchiveHandle *AH, const char *dbname)
 	ConnectDatabaseMysql((Archive *) AH, &ropt->cparams, true);
 
 	/* BEGIN - SQL PARSER */
-	getDbCompatibleMode(AH->connection);
+	db_mode = DB_MYSQL;
 	/* END - SQL PARSER */
 
 	PQfinish(oldConn);
@@ -710,6 +710,18 @@ ConnectDatabaseMysql(Archive *AHX,
 
 	/* check for version mismatch */
 	_check_database_version(AH);
+
+	/* Begin bug#Z8459 */
+	/*
+	 * Force db_mode to DB_MYSQL for correct fmtId() dispatch.  The
+	 * server session is in pg mode (we can't SET compatible_mode to
+	 * avoid changing expression deparsing), so getDbCompatibleMode()
+	 * would set db_mode to DB_PG.
+	 */
+	getDatabaseMode(AH->connection);
+	if (DB_MYSQL == database_mode && !RestoringToDB(AH))
+		db_mode = DB_MYSQL;
+	/* End bug#Z8459 */
 
 	PQsetNoticeProcessor(AH->connection, notice_processor, NULL);
 

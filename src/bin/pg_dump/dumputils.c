@@ -1327,9 +1327,15 @@ GetMySQLCompPara(Archive *AHX)
 				PQclear(res);
 		}
 
-		getDbCompatibleMode(AH->connection);
-		if (db_mode == DB_MYSQL)
-			AH->compatible_mode = pg_strdup("m");
+		/* Begin bug#Z8459 */
+		/*
+		 * Force db_mode to DB_MYSQL for correct fmtId() dispatch.  The
+		 * server session is in pg mode (we can't SET compatible_mode to
+		 * avoid changing expression deparsing), so getDbCompatibleMode()
+		 * would set db_mode to DB_PG.
+		 */
+		db_mode = DB_MYSQL;
+		/* End bug#Z8459 */
 	}
 }
 /* End - ReqID:SRS-MYSQL-CASE */
