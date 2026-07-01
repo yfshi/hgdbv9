@@ -8215,6 +8215,7 @@ CommentStmt:
 comment_text:
 			Sconst								{ $$ = $1; }
 			| NULL_P							{ $$ = NULL; }
+			| IDENT								{ $$ = $1; }	/* bug#8478 */
 		;
 
 
@@ -9115,7 +9116,7 @@ index_options:
 index_opt:
 			KEY_BLOCK_SIZE opt_equal ICONST		{ $$ = NULL; }
 			| WITH_PARSER PARSER ColId					{ $$ = NULL; }
-			| COMMENT SCONST
+			| COMMENT comment_text	/* bug#8478 */
 				{
 					CommentStmt *n = makeNode(CommentStmt);
 					n->objtype = OBJECT_INDEX;
@@ -10001,7 +10002,7 @@ mys_func_opt_item:
 				{
 					$$ = makeDefElem("operator_tpye", (Node *)makeString("modifies sql data"), @1);
 				}
-			| COMMENT SCONST
+			| COMMENT comment_text	/* bug#8478 */
 				{
 					$$ = makeDefElem("comment", (Node *)makeString($2), @1);
 				}

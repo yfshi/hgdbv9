@@ -3246,6 +3246,30 @@ SELECT format(123, 1, 'Non-existent-locale');
  123.0
 (1 row)
 
+SELECT format(123456.789::double, 4);
+    format    
+--------------
+ 123,456.7890
+(1 row)
+
+SELECT format(1234567891234::double, 4);
+         format         
+------------------------
+ 1,234,567,891,234.0000
+(1 row)
+
+SELECT format(truncate(1.7976931348623157E+308::double, -7), 3);
+ format 
+--------
+ 0
+(1 row)
+
+SELECT format(truncate(-1.7976931348623157E+308::double, -12), 3, 'en_US');
+ format 
+--------
+ 0
+(1 row)
+
 CREATE TABLE t5(c1 text NOT NULL PRIMARY KEY, c2 text);
 INSERT IGNORE INTO t5 VALUES (95, 46), (31, 438), (61, 152), (78, 123), (88, 411), (122, 118), (0, 177),(75, 42), (108, 67), (79, 349), (59, 188), (69, 206), (49, 345), (118, 380),(111, 368), (94, 468), (56, 379), (77, 133), (29, 399), (9, 363), (23, 36),(116, 390), (119, 368), (87, 351), (123, 411), (24, 398), (34, 202), (28, 499),(30, 83), (5, 178), (60, 343), (4, 245), (104, 280), (106, 446), (127, 403),(44, 307), (68, 454), (57, 135);
 SELECT oct(c1) FROM t5 ORDER BY c1 DESC;
@@ -3907,5 +3931,704 @@ WARNING:  Truncated incorrect DECIMAL value: 'abc123'
  FORMAT 
 --------
  0.00
+(1 row)
+
+-- CRC32
+select crc32('');
+ crc32 
+-------
+     0
+(1 row)
+
+select crc32(NULL);
+ crc32 
+-------
+      
+(1 row)
+
+select crc32('abc');
+   crc32   
+-----------
+ 891568578
+(1 row)
+
+select crc32('ABC');
+   crc32    
+------------
+ 2743272264
+(1 row)
+
+select crc32(100);
+   crc32   
+-----------
+ 595022058
+(1 row)
+
+select crc32(123456);
+   crc32   
+-----------
+ 158520161
+(1 row)
+
+select crc32(4294967295);
+   crc32    
+------------
+ 1540081739
+(1 row)
+
+select crc32(200.789);
+   crc32   
+-----------
+ 781765573
+(1 row)
+
+select crc32(true);
+   crc32    
+------------
+ 2212294583
+(1 row)
+
+select crc32(10 > 20);
+   crc32    
+------------
+ 4108050209
+(1 row)
+
+select crc32(round(1.27));
+   crc32    
+------------
+ 2212294583
+(1 row)
+
+set mysql.use_mysql_bit_literal = on;
+select crc32(0x12);
+   crc32   
+-----------
+ 565944005
+(1 row)
+
+select crc32(x'aaaccc106080');
+   crc32   
+-----------
+ 342555637
+(1 row)
+
+select crc32(0b1010);
+   crc32   
+-----------
+ 852952723
+(1 row)
+
+select crc32(B'10101111');
+   crc32    
+------------
+ 2490061300
+(1 row)
+
+set mysql.use_mysql_bit_literal = off;
+create table t(a int, b varchar(2));
+insert into t values (1, 'A'),(2, 'B'),(3, 'C'),(4, 'D');
+select a, b, crc32(a) from t group by a, b having crc32(max(a)) = 450215437;
+ a | b |   crc32   
+---+---+-----------
+ 2 | B | 450215437
+(1 row)
+
+drop table t;
+-- TRUNCATE
+select truncate(0, 0);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(6666, 3);
+ truncate 
+----------
+     6666
+(1 row)
+
+select truncate(6666, 3.2);
+ truncate 
+----------
+     6666
+(1 row)
+
+select truncate(6666, 0);
+ truncate 
+----------
+     6666
+(1 row)
+
+select truncate(6666, -2);
+ truncate 
+----------
+     6600
+(1 row)
+
+select truncate(6666, -2.7);
+ truncate 
+----------
+     6000
+(1 row)
+
+select truncate(-6666, 3);
+ truncate 
+----------
+    -6666
+(1 row)
+
+select truncate(-6666, 3.2);
+ truncate 
+----------
+    -6666
+(1 row)
+
+select truncate(-6666, 0);
+ truncate 
+----------
+    -6666
+(1 row)
+
+select truncate(-6666, -2);
+ truncate 
+----------
+    -6600
+(1 row)
+
+select truncate(-6666, -2.7);
+ truncate 
+----------
+    -6000
+(1 row)
+
+create table tb1 as select truncate(9223372036854775807, 3);
+desc tb1;
+  Field   |  Type  | Null | Key | Default | Extra 
+----------+--------+------+-----+---------+-------
+ truncate | bigint | YES  |     |         | 
+(1 row)
+
+select * from tb1;
+      truncate       
+---------------------
+ 9223372036854775807
+(1 row)
+
+drop table tb1;
+set mysql.use_mysql_bit_literal = on;
+select truncate(0b0101, 2);
+ truncate 
+----------
+        5
+(1 row)
+
+create table tb2 as select truncate(B'0101111', 3.9);
+desc tb2;
+  Field   |       Type       | Null | Key | Default | Extra 
+----------+------------------+------+-----+---------+-------
+ truncate | double precision | YES  |     |         | 
+(1 row)
+
+select * from tb2;
+ truncate 
+----------
+       47
+(1 row)
+
+drop table tb2;
+select truncate(0xabcd, 6);
+ truncate 
+----------
+    43981
+(1 row)
+
+select truncate(0xab888ab, -5.777);
+ truncate  
+-----------
+ 179000000
+(1 row)
+
+set mysql.use_mysql_bit_literal = off;
+select truncate('120120.12121212', 5);
+   truncate   
+--------------
+ 120120.12121
+(1 row)
+
+create table tb3 as select truncate('8000', 4);
+desc tb3;
+  Field   |       Type       | Null | Key | Default | Extra 
+----------+------------------+------+-----+---------+-------
+ truncate | double precision | YES  |     |         | 
+(1 row)
+
+select * from tb3;
+ truncate 
+----------
+     8000
+(1 row)
+
+drop table tb3;
+create table tb4 as select truncate('-99.99999999', -1);
+desc tb4;
+  Field   |       Type       | Null | Key | Default | Extra 
+----------+------------------+------+-----+---------+-------
+ truncate | double precision | YES  |     |         | 
+(1 row)
+
+select * from tb4;
+ truncate 
+----------
+      -90
+(1 row)
+
+drop table tb4;
+select truncate(30005.6060, '6');
+   truncate   
+--------------
+ 30005.606000
+(1 row)
+
+select truncate(105.1515, '-2.35');
+ truncate 
+----------
+      100
+(1 row)
+
+select truncate(null, null);
+ truncate 
+----------
+         
+(1 row)
+
+select truncate(null, 2);
+ truncate 
+----------
+         
+(1 row)
+
+select truncate(1000.0505, null);
+ truncate 
+----------
+         
+(1 row)
+
+select truncate(150 > 2*30 ,3);
+ truncate 
+----------
+        1
+(1 row)
+
+select truncate(600/30 < 20, -2);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(5678.123451, 0);
+ truncate 
+----------
+     5678
+(1 row)
+
+select truncate(5678.123451, 1);
+ truncate 
+----------
+   5678.1
+(1 row)
+
+select truncate(5678.123451, 2);
+ truncate 
+----------
+  5678.12
+(1 row)
+
+select truncate(5678.123451, 3);
+ truncate 
+----------
+ 5678.123
+(1 row)
+
+select truncate(5678.123451, 4);
+ truncate  
+-----------
+ 5678.1234
+(1 row)
+
+select truncate(5678.123451, 5);
+  truncate  
+------------
+ 5678.12345
+(1 row)
+
+select truncate(5678.123451, 6);
+  truncate   
+-------------
+ 5678.123451
+(1 row)
+
+select truncate(5678.123451, 7);
+   truncate   
+--------------
+ 5678.1234510
+(1 row)
+
+select truncate(5678.123451, -1);
+ truncate 
+----------
+     5670
+(1 row)
+
+select truncate(5678.123451, -2);
+ truncate 
+----------
+     5600
+(1 row)
+
+select truncate(5678.123451, -3);
+ truncate 
+----------
+     5000
+(1 row)
+
+select truncate(5678.123451, -4);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(5678.123451, -5);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(-5678.123451, 0);
+ truncate 
+----------
+    -5678
+(1 row)
+
+select truncate(-5678.123451, 1);
+ truncate 
+----------
+  -5678.1
+(1 row)
+
+select truncate(-5678.123451, 2);
+ truncate 
+----------
+ -5678.12
+(1 row)
+
+select truncate(-5678.123451, 3);
+ truncate  
+-----------
+ -5678.123
+(1 row)
+
+select truncate(-5678.123451, 4);
+  truncate  
+------------
+ -5678.1234
+(1 row)
+
+select truncate(-5678.123451, 5);
+  truncate   
+-------------
+ -5678.12345
+(1 row)
+
+select truncate(-5678.123451, 6);
+   truncate   
+--------------
+ -5678.123451
+(1 row)
+
+select truncate(-5678.123451, 7);
+   truncate    
+---------------
+ -5678.1234510
+(1 row)
+
+select truncate(-5678.123451, -1);
+ truncate 
+----------
+    -5670
+(1 row)
+
+select truncate(-5678.123451, -2);
+ truncate 
+----------
+    -5600
+(1 row)
+
+select truncate(-5678.123451, -3);
+ truncate 
+----------
+    -5000
+(1 row)
+
+select truncate(-5678.123451, -4);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(-5678.123451, -5);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(5678.123451::double, 0);
+ truncate 
+----------
+     5678
+(1 row)
+
+select truncate(5678.123451::double, 1);
+ truncate 
+----------
+   5678.1
+(1 row)
+
+select truncate(5678.123451::double, 2);
+ truncate 
+----------
+  5678.12
+(1 row)
+
+select truncate(5678.123451::double, 3);
+ truncate 
+----------
+ 5678.123
+(1 row)
+
+select truncate(5678.123451::double, 4);
+ truncate  
+-----------
+ 5678.1234
+(1 row)
+
+select truncate(5678.123451::double, 5);
+  truncate  
+------------
+ 5678.12345
+(1 row)
+
+select truncate(5678.123451::double, 6);
+  truncate   
+-------------
+ 5678.123451
+(1 row)
+
+select truncate(5678.123451::double, 7);
+  truncate   
+-------------
+ 5678.123451
+(1 row)
+
+select truncate(5678.123451::double, -1);
+ truncate 
+----------
+     5670
+(1 row)
+
+select truncate(5678.123451::double, -2);
+ truncate 
+----------
+     5600
+(1 row)
+
+select truncate(5678.123451::double, -3);
+ truncate 
+----------
+     5000
+(1 row)
+
+select truncate(5678.123451::double, -4);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(5678.123451::double, -5);
+ truncate 
+----------
+        0
+(1 row)
+
+select truncate(-5678.123451::double, 0);
+ truncate 
+----------
+    -5678
+(1 row)
+
+select truncate(-5678.123451::double, 1);
+ truncate 
+----------
+  -5678.1
+(1 row)
+
+select truncate(-5678.123451::double, 2);
+ truncate 
+----------
+ -5678.12
+(1 row)
+
+select truncate(-5678.123451::double, 3);
+ truncate  
+-----------
+ -5678.123
+(1 row)
+
+select truncate(-5678.123451::double, 4);
+  truncate  
+------------
+ -5678.1234
+(1 row)
+
+select truncate(-5678.123451::double, 5);
+  truncate   
+-------------
+ -5678.12345
+(1 row)
+
+select truncate(-5678.123451::double, 6);
+   truncate   
+--------------
+ -5678.123451
+(1 row)
+
+select truncate(-5678.123451::double, 7);
+   truncate   
+--------------
+ -5678.123451
+(1 row)
+
+select truncate(-5678.123451::double, -1);
+ truncate 
+----------
+    -5670
+(1 row)
+
+select truncate(-5678.123451::double, -2);
+ truncate 
+----------
+    -5600
+(1 row)
+
+select truncate(-5678.123451::double, -3);
+ truncate 
+----------
+    -5000
+(1 row)
+
+select truncate(-5678.123451::double, -4);
+ truncate 
+----------
+       -0
+(1 row)
+
+select truncate(-5678.123451::double, -5);
+ truncate 
+----------
+       -0
+(1 row)
+
+create table tb5(a decimal(12,5), b double);
+insert into tb5 values(62.12505, 979797.979),(9090909.363, 1001001.010101);
+select truncate(a, 4),truncate(b, 2) from tb5;
+   truncate   |  truncate  
+--------------+------------
+      62.1250 |  979797.97
+ 9090909.3630 | 1001001.01
+(2 rows)
+
+drop table tb5;
+select truncate(99.99, 30);
+             truncate              
+-----------------------------------
+ 99.990000000000000000000000000000
+(1 row)
+
+select truncate(99.99, 31);
+             truncate              
+-----------------------------------
+ 99.990000000000000000000000000000
+(1 row)
+
+select truncate(99999999999999999999999999999999999999, 30);
+                               truncate                                
+-----------------------------------------------------------------------
+ 99999999999999999999999999999999999999.000000000000000000000000000000
+(1 row)
+
+select truncate(99999999999999999999999999999999999999, 31);
+                               truncate                                
+-----------------------------------------------------------------------
+ 99999999999999999999999999999999999999.000000000000000000000000000000
+(1 row)
+
+select truncate(99.999999999999999999999999999999999999, 31);
+             truncate              
+-----------------------------------
+ 99.999999999999999999999999999999
+(1 row)
+
+select truncate(99999999999999999999999999999999999999, -31);
+                truncate                
+----------------------------------------
+ 99999990000000000000000000000000000000
+(1 row)
+
+select truncate(1.7976931348623157E+308, -11);
+                                                                                                                                                       truncate                                                                                                                                                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+(1 row)
+
+select truncate(1.7976931348623157E+308, -12);
+                                                                                                                                                       truncate                                                                                                                                                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+(1 row)
+
+select truncate(1.7976931348623157E+308, -13);
+                                                                                                                                                       truncate                                                                                                                                                        
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ 179769313486231570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+(1 row)
+
+select truncate(1.7976931348623157E+308::double, -7);
+ truncate 
+----------
+ Infinity
+(1 row)
+
+select truncate(1.7976931348623157E+308::double, -12);
+ truncate 
+----------
+ Infinity
+(1 row)
+
+select truncate(-1.7976931348623157E+308::double, -7);
+ truncate  
+-----------
+ -Infinity
+(1 row)
+
+select truncate(-1.7976931348623157E+308::double, -12);
+ truncate  
+-----------
+ -Infinity
+(1 row)
+
+select truncate('1.7976931348623157E+308', -12);
+ truncate 
+----------
+ Infinity
 (1 row)
 

@@ -3986,6 +3986,13 @@ LANGUAGE C
 PARALLEL SAFE
 IMMUTABLE;
 
+CREATE FUNCTION ivymy.format(double, integer, text default 'en_US')
+RETURNS text 
+AS 'SELECT ivymy.format($1::numeric, $2, $3)'
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE;
+
 CREATE FUNCTION ivymy.format(text, integer, text default 'en_US')
 RETURNS text 
 AS $$
@@ -4557,3 +4564,139 @@ LANGUAGE C
 VOLATILE
 PARALLEL SAFE;
 /* End - bug#m8406 */
+
+CREATE FUNCTION ivymy.crc32(varbinary)
+RETURNS int8
+AS 'MODULE_PATHNAME','crc32'
+LANGUAGE C
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.crc32(text)
+RETURNS int8
+AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.crc32(int8)
+RETURNS int8
+AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.crc32(int4)
+RETURNS int8
+AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.crc32(numeric)
+RETURNS int8
+AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.crc32(ivy_hex)
+RETURNS int8
+AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.crc32(boolean)
+RETURNS int8
+AS 'SELECT ivymy.crc32($1::int8::ivymy.varbinary)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(numeric, int4)
+RETURNS numeric
+AS 'MODULE_PATHNAME','numeric_truncate'
+LANGUAGE C
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(double, int4)
+RETURNS double
+AS 'MODULE_PATHNAME','double_truncate'
+LANGUAGE C
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(int8, int4)
+RETURNS int8
+AS 'MODULE_PATHNAME','int_truncate'
+LANGUAGE C
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(int8, numeric)
+RETURNS int8
+AS 'SELECT ivymy.truncate($1, $2::int4)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(int4, int4)
+RETURNS int4
+AS 'SELECT ivymy.truncate($1::int8, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(int4, numeric)
+RETURNS int4
+AS 'SELECT ivymy.truncate($1, $2::int4)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(numeric, numeric)
+RETURNS numeric
+AS 'SELECT ivymy.truncate($1, $2::int4)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(ivy_hex, numeric)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2::int4)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(text, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE FUNCTION ivymy.truncate(boolean, int4)
+RETURNS int4
+AS 'SELECT ivymy.truncate($1::int4, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
