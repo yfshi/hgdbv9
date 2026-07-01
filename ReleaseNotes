@@ -1,93 +1,108 @@
 # 当前产品为 HGDB V9.0
 # 分支描述
 此分支为HGDB V9.0的开发主分支。
-当前版本为V9.0.5
+当前版本为V9.0.10
 
 #分支历史记录
-1、新增特性
-	1、修复了编译和回归问题，恢复了windows编译；
-	2、O兼容支持触发器谓词以及使用动态SQL创建触发器的功能；
-	3、M兼容使用pl函数重构了show命令；
-	4、新增兼容PLSQL GOTO语法；
-	5、新增表空间加密功能；
-	6、新增兼容PLSQL COLLECTION相关语法；
-	7、M兼容重构了UINT3数据类型；
-	8、MySQL兼容：UINT3/INT3/INT1重构；
-	9、Oracle兼容：新增insert all/first功能；
-	10、支持TLCP加密通信；
-	11、新增安全特性防篡改功能；
-	12、MYSQL兼容：Load data 和 select into file；
-	13、MySQL兼容：支持函数aes_decrypt/aes_encrypt/rand/std/format/oct；
-	14、MySQL兼容：增加group_concat聚合函数支持；
-	15、新增sql资源限制；
-	16、新增安全特性用户启用禁用功能；
-	17、MySQL兼容：any_value 函数以及not full group 功能，OA-REQ-2098；
-	18、新增磁盘限额功能；
-	19、MySQL兼容：支持create table like功能；
-	20、Oracle兼容：BULK COLLECT功能；
-	21、MySQL兼容：支持prepare预备语句功能；
-	22、新增资源限制中内存限制功能；
-	23、Oracle兼容：分区表基础语法；
-	24、Oracle兼容：日期时间类型的NLS参数支持标点符号，OA-REQ-2030；
-	25、Oracle兼容：ratio_to_report 函数，OA-REQ-2132；
-	26、Oracle兼容：wmsys.wm_concat聚合函数支持，OA-REQ-2129；
-	27、Oracle兼容：分析函数GROUPING_ID和不等于操作符支持与正负号连写!=-3，OA-REQ-2132/2133；
-	28、新增安全特性完整性检查：可执行文件检查部分；
-	29、Oracle兼容：中泰需求视图支持，OA-REQ-2126；
-	30、适配documentdb：OA-REQ-2182；
-	31、PG内核升级：14.20-14.22；
-	32、新增undo_sql功能插件；
-	33、新增安全特性完整性检查：在线配置检查部分、wal日志完整性检查部分；
-	34、兼容Oracle获取存储过程名字的变量$$PLSQL_UNIT、获取类型的变量$$PLSQL_UNIT_TYPE、获取行号的变量$$PLSQL_LINE；
-	35、EAL4支持hg_watchdog；
-	36、支持rsa/sm2的加密解密，签名验签，对应的za/pkcs填充算法；
-	37、O兼容year作为别名，不用添加as，中泰需求；
+1、新增Oracle兼容特性:
+	1. 新增系统包：DBMS_LOCK, DBMS_ROWID, DBMS_UTILITY；
+	2. 新增多表插入语法：INSERT ALL， INSERT FIRST；
+	3. 新增集合类型：关联数组，嵌套表，变长数组；
+	4. GOTO 与 LABEL；
+	5. Oracle分区表语法：范围分区，列表分区，哈希分区，复合分区；
+	6. 批量SQL处理：BULK COLLECT，FORALL；
+	7. 动态SQL增强：支持 BULK COLLECT INTO 子句；
+	8. 支持DML触发器条件谓词；
+	9. 支持 MINUS / MINUS ALL 集合操作符
+	10. 优化 NULL 类型处理新增 GUC 参数：ivorysql.enable_setoperation_null, 控制集合操作中 NULL 值的处理行为
+	11. 新增分区表相关的系统视图：
+		DBA_PART_TABLES，ALL_PART_TABLES，USER_PART_TABLES，DBA_TAB_PARTITIONS，
+		ALL_TAB_PARTITIONS，USER_TAB_PARTITIONS，DBA_TAB_SUBPARTITIONS，ALL_TAB_SUBPARTITIONS，
+		USER_TAB_SUBPARTITIONS，DBA_PART_KEY_COLUMNS，ALL_PART_KEY_COLUMNS，USER_PART_KEY_COLUMNS，
+		DBA_SUBPART_KEY_COLUMNS，ALL_SUBPART_KEY_COLUMNS，USER_SUBPART_KEY_COLUMNS，
+		DBA_SUBPARTITION_TEMPLATES，ALL_SUBPARTITION_TEMPLATES，USER_SUBPARTITION_TEMPLATES；
 
-2、修复问题	
-	1、会话管理补充了bug#6866遗漏的问题修复；
-	2、TDE修复了无符号整型指针被用在带符号整型在aarch平台coredump的问题；
-	3、O兼容修复了windows平台限定连接用户导致O兼容视图回归失败的问题，bug#6880；
-	4、O兼容增加了触发器WHEN条件支持引用OLD、DELETE中支持引用NEW的语法，bug#6559；
-	5、O兼容修复了windows平台下用户名大写时查询user_triggers视图报错的问题，bug#6879；
-	6、修复了windows编译时指定hg_extral_version参数不生效的问题，bug#6969；
-	7、修复了windows编译时license相关依赖不正确的问题；
-	8、修复了因不需要的大小写转换导致对象名不正确的问题，bug#6063；
-	9、M兼容对create table增加了using btree语法的支持，OA-REQ-2019;
-	10、M兼容修复了call命令无响应问题，bug#6981、OA-REQ-2043;；
-	11、M兼容修复了JDBC连接串上设置schema参数不生效的问题，OA-REQ-2037;
-	12、M兼容增加了UPPER函数支持bigint类型，bug#6988；
-	13、修复了windows编译时受限DBA不通过的回归用例；
-	14、O兼容修复了ivorysql.hex_bytea打开后，blob输出不正确的问题，bug#6876、OA_REQ-2052;
-	15、M兼容增加了create table(UNIQUE INDEX)并可忽略索引名的语法，OA-REQ-2052;
-	16、O兼容修改了varchar2类型的默认长度，避免typmod不同引起同类型不可重建的问题，bug#7004；
-	17、修复了windows下回归时端口冲突的问题；
-	18、修复带after trigger的interval分区表自动创建分区失败问题：bug#7040；
-	19、M兼容修复MySQL协议Python驱动支持问题，bug#7013；
-	20、修复Windows编译回归问题，bug#6991/6998/7002；
-	21、新增同义词的审计和windows审计日志归档报错的问题：bug#5807/6995；
-	22、修复审计日志在windows环境下有缺失的问题，bug#6995；
-	23、修复资源限制帮助信息错误的问题，bug#4232；
-	24、兼容Oracle系统函数功能补全；
-	25、修复HSH windows 上报告乱码问题，bug#6989；
-	26、修复触发器多个event时触发器函数构造返回值错误导致DML无效，bug#7179；
-	27、修复pg2highgo在hgdb中安装插件时报错的BUG，相关工具添加-X参数：bug#7100；
-	28、M兼容修复严格模式与非严格模式在非插入场景下结果不一致的问题，bug#7196/7200;
-	29、修复了开启三权删除函数指定if exists报错的问题，bug#7176；
-	30、修改GUC参数，审计记录privlevel记录错误，bug#7309；
-	31、M兼容修复关闭ANSI_QUOTES导致双引号解析报错问题，bug#6888；
-	32、Oracle兼容修复了DBMS_OUTPUT.PUT_LINE函数中使用集合元素时报错问题，bug#7305；
-	33、M兼容修复group_concat()不支持DISTINCT问题，bug#7232；
-	34、O兼容修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
-	35、Oracle兼容修复了动态SQL中RETURNING INTO报错问题，bug#7311；
-	36、修复了审计进程启动pgagent出错的问题，bug#7398/7404；
-	37、M兼容修复了period_add函数结果不正确的问题，bug#7183；
-	38、修复了MySQL协议报文超长的解析错误，bug#7419、OA-REQ-2211；
-	39、兼容Oracle xml函数extractvalue中xpath '/' 引起的coredump问题，bug#7411/7412；
-	40、修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
-	41、修复标签兼容Oracle（匿名块end标签不检测、非匿名块和包规范不可定义标签），bug#7364；
-	42、修复数据脱敏在search_path中没有hg_security时，找不到函数和类型的问题，bug#7006；
-	43、自治事务在after trigger和cursor 处理时导致coredump，bug#7430 ；
-	44、修改安全检测阈值名称报错，bug#7413；
-	45、加密表空间，创建物化视图没有自动加密，bug#7282；
-	46、加密表空间的数据库迁移到非加密表空间建议增加告警提示，bug#7332；
+2、新增MySQL兼容特性:
+	1. 增加如下语法支持：
+		CREATE PROCEDURE/FUNCTION、SELECT...INTO OUTFILE，
+		嵌套标量子查询，
+		使用 AS 为 select_expr 指定别名并在 GROUP BY、ORDER BY 或 HAVING 子句中使用，
+		SHOW CREATE FUNCTION，
+		SHOW CREATE PROCEDUR，
+		ALTER TABLE MODIFY，
+		ALTER TABLE CHANGE，
+		ALTER TABLE FIRST/AFTER，
+		PREPARE，
+		EXECUTE，
+		DEALLOCATE PREPARE，
+		LOAD DATA，
+		_binary引导符，
+		REGEXP，
+		NOT REGEXP，
+		RLIKE；
+	2. 增加系统视图：
+		information_schema.keywords，
+		information_schema.parameters，
+		information_schema.referential_constranints，
+		mysql.proc
+	3. 去掉GUC参数mysql.enable_case_switch；
+	4. sql_mode增加NO_BACKSLASH_ESCAPES模式；
+	5. 增加兼容参数：autocommit、local_infile、block_encryption_mode；
+	6. 增加GUC参数:mysql.qm_as_param、mysql.create_function_with_sql_mode、mysql.default_function_security_is_definer；
+	7. MySQL协议：支持SM3认证；
+	8. 增加内置函数支持：
+		FROM_UNIXTIME
+		DATE_FORMAT
+		ADDDATE
+		SUBDATE
+		DATE_SUB
+		DATE_ADD
+		OCT
+		FORMAT
+		AES_DECRYPT
+		AES_ENCRYPT
+		RAND
+		STD
+		GROUP_CONCAT
+
+3、新增安全特性:
+	1. 数据防篡改
+	2. 通信加密（国密）
+	3. 闪回增强
+	4. 资源管理增强
+	5. 表空间加密
+	6. 用户数据保护-导出安全标记数据
+	7. 启用禁用角色 
+	8. wal日志完整性
+	9. 审计增强
+	10. 增加系统审计时间相关GUC参数：
+		audit.login_logout_only
+		audit.excluded_ips
+		audit.excluded_apps
+		audit.excluded_users
+		audit.excluded_time
+		audit.ignore_sync_lsn
+
+4、修复问题	
+	1. 修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
+	2. MYSQLl协议超长报文解析问题，OA-REQ-2211
+	3. 修复了创建视图带外连接导致coredump的问题，OA-REQ-2199；
+	4. 修复synchronous_standby_names设置为非空值时，审计进程无法正常退出的BUG，OA-REQ-2224；
+	5. 修复O兼容触发器备份还原后，触发器函数Owner变化导致普通用户执行报错问题，OA-REQ-2244；
+	6. O兼容，修复了to_date,to_timestamp,to_timestamp_tz函数支持日期时间类型；OA-2131
+	7. 创建分区表有rowid伪列时，rowid列上没有自动创建索引, OA-REQ-2297；
+	8. 开启同步流复制和审计。同时只有单机情况下，登录hang住问题, OA-REQ-2290；
+	9. 客户驱动mysql-connector-j-9.4.0.jar 连接V9051有异常提醒, OA-REQ-2312；
+	10. caching_sha2_password认证失败问题；
+	11. 企业版v9在jdbc连接串中加入参数peferQueryMode=simple之后，小数会被忽略, OA-REQ-2212；
+	12. LAG函数支持IGNORE NULLS功能；
+	13. FETCH命令使用eof报文结束, OA-REQ-2043；
+	14. 修复regexp_substr函数的参数支持浮点输入同时删除多余的函数重载，OA-REQ-2348；
+	15. O兼容触发器函数label和触发器名不同导致触发器函数编译时报错，OA-REQ-2395；
+	16. 十六进制数据调用pg_get_expr去进行反序列化失败问题，OA-REQ-2415；
+	17. 修复show columns from执行慢问题，OA-REQ-2477；
+	18. 修复mysql协议bug。一个请求中有多个sql语句时，非最后一个响应包需要更新标记字段，OA-REQ-2499；
+	19. 修复在oracle模式下，cte下select null union select null报错，OA-REQ-2476；
+
+
 
