@@ -96,6 +96,9 @@ CREATE TABLE test_table (
     name VARCHAR(50),
     value INT
 );
+show create table test_table;
+drop table test_table;
+
 CREATE TABLE test_table (
     id INT AUTO_INCREMENT,
     name int AUTO_INCREMENT ,

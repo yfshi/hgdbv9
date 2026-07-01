@@ -244,6 +244,7 @@ typedef struct AlteredTableInfo
 	/* Begin - BUG:M0000325 */
 	bool		without_copy;	/* Does the new relation do a data copy or not? */
 	/* End - BUG:M0000325 */
+	List		*deferAIncrStmts;	/* bug#z8439: store the AUTO_INCREMENT, then put into afterstmt */
 } AlteredTableInfo;
 
 /* Struct describing one new constraint to check in Phase 3 scan */
@@ -6126,12 +6127,38 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 		case AT_DisableRowSecurity:
 		case AT_ForceRowSecurity:
 		case AT_NoForceRowSecurity:
-		case AT_SetAutoIncrement: /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			ATSimplePermissions(rel, ATT_TABLE);
 			/* These commands never recurse */
 			/* No command-specific prep needed */
 			pass = AT_PASS_MISC;
 			break;
+		/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT, bug#8439 */
+		case AT_SetAutoIncrement:
+			ATSimplePermissions(rel, ATT_TABLE);
+			/*
+			 * Table-level AUTO_INCREMENT=N in a multi-clause ALTER TABLE must
+			 * run in afterStmts, after ALTER SEQUENCE ... OWNED BY queued
+			 * during ADD/MODIFY/CHANGE COLUMN parse analysis.
+			 */
+			if (context != NULL)
+			{
+				AlterTableStmt *origstmt = (AlterTableStmt *) context->pstmt->utilityStmt;
+
+				if (list_length(origstmt->cmds) > 1)
+				{
+					AlterTableStmt *astmt = makeNode(AlterTableStmt);
+
+					astmt->relation = copyObject(origstmt->relation);
+					astmt->cmds = list_make1(cmd);
+					astmt->objtype = origstmt->objtype;
+					astmt->missing_ok = origstmt->missing_ok;
+					tab->deferAIncrStmts = lappend(tab->deferAIncrStmts, astmt);
+					return;
+				}
+			}
+			pass = AT_PASS_MISC;
+			break;
+		/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT, bug#8439 */
 		case AT_GenericOptions:
 			ATSimplePermissions(rel, ATT_FOREIGN_TABLE);
 			/* No command-specific prep needed */
@@ -6287,6 +6314,26 @@ ATRewriteCatalogs(List **wqueue, LOCKMODE lockmode,
 			tab->relkind == RELKIND_MATVIEW)
 			AlterTableCreateToastTable(tab->relid, (Datum) 0, lockmode);
 	}
+
+	/* Begin - bug#z8439 */
+	/*
+	 * Append deferred table-level AUTO_INCREMENT=N after all catalog updates
+	 * and any OWNED BY statements queued on tab->afterStmts.
+	 */
+	if (compatible_mode == MYS_MODE)
+	{
+		foreach(ltab, *wqueue)
+		{
+			AlteredTableInfo *tab = (AlteredTableInfo *) lfirst(ltab);
+
+			if (tab->deferAIncrStmts != NIL)
+			{
+				tab->afterStmts = list_concat(tab->afterStmts, tab->deferAIncrStmts);
+				tab->deferAIncrStmts = NIL;
+			}
+		}
+	}
+	/* End - bug#z8439 */
 }
 
 /*
@@ -22799,7 +22846,7 @@ check_rel_autoincrement(Oid relid)
 		}
 
 		attForm = (Form_pg_attribute) GETSTRUCT(atttup);
-		if (ATTRIBUTE_IDENTITY_AUTO_INCREMENT == attForm->attidentity)
+		if (ATTRIBUTE_IDENTITY_AUTO_INCREMENT == attForm->attidentity && !attForm->attisdropped)	/* bug#z8439 */
 		{
 			/* Clean up after the scan */
 			systable_endscan(scan);
@@ -23396,94 +23443,6 @@ CheckColumnIsPrimary(Relation rel, char *colname)
 	return isPartOfPrimary;
 }
 
-/* Begin - BUG#z7871 */
-/*
- * CheckColumnIsPriOrUni
- *     check if this column is primary key or Unique key
- * args
- *     Relation rel
- *     char *colname
- *
- * The returned is true or false
- */
-static bool
-CheckColumnIsPriOrUni(Relation rel, char *colname)
-{
-	HeapTuple tuple;
-	Form_pg_attribute attTup;
-	AttrNumber attnum;
-	List *indexoidlist;
-	ListCell *indexoidscan;
-	bool isPartOfPriOrUni = false;
-
-	tuple = SearchSysCacheCopyAttName(RelationGetRelid(rel), colname);
-	if (!HeapTupleIsValid(tuple))
-		ereport(ERROR,
-				(errcode(ERRCODE_UNDEFINED_COLUMN),
-				 errmsg("column \"%s\" of relation \"%s\" does not exist",
-						colname, RelationGetRelationName(rel))));
-	attTup = (Form_pg_attribute) GETSTRUCT(tuple);
-	attnum = attTup->attnum;
-
-	/* Prevent them from altering a system attribute */
-	if (attnum <= 0)
-		ereport(ERROR,
-				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
-				 errmsg("cannot alter system column \"%s\"",
-						colname)));
-
-	/*
-	 * Check that the attribute is not in a primary key or in an unique index
-	 *
-	 * Note: we'll throw error even if the pkey index is not valid.
-	 */
-
-	/* Loop over all indexes on the relation */
-	indexoidlist = RelationGetIndexList(rel);
-
-	foreach(indexoidscan, indexoidlist)
-	{
-		Oid		indexoid = lfirst_oid(indexoidscan);
-		HeapTuple	indexTuple;
-		Form_pg_index	indexStruct;
-		int		i;
-
-		indexTuple = SearchSysCache1(INDEXRELID, ObjectIdGetDatum(indexoid));
-		if (!HeapTupleIsValid(indexTuple))
-			elog(ERROR, "cache lookup failed for index %u", indexoid);
-		indexStruct = (Form_pg_index) GETSTRUCT(indexTuple);
-
-		/*
-		 * If the index is not a primary key or an index used as replica
-		 * identity, skip the check.
-		 */
-		if (indexStruct->indisprimary || indexStruct->indisunique)
-		{
-			/*
-			 * Loop over each attribute in the primary key or the unique index
-			 * and see if it matches the to-be-altered
-			 * attribute.
-			 */
-			for (i = 0; i < indexStruct->indnkeyatts; i++)
-			{
-				if (indexStruct->indkey.values[i] == attnum)
-				{
-					isPartOfPriOrUni = true;
-					break;
-				}
-			}
-		}
-
-		ReleaseSysCache(indexTuple);
-	}
-
-	list_free(indexoidlist);
-	heap_freetuple(tuple);
-
-	return isPartOfPriOrUni;
-}
-/* End - BUG#z7871 */
-
 /*
  * CheckColumnIsAutoincrement
  *     check if col is auto increment already
@@ -23954,20 +23913,6 @@ ATExecModifyChangeColumn(AlteredTableInfo *tab,
  	{
 		elog(ERROR, "there can be only one auto column and it must be defined as a key");
  	}
-
-	/* Begin - BUG#z7871 */
-	/*
-	 * if column is set auto and (primary or unique key) is one SQL
-	 *     not need to check
-	 * if column is set auto
-	 *     check if this column is pri or uni already
-	 */
-	if (def->is_auto_increment && !def->is_pri_or_unique)
-	{
-		if (!CheckColumnIsPriOrUni(rel,colName))
-			elog(ERROR, "there can be only one auto column and it must be defined as a key");
-	}
-	/* End - BUG#z7871 */
 
 	/*
 	 * rename if needed

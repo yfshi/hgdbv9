@@ -2989,31 +2989,6 @@ transformIndexConstraints(CreateStmtContext *cxt)
 		indexlist = lappend(indexlist, index);
 	}
 
-	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	foreach(lc, cxt->columns)
-	{
-		ColumnDef  *column = castNode(ColumnDef, lfirst(lc));
-		if (column->is_auto_increment && !column->is_pri_or_unique)
-		{
-			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
-			if (cxt->modify_column && cxt->rel)
-			{
-				/*
-				 * did not have enough info to check column is already unique or pri
-				 * check it later
-				 * if it already is
-				 * alter table xxx modify xxx auto_increment should success
-				 */
-			}
-			/* End - ReqID:SRS-MYSQL-SQL-Alter */
-			else
-			{
-				elog(ERROR, "there can be only one auto increment column and it must be defined as a key");
-			}
-		}
-	}
-	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-
 	/*
 	 * Scan the index list and remove any redundant index specifications. This
 	 * can happen if, for instance, the user writes UNIQUE PRIMARY KEY. A
@@ -3381,7 +3356,6 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				if (strcmp(column->colname, key) == 0)
 				{
 					found = true;
-					column->is_pri_or_unique = true; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 					break;
 				}
 			}

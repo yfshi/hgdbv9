@@ -3234,7 +3234,6 @@ _equalColumnDef(const ColumnDef *a, const ColumnDef *b)
 	COMPARE_NODE_FIELD(constraints);
 	COMPARE_NODE_FIELD(fdwoptions);
 	COMPARE_LOCATION_FIELD(location);
-	COMPARE_SCALAR_FIELD(is_pri_or_unique);  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	COMPARE_SCALAR_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	COMPARE_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
 

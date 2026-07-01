@@ -237,7 +237,17 @@ CREATE TABLE test_table (
     name VARCHAR(50),
     value INT
 );
-ERROR:  there can be only one auto increment column and it must be defined as a key
+show create table test_table;
+   Table    |               Create Table                
+------------+-------------------------------------------
+ test_table | CREATE TABLE "test_table" (              +
+            |     "id" integer NOT NULL AUTO_INCREMENT,+
+            |     "name" character varying(50),        +
+            |     "value" integer                      +
+            | )
+(1 row)
+
+drop table test_table;
 CREATE TABLE test_table (
     id INT AUTO_INCREMENT,
     name int AUTO_INCREMENT ,
@@ -1325,7 +1335,6 @@ SELECT col FROM test_alter_autoinc ORDER BY 1;
 
 -- err gram
 ALTER TABLE test_alter_autoinc ADD id int unsigned AUTO_INCREMENT, ADD primary key(id), AUTO_INCREMENT = 100;
-ERROR:  The table can be only one auto increment column
 DROP TABLE test_alter_autoinc;
 --test alter table add AUTO_INCREMENT NULL UNIQUE
 CREATE TABLE test_alter_autoinc(col int1 unsigned);
@@ -4157,9 +4166,8 @@ ALTER TABLE tt1 ADD id1111 int unsigned AUTO_INCREMENT  primary key;
 ERROR:  The table can be only one auto increment column
 create table tt2(id1 int);
 ALTER TABLE tt2 ADD id2 int unsigned AUTO_INCREMENT, ADD primary key(id2), AUTO_INCREMENT = 100;
-ERROR:  there can be only one auto increment column and it must be defined as a key
 ALTER TABLE tt2 ADD id22 int unsigned AUTO_INCREMENT, ADD primary key(id22), AUTO_INCREMENT = 100;
-ERROR:  there can be only one auto increment column and it must be defined as a key
+ERROR:  The table can be only one auto increment column
 create table tt3(id1 int);
 ALTER TABLE tt3 ADD id3 int unsigned AUTO_INCREMENT  primary key;
 ALTER TABLE tt3 ADD id33 int unsigned AUTO_INCREMENT  primary key;
@@ -4170,9 +4178,8 @@ alter table tt4 add id44 int auto_increment unique key;
 ERROR:  The table can be only one auto increment column
 create table tt5(id1 int);
 ALTER TABLE tt5 ADD id5 int unsigned AUTO_INCREMENT  primary key, AUTO_INCREMENT = 100;
-ERROR:  no owned sequence found
 ALTER TABLE tt5 ADD id55 int unsigned AUTO_INCREMENT  primary key, AUTO_INCREMENT = 100;
-ERROR:  no owned sequence found
+ERROR:  The table can be only one auto increment column
 drop table tt1,tt2,tt3,tt4,tt5;
 -- #bug7488
 create table tt (id float auto_increment primary key);
