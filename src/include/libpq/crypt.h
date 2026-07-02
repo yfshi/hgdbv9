@@ -42,6 +42,13 @@ typedef enum PasswordType
 	/* End - Req: SRS-MYSQL-PROTOCOL */
 } PasswordType;
 
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+typedef void (*password_validuntil_hook_type) (const char *role,
+														   TimestampTz original_validuntil,
+														   TimestampTz *auth_validuntil);
+extern PGDLLIMPORT password_validuntil_hook_type password_validuntil_hook;
+/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 extern PasswordType get_password_type(const char *shadow_pass);
 extern char *encrypt_password(PasswordType target_type, const char *role,
 							  const char *password);

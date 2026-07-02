@@ -399,6 +399,11 @@ main(int argc, char *argv[])
 /* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 	getExpirationAlarm(pset.db, PQuser(pset.db));
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	CheckPasswordGraceNotice();
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 	psql_setup_cancel_handler();
 
 	PQsetNoticeProcessor(pset.db, NoticeProcessor, NULL);

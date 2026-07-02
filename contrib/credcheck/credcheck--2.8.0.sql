@@ -116,6 +116,17 @@ RETURNS SETOF record
 AS 'MODULE_PATHNAME'
 LANGUAGE C VOLATILE;
 
+----
+-- ReqID:SRS-SECURITY-GRACETIME
+--
+-- Return a password grace-period login notice for the current session.
+-- Returns NULL when the current login is not in the grace period.
+----
+CREATE FUNCTION hg_security.pg_password_grace_notice()
+RETURNS text
+AS 'MODULE_PATHNAME'
+LANGUAGE C VOLATILE;
+
 -- Register a view on the function for ease of use.
 CREATE VIEW hg_security.user_expiration_info AS
   SELECT * FROM hg_security.user_expiration_info();
@@ -154,3 +165,8 @@ GRANT ALL ON hg_security.user_expiration_info TO syssso_role;
 GRANT EXECUTE ON FUNCTION hg_security.user_expiration_info TO PUBLIC;
 GRANT SELECT ON hg_security.user_expiration_info TO PUBLIC;
 
+-- Begin - ReqID:SRS-SECURITY-GRACETIME
+ALTER FUNCTION hg_security.pg_password_grace_notice OWNER TO syssso;
+GRANT ALL ON FUNCTION hg_security.pg_password_grace_notice TO syssso_role;
+GRANT EXECUTE ON FUNCTION hg_security.pg_password_grace_notice TO PUBLIC;
+-- End - ReqID:SRS-SECURITY-GRACETIME

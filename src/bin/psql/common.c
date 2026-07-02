@@ -3357,6 +3357,44 @@ getExpirationAlarm(PGconn *conn, const char *user_name)
 }
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+/*
+ * Ask the server to emit a normal localized NOTICE for password-grace logins,
+ * while silently ignoring clusters where the credcheck helper function does
+ * not exist.
+ */
+void
+CheckPasswordGraceNotice(void)
+{
+	PGresult   *res;
+	const char *grace_query =
+		"DO $$ " \
+		"DECLARE msg text; " \
+		"BEGIN " \
+		"  BEGIN " \
+		"    msg := hg_security.pg_password_grace_notice(); " \
+		"  EXCEPTION WHEN undefined_function THEN " \
+		"    msg := NULL; " \
+		"  END; " \
+		"  IF msg IS NOT NULL THEN " \
+		"    RAISE NOTICE '%', msg; " \
+		"  END IF; " \
+		"END $$";
+
+	if (!pset.db)
+		return;
+
+	res = PQexec(pset.db, grace_query);
+
+	if (PQresultStatus(res) == PGRES_TUPLES_OK)
+	{
+		PrintQueryResults(res, true, false);
+	}
+
+	PQclear(res);
+}
+/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 /* Begin - BUG#Z4804 */
 #if defined(ENABLE_DKY_BETA_FEATURE)
 static void confirm_pass_and_connect(void)

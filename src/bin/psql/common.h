@@ -59,4 +59,9 @@ extern bool SendQuery_PBE(const char *query, HostVariable *hv);
 extern void getLoginMessage(PGconn *conn);
 extern void getExpirationAlarm(PGconn *conn, const char *user_name);
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+extern void CheckPasswordGraceNotice(void);
+/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 #endif							/* COMMON_H */
