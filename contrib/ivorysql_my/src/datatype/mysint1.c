@@ -29,6 +29,7 @@ PG_FUNCTION_INFO_V1(int1_recv);
 PG_FUNCTION_INFO_V1(int1_send);
 PG_FUNCTION_INFO_V1(int1_scale);
 PG_FUNCTION_INFO_V1(int1_int2);
+PG_FUNCTION_INFO_V1(int1_int4);	/* bug#z8479 */
 PG_FUNCTION_INFO_V1(int1_int8);
 PG_FUNCTION_INFO_V1(int1_uint8);
 PG_FUNCTION_INFO_V1(int8_int1);
@@ -101,6 +102,16 @@ int1_int2(PG_FUNCTION_ARGS)
 
 	PG_RETURN_INT16(val1);
 }
+
+/* Begin - bug#8479 */
+Datum
+int1_int4(PG_FUNCTION_ARGS)
+{
+	int8	val1 = PG_GETARG_INT8(0);
+
+	PG_RETURN_INT32(val1);
+}
+/* End - bug#8479 */
 
 /* Begin - BUG#Z7200 */
 Datum

@@ -1217,3 +1217,33 @@ explain (COSTS OFF) select * from index_conversion where tinyint_col <= CAST(655
 reset enable_seqscan;
 reset enable_bitmapscan;
 drop table index_conversion;
+---- bug#z8479
+CREATE TABLE `f_gerxx` (
+  `id` bigint(20) NOT NULL COMMENT 'persion id',
+  `lianxfslx_daim` tinyint(1) DEFAULT NULL COMMENT 'contact code',
+  `jiatcf_mingc` varchar(50) DEFAULT NULL COMMENT 'family desc',
+  `zhiwcj_daim` int(1) DEFAULT NULL COMMENT 'post code');
+show create table `f_gerxx`;
+  Table  |                                          Create Table                                           
+---------+-------------------------------------------------------------------------------------------------
+ f_gerxx | CREATE TABLE "f_gerxx" (                                                                       +
+         |     "id" bigint NOT NULL COMMENT 'persion id',                                                 +
+         |     "lianxfslx_daim" tinyint COMMENT 'contact code',                                           +
+         |     "jiatcf_mingc" character varying(50) DEFAULT NULL::character varying COMMENT 'family desc',+
+         |     "zhiwcj_daim" integer COMMENT 'post code'                                                  +
+         | )
+(1 row)
+
+ALTER TABLE `f_gerxx` MODIFY COLUMN `lianxfslx_daim` int(6) DEFAULT NULL COMMENT 'contact code' AFTER `jiatcf_mingc`;
+show create table `f_gerxx`;
+  Table  |                                          Create Table                                           
+---------+-------------------------------------------------------------------------------------------------
+ f_gerxx | CREATE TABLE "f_gerxx" (                                                                       +
+         |     "id" bigint NOT NULL COMMENT 'persion id',                                                 +
+         |     "lianxfslx_daim" integer COMMENT 'contact code',                                           +
+         |     "jiatcf_mingc" character varying(50) DEFAULT NULL::character varying COMMENT 'family desc',+
+         |     "zhiwcj_daim" integer COMMENT 'post code'                                                  +
+         | )
+(1 row)
+
+drop table `f_gerxx`;
