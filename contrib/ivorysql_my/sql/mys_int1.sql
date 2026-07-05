@@ -383,3 +383,14 @@ explain (COSTS OFF) select * from index_conversion where tinyint_col <= CAST(655
 reset enable_seqscan;
 reset enable_bitmapscan;
 drop table index_conversion;
+
+---- bug#z8479
+CREATE TABLE `f_gerxx` (
+  `id` bigint(20) NOT NULL COMMENT 'persion id',
+  `lianxfslx_daim` tinyint(1) DEFAULT NULL COMMENT 'contact code',
+  `jiatcf_mingc` varchar(50) DEFAULT NULL COMMENT 'family desc',
+  `zhiwcj_daim` int(1) DEFAULT NULL COMMENT 'post code');
+show create table `f_gerxx`;
+ALTER TABLE `f_gerxx` MODIFY COLUMN `lianxfslx_daim` int(6) DEFAULT NULL COMMENT 'contact code' AFTER `jiatcf_mingc`;
+show create table `f_gerxx`;
+drop table `f_gerxx`;
