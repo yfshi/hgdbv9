@@ -688,6 +688,7 @@ mysql_client_authentication(Port *port)
 void
 mysql_client_authentication_finish(Port *port)
 {
+    StringInfoData pathbuf;
     /* Begin - bug#6321 */
     if (mysql_conn_info.schema)
     {
@@ -701,7 +702,10 @@ mysql_client_authentication_finish(Port *port)
                      errmsg("Unknown database %s", mysql_conn_info.schema)));
         }
 
-        SetConfigOption("search_path", mysql_conn_info.schema, PGC_USERSET, PGC_S_OVERRIDE); /* OA-REQ-2037 */
+        initStringInfo(&pathbuf);
+        appendStringInfoString(&pathbuf, quote_identifier(mysql_conn_info.schema));
+        SetConfigOption("search_path", pathbuf.data, PGC_USERSET, PGC_S_OVERRIDE); /* OA-REQ-2037 */
+        pfree(pathbuf.data);
 
         CommitTransactionCommand();
     }
