@@ -198,7 +198,9 @@ MYS_REGRESS = numeric_to_times \
 			  sql_mode \
 			  proc \
 			  hex_serialization_deserialization \
-			  mysql_timestamp
+			  mysql_timestamp \
+			  insert_duplicate \
+			  create_collation_from
 
 
 MYS_JDBC_REGRESS =	proto_jdbc \

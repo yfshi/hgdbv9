@@ -1110,6 +1110,26 @@ set_plan_refs(PlannerInfo *root, Plan *plan, int rtoffset)
 						fix_scan_list(root, splan->exclRelTlist, rtoffset, 1);
 				}
 
+				/* Begin - OA-2546 */
+				if (splan->updateTlist)
+				{
+					indexed_tlist *itlist;
+
+					itlist = build_tlist_index(splan->upexclRelTlist);
+
+					splan->updateTlist =
+						fix_join_expr(root, splan->updateTlist,
+									  NULL, itlist,
+									  linitial_int(splan->resultRelations),
+									  rtoffset, NUM_EXEC_QUAL(plan));
+
+					pfree(itlist);
+
+					splan->upexclRelTlist =
+						fix_scan_list(root, splan->upexclRelTlist, rtoffset, 1);
+				}
+				/* End - OA-2546 */
+
 				/*
 				 * The MERGE statement produces the target rows by performing
 				 * a right join between the target relation and the source

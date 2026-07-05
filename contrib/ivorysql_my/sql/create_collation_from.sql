@@ -1,0 +1,2 @@
+create collation mysql_collation_copy from utf8_general_ci;
+select 'a' = 'A' collate mysql_collation_copy;

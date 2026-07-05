@@ -112,6 +112,7 @@ extern Oid	get_cast_oid(Oid sourcetypeid, Oid targettypeid, bool missing_ok);
 extern char get_collation_provider(Oid colloid);
 /* End - SRS-SQL-NLSSORT */
 extern char *get_collation_name(Oid colloid);
+extern char *get_collation_ctype(Oid colloid); /* bug#8474 */
 extern bool get_collation_isdeterministic(Oid colloid);
 extern char *get_constraint_name(Oid conoid);
 extern Oid	get_constraint_index(Oid conoid);

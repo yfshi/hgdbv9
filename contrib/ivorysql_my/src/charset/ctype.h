@@ -226,6 +226,10 @@ extern CHARSET_INFO my_charset_latin5_bin;
 extern CHARSET_INFO my_charset_latin5_turkish_ci;
 extern CHARSET_INFO my_charset_latin7_bin;
 extern CHARSET_INFO my_charset_latin7_general_ci;
+/* Begin - bug#8474 */
+extern CHARSET_INFO my_charset_utf8_esperanto_uca_ci;
+extern CHARSET_INFO my_charset_utf8mb4_0900_ai_ci;
+/* End - bug#8474 */
 
 
 int my_strnncoll_mb_bin(const CHARSET_INFO *cs, const uchar *s,

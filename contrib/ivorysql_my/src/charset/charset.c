@@ -85,12 +85,14 @@ static CHARSET_INFO *all_cs[] = {
     &my_charset_eucjpms_bin,                    // 98
     &my_charset_utf8_unicode_ci,                // 192
     &my_charset_utf8mb3_unicode_ci,             // 192
+    &my_charset_utf8_esperanto_uca_ci,          // 209
     &my_charset_utf8_general_mysql500_ci,       // 223
     &my_charset_utf8mb3_general_mysql500_ci,    // 223
     &my_charset_utf8mb4_unicode_ci,             // 224
     &my_charset_gb18030_chinese_ci,             // 248
     &my_charset_gb18030_bin,                    // 249
     &my_charset_gb18030_unicode_520_ci,         // 250
+    &my_charset_utf8mb4_0900_ai_ci,             // 255
 };
 
 static bool
@@ -130,7 +132,7 @@ add_compiled_collation(const CHARSET_INFO *cs)
                     true,                 /* collisdeterministic  */
                     collencoding,         /* collencoding         */
                     collcollate,          /* collcollate          */
-                    collname,             /* collctype            */
+                    collname,             /* collctype            */ /* must be same as collname, bug#8474 */
                     "5.7",                /* collversion          */
                     true,                 /* if_not_exists        */
                     true);                /* quiet                */
@@ -139,7 +141,8 @@ add_compiled_collation(const CHARSET_INFO *cs)
 static CHARSET_INFO *
 search_charset_info_by_coll_id(Oid coll, bool missing_ok)
 {
-	char *collname = NULL;
+    char *collname = NULL;
+    char *collctype = NULL; /* bug#8474 */
     MysqlCharsetInfoHashEntry *entry;
 
     if (MysqlCharsetInfoHash == NULL)
@@ -154,10 +157,33 @@ search_charset_info_by_coll_id(Oid coll, bool missing_ok)
     }
 
     entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_FIND, NULL);
-	collname = get_collation_name(coll);
+    collname = get_collation_name(coll);
+    
+    /* Begin - bug#8474 */
+    collctype = get_collation_ctype(coll);
+
+    if (!collctype)
+    {
+        ereport(ERROR,
+                errmsg("collctype of MySQL collation(%s) cannot be NULL", collname));
+    }
+    /* End - bug#8474 */
 
     if (collname && entry == NULL)
     {
+        /**
+         * Begin - bug#8474
+         * If the collname and collctype of the are not equal, we consider
+         * this collation is created with `CREATE COLLATION FROM`, based on
+         * the collation, whose collname is the same as collctype.
+         */
+        if (strcmp(collname, collctype))
+        {
+            pfree(collname);
+            collname = collctype;
+        }
+        /* End - bug#8474 */
+        
         entry = hash_search(MysqlCharsetInfoHash, &coll, HASH_ENTER, NULL);
         entry->cs = NULL;
 

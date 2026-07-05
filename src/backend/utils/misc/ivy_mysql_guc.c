@@ -163,6 +163,10 @@ bool 		default_function_security_is_definer;
 bool		create_function_with_sql_mode;
 /* End - ReqID:SRS-MYSQL-PROC */
 
+/* Begin - bug#8496 */
+int			max_execution_time;
+/* End - bug#8496 */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -565,6 +569,21 @@ bool		create_function_with_sql_mode;
 		NULL, NULL, NULL
 	},
 	/* End - bug#7234 */
+	/* Begin - bug#8496 */
+	{
+		{
+			"max_execution_time", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("The maximum timeout for SELECT statements, in milliseconds."),
+			NULL,
+			GUC_NOT_IN_SAMPLE
+		},
+		&max_execution_time,
+		0,
+		0,
+		INT_MAX,
+		NULL, NULL, NULL
+	},
+	/* End - bug#8496 */
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS

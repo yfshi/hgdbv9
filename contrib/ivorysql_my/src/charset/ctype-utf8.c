@@ -2814,3 +2814,45 @@ CHARSET_INFO my_charset_utf8_general_mysql500_ci = {
     &my_charset_utf8mb3_handler,
     &my_collation_utf8mb3_general_ci_handler,
 };
+
+/* Begin - bug#8474 */
+CHARSET_INFO my_charset_utf8_esperanto_uca_ci = {
+    209,
+    MY_CS_COMPILED | MY_CS_STRNXFRM | MY_CS_UNICODE,
+    "utf8",                                     /* csname           */
+    "utf8_esperanto_ci",                        /* coll_name        */
+    8,                                          /* sort_len         */
+    ctype_utf8mb3,                              /* ctype            */
+    NULL,                                       /* to_lower         */
+    NULL,                                       /* to_upper         */
+    NULL,                                       /* sort_order       */
+    &my_unicase_default,                        /* caseinfo         */
+    8,                                          /* strxfrm_multiply */
+    1,                                          /* mbminlen         */
+    3,                                          /* mbmaxlen         */
+    1,                                          /* mbmaxlenlen      */
+    ' ',                                        /* pad char         */
+    &my_charset_utf8mb3_handler,
+    &my_collation_utf8mb3_general_ci_handler
+};
+
+CHARSET_INFO my_charset_utf8mb4_0900_ai_ci = {
+    255,
+    MY_CS_COMPILED | MY_CS_STRNXFRM | MY_CS_UNICODE | MY_CS_UNICODE_SUPPLEMENT | MY_CS_PRIMARY, /* state    */
+    "utf8mb4",                                  /* csname           */
+    "utf8mb4_0900_ai_ci",                       /* coll_name        */
+    8,                                          /* sort_len         */
+    ctype_utf8mb4,                              /* ctype            */
+    NULL,                                       /* to_lower         */
+    NULL,                                       /* to_upper         */
+    NULL,                                       /* sort_order       */
+    &my_unicase_default,                        /* caseinfo         */
+    1,                                          /* strxfrm_multiply */
+    1,                                          /* mbminlen         */
+    4,                                          /* mbmaxlen         */
+    1,                                          /* mbmaxlenlen      */
+    ' ',                                        /* pad char         */
+    &my_charset_utf8mb4_handler,
+    &my_collation_utf8mb4_general_ci_handler,
+};
+/* End - bug#8474 */

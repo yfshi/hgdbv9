@@ -1066,6 +1066,11 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 			if (nsitem->p_lateral_only && !pstate->p_lateral_active)
 				continue;
 
+			/* Begin - OA-2546 */
+			if (compatible_mode == MYS_MODE && nsitem->p_rte->relkind == RELKIND_COMPOSITE_TYPE)
+				continue;
+			/* End - OA-2546 */
+
 			/* use orig_pstate here for consistency with other callers */
 			newresult = scanNSItemForColumn(orig_pstate, nsitem, sublevels_up,
 											colname, has_plus_token, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
@@ -3381,8 +3386,7 @@ addNSItemToQuery(ParseState *pstate, ParseNamespaceItem *nsitem,
 		nsitem->p_cols_visible = addToVarNameSpace;
 		nsitem->p_lateral_only = false;
 		nsitem->p_lateral_ok = true;
-		if (addToRelNameSpace || addToVarNameSpace)
-			pstate->p_namespace = lappend(pstate->p_namespace, nsitem);
+		pstate->p_namespace = lappend(pstate->p_namespace, nsitem);
 	}
 	/* Begin - ReqID:SRS-MYSQL-SQL-INSERT */
 	else

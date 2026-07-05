@@ -1172,6 +1172,27 @@ get_collation_name(Oid colloid)
 		return NULL;
 }
 
+/* Begin - bug#8474 */
+char *
+get_collation_ctype(Oid colloid)
+{
+	HeapTuple	tp;
+
+	tp = SearchSysCache1(COLLOID, ObjectIdGetDatum(colloid));
+	if (HeapTupleIsValid(tp))
+	{
+		Form_pg_collation colltup = (Form_pg_collation) GETSTRUCT(tp);
+		char	   *result;
+
+		result = pstrdup(NameStr(colltup->collctype));
+		ReleaseSysCache(tp);
+		return result;
+	}
+	else
+		return NULL;
+}
+/* End - bug#8474 */
+
 bool
 get_collation_isdeterministic(Oid colloid)
 {

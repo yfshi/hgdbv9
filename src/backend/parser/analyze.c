@@ -2255,6 +2255,7 @@ transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resu
 		 */
 
 		exclRelTlist = BuildOnConflictExcludedTargetlist(targetrel, exclRelIndex);
+		exclRte->relkind = RELKIND_COMPOSITE_TYPE;	/* OA-2546 */
 		exclRte->requiredPerms = 0;
 		exclRte->selectedCols = NULL;
 
@@ -2263,10 +2264,8 @@ transformUpsertClause(ParseState *pstate, UpsertClause *upsertClause, List *resu
 		 * be used in the UPDATE statement.
 		 */
 		addNSItemToQuery(pstate, exclNSItem, false, true, true);
-//		addNSItemToQuery(pstate, (RangeTblEntry*)linitial(pstate->p_target_rangetblentry), false, true, true);
 
 		transformSchemaInTargetlist(&(upsertClause->targetList));
-//		updateTlist = transformTargetList(pstate, upsertClause->targetList, EXPR_KIND_UPDATE_TARGET);
 		/* Done with select-like processing, move on transforming to match update set target column */
 		updateTlist = transformUpdateTargetList(pstate, upsertClause->targetList);
 	}
