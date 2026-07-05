@@ -597,15 +597,14 @@ show create table test_auto;
 (1 row)
 
 drop table test_auto;
--- fail as id is not a primary key or a unique key
+-- succ
 create table test_auto(id int, name varchar(20));
 alter table test_auto modify id int auto_increment;
-ERROR:  there can be only one auto column and it must be defined as a key
--- mysql success, but v9 fail, canot support
+-- mysql fail, v9 fail, not report the same error info
 alter table test_auto modify id int primary key, modify id int auto_increment;
-ERROR:  there can be only one auto column and it must be defined as a key
+ERROR:  sequence "test_auto_id_seq" does not exist
 alter table test_auto modify id int unique key, modify id int auto_increment;
-ERROR:  there can be only one auto column and it must be defined as a key
+ERROR:  sequence "test_auto_id_seq" does not exist
 drop table test_auto;
 -- varchar(20)  --> smallint auto
 -- smallint max is 32767, report error with alter type
@@ -1982,9 +1981,17 @@ drop table test_tab_op;
 create table test_tab_op(id int, name varchar(20));
 insert into test_tab_op values(10,'ssss'),(20,'dddd');
 -- AUTO_INCREMENT = 30, mysql success
--- v9 fail as "no owned sequence found", expected
 alter table test_tab_op modify id int unique key auto_increment, AUTO_INCREMENT = 30;
-ERROR:  no owned sequence found
+show create table test_tab_op;
+    Table    |                  Create Table                   
+-------------+-------------------------------------------------
+ test_tab_op | CREATE TABLE "test_tab_op" (                   +
+             |     "id" integer NOT NULL AUTO_INCREMENT,      +
+             |     "name" character varying(20),              +
+             |     CONSTRAINT "test_tab_op_id_key" UNIQUE (id)+
+             | ) AUTO_INCREMENT=30
+(1 row)
+
 drop table test_tab_op;
 -------- test case: reference did not support
 create table test_1(a int, b int, c int);
@@ -2787,9 +2794,17 @@ drop table test_tab_op;
 create table test_tab_op(id int, name varchar(20));
 insert into test_tab_op values(10,'ssss'),(20,'dddd');
 -- AUTO_INCREMENT = 30, mysql success
--- v9 fail as "no owned sequence found", expected
 alter table test_tab_op change id id_new int unique key auto_increment, AUTO_INCREMENT = 30;
-ERROR:  no owned sequence found
+show create table test_tab_op;
+    Table    |                      Create Table                       
+-------------+---------------------------------------------------------
+ test_tab_op | CREATE TABLE "test_tab_op" (                           +
+             |     "id_new" integer NOT NULL AUTO_INCREMENT,          +
+             |     "name" character varying(20),                      +
+             |     CONSTRAINT "test_tab_op_id_new_key" UNIQUE (id_new)+
+             | ) AUTO_INCREMENT=30
+(1 row)
+
 drop table test_tab_op;
 ------------- alter table FIRST | AFTER col_name
 ------ test case: alter table add
@@ -4010,3 +4025,424 @@ ERROR:  cannot alter type of a column used by a view or rule
 DETAIL:  rule _RETURN on view t_7880_v depends on column "a"
 drop view t_7880_v;
 drop table t_7880;
+------------ bug#z8349, bug#z8460
+------ bug8349: test case
+-- case 1
+create table tt(
+    id int not null auto_increment,
+    name varchar(255),
+    key idx_id(id)
+);
+show create table tt;
+ Table |               Create Table                
+-------+-------------------------------------------
+ tt    | CREATE TABLE "tt" (                      +
+       |     "id" integer NOT NULL AUTO_INCREMENT,+
+       |     "name" character varying(255),       +
+       |     KEY "tt_id_idx" ("id") USING BTREE   +
+       | )
+(1 row)
+
+drop table tt;
+-- case 2
+create table tb_p(
+    id int primary key
+);
+create table tb_c(
+    id int auto_increment,
+    constraint fk_c_p foreign key (id) references tb_p (id)
+);
+show create table tb_p;
+ Table |                Create Table                 
+-------+---------------------------------------------
+ tb_p  | CREATE TABLE "tb_p" (                      +
+       |     "id" integer NOT NULL,                 +
+       |     CONSTRAINT "tb_p_pkey" PRIMARY KEY (id)+
+       | )
+(1 row)
+
+show create table tb_c;
+ Table |                         Create Table                         
+-------+--------------------------------------------------------------
+ tb_c  | CREATE TABLE "tb_c" (                                       +
+       |     "id" integer NOT NULL AUTO_INCREMENT,                   +
+       |     CONSTRAINT "fk_c_p" FOREIGN KEY (id) REFERENCES tb_p(id)+
+       | )
+(1 row)
+
+drop table tb_c;
+drop table tb_p;
+------ bug8460
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id3 int unsigned AUTO_INCREMENT, ADD primary key(id3);
+show create table tt2;
+ Table |                Create Table                 
+-------+---------------------------------------------
+ tt2   | CREATE TABLE "tt2" (                       +
+       |     "id1" integer,                         +
+       |     "id3" uint4 NOT NULL AUTO_INCREMENT,   +
+       |     CONSTRAINT "tt2_pkey" PRIMARY KEY (id3)+
+       | )
+(1 row)
+
+ALTER TABLE tt2 drop id3;
+ALTER TABLE tt2 ADD id3 int unsigned AUTO_INCREMENT, ADD primary key(id3);
+show create table tt2;
+ Table |                Create Table                 
+-------+---------------------------------------------
+ tt2   | CREATE TABLE "tt2" (                       +
+       |     "id1" integer,                         +
+       |     "id3" uint4 NOT NULL AUTO_INCREMENT,   +
+       |     CONSTRAINT "tt2_pkey" PRIMARY KEY (id3)+
+       | )
+(1 row)
+
+drop table tt2;
+------ AUTO_INCREMENT=N test case
+-- add column
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id2 int, AUTO_INCREMENT = 100;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "id1" integer,  +
+       |     "id2" integer   +
+       | )
+(1 row)
+
+ALTER TABLE tt2 ADD id3 int auto_increment, AUTO_INCREMENT = 200;
+show create table tt2;
+ Table |               Create Table                
+-------+-------------------------------------------
+ tt2   | CREATE TABLE "tt2" (                     +
+       |     "id1" integer,                       +
+       |     "id2" integer,                       +
+       |     "id3" integer NOT NULL AUTO_INCREMENT+
+       | ) AUTO_INCREMENT=200
+(1 row)
+
+drop table tt2;
+-- modify column
+create table tt2(a int, b int);
+ALTER TABLE tt2 modify b float, AUTO_INCREMENT = 100;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b" float4      +
+       | )
+(1 row)
+
+ALTER TABLE tt2 modify b int auto_increment, AUTO_INCREMENT = 200;
+show create table tt2;
+ Table |              Create Table               
+-------+-----------------------------------------
+ tt2   | CREATE TABLE "tt2" (                   +
+       |     "a" integer,                       +
+       |     "b" integer NOT NULL AUTO_INCREMENT+
+       | ) AUTO_INCREMENT=200
+(1 row)
+
+ALTER TABLE tt2 modify b int, AUTO_INCREMENT = 300;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b" integer     +
+       | )
+(1 row)
+
+drop table tt2;
+-- change column
+create table tt2(a int, b int);
+ALTER TABLE tt2 change b b float, AUTO_INCREMENT = 100;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b" float4      +
+       | )
+(1 row)
+
+ALTER TABLE tt2 change b b_new int auto_increment, AUTO_INCREMENT = 200;
+show create table tt2;
+ Table |                Create Table                 
+-------+---------------------------------------------
+ tt2   | CREATE TABLE "tt2" (                       +
+       |     "a" integer,                           +
+       |     "b_new" integer NOT NULL AUTO_INCREMENT+
+       | ) AUTO_INCREMENT=200
+(1 row)
+
+ALTER TABLE tt2 change b_new b_new int, AUTO_INCREMENT = 300;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b_new" integer +
+       | )
+(1 row)
+
+drop table tt2;
+---------- AUTO_INCREMENT=N, AUTO_INCREMENT=M, max(N,M)
+-- add column
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id2 int, AUTO_INCREMENT = 100, AUTO_INCREMENT = 90;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "id1" integer,  +
+       |     "id2" integer   +
+       | )
+(1 row)
+
+ALTER TABLE tt2 ADD id3 int auto_increment, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+ Table |               Create Table                
+-------+-------------------------------------------
+ tt2   | CREATE TABLE "tt2" (                     +
+       |     "id1" integer,                       +
+       |     "id2" integer,                       +
+       |     "id3" integer NOT NULL AUTO_INCREMENT+
+       | ) AUTO_INCREMENT=200
+(1 row)
+
+drop table tt2;
+-- modify column
+create table tt2(a int, b int);
+ALTER TABLE tt2 modify b float, AUTO_INCREMENT = 100, AUTO_INCREMENT = 90;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b" float4      +
+       | )
+(1 row)
+
+ALTER TABLE tt2 modify b int auto_increment, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+ Table |              Create Table               
+-------+-----------------------------------------
+ tt2   | CREATE TABLE "tt2" (                   +
+       |     "a" integer,                       +
+       |     "b" integer NOT NULL AUTO_INCREMENT+
+       | ) AUTO_INCREMENT=200
+(1 row)
+
+ALTER TABLE tt2 modify b int, AUTO_INCREMENT = 300;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b" integer     +
+       | )
+(1 row)
+
+drop table tt2;
+-- change column
+create table tt2(a int, b int);
+ALTER TABLE tt2 change b b float, AUTO_INCREMENT = 100, AUTO_INCREMENT = 90;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b" float4      +
+       | )
+(1 row)
+
+ALTER TABLE tt2 change b b_new int auto_increment, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+ Table |                Create Table                 
+-------+---------------------------------------------
+ tt2   | CREATE TABLE "tt2" (                       +
+       |     "a" integer,                           +
+       |     "b_new" integer NOT NULL AUTO_INCREMENT+
+       | ) AUTO_INCREMENT=200
+(1 row)
+
+ALTER TABLE tt2 change b_new b_new int, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+ Table |     Create Table     
+-------+----------------------
+ tt2   | CREATE TABLE "tt2" (+
+       |     "a" integer,    +
+       |     "b_new" integer +
+       | )
+(1 row)
+
+drop table tt2;
+---------- auto_increment not need pk/uk test case
+------ create table test case
+-- one col is auto
+create table test_8439(a int auto_increment, b int);
+show create table test_8439;
+   Table   |               Create Table               
+-----------+------------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (              +
+           |     "a" integer NOT NULL AUTO_INCREMENT,+
+           |     "b" integer                         +
+           | )
+(1 row)
+
+drop table test_8439;
+create table test_8439(a int auto_increment, b int auto_increment);
+ERROR:  there can be only one auto column and it must be defined as a key
+------ add column
+-- error
+create table test_8439(a int auto_increment, b int);
+alter table test_8439 add column c int auto_increment;
+ERROR:  The table can be only one auto increment column
+drop table test_8439;
+-- succ
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment;
+show create table test_8439;
+   Table   |              Create Table               
+-----------+-----------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (             +
+           |     "a" integer,                       +
+           |     "b" integer,                       +
+           |     "c" integer NOT NULL AUTO_INCREMENT+
+           | )
+(1 row)
+
+alter table test_8439 add column d int auto_increment;
+ERROR:  The table can be only one auto increment column
+drop table test_8439;
+-- succ
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, add primary key(c);
+show create table test_8439;
+   Table   |                  Create Table                   
+-----------+-------------------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (                     +
+           |     "a" integer,                               +
+           |     "b" integer,                               +
+           |     "c" integer NOT NULL AUTO_INCREMENT,       +
+           |     CONSTRAINT "test_8439_pkey" PRIMARY KEY (c)+
+           | )
+(1 row)
+
+drop table test_8439;
+-- fail
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, add column d int auto_increment;
+ERROR:  The table can be only one auto increment column
+show create table test_8439;
+   Table   |        Create Table        
+-----------+----------------------------
+ test_8439 | CREATE TABLE "test_8439" (+
+           |     "a" integer,          +
+           |     "b" integer           +
+           | )
+(1 row)
+
+drop table test_8439;
+------ add,modify -- fail
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, modify b int auto_increment;
+ERROR:  The table can be only one auto increment column
+alter table test_8439 modify b int auto_increment, add column c int auto_increment;
+ERROR:  The table can be only one auto increment column
+drop table test_8439;
+------ add,change -- fail
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, change b b_new int auto_increment;
+ERROR:  The table can be only one auto increment column
+alter table test_8439 change b b_new int auto_increment, add column c int auto_increment;
+ERROR:  The table can be only one auto increment column
+drop table test_8439;
+------ modify column
+-- fail
+create table test_8439(a int auto_increment, b int);
+alter table test_8439 modify b int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 modify b int auto_increment, modify b int;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 modify a int, modify b int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+drop table test_8439;
+-- succ
+create table test_8439(a int, b int);
+alter table test_8439 modify b int auto_increment;
+alter table test_8439 modify a int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+show create table test_8439;
+   Table   |              Create Table               
+-----------+-----------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (             +
+           |     "a" integer,                       +
+           |     "b" integer NOT NULL AUTO_INCREMENT+
+           | )
+(1 row)
+
+drop table test_8439;
+------ modify, modify
+create table test_8439(a int, b int);
+alter table test_8439 modify a int auto_increment, modify b int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 modify a int auto_increment, modify b float;
+show create table test_8439;
+   Table   |               Create Table               
+-----------+------------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (              +
+           |     "a" integer NOT NULL AUTO_INCREMENT,+
+           |     "b" float4                          +
+           | )
+(1 row)
+
+drop table test_8439;
+------ modify, change
+create table test_8439(a int, b int);
+alter table test_8439 modify a int auto_increment, change b b_new int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 change b b_new int auto_increment, modify a int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 modify a int auto_increment, change b b float;
+show create table test_8439;
+   Table   |               Create Table               
+-----------+------------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (              +
+           |     "a" integer NOT NULL AUTO_INCREMENT,+
+           |     "b" float4                          +
+           | )
+(1 row)
+
+drop table test_8439;
+------ change column
+create table test_8439(a int auto_increment, b int);
+alter table test_8439 change b  b_new int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 change a int auto_increment;
+ERROR:  type "auto_increment" does not exist
+LINE 1: alter table test_8439 change a int auto_increment;
+                                           ^
+alter table test_8439 change a int, change b b_new int auo_increment;
+ERROR:  syntax error at or near ","
+LINE 1: alter table test_8439 change a int, change b b_new int auo_i...
+                                          ^
+drop table test_8439;
+------ change, change
+create table test_8439(a int, b int);
+alter table test_8439 change a a_new int auto_increment, change b b_new int auto_increment;
+ERROR:  there can be only one auto column and it must be defined as a key
+alter table test_8439 change a a_new int auto_increment, change b b_new float;
+show create table test_8439;
+   Table   |                 Create Table                 
+-----------+----------------------------------------------
+ test_8439 | CREATE TABLE "test_8439" (                  +
+           |     "a_new" integer NOT NULL AUTO_INCREMENT,+
+           |     "b_new" float4                          +
+           | )
+(1 row)
+
+drop table test_8439;

@@ -238,10 +238,10 @@ alter table test_auto modify id int auto_increment;
 show create table test_auto;
 drop table test_auto;
 
--- fail as id is not a primary key or a unique key
+-- succ
 create table test_auto(id int, name varchar(20));
 alter table test_auto modify id int auto_increment;
--- mysql success, but v9 fail, canot support
+-- mysql fail, v9 fail, not report the same error info
 alter table test_auto modify id int primary key, modify id int auto_increment;
 alter table test_auto modify id int unique key, modify id int auto_increment;
 drop table test_auto;
@@ -780,8 +780,8 @@ drop table test_tab_op;
 create table test_tab_op(id int, name varchar(20));
 insert into test_tab_op values(10,'ssss'),(20,'dddd');
 -- AUTO_INCREMENT = 30, mysql success
--- v9 fail as "no owned sequence found", expected
 alter table test_tab_op modify id int unique key auto_increment, AUTO_INCREMENT = 30;
+show create table test_tab_op;
 drop table test_tab_op;
 
 -------- test case: reference did not support
@@ -1075,8 +1075,8 @@ drop table test_tab_op;
 create table test_tab_op(id int, name varchar(20));
 insert into test_tab_op values(10,'ssss'),(20,'dddd');
 -- AUTO_INCREMENT = 30, mysql success
--- v9 fail as "no owned sequence found", expected
 alter table test_tab_op change id id_new int unique key auto_increment, AUTO_INCREMENT = 30;
+show create table test_tab_op;
 drop table test_tab_op;
 
 ------------- alter table FIRST | AFTER col_name
@@ -1497,3 +1497,191 @@ alter table t_7880 modify a varchar(20) COLLATE "default";
 alter table t_7880 modify a varchar(20) COLLATE "C";
 drop view t_7880_v;
 drop table t_7880;
+
+------------ bug#z8349, bug#z8460
+------ bug8349: test case
+-- case 1
+create table tt(
+    id int not null auto_increment,
+    name varchar(255),
+    key idx_id(id)
+);
+show create table tt;
+drop table tt;
+
+-- case 2
+create table tb_p(
+    id int primary key
+);
+
+create table tb_c(
+    id int auto_increment,
+    constraint fk_c_p foreign key (id) references tb_p (id)
+);
+
+show create table tb_p;
+show create table tb_c;
+drop table tb_c;
+drop table tb_p;
+
+------ bug8460
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id3 int unsigned AUTO_INCREMENT, ADD primary key(id3);
+show create table tt2;
+ALTER TABLE tt2 drop id3;
+ALTER TABLE tt2 ADD id3 int unsigned AUTO_INCREMENT, ADD primary key(id3);
+show create table tt2;
+drop table tt2;
+
+------ AUTO_INCREMENT=N test case
+-- add column
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id2 int, AUTO_INCREMENT = 100;
+show create table tt2;
+ALTER TABLE tt2 ADD id3 int auto_increment, AUTO_INCREMENT = 200;
+show create table tt2;
+drop table tt2;
+
+-- modify column
+create table tt2(a int, b int);
+ALTER TABLE tt2 modify b float, AUTO_INCREMENT = 100;
+show create table tt2;
+
+ALTER TABLE tt2 modify b int auto_increment, AUTO_INCREMENT = 200;
+show create table tt2;
+
+ALTER TABLE tt2 modify b int, AUTO_INCREMENT = 300;
+show create table tt2;
+drop table tt2;
+
+-- change column
+create table tt2(a int, b int);
+ALTER TABLE tt2 change b b float, AUTO_INCREMENT = 100;
+show create table tt2;
+
+ALTER TABLE tt2 change b b_new int auto_increment, AUTO_INCREMENT = 200;
+show create table tt2;
+
+ALTER TABLE tt2 change b_new b_new int, AUTO_INCREMENT = 300;
+show create table tt2;
+drop table tt2;
+
+---------- AUTO_INCREMENT=N, AUTO_INCREMENT=M, max(N,M)
+-- add column
+create table tt2(id1 int);
+ALTER TABLE tt2 ADD id2 int, AUTO_INCREMENT = 100, AUTO_INCREMENT = 90;
+show create table tt2;
+ALTER TABLE tt2 ADD id3 int auto_increment, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+drop table tt2;
+
+-- modify column
+create table tt2(a int, b int);
+ALTER TABLE tt2 modify b float, AUTO_INCREMENT = 100, AUTO_INCREMENT = 90;
+show create table tt2;
+
+ALTER TABLE tt2 modify b int auto_increment, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+
+ALTER TABLE tt2 modify b int, AUTO_INCREMENT = 300;
+show create table tt2;
+drop table tt2;
+
+-- change column
+create table tt2(a int, b int);
+ALTER TABLE tt2 change b b float, AUTO_INCREMENT = 100, AUTO_INCREMENT = 90;
+show create table tt2;
+
+ALTER TABLE tt2 change b b_new int auto_increment, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+
+ALTER TABLE tt2 change b_new b_new int, AUTO_INCREMENT = 200, AUTO_INCREMENT = 190;
+show create table tt2;
+drop table tt2;
+
+---------- auto_increment not need pk/uk test case
+------ create table test case
+-- one col is auto
+create table test_8439(a int auto_increment, b int);
+show create table test_8439;
+drop table test_8439;
+
+create table test_8439(a int auto_increment, b int auto_increment);
+
+------ add column
+-- error
+create table test_8439(a int auto_increment, b int);
+alter table test_8439 add column c int auto_increment;
+drop table test_8439;
+-- succ
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment;
+show create table test_8439;
+alter table test_8439 add column d int auto_increment;
+drop table test_8439;
+-- succ
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, add primary key(c);
+show create table test_8439;
+drop table test_8439;
+-- fail
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, add column d int auto_increment;
+show create table test_8439;
+drop table test_8439;
+
+------ add,modify -- fail
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, modify b int auto_increment;
+alter table test_8439 modify b int auto_increment, add column c int auto_increment;
+drop table test_8439;
+
+------ add,change -- fail
+create table test_8439(a int, b int);
+alter table test_8439 add column c int auto_increment, change b b_new int auto_increment;
+alter table test_8439 change b b_new int auto_increment, add column c int auto_increment;
+drop table test_8439;
+
+------ modify column
+-- fail
+create table test_8439(a int auto_increment, b int);
+alter table test_8439 modify b int auto_increment;
+alter table test_8439 modify b int auto_increment, modify b int;
+alter table test_8439 modify a int, modify b int auto_increment;
+drop table test_8439;
+
+-- succ
+create table test_8439(a int, b int);
+alter table test_8439 modify b int auto_increment;
+alter table test_8439 modify a int auto_increment;
+show create table test_8439;
+drop table test_8439;
+
+------ modify, modify
+create table test_8439(a int, b int);
+alter table test_8439 modify a int auto_increment, modify b int auto_increment;
+alter table test_8439 modify a int auto_increment, modify b float;
+show create table test_8439;
+drop table test_8439;
+
+------ modify, change
+create table test_8439(a int, b int);
+alter table test_8439 modify a int auto_increment, change b b_new int auto_increment;
+alter table test_8439 change b b_new int auto_increment, modify a int auto_increment;
+alter table test_8439 modify a int auto_increment, change b b float;
+show create table test_8439;
+drop table test_8439;
+
+------ change column
+create table test_8439(a int auto_increment, b int);
+alter table test_8439 change b  b_new int auto_increment;
+alter table test_8439 change a int auto_increment;
+alter table test_8439 change a int, change b b_new int auo_increment;
+drop table test_8439;
+
+------ change, change
+create table test_8439(a int, b int);
+alter table test_8439 change a a_new int auto_increment, change b b_new int auto_increment;
+alter table test_8439 change a a_new int auto_increment, change b b_new float;
+show create table test_8439;
+drop table test_8439;

@@ -3355,7 +3355,6 @@ _copyColumnDef(const ColumnDef *from)
 	COPY_NODE_FIELD(constraints);
 	COPY_NODE_FIELD(fdwoptions);
 	COPY_LOCATION_FIELD(location);
-	COPY_SCALAR_FIELD(is_pri_or_unique);  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	COPY_SCALAR_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	COPY_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
 

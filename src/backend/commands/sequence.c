@@ -1233,7 +1233,7 @@ get_rel_auto_increment_attr(Oid tableoid)
 	for (autoincAttnum = 1; autoincAttnum <= natts; autoincAttnum++)
 	{
 		Form_pg_attribute attr = TupleDescAttr(tupleDesc, autoincAttnum - 1);
-		if (attr->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)
+		if (!attr->attisdropped && attr->attidentity == ATTRIBUTE_IDENTITY_AUTO_INCREMENT)	/* bug#z8439 */
 		{
 			break;
 		}
@@ -1257,7 +1257,12 @@ set_auto_nextval(Oid tableoid, uint64 nextval)
 	Form_pg_sequence_data seq;
 	Oid seqoid;
 
-	seqoid = getIdentityAutoIncrement(tableoid, get_rel_auto_increment_attr(tableoid), false);
+	/* Begin - bug#z8439 */
+	seqoid = getIdentityAutoIncrement(tableoid, get_rel_auto_increment_attr(tableoid), true);
+
+	if (!OidIsValid(seqoid))
+		return;
+	/* End - bug#z8439 */
 
 	seqrel = relation_open(seqoid, RowExclusiveLock);
 	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
@@ -1537,7 +1542,13 @@ get_show_autoinc(Oid tableoid)
 		return 0;
 	}
 
-	seqoid = getIdentityAutoIncrement(tableoid, attnum, false);
+	/* Begin - bug#z8439 */
+	seqoid = getIdentityAutoIncrement(tableoid, attnum, true);
+
+	if (!OidIsValid(seqoid))
+		return result;
+	/* End - bug#z8439 */
+
 	seqrel = relation_open(seqoid, AccessShareLock);
 	seq = read_seq_tuple(seqrel, &buf, &seqdatatuple);
 	result = seq->next_value ? seq->next_value : seq->last_value;

@@ -774,7 +774,6 @@ typedef struct ColumnDef
 	bool		isvisible;		/* mark whether column is visible *//* ReqID:SRS-SQL-INVISIBLECOL */
 	bool		not_spefify_column_type;	/* mark  virtual column whether lack of data type */	/* Bug#Z485 */
 	/* End - BUG#M0000257 */
-	bool		is_pri_or_unique;  /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	bool		is_auto_increment; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	Node	   *colcomment;       /* SRS-MYSQL-CREATE-TABLE */
 } ColumnDef;
