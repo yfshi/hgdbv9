@@ -793,6 +793,10 @@ SELECT format(123456.789, 3, 'el_GR');
 SELECT format(123456.789, 3, 'sr_RS');
 SELECT format(123456789,2,'rm_CH');
 SELECT format(123, 1, 'Non-existent-locale');
+SELECT format(123456.789::double, 4);
+SELECT format(1234567891234::double, 4);
+SELECT format(truncate(1.7976931348623157E+308::double, -7), 3);
+SELECT format(truncate(-1.7976931348623157E+308::double, -12), 3, 'en_US');
 
 CREATE TABLE t5(c1 text NOT NULL PRIMARY KEY, c2 text);
 INSERT IGNORE INTO t5 VALUES (95, 46), (31, 438), (61, 152), (78, 123), (88, 411), (122, 118), (0, 177),(75, 42), (108, 67), (79, 349), (59, 188), (69, 206), (49, 345), (118, 380),(111, 368), (94, 468), (56, 379), (77, 133), (29, 399), (9, 363), (23, 36),(116, 390), (119, 368), (87, 351), (123, 411), (24, 398), (34, 202), (28, 499),(30, 83), (5, 178), (60, 343), (4, 245), (104, 280), (106, 446), (127, 403),(44, 307), (68, 454), (57, 135);
@@ -984,3 +988,149 @@ SELECT FORMAT(TRUE, 2.1);
 SELECT FORMAT(FALSE, 2);
 SELECT FORMAT('', 2);
 SELECT FORMAT('abc123', 2);
+
+-- CRC32
+select crc32('');
+select crc32(NULL);
+select crc32('abc');
+select crc32('ABC');
+select crc32(100);
+select crc32(123456);
+select crc32(4294967295);
+select crc32(200.789);
+select crc32(true);
+select crc32(10 > 20);
+select crc32(round(1.27));
+
+set mysql.use_mysql_bit_literal = on;
+select crc32(0x12);
+select crc32(x'aaaccc106080');
+select crc32(0b1010);
+select crc32(B'10101111');
+set mysql.use_mysql_bit_literal = off;
+
+create table t(a int, b varchar(2));
+insert into t values (1, 'A'),(2, 'B'),(3, 'C'),(4, 'D');
+select a, b, crc32(a) from t group by a, b having crc32(max(a)) = 450215437;
+drop table t;
+
+-- TRUNCATE
+select truncate(0, 0);
+select truncate(6666, 3);
+select truncate(6666, 3.2);
+select truncate(6666, 0);
+select truncate(6666, -2);
+select truncate(6666, -2.7);
+select truncate(-6666, 3);
+select truncate(-6666, 3.2);
+select truncate(-6666, 0);
+select truncate(-6666, -2);
+select truncate(-6666, -2.7);
+create table tb1 as select truncate(9223372036854775807, 3);
+desc tb1;
+select * from tb1;
+drop table tb1;
+
+set mysql.use_mysql_bit_literal = on;
+select truncate(0b0101, 2);
+create table tb2 as select truncate(B'0101111', 3.9);
+desc tb2;
+select * from tb2;
+drop table tb2;
+select truncate(0xabcd, 6);
+select truncate(0xab888ab, -5.777);
+set mysql.use_mysql_bit_literal = off;
+
+select truncate('120120.12121212', 5);
+create table tb3 as select truncate('8000', 4);
+desc tb3;
+select * from tb3;
+drop table tb3;
+create table tb4 as select truncate('-99.99999999', -1);
+desc tb4;
+select * from tb4;
+drop table tb4;
+select truncate(30005.6060, '6');
+select truncate(105.1515, '-2.35');
+select truncate(null, null);
+select truncate(null, 2);
+select truncate(1000.0505, null);
+select truncate(150 > 2*30 ,3);
+select truncate(600/30 < 20, -2);
+
+select truncate(5678.123451, 0);
+select truncate(5678.123451, 1);
+select truncate(5678.123451, 2);
+select truncate(5678.123451, 3);
+select truncate(5678.123451, 4);
+select truncate(5678.123451, 5);
+select truncate(5678.123451, 6);
+select truncate(5678.123451, 7);
+select truncate(5678.123451, -1);
+select truncate(5678.123451, -2);
+select truncate(5678.123451, -3);
+select truncate(5678.123451, -4);
+select truncate(5678.123451, -5);
+
+select truncate(-5678.123451, 0);
+select truncate(-5678.123451, 1);
+select truncate(-5678.123451, 2);
+select truncate(-5678.123451, 3);
+select truncate(-5678.123451, 4);
+select truncate(-5678.123451, 5);
+select truncate(-5678.123451, 6);
+select truncate(-5678.123451, 7);
+select truncate(-5678.123451, -1);
+select truncate(-5678.123451, -2);
+select truncate(-5678.123451, -3);
+select truncate(-5678.123451, -4);
+select truncate(-5678.123451, -5);
+
+select truncate(5678.123451::double, 0);
+select truncate(5678.123451::double, 1);
+select truncate(5678.123451::double, 2);
+select truncate(5678.123451::double, 3);
+select truncate(5678.123451::double, 4);
+select truncate(5678.123451::double, 5);
+select truncate(5678.123451::double, 6);
+select truncate(5678.123451::double, 7);
+select truncate(5678.123451::double, -1);
+select truncate(5678.123451::double, -2);
+select truncate(5678.123451::double, -3);
+select truncate(5678.123451::double, -4);
+select truncate(5678.123451::double, -5);
+
+select truncate(-5678.123451::double, 0);
+select truncate(-5678.123451::double, 1);
+select truncate(-5678.123451::double, 2);
+select truncate(-5678.123451::double, 3);
+select truncate(-5678.123451::double, 4);
+select truncate(-5678.123451::double, 5);
+select truncate(-5678.123451::double, 6);
+select truncate(-5678.123451::double, 7);
+select truncate(-5678.123451::double, -1);
+select truncate(-5678.123451::double, -2);
+select truncate(-5678.123451::double, -3);
+select truncate(-5678.123451::double, -4);
+select truncate(-5678.123451::double, -5);
+
+create table tb5(a decimal(12,5), b double);
+insert into tb5 values(62.12505, 979797.979),(9090909.363, 1001001.010101);
+select truncate(a, 4),truncate(b, 2) from tb5;
+drop table tb5;
+
+select truncate(99.99, 30);
+select truncate(99.99, 31);
+select truncate(99999999999999999999999999999999999999, 30);
+select truncate(99999999999999999999999999999999999999, 31);
+select truncate(99.999999999999999999999999999999999999, 31);
+select truncate(99999999999999999999999999999999999999, -31);
+
+select truncate(1.7976931348623157E+308, -11);
+select truncate(1.7976931348623157E+308, -12);
+select truncate(1.7976931348623157E+308, -13);
+select truncate(1.7976931348623157E+308::double, -7);
+select truncate(1.7976931348623157E+308::double, -12);
+select truncate(-1.7976931348623157E+308::double, -7);
+select truncate(-1.7976931348623157E+308::double, -12);
+select truncate('1.7976931348623157E+308', -12);

@@ -13258,3 +13258,15 @@ select * from t;
 (2 rows)
 
 drop table t;
+--bug#7259
+create table tb_time(a time, b time(0), c time(1), d time(4));
+desc tb_time;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ a     | time    | YES  |     |         | 
+ b     | time    | YES  |     |         | 
+ c     | time(1) | YES  |     |         | 
+ d     | time(4) | YES  |     |         | 
+(4 rows)
+
+drop table tb_time;

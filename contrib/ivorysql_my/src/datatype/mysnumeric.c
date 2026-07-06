@@ -33,6 +33,7 @@ numeric_eq_int4(PG_FUNCTION_ARGS)
 
     return DirectFunctionCall2(numeric_eq, val1, NumericGetDatum(int64_to_numeric((int64) val2)));
 }
+
 Datum
 int4_eq_numeric(PG_FUNCTION_ARGS)
 {
@@ -41,6 +42,7 @@ int4_eq_numeric(PG_FUNCTION_ARGS)
 
     return DirectFunctionCall2(numeric_eq, val1, NumericGetDatum(int64_to_numeric((int64) val2)));
 }
+
 Datum
 numeric_eq_int8(PG_FUNCTION_ARGS)
 {
@@ -108,6 +110,7 @@ numeric_exact_divnumeric(PG_FUNCTION_ARGS)
 					DirectFunctionCall1(float8_numeric, Float8GetDatum(0.5))));	
 	PG_RETURN_INT64(DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(res))));
 }
+
 /* Begin - bug#z6039 */
 Datum
 uint8_mul_numeric(PG_FUNCTION_ARGS)
@@ -154,6 +157,11 @@ numeric_format(PG_FUNCTION_ARGS)
     value = PG_GETARG_NUMERIC(0);
     precision = PG_GETARG_INT64(1);
 
+	/* Begin - ReqID: SRS-MYSQL-BUILDFUNCTION */
+	if (numeric_is_inf(value))
+		PG_RETURN_TEXT_P(cstring_to_text("0"));
+	/* End - ReqID: SRS-MYSQL-BUILDFUNCTION */
+	
 	precision = Min(MAX_PRECISION, Max(0, precision));
 
 	// if invalid locale received, set locale to 'en_US'

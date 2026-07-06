@@ -3006,3 +3006,8 @@ insert into t values (-1);
 insert into t values (-100);
 select * from t;
 drop table t;
+
+--bug#7259
+create table tb_time(a time, b time(0), c time(1), d time(4));
+desc tb_time;
+drop table tb_time;

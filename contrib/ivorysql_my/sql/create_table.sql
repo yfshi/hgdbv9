@@ -1878,3 +1878,13 @@ insert into  tt2 values(60.51);
 insert into  tt2 values();
 select * from tt2;
 drop table tt2;
+
+-- #bug8478
+CREATE TABLE f_tingsm (
+paiqxx_id BIGINT NOT NULL COMMENT "Scheduling Information ID",
+sheary_id BIGINT NOT NULL COMMENT 'Personnel ID',
+fay_daim VARCHAR(50) NOT NULL COMMENT `Court Code`
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT="Trial Information Form";
+CREATE UNIQUE INDEX unique_index ON f_tingsm(paiqxx_id, sheary_id, fay_daim) COMMENT "Single schedulign, Individual personnel, Single court unique";
+DESC f_tingsm;
+DROP TABLE f_tingsm;
