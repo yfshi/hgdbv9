@@ -1771,23 +1771,17 @@ SELECT * FROM test10fk;
 (1 row)
 
 DELETE FROM test10pk WHERE x = 'abc';
-ERROR:  syntax error at or near "ONLY"
-LINE 1: DELETE FROM ONLY "collate_tests"."test10fk" WHERE $1 OPERATO...
-                    ^
-QUERY:  DELETE FROM ONLY "collate_tests"."test10fk" WHERE $1 OPERATOR(pg_catalog.=) "x"
 SELECT * FROM test10pk;
   x  
 -----
- abc
  def
  ghi
-(3 rows)
+(2 rows)
 
 SELECT * FROM test10fk;
-  x  
------
- abc
-(1 row)
+ x 
+---
+(0 rows)
 
 -- PK is case-insensitive, FK is case-sensitive
 CREATE TABLE test11pk (x text COLLATE case_insensitive PRIMARY KEY);
@@ -1823,24 +1817,17 @@ SELECT * FROM test11fk;
 (2 rows)
 
 DELETE FROM test11pk WHERE x = 'abc';
-ERROR:  syntax error at or near "ONLY"
-LINE 1: DELETE FROM ONLY "collate_tests"."test11fk" WHERE $1 OPERATO...
-                    ^
-QUERY:  DELETE FROM ONLY "collate_tests"."test11fk" WHERE $1 OPERATOR(pg_catalog.=) "x" COLLATE "collate_tests"."case_insensitive"
 SELECT * FROM test11pk;
   x  
 -----
  def
  ghi
- ABC
-(3 rows)
+(2 rows)
 
 SELECT * FROM test11fk;
-  x  
------
- ABC
- ABC
-(2 rows)
+ x 
+---
+(0 rows)
 
 -- partitioning
 CREATE TABLE test20 (a int, b text COLLATE case_insensitive) PARTITION BY LIST (b);

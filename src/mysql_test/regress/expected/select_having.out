@@ -2,7 +2,7 @@
 -- SELECT_HAVING
 --
 -- load test data
-CREATE TABLE test_having (a int, b int, c char(8), d char);
+CREATE TABLE test_having (a int, b int, c char(8) collate "C", d char);
 INSERT INTO test_having VALUES (0, 1, 'XXXX', 'A');
 INSERT INTO test_having VALUES (1, 2, 'AAAA', 'b');
 INSERT INTO test_having VALUES (2, 2, 'AAAA', 'c');
@@ -26,8 +26,8 @@ SELECT b, c FROM test_having
 	GROUP BY b, c HAVING b = 3 ORDER BY b, c;
  b |    c     
 ---+----------
- 3 | bbbb    
  3 | BBBB    
+ 3 | bbbb    
 (2 rows)
 
 SELECT lower(c), count(c) FROM test_having
@@ -45,8 +45,8 @@ SELECT c, max(a) FROM test_having
 	ORDER BY c;
     c     | max 
 ----------+-----
- bbbb     |   5
  XXXX     |   0
+ bbbb     |   5
 (2 rows)
 
 -- test degenerate cases involving HAVING without GROUP BY

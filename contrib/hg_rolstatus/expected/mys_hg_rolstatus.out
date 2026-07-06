@@ -705,3 +705,5 @@ ERROR:  permission denied
 select pg_reload_conf();
 ERROR:  permission denied for function pg_reload_conf
 reset role;
+drop role user1;
+drop role user2;

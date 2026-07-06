@@ -29,7 +29,9 @@
 #if USE_OPENSSL
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 #include <openssl/kdf.h>
+#endif
 #endif /* USE_OPENSSL */
 
 PG_FUNCTION_INFO_V1(ivymy_aes_encrypt);
@@ -302,7 +304,7 @@ kdf_function_derive_key(char *kdf_name,
 			EVP_PKEY_CTX_free(pctx);
 			return false;
 		}
-#if OPENSSL_VERSION_NUMBER >= 0x30000020L
+#if OPENSSL_VERSION_NUMBER >= 0x30000020L || OPENSSL_VERSION_NUMBER < 0x10101000L
 		return false;
 #else
 		if (EVP_PKEY_CTX_set_hkdf_md(pctx, EVP_sha512()) <= 0)

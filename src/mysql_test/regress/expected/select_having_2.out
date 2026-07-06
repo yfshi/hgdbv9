@@ -2,7 +2,7 @@
 -- SELECT_HAVING
 --
 -- load test data
-CREATE TABLE test_having (a int, b int, c char(8), d char);
+CREATE TABLE test_having (a int, b int, c char(8) collate "C", d char);
 INSERT INTO test_having VALUES (0, 1, 'XXXX', 'A');
 INSERT INTO test_having VALUES (1, 2, 'AAAA', 'b');
 INSERT INTO test_having VALUES (2, 2, 'AAAA', 'c');

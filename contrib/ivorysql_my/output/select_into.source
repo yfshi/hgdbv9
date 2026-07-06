@@ -1,3 +1,4 @@
+\! perl -e "unlink glob 'results/test_select_into_*.csv' or 1"
 -- create test table and insert data
 create table test_select_into(id int, age int, name varchar(20));
 insert into test_select_into values(1,1,'hello');
@@ -178,7 +179,6 @@ select * from test_7477 into OUTFILE '@abs_builddir@/results/test_select_into_74
 select * from test_7477 into OUTFILE '@abs_builddir@/results/test_select_into_7477.csv';
 ERROR:  file "@abs_builddir@/results/test_select_into_7477.csv" already exists
 drop table test_7477;
-\! rm @abs_builddir@/results/test_select_into_7477.csv
 -- test character set
 create database select_into_gbk encoding='gbk' LC_COLLATE='C' LC_CTYPE ='C' TEMPLATE=template0;
 \c select_into_gbk
@@ -219,8 +219,8 @@ insert into test_7476(name, age, city, create_time) values('Alice', 25, '亚特�
 insert into test_7476(name, age, city, create_time) values ('Bob', 30, '波士顿Boston', '2026-05-28');
 insert into test_7476(name, age, city, create_time) values ('Charlie', 28, '芝加哥Chicago', '2026-05-29');
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_1.csv' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_1.csv');
-                pg_read_file                 
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_1.csv'), e'\r', e'', e'\g');
+               regexp_replace                
 ---------------------------------------------
  1,"Alice",25,"亚特兰大Atlanta","2026-05-27"+
  2,"Bob",30,"波士顿Boston","2026-05-28"     +
@@ -229,8 +229,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_1.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_2.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_2.csv');
-                pg_read_file                 
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_2.csv'), e'\r', e'', e'\g');
+               regexp_replace                
 ---------------------------------------------
  1,|Alice|,25,|亚特兰大Atlanta|,|2026-05-27|+
  2,|Bob|,30,|波士顿Boston|,|2026-05-28|     +
@@ -239,8 +239,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_2.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_3.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_3.csv');
-                  pg_read_file                   
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_3.csv'), e'\r', e'', e'\g');
+                 regexp_replace                  
 -------------------------------------------------
  |1|,|Alice|,|25|,|亚特兰大Atlanta|,|2026-05-27|+
  |2|,|Bob|,|30|,|波士顿Boston|,|2026-05-28|     +
@@ -248,15 +248,14 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_3.csv');
  
 (1 row)
 
-\! rm -rf @abs_builddir@/results/test_select_into_7476*
 -- more test case
 delete from test_7476;
 insert into test_7476(name, age, city, create_time) values('Alice', 25, '亚特兰大"Atlanta', '2026-05-27');
 insert into test_7476(name, age, city, create_time) values ('Bob', 30, '波士顿""Boston', '2026-05-28');
 insert into test_7476(name, age, city, create_time) values ('Charlie', 28, '芝加哥"""Chicago', '2026-05-29');
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m3.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_m3.csv');
-                   pg_read_file                    
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_m3.csv'), e'\r', e'', e'\g');
+                  regexp_replace                   
 ---------------------------------------------------
  4,|Alice|,25,|亚特兰大""Atlanta|,|2026-05-27|    +
  5,|Bob|,30,|波士顿""""Boston|,|2026-05-28|       +
@@ -265,8 +264,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_m3.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m4.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_m4.csv');
-                   pg_read_file                    
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_m4.csv'), e'\r', e'', e'\g');
+                  regexp_replace                   
 ---------------------------------------------------
  4,"Alice",25,"亚特兰大""Atlanta","2026-05-27"    +
  5,"Bob",30,"波士顿""""Boston","2026-05-28"       +
@@ -275,8 +274,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_m4.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m5.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_m5.csv');
-                     pg_read_file                      
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_m5.csv'), e'\r', e'', e'\g');
+                    regexp_replace                     
 -------------------------------------------------------
  |4|,|Alice|,|25|,|亚特兰大""Atlanta|,|2026-05-27|    +
  |5|,|Bob|,|30|,|波士顿""""Boston|,|2026-05-28|       +
@@ -285,8 +284,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_m5.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m6.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_m6.csv');
-                     pg_read_file                      
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_m6.csv'), e'\r', e'', e'\g');
+                    regexp_replace                     
 -------------------------------------------------------
  "4","Alice","25","亚特兰大""Atlanta","2026-05-27"    +
  "5","Bob","30","波士顿""""Boston","2026-05-28"       +
@@ -295,8 +294,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_m6.csv');
 (1 row)
 
 SELECT age,city INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m7.csv' FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_m7.csv');
-       pg_read_file       
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_m7.csv'), e'\r', e'', e'\g');
+      regexp_replace      
 --------------------------
  25,|亚特兰大""Atlanta|  +
  30,|波士顿""""Boston|   +
@@ -305,8 +304,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_m7.csv');
 (1 row)
 
 SELECT age,city INTO OUTFILE '@abs_builddir@/results/test_select_into_7476_m8.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7476;
-select pg_read_file('@abs_builddir@/results/test_select_into_7476_m8.csv');
-        pg_read_file        
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7476_m8.csv'), e'\r', e'', e'\g');
+       regexp_replace       
 ----------------------------
  |25|,|亚特兰大""Atlanta|  +
  |30|,|波士顿""""Boston|   +
@@ -315,13 +314,12 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7476_m8.csv');
 (1 row)
 
 drop table test_7476;
-\! rm -rf @abs_builddir@/results/test_select_into_7476*
 ------ bug#7538
 create table test_7538(id int primary key auto_increment, name varchar(50) not null, age tinyint, city varchar(100));
 insert into test_7538(name, age, city) values('Alice', 25, '亚特兰大""Atlanta'), ('Bob', 30, '波士顿"Boston'), ('Charlie', 28, '芝加哥"""Chicago');
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7538_1.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_7538;
-select pg_read_file('@abs_builddir@/results/test_select_into_7538_1.csv');
-               pg_read_file               
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7538_1.csv'), e'\r', e'', e'\g');
+              regexp_replace              
 ------------------------------------------
  |1|,|Alice|,|25|,|亚特兰大""""Atlanta|  +
  |2|,|Bob|,|30|,|波士顿""Boston|         +
@@ -330,8 +328,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7538_1.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_7538_2.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '"' ESCAPED BY '"' FROM test_7538;
-select pg_read_file('@abs_builddir@/results/test_select_into_7538_2.csv');
-               pg_read_file               
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_7538_2.csv'), e'\r', e'', e'\g');
+              regexp_replace              
 ------------------------------------------
  "1","Alice","25","亚特兰大""""Atlanta"  +
  "2","Bob","30","波士顿""Boston"         +
@@ -340,13 +338,12 @@ select pg_read_file('@abs_builddir@/results/test_select_into_7538_2.csv');
 (1 row)
 
 drop table test_7538;
-\! rm -rf @abs_builddir@/results/test_select_into_7538*
 -- bug#z8452
 create table test_8452(id int primary key auto_increment, name varchar(50), age tinyint, city varchar(100));
 insert into test_8452(name, age, city) values('Alice', 25, 'AL""Atlanta'), ('Bob', 30, 'BOS"Boston'), ('Charlie', 28, 'CHI""Chicago');
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_8452_1.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' FROM test_8452;
-select pg_read_file('@abs_builddir@/results/test_select_into_8452_1.csv');
-            pg_read_file             
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_8452_1.csv'), e'\r', e'', e'\g');
+           regexp_replace            
 -------------------------------------
  |1|,|Alice|,|25|,|AL""""Atlanta|   +
  |2|,|Bob|,|30|,|BOS""Boston|       +
@@ -355,8 +352,8 @@ select pg_read_file('@abs_builddir@/results/test_select_into_8452_1.csv');
 (1 row)
 
 SELECT * INTO OUTFILE '@abs_builddir@/results/test_select_into_8452_2.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '|' ESCAPED BY '"' FROM test_8452;
-select pg_read_file('@abs_builddir@/results/test_select_into_8452_2.csv');
-            pg_read_file             
+select regexp_replace(pg_read_file('@abs_builddir@/results/test_select_into_8452_2.csv'), e'\r', e'', e'\g');
+           regexp_replace            
 -------------------------------------
  |1|,|Alice|,|25|,|AL""""Atlanta|   +
  |2|,|Bob|,|30|,|BOS""Boston|       +
@@ -365,7 +362,6 @@ select pg_read_file('@abs_builddir@/results/test_select_into_8452_2.csv');
 (1 row)
 
 drop table test_8452;
-\! rm -rf @abs_builddir@/results/test_select_into_8452*
 -- bug#9089
 CREATE TABLE `setting`  (
   `Id` int unsigned NOT NULL,
@@ -403,4 +399,3 @@ drop table setting;
 drop database select_into_gbk;
 drop table test_check;
 drop table test_select_into;
-\! rm -f @abs_builddir@/results/test_select_into*

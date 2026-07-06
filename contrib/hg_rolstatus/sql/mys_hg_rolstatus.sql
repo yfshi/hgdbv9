@@ -361,3 +361,6 @@ alter system set hg_rolstatus.enable=off;
 alter system set hg_rolstatus.enable=on;
 select pg_reload_conf();
 reset role;
+
+drop role user1;
+drop role user2;

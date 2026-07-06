@@ -298,8 +298,10 @@ sub bincheck
 		next unless -d "$dir/mys_t";
 		my $status = tap_check($dir);
 		$mstat ||= $status;
+
+		exit $mstat if $mstat;
 	}
-	exit $mstat if $mstat;
+
 	return;
 }
 
@@ -646,6 +648,10 @@ sub upgradecheck
 	mkdir $logdir || die $!;
 	print "\nRunning initdb on old cluster\n\n";
 	standard_initdb() or exit 1;
+	my $conf_path = "$ENV{PGDATA}/postgresql.conf";
+	open(my $conf_file, '>>', $conf_path) or die "Cannot open $conf_path: $!";
+	print $conf_file "\nmysql.protocol_type = pg\n";
+	close($conf_file);
 	print "\nStarting old cluster\n\n";
 	my @args = ('pg_ctl', 'start', '-l', "$logdir/postmaster1.log", '-o', "-p $pg_port -m $mys_port -c mysql.regress_test_default_value=on");
 	system(@args) == 0 or exit 1;

@@ -7694,7 +7694,8 @@ timestamp_mystimestamp(PG_FUNCTION_ARGS)
 				 errmsg("timestamp out of range")));
 	}
 
-	date = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) * 1000000L;
+	date = tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday;
+	date = date * 1000000;
 	time = tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 	result = date + time;
 

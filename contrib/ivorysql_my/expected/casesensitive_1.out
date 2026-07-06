@@ -600,41 +600,37 @@ drop schema MYSQLT;
 -- test collate(BTREE)
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "binary");
-ERROR:  collation "binary" for encoding "UTF8" does not exist
-LINE 1: create table test(sId int, sName text collate "binary");
-                                              ^
 --create index on test
 create index idx_Text on test(sname);
-ERROR:  relation "test" does not exist
 --insert data into test
 insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000);
-ERROR:  relation "test" does not exist
-LINE 1: insert into test select generate_series(1,100000) as i, 'zha...
-                    ^
 insert into test values (100001, 'zhangsan99999');
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100001, 'zhangsan99999');
-                    ^
 insert into test values (100002, 'ZHANGsan99999');
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100002, 'ZHANGsan99999');
-                    ^
 --query data from test
 select COUNT(*) from test;
-ERROR:  relation "test" does not exist
-LINE 1: select COUNT(*) from test;
-                             ^
+ COUNT  
+--------
+ 100002
+(1 row)
+
 select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: select * from test where SNAME = 'zhangsan99999';
-                      ^
+  sId   |     sName     
+--------+---------------
+  99999 | zhangsan99999
+ 100001 | zhangsan99999
+(2 rows)
+
 --explain
 explain (costs off) select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: explain (costs off) select * from test where SNAME = 'zhangs...
-                                          ^
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Bitmap Heap Scan on test
+   Recheck Cond: ("sName" = 'zhangsan99999'::text)
+   ->  Bitmap Index Scan on "idx_Text"
+         Index Cond: ("sName" = 'zhangsan99999'::text)
+(4 rows)
+
 drop table test;
-ERROR:  table "test" does not exist
 ------------------------------------------------
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "utf8mb4_general_ci");
@@ -847,41 +843,37 @@ drop table test;
 -- test collate(HASH)
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "binary");
-ERROR:  collation "binary" for encoding "UTF8" does not exist
-LINE 1: create table test(sId int, sName text collate "binary");
-                                              ^
 --create index on test
 create index idx_Text on test using hash(sname);
-ERROR:  relation "test" does not exist
 --insert data into test
 insert into test select generate_series(1,100000) as i, 'zhangsan' operator(pg_catalog.||) generate_series(1,100000); --err
-ERROR:  relation "test" does not exist
-LINE 1: insert into test select generate_series(1,100000) as i, 'zha...
-                    ^
 insert into test values (100001, 'zhangsan99999'); --err
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100001, 'zhangsan99999');
-                    ^
 insert into test values (100002, 'ZHANGsan99999'); --err
-ERROR:  relation "test" does not exist
-LINE 1: insert into test values (100002, 'ZHANGsan99999');
-                    ^
 --query data from test
 select COUNT(*) from test;
-ERROR:  relation "test" does not exist
-LINE 1: select COUNT(*) from test;
-                             ^
+ COUNT  
+--------
+ 100002
+(1 row)
+
 select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: select * from test where SNAME = 'zhangsan99999';
-                      ^
+  sId   |     sName     
+--------+---------------
+  99999 | zhangsan99999
+ 100001 | zhangsan99999
+(2 rows)
+
 --explain
 explain (costs off) select * from test where SNAME = 'zhangsan99999';
-ERROR:  relation "test" does not exist
-LINE 1: explain (costs off) select * from test where SNAME = 'zhangs...
-                                          ^
+                      QUERY PLAN                       
+-------------------------------------------------------
+ Bitmap Heap Scan on test
+   Recheck Cond: ("sName" = 'zhangsan99999'::text)
+   ->  Bitmap Index Scan on "idx_Text"
+         Index Cond: ("sName" = 'zhangsan99999'::text)
+(4 rows)
+
 drop table test;
-ERROR:  table "test" does not exist
 ------------------------------------------------
 -- Create a table and specify the sorting method
 create table test(sId int, sName text collate "utf8mb4_general_ci");

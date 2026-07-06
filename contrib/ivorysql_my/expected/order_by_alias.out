@@ -6,7 +6,7 @@ DROP TABLE IF EXISTS t1, t2, t3;
 NOTICE:  table "t1" does not exist, skipping
 NOTICE:  table "t2" does not exist, skipping
 NOTICE:  table "t3" does not exist, skipping
-CREATE TABLE t1 (id INT, facility CHAR(20));
+CREATE TABLE t1 (id INT, facility CHAR(20) collate utf8_bin);
 CREATE TABLE t2 (facility CHAR(20));
 INSERT INTO t1 VALUES
 (NULL,NULL), (-1,''), (0,''), (1,'/L'), (2,'A01'), (3,'ANC'),
@@ -28,11 +28,11 @@ ORDER BY b DESC, a;
   8 |   8 | RV                  
   7 |   7 | P                   
   6 |   6 | MT                  
-  1 |   1 | /L                  
   5 |   5 | FBX                 
   4 |   4 | F01                 
   3 |   3 | ANC                 
   2 |   2 | A01                 
+  1 |   1 | /L                  
  -1 |  -1 |                     
   0 |   0 |                     
 (13 rows)

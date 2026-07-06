@@ -91,7 +91,9 @@ drop table t2;
 
 --toplevel_stmt
 create table t1(c int); insert into t1 values(1); rename table t1 to t2; select * from t2; drop table t2;
-create user user1;create user user2;rename user user1 to user3,user2 to user4;
+create user user1;
+create user user2;
+rename user user1 to user3,user2 to user4;
 drop user user3;
 drop user user4;
 
