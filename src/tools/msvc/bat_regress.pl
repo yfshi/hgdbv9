@@ -133,6 +133,8 @@ system("initdb.exe -D $installdir/data -m mysql --encoding=UTF-8");
 open(my $conf_file, '>>', "$installdir/data/postgresql.conf") or error_exit("can not append postgresql.conf");
 print $conf_file "\n# Configuration added by pg_regress\n\n";
 print $conf_file "audit.track_settings = off\n";
+print $conf_file "port = $pg_port\n";
+print $conf_file "ivorysql.port = $ivy_port\n";
 close($conf_file);
 my $status16 = $? >> 8;
 exit $status16 if $status16;
@@ -140,8 +142,7 @@ system("pg_ctl.exe -D $installdir/data start -o \"-c mysql.regress_test_default_
 my $status17 = $? >> 8;
 exit $status17 if $status17;
 chdir "$startdir";
-
-$ENV{PGPORT} = 5432;
+$ENV{PGPORT} = "$pg_port";
 
 my @vcregress_mys_pg_install = ("installcheck","plcheck","contribcheck","modulescheck","ecpgcheck","isolationcheck");
 foreach $a (@vcregress_mys_pg_install){
@@ -220,6 +221,7 @@ open(my $conf_file, '>>', "$installdir/data/postgresql.conf") or error_exit("can
 print $conf_file "\n# Configuration added by pg_regress\n\n";
 print $conf_file "audit.track_settings = off\n";
 print $conf_file "port = $pg_port\n";
+print $conf_file "ivorysql.port = $ivy_port\n";
 print $conf_file "mysql.port = $my_port\n"; 	# bug#6805
 print $conf_file "mysql.protocol_type = pg\n";	# bug#6805
 close($conf_file);
