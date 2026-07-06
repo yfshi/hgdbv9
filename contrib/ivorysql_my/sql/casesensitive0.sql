@@ -607,6 +607,14 @@ ALTER TABLE TB add COLUMN IDD text, add COLUMN aaa text;
 \d TB
 drop table TB;
 
+/* Begin #Z8459 */
+-- Test with lower_case_table_names = 0 (case-sensitive, store as given)
+CREATE SCHEMA "RenSchema0";
+ALTER SCHEMA "RenSchema0" RENAME TO "RenSchema0_New";
+SELECT nspname AS pg_ns FROM pg_namespace WHERE nspname LIKE 'RenSchema0%' ORDER BY nspname;
+SELECT objname AS pg_obj FROM pg_object WHERE objname LIKE 'RenSchema0%' ORDER BY objname;
+DROP SCHEMA "RenSchema0_New";
+/* End #Z8459 */
 
 reset ivorysql.compatible_mode;
 reset lower_case_table_names;

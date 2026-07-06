@@ -4511,6 +4511,13 @@ getNamespaces(Archive *fout, int *numNamespaces)
 		/* Begin - ReqID:SRS-MYSQL-CASE */
 		nsinfo[i].dobj.compatible_mode = PQgetisnull(res, i, i_compatible_mode) ? "p" : pg_strdup(PQgetvalue(res, i, i_compatible_mode));
 		nsinfo[i].dobj.addoptions.mysql.caselowernum = PQgetisnull(res, i, i_caselowernum) ? 3 : atooid(PQgetvalue(res, i, i_caselowernum));
+
+		/*
+		 * When lower_case_table_names = 2, pg_namespace.nspname stores the
+		 * lower-cased name while pg_object.objname preserves the original
+		 * casing the user typed at CREATE time.  Use the original name so
+		 * that the dump script recreates the schema with the correct case.
+		 */
 		if (PQgetisnull(res, i, i_orinspname) == 0)
 			nsinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_orinspname));
 		nsinfo[i].dobj.addoptions.mysql.oriname = pg_strdup(PQgetvalue(res, i, i_nspname));

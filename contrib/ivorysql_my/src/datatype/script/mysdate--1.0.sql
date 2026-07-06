@@ -532,3 +532,36 @@ PARALLEL SAFE
 STRICT
 STABLE;
 CREATE CAST (ivymy.mysdate AS pg_catalog.numeric) WITH FUNCTION ivymy.mysdate_numeric(ivymy.mysdate) AS ASSIGNMENT;
+
+/* Begin bug#Z8459 */
+CREATE OR REPLACE FUNCTION ivymy.mysdate_minus_interval(ivymy.mysdate, pg_catalog.interval)
+RETURNS ivymy.mysdatetime
+AS $$ SELECT (($1::text::pg_catalog.date) - $2)::ivymy.mysdatetime $$
+LANGUAGE sql
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+CREATE OPERATOR - (
+       procedure = ivymy.mysdate_minus_interval,
+       leftarg = ivymy.mysdate,
+       rightarg = pg_catalog.interval
+);
+
+CREATE OR REPLACE FUNCTION ivymy.mysdate_plus_interval(ivymy.mysdate, pg_catalog.interval)
+RETURNS ivymy.mysdatetime
+AS $$ SELECT (($1::text::pg_catalog.date) + $2)::ivymy.mysdatetime $$
+LANGUAGE sql
+PARALLEL SAFE
+STRICT
+IMMUTABLE
+LEAKPROOF;
+
+
+CREATE OPERATOR + (
+       procedure = ivymy.mysdate_plus_interval,
+       leftarg = ivymy.mysdate,
+       rightarg = pg_catalog.interval
+);
+/* End bug#Z8459 */

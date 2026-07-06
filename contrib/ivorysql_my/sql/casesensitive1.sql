@@ -366,6 +366,14 @@ DROP SCHEMA sC cascade;		--err
 DROP SCHEMA Sc cascade;		--err
 DROP SCHEMA SC cascade;		--err
 
+/* Begin #Z8459 */
+-- Test with lower_case_table_names = 1 (case-insensitive, store lowercase)
+CREATE SCHEMA "RenSchema1";
+ALTER SCHEMA "RenSchema1" RENAME TO "RenSchema1_New";
+SELECT nspname AS pg_ns FROM pg_namespace WHERE nspname LIKE 'renschema1%' ORDER BY nspname;
+SELECT objname AS pg_obj FROM pg_object WHERE objname LIKE '%renschema1%' OR objname LIKE '%RenSchema1%' ORDER BY objname;
+DROP SCHEMA renschema1_new;
+/* End #Z8459 */
 
 reset ivorysql.compatible_mode;
 reset lower_case_table_names;
