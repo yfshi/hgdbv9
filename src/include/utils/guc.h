@@ -552,6 +552,7 @@ extern PGDLLIMPORT bool cast_to_char;
 /* End - BUG#M533 */
 
 extern PGDLLIMPORT bool enable_mysql_information_schema;
+extern PGDLLIMPORT int create_database_mode;			/* BUG#Z8480 */
 
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 extern PGDLLIMPORT char *lc_time_names;
@@ -887,7 +888,13 @@ enum block_encryption_mode
 	mys_aes_192_ofb,
 	mys_aes_256_ofb,
 };
-
+/* Begin - BUG#Z8480 */
+enum create_database_mode_type
+{
+	CDM_DATABASE,
+	CDM_SCHEMA,
+};
+/* End - BUG#Z8480 */
 #define MYS_AES_BEGIN mys_aes_128_ecb
 #define MYS_AES_END mys_aes_256_ofb
 

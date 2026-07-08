@@ -18,3 +18,5 @@
 #lc_time_names = 'en_US'
 
 #default_week_format = 0
+
+#mysql.create_database_mode = schema   # 'database' or 'schema' for CREATE/DROP DATABASE

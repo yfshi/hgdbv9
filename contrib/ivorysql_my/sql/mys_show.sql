@@ -14,6 +14,7 @@ show variables where VARIABLE_NAME like 'sql_quote%';
 --show global variables;
 
 --show create database
+SET mysql.create_database_mode=schema;
 create database aa;
 show create database aa;
 set sql_quote_show_create = false;
@@ -864,6 +865,6 @@ create table tb(id int primary key, name text);
 create index tb_name_idx on tb(name);
 show indexes from tb;
 drop table tb;
-
+reset mysql.create_database_mode;
 set sql_mode = DEFAULT;
 -- # Begin - BUG#7662

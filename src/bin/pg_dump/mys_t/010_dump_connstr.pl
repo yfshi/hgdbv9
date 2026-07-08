@@ -162,6 +162,8 @@ $node->command_ok(
 
 $node->run_log([ 'dropdb', '-U', $src_bootstrap_super, $dbname1 ]);
 
+	{
+		local $ENV{PGOPTIONS} = '-c mysql.create_database_mode=database';
 $node->command_ok(
 	[
 		'pg_restore', '-C',  '-v', '-d',
@@ -169,6 +171,7 @@ $node->command_ok(
 		$dirfmt
 	],
 	'parallel restore with create');
+	}
 
 
 $node->command_ok(
@@ -199,6 +202,7 @@ $envar_node->run_log(
 {
 	local $ENV{PGPORT} = $envar_node->port;
 	local $ENV{PGUSER} = $restore_super;
+	local $ENV{PGOPTIONS} = '-c mysql.create_database_mode=database';
 	$result = run_log([ 'psql', '-X', '-f', $plain ], '2>', \$stderr);
 }
 ok($result,
@@ -221,6 +225,7 @@ $cmdline_node->start;
 $cmdline_node->run_log(
 	[ 'createuser', '-U', $dst_bootstrap_super, '-s', $restore_super ]);
 {
+	local $ENV{PGOPTIONS} = '-c mysql.create_database_mode=database';
 	$result = run_log(
 		[
 			'psql',         '-p', $cmdline_node->port, '-U',
