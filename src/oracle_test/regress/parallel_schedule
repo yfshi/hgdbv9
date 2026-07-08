@@ -308,3 +308,7 @@ test: ora_readonly_view
 #/* Begin - OA-REQ-2464 */
 test: ora_flexible_group_having_order
 #/* End - OA-REQ-2464 */
+
+#/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+test: ora_result_cache_gram
+#/* End - ReqID:SRS-MISC-RESULT_CACHE */

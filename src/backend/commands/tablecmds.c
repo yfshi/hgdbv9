@@ -5624,6 +5624,10 @@ AlterTableGetLockLevel(List *cmds)
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 			/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+			/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+			case AT_ResultCache:
+			    break;
+			/* End - ReqID:SRS-MISC-RESULT_CACHE */
 
 			default:			/* oops */
 				elog(ERROR, "unrecognized alter table type: %d",
@@ -6224,6 +6228,12 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			pass = AT_PASS_MISC;
 			break;
 		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+		case AT_ResultCache:
+			ATSimplePermissions(rel, ATT_TABLE);
+			pass = AT_PASS_MISC;
+			break;
+		/* End - ReqID:SRS-MISC-RESULT_CACHE */
 
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
@@ -6748,6 +6758,10 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			ATExecModifyChangeColumn(tab, rel, cmd, lockmode);
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-Alter */
+		/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
+		case AT_ResultCache:
+			break;
+		/* End - ReqID:SRS-MISC-RESULT_CACHE */
 
 		default:				/* oops */
 			elog(ERROR, "unrecognized alter table type: %d",
