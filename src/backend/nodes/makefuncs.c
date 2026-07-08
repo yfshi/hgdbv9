@@ -93,9 +93,6 @@ makeVar(Index varno,
 
 	/* Likewise, we just set location to "unknown" here */
 	var->location = -1;
-	/* Begin - BUG#8430 */
-	var->union_null_res = false;
-	/* End - BUG#8430 */
 
 	return var;
 }
@@ -309,9 +306,6 @@ makeTargetEntry(Expr *expr,
 	tle->resorigcol = 0;
 
 	tle->resjunk = resjunk;
-	/* Begin - BUG#8430 */
-	tle->union_null_res = false;
-	/* End - BUG#8430 */
 
 	return tle;
 }

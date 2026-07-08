@@ -1200,11 +1200,11 @@ _outVar(StringInfo str, const Var *node)
 	WRITE_UINT_FIELD(varlevelsup);
 	WRITE_UINT_FIELD(varnosyn);
 	WRITE_INT_FIELD(varattnosyn);
-	WRITE_LOCATION_FIELD(location);
 	/* Begin - BUG#8430 */
 	WRITE_BOOL_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-	WRITE_BOOL_FIELD(union_null_res);
+	WRITE_BOOL_FIELD(varisnull); /* bug#00008497 */
 	/* End - BUG#8430 */
+	WRITE_LOCATION_FIELD(location);
 }
 
 /* Begin - ReqID:SRS-SQL-ROWNUM */
@@ -1779,6 +1779,9 @@ _outSetToDefault(StringInfo str, const SetToDefault *node)
 	WRITE_OID_FIELD(typeId);
 	WRITE_INT_FIELD(typeMod);
 	WRITE_OID_FIELD(collation);
+	/* Begin - bug#00008497 */
+	WRITE_BOOL_FIELD(isnull);
+	/* End - bug#00008497 */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -1830,7 +1833,6 @@ _outTargetEntry(StringInfo str, const TargetEntry *node)
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/* Begin - BUG#8430 */
 	WRITE_BOOL_FIELD(resname_is_alias);
-	WRITE_BOOL_FIELD(union_null_res);
 	/* End - BUG#8430 */
 }
 

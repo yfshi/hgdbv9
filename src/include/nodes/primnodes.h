@@ -228,10 +228,10 @@ typedef struct Var
 	Index		varnosyn;		/* syntactic relation index (0 if unknown) */
 	AttrNumber	varattnosyn;	/* syntactic attribute number */
 	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	/* Begin - bug#00008497 */
+	bool		varisnull;			/* var is comes from null const */
+	/* End - bug#00008497 */
 	int			location;		/* token location, or -1 if unknown */
-	/* Begin - BUG#8430 */
-	bool		union_null_res;  /* select null union select null, set true*/
-	/* End - BUG#8430 */
 } Var;
 
 /* Begin - ReqID:SRS-SQL-ROWNUM */
@@ -1492,6 +1492,9 @@ typedef struct SetToDefault
 	Oid			typeId;			/* type for substituted value */
 	int32		typeMod;		/* typemod for substituted value */
 	Oid			collation;		/* collation for the substituted value */
+	/* Begin - bug#00008497 */
+	bool		isnull;			/* is null */
+	/* End - bug#00008497 */
 	int			location;		/* token location, or -1 if unknown */
 } SetToDefault;
 
@@ -1620,9 +1623,6 @@ typedef struct TargetEntry
 	/* Begin: Req:SRS-MYSQL-SQL-Select */
 	bool		resname_is_alias;		/*Is resname an alias*/
 	/* End: Req:SRS-MYSQL-SQL-Select */
-	/* Begin - BUG#8430 */
-	bool		union_null_res;
-	/* End - BUG#8430 */
 } TargetEntry;
 
 

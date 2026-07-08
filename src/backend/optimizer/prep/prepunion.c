@@ -1171,14 +1171,15 @@ generate_setop_tlist(List *colTypes, List *colCollations,
 									exprTypmod((Node *) inputtle->expr),
 									exprCollation((Node *) inputtle->expr),
 									0);
-			/* Begin - BUG#8430 */
-			if (compatible_mode == ORA_MODE &&
+			/* Begin - bug#00008430 */
+			if (ORA_MODE == compatible_mode &&
 				enable_setoperation_null &&
+				inputtle->expr &&
 				IsA(inputtle->expr, Var))
 			{
-				((Var*)expr)->union_null_res = ((Var*)(inputtle->expr))->union_null_res;
+				((Var*) expr)->varisnull = ((Var*) (inputtle->expr))->varisnull; /* bug#00008497 */
 			}
-			/* End - BUG#8430 */
+			/* End - bug#00008430 */
 		}
 
 		if (exprType(expr) != colType)

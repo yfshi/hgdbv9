@@ -1539,11 +1539,11 @@ _copyVar(const Var *from)
 	COPY_SCALAR_FIELD(varlevelsup);
 	COPY_SCALAR_FIELD(varnosyn);
 	COPY_SCALAR_FIELD(varattnosyn);
-	COPY_LOCATION_FIELD(location);
 	/* Begin - BUG#8430 */
 	COPY_SCALAR_FIELD(has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-	COPY_SCALAR_FIELD(union_null_res);
+	COPY_SCALAR_FIELD(varisnull); /* bug#00008497 */
 	/* End - BUG#8430 */
+	COPY_LOCATION_FIELD(location);
 
 	return newnode;
 }
@@ -2296,6 +2296,9 @@ _copySetToDefault(const SetToDefault *from)
 	COPY_SCALAR_FIELD(typeId);
 	COPY_SCALAR_FIELD(typeMod);
 	COPY_SCALAR_FIELD(collation);
+	/* Begin - bug#00008497 */
+	COPY_SCALAR_FIELD(isnull);
+	/* End - bug#00008497 */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -2367,7 +2370,6 @@ _copyTargetEntry(const TargetEntry *from)
 	/* End - ReqID:SRS-MYSQL-UPDATE */
 	/* Begin - BUG#8430 */
 	COPY_SCALAR_FIELD(resname_is_alias);
-	COPY_SCALAR_FIELD(union_null_res);
 	/* End - BUG#8430 */
 
 	return newnode;

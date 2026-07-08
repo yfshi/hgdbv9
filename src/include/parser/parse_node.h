@@ -506,9 +506,9 @@ struct ParseNamespaceColumn
 	AttrNumber	p_varattnosyn;	/* attribute number of syntactic referent */
 	bool		p_dontexpand;	/* not included in star expansion */
 	bool		p_var_visible;  /* Mark whether the column is visible */	/* ReqID:SRS-SQL-INVISIBLECOL */
-	/* Begin - BUG#8430 */
-	bool		union_null_res;
-	/* End - BUG#8430 */
+	/* Begin - bug#00008497 */
+	bool		p_var_isnull;	/* Mark whether the column is all null */
+	/* End - bug#00008497 */
 };
 
 /* Support for parser_errposition_callback function */

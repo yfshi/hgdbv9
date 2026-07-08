@@ -3276,6 +3276,9 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	ParseNamespaceColumn *sortnscolumns;
 	int			sortcolindex;
 	int			tllen;
+	/* Begin - bug#00008497 */
+	List	   *restargetlist = NIL;
+	/* End - bug#00008497 */
 
 	qry->commandType = CMD_SELECT;
 
@@ -3337,8 +3340,15 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 	/*
 	 * Recursively transform the components of the tree.
 	 */
-	sostmt = castNode(SetOperationStmt,
+	/* Begin - bug#00008497 */
+	if (ORA_MODE == compatible_mode &&
+		enable_setoperation_null)
+		sostmt = castNode(SetOperationStmt,
+					  transformSetOperationTree(pstate, stmt, true, &restargetlist));
+	else
+		sostmt = castNode(SetOperationStmt,
 					  transformSetOperationTree(pstate, stmt, true, NULL));
+	/* End - bug#00008497 */
 	Assert(sostmt);
 	qry->setOperations = (Node *) sostmt;
 
@@ -3383,26 +3393,41 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 		char	   *colName;
 		TargetEntry *tle;
 		Var		   *var;
+		/* Begin - bug#00008497 */
+		bool	isallnull = false;
+		/* End - bug#00008497 */
 
 		Assert(!lefttle->resjunk);
 		colName = pstrdup(lefttle->resname);
+
+		/* Begin - bug#00008497 */
+		/* check var come from null const */
+		if (ORA_MODE == compatible_mode &&
+			enable_setoperation_null)
+		{
+			TargetEntry *restle = (TargetEntry *) list_nth(restargetlist, sortcolindex);
+
+			if (IsA(restle->expr, SetToDefault))
+			{
+				SetToDefault *st = (SetToDefault *) restle->expr;
+
+				if (st->isnull)
+					isallnull = true;
+			}
+		}
+		/* End - bug#00008497 */
 		var = makeVar(leftmostRTI,
-					  lefttle->resno,
-					  colType,
-					  colTypmod,
-					  colCollation,
-					  0);
-		/* Begin - BUG#8430 */
-		var->union_null_res = lefttle->union_null_res;
-		/* End - BUG#8430 */
+						lefttle->resno,
+						colType,
+						colTypmod,
+						colCollation,
+						0);
+		var->varisnull = isallnull; /* bug#00008497 */
 		var->location = exprLocation((Node *) lefttle->expr);
 		tle = makeTargetEntry((Expr *) var,
 							  (AttrNumber) pstate->p_next_resno++,
 							  colName,
 							  false);
-		/* Begin - BUG#8430 */
-		tle->union_null_res = lefttle->union_null_res;
-		/* End - BUG#8430 */
 		qry->targetList = lappend(qry->targetList, tle);
 		targetvars = lappend(targetvars, var);
 		targetnames = lappend(targetnames, makeString(colName));
@@ -3413,9 +3438,9 @@ transformSetOperationStmt(ParseState *pstate, SelectStmt *stmt)
 		sortnscolumns[sortcolindex].p_varcollid = colCollation;
 		sortnscolumns[sortcolindex].p_varnosyn = leftmostRTI;
 		sortnscolumns[sortcolindex].p_varattnosyn = lefttle->resno;
-		/* Begin - BUG#8430 */
-		sortnscolumns[sortcolindex].union_null_res = lefttle->union_null_res;
-		/* End - BUG#8430 */
+		/* Begin - bug#00008497 */
+		sortnscolumns[sortcolindex].p_var_isnull = isallnull;
+		/* End - bug#00008497 */
 		sortcolindex++;
 	}
 
@@ -3883,95 +3908,120 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 			Oid			rescolcoll;
 			Oid			rawcolcoll = InvalidOid; /* BUG#Z1461 */
 			/* Begin - BUG#8430 */
+			bool	allisnull = false; /* bug#00008497 */
 
 			/* select common type, same as CASE et al */
 			if (compatible_mode == ORA_MODE &&
 				enable_setoperation_null)
 			{
-				if (ltle->union_null_res && IsA(lcolnode, SetToDefault))
-				{
-					((SetToDefault *)lcolnode)->typeId = UNKNOWNOID;
-					lcoltype = UNKNOWNOID;
-					exprSetCollation(lcolnode, InvalidOid);
-				}
-				else if (ltle->union_null_res && IsA(lcolnode, Const))
-				{
-					((Const *)lcolnode)->consttype = UNKNOWNOID;
-					lcoltype = UNKNOWNOID;
-					exprSetCollation(lcolnode, InvalidOid);
-				}
-				else if (IsA(lcolnode, Var) && ((Var*)lcolnode)->union_null_res)
-				{
-					((Var*)lcolnode)->vartype = UNKNOWNOID;
-					lcoltype = UNKNOWNOID;
-					exprSetCollation(lcolnode, InvalidOid);
-				}
-
-				if (rtle->union_null_res && IsA(rcolnode, SetToDefault))
-				{
-					((SetToDefault *)rcolnode)->typeId = UNKNOWNOID;
-					rcoltype = UNKNOWNOID;
-					exprSetCollation(rcolnode, InvalidOid);
-				}
-				else if (rtle->union_null_res && IsA(rcolnode, Const))
-				{
-					((Const *)rcolnode)->consttype = UNKNOWNOID;
-					rcoltype = UNKNOWNOID;
-					exprSetCollation(rcolnode, InvalidOid);
-				}
-				else if (IsA(rcolnode, Var) && ((Var*)rcolnode)->union_null_res)
-				{
-					((Var*)rcolnode)->vartype = UNKNOWNOID;
-					rcoltype = UNKNOWNOID;
-					exprSetCollation(rcolnode, InvalidOid);
-				}
-
+				/* Begin - bug#00008497 */
 				/*
 				 * check one is null and another is
 				 * not null, we set null to UNKNOWOID
 				 * oid
 				 */
+				bool rnodeisnull = false;
+				bool lnodeisnull = false;
+
 				if (IsA(lcolnode, Const))
 				{
 					Const *cst = (Const *) lcolnode;
 
-					if (cst->constisnull && cst->consttype != rcoltype)
+					if (cst->constisnull)
 					{
-						cst->consttype = UNKNOWNOID;
-						lcoltype = UNKNOWNOID;
-						exprSetCollation(lcolnode, InvalidOid);
+						if (cst->consttype != rcoltype)
+						{
+							cst->consttype = UNKNOWNOID;
+							lcoltype = UNKNOWNOID;
+							exprSetCollation(lcolnode, InvalidOid);
+						}
+						lnodeisnull = true;
 					}
 				}
-				else if (IsA(rcolnode, Const))
+				else if (IsA(lcolnode, Var))
+				{
+					Var *var = (Var *) lcolnode;
+
+					if (var->varisnull)
+					{
+						if (var->vartype != rcoltype)
+						{
+							var->vartype = UNKNOWNOID;
+							lcoltype = UNKNOWNOID;
+							exprSetCollation(lcolnode, InvalidOid);
+						}
+						lnodeisnull = true;
+					}
+				}
+				else if (IsA(lcolnode, SetToDefault))
+				{
+					SetToDefault *st = (SetToDefault *) lcolnode;
+
+					if (st->isnull)
+					{
+						if (st->typeId != rcoltype)
+						{
+							lcoltype = UNKNOWNOID;
+							st->typeId = UNKNOWNOID;
+							exprSetCollation(lcolnode, InvalidOid);
+						}
+						lnodeisnull = true;
+					}
+				}
+
+				if (IsA(rcolnode, Const))
 				{
 					Const *cst = (Const *) rcolnode;
 
-					if (cst->constisnull && cst->consttype != lcoltype)
+					if (cst->constisnull)
 					{
-						cst->consttype = UNKNOWNOID;
-						rcoltype = UNKNOWNOID;
-						exprSetCollation(rcolnode, InvalidOid);
+						if (cst->consttype != lcoltype)
+						{
+							cst->consttype = UNKNOWNOID;
+							rcoltype = UNKNOWNOID;
+							exprSetCollation(rcolnode, InvalidOid);
+						}
+						rnodeisnull = true;
 					}
 				}
+				else if (IsA(rcolnode, Var))
+				{
+					Var *var = (Var *) rcolnode;
+
+					if (var->varisnull)
+					{
+						if (var->vartype != lcoltype)
+						{
+							var->vartype  = UNKNOWNOID;
+							lcoltype = UNKNOWNOID;
+							exprSetCollation(rcolnode, InvalidOid);
+						}
+						lnodeisnull = true;
+					}
+				}
+				else if (IsA(rcolnode, SetToDefault))
+				{
+					SetToDefault *st = (SetToDefault *) rcolnode;
+
+					if (st->isnull)
+					{
+						if (st->typeId != lcoltype)
+						{
+							rcoltype = UNKNOWNOID;
+							st->typeId = UNKNOWNOID;
+							exprSetCollation(rcolnode, InvalidOid);
+						}
+						rnodeisnull = true;
+					}
+				}
+				allisnull = (rnodeisnull && lnodeisnull);
+				/* End - bug#00008497 */
 			}
 			/* End - BUG#8430 */
 			rescoltype = select_common_type(pstate,
 											list_make2(lcolnode, rcolnode),
 											context,
 											&bestexpr);
-			/* Begin - BUG#8430 */
-			if (compatible_mode == ORA_MODE &&
-				enable_setoperation_null &&
-				lcoltype == UNKNOWNOID &&
-				rcoltype== UNKNOWNOID)
-			{
-				if ((IsA(lcolnode, Const) && ((Const *) lcolnode)->constisnull) &&
-					(IsA(rcolnode, Const) && ((Const *) rcolnode)->constisnull))
-				{
-					ltle->union_null_res = true;
-				}
-			}
-			/* End - BUG#8430 */
 			bestlocation = exprLocation(bestexpr);
 
 			/*
@@ -4112,13 +4162,9 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 										 0, /* no need to set resno */
 										 NULL,
 										 false);
-				/* Begin - BUG#8430 */
-				if (compatible_mode == ORA_MODE &&
-					enable_setoperation_null &&
-					ltle->union_null_res)
-					restle->union_null_res = true;
-				/* End - BUG#8430 */
-
+				/* Begin - bug#00008497 */
+				rescolnode->isnull = allisnull;
+				/* End - bug#00008497 */
 				*targetlist = lappend(*targetlist, restle);
 			}
 		}

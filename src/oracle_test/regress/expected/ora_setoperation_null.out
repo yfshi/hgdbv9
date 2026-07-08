@@ -777,3 +777,93 @@ SELECT * FROM test_union WHERE val != (SELECT NULL FROM DUAL);
 
 --clean data
 drop table test_union;
+--bug#8497
+create table test_null1(id integer,name varchar2(256));
+create table test_null2(id integer,rule_date date);
+insert into test_null1 values(1,'wangqiang');
+insert into test_null1 values(2,'limei');
+insert into test_null1 values(3,'lixi');
+insert into test_null2 values(1, to_date('2026-07-01', 'YYYY-MM-DD'));
+insert into test_null2 values(2, to_date('2026-06-30', 'YYYY-MM-DD'));
+insert into test_null2 values(3, to_date('2026-05-25', 'YYYY-MM-DD'));
+--add where
+select * from (select * from (select null as ids,id from test_null1 union select null,id from test_null2 ) where ids is null and ids != 'xiexie'
+union select 1,2 from test_null2) order by id,ids;
+ ids | id 
+-----+----
+   1 |  2
+(1 row)
+
+--add order by
+select * from (select * from (select null as ids,id from test_null1 union select null,id from test_null2 order by ids)
+union select rule_date,id from test_null2) order by ids,id;
+    ids     | id 
+------------+----
+ 2026-05-25 |  3
+ 2026-06-30 |  2
+ 2026-07-01 |  1
+            |  1
+            |  2
+            |  3
+(6 rows)
+
+--add group by
+select ids,id from (select * from (select * from (select null as ids,id from test_null1 union select null,id from test_null2) where ids is null and ids != 'xiexie' group by ids,id order by ids,id)
+union select rule_date,id from test_null2) order by ids,id;
+    ids     | id 
+------------+----
+ 2026-05-25 |  3
+ 2026-06-30 |  2
+ 2026-07-01 |  1
+(3 rows)
+
+--ok
+select ids from (select null as ids from test_null1) union select rule_date from test_null2 order by ids;
+    ids     
+------------
+ 2026-05-25
+ 2026-06-30
+ 2026-07-01
+ 
+(4 rows)
+
+create view test_union_view1 as
+select * from (select * from (select null as ids,id from test_null1 union select null,id from test_null2 ) where ids is null and ids != 'xiexie'
+union select 1,2 from test_null2) order by id,ids;
+create view test_union_view2 as
+select * from (select * from (select null as ids,id from test_null1 union select null,id from test_null2 order by ids)
+union select rule_date,id from test_null2) order by ids,id;
+create view test_union_view3 as
+select ids,id from (select * from (select * from (select null as ids,id from test_null1 union select null,id from test_null2) where ids is null and ids != 'xiexie' group by ids,id order by ids,id)
+union select rule_date,id from test_null2) order by ids,id;
+select * from test_union_view1;
+ ids | id 
+-----+----
+   1 |  2
+(1 row)
+
+select * from test_union_view2;
+    ids     | id 
+------------+----
+ 2026-05-25 |  3
+ 2026-06-30 |  2
+ 2026-07-01 |  1
+            |  1
+            |  2
+            |  3
+(6 rows)
+
+select  *from test_union_view3;
+    ids     | id 
+------------+----
+ 2026-05-25 |  3
+ 2026-06-30 |  2
+ 2026-07-01 |  1
+(3 rows)
+
+--clean data
+drop table test_null1;
+drop table test_null2;
+drop view test_union_view1;
+drop view test_union_view2;
+drop view test_union_view3;
