@@ -707,6 +707,51 @@ select * from test_t1 a,test_t2 b,test_t3 c where a.county_id = c.int_id(+) and 
 select * from test_t1 a,test_t2 b,test_t3 c,test_t4 d where a.county_id = b.int_id(+)
  and c.int_id = d.int_id(+) order by a.county_id,d.int_id;
 
+/* Begin OA#Z2565 */
+CREATE TABLE t_column_buss_rel (
+    field_rel_id VARCHAR2(38),
+    fcolumnno NUMBER
+);
+
+CREATE TABLE t_column (
+    fcolumnno NUMBER
+);
+
+CREATE TABLE t_filtercolumn (
+    mof_div_code VARCHAR2(20),
+    fcolumnctrno NUMBER
+);
+
+INSERT INTO t_column_buss_rel VALUES ('100', 1);
+INSERT INTO t_column_buss_rel VALUES ('200', 2);
+
+INSERT INTO t_column VALUES (1);
+INSERT INTO t_column VALUES (2);
+
+INSERT INTO t_filtercolumn VALUES ('', 1);
+INSERT INTO t_filtercolumn VALUES ('', 2);
+
+-- Test 1
+SELECT
+    ROW_NUMBER() OVER (
+        PARTITION BY field_rel_id
+        ORDER BY field_rel_id
+    ) AS fistag
+FROM t_column_buss_rel r,
+     (SELECT * FROM t_filtercolumn WHERE mof_div_code = '') f
+WHERE r.fcolumnno = f.fcolumnctrno(+);
+
+-- Test 2
+SELECT
+    ROW_NUMBER() OVER (
+        PARTITION BY field_rel_id
+        ORDER BY field_rel_id
+    ) AS fistag
+FROM t_column_buss_rel r,
+     t_column col
+WHERE r.fcolumnno = col.fcolumnno(+);
+/* End OA#Z2565 */
+
  --cllean data
 drop table test_t1;
 drop table test_t2;
