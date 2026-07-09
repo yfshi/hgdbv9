@@ -724,3 +724,9 @@ select least(0,1,null,2) from dual;	-- null
 (1 row)
 
 /* End - OA-REQ-2310 */
+/* Begin - bug#8552 */
+CREATE SCHEMA "schd";
+CREATE TABLE "schd"."MixedCaseTable"("Col_Id" serial NOT NULL, "Col_Name" varchar(50 char) NOT NULL, "Col_Age" int4);	-- OK
+DROP SCHEMA "schd" CASCADE;
+NOTICE:  drop cascades to table schd."MixedCaseTable"
+/* End - bug#8552 */

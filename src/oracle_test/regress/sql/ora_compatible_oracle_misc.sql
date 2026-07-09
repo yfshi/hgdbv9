@@ -359,3 +359,9 @@ select greatest(0,1,null,2) from dual;	-- null
 select least(0,1,2) from dual;	-- 0
 select least(0,1,null,2) from dual;	-- null
 /* End - OA-REQ-2310 */
+
+/* Begin - bug#8552 */
+CREATE SCHEMA "schd";
+CREATE TABLE "schd"."MixedCaseTable"("Col_Id" serial NOT NULL, "Col_Name" varchar(50 char) NOT NULL, "Col_Age" int4);	-- OK
+DROP SCHEMA "schd" CASCADE;
+/* End - bug#8552 */
