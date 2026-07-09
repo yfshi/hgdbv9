@@ -17,6 +17,7 @@
 
 #include "access/htup_details.h"
 #include "catalog/pg_operator.h"
+#include "catalog/pg_proc.h" /* ReqID - SRS-MYSQL-CHARSET-INTRODUCER */
 #include "catalog/pg_type.h"
 #include "lib/stringinfo.h"
 #include "miscadmin.h"	/* BUG#M0000344 */
@@ -26,6 +27,7 @@
 #include "parser/parse_func.h"
 #include "parser/parse_oper.h"
 #include "parser/parse_type.h"
+#include "parser/pg_object_hook.h" /* ReqID - SRS-MYSQL-CHARSET-INTRODUCER */
 #include "utils/builtins.h"
 #include "utils/guc.h"			/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/inval.h"
@@ -775,6 +777,77 @@ op_error(ParseState *pstate, List *op, char oprkind,
 				 parser_errposition(pstate, location)));
 }
 
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+void
+convert_introducer_args_by_funcid(Oid funcid, Node *node)
+{
+	ObjectAddress address;
+	char *key = "expand_properties";
+	char *oldval;
+	char *oldstr;
+	int keylen;
+	int oldvallen = 0;
+	int32 expand_properties = 0;
+
+	ObjectAddressSet(address, ProcedureRelationId, funcid);
+
+	keylen = strlen(key);
+	oldval = GetPgObjectOptionItem(address, key, keylen, &oldvallen);
+	if (oldval == NULL)
+		return;
+
+	/*
+	 * pg_object marks MySQL-compatible functions/operators whose arguments
+	 * should use charset introducer conversion.  The convert_encoding bit in
+	 * expand_properties means the arguments need conversion.
+	 */
+	oldstr = pnstrdup(oldval, oldvallen);
+	expand_properties = pg_strtoint32(oldstr);
+	pfree(oldstr);
+
+	if ((expand_properties & FUNC_EXPAND_PROPERITY_INTRODUCER_CONVERT_ENCODING) == 0)
+		return;
+
+	introducer_convert_encoding_walker(node, NULL);
+}
+
+static void
+coerce_nonbinary_introducer_operands(ParseState *pstate,
+									 Node **ltree_p,
+									 Node **rtree_p,
+									 int *left_encoding,
+									 int *right_encoding)
+{
+	Node *ltree = *ltree_p;
+	Node *rtree = *rtree_p;
+
+	(void)introducer_detect_encoding_walker(ltree, left_encoding);
+	(void)introducer_detect_encoding_walker(rtree, right_encoding);
+
+	if (*left_encoding > 0 && *right_encoding > 0)
+	{
+		if (exprType(ltree) == VARBINARYOID)
+			*ltree_p = coerce_type(pstate,
+								   ltree,
+								   exprType(ltree),
+								   VARCHAROID,
+								   -1,
+								   COERCION_EXPLICIT,
+								   COERCE_EXPLICIT_CAST,
+								   exprLocation(ltree));
+		if (exprType(rtree) == VARBINARYOID)
+			*rtree_p = coerce_type(pstate,
+								   rtree,
+								   exprType(rtree),
+								   VARCHAROID,
+								   -1,
+								   COERCION_EXPLICIT,
+								   COERCE_EXPLICIT_CAST,
+								   exprLocation(rtree));
+	}
+}
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 /*
  * make_op()
  *		Operator expression construction.
@@ -809,11 +882,27 @@ make_op_ext(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 	Oid			rettype;
 	OpExpr	   *result;
 
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	int			left_encoding = -1;
+	int			right_encoding = -1;
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 	/* Check it's not a postfix operator */
 	if (rtree == NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("postfix operators are not supported")));
+
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	if (compatible_mode == MYS_MODE)
+	{
+		coerce_nonbinary_introducer_operands(pstate,
+											 &ltree,
+											 &rtree,
+											 &left_encoding,
+											 &right_encoding);
+	}
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 	/* Select the operator */
 	if (ltree == NULL)
@@ -1010,6 +1099,23 @@ make_op_ext(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 
 	opform = (Form_pg_operator) GETSTRUCT(tup);
 
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	if (compatible_mode == MYS_MODE)
+	{		
+		/*
+		 * The operator is known now, so use its implementation function OID
+		 * to check pg_object's convert_encoding flag.  Skip if either side contained
+		 * _binary, e.g. _binary x'41' = _utf8 'A'.
+		 */
+		if (left_encoding != 0 && right_encoding != 0)
+		{
+			convert_introducer_args_by_funcid(opform->oprcode, ltree);
+			convert_introducer_args_by_funcid(opform->oprcode, rtree);
+		}
+	}
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
+
 	/* Check it's not a shell */
 	if (!RegProcedureIsValid(opform->oprcode))
 		ereport(ERROR,
@@ -1101,6 +1207,20 @@ make_scalar_array_op(ParseState *pstate, List *opname,
 	Oid			rettype;
 	ScalarArrayOpExpr *result;
 
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	int			left_encoding = -1;
+	int			right_encoding = -1;
+
+	if (compatible_mode == MYS_MODE)
+	{
+		coerce_nonbinary_introducer_operands(pstate,
+											 &ltree,
+											 &rtree,
+											 &left_encoding,
+											 &right_encoding);
+	}
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 	ltypeId = exprType(ltree);
 	atypeId = exprType(rtree);
 
@@ -1135,6 +1255,17 @@ make_scalar_array_op(ParseState *pstate, List *opname,
 	/* Now resolve the operator */
 	tup = oper(pstate, opname, ltypeId, rtypeId, false, location);
 	opform = (Form_pg_operator) GETSTRUCT(tup);
+
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	if (compatible_mode == MYS_MODE)
+	{
+		if (left_encoding != 0 && right_encoding != 0)
+		{
+			convert_introducer_args_by_funcid(opform->oprcode, ltree);
+			convert_introducer_args_by_funcid(opform->oprcode, rtree);
+		}
+	}
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 	/* Check it's not a shell */
 	if (!RegProcedureIsValid(opform->oprcode))

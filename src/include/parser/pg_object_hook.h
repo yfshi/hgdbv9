@@ -48,6 +48,8 @@
 #define  PG_OBJECT_RESGROUP 'g'				/* resource group of role */ /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 #define  PG_OBJECT_ENUM 'e'					/* anonymous_enum */ /* ReqID:SRS-MYSQL-ENUMTYPE */
 
+#define FUNC_EXPAND_PROPERITY_INTRODUCER_CONVERT_ENCODING 0x00000001
+
 typedef struct pg_object_ori_infor
 {
 	char		*oriname;		/* The object name stored in pg_object */
@@ -88,5 +90,8 @@ extern char *GetRelationInterval(Oid relid);
 extern void SetRelationInterval(Oid relid, char *relname, Oid namespace, char relkind, char *value);
 extern void DeleteRelationInterval(Oid relid);
 /* End - ReqID:RSR-SQL-Partition-interval */
+
+extern void SetPgObjectOptionItems(ObjectAddress address, char *objname, Oid objnsp, char objkind, char **keystrs, int *keylens, char **valuestrs, int *valuelens, int num);
+extern char *GetPgObjectOptionItem(ObjectAddress address, char *keyVal, int keyLen, int *retLen);
 
 #endif

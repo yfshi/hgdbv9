@@ -16,10 +16,10 @@
 
 PG_FUNCTION_INFO_V1(show_mysql_charsets);
 PG_FUNCTION_INFO_V1(show_mysql_collations);
-/* Begin - BUG#M7845 */
+/* Begin - BUG#7845 */
 PG_FUNCTION_INFO_V1(mysql_text_regexeq);
 PG_FUNCTION_INFO_V1(mysql_text_regexne);
-/* End - BUG#M7845 */
+/* End - BUG#7845 */
 typedef struct {
     Oid              coll;
     CHARSET_INFO    *cs;
@@ -112,12 +112,12 @@ add_compiled_collation(const CHARSET_INFO *cs)
     const char  *collname = cs->coll_name;
     const char  *collcollate;
 
-    /* Begin - BUG#M7845 */
+    /* Begin - BUG#7845 */
     if (strcmp(cs->csname, "binary") == 0)
     {
         collencoding = -1;
     }
-    /* End - BUG#M7845 */
+    /* End - BUG#7845 */
 
     // Encoding is -1 or collate name is end of '_bin'
     if (collencoding == -1 || has_suffix(collname, "_bin"))
@@ -137,6 +137,38 @@ add_compiled_collation(const CHARSET_INFO *cs)
                     true,                 /* if_not_exists        */
                     true);                /* quiet                */
 }
+
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+/*
+ * Search MySQL CHARSET_INFO FROM ALL_CS by MySQL collation ID.
+ *
+ * cs_number is CHARSET_INFO.number, not pg_collation OID.
+ */
+CHARSET_INFO *
+search_charset_info_by_cs_number(int cs_number)
+{
+    CHARSET_INFO *charset_info = NULL;
+    /*
+     * Search MySQL static CHARSET_INFO table directly.
+     */
+    for (int i = 0; i < lengthof(all_cs); i++)
+    {
+        if (all_cs[i]->number == cs_number)
+        {
+            charset_info = all_cs[i];
+            break;
+        }
+    }
+
+    if (charset_info == NULL)
+    {
+        ereport(ERROR,
+                errmsg("Cannot found MySQL collation(%d)", cs_number));
+    }
+
+    return charset_info;
+}
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 static CHARSET_INFO *
 search_charset_info_by_coll_id(Oid coll, bool missing_ok)
@@ -408,7 +440,7 @@ show_mysql_collations(PG_FUNCTION_ARGS)
     SRF_RETURN_DONE(fctx);
 }
 
-/* Begin - BUG#M7845 */
+/* Begin - BUG#7845 */
 Datum
 mysql_text_regexeq(PG_FUNCTION_ARGS)
 {
@@ -450,4 +482,4 @@ mysql_text_regexne(PG_FUNCTION_ARGS)
                                            PG_GET_COLLATION(),
                                            0, NULL));
 }
-/* End - BUG#M7845 */
+/* End - BUG#7845 */

@@ -1655,11 +1655,6 @@ exprLocation(const Node *expr)
 		case T_A_Const:
 			loc = ((const A_Const *) expr)->location;
 			break;
-		/* Begin: Req:SRS-MYSQL-SQL-Select */
-		case T_IntroducerConst:
-			loc = ((const A_Const *) expr)->location;
-			break;
-		/* End: Req:SRS-MYSQL-SQL-Select */
 		case T_FuncCall:
 			{
 				const FuncCall *fc = (const FuncCall *) expr;

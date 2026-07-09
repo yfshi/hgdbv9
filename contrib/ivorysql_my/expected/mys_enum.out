@@ -3764,11 +3764,11 @@ select insert_data1('aaa', 'female', 'old');
 (1 row)
 
 select objname,option from pg_object where objname like '%insert_data1%';
-              objname              |             option              
------------------------------------+---------------------------------
+              objname              |                          option                           
+-----------------------------------+-----------------------------------------------------------
  insert_data1_proc_anonymous_enum  | {"anonymous": true}
  insert_data1_proc_anonymous_enum1 | {"anonymous": true}
- insert_data1                      | {"lower_case_table_names": "0"}
+ insert_data1                      | {"expand_properties": "0", "lower_case_table_names": "0"}
 (3 rows)
 
 drop function insert_data1;

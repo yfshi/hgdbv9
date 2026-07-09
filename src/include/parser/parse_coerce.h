@@ -124,4 +124,8 @@ extern CoercionPathType find_coercion_pathway(Oid targetTypeId,
 extern CoercionPathType find_typmod_coercion_function(Oid typeId,
 													  Oid *funcid);
 
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+extern bool introducer_convert_encoding_walker(Node *node, void *context);
+extern bool introducer_detect_encoding_walker(Node *node, void *context);
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 #endif							/* PARSE_COERCE_H */

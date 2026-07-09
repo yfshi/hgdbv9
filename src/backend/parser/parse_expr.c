@@ -3521,6 +3521,12 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 	/* transform the test expression, if any */
 	arg = transformExprRecurse(pstate, (Node *) c->arg);
 
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	/* Preprocessing that is neither an operator nor a function */
+	if (MYS_MODE == compatible_mode)
+		introducer_convert_encoding_walker(arg, NULL);
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 	/* generate placeholder for test expression */
 	if (arg)
 	{
@@ -3598,6 +3604,11 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 		neww->result = (Expr *) transformExprRecurse(pstate, warg);
 		neww->location = w->location;
 
+		/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+		if (MYS_MODE == compatible_mode)
+			introducer_convert_encoding_walker((Node *)neww->result, NULL);
+		/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 		newargs = lappend(newargs, neww);
 		resultexprs = lappend(resultexprs, neww->result);
 	}
@@ -3615,6 +3626,11 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 		defresult = (Node *) n;
 	}
 	newc->defresult = (Expr *) transformExprRecurse(pstate, defresult);
+
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	if (MYS_MODE == compatible_mode)
+		introducer_convert_encoding_walker((Node *)newc->defresult, NULL);
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 	/*
 	 * Note: default result is considered the most significant type in
@@ -4658,6 +4674,13 @@ transformCoalesceExpr(ParseState *pstate, CoalesceExpr *c)
 		Node	   *newe;
 
 		newe = transformExprRecurse(pstate, e);
+
+		/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+		/* Preprocessing that is neither an operator nor a function */
+		if (MYS_MODE == compatible_mode)
+			introducer_convert_encoding_walker((Node *)newe, NULL);
+		/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 		newargs = lappend(newargs, newe);
 	}
 
@@ -4754,6 +4777,13 @@ transformMinMaxExpr(ParseState *pstate, MinMaxExpr *m)
 		Node	   *newe;
 
 		newe = transformExprRecurse(pstate, e);
+
+		/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+		/* Preprocessing that is neither an operator nor a function */
+		if (MYS_MODE == compatible_mode)
+			introducer_convert_encoding_walker((Node *)newe, NULL);
+		/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 		newargs = lappend(newargs, newe);
 	}
 

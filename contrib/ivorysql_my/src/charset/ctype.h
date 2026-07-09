@@ -269,4 +269,7 @@ my_strnxfrm_simple(const CHARSET_INFO *cs,
 void my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
                                  uint32 flags, uint32 level);
 
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+extern CHARSET_INFO *search_charset_info_by_cs_number(int cs_number);
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 #endif

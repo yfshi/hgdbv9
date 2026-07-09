@@ -931,7 +931,8 @@ compute_common_attribute(ParseState *pstate,
 						 DefElem **rows_item,
 						 DefElem **support_item,
 						 DefElem **parallel_item,
-						 DefElem **intisnumber_item) /* BUG:M0000068 */
+						 DefElem **intisnumber_item, /* BUG:M0000068 */
+						 DefElem **expand_properties_item ) /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 {
 	if (strcmp(defel->defname, "volatility") == 0 ||
 		(ORA_MODE == compatible_mode && strcmp(defel->defname, "deterministic") == 0)) /* ReqID:SRS-SQL-PROC */
@@ -1019,6 +1020,15 @@ compute_common_attribute(ParseState *pstate,
 		*intisnumber_item = defel;
 	}
 	/* End - BUG:M0000068 */
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	else if (MYS_MODE == compatible_mode && strcmp(defel->defname, "expand_properties") == 0)
+	{
+		if (*expand_properties_item)
+			goto duplicate_error;
+
+		*expand_properties_item = defel;
+	}
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 	else
 		return false;
 
@@ -1169,7 +1179,8 @@ compute_function_attributes(ParseState *pstate,
 							float4 *prorows,
 							Oid *prosupport,
 							char *parallel_p,
-							bool *intisnumber_p) /* BUG:M0000068 */
+							bool *intisnumber_p,/* BUG:M0000068 */
+						    int32 *expand_properties_p) /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 {
 	ListCell   *option;
 	DefElem    *as_item = NULL;
@@ -1194,6 +1205,7 @@ compute_function_attributes(ParseState *pstate,
 	DefElem    *result_cache_item = NULL;
 	/* End - ReqID:SRS-SQL-PROC */
 	DefElem    *intisnumber_item = NULL;	/* BUG:M0000068 */
+	DefElem    *expand_properties_item = NULL; 		/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	foreach(option, options)
 	{
@@ -1322,7 +1334,8 @@ compute_function_attributes(ParseState *pstate,
 										  &rows_item,
 										  &support_item,
 										  &parallel_item,
-										  &intisnumber_item)) /* BUG:M0000068 */
+										  &intisnumber_item, /* BUG:M0000068 */
+										  &expand_properties_item)) /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 		{
 			/* recognized common option */
 			continue;
@@ -1383,6 +1396,10 @@ compute_function_attributes(ParseState *pstate,
 	if (intisnumber_item)
 		*intisnumber_p = intVal(intisnumber_item->arg);
 	/* End - BUG:M0000068 */
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	if (expand_properties_item)
+		*expand_properties_p = intVal(expand_properties_item->arg);
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 }
 
 
@@ -1793,6 +1810,9 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	ObjectAddress address;	/* ReqID:SRS-CMD-PGDUMP */
 	char	   *orifuncname = NULL;	/* ReqID:SRS-MYSQL-CASE */
 	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	int32		expand_properties = 0;
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (stmt->funcname != NIL && IsA(llast(stmt->funcname), String))
@@ -1854,7 +1874,8 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 								&isWindowFunc, &volatility,
 								&isStrict, &security, &isLeakProof,
 								&proconfig, &procost, &prorows,
-								&prosupport, &parallel, &intisnumber /* BUG:M0000068 */);
+								&prosupport, &parallel, &intisnumber, /* BUG:M0000068 */
+								&expand_properties); 	 /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	if (!language)
 	{
@@ -2117,11 +2138,12 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	else if (pg_object_create_obj_hook && compatible_mode == MYS_MODE)
 	{
 		StringInfoData buf;
-		Jsonb	*attr = NULL;
+		Jsonb *attr = NULL;
 
 		initStringInfo(&buf);
-
-		appendStringInfo(&buf, "{\"lower_case_table_names\" : \"%d\"}", lower_case_table_names);
+		appendStringInfo(&buf,
+						"{\"lower_case_table_names\": \"%d\", \"expand_properties\": \"%d\"}",
+						lower_case_table_names, expand_properties);
 		attr = DatumGetJsonbP(DirectFunctionCall1(jsonb_in, CStringGetDatum(buf.data)));
 
 		pg_object_create_obj_hook(orifuncname, namespaceId, stmt->replace,
@@ -2673,6 +2695,12 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 	DefElem    *support_item = NULL;
 	DefElem    *parallel_item = NULL;
 	DefElem    *intisnumber_item = NULL;	/* BUG:M0000068 */
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	DefElem    *expand_properties_item = NULL;
+	Oid         procNamespace;
+	char        procKind;
+	char 	   *procName;
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 	ObjectAddress address;
 
 	rel = table_open(ProcedureRelationId, RowExclusiveLock);
@@ -2704,6 +2732,11 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 		elog(ERROR, "cache lookup failed for function %u", funcOid);
 
 	procForm = (Form_pg_proc) GETSTRUCT(tup);
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	procNamespace = procForm->pronamespace;
+	procKind = procForm->prokind;
+	procName = pstrdup(NameStr(procForm->proname));
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	/* Permission check: must own function */
 	if (!pg_proc_ownercheck(funcOid, GetUserId()))
@@ -2735,7 +2768,8 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 									 &rows_item,
 									 &support_item,
 									 &parallel_item,
-									 &intisnumber_item /* BUG:M0000068 */) == false)
+									 &intisnumber_item, /* BUG:M0000068 */
+									 &expand_properties_item) == false)	 /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 			elog(ERROR, "option \"%s\" not recognized", defel->defname);
 	}
 
@@ -2841,6 +2875,43 @@ AlterFunction(ParseState *pstate, AlterFunctionStmt *stmt)
 
 	/* Do the update */
 	CatalogTupleUpdate(rel, &tup->t_self, tup);
+
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	if (compatible_mode == MYS_MODE)
+	{
+		ObjectAddress objaddr;
+		PgObjectInfo objinfo;
+		char *key = "expand_properties";
+		char *value;
+		int keylen = strlen(key);
+		int valuelen;
+		int32 expand_properties = (expand_properties_item ? intVal(expand_properties_item->arg) : 0);
+
+		ObjectAddressSet(objaddr, ProcedureRelationId, funcOid);
+
+		value = psprintf("%d", expand_properties);
+		valuelen = strlen(value);
+		/*
+		 * ALTER FUNCTION ... EXPAND 'convert_encoding,hex' --> write the corresponding bitmask
+		 * ALTER FUNCTION ... EXPAND '' or without any expand/convert_encoding results in 0 --> write "expand_properties": "0"
+		 * Do not keep old bits
+		 */
+
+		objinfo = pg_object_get_ori_infor_hook ? pg_object_get_ori_infor_hook(objaddr) : NULL;
+
+		SetPgObjectOptionItems(objaddr,
+							   objinfo == NULL ? procName : NULL,
+							   procNamespace,
+							   procKind,
+							   &key,
+							   &keylen,
+							   &value,
+							   &valuelen,
+							   1);
+
+		pfree(value);
+	}
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	InvokeObjectPostAlterHook(ProcedureRelationId, funcOid, 0);
 

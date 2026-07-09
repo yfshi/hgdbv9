@@ -41,9 +41,7 @@ mysql_bitstring_parse_hook_type mysql_bitstring_parse_hook = NULL;
 /* End BUG#5048 5070 */
 
 /* Begin: Req:SRS-MYSQL-SQL-Select */
-static bytea *make_introducer_string_bytea(const char *str, bool escaped);
-static Const *make_introducer_const(ParseState *pstate, const char *str,
-								int location);
+static Const *make_introducer_const(ParseState *pstate, Value *value, Datum val, int location, bool escaped);
 /* End: Req:SRS-MYSQL-SQL-Select */
 
 /*
@@ -449,7 +447,12 @@ make_const(ParseState *pstate, Value *value, int location)
 			break;
 
 		case T_String:
-
+			/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+			if (value->charset_name)
+			{
+				return make_introducer_const(pstate, value, 0, location, true);
+			}
+			/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 			/*
 			 * We assume here that UNKNOWN's internal representation is the
 			 * same as CSTRING
@@ -487,6 +490,14 @@ make_const(ParseState *pstate, Value *value, int location)
 				return NULL;		/* keep compiler quiet */
 			}
 			cancel_parser_errposition_callback(&pcbstate);
+
+			/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+			if (value->charset_name)
+			{
+				return make_introducer_const(pstate, value, val, location, false);
+			}
+			/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 			typeid = IVY_HEXOID;
 			typelen = -1;
 			typebyval = false;
@@ -504,17 +515,19 @@ make_const(ParseState *pstate, Value *value, int location)
 				return NULL;		/* keep compiler quiet */
 			}
 			cancel_parser_errposition_callback(&pcbstate);
+
+			/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+			if (value->charset_name)
+			{
+				return make_introducer_const(pstate, value, val, location, false);
+			}
+			/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 			typeid = IVY_HEXOID;
 			typelen = -1;
 			typebyval = false;
 			break;
 		/* End - SRS-MYSQL-HEX-LITERAL */
-
-		/* Begin: Req:SRS-MYSQL-SQL-Select */
-		case T_IntroducerConst:
-			con = make_introducer_const(pstate, strVal(value), location);
-			return con;
-		/* End: Req:SRS-MYSQL-SQL-Select */
 
 		/* Begin - BUG:Z093 */
 		case T_BFloat:
@@ -597,30 +610,43 @@ make_const(ParseState *pstate, Value *value, int location)
 	return con;
 }
 
-/* Begin: Req:SRS-MYSQL-SQL-Select */
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
 /*
- * Convert a MySQL _binary literal raw parse node to a bytea Const.
+ * MySQL _charset introducers are metadata on the literal.  They do not
+ * convert_encoding the literal bytes, but they do check whether the bytes are well
+ * formed in the introduced character set and report a warning on failure.
  */
-static Const *
-make_introducer_const(ParseState *pstate, const char *str, int location)
+static void
+check_well_formed_result(ParseState *pstate, Value *value, Const *con)
 {
-	Const	   *con;
-	bytea	   *bytes = NULL;
+	bytea *hex = (bytea *)DatumGetByteaPP(con->constvalue);
+	const char *str = (const char *)VARDATA_ANY(hex);
+	int len = VARSIZE_ANY_EXHDR(hex);
+	ParseCallbackState pcbstate;
 
-	bytes = make_introducer_string_bytea(str, !has_sql_mode(MODE_NO_BACKSLASH_ESCAPES));
+	if (nodeTag(value) == T_String)
+	{
+		if (!pg_verify_mbstr(con->constencoding, str, len, true))
+		{
+			ereport(WARNING,
+					(errmsg("invalid byte sequence for character set introducer \"%s\", treated as binary charset",
+							value->charset_name),
+					 parser_errposition(pstate, con->location)));
 
-	con = makeConst(VARBINARYOID,
-					-1,
-					DEFAULT_COLLATION_OID,
-					-1,
-					PointerGetDatum(bytes),
-					false,
-					false);
-	con->location = location;
-
-	return con;
+			/* SCONST encoding check failed, fell back to binary character set */
+			con->constencoding = 0;
+		}
+	}
+	else
+	{
+		setup_parser_errposition_callback(&pcbstate, pstate, con->location);
+		(void)pg_verify_mbstr(con->constencoding, str, len, false);
+		cancel_parser_errposition_callback(&pcbstate);
+	}
 }
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
+/* Begin: Req:SRS-MYSQL-SQL-Select */
 static bytea *
 make_introducer_string_bytea(const char *str, bool escaped)
 {
@@ -680,5 +706,47 @@ make_introducer_string_bytea(const char *str, bool escaped)
 
 	SET_VARSIZE(result, VARHDRSZ + (dst - VARDATA(result)));
 	return result;
+}
+
+static Const *
+make_introducer_const(ParseState *pstate, Value *value, Datum val, int location, bool is_sonst)
+{
+	Const		*con;
+	Datum		constvalue = val;
+	int encoding = pg_char_to_encoding(value->charset_name);
+
+	if (!PG_VALID_ENCODING(encoding))
+	{
+		ereport(WARNING,
+				(errmsg("unknown character set introducer \"%s\"",
+						value->charset_name),
+				 parser_errposition(pstate, location)));
+		return NULL;
+	}
+
+	if (is_sonst)
+	{
+		constvalue = (Datum)make_introducer_string_bytea(strVal(value),
+														 !has_sql_mode(MODE_NO_BACKSLASH_ESCAPES));
+	}
+
+	con = makeConst(VARBINARYOID,
+					-1,			/* typmod -1 is OK for all cases */
+					DEFAULT_COLLATION_OID, /* all cases are uncollatable types */
+					-1,
+					is_sonst ? PointerGetDatum((bytea *)constvalue) : constvalue,
+					false,
+					false);
+
+
+	con->location = location;
+	con->constencoding = encoding;
+
+	if (con->constencoding != CONST_ENCODING_BINARY)
+	{
+		check_well_formed_result(pstate, value, con);
+	}
+
+	return con;
 }
 /* End: Req:SRS-MYSQL-SQL-Select */

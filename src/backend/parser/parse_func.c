@@ -33,6 +33,9 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "parser/parse_package.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+#include "parser/parse_oper.h"
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 #include "utils/builtins.h"
 #include "utils/guc.h"				/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
@@ -972,6 +975,11 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 
 	/* perform the necessary typecasting of arguments */
 	make_fn_arguments(pstate, fargs, actual_arg_types, declared_arg_types);
+
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	if (compatible_mode == MYS_MODE)
+		convert_introducer_args_by_funcid(funcid, (Node *)fargs);
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 	/*
 	 * If the function isn't actually variadic, forget any VARIADIC decoration

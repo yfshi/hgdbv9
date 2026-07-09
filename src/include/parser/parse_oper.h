@@ -87,5 +87,8 @@ extern Expr *make_op_ext(ParseState *pstate, List *opname,
 extern Expr *make_scalar_array_op(ParseState *pstate, List *opname,
 								  bool useOr,
 								  Node *ltree, Node *rtree, int location);
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+extern void convert_introducer_args_by_funcid(Oid funcid, Node *node);
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 #endif							/* PARSE_OPER_H */

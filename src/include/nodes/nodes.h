@@ -641,7 +641,6 @@ typedef enum NodeTag
 	/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 	T_FlashbackNode,
 	/* End - ReqID:SRS-SECURITY-FLASHBACK */
-	T_IntroducerConst				/* Req:SRS-MYSQL-SQL-Select */
 
 } NodeTag;
 

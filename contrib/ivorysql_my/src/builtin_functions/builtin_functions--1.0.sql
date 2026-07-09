@@ -4556,14 +4556,14 @@ AS 'MODULE_PATHNAME','number_to_sql_mode'
 LANGUAGE C;
 /* End - ReqID: SRS-MYSQL-PROC */
 
-/* Begin - bug#m8406 */
+/* Begin - bug#8406 */
 CREATE FUNCTION ivymy.row_count()
 RETURNS bigint
 AS 'MODULE_PATHNAME','row_count'
 LANGUAGE C
 VOLATILE
 PARALLEL SAFE;
-/* End - bug#m8406 */
+/* End - bug#8406 */
 
 /* Begin - bug#8562 */
 CREATE FUNCTION ivymy.found_rows()

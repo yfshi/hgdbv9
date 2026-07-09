@@ -162,20 +162,20 @@ SELECT 'A' REGEXP (_binary '^[a-z]+$' COLLATE "C") AS regexp_binary_collate_c_st
 SELECT _binary X'41' = 'A' AS binary_hex_literal_equals_text;
  binary_hex_literal_equals_text 
 --------------------------------
-                              0
+ t
 (1 row)
 
 SELECT _binary 0x41 = 'A' AS binary_hex_literal_equals_text;
  binary_hex_literal_equals_text 
 --------------------------------
-                              0
+ t
 (1 row)
 
 -- MySQL 5.7 expected: 1
 SELECT _binary B'01000001' = 'A' AS binary_bit_literal_equals_text;
  binary_bit_literal_equals_text 
 --------------------------------
-                              0
+ t
 (1 row)
 
 -- MySQL 5.7 expected: 0
@@ -476,13 +476,33 @@ LINE 1: select _binary 123;
 select _utf8 'abc';            -- mysql-compatible parser path recognized; current implementation error: _utf8 not supported
  ?column? 
 ----------
- \x616263
+ abc
 (1 row)
 
 select _utf8mb4 'abc';         -- mysql-compatible parser path recognized; current implementation error: _utf8mb4 not supported
  ?column? 
 ----------
- \x616263
+ abc
+(1 row)
+
+select _utf8 x'e4b8ad';         --ok
+ varbinary 
+-----------
+ 中
+(1 row)
+
+select _utf8 x'c0af';           --ERROR 2600 (HY000): invalid utf8 character string: "C0AF"
+ERROR:  invalid byte sequence for encoding "UTF8": 0xc0 0xaf
+LINE 1: select _utf8 x'c0af';
+                     ^
+select _utf8 x'ff';             --ERROR 1300 (HY000): Invalid utf8 character string: 'FF'
+ERROR:  invalid byte sequence for encoding "UTF8": 0xff
+LINE 1: select _utf8 x'ff';
+                     ^
+select _latin1 x'ff';           --ok
+ varbinary 
+-----------
+ 
 (1 row)
 
 create table test_col_type as select _binary 'aaay';
@@ -498,7 +518,7 @@ create table test_col_b as select _binary b'010000001';
                Table "public.test_col_b"
   Column   |   Type    | Collation | Nullable | Default 
 -----------+-----------+-----------+----------+---------
- varbinary | varbinary |           |          | 
+ varbinary | varbinary | default   |          | 
 
 drop table test_col_b;
 select _binary b'102';         -- mysql error: invalid binary digit

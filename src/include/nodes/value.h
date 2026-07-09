@@ -47,6 +47,11 @@ typedef struct Value
 		int			ival;		/* machine integer */
 		char	   *str;		/* string */
 	}			val;
+
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	char	   *charset_name; /* MySQL _charset introducer name, if any */
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 } Value;
 
 #define intVal(v)		(((Value *)(v))->val.ival)
@@ -57,6 +62,5 @@ extern Value *makeInteger(int i);
 extern Value *makeFloat(char *numericStr);
 extern Value *makeString(char *str);
 extern Value *makeBitString(char *str);
-extern Value *makeIntroducerString(char *str);	/* Req:SRS-MYSQL-SQL-Select */
 
 #endif							/* VALUE_H */

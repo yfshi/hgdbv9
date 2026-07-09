@@ -469,7 +469,7 @@ create table t1(regexp int);
 create table t1(`regexp` int);
 drop table t1;
 
---BUG#M7845
+--BUG#7845
 select 'abc' REGEXP binary 'ABC' ;
 
 select 'abc' REGEXP 'ABC' collate utf8_general_ci;
