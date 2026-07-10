@@ -11921,6 +11921,28 @@ proargtypes => 'text',prosrc => 'get_macro_value'},
   proname => 'pg_get_partinterval_string', provolatile => 's', prorettype => 'text',
   proargtypes => 'oid', prosrc => 'pg_get_partinterval_string' },
 # /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
+# /* Begin ReqID:SRS-SQL-SYSVIEW */
+{ oid => '6139',
+  descr => 'get session info (pid, paddr, osuser, plsql_info, cpu_used) for each process.',
+  proname => 'pg_get_session_info', prorows => '100', proisstrict => 'f',
+  proretset => 't', provolatile => 'v', proparallel => 'r',
+  prorettype => 'record', proargtypes => 'int4',
+  proallargtypes => '{int4,int4,bytea,varchar,oid,int4,oid,int4,int8}',
+  proargmodes => '{i,o,o,o,o,o,o,o,o}',
+  proargnames => '{pid,pid,paddr,osuser,plsql_entry_object_id,plsql_entry_subprogram_id,plsql_object_id,plsql_subprogram_id,cpu_used}',
+  prosrc => 'pg_get_session_info' },
+
+{ oid => '6140',
+  descr => 'get parameter hash modified',
+  proname => 'pg_get_parameter_modify_status', prorows => '100', proisstrict => 'f',
+  proretset => 't', provolatile => 'v', proparallel => 'r',
+  prorettype => 'record', proargtypes => 'text',
+  proallargtypes => '{text,text,text}',
+  proargmodes => '{i,o,o}',
+  proargnames => '{name,name,ismodified}',
+  prosrc => 'pg_get_parameter_modify_status' },
+# /* End ReqID:SRS-SQL-SYSVIEW */
 /*END Oracle Compatibility Metadatas*/
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */

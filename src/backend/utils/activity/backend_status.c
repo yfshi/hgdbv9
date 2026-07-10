@@ -64,6 +64,12 @@ static char *BackendClientPidBuffer = NULL;
 static char *BackendClientMacBuffer = NULL;
 /* End ReqID: SRS-SESSION-VIEWS */
 
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+#define OSUSERDATALEN 128
+static char *BackendOSuserBuffer = NULL;
+static void pgstat_report_osuser(const char *osuser);
+/* End ReqID:SRS-SQL-SYSVIEW */
+
 #ifdef USE_SSL
 static PgBackendSSLStatus *BackendSslStatusBuffer = NULL;
 #endif
@@ -115,6 +121,11 @@ BackendStatusShmemSize(void)
 	size = add_size(size,
 					mul_size(sizeof(PgBackendGSSStatus), NumBackendStatSlots));
 #endif
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	/* BackendOSuserBuffer: */
+	size = add_size(size,
+					mul_size(OSUSERDATALEN, NumBackendStatSlots));
+	/* End ReqID:SRS-SQL-SYSVIEW */
 	return size;
 }
 
@@ -319,6 +330,25 @@ CreateSharedBackendStatus(void)
 		}
 	}
 #endif
+
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	size = mul_size(OSUSERDATALEN, NumBackendStatSlots);
+	BackendOSuserBuffer = (char *)
+		ShmemInitStruct("Backend Operating System User Buffer", size, &found);
+
+	if (!found)
+	{
+		MemSet(BackendOSuserBuffer, 0, size);
+
+		/* Initialize st_osuser pointers. */
+		buffer = BackendOSuserBuffer;
+		for (i = 0; i < NumBackendStatSlots; i++)
+		{
+			BackendStatusArray[i].st_osuser = buffer;
+			buffer += OSUSERDATALEN;
+		}
+	}
+	/* End ReqID:SRS-SQL-SYSVIEW */
 }
 
 /*
@@ -542,6 +572,7 @@ pgstat_bestart(void)
 	 */
 	lbeentry.st_appname[0] = '\0';
 	lbeentry.st_osname[0] = '\0'; /* ReqID: SESSION-VIEWS */
+	lbeentry.st_osuser[0] = '\0'; /* ReqID: SRS-SQL-SYSVIEW */
 	if (MyProcPort && MyProcPort->remote_hostname)
 		strlcpy(lbeentry.st_clienthostname, MyProcPort->remote_hostname,
 				NAMEDATALEN);
@@ -595,6 +626,10 @@ pgstat_bestart(void)
 	if (osname)
 		pgstat_report_osname(osname);
 	/* End ReqID: SRS-SESSION-VIEWS */
+	/* Begin ReqID: SRS-SQL-SYSVIEW */
+	if (MyProcPort && MyProcPort->osuser)
+	    pgstat_report_osuser(MyProcPort->osuser);
+	/* End ReqID: SRS-SQL-SYSVIEW */
 }
 
 /*
@@ -766,6 +801,13 @@ pgstat_report_activity(BackendState state, const char *cmd_str)
 
 		/* SRS-MISC-HSH */
 		beentry->st_cmd_type = 0;
+
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		beentry->st_plsql_entry_object_id = InvalidOid;
+		beentry->st_plsql_entry_subprogram_id = 0;
+		beentry->st_plsql_object_id = InvalidOid;
+		beentry->st_plsql_subprogram_id = 0;
+		/* End ReqID:SRS-SQL-SYSVIEW */
 	}
 
 	if (cmd_str != NULL)
@@ -895,6 +937,7 @@ pgstat_read_current_status(void)
 			   *localclientpid,
 			   *localclientmac;
 	/* End ReqID: SRS-SESSION-VIEWS */
+	char       *localosuser;          /* ReqID:SRS-SQL-SYSVIEW */
 #ifdef USE_SSL
 	PgBackendSSLStatus *localsslstatus;
 #endif
@@ -947,6 +990,11 @@ pgstat_read_current_status(void)
 		MemoryContextAllocHuge(backendStatusSnapContext,
 							   (Size) pgstat_track_activity_query_size *
 							   (Size) NumBackendStatSlots);
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	localosuser = (char *)
+	    MemoryContextAlloc(backendStatusSnapContext,
+						   OSUSERDATALEN * NumBackendStatSlots);
+	/* End ReqID:SRS-SQL-SYSVIEW */
 #ifdef USE_SSL
 	localsslstatus = (PgBackendSSLStatus *)
 		MemoryContextAlloc(backendStatusSnapContext,
@@ -1010,6 +1058,10 @@ pgstat_read_current_status(void)
 				/* End ReqID: SRS-SESSION-VIEWS */
 				strcpy(localactivity, (char *) beentry->st_activity_raw);
 				localentry->backendStatus.st_activity_raw = localactivity;
+				/* Begin ReqID:SRS-SQL-SYSVIEW */
+				strcpy(localosuser, (char *) beentry->st_osuser);
+				localentry->backendStatus.st_osuser = localosuser;
+				/* End ReqID:SRS-SQL-SYSVIEW */
 #ifdef USE_SSL
 				if (beentry->st_ssl)
 				{
@@ -1055,6 +1107,7 @@ pgstat_read_current_status(void)
 			localclientpid += NAMEDATALEN;
 			localclientmac += NAMEDATALEN;
 			/* End ReqID: SRS-SESSION-VIEWS */
+			localosuser += OSUSERDATALEN; /* ReqID:SRS-SQL-SYSVIEW */
 #ifdef USE_SSL
 			localsslstatus++;
 #endif
@@ -1420,3 +1473,62 @@ pgstat_report_query_phase(QueryPhaseKind stQueryPhase)
 }
 
 /* End - ReqID:SRS-MISC-HSH */
+
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+/* ----------
+ * pgstat_report_osuser() -
+ *
+ *	Called to update our operating system user.
+ * ----------
+ */
+static void
+pgstat_report_osuser(const char *osuser)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+	if (!beentry)
+		return;
+
+	/*
+	 * Update my status entry, following the protocol of bumping
+	 * st_changecount before and after.  We use a volatile pointer here to
+	 * ensure the compiler doesn't try to get cute.
+	 */
+	PGSTAT_BEGIN_WRITE_ACTIVITY(beentry);
+	strlcpy(beentry->st_osuser, osuser, OSUSERDATALEN);
+	PGSTAT_END_WRITE_ACTIVITY(beentry);
+}
+
+/* --------
+ * pgstat_report_plsql_info(Oid, int, Oid, int) -
+ *
+ * Call to set:
+ * st_plsql_entry_object_id st_plsql_entry_subprogram_id
+ * st_plsql_object_id st_plsql_subprogram_id
+ * --------
+ */
+void
+pgstat_report_plsql_info(Oid entry_object_id, int entry_subprogram_id,
+	Oid object_id, int subprogram_id)
+{
+	volatile PgBackendStatus *beentry = MyBEEntry;
+
+	/*
+	 * if track_activities is disabled, st_query_phase should already have been
+	 * reset
+	 */
+	if (!beentry || !pgstat_track_activities)
+		return;
+
+	/*
+	 * Update my status entry, following the protocol of bumping
+	 * st_changecount before and after.  We use a volatile pointer here to
+ 	 * ensure the compiler doesn't try to get cute.
+ 	 */
+	PGSTAT_BEGIN_WRITE_ACTIVITY(beentry);
+	beentry->st_plsql_entry_object_id = entry_object_id;
+	beentry->st_plsql_entry_subprogram_id = entry_subprogram_id;
+	beentry->st_plsql_object_id = object_id;
+	beentry->st_plsql_subprogram_id = subprogram_id;
+	PGSTAT_END_WRITE_ACTIVITY(beentry);
+}
+/* End ReqID:SRS-SQL-SYSVIEW*/

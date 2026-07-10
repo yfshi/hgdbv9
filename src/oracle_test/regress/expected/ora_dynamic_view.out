@@ -1,0 +1,283 @@
+-- check SYS.V$SESSION SYS.V$PROCESS SYS.V$PARAMETER SYS.V$PARAMETER2
+-- base before test - create public user -- cannot select
+drop user if exists ora_dynamic_view cascade;
+NOTICE:  role "ora_dynamic_view" does not exist, skipping
+create user ora_dynamic_view password 'Highgo123';
+-- without permission for public user
+SET SESSION AUTHORIZATION ora_dynamic_view;
+select * from v$parameter2 limit 1;
+ERROR:  permission denied for view v$parameter2
+select * from v$parameter2 limit 1;
+ERROR:  permission denied for view v$parameter2
+select * from v$parameter2 limit 1;
+ERROR:  permission denied for view v$parameter2
+select * from v$parameter2 limit 1;
+ERROR:  permission denied for view v$parameter2
+-- reset session and clean
+RESET SESSION AUTHORIZATION;
+drop user if exists ora_dynamic_view cascade;
+-- base before test - super user -- can select
+-- SYS.V$SESSION
+-- default value part1: saddr audsid command ownerid taddr server schemaname schema# terminal sql_address sql_child_number
+select saddr, audsid, command, ownerid, taddr, server, schemaname, schema#, terminal, sql_address, sql_child_number from sys.v$session limit 1;
+ saddr | audsid | command |  ownerid   | taddr |  server   | schemaname | schema# | terminal |    sql_address     | sql_child_number 
+-------+--------+---------+------------+-------+-----------+------------+---------+----------+--------------------+------------------
+       | 0      | 0       | 2147483644 |       | DEDICATED |            |         | UNKNOWN  | \x0000000000000000 | 0
+(1 row)
+
+-- default value part2: prev_sql_addr prev_hash_value prev_sql_id prev_child_number prev_exec_start prev_exec_id
+select prev_sql_addr, prev_hash_value, prev_sql_id, prev_child_number, prev_exec_start, prev_exec_id from sys.v$session limit 1;
+   prev_sql_addr    | prev_hash_value | prev_sql_id | prev_child_number | prev_exec_start | prev_exec_id 
+--------------------+-----------------+-------------+-------------------+-----------------+--------------
+ \x0000000000000000 | 0               |             | 0                 |                 | 
+(1 row)
+
+-- default value part3: module module_hash action action_hash client_info fixed_table_sequence row_wait_obj# row_wait_file# row_wait_block# row_wait_row# top_level_call#
+select module, module_hash, action, action_hash, client_info, fixed_table_sequence, row_wait_obj#, row_wait_file#, row_wait_block#, row_wait_row#, top_level_call# from sys.v$session limit 1;
+ module | module_hash | action | action_hash | client_info | fixed_table_sequence | row_wait_obj# | row_wait_file# | row_wait_block# | row_wait_row# | top_level_call# 
+--------+-------------+--------+-------------+-------------+----------------------+---------------+----------------+-----------------+---------------+-----------------
+        | 0           |        | 0           |             | 0                    | -1            | 0              | 0               | 0             | 0
+(1 row)
+
+-- default value part4: last_call_et pdml_enabled failover_type failover_method failed_over pdml_status pddl_status pq_status
+select last_call_et, pdml_enabled, failover_type, failover_method, failed_over, pdml_status, pddl_status, pq_status from sys.v$session limit 1;
+ last_call_et | pdml_enabled | failover_type | failover_method | failed_over | pdml_status | pddl_status | pq_status 
+--------------+--------------+---------------+-----------------+-------------+-------------+-------------+-----------
+ 0            | NO           | NONE          | NONE            | NO          | DISABLED    | DISABLED    | DISABLED
+(1 row)
+
+-- default value part5: current_queue_duration client_identifier blocking_instance final_blocking_session_status final_blocking_instance final_blocking_session seq# event#
+select current_queue_duration, client_identifier, blocking_instance, final_blocking_session_status, final_blocking_instance, final_blocking_session, seq#, event# from sys.v$session limit 1;
+ current_queue_duration | client_identifier | blocking_instance | final_blocking_session_status | final_blocking_instance | final_blocking_session | seq# | event# 
+------------------------+-------------------+-------------------+-------------------------------+-------------------------+------------------------+------+--------
+ 0                      |                   |                   |                               |                         |                        | 0    | 
+(1 row)
+
+-- default value part6: p1text p1 p1raw p2text p2 p2raw p3text p3 p3raw
+select p1text, p1, p1raw, p2text, p2, p2raw, p3text, p3, p3raw from sys.v$session limit 1;
+ p1text | p1 |       p1raw        | p2text | p2 |       p2raw        | p3text | p3 |       p3raw        
+--------+----+--------------------+--------+----+--------------------+--------+----+--------------------
+        | 0  | \x0000000000000000 |        | 0  | \x0000000000000000 |        | 0  | \x0000000000000000
+(1 row)
+
+-- default value part7: wait_time seconds_in_wait state wait_time_micro time_remaining_micro total_time_waited_micro heur_time_waited_micro time_since_last_wait_micro
+select wait_time, seconds_in_wait, state, wait_time_micro, time_remaining_micro, total_time_waited_micro, heur_time_waited_micro, time_since_last_wait_micro from sys.v$session limit 1;
+ wait_time | seconds_in_wait |  state  | wait_time_micro | time_remaining_micro | total_time_waited_micro | heur_time_waited_micro | time_since_last_wait_micro 
+-----------+-----------------+---------+-----------------+----------------------+-------------------------+------------------------+----------------------------
+ 0         | 0               | WAITING |                 |                      |                         |                        | 
+(1 row)
+
+-- default value part8: service_name sql_trace sql_trace_waits sql_trace_binds sql_trace_plan_stats session_edition_id creator_addr creator_serial#
+select service_name, sql_trace, sql_trace_waits, sql_trace_binds, sql_trace_plan_stats, session_edition_id, creator_addr, creator_serial# from sys.v$session limit 1;
+ service_name | sql_trace | sql_trace_waits | sql_trace_binds | sql_trace_plan_stats | session_edition_id | creator_addr | creator_serial# 
+--------------+-----------+-----------------+-----------------+----------------------+--------------------+--------------+-----------------
+              | DISABLED  | FALSE           | FALSE           | FIRST EXEC           |                    |              | 
+(1 row)
+
+-- default value part9: ecid sql_translation_profile_id pga_tunable_mem shard_ddl_status con_id external_name plsql_debugger_connected
+select ecid, sql_translation_profile_id, pga_tunable_mem, shard_ddl_status, con_id, external_name, plsql_debugger_connected from sys.v$session limit 1;
+ ecid | sql_translation_profile_id | pga_tunable_mem | shard_ddl_status | con_id | external_name | plsql_debugger_connected 
+------+----------------------------+-----------------+------------------+--------+---------------+--------------------------
+      | 0                          | 0               | DISABLED         | 0      |               | FALSE
+(1 row)
+
+-- support columns are values that cannot bt precisely observed, no test
+-- SYS.V$PROCESS
+-- default value part1: stid execution_type serial# terminal traceid tracefile background latchwait latchspin
+select stid, execution_type, serial#, terminal, traceid, tracefile, background, latchwait, latchspin from sys.v$process limit 1;
+ stid | execution_type | serial# | terminal | traceid | tracefile | background | latchwait | latchspin 
+------+----------------+---------+----------+---------+-----------+------------+-----------+-----------
+      | PROCESS        | 0       | UNKNOWN  |         |           | 1          |           | 
+(1 row)
+
+-- default value part2: pga_used_mem pga_alloc_mem pga_freeable_mem pga_max_mem numa_default numa_curr con_id
+select pga_used_mem, pga_alloc_mem, pga_freeable_mem, pga_max_mem, numa_default, numa_curr, con_id from sys.v$process limit 1;
+ pga_used_mem | pga_alloc_mem | pga_freeable_mem | pga_max_mem | numa_default | numa_curr | con_id 
+--------------+---------------+------------------+-------------+--------------+-----------+--------
+              |               |                  |             |              |           | 0
+(1 row)
+
+-- support columns are values that cannot bt precisely observed, no test
+-- SYS.V$PARAMETER
+-- default value: ispdb_modifiable isinstance_modifiable isadjusted isdeprecated con_id
+select ispdb_modifiable, isinstance_modifiable, isadjusted, isdeprecated, con_id from v$parameter limit 1;
+ ispdb_modifiable | isinstance_modifiable | isadjusted | isdeprecated | con_id 
+------------------+-----------------------+------------+--------------+--------
+ FALSE            | FALSE                 | FALSE      | FALSE        | 0
+(1 row)
+
+-- support bool - array_nulls
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'array_nulls';
+    name     | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |               description                |                                               update_comment                                               | isbasic 
+-------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------+------------------------------------------------------------------------------------------------------------+---------
+ array_nulls | 1    | on    | on            | on            | TRUE      | TRUE             | IMMEDIATE        | false      | Enable input of NULL elements in arrays. | When turned on, unquoted NULL in an array input value means a null value; otherwise it is taken literally. | FALSE
+(1 row)
+
+set array_nulls='off';
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'array_nulls';
+    name     | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |               description                |                                               update_comment                                               | isbasic 
+-------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------+------------------------------------------------------------------------------------------------------------+---------
+ array_nulls | 1    | off   | off           | on            | FALSE     | TRUE             | IMMEDIATE        | modified   | Enable input of NULL elements in arrays. | When turned on, unquoted NULL in an array input value means a null value; otherwise it is taken literally. | FALSE
+(1 row)
+
+reset array_nulls;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'array_nulls';
+    name     | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |               description                |                                               update_comment                                               | isbasic 
+-------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------+------------------------------------------------------------------------------------------------------------+---------
+ array_nulls | 1    | on    | on            | on            | TRUE      | TRUE             | IMMEDIATE        | false      | Enable input of NULL elements in arrays. | When turned on, unquoted NULL in an array input value means a null value; otherwise it is taken literally. | FALSE
+(1 row)
+
+-- support string - application_name
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'application_name';
+       name       | type |            value            |        display_value        | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                           description                            | update_comment | isbasic 
+------------------+------+-----------------------------+-----------------------------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------+----------------+---------
+ application_name | 2    | pg_regress/ora_dynamic_view | pg_regress/ora_dynamic_view |               | FALSE     | TRUE             | IMMEDIATE        | false      | Sets the application name to be reported in statistics and logs. |                | FALSE
+(1 row)
+
+set application_name='check_app';
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'application_name';
+       name       | type |   value   | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                           description                            | update_comment | isbasic 
+------------------+------+-----------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------+----------------+---------
+ application_name | 2    | check_app | check_app     |               | FALSE     | TRUE             | IMMEDIATE        | modified   | Sets the application name to be reported in statistics and logs. |                | FALSE
+(1 row)
+
+reset application_name;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'application_name';
+       name       | type |            value            |        display_value        | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                           description                            | update_comment | isbasic 
+------------------+------+-----------------------------+-----------------------------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------+----------------+---------
+ application_name | 2    | pg_regress/ora_dynamic_view | pg_regress/ora_dynamic_view |               | FALSE     | TRUE             | IMMEDIATE        | false      | Sets the application name to be reported in statistics and logs. |                | FALSE
+(1 row)
+
+-- support integer - lock_timeout
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'lock_timeout';
+     name     | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                        description                        |           update_comment            | isbasic 
+--------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+-----------------------------------------------------------+-------------------------------------+---------
+ lock_timeout | 3    | 0     | 0             | 0             | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the maximum allowed duration of any wait for a lock. | A value of 0 turns off the timeout. | FALSE
+(1 row)
+
+set lock_timeout=1000;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'lock_timeout';
+     name     | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                        description                        |           update_comment            | isbasic 
+--------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+-----------------------------------------------------------+-------------------------------------+---------
+ lock_timeout | 3    | 1000  | 1000          | 0             | FALSE     | TRUE             | IMMEDIATE        | modified   | Sets the maximum allowed duration of any wait for a lock. | A value of 0 turns off the timeout. | FALSE
+(1 row)
+
+reset lock_timeout;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'lock_timeout';
+     name     | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                        description                        |           update_comment            | isbasic 
+--------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+-----------------------------------------------------------+-------------------------------------+---------
+ lock_timeout | 3    | 0     | 0             | 0             | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the maximum allowed duration of any wait for a lock. | A value of 0 turns off the timeout. | FALSE
+(1 row)
+
+-- support enum - xmloption
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'xmloption';
+   name    | type |  value  | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                                          description                                                          | update_comment | isbasic 
+-----------+------+---------+---------------+---------------+-----------+------------------+------------------+------------+-------------------------------------------------------------------------------------------------------------------------------+----------------+---------
+ xmloption | 4    | content | content       | content       | TRUE      | TRUE             | IMMEDIATE        | false      | Sets whether XML data in implicit parsing and serialization operations is to be considered as documents or content fragments. |                | FALSE
+(1 row)
+
+set xmloption='document';
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'xmloption';
+   name    | type |  value   | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                                          description                                                          | update_comment | isbasic 
+-----------+------+----------+---------------+---------------+-----------+------------------+------------------+------------+-------------------------------------------------------------------------------------------------------------------------------+----------------+---------
+ xmloption | 4    | document | document      | content       | FALSE     | TRUE             | IMMEDIATE        | modified   | Sets whether XML data in implicit parsing and serialization operations is to be considered as documents or content fragments. |                | FALSE
+(1 row)
+
+reset xmloption;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'xmloption';
+   name    | type |  value  | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                                          description                                                          | update_comment | isbasic 
+-----------+------+---------+---------------+---------------+-----------+------------------+------------------+------------+-------------------------------------------------------------------------------------------------------------------------------+----------------+---------
+ xmloption | 4    | content | content       | content       | TRUE      | TRUE             | IMMEDIATE        | false      | Sets whether XML data in implicit parsing and serialization operations is to be considered as documents or content fragments. |                | FALSE
+(1 row)
+
+-- support real - seq_page_cost
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'seq_page_cost';
+     name      | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                 description                                  | update_comment | isbasic 
+---------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------------------+----------------+---------
+ seq_page_cost | 5    | 1     | 1             | 1             | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the planner's estimate of the cost of a sequentially fetched disk page. |                | FALSE
+(1 row)
+
+set seq_page_cost=103.1415926;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'seq_page_cost';
+     name      | type |  value  | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                 description                                  | update_comment | isbasic 
+---------------+------+---------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------------------+----------------+---------
+ seq_page_cost | 5    | 103.142 | 103.142       | 1             | FALSE     | TRUE             | IMMEDIATE        | modified   | Sets the planner's estimate of the cost of a sequentially fetched disk page. |                | FALSE
+(1 row)
+
+reset seq_page_cost;
+select name, type, value, display_value, default_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, update_comment, isbasic from v$parameter where name = 'seq_page_cost';
+     name      | type | value | display_value | default_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                 description                                  | update_comment | isbasic 
+---------------+------+-------+---------------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------------------+----------------+---------
+ seq_page_cost | 5    | 1     | 1             | 1             | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the planner's estimate of the cost of a sequentially fetched disk page. |                | FALSE
+(1 row)
+
+-- v$parameter2
+-- default value: ispdb_modifiable isinstance_modifiable isadjusted isdeprecated con_id
+select ispdb_modifiable, isinstance_modifiable, isadjusted, isdeprecated, con_id from v$parameter2 limit 1;
+ ispdb_modifiable | isinstance_modifiable | isadjusted | isdeprecated | con_id 
+------------------+-----------------------+------------+--------------+--------
+ FALSE            | FALSE                 | FALSE      | FALSE        | 0
+(1 row)
+
+-- support not enum with ordinal null
+-- bool - array_nulls
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'array_nulls';
+ type | value | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |               description                | ordinal |                                               update_comment                                               | isbasic 
+------+-------+---------------+-----------+------------------+------------------+------------+------------------------------------------+---------+------------------------------------------------------------------------------------------------------------+---------
+ 1    | on    | on            | TRUE      | TRUE             | IMMEDIATE        | false      | Enable input of NULL elements in arrays. |         | When turned on, unquoted NULL in an array input value means a null value; otherwise it is taken literally. | FALSE
+(1 row)
+
+-- string - application_name
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'application_name';
+ type |            value            |        display_value        | isdefault | isses_modifiable | issys_modifiable | ismodified |                           description                            | ordinal | update_comment | isbasic 
+------+-----------------------------+-----------------------------+-----------+------------------+------------------+------------+------------------------------------------------------------------+---------+----------------+---------
+ 2    | pg_regress/ora_dynamic_view | pg_regress/ora_dynamic_view | FALSE     | TRUE             | IMMEDIATE        | false      | Sets the application name to be reported in statistics and logs. |         |                | FALSE
+(1 row)
+
+-- integer - lock_timeout
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'lock_timeout';
+ type | value | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                        description                        | ordinal |           update_comment            | isbasic 
+------+-------+---------------+-----------+------------------+------------------+------------+-----------------------------------------------------------+---------+-------------------------------------+---------
+ 3    | 0     | 0             | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the maximum allowed duration of any wait for a lock. |         | A value of 0 turns off the timeout. | FALSE
+(1 row)
+
+-- real - seq_page_cost
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'seq_page_cost';
+ type | value | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                                 description                                  | ordinal | update_comment | isbasic 
+------+-------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------------------------------+---------+----------------+---------
+ 5    | 1     | 1             | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the planner's estimate of the cost of a sequentially fetched disk page. |         |                | FALSE
+(1 row)
+
+-- support enum with ordinal not null
+-- enum - client_min_messages
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'client_min_messages';
+ type | value  | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                     description                      | ordinal |                                            update_comment                                            | isbasic 
+------+--------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------+---------+------------------------------------------------------------------------------------------------------+---------
+ 4    | notice | notice        | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the message levels that are sent to the client. | 7       | Each level includes all the levels that follow it. The later the level, the fewer messages are sent. | FALSE
+(1 row)
+
+set client_min_messages = 'debug5';
+DEBUG:  CommitTransaction(1) name: unnamed; blockState: STARTED; state: INPROGRESS, xid/subid/cid: 0/1/0
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'client_min_messages';
+DEBUG:  StartTransaction(1) name: unnamed; blockState: DEFAULT; state: INPROGRESS, xid/subid/cid: 0/1/0
+DEBUG:  CommitTransaction(1) name: unnamed; blockState: STARTED; state: INPROGRESS, xid/subid/cid: 0/1/0
+ type | value  | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                     description                      | ordinal |                                            update_comment                                            | isbasic 
+------+--------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------+---------+------------------------------------------------------------------------------------------------------+---------
+ 4    | debug5 | debug5        | FALSE     | TRUE             | IMMEDIATE        | modified   | Sets the message levels that are sent to the client. | 1       | Each level includes all the levels that follow it. The later the level, the fewer messages are sent. | FALSE
+(1 row)
+
+set client_min_messages = 'warning';
+DEBUG:  StartTransaction(1) name: unnamed; blockState: DEFAULT; state: INPROGRESS, xid/subid/cid: 0/1/0
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'client_min_messages';
+ type |  value  | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                     description                      | ordinal |                                            update_comment                                            | isbasic 
+------+---------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------+---------+------------------------------------------------------------------------------------------------------+---------
+ 4    | warning | warning       | FALSE     | TRUE             | IMMEDIATE        | modified   | Sets the message levels that are sent to the client. | 8       | Each level includes all the levels that follow it. The later the level, the fewer messages are sent. | FALSE
+(1 row)
+
+reset client_min_messages;
+select type, value, display_value, isdefault, isses_modifiable, issys_modifiable, ismodified, description, ordinal, update_comment, isbasic from v$parameter2 where name = 'client_min_messages';
+ type | value  | display_value | isdefault | isses_modifiable | issys_modifiable | ismodified |                     description                      | ordinal |                                            update_comment                                            | isbasic 
+------+--------+---------------+-----------+------------------+------------------+------------+------------------------------------------------------+---------+------------------------------------------------------------------------------------------------------+---------
+ 4    | notice | notice        | TRUE      | TRUE             | IMMEDIATE        | false      | Sets the message levels that are sent to the client. | 7       | Each level includes all the levels that follow it. The later the level, the fewer messages are sent. | FALSE
+(1 row)
+

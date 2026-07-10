@@ -130,6 +130,18 @@ typedef struct guc_stack
 	config_var_value masked;	/* SET value in a GUC_SET_LOCAL entry */
 } GucStack;
 
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+/*
+ * Set modify state for GUC, use to support ismodified in v$parameter.
+ */
+typedef enum
+{
+	GUC_NOT_MODIFY = 0,             /* Parameter has not been modified after instance startup. */
+	GUC_MODIFIED,                   /* Parameter has been modified with set in session. */
+	GUC_SYSTEM_MOD                  /* Parameter has been modified with pg_ctl reload. */
+} GucModifyState;
+/* End ReqID:SRS-SQL-SYSVIEW */
+
 /*
  * Generic fields applicable to all types of variables
  *
@@ -165,6 +177,13 @@ struct config_generic
 	char	   *sourcefile;		/* file current setting is from (NULL if not
 								 * set in config file) */
 	int			sourceline;		/* line in source file */
+	/* Begin - ReqID:SRS-SQL-SYSVIEW */
+	/* Parameters that take effect after restart or
+	 * that were changed or not changed before restart
+	 * are all set to false.
+	 */
+	GucModifyState modified_status;
+	/* End - ReqID:SRS-SQL-SYSVIEW */
 };
 
 /* bit values in status field */

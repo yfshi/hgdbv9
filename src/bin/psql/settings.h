@@ -155,6 +155,7 @@ typedef struct _psqlSettings
 	const char *prompt3;
 	PGVerbosity verbosity;		/* current error verbosity level */
 	PGContextVisibility show_context;	/* current context display level */
+	const char *osuser;         /* ReqID: SRS-SQL-SYSVIEW */
 } PsqlSettings;
 
 extern PsqlSettings pset;

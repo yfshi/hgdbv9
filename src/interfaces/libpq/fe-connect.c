@@ -410,6 +410,12 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 	offsetof(struct pg_conn, passcustom)},
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	{"client.osuser", "OSUSER", NULL, NULL,
+		"Database-osuser", "", 128,
+	offsetof(struct pg_conn, osuser)},
+	/* End ReqID:SRS-SQL-SYSVIEW */
+
 	/* Terminating entry --- MUST BE LAST */
 	{NULL, NULL, NULL, NULL,
 	NULL, NULL, 0}
@@ -4277,6 +4283,10 @@ freePGconn(PGconn *conn)
 		free(conn->rowBuf);
 	if (conn->target_session_attrs)
 		free(conn->target_session_attrs);
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	if (conn->osuser)
+	    free(conn->osuser);
+	/* End ReqID:SRS-SQL-SYSVIEW */
 	termPQExpBuffer(&conn->errorMessage);
 	termPQExpBuffer(&conn->workBuffer);
 

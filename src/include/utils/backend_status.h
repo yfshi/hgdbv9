@@ -205,7 +205,18 @@ typedef struct PgBackendStatus
 	 */
 	QueryPhaseKind  st_query_phase;
 	/* End - ReqID:SRS-MISC-HSH */
-
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	/* operating system USER Name */
+	char       *st_osuser;
+	/* top PL/SQL program Oid */
+	Oid        st_plsql_entry_object_id;
+	/* top PL/SQL subprogram id: the order of functions in their package, default 1. */
+	int        st_plsql_entry_subprogram_id;
+	/* current PL/SQL program Oid. */
+	Oid        st_plsql_object_id;
+	/* current PL/SQL subprogram id: the order of functions in their package, default 1. */
+	int        st_plsql_subprogram_id;
+	/* End ReqID:SRS-SQL-SYSVIEW */
 } PgBackendStatus;
 
 
@@ -361,4 +372,8 @@ extern void pgstat_report_query_type(CmdType stCmdType, bool force);
 extern void pgstat_report_query_phase(QueryPhaseKind stQueryPhase);
 /* End - ReqID:SRS-MISC-HSH */
 
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+extern void pgstat_report_plsql_info(Oid entry_object_id, int entry_subprogram_id,
+	Oid object_id, int subprogram_id);
+/* End ReqID:SRS-SQL-SYSVIEW */
 #endif							/* BACKEND_STATUS_H */

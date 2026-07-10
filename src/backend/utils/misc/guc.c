@@ -8883,6 +8883,39 @@ set_config_option(const char *name, const char *value,
 			}
 	}
 
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	if (changeVal)
+	{
+		if (value == NULL)
+		{
+			/* reset option: 1.modified set false, 2.system_mode and false not change */
+			if (record->modified_status == GUC_MODIFIED)
+			{
+				record->modified_status = GUC_NOT_MODIFY;
+			}
+		}
+		else
+		{
+			switch (source)
+			{
+				/* SET PARAMETER = VALUE */
+				case PGC_S_SESSION:
+					record->modified_status = GUC_MODIFIED;
+					break;
+				/* postgresql.conf */
+				case PGC_S_FILE:
+				/* postmaster command */
+				case PGC_S_ARGV:
+					record->modified_status = GUC_SYSTEM_MOD;
+					break;
+				default:
+					record->modified_status = GUC_NOT_MODIFY;
+					break;
+			}
+		}
+	}
+	/* End ReqID:SRS-SQL-SYSVIEW */
+
 	if (changeVal && (record->flags & GUC_REPORT))
 	{
 		record->status |= GUC_NEEDS_REPORT;
@@ -11175,6 +11208,88 @@ show_all_settings(PG_FUNCTION_ARGS)
 		SRF_RETURN_DONE(funcctx);
 	}
 }
+
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+Datum
+pg_get_parameter_modify_status(PG_FUNCTION_ARGS)
+{
+#define NUM_PARAMETER_INFO 2
+	FuncCallContext *funcctx;
+	AttInMetadata *attinmeta;
+	MemoryContext oldcontext;
+	char *param_name;
+	struct config_generic *record = NULL;
+	Datum values[NUM_PARAMETER_INFO];
+	bool nulls[NUM_PARAMETER_INFO];
+	HeapTuple tuple;
+
+	/* stuff done only on the first call of the function */
+	if (SRF_IS_FIRSTCALL())
+	{
+		TupleDesc	tupdesc;
+		funcctx = SRF_FIRSTCALL_INIT();
+		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
+
+		tupdesc = CreateTemplateTupleDesc(NUM_PARAMETER_INFO);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
+						   TEXTOID, -1, 0);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "ismodified",
+						   TEXTOID, -1, 0);
+		BlessTupleDesc(tupdesc);
+		funcctx->tuple_desc = tupdesc;
+
+		attinmeta = TupleDescGetAttInMetadata(tupdesc);
+		funcctx->attinmeta = attinmeta;
+		if (!PG_ARGISNULL(0))
+		{
+			param_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+			record = find_option(param_name, false, true, DEBUG1);
+		}
+		if (record != NULL)
+		{
+			funcctx->max_calls = 1;
+			funcctx->user_fctx = (void *)record;
+		}
+		else
+		{
+			funcctx->max_calls = 0;
+			funcctx->user_fctx = NULL;
+		}
+
+		MemoryContextSwitchTo(oldcontext);
+	}
+
+	/* stuff done on every call of the function */
+	funcctx = SRF_PERCALL_SETUP();
+
+	if (funcctx->call_cntr < funcctx->max_calls)
+	{
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, 0, sizeof(nulls));
+		record = (struct config_generic *)(funcctx->user_fctx);
+		values[0] = CStringGetTextDatum(record->name);
+		switch (record->modified_status)
+		{
+			case GUC_NOT_MODIFY:
+			values[1] = CStringGetTextDatum("false");
+			break;
+			case GUC_MODIFIED:
+			values[1] = CStringGetTextDatum("modified");
+			break;
+			case GUC_SYSTEM_MOD:
+			values[1] = CStringGetTextDatum("system_mod");
+			break;
+			default:
+			/* error */
+				break;
+		}
+		tuple = heap_form_tuple(funcctx->tuple_desc, values, nulls);
+		SRF_RETURN_NEXT(funcctx, HeapTupleGetDatum(tuple));
+	}
+
+	SRF_RETURN_DONE(funcctx);
+}
+/* End ReqID:SRS-SQL-SYSVIEW*/
 
 /*
  * show_all_file_settings

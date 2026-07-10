@@ -2269,6 +2269,11 @@ build_startup_packet(const PGconn *conn, char *packet,
 		ADD_STARTUP_OPTION("client.mac", conn->client_mac);
 	/* End ReqID: SRS-SESSION-VIEWS */
 
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	if (conn->osuser && conn->osuser[0])
+		ADD_STARTUP_OPTION("client.osuser", conn->osuser);
+	/* End ReqID:SRS-SQL-SYSVIEW */
+
 	if (conn->send_appname)
 	{
 		/* Use appname if present, otherwise use fallback */
