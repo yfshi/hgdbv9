@@ -163,6 +163,7 @@ MYS_REGRESS = numeric_to_times \
 			  character_func \
 			  time_func	\
 			  time_func2 \
+			  interval \
 			  period \
 			  flow_control \
 			  network_func \
@@ -200,6 +201,7 @@ MYS_REGRESS = numeric_to_times \
 			  hex_serialization_deserialization \
 			  mysql_timestamp \
 			  insert_duplicate \
+			  case_when \
 			  create_collation_from
 
 

@@ -4565,6 +4565,15 @@ VOLATILE
 PARALLEL SAFE;
 /* End - bug#m8406 */
 
+/* Begin - bug#8562 */
+CREATE FUNCTION ivymy.found_rows()
+RETURNS bigint
+AS 'MODULE_PATHNAME','found_rows'
+LANGUAGE C
+VOLATILE
+PARALLEL SAFE;
+/* End - bug#8562 */
+
 CREATE FUNCTION ivymy.crc32(varbinary)
 RETURNS int8
 AS 'MODULE_PATHNAME','crc32'
@@ -4700,3 +4709,13 @@ LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
+
+/* Begin - bug#8563 */
+CREATE FUNCTION ivymy.collation(anyelement)
+RETURNS text
+AS 'pg_collation_for'
+LANGUAGE INTERNAL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#8563 */

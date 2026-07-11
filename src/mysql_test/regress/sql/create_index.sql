@@ -332,7 +332,7 @@ SELECT * FROM array_index_op_test WHERE i @> '{32}' ORDER BY seqno;
 SELECT * FROM array_index_op_test WHERE i && '{32}' ORDER BY seqno;
 SELECT * FROM array_index_op_test WHERE t @> '{AAAAAAA80240}' ORDER BY seqno;
 SELECT * FROM array_index_op_test WHERE t && '{AAAAAAA80240}' ORDER BY seqno;
-SELECT * FROM array_index_op_test WHERE i @> '{32}' AND t && '{AAAAAAA80240}' ORDER BY seqno;
+SELECT * FROM array_index_op_test WHERE i @> '{32}' AND (t && '{AAAAAAA80240}') ORDER BY seqno;
 SELECT * FROM array_index_op_test WHERE i && '{32}' AND t @> '{AAAAAAA80240}' ORDER BY seqno;
 SELECT * FROM array_index_op_test WHERE t = '{}' ORDER BY seqno;
 SELECT * FROM array_op_test WHERE i = '{NULL}' ORDER BY seqno;

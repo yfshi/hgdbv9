@@ -1,0 +1,272 @@
+--
+-- The grammar rewrites DATE_ADD(d, INTERVAL v unit) into dateadd(d, <interval>)
+-- and DATE_SUB(d, INTERVAL v unit) into dateadd(d, -<interval>).  We first
+-- create a dateadd(timestamp, interval) stub (= d + interval) so the cases run
+-- end to end and the results can be observed.
+--
+\set ON_ERROR_STOP 0
+--------------------------------------------------------------------------------
+-- 1. Single units (scalar value) — expected result in the trailing comment
+--------------------------------------------------------------------------------
+SELECT DATE_ADD(TIMESTAMP '2008-12-31 23:59:59', INTERVAL 1 SECOND);        -- 2009-01-01 00:00:00
+          date_add          
+----------------------------
+ 2009-01-01 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 MINUTE);        -- 2008-01-02 00:01:00
+          date_add          
+----------------------------
+ 2008-01-02 00:01:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 HOUR);          -- 2008-01-02 01:00:00
+          date_add          
+----------------------------
+ 2008-01-02 01:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 DAY);           -- 2008-01-03 00:00:00
+          date_add          
+----------------------------
+ 2008-01-03 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 WEEK);          -- 2008-01-09 00:00:00
+          date_add          
+----------------------------
+ 2008-01-09 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 MONTH);         -- 2008-02-02 00:00:00
+          date_add          
+----------------------------
+ 2008-02-02 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 QUARTER);       -- 2008-04-02 00:00:00  (+3 months)
+          date_add          
+----------------------------
+ 2008-04-02 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 YEAR);          -- 2009-01-02 00:00:00
+          date_add          
+----------------------------
+ 2009-01-02 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 100000 MICROSECOND); -- 2008-01-02 00:00:00.1
+          date_add          
+----------------------------
+ 2008-01-02 00:00:00.100000
+(1 row)
+
+--------------------------------------------------------------------------------
+-- 2. Value as an expression / negative number
+--------------------------------------------------------------------------------
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1+1 DAY);         -- 2008-01-04 00:00:00
+          date_add          
+----------------------------
+ 2008-01-04 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 2*3 HOUR);        -- 2008-01-02 06:00:00
+          date_add          
+----------------------------
+ 2008-01-02 06:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-02 00:00:00', INTERVAL -1 DAY);          -- 2008-01-01 00:00:00
+          date_add          
+----------------------------
+ 2008-01-01 00:00:00.000000
+(1 row)
+
+--------------------------------------------------------------------------------
+-- 3. Composite units (delimited-string value mapped to a SQL field range)
+--------------------------------------------------------------------------------
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1:1' MINUTE_SECOND);       -- 2008-01-01 00:01:01
+          date_add          
+----------------------------
+ 2008-01-01 00:01:01.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '2:3' HOUR_MINUTE);         -- 2008-01-01 02:03:00
+          date_add          
+----------------------------
+ 2008-01-01 02:03:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '2:3:4' HOUR_SECOND);       -- 2008-01-01 02:03:04
+          date_add          
+----------------------------
+ 2008-01-01 02:03:04.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1 2' DAY_HOUR);            -- 2008-01-02 02:00:00
+          date_add          
+----------------------------
+ 2008-01-02 02:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1 2:3' DAY_MINUTE);        -- 2008-01-02 02:03:00
+          date_add          
+----------------------------
+ 2008-01-02 02:03:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1 1:1:1' DAY_SECOND);      -- 2008-01-02 01:01:01
+          date_add          
+----------------------------
+ 2008-01-02 01:01:01.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1-6' YEAR_MONTH);          -- 2009-07-01 00:00:00
+          date_add          
+----------------------------
+ 2009-07-01 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1.5' SECOND_MICROSECOND);  -- 2008-01-01 00:00:01.5
+          date_add          
+----------------------------
+ 2008-01-01 00:00:01.500000
+(1 row)
+
+--------------------------------------------------------------------------------
+-- 4. DATE_SUB — mirror of DATE_ADD, with the interval negated
+--------------------------------------------------------------------------------
+SELECT DATE_SUB(TIMESTAMP '2009-01-01 00:00:00', INTERVAL 1 DAY);                     -- 2008-12-31 00:00:00
+          date_sub          
+----------------------------
+ 2008-12-31 00:00:00.000000
+(1 row)
+
+SELECT DATE_SUB(TIMESTAMP '2008-01-02 00:00:00', INTERVAL 1 QUARTER);                 -- 2007-10-02 00:00:00
+          date_sub          
+----------------------------
+ 2007-10-02 00:00:00.000000
+(1 row)
+
+SELECT DATE_SUB(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1:1' MINUTE_SECOND);       -- 2007-12-31 23:58:59
+          date_sub          
+----------------------------
+ 2007-12-31 23:58:59.000000
+(1 row)
+
+SELECT DATE_SUB(TIMESTAMP '2008-01-01 00:00:00', INTERVAL '1 1:1:1' DAY_SECOND);      -- 2007-12-30 22:58:59
+          date_sub          
+----------------------------
+ 2007-12-30 22:58:59.000000
+(1 row)
+
+--------------------------------------------------------------------------------
+-- 5. Argument as a string literal / DATE (implicitly cast to timestamp)
+--------------------------------------------------------------------------------
+SELECT DATE_ADD('2008-01-02', INTERVAL 1 DAY);                                        -- 2008-01-03 00:00:00
+          date_add          
+----------------------------
+ 2008-01-03 00:00:00.000000
+(1 row)
+
+SELECT DATE_ADD(DATE '2008-01-02', INTERVAL 1 MONTH);                                 -- 2008-02-02 00:00:00
+  date_add  
+------------
+ 2008-02-02
+(1 row)
+
+--------------------------------------------------------------------------------
+-- 6. Nested / used in ordinary expression positions such as WHERE
+--------------------------------------------------------------------------------
+SELECT DATE_ADD(DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL 1 DAY),
+                INTERVAL 1 HOUR);                                                      -- 2008-01-02 01:00:00
+          date_add          
+----------------------------
+ 2008-01-02 01:00:00.000000
+(1 row)
+
+SELECT 1 WHERE DATE_ADD(TIMESTAMP '2008-01-01 00:00:00', INTERVAL 1 DAY)
+             > TIMESTAMP '2008-01-01 00:00:00';                                        -- 1
+ERROR:  operator does not exist: text > timestamp
+LINE 2:              > TIMESTAMP '2008-01-01 00:00:00';
+                     ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+--------------------------------------------------------------------------------
+-- 8. Invalid unit — expect a parse-time syntax error (BANANA is not a unit)
+--------------------------------------------------------------------------------
+SELECT DATE_ADD(now(), INTERVAL 1 BANANA);   -- ERROR: syntax error at or near "BANANA"
+ERROR:  syntax error at or near "BANANA"
+LINE 1: SELECT DATE_ADD(now(), INTERVAL 1 BANANA);
+                                          ^
+--------------------------------------------------------------------------------
+-- 9. Regression guard: new unit keywords still work as column names/aliases,
+--    and EXTRACT still accepts these units
+--------------------------------------------------------------------------------
+SELECT 1 AS week, 2 AS quarter, 3 AS day_hour, 4 AS microsecond;                      -- 1 2 3 4
+ week | quarter | day_hour | microsecond 
+------+---------+----------+-------------
+    1 |       2 |        3 |           4
+(1 row)
+
+SELECT EXTRACT(WEEK FROM DATE '2020-08-11'), EXTRACT(QUARTER FROM DATE '2020-08-11'); -- 33 3
+ERROR:  function pg_catalog.extract(unknown, date) does not exist
+LINE 1: SELECT EXTRACT(WEEK FROM DATE '2020-08-11'), EXTRACT(QUARTER...
+               ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+-- Cleanup
+DROP VIEW v_dateadd;
+ERROR:  view "v_dateadd" does not exist
+DROP FUNCTION dateadd(timestamp, interval);
+ERROR:  function dateadd(timestamp, interval) does not exist
+/* Begin - bug#8226 */
+SELECT ADDDATE('2024-02-29', INTERVAL -1 DAY);      -- 2024-02-28
+          adddate           
+----------------------------
+ 2024-02-28 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('2024-02-29', INTERVAL -30 DAY);     -- 2024-01-30
+          adddate           
+----------------------------
+ 2024-01-30 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('2023-02-28', INTERVAL -1 DAY);      -- 2023-02-27
+          adddate           
+----------------------------
+ 2023-02-27 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('2024-02-29', INTERVAL -365 DAY);    -- 2023-03-01
+          adddate           
+----------------------------
+ 2023-03-01 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('2023-03-01', INTERVAL -366 DAY);    -- 2022-02-28
+          adddate           
+----------------------------
+ 2022-02-28 00:00:00.000000
+(1 row)
+
+SELECT ADDDATE('2024-03-05', INTERVAL -10 DAY);     -- 2024-02-24
+          adddate           
+----------------------------
+ 2024-02-24 00:00:00.000000
+(1 row)
+
+/* End - bug#8226 */
+/* Begin - bug#8236 */
+SELECT DATE_ADD('2023-01-01', INTERVAL 100000 YEAR);    -- NULL, WARNING
+WARNING:  Datetime function: datetime field overflow
+ date_add 
+----------
+ 
+(1 row)
+
+SELECT DATE_ADD('2023-01-01', INTERVAL 1 INVALID_UNIT); -- ERROR
+ERROR:  syntax error at or near "INVALID_UNIT"
+LINE 1: SELECT DATE_ADD('2023-01-01', INTERVAL 1 INVALID_UNIT);
+                                                 ^
+/* End - bug#8236 */

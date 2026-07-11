@@ -67,3 +67,21 @@ CREATE CAST(bool as numeric)
 WITH FUNCTION ivymy.bool_numeric(bool)
 AS ASSIGNMENT;
 /* End - bug#6528 */
+
+/* Begin - bug#8556 */
+CREATE FUNCTION ivymy.bool_and(bool, bool)
+RETURNS int
+AS $$
+	SELECT $1::int && $2::int
+$$
+LANGUAGE SQL
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.&& (
+	procedure = ivymy.bool_and,
+	leftarg = bool,
+	rightarg = bool,
+	commutator = &&
+);
+/* End - bug#8556 */
