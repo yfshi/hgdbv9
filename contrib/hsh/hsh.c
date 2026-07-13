@@ -3183,11 +3183,12 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 	StringInfoData  report;
 	const char *hgdb_version;
 
-	/* Begin - bug#z8277 */
+	/* Begin - bug#z8429 */
 #ifdef USE_LICENSE
 	const char *hgdb_version_tmp;
+	char *curr_encoding = NULL;
 #endif
-	/* End - bug#z8277 */
+	/* End - bug#z8429 */
 
 	StringInfoData	buf_tmp;
 
@@ -3218,6 +3219,29 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 	/* check the loc is fine */
 	file_path = text_to_cstring(loc);
 	check_loc_validate(file_path);
+
+	/* get the database version */
+	/* Begin - bug#z8429 */
+#ifdef USE_LICENSE
+	/*
+	 * the same logical with highgo_version()
+	 * (cannot call it directly as its two modules)
+	 * the html charset is utf-8, so transfer the string to utf-8
+	 */
+	hg_set_is_with_title(false);
+
+	curr_encoding = (char *)hg_get_encoding();
+	hg_set_encoding(GetConfigOptionByName("server_encoding", NULL, true));
+
+	hgdb_version_tmp = hg_get_highgoVersion();
+
+	hg_set_encoding(curr_encoding);
+	free(curr_encoding);
+	hgdb_version = (char *) pg_server_to_any(hgdb_version_tmp, strlen(hgdb_version_tmp), PG_UTF8);
+	/* End - bug#z8429 */
+#else
+	hgdb_version = "Highgo database";
+#endif
 
 	PushActiveSnapshot(GetTransactionSnapshot());
 
@@ -3277,31 +3301,6 @@ hsh_report_to_file(PG_FUNCTION_ARGS)
 		elog(ERROR, "Hsh_report_to_file() did not find the requested data");  
 	}
 
-	/* the the database version */
-
-#ifdef USE_LICENSE
-	/* Begin - BUG#z6426 */
-	/*
-	 * in the same session, 
-	 * if calling licence function get_lic_baseinfo()
-	 * it will set the title format to true, so the hg_get_highgoVersion() will output 'Database version: xxxx'
-	 * HSH did not need 'Database version:', so set the title to false
-	 */
-	hg_set_is_with_title(false);
-	/* End - BUG#z6426 */
-	/* Begin - bug#z8277 */
-	/*
-	 * the html charset is UTF-8
-	 * so if the database version string is not utf-8
-	 * transfer the string to utf-8
-	 */
-	hgdb_version_tmp = hg_get_highgoVersion();
-	hgdb_version = (char *) pg_server_to_any(hgdb_version_tmp, strlen(hgdb_version_tmp), PG_UTF8);
-	/* End - bug#z8277 */
-#else
-	hgdb_version = "Highgo database";
-#endif
-	
 	/*
 	 * cal the report
 	 * put the result into entry struct
