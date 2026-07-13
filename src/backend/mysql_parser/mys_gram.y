@@ -350,7 +350,7 @@ static char *concatSconstList(List *strs);
 /* End: Req:SRS-MYSQL-SQL-Select */
 
 /* Begin - bug#8026 */
-static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
+static Node *makeIntervalExpr(Node *value, char *unit, int location);
 /* End - bug#8084 */
 %}
 
@@ -656,7 +656,8 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 
 %type <list>	extract_list overlay_list position_list
 %type <list>	substr_list trim_list
-%type <list>	opt_interval interval_second not_empty_interval
+%type <list>	opt_interval interval_second
+%type <str>		interval_unit
 %type <str>		unicode_normal_form
 
 %type <boolean> opt_instead
@@ -722,7 +723,7 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 %type <value>	NumericOnly
 %type <list>	NumericOnly_list
 %type <alias>	alias_clause opt_alias_clause opt_alias_clause_for_join_using
-//%type <list>	func_alias_clause
+
 %type <sortby>	sortby
 %type <ielem>	index_elem index_elem_options
 %type <selem>	stats_param
@@ -887,7 +888,7 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 %token <str>	IDENT UIDENT FCONST SCONST USCONST BCONST XCONST Op
 %token <ival>	ICONST PARAM
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
-%token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS
+%token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS AND_AND /* bug#8556 */
 %token <str>	HCONST /* Begin BUG#5048 5070 */
 %token <str>    USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
 %token <str> 	IDENT_SCONST /* bug#6888 */
@@ -901,7 +902,9 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
  */
 
 /* ordinary key words in alphabetical order */
-%token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
+%token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P
+	ADDDATE
+	ADMIN AFTER
 	AGGREGATE ALGORITHM /* ReqID:SRS-MYSQL-CREATE-INDEX */ ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
 	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION AUTO_INCREMENT ANONYMOUS ANTITAMPER
 
@@ -919,7 +922,9 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	CURRENT_CATALOG CURRENT_DATE CURRENT_ROLE CURRENT_SCHEMA
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CURTIME CYCLE
 
-	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ DATE_P DATETIME_P DAY_P DAY_HOUR_P DAY_MICROSECOND_P DAY_MINUTE_P DAY_SECOND_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
+	DATA_P DATABASE DATABASES /* ReqID:SRS-MYSQL-SHOW */ 
+	DATE_ADD DATE_SUB DATE_P DATETIME_P DAY_P DAY_HOUR DAY_MICROSECOND DAY_MINUTE DAY_SECOND
+	DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
 	DEFERRABLE DEFERRED DEFINER DELAYED DELETE_P DELIMITER DELIMITERS DEPENDS DEPTH DESC DESCRIBE /* ReqID:SRS-MYSQL-SHOW */
 	DETACH
 	DETERMINISTIC /* SRS-MYSQL-PROC */
@@ -941,7 +946,8 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	GENERATED GET_FORMAT GLOBAL GRANT GRANTED GREATEST GROUP_P GROUPING GROUPS
 	GROUP_CONCAT /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
-	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P HOUR_MINUTE_P HOUR_SECOND_P HOUR_MICROSECOND_P
+	HANDLER HAVING HEADER_P HIGH_PRIORITY HOLD HOUR_P
+	HOUR_MICROSECOND HOUR_MINUTE HOUR_SECOND
 
 	IDENTITY_P IF_P IFNULL_P /* Bug - #z5512 */ IGNORE_P ILIKE IMMEDIATE IMMUTABLE IMPLICIT_P IMPORT_P IN_P INCLUDE
 	INCLUDING INCREMENT INDEX INDEXES INFILE /* ReqID:SRS-MYSQL-SQL-LOADDATA */ INHERIT INHERITS INITIALLY INLINE_P
@@ -957,7 +963,10 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	LOCALTIME LOCALTIMESTAMP LOCATION LOCK_P LOCKED LOGGED LONGBLOB LOW_PRIORITY
 
 	MAPPING MATCH MATCHED MATERIALIZED MAXVALUE MEDIUMBLOB MEDIUMINT MERGE METHOD
-	MICROSECOND_P MINUTE_P MINUTE_SECOND_P MINUTE_MICROSECOND_P MINVALUE MOD MODE
+	MICROSECOND
+	MINUTE_P
+	MINUTE_MICROSECOND MINUTE_SECOND
+	MINVALUE MOD MODE
 	MODIFIES /* SRS-MYSQL-PROC */
 	MODIFY /* ReqID:SRS-MYSQL-SQL-Alter */
 	MONTH_P MOVE
@@ -976,7 +985,8 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	POSITION PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROCESSLIST /* Bug#Z6036 */ PROGRAM PUBLICATION
 
-	QUARTER_P QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
+	QUARTER
+	QUOTE QUICK /* ReqID:SRS-MYSQL-SQL-DELETE */
 
 	RANGE READ
 	READS /* SRS-MYSQL-PROC */
@@ -985,7 +995,7 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	RESET RESTART RESTRICT RETURN RETURNING RETURNS REVERSE REVOKE RIGHT ROLE ROLLBACK ROLLUP
 	ROUTINE ROUTINES ROW ROWS ROW_FORMAT /* oa-2019 */ RULE
 
-	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECOND_MICROSECOND_P SECURITY SELECT
+	SAVEPOINT SCHEMA SCHEMAS SCROLL SEARCH SECOND_P SECOND_MICROSECOND SECURITY SELECT
 	SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 	SEQUENCE SEQUENCES
 	SERIALIZABLE SERVER SESSION SESSION_USER SET SETS SETOF SHARE SHARED /* ReqID:SRS-MYSQL-CREATE-INDEX */ SHOW
@@ -998,6 +1008,7 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	/* End - bug#6410 */
 	STABLE STANDALONE_P
 	START STATEMENT STATISTICS STATUS /* ReqID:SRS-MYSQL-SHOW */ STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
+	SUBDATE
 	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TEMP TEMPLATE TEMPORARY TERMINATED /* ReqID:SRS-MYSQL-SQL-LOADDATA */ TEXT_P THEN
@@ -1011,13 +1022,16 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIABLES /* ReqID:SRS-MYSQL-SHOW */ VARIADIC VARYING
 	VERBOSE VERSION_P VIEW VIEWS VOLATILE WARNINGS /* Bug#Z6036 */ WEIGHT_STRING
 
-	WEEK_P WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
+	WEEK
+	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
 
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
 
 	XOR
-	YEAR YEAR_MONTH_P YES_P
+	YEAR_P
+	YEAR_MONTH
+	YES_P
 
 	ZEROFILL ZONE
 
@@ -1063,10 +1077,16 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 
 /* Precedence: lowest to highest */
 %nonassoc	SET				/* see relation_expr_opt_alias */
+%nonassoc	INTERVAL
+%nonassoc	SCONST
+/* Begin - bug#8563 */
+%nonassoc	COLLATION
+%nonassoc	FOR
+/* End - bug#8563 */
 %left		UNION EXCEPT
 %left		INTERSECT
 %left		OR
-%left		AND
+%left		AND AND_AND /* bug#8556 */
 %left		XOR
 %left		MOD
 %left		DIV
@@ -1079,7 +1099,7 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
 
 %nonassoc	IS ISNULL NOTNULL	/* IS sets precedence for IS NULL, etc */
 %nonassoc	'<' '>' '=' LESS_EQUALS GREATER_EQUALS NOT_EQUALS
-%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA WEEK_P MICROSECOND_P DAY_HOUR_P DAY_MICROSECOND_P DAY_MINUTE_P DAY_SECOND_P QUARTER_P
+%nonassoc	BETWEEN IN_P LIKE ILIKE SIMILAR NOT_LA WEEK MICROSECOND DAY_HOUR DAY_MICROSECOND DAY_MINUTE DAY_SECOND QUARTER
 %nonassoc	ESCAPE			/* ESCAPE must be just above LIKE/ILIKE/SIMILAR */
 /*
  * To support target_el without AS, it used to be necessary to assign IDENT an
@@ -1136,6 +1156,8 @@ static Node *makeIntervalExpr(TypeName *t, char *val, List *typmods);
  * left-associativity among the JOIN rules themselves.
  */
 %left		JOIN CROSS LEFT FULL RIGHT INNER_P NATURAL
+%nonassoc	OPT_INTERVAL_EMPTY
+%nonassoc	YEAR_P MONTH_P DAY_P HOUR_P MINUTE_P SECOND_P
 %nonassoc	ZEROFILL
 %right		UNIQUE KEY /* Bug#Z504 */
 %%
@@ -2469,11 +2491,6 @@ MysqlShowStmt:
 					SelectStmt *selectStmt = makeShowCharsetStmt($3);
 		    		$$ = (Node *) selectStmt;
 				}
-			| SHOW COLLATION opt_show_filter
-				{
-					SelectStmt *selectStmt = makeShowCollationStmt($3);
-					$$ = (Node *) selectStmt;
-				}
 /* End - Req: SRS-MYSQL-CHARSET */
 /* Begin - Req: SRS-MYSQL-SHOW */
 			| SHOW CREATE database ColId
@@ -2611,6 +2628,12 @@ VariableShowStmt:
 						$$ = (Node *)makeShowTriggersStmt(NULL, $3);
 					}
 					/* End - #Z7389 */
+					/* Begin - bug#8563 */
+					else if (strcasecmp($2, "collation") == 0)
+					{
+						$$ = (Node *)makeShowCollationStmt($3);
+					}
+					/* End - bug#8563 */
 					else
 					{
 						VariableShowStmt *n = makeNode(VariableShowStmt);
@@ -17081,7 +17104,7 @@ Datetime:
 					}
 				}
 			/* Begin - SRS-MYSQL-BUILDINFUNCTION */	
-			| YEAR '(' a_expr ')'
+			| YEAR_P '(' a_expr ')'
 				{
 					if(IsA($3,A_Const) && ((A_Const *) $3)->val.type == T_Integer)
 					{
@@ -17104,7 +17127,7 @@ Datetime:
 					}
 				}
 			/* End - SRS-MYSQL-BUILDINFUNCTION */
-			| YEAR
+			| YEAR_P
 				{
 					$$ = MySQLSystemTypeName("year");
 					$$->location = @1;
@@ -17209,7 +17232,7 @@ ConstDatetime:
 					}
 				}
 			/* Begin - SRS-MYSQL-BUILDINFUNCTION */
-			| YEAR '(' a_expr ')'
+			| YEAR_P '(' a_expr ')'
 				{
 					if (IsA($3, A_Const) && ((A_Const *) $3)->val.type == T_Integer)
 					{
@@ -17232,7 +17255,7 @@ ConstDatetime:
 					}
 				}
 			/* End - SRS-MYSQL-BUILDINFUNCTION */
-			| YEAR
+			| YEAR_P
 				{
 					$$ = MySQLSystemTypeName("year");
 					$$->location = @1;
@@ -17254,46 +17277,8 @@ opt_timezone:
 		;
 
 opt_interval:
-			not_empty_interval						{ $$ = $1; }
-			| /*EMPTY*/
-				{ $$ = NIL; }
-		;
-
-not_empty_interval:
-			WEEK_P
-				{
-					$$ = list_make1(makeString("week"));
-				}
-			| QUARTER_P
-				{
-					$$ = list_make1(makeString("quarter"));
-				}
-			| MICROSECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(MICROSECOND), @1));
-				}
-			| SECOND_MICROSECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(SECOND), @1));
-				}
-			| MINUTE_MICROSECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE) |
-												 INTERVAL_MASK(SECOND), @1));
-				}
-			| HOUR_MICROSECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE) |
-												 INTERVAL_MASK(SECOND), @1));
-				}
-			| DAY_MICROSECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-												 INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE) |
-												 INTERVAL_MASK(SECOND), @1));
-				}
+			YEAR_P
+				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR), @1)); }
 			| MONTH_P
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MONTH), @1)); }
 			| DAY_P
@@ -17304,6 +17289,11 @@ not_empty_interval:
 				{ $$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE), @1)); }
 			| interval_second
 				{ $$ = $1; }
+			| YEAR_P TO MINUTE_P
+				{
+					$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
+												 INTERVAL_MASK(MINUTE), @1));
+				}
 			| DAY_P TO HOUR_P
 				{
 					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
@@ -17341,47 +17331,8 @@ not_empty_interval:
 					linitial($$) = makeIntConst(INTERVAL_MASK(MINUTE) |
 												INTERVAL_MASK(SECOND), @1);
 				}
-			/* Begin - bug#z8229 #z8235 */
-			| DAY_HOUR_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-												 INTERVAL_MASK(HOUR), @1));
-				}
-			| DAY_MINUTE_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-												 INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE), @1));
-				}
-			| DAY_SECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(DAY) |
-												 INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE) |
-												 INTERVAL_MASK(SECOND), @1));
-				}
-			| HOUR_MINUTE_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE), @1));
-				}
-			| HOUR_SECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(HOUR) |
-												 INTERVAL_MASK(MINUTE) |
-												 INTERVAL_MASK(SECOND), @1));
-				}
-			| MINUTE_SECOND_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(MINUTE) |
-												 INTERVAL_MASK(SECOND), @1));
-				}
-			| YEAR_MONTH_P
-				{
-					$$ = list_make1(makeIntConst(INTERVAL_MASK(YEAR) |
-												 INTERVAL_MASK(MONTH), @1));
-				}
-			/* End - bug#z8229 #z8235 */
+			| /*EMPTY*/				%prec OPT_INTERVAL_EMPTY
+				{ $$ = NIL; }
 		;
 
 interval_second:
@@ -17494,7 +17445,10 @@ a_expr:		c_expr									{ $$ = $1; }
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, ">=", $1, $3, @2); }
 			| a_expr NOT_EQUALS a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $3, @2); }
-
+			/* Begin - bug#8556 */
+			| a_expr AND_AND a_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "&&", $1, $3, @2); }
+			/* End - bug#8556 */
 			| a_expr qual_Op a_expr				%prec Op
 				{
 					/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
@@ -18044,6 +17998,10 @@ b_expr:		c_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, ">=", $1, $3, @2); }
 			| b_expr NOT_EQUALS b_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "<>", $1, $3, @2); }
+			/* Begin - bug#8556 */
+			| b_expr AND_AND b_expr
+				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "&&", $1, $3, @2); }
+			/* End - bug#8556 */
 			| b_expr qual_Op b_expr				%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2); }
 			| qual_Op b_expr					%prec Op
@@ -18528,7 +18486,7 @@ func_expr_common_subexpr:
 											   @2);
 				}
 			/* End - ReqID: SRS-MYSQL-BUILDINFUNCTION */
-			| YEAR '(' a_expr ')'
+			| YEAR_P '(' a_expr ')'
 				{
 					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("myyear"),
 												list_make1($3),
@@ -19071,6 +19029,54 @@ func_expr_common_subexpr:
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
+			| DATE_ADD '(' a_expr ',' INTERVAL a_expr interval_unit ')'
+				{
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("date_add"),
+												  list_make2($3, makeIntervalExpr($6, $7, @6)),
+												  COERCE_EXPLICIT_CALL,
+												  @1);
+					$$ = (Node *) func;
+				}
+			| DATE_SUB '(' a_expr ',' INTERVAL a_expr interval_unit ')'
+				{
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("date_sub"),
+												  list_make2($3, makeIntervalExpr($6, $7, @6)),
+												  COERCE_EXPLICIT_CALL,
+												  @1);
+					$$ = (Node *) func;
+				}
+			| ADDDATE '(' a_expr ',' INTERVAL a_expr interval_unit ')'
+				{
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("adddate"),
+												  list_make2($3, makeIntervalExpr($6, $7, @6)),
+												  COERCE_EXPLICIT_CALL,
+												  @1);
+					$$ = (Node *) func;
+				}
+			| ADDDATE '(' a_expr ',' a_expr ')'
+				{
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("adddate"),
+												  list_make2($3, $5),
+												  COERCE_EXPLICIT_CALL,
+												  @1);
+					$$ = (Node *) func;
+				}
+			| SUBDATE '(' a_expr ',' a_expr ')'
+				{
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("subdate"),
+												  list_make2($3, $5),
+												  COERCE_EXPLICIT_CALL,
+												  @1);
+					$$ = (Node *) func;
+				}
+			| SUBDATE '(' a_expr ',' INTERVAL a_expr interval_unit ')'
+				{
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("subdate"),
+												  list_make2($3, makeIntervalExpr($6, $7, @6)),
+												  COERCE_EXPLICIT_CALL,
+												  @1);
+					$$ = (Node *) func;
+				}
 		;
 
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
@@ -19521,6 +19527,7 @@ MathOp:		 '+'									{ $$ = "+"; }
 			| LESS_EQUALS							{ $$ = "<="; }
 			| GREATER_EQUALS						{ $$ = ">="; }
 			| NOT_EQUALS							{ $$ = "<>"; }
+			| AND_AND								{ $$ = "&&"; }	/* bug#8556 */
 		;
 
 qual_Op:	Op
@@ -19649,22 +19656,22 @@ extract_arg:
 			| HOUR_P								{ $$ = "hour"; }
 			| MINUTE_P								{ $$ = "minute"; }
 			| SECOND_P								{ $$ = "second"; }
-			| WEEK_P								{ $$ = "week"; }
-			| MICROSECOND_P							{ $$ = "microsecond"; }
-			| QUARTER_P								{ $$ = "quarter"; }
+			| WEEK									{ $$ = "week"; }
+			| MICROSECOND							{ $$ = "microsecond"; }
+			| QUARTER								{ $$ = "quarter"; }
 			| Sconst								{ $$ = $1; }
 		;
 
 timestamp_units:
-			YEAR   				{ $$ = DTK_YEAR; }
+			YEAR_P   			{ $$ = DTK_YEAR; }
 			| DAY_P    			{ $$ = DTK_DAY; }
 			| HOUR_P   			{ $$ = DTK_HOUR; }
-			| MICROSECOND_P 	{ $$ = DTK_MICROSEC; }
+			| MICROSECOND 		{ $$ = DTK_MICROSEC; }
 			| MINUTE_P 			{ $$ = DTK_MINUTE; }
 			| SECOND_P 			{ $$ = DTK_SECOND; }
 			| MONTH_P 			{ $$ = DTK_MONTH; }
-			| QUARTER_P 		{ $$ = DTK_QUARTER; }
-			| WEEK_P 			{ $$ = DTK_WEEK; }
+			| QUARTER 			{ $$ = DTK_QUARTER; }
+			| WEEK 				{ $$ = DTK_WEEK; }
 			/* Begin - bug#6410 */
 			| SQL_TSI_YEAR 	{ $$ = DTK_YEAR; }
 			| SQL_TSI_QUARTER 	{ $$ = DTK_QUARTER; }
@@ -19676,6 +19683,29 @@ timestamp_units:
 			| SQL_TSI_SECOND	{ $$ = DTK_SECOND; }
 			| SQL_TSI_MICROSECOND	{ $$ = DTK_MICROSEC; }
 			/* End - bug#6410 */
+		;
+
+interval_unit:
+			YEAR_P 						{ $$ = "year"; }
+			| QUARTER					{ $$ = "quarter"; }
+			| MONTH_P					{ $$ = "month"; }
+			| WEEK						{ $$ = "week"; }
+			| DAY_P						{ $$ = "day"; }
+			| HOUR_P					{ $$ = "hour"; }
+			| MINUTE_P					{ $$ = "minute"; }
+			| SECOND_P					{ $$ = "second"; }
+			| MICROSECOND				{ $$ = "microsecond"; }
+			| YEAR_MONTH				{ $$ = "year_month"; }
+			| DAY_HOUR					{ $$ = "day_hour"; }
+			| DAY_MINUTE				{ $$ = "day_minute"; }
+			| DAY_SECOND				{ $$ = "day_second"; }
+			| DAY_MICROSECOND			{ $$ = "day_microsecond"; }
+			| HOUR_MINUTE				{ $$ = "hour_minute"; }
+			| HOUR_SECOND				{ $$ = "hour_second"; }
+			| HOUR_MICROSECOND			{ $$ = "hour_microsecond"; }
+			| MINUTE_SECOND				{ $$ = "minute_second"; }
+			| MINUTE_MICROSECOND		{ $$ = "minute_microsecond"; }
+			| SECOND_MICROSECOND		{ $$ = "second_microsecond"; }
 		;
 
 /* End - SRS-MYSQL-BUILDINFUNCTION */
@@ -20277,10 +20307,10 @@ AexprConst: Iconst
 									 parser_errposition(arg->location)));
 					}
 					if ($4 != NIL)
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("type modifier cannot have ORDER BY"),
-									 parser_errposition(@4)));
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("type modifier cannot have ORDER BY"),
+								 parser_errposition(@4)));
 
 					t->typmods = $3;
 					t->location = @1;
@@ -20296,21 +20326,9 @@ AexprConst: Iconst
 				}
 			| ConstInterval Sconst opt_interval
 				{
-					$$ = makeIntervalExpr($1, $2, $3);
-				}
-			/* Begin - bug#z8234 */
-			| ConstInterval FCONST opt_interval
-				{	
-					$$ = makeIntervalExpr($1,
-										  psprintf("%ld", (int64)round(atof($2))),
-										  $3);
-				}
-			/* End - bug#z8234 */
-			| ConstInterval Iconst not_empty_interval
-				{
-					$$ = makeIntervalExpr($1,
-										  psprintf("%d", $2),
-										  $3);
+					TypeName *t = $1;
+					t->typmods = $3;
+					$$ = makeStringConstCast($2, @2, t);
 				}
 			| ConstInterval '(' expr_list ')' opt_sconst
 				{
@@ -20639,6 +20657,7 @@ unreserved_keyword:
 			| CLASS
 			| CLOSE
 			| CLUSTER
+			| COLLATION
 			| COLUMNS /* ReqID: SRS-MYSQL-SHOW */
 			| COMMENT
 			| COMMENTS
@@ -20664,10 +20683,10 @@ unreserved_keyword:
 			| DATA_P
 			| DATABASE
 			| DAY_P
-			| DAY_HOUR_P
-			| DAY_MICROSECOND_P
-			| DAY_MINUTE_P
-			| DAY_SECOND_P
+			| DAY_HOUR
+			| DAY_MICROSECOND
+			| DAY_MINUTE
+			| DAY_SECOND
 			| DEALLOCATE
 			| DECLARE
 			| DEFAULTS
@@ -20723,9 +20742,9 @@ unreserved_keyword:
 			| HEADER_P
 			| HOLD
 			| HOUR_P
-			| HOUR_MICROSECOND_P
-			| HOUR_MINUTE_P
-			| HOUR_SECOND_P
+			| HOUR_MICROSECOND
+			| HOUR_MINUTE
+			| HOUR_SECOND
 			| IDENTITY_P
 			| IFNULL_P
 			| IMMEDIATE
@@ -20769,10 +20788,10 @@ unreserved_keyword:
 			| MAXVALUE
 			| MERGE
 			| METHOD
-			| MICROSECOND_P
+			| MICROSECOND
 			| MINUTE_P
-			| MINUTE_MICROSECOND_P
-			| MINUTE_SECOND_P
+			| MINUTE_MICROSECOND
+			| MINUTE_SECOND
 			| MINVALUE
 			| MOD
 			| MODE
@@ -20831,7 +20850,7 @@ unreserved_keyword:
 			| PROCESSLIST /* Bug#Z6036 */
 			| PROGRAM
 			| PUBLICATION
-			| QUARTER_P
+			| QUARTER
 			| QUICK
 			| QUOTE
 			| RANGE
@@ -20870,7 +20889,7 @@ unreserved_keyword:
 			| SCROLL
 			| SEARCH
 			| SECOND_P
-			| SECOND_MICROSECOND_P
+			| SECOND_MICROSECOND
 			| SECURITY
 			| SEPARATOR /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| SEQUENCE
@@ -20951,7 +20970,7 @@ unreserved_keyword:
 			| VIEWS
 			| VOLATILE
 			| WARNINGS /* Bug#Z6036 */
-			| WEEK_P
+			| WEEK
 			| WHITESPACE_P
 			| WITHIN
 			| WITHOUT
@@ -20959,6 +20978,7 @@ unreserved_keyword:
 			| WRAPPER
 			| WRITE
 			| XML_P
+			| YEAR_MONTH
 			| YES_P
 			| ZONE
 		;
@@ -20974,7 +20994,8 @@ unreserved_keyword:
  * looks too much like a function call for an LR(1) parser.
  */
 col_name_keyword:
-			ANONYMOUS
+			ADDDATE
+			| ANONYMOUS
 			| BETWEEN
 			| BIGINT
 			| BIT
@@ -20985,6 +21006,8 @@ col_name_keyword:
 			| COALESCE
 			| DATE_P			  /* ReqID:SRS-MYSQL-DATETYPE */
 			| DATETIME_P          /* ReqID:SRS-MYSQL-DATETIMETYPE */
+			| DATE_ADD
+			| DATE_SUB
 			| DEC
 			| DECIMAL_P
 			| DOUBLE_P
@@ -21026,6 +21049,7 @@ col_name_keyword:
 			| SETOF
 			| SIGNED
 			| SMALLINT
+			| SUBDATE
 			| SUBSTRING
 			| TEXT_P  /* ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
 			| TIME
@@ -21052,8 +21076,7 @@ col_name_keyword:
 			| XMLROOT
 			| XMLSERIALIZE
 			| XMLTABLE
-			| YEAR
-			| YEAR_MONTH_P
+			| YEAR_P
 			| ZEROFILL
 		;
 
@@ -21070,7 +21093,6 @@ col_name_keyword:
 type_func_name_keyword:
 			  AUTHORIZATION
 			| BINARY
-			| COLLATION
 			| CONCURRENTLY
 			| CROSS
 			| CURRENT_SCHEMA
@@ -21097,8 +21119,7 @@ type_func_name_keyword:
 
 /* Begin - bug#6011 */
 type_func_name_keyword_without_binary:
-			AUTHORIZATION			
-			| COLLATION
+			AUTHORIZATION
 			| CONCURRENTLY
 			| CROSS
 			| CURRENT_SCHEMA
@@ -21254,6 +21275,7 @@ bare_label_keyword:
 			| ACCESS
 			| ACTION
 			| ADD_P
+			| ADDDATE
 			| ADMIN
 			| AFTER
 			| AGGREGATE
@@ -21349,6 +21371,8 @@ bare_label_keyword:
 			| DATABASES			/* ReqID: SRS-MYSQL-SHOW */
 			| DATE_P			/* ReqID:SRS-MYSQL-DATETYPE */
 			| DATETIME_P          /* ReqID:SRS-MYSQL-DATETIMETYPE */
+			| DATE_ADD
+			| DATE_SUB
 			| DEALLOCATE
 			| DEC
 			| DECIMAL_P
@@ -21664,6 +21688,7 @@ bare_label_keyword:
 			| STORED
 			| STRICT_P
 			| STRIP_P
+			| SUBDATE
 			| SUBSCRIPTION
 			| SUBSTRING
 			| SUPPORT
@@ -21750,7 +21775,7 @@ bare_label_keyword:
 			| XMLSERIALIZE
 			| XMLTABLE
 			| XOR
-			| YEAR
+			| YEAR_P
 			| YES_P
 			| ZONE
 		;
@@ -23817,42 +23842,80 @@ add_sql_mode_to_proconfig(List *proconfig)
 
 /* Begin - bug#8026 */
 static Node *
-makeIntervalExpr(TypeName *t, char *val, List *typmods)
+makeIntervalExpr(Node *value, char *unit, int location)
 {
-	Node *result;
-	int multiple = 0;
+	int			mask;
+	TypeName   *t;
+	const char *base = NULL;
 
-	if (typmods != NULL)
+	if (strcmp(unit, "year") == 0)
+		base = "1 year";
+	else if (strcmp(unit, "quarter") == 0)
+		base = "3 months";
+	else if (strcmp(unit, "month") == 0)
+		base = "1 month";
+	else if (strcmp(unit, "week") == 0)
+		base = "1 week";
+	else if (strcmp(unit, "day") == 0)
+		base = "1 day";
+	else if (strcmp(unit, "hour") == 0)
+		base = "1 hour";
+	else if (strcmp(unit, "minute") == 0)
+		base = "1 minute";
+	else if (strcmp(unit, "second") == 0)
+		base = "1 second";
+	else if (strcmp(unit, "microsecond") == 0)
+		base = "1 microsecond";
+
+	if (base != NULL)
 	{
-		Value *unit = (Value *)linitial(typmods);
-		
-		if (IsA(unit, String) && strcmp(strVal(unit), "week") == 0)
-		{
-			multiple = 7;
-			t->typmods = list_make1(makeIntConst(INTERVAL_MASK(DAY), -1));
-		}
+		Node	   *iv = makeStringConstCast(pstrdup(base), location,
+											 SystemTypeName("interval"));
 
-		if (IsA(unit, String) && strcmp(strVal(unit), "quarter") == 0)
-		{
-			multiple = 3;
-			t->typmods = list_make1(makeIntConst(INTERVAL_MASK(MONTH), -1));
-		}
+		/*
+	 	 * 
+	 	 */
+		value = (Node *) makeFuncCall(SystemFuncName("round"),
+								  	  list_make1(value),
+									  COERCE_EXPLICIT_CALL,
+									  -1);
+
+		return (Node *) makeSimpleA_Expr(AEXPR_OP, "*", value, iv, location);
 	}
 
-	if (multiple != 0)
-	{
-		result = (Node *) makeSimpleA_Expr(AEXPR_OP, 
-										   "*",
-										   (Node *) makeStringConstCast(val, -1, t),
-										   (Node *) makeIntConst(multiple, -1), -1);
-	}
-	else
-	{
-		t->typmods = typmods;
-		result = makeStringConstCast(val, -1, t);
-	}
+	/* Composite units: field-range interval cast. */
+	if (strcmp(unit, "year_month") == 0)
+		mask = INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH);
+	else if (strcmp(unit, "day_hour") == 0)
+		mask = INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR);
+	else if (strcmp(unit, "day_minute") == 0)
+		mask = INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE);
+	else if (strcmp(unit, "day_second") == 0 ||
+			 strcmp(unit, "day_microsecond") == 0)
+		mask = INTERVAL_MASK(DAY) | INTERVAL_MASK(HOUR) |
+			INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND);
+	else if (strcmp(unit, "hour_minute") == 0)
+		mask = INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE);
+	else if (strcmp(unit, "hour_second") == 0 ||
+			 strcmp(unit, "hour_microsecond") == 0)
+		mask = INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND);
+	else if (strcmp(unit, "minute_second") == 0 ||
+			 strcmp(unit, "minute_microsecond") == 0)
+		mask = INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND);
+	else						/* second_microsecond */
+		mask = INTERVAL_MASK(SECOND);
 
-	return result;
+	t = SystemTypeName("interval");
+	t->typmods = list_make1(makeIntConst(mask, location));
+	t->location = location;
+
+	/*
+	 * Cast the value directly to the field-restricted interval type.  It must
+	 * NOT be routed through text first: interval_in() has to receive the
+	 * field-range typmod so that, e.g., '1:1' MINUTE_SECOND is read as
+	 * minute:second (00:01:01) rather than the default hour:minute (01:01:00).
+	 */
+	return makeTypeCast(value, t, location);
 }
 /* End - bug#8026 */
 /* End - ReqID:SRS-MYSQL-SQL-PROC */

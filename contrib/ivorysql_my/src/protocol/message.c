@@ -34,14 +34,12 @@
 #define MYSQL_STMT_NAME_FMT                 "mysql_stmt_%d"
 #define MYSQL_PORTAL_NAME_FMT               "mysql_portal_%d"
 
-/* Begin - bug#m8406 */
-PG_FUNCTION_INFO_V1(row_count);
-/* End - bug#m8406 */
+PG_FUNCTION_INFO_V1(row_count);     /* bug#8406 */
+PG_FUNCTION_INFO_V1(found_rows);    /* bug#8562 */
 
 static int statement_id = 0;
-/* Begin - bug#m8406 */
-static int64 mys_row_count = -1;
-/* End - bug#m8406 */
+static int64 mys_row_count = -1;    /* bug#8406 */
+static int64 mys_found_rows = 0;    /* bug#8562 */
 
 static void
 send_err_packet(mysql_err_packet_t *err_packet)
@@ -234,6 +232,8 @@ update_row_count(const QueryCompletion *qc)
 {
     CommandTag tag = qc->commandTag;
     int64 nprocessed = (int64)qc->nprocessed;
+
+    mys_found_rows = nprocessed;    /* bug#8562 */
 
     if (tag == CMDTAG_SELECT)
     {
@@ -1401,3 +1401,16 @@ row_count(PG_FUNCTION_ARGS)
     PG_RETURN_INT64(mys_row_count);
 }
 /* End - bug#m8406 */
+
+/* Begin - bug#8562 */
+Datum
+found_rows(PG_FUNCTION_ARGS)
+{
+    if (MyProcPort && !IsA(MyProcPort->protocol_config, ProtocolMysql))
+        ereport(ERROR,
+                (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                 errmsg("ROW_COUNT() is only supported in MySQL protocol")));
+
+    PG_RETURN_INT64(mys_found_rows);
+}
+/* End - bug#8562 */

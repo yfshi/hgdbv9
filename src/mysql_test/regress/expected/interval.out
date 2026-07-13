@@ -544,6 +544,8 @@ SELECT interval '1 2:03:04' day to hour;
 
 SELECT interval '1 2' day to minute;
 ERROR:  invalid input syntax for type interval: "1 2"
+LINE 1: SELECT interval '1 2' day to minute;
+                        ^
 SELECT interval '1 2:03' day to minute;
     interval    
 ----------------
@@ -558,6 +560,8 @@ SELECT interval '1 2:03:04' day to minute;
 
 SELECT interval '1 2' day to second;
 ERROR:  invalid input syntax for type interval: "1 2"
+LINE 1: SELECT interval '1 2' day to second;
+                        ^
 SELECT interval '1 2:03' day to second;
     interval    
 ----------------
@@ -572,6 +576,8 @@ SELECT interval '1 2:03:04' day to second;
 
 SELECT interval '1 2' hour to minute;
 ERROR:  invalid input syntax for type interval: "1 2"
+LINE 1: SELECT interval '1 2' hour to minute;
+                        ^
 SELECT interval '1 2:03' hour to minute;
     interval    
 ----------------
@@ -586,6 +592,8 @@ SELECT interval '1 2:03:04' hour to minute;
 
 SELECT interval '1 2' hour to second;
 ERROR:  invalid input syntax for type interval: "1 2"
+LINE 1: SELECT interval '1 2' hour to second;
+                        ^
 SELECT interval '1 2:03' hour to second;
     interval    
 ----------------
@@ -600,6 +608,8 @@ SELECT interval '1 2:03:04' hour to second;
 
 SELECT interval '1 2' minute to second;
 ERROR:  invalid input syntax for type interval: "1 2"
+LINE 1: SELECT interval '1 2' minute to second;
+                        ^
 SELECT interval '1 2:03' minute to second;
     interval    
 ----------------
@@ -644,10 +654,16 @@ SELECT interval '123 11' day to hour; -- ok
 
 SELECT interval '123 11' day; -- not ok
 ERROR:  invalid input syntax for type interval: "123 11"
+LINE 1: SELECT interval '123 11' day;
+                        ^
 SELECT interval '123 11'; -- not ok, too ambiguous
 ERROR:  invalid input syntax for type interval: "123 11"
+LINE 1: SELECT interval '123 11';
+                        ^
 SELECT interval '123 2:03 -2:04'; -- not ok, redundant hh:mm fields
 ERROR:  invalid input syntax for type interval: "123 2:03 -2:04"
+LINE 1: SELECT interval '123 2:03 -2:04';
+                        ^
 -- test syntaxes for restricted precision
 SELECT interval(0) '1 day 01:23:45.6789';
     interval    
@@ -681,6 +697,8 @@ SELECT interval '1.234' second(2);
 
 SELECT interval '1 2.345' day to second(2);
 ERROR:  invalid input syntax for type interval: "1 2.345"
+LINE 1: SELECT interval '1 2.345' day to second(2);
+                        ^
 SELECT interval '1 2:03' day to second(2);
     interval    
 ----------------
@@ -701,6 +719,8 @@ SELECT interval '1 2:03:04.5678' day to second(2);
 
 SELECT interval '1 2.345' hour to second(2);
 ERROR:  invalid input syntax for type interval: "1 2.345"
+LINE 1: SELECT interval '1 2.345' hour to second(2);
+                        ^
 SELECT interval '1 2:03.45678' hour to second(2);
      interval      
 -------------------
@@ -715,6 +735,8 @@ SELECT interval '1 2:03:04.5678' hour to second(2);
 
 SELECT interval '1 2.3456' minute to second(2);
 ERROR:  invalid input syntax for type interval: "1 2.3456"
+LINE 1: SELECT interval '1 2.3456' minute to second(2);
+                        ^
 SELECT interval '1 2:03.5678' minute to second(2);
      interval      
 -------------------

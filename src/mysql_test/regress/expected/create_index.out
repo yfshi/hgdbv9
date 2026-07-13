@@ -1026,7 +1026,7 @@ SELECT * FROM array_index_op_test WHERE t && '{AAAAAAA80240}' ORDER BY seqno;
    100 | {85,32,57,39,49,84,32,3,30}    | {AAAAAAA80240,AAAAAAAAAAAAAAAA1729,AAAAA60038,AAAAAAAAAAA92631,AAAAAAAA9523}
 (7 rows)
 
-SELECT * FROM array_index_op_test WHERE i @> '{32}' AND t && '{AAAAAAA80240}' ORDER BY seqno;
+SELECT * FROM array_index_op_test WHERE i @> '{32}' AND (t && '{AAAAAAA80240}') ORDER BY seqno;
  seqno |              i              |                                      t                                       
 -------+-----------------------------+------------------------------------------------------------------------------
    100 | {85,32,57,39,49,84,32,3,30} | {AAAAAAA80240,AAAAAAAAAAAAAAAA1729,AAAAA60038,AAAAAAAAAAA92631,AAAAAAAA9523}
