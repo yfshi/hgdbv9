@@ -5823,6 +5823,28 @@ interpretAntiTamperOption(List *defList, bool *enableantitamper)
 }
 /* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
+/* Begin - BUG#Z8555 */
+void
+checkTDEOption(List *defList)
+{
+	ListCell *cell;
+
+	/* Scan list to see if ROWID was included */
+	foreach (cell, defList)
+	{
+		DefElem *def = (DefElem *)lfirst(cell);
+
+		if (GetFileEncryptionMethod() == DISABLED_ENCRYPTION_METHOD
+				&& strcmp(def->defname, "encrypt") == 0)
+		{
+			ereport(WARNING, errmsg("TDE is disable, encrypt=on is invalid"));
+		}
+	}
+
+	return;
+}
+/* End - BUG#Z8555 */
+
 /* Begin - ReqID:SRS-SQL-OUTERJOIN(+) */
 void
 AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr)

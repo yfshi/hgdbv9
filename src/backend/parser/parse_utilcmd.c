@@ -334,6 +334,8 @@ transformCreateStmt(CreateStmt *stmt, const char *queryString)
 	}
 	/* End - ReqID: SRS-SECURITY-ANTITAMPERING */
 
+	checkTDEOption(stmt->options);  /* BUG#z8555 */
+
 	/*
 	 * If the relation already exists and the user specified "IF NOT EXISTS",
 	 * bail out with a NOTICE.
