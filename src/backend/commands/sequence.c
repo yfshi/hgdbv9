@@ -124,6 +124,9 @@ int32	scale_value = 0;
 static SeqTableData *last_used_seq = NULL;
 static uint64 mys_g_last_seqval = 0; /* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 
+/* Optional mandatory-access provider for sequence value operations. */
+SequenceAccess_hook_type sequence_access_hook = NULL; /* Bug#z8537 */
+
 static void fill_seq_with_data(Relation rel, HeapTuple tuple);
 static void fill_seq_fork_with_data(Relation rel, HeapTuple tuple, ForkNumber forkNum);
 static Relation lock_and_open_sequence(SeqTable seq);
@@ -809,6 +812,14 @@ nextval_internal(Oid relid, bool check_permissions)
 
 	/* open and lock sequence */
 	init_sequence(relid, &elm, &seqrel);
+
+	/*
+	 * Bug#z8537
+	 * Do not guard this with check_permissions: identity columns call this
+	 * function with false after the normal ACL check, but MAC must still run.
+	 */
+	if (sequence_access_hook)
+		sequence_access_hook(elm->relid, ACL_UPDATE);
 
 	if(isSession)
 	{
@@ -1583,6 +1594,13 @@ currval_oid(PG_FUNCTION_ARGS)
 	/* open and lock sequence */
 	init_sequence(relid, &elm, &seqrel);
 
+	/*
+	 * Bug#z8537
+	 * Reading a session's current value is a sequence SELECT operation.
+	 */
+	if (sequence_access_hook)
+		sequence_access_hook(elm->relid, ACL_SELECT);
+
 	/* Begin - ReqID:SRS-SQL-SEQ */
 	pgstuple = SearchSysCache1(SEQRELID, ObjectIdGetDatum(relid));
 	if (!HeapTupleIsValid(pgstuple))
@@ -1711,6 +1729,13 @@ lastval(PG_FUNCTION_ARGS)
 				 errmsg("lastval is not yet defined in this session")));
 
 	seqrel = lock_and_open_sequence(last_used_seq);
+
+	/*
+	 * Bug#z8537
+	 * lastval() exposes the same value class as currval().
+	 */
+	if (sequence_access_hook)
+		sequence_access_hook(last_used_seq->relid, ACL_SELECT);
 
 	/* nextval() must have already been called for this sequence */
 	Assert(last_used_seq->last_valid);
@@ -1898,6 +1923,13 @@ do_setval(Oid relid, int64 next, bool iscalled)
 
 	/* open and lock sequence */
 	init_sequence(relid, &elm, &seqrel);
+
+	/*
+	 * Bug#z8537
+	 * Setting a sequence value uses the same MAC rule as advancing it.
+	 */
+	if (sequence_access_hook)
+		sequence_access_hook(elm->relid, ACL_UPDATE);
 
 	/* Begin - Bug#z6158*/
 	/* if se_feature.mode is on, we call our check, otherwise call orginal check */

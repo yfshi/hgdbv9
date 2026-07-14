@@ -18,12 +18,15 @@
 
 #include "postgres.h"
 
+#include "catalog/pg_authid.h"
+#include "catalog/pg_class.h"
 #include "catalog/objectaccess.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_seclabel.h"
 #include "catalog/pg_shseclabel.h"
 #include "catalog/namespace.h"
 #include "commands/seclabel.h"
+#include "commands/sequence.h"
 #include "executor/executor.h"
 #include "parser/parse_func.h"
 #include "miscadmin.h"
@@ -57,6 +60,7 @@ bool global_row_level = true;
  */
 static ExecutorCheckPerms_hook_type next_exec_check_perms_hook = NULL;
 static ProcessUtility_hook_type next_ProcessUtility_hook = NULL;
+static SequenceAccess_hook_type next_sequence_access_hook = NULL; 	/* Bug#z8537 */
 
 
 static bool
@@ -69,7 +73,7 @@ is_sysmac_function(Oid funcoid)
 	char	funclist[PROCESSLIST_COLUMN_NUMS][32] =
 							{"get_user_seclabel",   "set_user_seclabel",
 							 "get_table_seclabel",  "set_table_seclabel",
-							 "get_column_seclabel", "get_column_seclabel",
+							 "get_column_seclabel", "set_column_seclabel",
 							 "apply_row_policy"};
 
 	nspoid = get_namespace_oid("hg_security", true);
@@ -211,6 +215,79 @@ sysmac_utility_command(PlannedStmt *pstmt,
 	}
 }
 
+/* Begin - Bug#z8537 */
+static void
+sysmac_sequence_access(Oid seqid, AclMode required)
+{
+	char	   *raw_label_s;
+	char	   *raw_label_o;
+	char	   *sequence_name;
+	const char *access_name;
+	SecLabel   *seclabel_s;
+	SecLabel   *seclabel_o;
+	bool		allowed = false;
+
+	if (next_sequence_access_hook)
+		next_sequence_access_hook(seqid, required);
+
+	/* Sequence labels are governed by the existing table-level switch. */
+	if (!global_on || !global_table_level)
+		return;
+
+	raw_label_o = get_obj_seclabel_internal(RelationRelationId, seqid, 0,
+											true);
+	/* Keep the existing policy convention: unlabeled objects are unrestricted. */
+	if (raw_label_o == NULL)
+		return;
+
+	raw_label_s = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), 0,
+											true);
+	seclabel_s = raw_label_s == NULL ? NULL :
+		string_to_seclabel(raw_label_s, NULL, true);
+	seclabel_o = string_to_seclabel(raw_label_o, NULL, true);
+
+	/* Advancing and explicitly setting a sequence both modify its state. */
+	if (required & ACL_UPDATE)
+	{
+		access_name = "update";
+		allowed = seclabel_s != NULL &&
+			seclabel_compare(seclabel_s, seclabel_o) == LABEL_EQUAL;
+	}
+	/* currval() and lastval() only disclose the current sequence value. */
+	else if (required & ACL_SELECT)
+	{
+		access_name = "select";
+		allowed = seclabel_s != NULL &&
+			seclabel_compare(seclabel_s, seclabel_o) != LABEL_UNCOMPARABLE;
+	}
+	else
+	{
+		free_converted_seclabel(seclabel_s);
+		free_converted_seclabel(seclabel_o);
+		if (raw_label_s != NULL)
+			pfree(raw_label_s);
+		pfree(raw_label_o);
+		elog(ERROR, "unsupported sequence access mode: %u", required);
+	}
+
+	if (!allowed)
+	{
+		sequence_name = get_rel_name(seqid);
+		ereport(ERROR,
+				(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+				 errmsg("permission denied: violate %s rules on sequence %s",
+						access_name,
+						sequence_name ? sequence_name : "<unknown>")));
+	}
+
+	free_converted_seclabel(seclabel_s);
+	free_converted_seclabel(seclabel_o);
+	if (raw_label_s != NULL)
+		pfree(raw_label_s);
+	pfree(raw_label_o);
+}
+/* End - Bug#z8537 */
+
 bool
 is_security_roles()
 {
@@ -292,6 +369,12 @@ _PG_init(void)
 	/* ProcessUtility hook */
 	next_ProcessUtility_hook = ProcessUtility_hook;
 	ProcessUtility_hook = sysmac_utility_command;
+
+	/* Begin - Bug#z8537 */
+	/* Sequence value permission check */
+	next_sequence_access_hook = sequence_access_hook;
+	sequence_access_hook = sysmac_sequence_access;
+	/* End - Bug#z8537 */
 }
 
 /* End - ReqID: SRS-SECURITY-LMAC */

@@ -40,15 +40,6 @@ typedef enum
 	LABEL_DOMINATE
 }LABEL_Comparison;
 
-typedef struct hg_sysmac_param
-{
-	bool global_on;
-	bool global_table_level;
-	bool global_column_level;
-	bool global_row_level;
-}hg_sysmac_param;
-
-extern hg_sysmac_param *hg_sysmac_g;
 
 /* Begin - bug#z5940 */
 extern bool global_on;
@@ -60,6 +51,7 @@ extern bool global_row_level;
 
 /* label.c */
 extern LABEL_Comparison seclabel_compare(SecLabel *label_l, SecLabel *label_r);
+extern void free_converted_seclabel(SecLabel *seclabel); /* Bug#z8537 */
 extern SecLabel* string_to_seclabel(const char *str_label, bool *format_result, bool do_convert);
 extern char* seclabel_to_string(SecLabel *seclabel);
 extern void check_relabel(const ObjectAddress *object, const char *seclabel);

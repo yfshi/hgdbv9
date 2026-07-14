@@ -222,10 +222,8 @@ check_relation_privileges(Oid relOid,
 				result = false;
 				if (abort_on_violation)
 				{
-					if (seclabel_s)
-						pfree(seclabel_s);
-					if (seclabel_o)
-						pfree(seclabel_o);
+					free_converted_seclabel(seclabel_s);
+					free_converted_seclabel(seclabel_o);
 					elog(ERROR, "permission deined: violate select rules on %s",
 								 get_rel_name(relOid));
 				}
@@ -238,10 +236,8 @@ check_relation_privileges(Oid relOid,
 				result = false;
 				if (abort_on_violation)
 				{
-					if (seclabel_s)
-						pfree(seclabel_s);
-					if (seclabel_o)
-						pfree(seclabel_o);
+					free_converted_seclabel(seclabel_s);
+					free_converted_seclabel(seclabel_o);
 					elog(ERROR, "permission deined: violate update rules on %s",
 								 get_rel_name(relOid));
 				}
@@ -254,10 +250,8 @@ check_relation_privileges(Oid relOid,
 				result = false;
 				if (abort_on_violation)
 				{
-					if (seclabel_s)
-						pfree(seclabel_s);
-					if (seclabel_o)
-						pfree(seclabel_o);
+					free_converted_seclabel(seclabel_s);
+					free_converted_seclabel(seclabel_o);
 					elog(ERROR, "permission deined: violate insert rules on %s",
 								 get_rel_name(relOid));
 				}
@@ -270,10 +264,8 @@ check_relation_privileges(Oid relOid,
 				result = false;
 				if (abort_on_violation)
 				{
-					if (seclabel_s)
-						pfree(seclabel_s);
-					if (seclabel_o)
-						pfree(seclabel_o);
+					free_converted_seclabel(seclabel_s);
+					free_converted_seclabel(seclabel_o);
 					elog(ERROR, "permission deined: violate delete rules on %s",
 								 get_rel_name(relOid));
 				}
@@ -327,10 +319,8 @@ check_relation_privileges(Oid relOid,
 					result = false;
 					if (abort_on_violation)
 					{
-						if (seclabel_s)
-							pfree(seclabel_s);
-						if (seclabel_o)
-							pfree(seclabel_o);
+						free_converted_seclabel(seclabel_s);
+						free_converted_seclabel(seclabel_o);
 						elog(ERROR, "permission deined: violate select rules on %s",
 									 audit_name);
 					}
@@ -343,10 +333,8 @@ check_relation_privileges(Oid relOid,
 					result = false;
 					if (abort_on_violation)
 					{
-						if (seclabel_s)
-							pfree(seclabel_s);
-						if (seclabel_o)
-							pfree(seclabel_o);
+						free_converted_seclabel(seclabel_s);
+						free_converted_seclabel(seclabel_o);
 						elog(ERROR, "permission deined: violate insert rules on %s",
 									 audit_name);
 					}
@@ -359,10 +347,8 @@ check_relation_privileges(Oid relOid,
 					result = false;
 					if (abort_on_violation)
 					{
-						if (seclabel_s)
-							pfree(seclabel_s);
-						if (seclabel_o)
-							pfree(seclabel_o);
+						free_converted_seclabel(seclabel_s);
+						free_converted_seclabel(seclabel_o);
 						elog(ERROR, "permission deined: violate update rules on %s",
 									 audit_name);
 					}
@@ -375,10 +361,8 @@ check_relation_privileges(Oid relOid,
 		}
 	}
 
-	if (seclabel_s)
-		pfree(seclabel_s);
-	if (seclabel_o)
-		pfree(seclabel_o);
+	free_converted_seclabel(seclabel_s);
+	free_converted_seclabel(seclabel_o);
 
 	return result;
 }
