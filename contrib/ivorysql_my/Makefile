@@ -2,6 +2,8 @@
 
 MODULE_big = ivorysql_my
 
+TAP_TESTS = 1
+
 override CPPFLAGS += -I./src/include
 
 OBJS = \

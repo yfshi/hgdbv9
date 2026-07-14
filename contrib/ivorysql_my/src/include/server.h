@@ -353,6 +353,14 @@ typedef struct {
 extern int		current_packet_type;
 extern mysql_conn_info_t    mysql_conn_info;
 
+/* Begin OA#2577 */
+typedef struct MysqlInstanceEntry {
+	int		port;
+	char   *database;
+} MysqlInstanceEntry;
+
+extern MysqlInstanceEntry *lookup_mysql_instance(int port);
+/* End OA#2577 */
 extern void register_mysql_listener(void);
 extern void unregister_mysql_listener(void);
 extern const TypeItem *GetItemByTypeOid(Oid oid, bool report_warning); /* Bug - #z6172 */

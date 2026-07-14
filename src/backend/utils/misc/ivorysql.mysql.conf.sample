@@ -3,10 +3,10 @@
 #------------------------------------------------------------------------------
 
 #mysql.listen_addresses = '*'
-#mysql.port = 3306
+#mysql.port = 3306		 				# Comma-separated list of MySQL listening ports, e.g. '3306,3307'
 #mysql.protocol_type = mysql	# what kind of protocol listening with
 
-#mysql.default_database = highgo
+#mysql.default_database = highgo 		# Comma-separated list of default databases, e.g. 'highgo,highgo1'
 
 #sha256_password_public_key_path = '' 	# private key for caching_sha2_password auth if channel is not security.
 #sha256_password_private_key_path = ''	# public  key for caching_sha2_password auth if channel is not security.
