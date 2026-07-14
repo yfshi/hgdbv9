@@ -2518,6 +2518,8 @@ transformWhereClause(ParseState *pstate, Node *clause,
 				pstate->p_hasAnsiJoinType)
 			elog(ERROR, "old style outer join (+) cannot be used with ANSI joins");
 
+		setNamespaceColumnVisibility(pstate->p_namespace, false);						/* OA#Z2565 */
+
 		/* Parsing single conditions */
 		if ((is_opclause(qual) || IsA(qual, NullTest)) && strcmp(constructName, "WHERE") == 0)
 		{
@@ -5886,6 +5888,10 @@ AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr)
 
 	lnsitem = list_nth(pstate->p_namespace, leftrti - 1);
 	rnsitem = list_nth(pstate->p_namespace, rightrti - 1);
+	/* Begin OA#Z2565 */
+	lnsitem->p_cols_visible = false;
+	rnsitem->p_cols_visible = false;
+	/* End OA#Z2565 */
 	l_colnames = lnsitem->p_names->colnames;
 	r_colnames = rnsitem->p_names->colnames;
 	res_nscolumns = (ParseNamespaceColumn *)
@@ -5935,6 +5941,13 @@ AddJoinOnToRtable(ParseState *pstate, JoinExpr *joinexpr)
 		pstate->p_joinexprs = lappend(pstate->p_joinexprs, NULL);
 	else
 		pstate->p_joinexprs = lappend(pstate->p_joinexprs, joinexpr);
+	/* Begin OA#Z2565 */
+	nsitem->p_rel_visible = false;
+	nsitem->p_cols_visible = true;
+	nsitem->p_lateral_only = false;
+	nsitem->p_lateral_ok = true;
+	/* End OA#Z2565 */
+
 	pstate->p_namespace = lappend(pstate->p_namespace, nsitem);
 }
 
