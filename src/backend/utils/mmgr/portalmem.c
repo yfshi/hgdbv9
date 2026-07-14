@@ -1182,7 +1182,7 @@ pg_cursor(PG_FUNCTION_ARGS)
 	 * build tupdesc for result tuples. This must match the definition of the
 	 * pg_cursors view in system_views.sql
 	 */
-	tupdesc = CreateTemplateTupleDesc(6, false);
+	tupdesc = CreateTemplateTupleDesc(6);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
 					   TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "statement",
@@ -1275,7 +1275,7 @@ ora_open_cursors(PG_FUNCTION_ARGS)
 	 * build tupdesc for result tuples. This must match the definition of the
 	 * open_cursors view in contrib/ivorysql_ora/src/sysview
 	 */
-	tupdesc = CreateTemplateTupleDesc(12, false);
+	tupdesc = CreateTemplateTupleDesc(12);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "saddr",
 					   TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "sid",

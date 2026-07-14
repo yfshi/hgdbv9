@@ -17675,7 +17675,7 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 static Node *
@@ -17692,13 +17692,13 @@ makeOrExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 static Node *
 makeNotExpr(Node *expr, int location)
 {
-	return (Node *) makeBoolExpr(NOT_EXPR, list_make1(expr), false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	return (Node *) makeBoolExpr(NOT_EXPR, list_make1(expr), location);
 }
 
 static Node *

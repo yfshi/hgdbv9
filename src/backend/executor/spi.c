@@ -2437,7 +2437,6 @@ _SPI_prepare_plan(const char *src, SPIPlanPtr plan)
 						   stmt_list,
 						   NULL,
 						   plan->argtypes,
-						   NULL,	/* ReqID:SRS-SQL-FUNCOUT */
 						   plan->nargs,
 						   plan->parserSetup,
 						   plan->parserSetupArg,
@@ -2704,7 +2703,6 @@ _SPI_execute_plan(SPIPlanPtr plan, const SPIExecuteOptions *options,
 							   stmt_list,
 							   NULL,
 							   plan->argtypes,
-							   NULL,	/* ReqID:SRS-SQL-FUNCOUT */
 							   plan->nargs,
 							   plan->parserSetup,
 							   plan->parserSetupArg,

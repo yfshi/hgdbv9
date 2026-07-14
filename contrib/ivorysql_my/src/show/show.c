@@ -150,7 +150,7 @@ mys_show_privileges(PG_FUNCTION_ARGS)
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(SHOW_PRIVILEGES_RESULTSET_NATTR, false);
+		tupdesc = CreateTemplateTupleDesc(SHOW_PRIVILEGES_RESULTSET_NATTR);
 		TupleDescInitEntry(tupdesc, 1, "Privilege", TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, 2, "Context", TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, 3, "Comment", TEXTOID, -1, 0);
@@ -201,7 +201,7 @@ mys_show_warnings(PG_FUNCTION_ARGS)
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(SHOW_WARNINGS_RESULTSET_NATTR, false);
+		tupdesc = CreateTemplateTupleDesc(SHOW_WARNINGS_RESULTSET_NATTR);
 		TupleDescInitEntry(tupdesc, 1, "Privilege", TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, 2, "Context", TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, 3, "Comment", TEXTOID, -1, 0);
@@ -296,7 +296,7 @@ mys_show_create_database(PG_FUNCTION_ARGS)
 
 	/* Prepare the column information to be returned */
 	oldcontext = MemoryContextSwitchTo(rsinfo->econtext->ecxt_per_query_memory);
-	tupdesc = CreateTemplateTupleDesc(2, false);
+	tupdesc = CreateTemplateTupleDesc(2);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Database", TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Create Database", TEXTOID, -1, 0);
 	tupstore =

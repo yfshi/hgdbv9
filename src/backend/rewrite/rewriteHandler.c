@@ -171,8 +171,16 @@ static void errorOnReadOnlyView(Relation view, CmdType commandType);	/* OA-REQ-2
 void
 AcquireRewriteLocks(Query *parsetree,
 					bool forExecute,
-					bool forUpdatePushedDown,
-					bool skipCreateFtmptab)	/* BUG#M0000489 */
+					bool forUpdatePushedDown)
+{
+	AcquireRewriteLocksExt(parsetree, forExecute, forUpdatePushedDown, false);
+}
+
+void
+AcquireRewriteLocksExt(Query *parsetree,
+					   bool forExecute,
+					   bool forUpdatePushedDown,
+					   bool skipCreateFtmptab)	/* BUG#M0000489 */
 {
 	ListCell   *l;
 	int			rt_index;
@@ -411,11 +419,11 @@ AcquireRewriteLocks(Query *parsetree,
 				 * The subquery RTE itself is all right, but we have to
 				 * recurse to process the represented subquery.
 				 */
-				AcquireRewriteLocks(rte->subquery,
-									forExecute,
-									(forUpdatePushedDown ||
-									 get_parse_rowmark(parsetree, rt_index) != NULL),
-									 true); /* BUG#M0000489 */
+				AcquireRewriteLocksExt(rte->subquery,
+									   forExecute,
+									   (forUpdatePushedDown ||
+										get_parse_rowmark(parsetree, rt_index) != NULL),
+									   true); /* BUG#M0000489 */
 				break;
 
 			default:
@@ -429,7 +437,7 @@ AcquireRewriteLocks(Query *parsetree,
 	{
 		CommonTableExpr *cte = (CommonTableExpr *) lfirst(l);
 
-		AcquireRewriteLocks((Query *) cte->ctequery, forExecute, false, false); /* BUG#M0000489 */
+		AcquireRewriteLocks((Query *) cte->ctequery, forExecute, false);
 	}
 
 	/*
@@ -456,8 +464,7 @@ acquireLocksOnSubLinks(Node *node, acquireLocksOnSubLinks_context *context)
 		/* Do what we came for */
 		AcquireRewriteLocks((Query *) sub->subselect,
 							context->for_execute,
-							false,
-							false); /* BUG#M0000489 */
+							false);
 		/* Fall through to process lefthand args of SubLink */
 	}
 
@@ -514,7 +521,7 @@ rewriteRuleAction(Query *parsetree,
 	/*
 	 * Acquire necessary locks and fix any deleted JOIN RTE entries.
 	 */
-	AcquireRewriteLocks(rule_action, true, false, false); /* BUG#M0000489 */
+	AcquireRewriteLocks(rule_action, true, false);
 	(void) acquireLocksOnSubLinks(rule_qual, &context);
 
 	current_varno = rt_index;
@@ -2095,7 +2102,7 @@ ApplyRetrieveRule(Query *parsetree,
 	 */
 	rule_action = copyObject(linitial(rule->actions));
 
-	AcquireRewriteLocks(rule_action, true, (rc != NULL), false); /* BUG#M0000489 */
+	AcquireRewriteLocks(rule_action, true, (rc != NULL));
 
 	/*
 	 * If FOR [KEY] UPDATE/SHARE of view, mark all the contained tables as
@@ -2210,7 +2217,7 @@ markQueryForLocking(Query *qry, Node *jtnode,
 
 		if (rte->rtekind == RTE_RELATION)
 		{
-			applyLockingClause(qry, rti, strength, waitPolicy,
+			applyLockingClauseExt(qry, rti, strength, waitPolicy,
 							  waitInteger,/* BUG#M0000470: FOR UPDATE WAIT integer */
 							  lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
 							  pushedDown);
@@ -2218,7 +2225,7 @@ markQueryForLocking(Query *qry, Node *jtnode,
 		}
 		else if (rte->rtekind == RTE_SUBQUERY)
 		{
-			applyLockingClause(qry, rti, strength, waitPolicy,
+			applyLockingClauseExt(qry, rti, strength, waitPolicy,
 							  waitInteger,/* BUG#M0000470: FOR UPDATE WAIT integer */
 							  lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
 							  pushedDown);

@@ -3013,7 +3013,7 @@ eval_const_expressions_mutator(Node *node,
 							if (list_length(newargs) == 1)
 								return (Node *) linitial(newargs);
 							/* Else we still need an OR node */
-							return (Node *) make_orclause(newargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+							return (Node *) make_orclause_ext(newargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						}
 					case AND_EXPR:
 						{
@@ -3041,7 +3041,7 @@ eval_const_expressions_mutator(Node *node,
 							if (list_length(newargs) == 1)
 								return (Node *) linitial(newargs);
 							/* Else we still need an AND node */
-							return (Node *) make_andclause(newargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+							return (Node *) make_andclause_ext(newargs, expr->has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 						}
 					case NOT_EXPR:
 						{
@@ -3659,7 +3659,7 @@ eval_const_expressions_mutator(Node *node,
 					if (list_length(newargs) == 1)
 						return (Node *) linitial(newargs);
 					/* Else we need an AND node */
-					return (Node *) make_andclause(newargs, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					return (Node *) make_andclause(newargs);
 				}
 				if (!ntest->argisrow && arg && IsA(arg, Const))
 				{
@@ -5621,7 +5621,7 @@ inline_set_returning_function(PlannerInfo *root, RangeTblEntry *rte)
 		querytree = linitial(querytree_list);
 
 		/* Acquire necessary locks, then apply rewriter. */
-		AcquireRewriteLocks(querytree, true, false, false);	/* BUG#M0000489 */
+		AcquireRewriteLocks(querytree, true, false);
 		querytree_list = pg_rewrite_query(querytree);
 		if (list_length(querytree_list) != 1)
 			goto fail;

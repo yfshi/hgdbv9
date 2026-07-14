@@ -31,9 +31,17 @@
  * success, -1 on failure.
  */
 int
-scram_SaltedPassword(const char *scram_type, const char *password,	// ReqID:SRS-SECURITY-IDENTITYAUTH
+scram_SaltedPassword(const char *password,
 					 const char *salt, int saltlen, int iterations,
 					 uint8 *result)
+{
+	return scram_SaltedPassword_ext("SCRAM-SHA-256", password, salt, saltlen, iterations, result);
+}
+
+int
+scram_SaltedPassword_ext(const char *scram_type, const char *password,	// ReqID:SRS-SECURITY-IDENTITYAUTH
+						const char *salt, int saltlen, int iterations,
+						uint8 *result)
 {
 	int			password_len = strlen(password);
 	uint32		one = pg_hton32(1);
@@ -101,7 +109,13 @@ scram_SaltedPassword(const char *scram_type, const char *password,	// ReqID:SRS-
  */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 int
-scram_H(const char *scram_type, const uint8 *input, int len, uint8 *result)
+scram_H(const uint8 *input, int len, uint8 *result)
+{
+	return scram_H_ext("SCRAM-SHA-256", input, len, result);
+}
+
+int
+scram_H_ext(const char *scram_type, const uint8 *input, int len, uint8 *result)
 {
 	pg_cryptohash_ctx *ctx = NULL;
 
@@ -133,7 +147,13 @@ scram_H(const char *scram_type, const uint8 *input, int len, uint8 *result)
  */
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 int
-scram_ClientKey(const char *scram_type, const uint8 *salted_password, uint8 *result)
+scram_ClientKey(const uint8 *salted_password, uint8 *result)
+{
+	return scram_ClientKey_ext("SCRAM-SHA-256", salted_password, result);
+}
+
+int
+scram_ClientKey_ext(const char *scram_type, const uint8 *salted_password, uint8 *result)
 {
 	pg_hmac_ctx *ctx = NULL; //pg_hmac_create(PG_SHA256);
 
@@ -164,7 +184,13 @@ scram_ClientKey(const char *scram_type, const uint8 *salted_password, uint8 *res
  * Calculate ServerKey.  Returns 0 on success, -1 on failure.
  */
 int
-scram_ServerKey(const char *scram_type, const uint8 *salted_password, uint8 *result)
+scram_ServerKey(const uint8 *salted_password, uint8 *result)
+{
+	return scram_ServerKey_ext("SCRAM-SHA-256", salted_password, result);
+}
+
+int
+scram_ServerKey_ext(const char *scram_type, const uint8 *salted_password, uint8 *result)
 {
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	pg_hmac_ctx *ctx = NULL; //pg_hmac_create(PG_SHA256);
@@ -202,8 +228,15 @@ scram_ServerKey(const char *scram_type, const uint8 *salted_password, uint8 *res
  * palloc'd or malloc'd, so caller is responsible for freeing it.
  */
 char *
-scram_build_secret(const char *scram_type, const char *salt, int saltlen, int iterations, // ReqID:SRS-SECURITY-IDENTITYAUTH
+scram_build_secret(const char *salt, int saltlen, int iterations,
 				   const char *password)
+{
+	return scram_build_secret_ext("SCRAM-SHA-256", salt, saltlen, iterations, password);
+}
+
+char *
+scram_build_secret_ext(const char *scram_type, const char *salt, int saltlen, int iterations, // ReqID:SRS-SECURITY-IDENTITYAUTH
+					   const char *password)
 {
 	uint8		salted_password[SCRAM_KEY_LEN];
 	uint8		stored_key[SCRAM_KEY_LEN];
@@ -221,11 +254,11 @@ scram_build_secret(const char *scram_type, const char *salt, int saltlen, int it
 
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	/* Calculate StoredKey and ServerKey */
-	if (scram_SaltedPassword(scram_type, password, salt, saltlen, iterations,
-							 salted_password) < 0 ||
-		scram_ClientKey(scram_type, salted_password, stored_key) < 0 ||
-		scram_H(scram_type, stored_key, SCRAM_KEY_LEN, stored_key) < 0 ||
-		scram_ServerKey(scram_type, salted_password, server_key) < 0)
+	if (scram_SaltedPassword_ext(scram_type, password, salt, saltlen, iterations,
+								 salted_password) < 0 ||
+		scram_ClientKey_ext(scram_type, salted_password, stored_key) < 0 ||
+		scram_H_ext(scram_type, stored_key, SCRAM_KEY_LEN, stored_key) < 0 ||
+		scram_ServerKey_ext(scram_type, salted_password, server_key) < 0)
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	{
 #ifdef FRONTEND

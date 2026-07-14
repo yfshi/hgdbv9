@@ -505,7 +505,8 @@ extern TupleTableSlot *ExecInitExtraTupleSlot(EState *estate,
 											  const TupleTableSlotOps *tts_ops);
 extern TupleTableSlot *ExecInitNullTupleSlot(EState *estate, TupleDesc tupType,
 											 const TupleTableSlotOps *tts_ops);
-extern TupleDesc ExecTypeFromTL(List *targetList, bool hasrowid);
+extern TupleDesc ExecTypeFromTL(List *targetList);
+extern TupleDesc ExecTypeFromTLExt(List *targetList, bool hasrowid);
 extern TupleDesc ExecCleanTypeFromTL(List *targetList, bool hasrowid);
 extern TupleDesc ExecTypeFromExprList(List *exprList);
 extern void ExecTypeSetColNames(TupleDesc typeInfo, List *namesList);

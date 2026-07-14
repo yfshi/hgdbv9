@@ -79,10 +79,7 @@ copydir(char *fromdir, char *todir, bool recurse)
 				copydir(fromfile, tofile, true);
 		}
 		else if (S_ISREG(fst.st_mode))
-			copy_file(fromfile, tofile,
-					/* Begin - ReqID:SRS-SECURITY-TDE */
-						false);
-					/* End - ReqID:SRS-SECURITY-TDE */
+			copy_file(fromfile, tofile);
 	}
 	FreeDir(xldir);
 
@@ -132,10 +129,16 @@ copydir(char *fromdir, char *todir, bool recurse)
  * copy one file
  */
 void
-copy_file(char *fromfile, char *tofile,
-		/* Begin - ReqID:SRS-SECURITY-TDE */
-			bool encrypt_init_file)
-		/* End - ReqID:SRS-SECURITY-TDE */
+copy_file(char *fromfile, char *tofile)
+{
+	copy_file_ext(fromfile, tofile, false);
+}
+
+void
+copy_file_ext(char *fromfile, char *tofile,
+			  /* Begin - ReqID:SRS-SECURITY-TDE */
+			  bool encrypt_init_file)
+			  /* End - ReqID:SRS-SECURITY-TDE */
 {
 	char	   *buffer;
 	int			srcfd;

@@ -268,7 +268,7 @@ make_sub_restrictinfos(PlannerInfo *root,
 													nullable_relids));
 		return (Expr *) make_restrictinfo_internal(root,
 												   clause,
-												   make_orclause(orlist, false),	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+												   make_orclause(orlist),
 												   is_pushed_down,
 												   outerjoin_delayed,
 												   pseudoconstant,
@@ -293,7 +293,7 @@ make_sub_restrictinfos(PlannerInfo *root,
 													 required_relids,
 													 outer_relids,
 													 nullable_relids));
-		return make_andclause(andlist, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		return make_andclause(andlist);
 	}
 	else
 		return (Expr *) make_restrictinfo_internal(root,

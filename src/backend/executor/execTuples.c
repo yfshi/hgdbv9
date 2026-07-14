@@ -1899,7 +1899,7 @@ ExecInitResultTypeTL(PlanState *planstate)
 	}
 	/* End - ReqID:SRS-SQL-ROWID */
 
-	tupDesc = ExecTypeFromTL(planstate->plan->targetlist, hasrowid);
+	tupDesc = ExecTypeFromTLExt(planstate->plan->targetlist, hasrowid);
 
 	planstate->ps_ResultTupleDesc = tupDesc;
 }
@@ -2080,7 +2080,13 @@ slot_getsomeattrs_int(TupleTableSlot *slot, int attnum)
  * ----------------------------------------------------------------
  */
 TupleDesc
-ExecTypeFromTL(List *targetList, bool hasrowid)
+ExecTypeFromTL(List *targetList)
+{
+	return ExecTypeFromTLExt(targetList, false);
+}
+
+TupleDesc
+ExecTypeFromTLExt(List *targetList, bool hasrowid)
 {
 	return ExecTypeFromTLInternal(targetList, hasrowid, false);
 }
@@ -2109,7 +2115,7 @@ ExecTypeFromTLInternal(List *targetList, bool hasrowid, bool skipjunk)
 		len = ExecCleanTargetListLength(targetList);
 	else
 		len = ExecTargetListLength(targetList);
-	typeInfo = CreateTemplateTupleDesc(len, hasrowid);
+	typeInfo = CreateTemplateTupleDescExt(len, hasrowid);
 
 	foreach(l, targetList)
 	{
@@ -2195,7 +2201,7 @@ ExecTypeFromExprList(List *exprList)
 	ListCell   *lc;
 	int			cur_resno = 1;
 
-	typeInfo = CreateTemplateTupleDesc(list_length(exprList), false);
+	typeInfo = CreateTemplateTupleDesc(list_length(exprList));
 
 	foreach(lc, exprList)
 	{

@@ -645,7 +645,7 @@ transformJoinUsingClause(ParseState *pstate,
 	if (list_length(andargs) == 1)
 		result = (Node *) linitial(andargs);
 	else
-		result = (Node *) makeBoolExpr(AND_EXPR, andargs, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		result = (Node *) makeBoolExpr(AND_EXPR, andargs, -1);
 
 	/*
 	 * Since the references are already Vars, and are certainly from the input
@@ -2595,7 +2595,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 						return_args = lappend(return_args, node->qual);
 					}
 				}
-				return_qual = (Node *)makeBoolExpr(((BoolExpr *)qual)->boolop, return_args, false, -1);
+				return_qual = (Node *)makeBoolExpr(((BoolExpr *)qual)->boolop, return_args, -1);
 				return return_qual;
 			}
 
@@ -2629,7 +2629,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 						if (node->plus_var->varno == outer_join->plus_var->varno)
 						{
 							outer_join->qual = (Node *) makeBoolExpr(((BoolExpr *)qual)->boolop,
-										list_make2(outer_join->qual, node->qual), false, -1);
+										list_make2(outer_join->qual, node->qual), -1);
 							singlevar_list = list_delete(singlevar_list, node);
 						}
 					}
@@ -2725,7 +2725,7 @@ transformWhereClause(ParseState *pstate, Node *clause,
 
 			if (return_args)
 			{
-				return_qual = (Node *)makeBoolExpr(((BoolExpr *)qual)->boolop, return_args, false, -1);
+				return_qual = (Node *)makeBoolExpr(((BoolExpr *)qual)->boolop, return_args, -1);
 				return return_qual;
 			}
 
@@ -2952,7 +2952,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			/* Begin: Req:SRS-MYSQL-SQL-Select */
 			if (compatible_mode == MYS_MODE)
 			{
-				if (colNameToVar(pstate, name, true, false, location) != NULL)
+				if (colNameToVar(pstate, name, true, location) != NULL)
 				{
 					/**
 					 * Name conflicts only occur when targetList exist alias.
@@ -2994,7 +2994,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			/* End: Req:SRS-MYSQL-SQL-Select */
 			else
 			{
-				if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+				if (colNameToVar(pstate, name, true, location) != NULL)
 					name = NULL;
 			}
 		}
@@ -3081,7 +3081,7 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			 * breaks no cases that are legal per spec, and it seems a more
 			 * self-consistent behavior.
 			 */
-			if (colNameToVar(pstate, name, true, false, location) != NULL)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			if (colNameToVar(pstate, name, true, location) != NULL)
 				name = NULL;
 		}
 
@@ -6314,7 +6314,7 @@ dedumplicate_outerjoin_list(List **multi_outer_joins, BoolExprType boolop)
 			if (outer_join->plus_var->varno == node->plus_var->varno)
 			{
 				outer_join->var_list = list_var_union(outer_join->var_list, node->var_list);
-				outer_join->qual = (Node *) makeBoolExpr(boolop, list_make2(outer_join->qual, node->qual), false, -1);
+				outer_join->qual = (Node *) makeBoolExpr(boolop, list_make2(outer_join->qual, node->qual), -1);
 				*multi_outer_joins = list_delete(*multi_outer_joins, node);
 			}
 		}
@@ -6510,7 +6510,7 @@ getOuterJoinQuals(List **multi_outerjoins, Bitmapset *join_vars, BoolExprType bo
 			ret_quals = outer_join->qual;
 		else
 			ret_quals = (Node *) makeBoolExpr(boolop,
-										list_make2(ret_quals, outer_join->qual), false, -1);
+										list_make2(ret_quals, outer_join->qual), -1);
 		*multi_outerjoins = foreach_delete_current(*multi_outerjoins, lc);
 	}
 

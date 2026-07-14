@@ -687,7 +687,7 @@ pull_up_sublinks_qual_recurse(PlannerInfo *root, Node *node,
 		else if (list_length(newclauses) == 1)
 			return (Node *) linitial(newclauses);
 		else
-			return (Node *) make_andclause(newclauses, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			return (Node *) make_andclause(newclauses);
 	}
 	/* Stop if not an AND */
 	return node;

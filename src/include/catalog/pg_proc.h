@@ -229,7 +229,6 @@ DECLARE_UNIQUE_INDEX(pg_proc_proname_args_nsp_index, 2691, on pg_proc using btre
 
 #endif							/* EXPOSE_TO_CLIENT_CODE */
 
-
 extern ObjectAddress ProcedureCreate(const char *procedureName,
 									 Oid procNamespace,
 									 bool replace,
@@ -256,12 +255,40 @@ extern ObjectAddress ProcedureCreate(const char *procedureName,
 									 Datum proconfig,
 									 Oid prosupport,
 									 float4 procost,
-									 float4 prorows,
-									 bool intisnumber, /* BUG:M0000068 */
-									 /* Begin - ReqID:SRS-SQL-PACKAGE */
-									 Datum parametertypeNames,
-									 char *rettypeName);
-									 /* End - ReqID:SRS-SQL-PACKAGE */
+									 float4 prorows);
+
+extern ObjectAddress ProcedureCreateExt(const char *procedureName,
+										Oid procNamespace,
+										bool replace,
+										bool returnsSet,
+										Oid returnType,
+										Oid proowner,
+										Oid languageObjectId,
+										Oid languageValidator,
+										const char *prosrc,
+										const char *probin,
+										Node *prosqlbody,
+										char prokind,
+										bool security_definer,
+										bool isLeakProof,
+										bool isStrict,
+										char volatility,
+										char parallel,
+										oidvector *parameterTypes,
+										Datum allParameterTypes,
+										Datum parameterModes,
+										Datum parameterNames,
+										List *parameterDefaults,
+										Datum trftypes,
+										Datum proconfig,
+										Oid prosupport,
+										float4 procost,
+										float4 prorows,
+										bool intisnumber, /* BUG:M0000068 */
+										/* Begin - ReqID:SRS-SQL-PACKAGE */
+										Datum parametertypeNames,
+										char *rettypeName);
+										/* End - ReqID:SRS-SQL-PACKAGE */
 
 extern bool function_parse_error_transpose(const char *prosrc);
 

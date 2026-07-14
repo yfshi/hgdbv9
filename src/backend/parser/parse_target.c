@@ -1406,7 +1406,6 @@ ExpandAllTables(ParseState *pstate, int location)
 							 expandNSItemAttrs(pstate,
 											   nsitem,
 											   0,
-											   true,
 											   location));
 	}
 
@@ -1469,7 +1468,7 @@ ExpandSingleTable(ParseState *pstate, ParseNamespaceItem *nsitem,
 	if (make_target_entry)
 	{
 		/* expandNSItemAttrs handles permissions marking */
-		return expandNSItemAttrs(pstate, nsitem, sublevels_up, true, location);
+		return expandNSItemAttrs(pstate, nsitem, sublevels_up, location);
 	}
 	else
 	{
@@ -1666,7 +1665,7 @@ expandRecordVariable(ParseState *pstate, Var *var, int levelsup)
 		expandRTE(rte, var->varno, 0, var->location, false,
 				  &names, &vars);
 
-		tupleDesc = CreateTemplateTupleDesc(list_length(vars), false);
+		tupleDesc = CreateTemplateTupleDesc(list_length(vars));
 		i = 1;
 		forboth(lname, names, lvar, vars)
 		{

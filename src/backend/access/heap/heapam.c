@@ -2385,7 +2385,7 @@ heap_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 	if(RELATION_IS_GLOBAL_TEMP(relation))
 	{
 		if (!gtt_storage_attached(RelationGetRelid(relation)))
-			RelationCreateStorage(relation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, relation);
+			RelationCreateStorageExt(relation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, relation);
 	}
 	/* End BUG#Z376 */
 
@@ -4609,9 +4609,18 @@ get_mxact_status_for_lock(LockTupleMode mode, bool is_update)
 TM_Result
 heap_lock_tuple(Relation relation, HeapTuple tuple,
 				CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
-				int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
 				bool follow_updates,
 				Buffer *buffer, TM_FailureData *tmfd)
+{
+	return heap_lock_tuple_ext(relation, tuple, cid, mode, wait_policy, 0, follow_updates, buffer, tmfd);
+}
+
+TM_Result
+heap_lock_tuple_ext(Relation relation, HeapTuple tuple,
+					CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
+					int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
+					bool follow_updates,
+					Buffer *buffer, TM_FailureData *tmfd)
 {
 	TM_Result	result;
 	ItemPointer tid = &(tuple->t_self);

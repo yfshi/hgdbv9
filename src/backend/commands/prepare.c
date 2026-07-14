@@ -171,8 +171,7 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 	 * information about unknown parameters to be deduced from context.
 	 */
 	query = parse_analyze_varparams(rawstmt, pstate->p_sourcetext,
-									&argtypes, &nargs,
-									NULL/* ReqID:SRS-SQL-FUNCOUT */);
+									&argtypes, &nargs);
 
 	/*
 	 * Check that all parameter types were determined.
@@ -225,7 +224,6 @@ PrepareQuery(ParseState *pstate, PrepareStmt *stmt,
 					   query_list,
 					   NULL,
 					   argtypes,
-					   NULL,	/* ReqID:SRS-SQL-FUNCOUT */
 					   nargs,
 					   NULL,
 					   NULL,
@@ -792,7 +790,7 @@ pg_prepared_statement(PG_FUNCTION_ARGS)
 	 * build tupdesc for result tuples. This must match the definition of the
 	 * pg_prepared_statements view in system_views.sql
 	 */
-	tupdesc = CreateTemplateTupleDesc(7, false);
+	tupdesc = CreateTemplateTupleDesc(7);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
 					   TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "statement",

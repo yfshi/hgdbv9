@@ -180,7 +180,6 @@ retry:
 							   GetCurrentCommandId(false),
 							   lockmode,
 							   LockWaitBlock,
-							   0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 							   0 /* don't follow updates */ ,
 							   &tmfd);
 
@@ -365,7 +364,6 @@ retry:
 							   GetCurrentCommandId(false),
 							   lockmode,
 							   LockWaitBlock,
-							   0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 							   0 /* don't follow updates */ ,
 							   &tmfd);
 

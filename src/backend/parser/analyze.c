@@ -288,6 +288,13 @@ parse_analyze(RawStmt *parseTree, const char *sourceText,
  */
 Query *
 parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
+						Oid **paramTypes, int *numParams)
+{
+	return parse_analyze_varparams_ext(parseTree, sourceText, paramTypes, numParams, NULL);
+}
+
+Query *
+parse_analyze_varparams_ext(RawStmt *parseTree, const char *sourceText,
 						Oid **paramTypes, int *numParams,
 						/* Begin - ReqID:SRS-SQL-FUNCOUT */
 						char **paramModes)
@@ -301,7 +308,7 @@ parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
 
 	pstate->p_sourcetext = sourceText;
 
-	parse_variable_parameters(pstate, paramTypes, numParams,
+	parse_variable_parameters_ext(pstate, paramTypes, numParams,
 						/* Begin - ReqID:SRS-SQL-FUNCOUT */
 						paramModes);
 						/* End - ReqID:SRS-SQL-FUNCOUT */
@@ -3200,7 +3207,7 @@ transformValuesClause(ParseState *pstate, SelectStmt *stmt)
 	 * Generate a targetlist as though expanding "*"
 	 */
 	Assert(pstate->p_next_resno == 1);
-	qry->targetList = expandNSItemAttrs(pstate, nsitem, 0, true, -1);
+	qry->targetList = expandNSItemAttrs(pstate, nsitem, 0, -1);
 
 	/*
 	 * The grammar allows attaching ORDER BY, LIMIT, and FOR UPDATE to a
@@ -6488,14 +6495,14 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 			switch (rte->rtekind)
 			{
 				case RTE_RELATION:
-					applyLockingClause(qry, i, lc->strength, lc->waitPolicy,
+					applyLockingClauseExt(qry, i, lc->strength, lc->waitPolicy,
 									   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   pushedDown);
 					rte->requiredPerms |= ACL_SELECT_FOR_UPDATE;
 					break;
 				case RTE_SUBQUERY:
-					applyLockingClause(qry, i, lc->strength, lc->waitPolicy,
+					applyLockingClauseExt(qry, i, lc->strength, lc->waitPolicy,
 									   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   pushedDown);
@@ -6698,7 +6705,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 							if (ORA_MODE != compatible_mode)
 							{
 							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
-								applyLockingClause(qry, i, lc->strength,
+								applyLockingClauseExt(qry, i, lc->strength,
 												   lc->waitPolicy,
 												   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 												   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
@@ -6719,7 +6726,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 														LCS_asString(lc->strength)),
 												 parser_errposition(pstate, thisrel->location)));
 
-									applyLockingClause(qry, i, lc->strength,
+									applyLockingClauseExt(qry, i, lc->strength,
 													   lc->waitPolicy,
 													   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 													   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
@@ -6729,7 +6736,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 								else if (updaterteidlist == NIL || !list_member_oid(updaterteidlist, rte->relid))
 								{
 									updaterteidlist = lappend_oid(updaterteidlist, rte->relid);
-									applyLockingClause(qry, i, lc->strength,
+									applyLockingClauseExt(qry, i, lc->strength,
 													   lc->waitPolicy,
 													   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 													   lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
@@ -6746,7 +6753,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 								!isColumn)
 							{
 							/* End - BUG#M0000470: SELECT FOR UPDATE OF column */
-								applyLockingClause(qry, i, lc->strength,
+								applyLockingClauseExt(qry, i, lc->strength,
 												   lc->waitPolicy,
 												   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 												   NIL,/* BUG#M0000470:FOR UPDATE WAIT integer */
@@ -6759,7 +6766,7 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
 							else if (updaterteidlist == NIL || !list_member_oid(updaterteidlist, rte->relid))
 							{
 								updaterteidlist = lappend_oid(updaterteidlist, lockrelid);
-								applyLockingClause(qry, i, lc->strength,
+								applyLockingClauseExt(qry, i, lc->strength,
 												   lc->waitPolicy,
 												   lc->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 												   lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
@@ -6888,6 +6895,14 @@ transformLockingClause(ParseState *pstate, Query *qry, LockingClause *lc,
  */
 void
 applyLockingClause(Query *qry, Index rtindex,
+				   LockClauseStrength strength, LockWaitPolicy waitPolicy,
+				   bool pushedDown)
+{
+	applyLockingClauseExt(qry, rtindex, strength, waitPolicy, 0, NIL, pushedDown);
+}
+
+void
+applyLockingClauseExt(Query *qry, Index rtindex,
 				   LockClauseStrength strength, LockWaitPolicy waitPolicy,
 				   int32 waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
 				   List *lockedColumns,/* BUG#M0000470:FOR UPDATE WAIT integer */
@@ -7208,7 +7223,7 @@ applyLockingTable(Query *qry, Oid relid,
 		{
 			if (rte->relid == relid)
 			{
-				applyLockingClause(qry, i, lockclause->strength,
+				applyLockingClauseExt(qry, i, lockclause->strength,
 								   lockclause->waitPolicy, lockclause->waitInteger,
 								   lockclause->lockedRels,
 								   pushedDown);
@@ -7524,12 +7539,12 @@ ivy_makeNullAConst(int location)
  * make a type cast.
  */
 Node *
-ivy_makeTypeCast(Node *arg, TypeName *typename, int location)
+ivy_makeTypeCast(Node *arg, TypeName *typeName, int location)
 {
 	TypeCast *n = makeNode(TypeCast);
 
 	n->arg = arg;
-	n->typeName = typename;
+	n->typeName = typeName;
 	n->location = location;
 
 	return (Node *)n;
@@ -7867,7 +7882,6 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *)blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr),
-			false, location);
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
 }
 /* End - ReqID:SRS-MYSQL-SELECT */

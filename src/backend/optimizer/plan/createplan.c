@@ -3611,13 +3611,13 @@ create_bitmap_subplan(PlannerInfo *root, Path *bitmapqual,
 		else if (list_length(subquals) <= 1)
 			*qual = subquals;
 		else
-			*qual = list_make1(make_orclause(subquals, false));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			*qual = list_make1(make_orclause(subquals));
 		if (const_true_subindexqual)
 			*indexqual = NIL;
 		else if (list_length(subindexquals) <= 1)
 			*indexqual = subindexquals;
 		else
-			*indexqual = list_make1(make_orclause(subindexquals, false));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			*indexqual = list_make1(make_orclause(subindexquals));
 		*indexECs = NIL;
 	}
 	else if (IsA(bitmapqual, IndexPath))
@@ -3768,7 +3768,7 @@ create_tidscan_plan(PlannerInfo *root, TidPath *best_path,
 	 */
 	if (list_length(tidquals) > 1)
 		scan_clauses = list_difference(scan_clauses,
-									   list_make1(make_orclause(tidquals, false)));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									   list_make1(make_orclause(tidquals)));
 
 	/* Replace any outer-relation variables with nestloop params */
 	if (best_path->path.param_info)

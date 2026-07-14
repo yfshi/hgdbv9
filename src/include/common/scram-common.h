@@ -52,14 +52,24 @@
  * 4096 per RFC 7677.
  */
 #define SCRAM_DEFAULT_ITERATIONS	4096
-/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-extern int	scram_SaltedPassword(const char *scram_type, const char *password, const char *salt,
-								 int saltlen, int iterations, uint8 *result);
-extern int	scram_H(const char *scram_type, const uint8 *str, int len, uint8 *result);
-extern int	scram_ClientKey(const char *scram_type, const uint8 *salted_password, uint8 *result);
-extern int	scram_ServerKey(const char *scram_type, const uint8 *salted_password, uint8 *result);
 
-extern char *scram_build_secret(const char *scram_type, const char *salt, int saltlen, int iterations,
+extern int scram_SaltedPassword(const char *password, const char *salt,
+								int saltlen, int iterations, uint8 *result);
+extern int	scram_H(const uint8 *str, int len, uint8 *result);
+extern int	scram_ClientKey(const uint8 *salted_password, uint8 *result);
+extern int	scram_ServerKey(const uint8 *salted_password, uint8 *result);
+
+extern char *scram_build_secret(const char *salt, int saltlen, int iterations,
 								const char *password);
+
+/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+extern int scram_SaltedPassword_ext(const char *scram_type, const char *password, const char *salt,
+									int saltlen, int iterations, uint8 *result);
+extern int	scram_H_ext(const char *scram_type, const uint8 *str, int len, uint8 *result);
+extern int	scram_ClientKey_ext(const char *scram_type, const uint8 *salted_password, uint8 *result);
+extern int	scram_ServerKey_ext(const char *scram_type, const uint8 *salted_password, uint8 *result);
+
+extern char *scram_build_secret_ext(const char *scram_type, const char *salt, int saltlen, int iterations,
+									const char *password);
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif							/* SCRAM_COMMON_H */

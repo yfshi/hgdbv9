@@ -303,7 +303,7 @@ ExecMakeTableFunctionResult(SetExprState *setexpr,
 				rsinfo.setResult = tupstore;
 				if (!returnsTuple)
 				{
-					tupdesc = CreateTemplateTupleDesc(1, false);
+					tupdesc = CreateTemplateTupleDesc(1);
 					TupleDescInitEntry(tupdesc,
 									   (AttrNumber) 1,
 									   "column",
@@ -835,7 +835,7 @@ init_sexpr(Oid foid, Oid input_collation, Expr *node,
 		else if (functypclass == TYPEFUNC_SCALAR)
 		{
 			/* Base data type, i.e. scalar */
-			tupdesc = CreateTemplateTupleDesc(1, false);
+			tupdesc = CreateTemplateTupleDesc(1);
 			TupleDescInitEntry(tupdesc,
 							   (AttrNumber) 1,
 							   NULL,

@@ -817,7 +817,7 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 			break;
 
 		case T_DoStmt:
-			ExecuteDoStmt((DoStmt *) parsetree, isAtomicContext,
+			ExecuteDoStmtExt((DoStmt *) parsetree, isAtomicContext,
 						/* Begin - ReqID:SRS-SQL-ANONYOUT */
 						params,
 						dest);

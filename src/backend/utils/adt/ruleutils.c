@@ -4792,7 +4792,7 @@ print_function_sqlbody(StringInfo buf, HeapTuple proctup)
 			Query	   *query = lfirst_node(Query, lc);
 
 			/* It seems advisable to get at least AccessShareLock on rels */
-			AcquireRewriteLocks(query, false, false, false); /* BUG#M0000489 */
+			AcquireRewriteLocks(query, false, false);
 			get_query_def(query, buf, list_make1(&dpns), NULL, false,
 						  PRETTYFLAG_INDENT, WRAP_COLUMN_DEFAULT, 1);
 			appendStringInfoChar(buf, ';');
@@ -4806,7 +4806,7 @@ print_function_sqlbody(StringInfo buf, HeapTuple proctup)
 		Query	   *query = castNode(Query, n);
 
 		/* It seems advisable to get at least AccessShareLock on rels */
-		AcquireRewriteLocks(query, false, false, false); /* BUG#M0000489 */
+		AcquireRewriteLocks(query, false, false);
 		get_query_def(query, buf, list_make1(&dpns), NULL, false,
 					  0, WRAP_COLUMN_DEFAULT, 0);
 	}
@@ -6541,7 +6541,7 @@ make_ruledef(StringInfo buf, HeapTuple ruletup, TupleDesc rulettc,
 		query = getInsertSelectQuery(query, NULL);
 
 		/* Must acquire locks right away; see notes in get_query_def() */
-		AcquireRewriteLocks(query, false, false, false); /* BUG#M0000489 */
+		AcquireRewriteLocks(query, false, false);
 
 		context.buf = buf;
 		context.namespaces = list_make1(&dpns);
@@ -6709,7 +6709,7 @@ get_query_def(Query *query, StringInfo buf, List *parentnamespace,
 	 * We are only deparsing the query (we are not about to execute it), so we
 	 * only need AccessShareLock on the relations it mentions.
 	 */
-	AcquireRewriteLocks(query, false, false, true);	/* BUG#M0000489 */
+	AcquireRewriteLocksExt(query, false, false, true);	/* BUG#M0000489 */
 
 	context.buf = buf;
 	context.namespaces = lcons(&dpns, list_copy(parentnamespace));
@@ -14166,7 +14166,7 @@ pg_get_function_arg_reference_typerowtype(PG_FUNCTION_ARGS)
 	/*
 	 * build tupdesc for result tuples.
 	 */
-	tupdesc = CreateTemplateTupleDesc(NUM_RETURN_COLUMNS, false);
+	tupdesc = CreateTemplateTupleDesc(NUM_RETURN_COLUMNS);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "oid",
 					   OIDOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "position",
@@ -15181,7 +15181,7 @@ ora_get_subpartition_templates(PG_FUNCTION_ARGS)
 			SRF_RETURN_DONE(funcctx);
 		}
 
-		tupdesc = CreateTemplateTupleDesc(4, false);
+		tupdesc = CreateTemplateTupleDesc(4);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "name",
 						   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "position",

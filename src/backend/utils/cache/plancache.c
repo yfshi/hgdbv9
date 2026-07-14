@@ -356,6 +356,21 @@ CompleteCachedPlan(CachedPlanSource *plansource,
 				   List *querytree_list,
 				   MemoryContext querytree_context,
 				   Oid *param_types,
+				   int num_params,
+				   ParserSetupHook parserSetup,
+				   void *parserSetupArg,
+				   int cursor_options,
+				   bool fixed_result)
+{
+	CompleteCachedPlanExt(plansource, querytree_list, querytree_context, param_types, NULL,
+						  num_params, parserSetup, parserSetupArg, cursor_options, fixed_result);
+}
+
+void
+CompleteCachedPlanExt(CachedPlanSource *plansource,
+				   List *querytree_list,
+				   MemoryContext querytree_context,
+				   Oid *param_types,
 				   /* Begin - ReqID:SRS-SQL-FUNCOUT */
 				   char *param_modes,
 				   /* End - ReqID:SRS-SQL-FUNCOUT */

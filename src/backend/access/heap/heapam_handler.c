@@ -372,12 +372,12 @@ heapam_tuple_update(Relation relation, ItemPointer otid, TupleTableSlot *slot,
 }
 
 static TM_Result
-heapam_tuple_lock(Relation relation, ItemPointer tid, Snapshot snapshot,
-				  TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
-				  LockWaitPolicy wait_policy,
-				  int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
-				  uint8 flags,
-				  TM_FailureData *tmfd)
+heapam_tuple_lock_ext(Relation relation, ItemPointer tid, Snapshot snapshot,
+					  TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
+					  LockWaitPolicy wait_policy,
+					  int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
+					  uint8 flags,
+					  TM_FailureData *tmfd)
 {
 	BufferHeapTupleTableSlot *bslot = (BufferHeapTupleTableSlot *) slot;
 	TM_Result	result;
@@ -392,9 +392,9 @@ heapam_tuple_lock(Relation relation, ItemPointer tid, Snapshot snapshot,
 
 tuple_lock_retry:
 	tuple->t_self = *tid;
-	result = heap_lock_tuple(relation, tuple, cid, mode, wait_policy,
-							 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
-							 follow_updates, &buffer, tmfd);
+	result = heap_lock_tuple_ext(relation, tuple, cid, mode, wait_policy,
+								 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
+								 follow_updates, &buffer, tmfd);
 
 	if (result == TM_Updated &&
 		(flags & TUPLE_LOCK_FLAG_FIND_LAST_VERSION))
@@ -623,6 +623,16 @@ tuple_lock_retry:
 	return result;
 }
 
+static TM_Result
+heapam_tuple_lock(Relation relation, ItemPointer tid, Snapshot snapshot,
+				  TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
+				  LockWaitPolicy wait_policy,
+				  uint8 flags,
+				  TM_FailureData *tmfd)
+{
+	return heapam_tuple_lock_ext(relation, tid, snapshot, slot, cid, mode, wait_policy, 0, flags, tmfd);
+}
+
 
 /* ------------------------------------------------------------------------
  * DDL related callbacks for heap AM.
@@ -655,7 +665,7 @@ heapam_relation_set_new_filenode(Relation rel,
 	 */
 	*minmulti = GetOldestMultiXactId();
 
-	srel = RelationCreateStorage(*newrnode, persistence, rel);
+	srel = RelationCreateStorageExt(*newrnode, persistence, rel);
 
 	/*
 	 * If required, set up an init fork for an unlogged table so that it can
@@ -710,7 +720,7 @@ heapam_relation_copy_data(Relation rel, const RelFileNode *newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-	RelationCreateStorage(*newrnode, rel->rd_rel->relpersistence, rel);
+	RelationCreateStorageExt(*newrnode, rel->rd_rel->relpersistence, rel);
 
 	/* copy main fork */
 	RelationCopyStorage(RelationGetSmgr(rel), dstrel, MAIN_FORKNUM,
@@ -2634,6 +2644,7 @@ static const TableAmRoutine heapam_methods = {
 	.tuple_delete = heapam_tuple_delete,
 	.tuple_update = heapam_tuple_update,
 	.tuple_lock = heapam_tuple_lock,
+	.tuple_lock_ext = heapam_tuple_lock_ext,
 
 	.tuple_fetch_row_version = heapam_fetch_row_version,
 	.tuple_get_latest_tid = heap_get_latest_tid,

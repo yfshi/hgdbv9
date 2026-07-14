@@ -268,7 +268,7 @@ show_charset_first_call(PG_FUNCTION_ARGS)
 {
     FuncCallContext  *fctx = SRF_FIRSTCALL_INIT();
     MemoryContext     oldContext = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
-    TupleDesc         tupdesc = CreateTemplateTupleDesc(SHOW_CHARSET_RESULTSET_NATTR, false);
+	TupleDesc         tupdesc = CreateTemplateTupleDesc(SHOW_CHARSET_RESULTSET_NATTR);
 
     TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Charset", VARCHAROID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Description", VARCHAROID, -1, 0);
@@ -339,7 +339,7 @@ show_collation_first_call(PG_FUNCTION_ARGS)
 {
     FuncCallContext  *fctx = SRF_FIRSTCALL_INIT();
     MemoryContext     oldContext = MemoryContextSwitchTo(fctx->multi_call_memory_ctx);
-    TupleDesc         tupdesc = CreateTemplateTupleDesc(SHOW_COLLATION_RESULTSET_NATTR, false);
+	TupleDesc         tupdesc = CreateTemplateTupleDesc(SHOW_COLLATION_RESULTSET_NATTR);
 
     TupleDescInitEntry(tupdesc, (AttrNumber) 1, "Collation", VARCHAROID, -1, 0);
     TupleDescInitEntry(tupdesc, (AttrNumber) 2, "Charset", VARCHAROID, -1, 0);

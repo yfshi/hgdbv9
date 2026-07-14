@@ -22493,7 +22493,7 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), false, location);
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 static Node *
@@ -22510,30 +22510,30 @@ makeOrExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), false, location);
+	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 /* Begin - ReqID:SRS-MYSQL-DATETIMETYPE */
 static Node *
 makeXorExpr(Node *lexpr, Node *rexpr, int location)
 {
-    Expr *aorb;
-    Expr *notaandb;
+	Expr *aorb;
+	Expr *notaandb;
 
-    // XOR is (A OR B) AND (NOT (A AND B))
-    aorb = makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), false, location);
+	// XOR is (A OR B) AND (NOT (A AND B))
+	aorb = makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), location);
 
-    notaandb = makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), false, location);
-    notaandb = makeBoolExpr(NOT_EXPR, list_make1(notaandb), false, location);
+	notaandb = makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
+	notaandb = makeBoolExpr(NOT_EXPR, list_make1(notaandb), location);
 
-    return (Node *)makeBoolExpr(AND_EXPR, list_make2(aorb, notaandb), false, location);
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(aorb, notaandb), location);
 }
 /* End - ReqID:SRS-MYSQL-DATETIMETYPE */
 
 static Node *
 makeNotExpr(Node *expr, int location)
 {
-	return (Node *) makeBoolExpr(NOT_EXPR, list_make1(expr), false, location);
+	return (Node *) makeBoolExpr(NOT_EXPR, list_make1(expr), location);
 }
 
 static Node *

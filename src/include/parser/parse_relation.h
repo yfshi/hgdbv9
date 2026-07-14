@@ -37,10 +37,15 @@ extern RangeTblEntry *GetRTEByRangeTablePosn(ParseState *pstate,
 extern CommonTableExpr *GetCTEForRTE(ParseState *pstate, RangeTblEntry *rte,
 									 int rtelevelsup);
 extern Node *scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
-								 int sublevels_up, const char *colname, bool has_plus_token,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+								 int sublevels_up, const char *colname,
 								 int location);
-extern Node *colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+extern Node *scanNSItemForColumnExt(ParseState *pstate, ParseNamespaceItem *nsitem,
+									int sublevels_up, const char *colname, bool has_plus_token, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+									int location);
+extern Node *colNameToVar(ParseState *pstate, const char *colname, bool localonly,
 						  int location);
+extern Node *colNameToVarExt(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+							 int location);
 extern void markVarForSelectPriv(ParseState *pstate, Var *var);
 extern Relation parserOpenTable(ParseState *pstate, const RangeVar *relation,
 								int lockmode);
@@ -113,8 +118,7 @@ extern List *expandNSItemVars(ParseNamespaceItem *nsitem,
 							  int sublevels_up, int location,
 							  List **colnames);
 extern List *expandNSItemAttrs(ParseState *pstate, ParseNamespaceItem *nsitem,
-							   int sublevels_up, bool require_col_privs,
-							   int location);
+							   int sublevels_up, int location);
 extern int	attnameAttNum(Relation rd, const char *attname, bool sysColOK);
 extern const NameData *attnumAttName(Relation rd, int attid);
 extern Oid	attnumTypeId(Relation rd, int attid);

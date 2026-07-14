@@ -378,8 +378,7 @@ get_proposed_default_constraint(List *new_part_constraints)
 	 */
 	defPartConstraint = makeBoolExpr(NOT_EXPR,
 									 list_make1(defPartConstraint),
-									 false,
-									 -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									 -1);
 
 	/* Simplify, to put the negated expression into canonical form */
 	defPartConstraint =

@@ -330,7 +330,7 @@ pg_tablespace_databases(PG_FUNCTION_ARGS)
 	/* The tupdesc and tuplestore must be created in ecxt_per_query_memory */
 	oldcontext = MemoryContextSwitchTo(rsinfo->econtext->ecxt_per_query_memory);
 
-	tupdesc = CreateTemplateTupleDesc(1, false);
+	tupdesc = CreateTemplateTupleDesc(1);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "pg_tablespace_databases",
 					   OIDOID, -1, 0);
 
@@ -568,7 +568,7 @@ standard_pg_get_keywords(PG_FUNCTION_ARGS)
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(5, false);
+		tupdesc = CreateTemplateTupleDesc(5);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "word",
 						   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "catcode",
@@ -656,7 +656,7 @@ pg_get_catalog_foreign_keys(PG_FUNCTION_ARGS)
 		funcctx = SRF_FIRSTCALL_INIT();
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(6, false);
+		tupdesc = CreateTemplateTupleDesc(6);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "fktable",
 						   REGCLASSOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "fkcols",

@@ -789,7 +789,14 @@ op_error(ParseState *pstate, List *op, char oprkind,
  */
 Expr *
 make_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
-		Node *last_srf, bool has_outer_join, int location, int opkind)	/* ReqID:SRS-SQL-OUTERJOIN(+) */	/* SRS-MISC-COMPATDM-SQL */
+		Node *last_srf, int location)
+{
+	return make_op_ext(pstate, opname, ltree, rtree, last_srf, false, location, 0);
+}
+
+Expr *
+make_op_ext(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
+			Node *last_srf, bool has_outer_join, int location, int opkind)	/* ReqID:SRS-SQL-OUTERJOIN(+) */	/* SRS-MISC-COMPATDM-SQL */
 {
 	Oid			ltypeId,
 				rtypeId;

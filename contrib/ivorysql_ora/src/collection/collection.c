@@ -3154,7 +3154,7 @@ init_heaptuple(Oid typoid,
 		ora_rec_type = (PLiSQL_ora_record_type *)pl_datatype;
 		natts = list_length(ora_rec_type->args) + 1;
 
-		newDesc = CreateTemplateTupleDesc(natts, false);
+		newDesc = CreateTemplateTupleDesc(natts);
 		newDesc->tdtypeid = ORARECORDOID;
 		TupleDescInitEntry(newDesc, 1,
 						"__###__",
@@ -3646,7 +3646,7 @@ bulk_collect_into_receive(TupleTableSlot *slot, DestReceiver *self)
 					values = palloc(sizeof(Datum) * natts);
 					nulls = palloc(sizeof(bool) * natts);
 					memset(nulls, false, sizeof(bool) * natts);
-					newtupdesc = CreateTemplateTupleDesc(natts, false);
+					newtupdesc = CreateTemplateTupleDesc(natts);
 					newtupdesc->tdtypeid = ORARECORDOID;
 					TupleDescInitEntry(newtupdesc, 1,
 									"__###__",

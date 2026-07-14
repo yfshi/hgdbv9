@@ -340,7 +340,7 @@ DefineAggregate(ParseState *pstate,
 					 errmsg("basetype is redundant with aggregate input type specification")));
 
 		numArgs = list_length(args);
-		interpret_function_parameter_list(pstate,
+		interpret_function_parameter_list_ext(pstate,
 										  args,
 										  InvalidOid,
 										  OBJECT_AGGREGATE,

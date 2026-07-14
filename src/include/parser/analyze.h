@@ -27,10 +27,12 @@ extern PGDLLIMPORT post_parse_analyze_hook_type post_parse_analyze_hook;
 extern Query *parse_analyze(RawStmt *parseTree, const char *sourceText,
 							Oid *paramTypes, int numParams, QueryEnvironment *queryEnv);
 extern Query *parse_analyze_varparams(RawStmt *parseTree, const char *sourceText,
-									  Oid **paramTypes, int *numParams,
-									  /* Begin - ReqID:SRS-SQL-FUNCOUT */
-									  char **paramModes);
-									  /* End - ReqID:SRS-SQL-FUNCOUT */
+									  Oid **paramTypes, int *numParams);
+extern Query *parse_analyze_varparams_ext(RawStmt *parseTree, const char *sourceText,
+										  Oid **paramTypes, int *numParams,
+										  /* Begin - ReqID:SRS-SQL-FUNCOUT */
+										  char **paramModes);
+										  /* End - ReqID:SRS-SQL-FUNCOUT */
 extern Query *parse_sub_analyze(Node *parseTree, ParseState *parentParseState,
 								CommonTableExpr *parentCTE,
 								bool locked_from_parent,
@@ -54,9 +56,13 @@ extern void CheckSelectLocking(Query *qry, LockClauseStrength strength);
 extern void applyLockingClause(Query *qry, Index rtindex,
 							   LockClauseStrength strength,
 							   LockWaitPolicy waitPolicy,
-							   int32 waitInteger,/* BUG#M0000470: FOR UPDATE WAIT integer */
-							   List *lockedColumns,/* BUG#M0000470: FOR UPDATE WAIT integer */
 							   bool pushedDown);
+extern void applyLockingClauseExt(Query *qry, Index rtindex,
+								  LockClauseStrength strength,
+								  LockWaitPolicy waitPolicy,
+								  int32 waitInteger,   /* BUG#M0000470: FOR UPDATE WAIT integer */
+								  List *lockedColumns, /* BUG#M0000470: FOR UPDATE WAIT integer */
+								  bool pushedDown);
 
 extern List *BuildOnConflictExcludedTargetlist(Relation targetrel,
 											   Index exclRelIndex);
@@ -74,7 +80,7 @@ extern Node *ivy_makeIntConst(int val, int location);
 extern Node *ivy_makeFloatConst(char *str, int location);
 extern Node *ivy_makeAConst(Value *v, int location);
 extern Node *ivy_makeNullAConst(int location);
-extern Node *ivy_makeTypeCast(Node *arg, TypeName *typename, int location);
+extern Node *ivy_makeTypeCast(Node *arg, TypeName *typeName, int location);
 extern Node *ivy_makeBoolAConst(bool state);
 extern Node *transformVarAssign(ParseState *pstate, VarAssign *var, bool returnquery);
 /* End - ReqID:SRS-MYSQL-SET */

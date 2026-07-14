@@ -309,9 +309,13 @@ extern TM_Result heap_update(Relation relation, ItemPointer otid,
 							 struct TM_FailureData *tmfd, LockTupleMode *lockmode);
 extern TM_Result heap_lock_tuple(Relation relation, HeapTuple tuple,
 								 CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
-								 int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
 								 bool follow_update,
 								 Buffer *buffer, struct TM_FailureData *tmfd);
+extern TM_Result heap_lock_tuple_ext(Relation relation, HeapTuple tuple,
+									 CommandId cid, LockTupleMode mode, LockWaitPolicy wait_policy,
+									 int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
+									 bool follow_update,
+									 Buffer *buffer, struct TM_FailureData *tmfd);
 
 extern bool heap_inplace_lock(Relation relation,
 							  HeapTuple oldtup_ptr, Buffer buffer,

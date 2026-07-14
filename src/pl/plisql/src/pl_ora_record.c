@@ -138,7 +138,7 @@ plisql_build_row_for_ora_record(const char *refname, int lineno,
 	row->isconst = 0;
 	row->default_val = NULL;
 	row->datatype = (PLiSQL_type *) dtype;
-	row->rowtupdesc = CreateTemplateTupleDesc(numcols, false);
+	row->rowtupdesc = CreateTemplateTupleDesc(numcols);
 	row->rowtupdesc->tdtypeid = ORARECORDOID;
 
 	row->pkgoid = (plisql_compile_packageitem == NULL ? InvalidOid : plisql_compile_packageitem->source.fn_oid);
@@ -729,7 +729,7 @@ plisql_build_tupdesc_from_recordtype(PLiSQL_ora_record_type *ora_rec_type)
 	Assert(ora_rec_type->args != NULL);
 
 	numcols = list_length(ora_rec_type->args) + 1;
-	destDesc = CreateTemplateTupleDesc(numcols, false);
+	destDesc = CreateTemplateTupleDesc(numcols);
 	destDesc->tdtypeid = ORARECORDOID;
 
 	TupleDescInitEntry(destDesc, 1,

@@ -150,7 +150,7 @@ pg_resgroup_get_status(PG_FUNCTION_ARGS)
 
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(nattr, false);
+		tupdesc = CreateTemplateTupleDesc(nattr);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "groupid", OIDOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "num_running", INT4OID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "num_queueing", INT4OID, -1, 0);
@@ -284,7 +284,7 @@ pg_resgroup_get_iostats(PG_FUNCTION_ARGS)
 
 		oldContext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
-		tupdesc = CreateTemplateTupleDesc(nattr, false);
+		tupdesc = CreateTemplateTupleDesc(nattr);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "rsgname", TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "groupid", OIDOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 3, "tablespace", TEXTOID, -1, 0);

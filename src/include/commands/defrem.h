@@ -74,7 +74,8 @@ extern ObjectAddress CreateCast(CreateCastStmt *stmt);
 extern ObjectAddress CreateTransform(CreateTransformStmt *stmt);
 extern void IsThereFunctionInNamespace(const char *proname, int pronargs,
 									   oidvector *proargtypes, Oid nspOid);
-extern void ExecuteDoStmt(DoStmt *stmt, bool atomic,
+extern void ExecuteDoStmt(DoStmt *stmt, bool atomic);
+extern void ExecuteDoStmtExt(DoStmt *stmt, bool atomic,
 					/* Begin - ReqID:SRS-SQL-ANONYOUT */
 					ParamListInfo params,
 					DestReceiver *dest);
@@ -83,6 +84,19 @@ extern void ExecuteCallStmt(CallStmt *stmt, ParamListInfo params, bool atomic, D
 extern TupleDesc CallStmtResultDesc(CallStmt *stmt);
 extern Oid	get_transform_oid(Oid type_id, Oid lang_id, bool missing_ok);
 extern void interpret_function_parameter_list(ParseState *pstate,
+											  List *parameters,
+											  Oid languageOid,
+											  ObjectType objtype,
+											  oidvector **parameterTypes,
+											  List **parameterTypes_list,
+											  ArrayType **allParameterTypes,
+											  ArrayType **parameterModes,
+											  ArrayType **parameterNames,
+											  List **inParameterNames_list,
+											  List **parameterDefaults,
+											  Oid *variadicArgType,
+											  Oid *requiredResultType);
+extern void interpret_function_parameter_list_ext(ParseState *pstate,
 											  List *parameters,
 											  Oid languageOid,
 											  ObjectType objtype,

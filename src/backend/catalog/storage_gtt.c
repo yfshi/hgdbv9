@@ -1449,7 +1449,7 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 		return;
 
 	/* Init heap storage */
-	RelationCreateStorage(relation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, relation);
+	RelationCreateStorageExt(relation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, relation);
 
 	/* Init heap index */
 	indexoidlist = RelationGetIndexList(relation);
@@ -1468,7 +1468,7 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 					gtt_storage_attached(RelationGetRelid(resultRelInfo->ri_RelationDesc)))
 				{
 					ii = BuildIndexInfo(indexDesc);
-					RelationCreateStorage(indexDesc->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexDesc);
+					RelationCreateStorageExt(indexDesc->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexDesc);
 					force_enable_gtt_index(indexDesc);
 					rel = table_open(relation->rd_id, ShareUpdateExclusiveLock);
 					index_build(resultRelInfo->ri_RelationDesc, indexDesc, ii, false, true);
@@ -1487,7 +1487,7 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 		ListCell	*cl;
 
 		toastrel = table_open(toastrelid, RowExclusiveLock);
-		RelationCreateStorage(toastrel->rd_node, RELPERSISTENCE_GLOBAL_TEMP, toastrel);
+		RelationCreateStorageExt(toastrel->rd_node, RELPERSISTENCE_GLOBAL_TEMP, toastrel);
 
 		foreach(cl, RelationGetIndexList(toastrel))
 		{
@@ -1499,7 +1499,7 @@ init_gtt_storage(CmdType operation, ResultRelInfo *resultRelInfo)
 
 			/* Init tost index storage */
 			indexInfo = BuildIndexInfo(currentIndex);
-			RelationCreateStorage(currentIndex->rd_node, RELPERSISTENCE_GLOBAL_TEMP, currentIndex);
+			RelationCreateStorageExt(currentIndex->rd_node, RELPERSISTENCE_GLOBAL_TEMP, currentIndex);
 			force_enable_gtt_index(currentIndex);
 			rel = table_open(toastrelid, ShareUpdateExclusiveLock);
 			index_build(toastrel, currentIndex, indexInfo, false, false);

@@ -60,7 +60,8 @@ extern Const *makeNullConst(Oid consttype, int32 consttypmod, Oid constcollid);
 
 extern Node *makeBoolConst(bool value, bool isnull);
 
-extern Expr *makeBoolExpr(BoolExprType boolop, List *args, bool has_outer_join, int location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+extern Expr *makeBoolExpr(BoolExprType boolop, List *args, int location);
+extern Expr *makeBoolExprExt(BoolExprType boolop, List *args, bool has_outer_join, int location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 extern Alias *makeAlias(const char *aliasname, List *colnames);
 
@@ -86,9 +87,12 @@ extern Expr *make_opclause(Oid opno, Oid opresulttype, bool opretset,
 						   Expr *leftop, Expr *rightop,
 						   Oid opcollid, Oid inputcollid);
 
-extern Expr *make_andclause(List *andclauses, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-extern Expr *make_orclause(List *orclauses, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-extern Expr *make_notclause(Expr *notclause, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+extern Expr *make_andclause(List *andclauses);
+extern Expr *make_orclause(List *orclauses);
+extern Expr *make_notclause(Expr *notclause);
+extern Expr *make_andclause_ext(List *andclauses, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+extern Expr *make_orclause_ext(List *orclauses, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+extern Expr *make_notclause_ext(Expr *notclause, bool has_outer_join);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 extern Node *make_and_qual(Node *qual1, Node *qual2);
 extern Expr *make_ands_explicit(List *andclauses);

@@ -301,7 +301,7 @@ ConstructTupleDescriptor(Relation heapRelation,
 	/*
 	 * allocate the new tuple descriptor
 	 */
-	indexTupDesc = CreateTemplateTupleDesc(numatts, false);
+	indexTupDesc = CreateTemplateTupleDesc(numatts);
 
 	/*
 	 * Fill in the pg_attribute row.
@@ -3203,7 +3203,7 @@ index_build(Relation heapRelation,
 			Assert(gtt_storage_attached(RelationGetRelid(heapRelation)));
 
 			/* Init storage for index */
-			RelationCreateStorage(indexRelation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexRelation);
+			RelationCreateStorageExt(indexRelation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexRelation);
 		}
 	}
 

@@ -204,14 +204,23 @@ extern void CompleteCachedPlan(CachedPlanSource *plansource,
 							   List *querytree_list,
 							   MemoryContext querytree_context,
 							   Oid *param_types,
-							   /* Begin - ReqID:SRS-SQL-FUNCOUT */
-							   char *param_modes,
-							   /* End - ReqID:SRS-SQL-FUNCOUT */
 							   int num_params,
 							   ParserSetupHook parserSetup,
 							   void *parserSetupArg,
 							   int cursor_options,
 							   bool fixed_result);
+extern void CompleteCachedPlanExt(CachedPlanSource *plansource,
+								  List *querytree_list,
+								  MemoryContext querytree_context,
+								  Oid *param_types,
+								  /* Begin - ReqID:SRS-SQL-FUNCOUT */
+								  char *param_modes,
+								  /* End - ReqID:SRS-SQL-FUNCOUT */
+								  int num_params,
+								  ParserSetupHook parserSetup,
+								  void *parserSetupArg,
+								  int cursor_options,
+								  bool fixed_result);
 
 extern void SaveCachedPlan(CachedPlanSource *plansource);
 extern void DropCachedPlan(CachedPlanSource *plansource);

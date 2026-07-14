@@ -3874,7 +3874,7 @@ make_partition_op_expr(PartitionKey key, int keynum,
 						elemops = lappend(elemops, elemop);
 					}
 
-					result = nelems > 1 ? makeBoolExpr(OR_EXPR, elemops, false, -1) : linitial(elemops);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					result = nelems > 1 ? makeBoolExpr(OR_EXPR, elemops, -1) : linitial(elemops);
 				}
 				break;
 			}
@@ -4131,7 +4131,7 @@ get_qual_for_list(Relation parent, PartitionBoundSpec *spec)
 		{
 			Expr	   *or;
 
-			or = makeBoolExpr(OR_EXPR, list_make2(nulltest, opexpr), false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			or = makeBoolExpr(OR_EXPR, list_make2(nulltest, opexpr), -1);
 			result = list_make1(or);
 		}
 		else
@@ -4147,7 +4147,7 @@ get_qual_for_list(Relation parent, PartitionBoundSpec *spec)
 	if (spec->is_default)
 	{
 		result = list_make1(make_ands_explicit(result));
-		result = list_make1(makeBoolExpr(NOT_EXPR, result, false, -1));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		result = list_make1(makeBoolExpr(NOT_EXPR, result, -1));
 	}
 
 	return result;
@@ -4265,7 +4265,7 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 				 * or_expr_args
 				 */
 				or_expr_args = lappend(or_expr_args, list_length(part_qual) > 1
-									   ? makeBoolExpr(AND_EXPR, part_qual, false, -1)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									   ? makeBoolExpr(AND_EXPR, part_qual, -1)
 									   : linitial(part_qual));
 			}
 			ReleaseSysCache(tuple);
@@ -4285,10 +4285,9 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 				makeBoolExpr(AND_EXPR,
 							 lappend(get_range_nulltest(key),
 									 list_length(or_expr_args) > 1
-									 ? makeBoolExpr(OR_EXPR, or_expr_args, false,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									 ? makeBoolExpr(OR_EXPR, or_expr_args,
 													-1)
 									 : linitial(or_expr_args)),
-							false,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 							 -1);
 
 			/*
@@ -4296,7 +4295,7 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 			 * contained in the non-default partitions.
 			 */
 			result = list_make1(makeBoolExpr(NOT_EXPR,
-											 list_make1(other_parts_constr), false, -1));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+											 list_make1(other_parts_constr), -1));
 		}
 
 		return result;
@@ -4499,13 +4498,13 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 		if (lower_or_arm_args != NIL)
 			lower_or_arms = lappend(lower_or_arms,
 									list_length(lower_or_arm_args) > 1
-									? makeBoolExpr(AND_EXPR, lower_or_arm_args, false, -1)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									? makeBoolExpr(AND_EXPR, lower_or_arm_args, -1)
 									: linitial(lower_or_arm_args));
 
 		if (upper_or_arm_args != NIL)
 			upper_or_arms = lappend(upper_or_arms,
 									list_length(upper_or_arm_args) > 1
-									? makeBoolExpr(AND_EXPR, upper_or_arm_args, false, -1)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									? makeBoolExpr(AND_EXPR, upper_or_arm_args, -1)
 									: linitial(upper_or_arm_args));
 
 		/* If no work to do in the next iteration, break away. */
@@ -4523,12 +4522,12 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 	if (lower_or_arms != NIL)
 		result = lappend(result,
 						 list_length(lower_or_arms) > 1
-						 ? makeBoolExpr(OR_EXPR, lower_or_arms, false, -1)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						 ? makeBoolExpr(OR_EXPR, lower_or_arms, -1)
 						 : linitial(lower_or_arms));
 	if (upper_or_arms != NIL)
 		result = lappend(result,
 						 list_length(upper_or_arms) > 1
-						 ? makeBoolExpr(OR_EXPR, upper_or_arms, false, -1)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						 ? makeBoolExpr(OR_EXPR, upper_or_arms, -1)
 						 : linitial(upper_or_arms));
 
 	/*

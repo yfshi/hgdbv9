@@ -61,7 +61,7 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), false, location);
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 
@@ -769,7 +769,7 @@ transformMultiTableInsertWithCte(ParseState *pstate,
 		if (cinsert->whenClause != NULL)
 		{
 			Node *notnode = (Node *) makeBoolExpr(NOT_EXPR,
-										list_make1(cinsert->whenClause), false, -1);
+										list_make1(cinsert->whenClause), -1);
 			if (else_qual == NULL)
 				else_qual = notnode;
 			else

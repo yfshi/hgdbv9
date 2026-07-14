@@ -291,7 +291,7 @@ get_expr_result_type(Node *expr,
 		ListCell   *lcc,
 				   *lcn;
 
-		tupdesc = CreateTemplateTupleDesc(list_length(rexpr->args), false);
+		tupdesc = CreateTemplateTupleDesc(list_length(rexpr->args));
 		Assert(list_length(rexpr->args) == list_length(rexpr->colnames));
 		forboth(lcc, rexpr->args, lcn, rexpr->colnames)
 		{
@@ -1779,12 +1779,12 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 											   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
 	else
 	/* End - ReqID:SRS-SQL-FUNCOUT */
-		return build_function_result_tupdesc_d(procform->prokind,
-											   proallargtypes,
-											   proargmodes,
-											   proargnames,
-											   procform->prointisnumber,
-											   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+		return build_function_result_tupdesc_d_ext(procform->prokind,
+												   proallargtypes,
+												   proargmodes,
+												   proargnames,
+												   procform->prointisnumber,
+												   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
 }
 
 
@@ -2005,9 +2005,18 @@ TupleDesc
 build_function_result_tupdesc_d(char prokind,
 								Datum proallargtypes,
 								Datum proargmodes,
-								Datum proargnames,
-								bool intisnumber, /* BUG:M0000068 */
-								Datum proargtypenames) /* ReqID:SRS-SQL-PACKAGE */
+								Datum proargnames)
+{
+	return build_function_result_tupdesc_d_ext(prokind, proallargtypes, proargmodes, proargnames, false, PointerGetDatum(NULL));
+}
+
+TupleDesc
+build_function_result_tupdesc_d_ext(char prokind,
+									Datum proallargtypes,
+									Datum proargmodes,
+									Datum proargnames,
+									bool intisnumber, /* BUG:M0000068 */
+									Datum proargtypenames) /* ReqID:SRS-SQL-PACKAGE */
 {
 	TupleDesc	desc;
 	ArrayType  *arr;
@@ -2173,7 +2182,7 @@ build_function_result_tupdesc_d(char prokind,
 	if (numoutargs < 2 && prokind != PROKIND_PROCEDURE)
 		return NULL;
 
-	desc = CreateTemplateTupleDesc(numoutargs, false);
+	desc = CreateTemplateTupleDesc(numoutargs);
 	for (i = 0; i < numoutargs; i++)
 	{
 		TupleDescInitEntry(desc, i + 1,
@@ -2379,9 +2388,9 @@ build_plisql_function_result_tupdesc_d(char prokind,
 	}
 
 	if (prorettype != VOIDOID)
-		desc = CreateTemplateTupleDesc(numoutargs + 1, false);
+		desc = CreateTemplateTupleDesc(numoutargs + 1);
 	else
-		desc = CreateTemplateTupleDesc(numoutargs, false);
+		desc = CreateTemplateTupleDesc(numoutargs);
 
 	i = 0;
 
@@ -2559,7 +2568,7 @@ TypeGetTupleDesc(Oid typeoid, List *colaliases)
 		/* OK, get the column alias */
 		attname = strVal(linitial(colaliases));
 
-		tupdesc = CreateTemplateTupleDesc(1, false);
+		tupdesc = CreateTemplateTupleDesc(1);
 		TupleDescInitEntry(tupdesc,
 						   (AttrNumber) 1,
 						   attname,
