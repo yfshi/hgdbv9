@@ -199,6 +199,7 @@ mysql_session_init(ProtocolExtensionConfig *self)
 		SetConfigOption("mysql.default_function_security_is_definer", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.create_function_with_sql_mode", "true", PGC_USERSET, PGC_S_OVERRIDE);
 		/* End - ReqID:SRS-MYSQL-PROC */
+		SetConfigOption("mysql.create_database_mode", "schema", PGC_USERSET, PGC_S_OVERRIDE);		/* BUG#Z8480 */
 	}
 }
 

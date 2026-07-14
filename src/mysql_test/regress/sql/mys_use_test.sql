@@ -1,3 +1,4 @@
+SET mysql.create_database_mode=schema;
 CREATE SCHEMA test1;
 USE test1;
 SELECT  current_schema();
@@ -89,3 +90,4 @@ CREATE FUNCTION sctest8.sche_f(a int)
 
 USE  sctest8;
 SELECT sche_f(0);
+reset mysql.create_database_mode;

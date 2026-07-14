@@ -4562,7 +4562,7 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 	int			i;
 	int			dterr;
 	int			val;
-	double		fval;
+	double		fval = 0;
 
 	*dtype = DTK_DELTA;
 	type = IGNORE_DTF;
@@ -4677,7 +4677,7 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 					 range == (INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH))))
 				{
 					int			val2 = 0;
-					int 		mulit;
+					int 		mulit = 0;
 
 					if (type == DTK_HOUR)
 						mulit = HOURS_PER_DAY;
@@ -5031,7 +5031,7 @@ DecodeISO8601Interval(char *str,
 	{
 		char	   *fieldstart;
 		int			val;
-		double		fval;
+		double		fval = 0;
 		char		unit;
 		int			dterr;
 

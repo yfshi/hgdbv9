@@ -48,17 +48,19 @@ public class MySQLJdbcAutoIncrementTest {
         Properties info = new Properties();
         info.setProperty("HOST", host);
         info.setProperty("PORT", port);
-        info.setProperty("DBNAME", dbname);
         info.setProperty("user", user);
         
         if (jar_version.equals("new")) {
-            url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&createDatabaseIfNotExist=true";
+            url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC";
         } else {
-            url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&useSSL=false&createDatabaseIfNotExist=true";
+            url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&useSSL=false";
         }
 
         try (Connection connection = DriverManager.getConnection(url_jdbc, info);
              Statement statement = connection.createStatement()) {
+            statement.execute("SET mysql.create_database_mode=schema");
+            statement.executeUpdate("create database if not exists " + dbname);
+            statement.executeUpdate("use " + dbname);
             statement.executeUpdate("drop table if exists t_auto");
             statement.executeUpdate("create table t_auto (" +
                 "c1 integer auto_increment," +

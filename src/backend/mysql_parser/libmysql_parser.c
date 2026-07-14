@@ -239,6 +239,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 	int			third_token = 0; /* ReqID:SRS-MYSQL-SQL-DELETE */
 	int			cur_token_length;
 	YYLTYPE		cur_yylloc;
+	static int	prev_token = 0;	 /* BUG#Z8480 */
 
 	/* Get next token --- we might already have it */
 	if (yyextra->have_lookahead)
@@ -308,7 +309,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 				if (lenth >= 5 && pg_strcasecmp(tmpstr+(lenth - 5), "nchar") == 0)
 					cur_token_length = 5;
 				else
-					return cur_token;
+					goto return_token;
 			}
 			break;
 		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-NCHAR VARCHAR(n) */
@@ -319,7 +320,7 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 				if (mysql_convert == false)
 					cur_token = IDENT;
 
-				return cur_token;
+				goto return_token;
 			}
 			break;
 		/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
@@ -336,10 +337,17 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 			cur_token_length = 2;
 			break;
 		case IDENT_SCONST:
+			prev_token = cur_token;
 			return SCONST;
 		/* End - bug#6888 */
+		/* Begin - BUG#Z8480 */
+		case DATABASE:
+			if ((prev_token == CREATE || prev_token == DROP) && create_database_mode == CDM_SCHEMA)
+				cur_token = SCHEMA;
+			goto return_token;
+		/* End - BUG#Z8480 */
 		default:
-			return cur_token;
+			goto return_token;
 	}
 
 	/*
@@ -573,6 +581,8 @@ mys_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, mys_core_yyscan_t yyscanner)
 		/* End - bug#6888 */
 	}
 
+return_token:
+	prev_token = cur_token;
 	return cur_token;
 }
 

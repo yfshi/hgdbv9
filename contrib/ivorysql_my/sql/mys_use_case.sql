@@ -1,3 +1,4 @@
+SET mysql.create_database_mode=schema;
 CREATE SCHEMA TEST1;
 USE TEST1;
 SELECT  current_schema();
@@ -121,3 +122,4 @@ drop schema aa;
 
 create schema aa default charset utf8 default collate utf8_bin default charset utf8 default collate utf8_bin;
 drop schema aa;
+reset mysql.create_database_mode;

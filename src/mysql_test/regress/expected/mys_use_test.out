@@ -1,3 +1,4 @@
+SET mysql.create_database_mode=schema;
 CREATE SCHEMA test1;
 USE test1;
 SELECT  current_schema();
@@ -115,3 +116,4 @@ SELECT sche_f(0);
       2
 (1 row)
 
+reset mysql.create_database_mode;

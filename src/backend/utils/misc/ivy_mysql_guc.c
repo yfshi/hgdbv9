@@ -86,6 +86,13 @@ static const struct config_enum_entry encrytion_type_options[] = {
 	{"aes-256-ofb", mys_aes_256_ofb, false},
 	{NULL, 0, false}
 };
+/* Begin - BUG#Z8480 */
+static const struct config_enum_entry create_database_mode_options[] = {
+	{"database", CDM_DATABASE, false},
+	{"schema", CDM_SCHEMA, false},
+	{NULL, 0, false}
+};
+/* End - BUG#Z8480 */
 
 int 	mys_port;
 char 	*mys_listen_address;
@@ -143,6 +150,7 @@ bool		cast_to_char = true;
 /* End - BUG#M533 */
 
 bool		enable_mysql_information_schema = false;
+int			create_database_mode = CDM_DATABASE;				/* BUG#Z8480 */
 
 /* Begin - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 char	   *lc_time_names = NULL;
@@ -802,6 +810,18 @@ int			max_execution_time;
 	mys_aes_128_ecb, encrytion_type_options,
 	NULL, NULL, NULL
 },
+/* Begin - BUG#Z8480 */
+{
+	{"mysql.create_database_mode", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+		gettext_noop("Causes DATABASE keyword to be treated as SCHEMA in mysql compatible mode."),
+		NULL,
+		GUC_NOT_IN_SAMPLE
+	},
+	&create_database_mode,
+	CDM_DATABASE, create_database_mode_options,
+	NULL, NULL, NULL
+},
+/* End - BUG#Z8480 */
 #endif
 
 #ifdef IVY_MY_GUC_FUNC_DEFINE
@@ -1176,6 +1196,8 @@ assign_regress_test_default_value(bool newval, void *extra)
 		SetConfigOption("mysql.default_function_security_is_definer", "false", PGC_USERSET, PGC_S_OVERRIDE);
 		SetConfigOption("mysql.create_function_with_sql_mode", "false", PGC_USERSET, PGC_S_OVERRIDE);
 		/* End - ReqID:SRS-MYSQL-PROC */
+		
+		SetConfigOption("mysql.create_database_mode", "database", PGC_USERSET, PGC_S_OVERRIDE);			/* BUG#Z8480 */
 	}
 }
 

@@ -12623,68 +12623,11 @@ LoadStmt:	LOAD file_name
 CreatedbStmt:
 			CREATE DATABASE name opt_with createdb_opt_list
 				{
-					if ($5 != NIL) /* ReqID: SRS-MYSQL-SQL-USE */
-					{
-						CreatedbStmt *n = makeNode(CreatedbStmt);
-						n->dbname = $3;
-						n->options = $5;
-						$$ = (Node *)n;
-					}
-					else
-					{
-						/* Begin - ReqID: SRS-MYSQL-SQL-USE */
-						CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-						/* Begin - ReqID:SRS-MYSQL-CASE */
-						$3 = MYS_LOWERONE_STRING_CASE($3);
-						/* End - ReqID:SRS-MYSQL-CASE */
-						n->schemaname = $3;
-						n->authrole = NULL;
-						n->schemaElts = NULL;
-						n->if_not_exists = false;
-						$$ = (Node *)n;
-					}
-				}
-			| CREATE DATABASE IF_P NOT EXISTS name
-				{
-					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					/* Begin - ReqID:SRS-MYSQL-CASE */
-					$6 = MYS_LOWERONE_STRING_CASE($6);
-					/* End - ReqID:SRS-MYSQL-CASE */
-					n->schemaname = $6;
-					n->authrole = NULL;
-					n->schemaElts = NULL;
-					n->option = NULL;
-					n->if_not_exists = true;
+					CreatedbStmt *n = makeNode(CreatedbStmt);
+					n->dbname = $3;
+					n->options = $5;
 					$$ = (Node *)n;
 				}
-			| CREATE DATABASE IF_P NOT EXISTS name default_create_options
-				{
-					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-					/* Begin - ReqID:SRS-MYSQL-CASE */
-					$6 = MYS_LOWERONE_STRING_CASE($6);
-					/* End - ReqID:SRS-MYSQL-CASE */
-					n->schemaname = $6;
-					n->authrole = NULL;
-					n->schemaElts = NULL;
-					n->option = $7;
-					n->if_not_exists = true;
-					$$ = (Node *)n;
-				}
-			| CREATE DATABASE name default_create_options
-				{
-					CreateSchemaStmt *n = makeNode(CreateSchemaStmt);
-
-					/* Begin - ReqID:SRS-MYSQL-CASE */
-					$3 = MYS_LOWERONE_STRING_CASE($3);
-					/* End - ReqID:SRS-MYSQL-CASE */
-					n->schemaname = $3;
-					n->authrole = NULL;
-					n->schemaElts = NULL;
-					n->option = $4;
-					n->if_not_exists = false;
-					$$ = (Node *)n;
-				}
-				/* End - ReqID: SRS-MYSQL-SQL-USE */
 		;
 /* Begin - ReqID: SRS-MYSQL-SQL-USE */
 default_create_option:
