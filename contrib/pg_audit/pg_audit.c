@@ -503,6 +503,11 @@ static bool audit_insert_user_or_group(Relation audit_log, AuditEvent *auditeven
 static bool audit_drop_user_or_group(Relation audit_log, AuditEvent *auditevent, char *drop_action);
 static void audit_free_auditlist(void);  //BUG - Z7959
 static bool audit_config_have_data(void);
+/* Begin - BUG#Z8451 */
+#ifdef _WIN32
+static int exec_pgagent_cmd(char *cmd);
+#endif
+/* End - BUG#Z8451 */
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -845,6 +850,14 @@ audit_logdir_check_hook(char **newvalue, void **extra, GucSource source)
 	{
 		return true;
 	}
+
+#ifdef _WIN32
+	if (*newvalue[0] != '/')
+	{
+		GUC_check_errdetail("Archive must use '/', example:'/archive/to/path' not use paths: %s :%m", *newvalue);
+		return false;
+	}
+#endif
 
 	/* It must be an absolute path */
 	if (!is_absolute_path(*newvalue))	/* BUG#Z6995 */
@@ -4039,6 +4052,14 @@ audit_stop_pgagent(void)
 #endif
 /* End - BUG#Z6180 */
 
+#ifdef _WIN32
+	memset(cmd, 0, MAXPGPATH);
+	sprintf(cmd, "taskkill /IM pgagent.exe /F");
+	rc = exec_pgagent_cmd(cmd);
+	if (rc != 0)
+		return;
+
+#else
 	memset(cmd, 0, MAXPGPATH);
 	sprintf(cmd, "ps -ef | grep pgagent | grep -v grep > /dev/null");
 	rc = system(cmd);
@@ -4051,6 +4072,7 @@ audit_stop_pgagent(void)
 	rc = system(cmd);
 	if (rc != 0)
 		return;
+#endif
 }
 
 /* Not used, can be deleted later */
@@ -6274,6 +6296,29 @@ audit_postmaster_sighup_guc(char *context)
 	internalStatement = false;
 }
 
+#ifdef _WIN32
+static int
+exec_pgagent_cmd(char *cmd)
+{
+	STARTUPINFO si;
+	PROCESS_INFORMATION pi;
+
+	ZeroMemory(&si, sizeof(si));
+	si.cb = sizeof(si);
+	ZeroMemory(&pi, sizeof(pi));
+
+	if (!CreateProcess(NULL, cmd, NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi))
+	{
+		return 1;
+	}
+
+	CloseHandle(pi.hProcess);
+	CloseHandle(pi.hThread);
+
+	return 0;
+}
+#endif
+
 /* Begin - BUG#Z7404 */
 static void
 audit_pgagent_job(char *user)
@@ -6357,16 +6402,17 @@ audit_pgagent_job(char *user)
 
 			if (is_pgagent_live(cmd))
 				continue;
+
+			rc = system(cmd);
 #else
 			/* Begin - BUG#8451 */
 			/* Because of windows use pgagent.exe comples. temporarily useing "pgagent.exe DEBUG...." */
 			sprintf(cmd, "pgagent.exe DEBUG -l 2 \"host=localhost dbname=%s port=%d user=%s \" ", dbname, PostPortNumber, cur_user);
 			/* End - BUG#8451 */
-
 			/* TODO: check the pgagent is live */
-#endif
 
-			rc = system(cmd);
+			rc = exec_pgagent_cmd(cmd);
+#endif
 
 			if (rc != 0)
 			{
