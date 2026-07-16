@@ -15,11 +15,18 @@
 
 #ifndef WIN32
 #include <sys/stat.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 #include <mntent.h>
 #include "pgstat.h"
 #include "utils/guc.h"
 #include "utils/sqlresourcelimit.h"
+
+/* Begin - Bug#z8537 */
+#ifndef CGROUP2_SUPER_MAGIC
+#define CGROUP2_SUPER_MAGIC 0x63677270
+#endif
+/* End - Bug#z8537 */
 
 
 #define CURRENT_MOUNTS "/proc/self/mounts"
@@ -42,6 +49,35 @@ get_cgroup_baseinfo(void)
 	return &cgroupSbaseInfo;
 }
 
+/*
+ * Bug#z8587
+ * Check whether the current system use cgroup v2.
+ */
+static bool
+is_cgroup2_controller(void)
+{
+	struct statfs fs;
+
+	if (statfs("/sys/fs/cgroup", &fs) != 0)
+	{
+		return false;
+	}
+
+	elog(DEBUG5, "f_type = 0x%lux\n", (unsigned long)fs.f_type);
+
+	if (fs.f_type == CGROUP2_SUPER_MAGIC)
+	{
+		elog(DEBUG5, "cgroup v2\n");
+		return true;
+	}
+	else
+	{
+		elog(DEBUG5, "not cgroup v2\n");
+		return false;
+	}
+}
+
+
 /* getCurrentCgroupMountDir
  *
  * Get the mount directory of cgroup, the basic method
@@ -55,6 +91,7 @@ getCurrentCgroupMountDir(void)
 {
 	struct mntent *me;
 	FILE *fp;
+	bool is_cgroup2 = false; /* Bug#z8587 */
 
 	if (cgroupBaseInfo == NULL)
 		cgroupBaseInfo = get_cgroup_baseinfo();
@@ -68,16 +105,17 @@ getCurrentCgroupMountDir(void)
 	if (fp == NULL)
 		elog(ERROR, "can not open '%s' for read", CURRENT_MOUNTS);
 
+	is_cgroup2 = is_cgroup2_controller(); /* Bug#z8587 */
 	while ((me = getmntent(fp)))
 	{
 		char * p;
 
-		if (strcmp(me->mnt_type, "cgroup2") == 0)
+		if (strcmp(me->mnt_type, "cgroup2") == 0 && is_cgroup2) /* Bug#z8587 */
 		{
 			strncpy(cgroupBaseInfo->cgroup_dir, me->mnt_dir, sizeof(cgroupBaseInfo->cgroup_dir));
 			cgroupBaseInfo->version = CGROUP_VARSION_V2;
 		}
-		else if (strcmp(me->mnt_type, "cgroup") == 0)
+		else if (strcmp(me->mnt_type, "cgroup") == 0 && !is_cgroup2) /* Bug#z8587 */
 		{
 			/* Because the path returned by cgroup is located
 			 * under cgroup/system and is not the root path of
