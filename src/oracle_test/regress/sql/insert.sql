@@ -712,3 +712,24 @@ alter table returningwrtest2 drop c;
 alter table returningwrtest attach partition returningwrtest2 for values in (2);
 insert into returningwrtest values (2, 'foo') returning returningwrtest;
 drop table returningwrtest;
+
+set ivorysql.compatible_mode to oracle;
+set ivorysql.dumppgtype to oracle;
+
+set ivorysql.compatible_mode to pg;
+
+create table test_id(id integer,name text);
+
+insert into test_id select generate_series(1, 100000);
+
+analyze test_id;
+
+set max_parallel_maintenance_workers = 4;
+set max_parallel_workers = 8;
+set min_parallel_table_scan_size = '1MB';
+set parallel_setup_cost = 0;
+
+select count(*) from test_id;
+drop table test_id;
+reset ivorysql.compatible_mode;
+reset ivorysql.dumppgtype;
