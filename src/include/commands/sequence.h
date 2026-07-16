@@ -70,6 +70,12 @@ typedef struct xl_seq_rec
 	/* SEQUENCE TUPLE DATA FOLLOWS AT THE END */
 } xl_seq_rec;
 
+/* Begin - Bug#z8537 */
+/* Hook for mandatory access checks on sequence value operations. */
+typedef void (*SequenceAccess_hook_type) (Oid seqid, AclMode required);
+extern PGDLLIMPORT SequenceAccess_hook_type sequence_access_hook;
+/* End - Bug#z8537 */
+
 extern int64 nextval_internal(Oid relid, bool check_permissions);
 extern Datum nextval(PG_FUNCTION_ARGS);
 extern List *sequence_options(Oid relid);

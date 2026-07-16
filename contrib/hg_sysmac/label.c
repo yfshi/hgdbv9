@@ -56,6 +56,18 @@ get_seclabel_from_bytea(bytea *input)
 	return seclabel;
 }
 
+/* Begin - Bug#z8537 */
+void
+free_converted_seclabel(SecLabel *seclabel)
+{
+	if (seclabel == NULL)
+		return;
+	if (seclabel->catagory != NULL)
+		bms_free(seclabel->catagory);
+	pfree(seclabel);
+}
+/* End - Bug#z8537 */
+
 /*
  * Convert a string to the `SecLabel` data type
  */

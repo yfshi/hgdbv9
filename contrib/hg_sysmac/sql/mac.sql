@@ -324,6 +324,77 @@ DROP USER u1,u2,u3;
 
 -- End #BUG8275 --
 
+-- Begin - Bug#z8537 --
+--
+-- Manual sequence access test cases
+--
+\c - usr2
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO ON;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+
+\c - :boot_user
+CREATE USER u1 with password 'Hello@123';
+
+\c - u1
+CREATE SEQUENCE sysmac_seq_equal;
+CREATE SEQUENCE sysmac_seq_denied;
+CREATE SEQUENCE sysmac_seq_unlabeled;
+CREATE TABLE sysmac_identity_test(id bigint GENERATED ALWAYS AS IDENTITY);
+
+\c - usr2
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1:c1');
+SELECT hg_security.set_table_seclabel('sysmac_seq_equal'::regclass, 's1:c1');
+SELECT hg_security.set_table_seclabel('sysmac_seq_denied'::regclass, 's2:c2');
+SELECT hg_security.set_table_seclabel(pg_get_serial_sequence('sysmac_identity_test', 'id')::regclass, 's2:c2');
+
+-- Equal labels: all statements succeed.
+\c - u1
+SELECT nextval('sysmac_seq_equal');
+SELECT currval('sysmac_seq_equal');
+SELECT lastval();
+SELECT setval('sysmac_seq_equal', 20);
+
+-- Incomparable labels: each statement reports a sequence permission error.
+SELECT nextval('sysmac_seq_denied');
+SELECT setval('sysmac_seq_denied', 20);
+INSERT INTO sysmac_identity_test DEFAULT VALUES;
+
+-- currval()/lastval(): initialize under an equal label, then switch back.
+\c - usr2
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's2:c2');
+\c - u1
+SELECT nextval('sysmac_seq_denied');
+\c - usr2
+SELECT hg_security.set_user_seclabel('u1'::regrole, 's1:c1');
+\c - u1
+SELECT currval('sysmac_seq_denied'); -- permission error
+
+-- An unlabeled sequence is allowed by the MAC fast path.
+SELECT nextval('sysmac_seq_unlabeled');
+
+-- Disabling either policy switch bypasses the sequence MAC check.
+\c - usr2
+ALTER SYSTEM SET hg_sysmac.global_on TO OFF;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+\c - u1
+SELECT nextval('sysmac_seq_denied');
+\c - usr2
+ALTER SYSTEM SET hg_sysmac.global_on TO ON;
+ALTER SYSTEM SET hg_sysmac.global_table_level TO OFF;
+\c - u1
+SELECT nextval('sysmac_seq_denied');
+
+DROP SEQUENCE sysmac_seq_equal;
+DROP SEQUENCE sysmac_seq_denied;
+DROP SEQUENCE sysmac_seq_unlabeled;
+DROP TABLE sysmac_identity_test;
+\c - :boot_user
+DROP USER u1;
+-- End - Bug#z8537 --
+
 \c - syssso
 ALTER SYSTEM SET se_feature.mode TO OFF;
 ALTER SYSTEM SET se_feature.restricted_dba TO OFF;
