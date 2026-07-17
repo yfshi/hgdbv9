@@ -355,7 +355,7 @@ ExplainResultDesc(ExplainStmt *stmt)
 	}
 
 	/* Need a tuple descriptor representing a single TEXT or XML column */
-	tupdesc = CreateTemplateTupleDesc(1, false);
+	tupdesc = CreateTemplateTupleDesc(1);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "QUERY PLAN",
 					   result_type, -1, 0);
 	return tupdesc;
@@ -1957,7 +1957,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				List	   *tidquals = ((TidScan *) plan)->tidquals;
 
 				if (list_length(tidquals) > 1)
-					tidquals = list_make1(make_orclause(tidquals, false));	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					tidquals = list_make1(make_orclause(tidquals));
 				show_scan_qual(tidquals, "TID Cond", planstate, ancestors, es);
 				show_scan_qual(plan->qual, "Filter", planstate, ancestors, es);
 				if (plan->qual)
@@ -1974,7 +1974,7 @@ ExplainNode(PlanState *planstate, List *ancestors,
 				List	   *tidquals = ((TidRangeScan *) plan)->tidrangequals;
 
 				if (list_length(tidquals) > 1)
-					tidquals = list_make1(make_andclause(tidquals, false)); /* ReqID:SRS-SQL-OUTERJOIN(+) */
+					tidquals = list_make1(make_andclause(tidquals));
 				show_scan_qual(tidquals, "TID Cond", planstate, ancestors, es);
 				show_scan_qual(plan->qual, "Filter", planstate, ancestors, es);
 				if (plan->qual)

@@ -1920,7 +1920,7 @@ CreateTupleDescFromParams(ParamListInfo params)
 		if (natts == 0)
 			return NULL;
 
-		desc = CreateTemplateTupleDesc(natts, false);
+		desc = CreateTemplateTupleDesc(natts);
 		for (i = 0, j = 0; i < natts; i++, j++)
 		{
 			for (; j < params->numParams; j++)

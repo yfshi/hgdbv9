@@ -531,7 +531,6 @@ lmerge_matched:;
 											   estate->es_snapshot,
 											   inputslot, estate->es_output_cid,
 											   lockmode, LockWaitBlock,
-											   0,/* BUG#M0000470:FOR UPDATE WAIT integer */
 											   TUPLE_LOCK_FLAG_FIND_LAST_VERSION,
 											   &context->tmfd);
 					 switch (result)

@@ -109,7 +109,7 @@ MakeOldSnapshotTimeMappingTupleDesc(void)
 {
 	TupleDesc	tupdesc;
 
-	tupdesc = CreateTemplateTupleDesc(NUM_TIME_MAPPING_COLUMNS, false);
+	tupdesc = CreateTemplateTupleDesc(NUM_TIME_MAPPING_COLUMNS);
 
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "array_offset",
 					   INT4OID, -1, 0);

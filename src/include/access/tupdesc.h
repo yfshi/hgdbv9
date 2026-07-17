@@ -96,7 +96,8 @@ typedef struct TupleDescData *TupleDesc;
 	((tupdesc)->constr != NULL && (tupdesc)->constr->num_defval > 0 && (tupdesc)->attrs[i].attgenerated == 's')
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
-extern TupleDesc CreateTemplateTupleDesc(int natts, bool hasrowid);
+extern TupleDesc CreateTemplateTupleDesc(int natts);
+extern TupleDesc CreateTemplateTupleDescExt(int natts, bool hasrowid);
 
 extern TupleDesc CreateTupleDesc(int natts, Form_pg_attribute *attrs, bool tdhasrowid, bool is_sysattr);
 

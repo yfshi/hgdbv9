@@ -143,7 +143,7 @@ show_secure_param(PG_FUNCTION_ARGS)
 		oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
 		/* build tupdesc for result tuples */
-		tupdesc = CreateTemplateTupleDesc(2, false);
+		tupdesc = CreateTemplateTupleDesc(2);
 		TupleDescInitEntry(tupdesc, (AttrNumber)1, "parameter",
 						   TEXTOID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber)2, "value",

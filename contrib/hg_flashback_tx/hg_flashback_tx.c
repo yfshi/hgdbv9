@@ -878,7 +878,7 @@ hg_flashback_tx_ensure_pending_entry_tupdesc(void)
 	 * CurrentResourceOwner. Caller must ensure we are inside a transaction.
 	 */
 	oldcxt = MemoryContextSwitchTo(decode_top_mcxt);
-	pending_entry_tupdesc = CreateTemplateTupleDesc(6, false);
+	pending_entry_tupdesc = CreateTemplateTupleDesc(6);
 	TupleDescInitEntry(pending_entry_tupdesc, 1, "operation", TEXTOID, -1, 0);
 	TupleDescInitEntry(pending_entry_tupdesc, 2, "table_name", TEXTOID, -1, 0);
 	TupleDescInitEntry(pending_entry_tupdesc, 3, "table_owner", TEXTOID, -1, 0);

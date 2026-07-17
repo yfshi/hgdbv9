@@ -480,7 +480,7 @@ buildHgVersionsArg(ParseState *pstate, ParseNamespaceItem *nsitem,
 {
 	Node	   *arg;
 
-	arg = scanNSItemForColumn(pstate, nsitem, sublevels_up, attname, has_plus_token, location);
+	arg = scanNSItemForColumnExt(pstate, nsitem, sublevels_up, attname, has_plus_token, location);
 	if (arg == NULL)
 		elog(ERROR, "could not resolve flashback pseudo-column argument \"%s\"",
 			 attname);
@@ -1288,7 +1288,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 							((Var *) node)->location = cref->location;
 					}
 					else
-						node = colNameToVar(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						node = colNameToVarExt(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 				/* Begin: Req:SRS-MYSQL-SQL-Select */
 				else if (compatible_mode == MYS_MODE)
@@ -1307,7 +1307,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - BUG#M0000217 */
 				{
 					/* Try to identify as an unqualified column */
-					node = colNameToVar(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					node = colNameToVarExt(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 
 				/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
@@ -1445,8 +1445,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
-				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-										   cref->location);
+				node = scanNSItemForColumnExt(pstate, nsitem, levels_up, colname, cref->has_outer_join, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+											  cref->location);
 
 				/* Begin: Req:SRS-MYSQL-SQL-Select */
 				/**
@@ -1609,8 +1609,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
-				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-										   cref->location);
+				node = scanNSItemForColumnExt(pstate, nsitem, levels_up, colname, cref->has_outer_join, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+											  cref->location);
 
 				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
@@ -1744,8 +1744,8 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - Bug#Z167 */
 
 				/* Try to identify as a column of the nsitem */
-				node = scanNSItemForColumn(pstate, nsitem, levels_up, colname, cref->has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-										   cref->location);
+				node = scanNSItemForColumnExt(pstate, nsitem, levels_up, colname, cref->has_outer_join, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+											  cref->location);
 
 				/* Begin - ReqID:SRS-SECURITY-FLASHBACK */
 				if (pstate->p_tryVersionsPseudoColumn && node == NULL)
@@ -2088,7 +2088,7 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 		if (pg_strcasecmp(strVal(linitial(((ColumnRef *)gexpr)->fields)), found_name) != 0)
 			continue;
 
-		group_expr = colNameToVar(level_pstate, found_name, false, cref->has_outer_join, location);
+		group_expr = colNameToVarExt(level_pstate, found_name, false, cref->has_outer_join, location);
 		if (group_expr == NULL)
 			continue;
 		IncrementVarSublevelsUp(group_expr, sublevels_up, 0);
@@ -2191,7 +2191,7 @@ resolve_having_ref(ParseState *pstate, ColumnRef *cref)
 			(!level_pstate->p_hasAggs &&
 			 level_pstate->p_group_clauses == NIL))
 		{
-			result = colNameToVar(level_pstate, name, true, cref->has_outer_join, cref->location);
+			result = colNameToVarExt(level_pstate, name, true, cref->has_outer_join, cref->location);
 			IncrementVarSublevelsUp(result, sublevels_up, 0);
 			if (result != NULL)
 				return result;
@@ -2230,7 +2230,7 @@ resolve_having_field(ParseState *pstate, ColumnRef *cref)
 		 */
 
 		char *matched_refname = NULL;
-		result = colNameToVar(level_pstate, name, true, cref->has_outer_join, cref->location);
+		result = colNameToVarExt(level_pstate, name, true, cref->has_outer_join, cref->location);
 		IncrementVarSublevelsUp(result, sublevels_up, 0);
 
 		if (result != NULL)
@@ -2493,13 +2493,13 @@ transformAExprOp(ParseState *pstate, A_Expr *a)
 			has_outer_join = true;
 		/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
-		result = (Node *) make_op(pstate,
-								  a->name,
-								  lexpr,
-								  rexpr,
-								  last_srf,
-								  has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-								  a->location, AEXPR_OP);	/* SRS-MISC-COMPATDM-SQL */
+		result = (Node *) make_op_ext(pstate,
+									 a->name,
+									 lexpr,
+									 rexpr,
+									 last_srf,
+									 has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									 a->location, AEXPR_OP);	/* SRS-MISC-COMPATDM-SQL */
 
 	}
 
@@ -2580,7 +2580,6 @@ transformAExprDistinct(ParseState *pstate, A_Expr *a)
 	if (a->kind == AEXPR_NOT_DISTINCT)
 		result = (Node *) makeBoolExpr(NOT_EXPR,
 									   list_make1(result),
-									   false,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 									   a->location);
 
 	return result;
@@ -2599,13 +2598,13 @@ transformAExprNullIf(ParseState *pstate, A_Expr *a)
 		has_outer_join = true;
 	/* End - ReqID:SRS-SQL-OUTERJOIN(+) */
 
-	result = (OpExpr *) make_op(pstate,
-								a->name,
-								lexpr,
-								rexpr,
-								pstate->p_last_srf,
-								has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-								a->location, AEXPR_NULLIF);	/* SRS-MISC-COMPATDM-SQL */
+	result = (OpExpr *) make_op_ext(pstate,
+									a->name,
+									lexpr,
+									rexpr,
+									pstate->p_last_srf,
+									has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									a->location, AEXPR_NULLIF);	/* SRS-MISC-COMPATDM-SQL */
 
 	/*
 	 * The comparison operator itself should yield boolean ...
@@ -2779,23 +2778,23 @@ transformAExprIn(ParseState *pstate, A_Expr *a)
 		else
 		{
 			/* Ordinary scalar operator */
-			cmp = (Node *) make_op(pstate,
-								   a->name,
-								   copyObject(lexpr),
-								   rexpr,
-								   pstate->p_last_srf,
-								   has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-								   a->location, AEXPR_IN);	/* SRS-MISC-COMPATDM-SQL */
+			cmp = (Node *) make_op_ext(pstate,
+									  a->name,
+									  copyObject(lexpr),
+									   rexpr,
+									   pstate->p_last_srf,
+									   has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+									   a->location, AEXPR_IN);	/* SRS-MISC-COMPATDM-SQL */
 		}
 
 		cmp = coerce_to_boolean(pstate, cmp, "IN");
 		if (result == NULL)
 			result = cmp;
 		else
-			result = (Node *) makeBoolExpr(useOr ? OR_EXPR : AND_EXPR,
-										   list_make2(result, cmp),
-										   has_outer_join,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
-										   a->location);
+			result = (Node *) makeBoolExprExt(useOr ? OR_EXPR : AND_EXPR,
+											  list_make2(result, cmp),
+											  has_outer_join, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+											  a->location);
 	}
 
 	return result;
@@ -2922,7 +2921,7 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, "<=",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			result = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			result = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
 			break;
 		case AEXPR_NOT_BETWEEN:
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, "<",
@@ -2931,7 +2930,7 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, ">",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			result = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			result = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
 			break;
 		case AEXPR_BETWEEN_SYM:
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, ">=",
@@ -2940,16 +2939,16 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, "<=",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			sub1 = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);
+			sub1 = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, ">=",
 											   copyObject(aexpr), copyObject(cexpr),
 											   a->location),
 							  makeSimpleA_Expr(AEXPR_OP, "<=",
 											   copyObject(aexpr), copyObject(bexpr),
 											   a->location));
-			sub2 = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			sub2 = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
 			args = list_make2(sub1, sub2);
-			result = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			result = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
 			break;
 		case AEXPR_NOT_BETWEEN_SYM:
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, "<",
@@ -2958,16 +2957,16 @@ transformAExprBetween(ParseState *pstate, A_Expr *a)
 							  makeSimpleA_Expr(AEXPR_OP, ">",
 											   copyObject(aexpr), cexpr,
 											   a->location));
-			sub1 = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			sub1 = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
 			args = list_make2(makeSimpleA_Expr(AEXPR_OP, "<",
 											   copyObject(aexpr), copyObject(cexpr),
 											   a->location),
 							  makeSimpleA_Expr(AEXPR_OP, ">",
 											   copyObject(aexpr), copyObject(bexpr),
 											   a->location));
-			sub2 = (Node *) makeBoolExpr(OR_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			sub2 = (Node *) makeBoolExpr(OR_EXPR, args, a->location);
 			args = list_make2(sub1, sub2);
-			result = (Node *) makeBoolExpr(AND_EXPR, args, false, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			result = (Node *) makeBoolExpr(AND_EXPR, args, a->location);
 			break;
 		default:
 			elog(ERROR, "unrecognized A_Expr kind: %d", a->kind);
@@ -3016,7 +3015,7 @@ transformBoolExpr(ParseState *pstate, BoolExpr *a)
 		args = lappend(args, arg);
 	}
 
-	return (Node *) makeBoolExpr(a->boolop, args, has_outer_join_lable, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+	return (Node *) makeBoolExprExt(a->boolop, args, has_outer_join_lable, a->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 }
 
 static Node *
@@ -4053,7 +4052,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 				nulltest->location = -1;
 				nulltest_list = lappend(nulltest_list, nulltest);
 
-				bexpr = makeBoolExpr(AND_EXPR, nulltest_list, false, -1);
+				bexpr = makeBoolExpr(AND_EXPR, nulltest_list, -1);
 
 				/*
 				 * when ($1 = b) or (a is null and $1 is null) then c
@@ -4061,7 +4060,7 @@ transformdecodeexpr(ParseState *pstate, CaseExpr *c)
 				 */
 				blist = lappend(blist, aexpr);
 				blist = lappend(blist, bexpr);
-				warg = (Node *) makeBoolExpr(OR_EXPR, blist, false, -1);
+				warg = (Node *) makeBoolExpr(OR_EXPR, blist, -1);
 			}
 
 			neww->expr = (Expr *) transformExprRecurse(pstate, warg);
@@ -5417,8 +5416,8 @@ make_row_comparison_op(ParseState *pstate, List *opname,
 		Node	   *rarg = (Node *) lfirst(r);
 		OpExpr	   *cmp;
 
-		cmp = castNode(OpExpr, make_op(pstate, opname, larg, rarg,
-									   pstate->p_last_srf, false, location, ROWCOMPARISONOP));	/* ReqID:SRS-SQL-OUTERJOIN(+) */ /* SRS-MISC-COMPATDM-SQL */
+		cmp = castNode(OpExpr, make_op_ext(pstate, opname, larg, rarg,
+										   pstate->p_last_srf, false, location, ROWCOMPARISONOP));	/* ReqID:SRS-SQL-OUTERJOIN(+) */ /* SRS-MISC-COMPATDM-SQL */
 
 		/*
 		 * We don't use coerce_to_boolean here because we insist on the
@@ -5506,9 +5505,9 @@ make_row_comparison_op(ParseState *pstate, List *opname,
 	 * OR respectively.
 	 */
 	if (rctype == ROWCOMPARE_EQ)
-		return (Node *) makeBoolExpr(AND_EXPR, opexprs, false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		return (Node *) makeBoolExpr(AND_EXPR, opexprs, location);
 	if (rctype == ROWCOMPARE_NE)
-		return (Node *) makeBoolExpr(OR_EXPR, opexprs, false, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		return (Node *) makeBoolExpr(OR_EXPR, opexprs, location);
 
 	/*
 	 * Otherwise we need to choose exactly which opfamily to associate with
@@ -5603,7 +5602,7 @@ make_row_distinct_op(ParseState *pstate, List *opname,
 			result = cmp;
 		else
 			result = (Node *) makeBoolExpr(OR_EXPR,
-										   list_make2(result, cmp), false,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+										   list_make2(result, cmp),
 										   location);
 	}
 
@@ -5625,8 +5624,8 @@ make_distinct_op(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 {
 	Expr	   *result;
 
-	result = make_op(pstate, opname, ltree, rtree,
-					 pstate->p_last_srf, false, location, DISTINCTOP);	/* ReqID:SRS-SQL-OUTERJOIN(+) */	/* SRS-MISC-COMPATDM-SQL */
+	result = make_op_ext(pstate, opname, ltree, rtree,
+						 pstate->p_last_srf, false, location, DISTINCTOP);	/* ReqID:SRS-SQL-OUTERJOIN(+) */	/* SRS-MISC-COMPATDM-SQL */
 	if (((OpExpr *) result)->opresulttype != BOOLOID)
 		ereport(ERROR,
 				(errcode(ERRCODE_DATATYPE_MISMATCH),

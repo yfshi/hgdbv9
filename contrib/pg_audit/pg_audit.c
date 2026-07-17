@@ -7267,7 +7267,7 @@ static TupleDesc create_diskinfo_tuple_desc()
 {
 	TupleDesc tupdesc;
 
-	tupdesc = CreateTemplateTupleDesc(LOG_ATTR_NUMS, false);
+	tupdesc = CreateTemplateTupleDesc(LOG_ATTR_NUMS);
 
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "disk_size",
 				TEXTOID, -1, 0);
@@ -8046,7 +8046,7 @@ make_BoolExprNode(BoolExprType boolop, Node *left_ExprNode, Node *right_ExprNode
 
 	BoolExprNode_Args = list_make1(left_ExprNode);
 	BoolExprNode_Args = lappend(BoolExprNode_Args,right_ExprNode);
-	BoolExprNode = (BoolExpr *)makeBoolExpr(boolop, BoolExprNode_Args, false, -1);
+	BoolExprNode = (BoolExpr *)makeBoolExpr(boolop, BoolExprNode_Args, -1);
 
 	return BoolExprNode;
 }
@@ -13468,8 +13468,8 @@ show_audit_param(PG_FUNCTION_ARGS)
         oldcontext = MemoryContextSwitchTo(funcctx->multi_call_memory_ctx);
 
         /* build tupdesc for result tuples */
-        tupdesc = CreateTemplateTupleDesc(2, false);
-        TupleDescInitEntry(tupdesc, (AttrNumber) 1, "parameter",
+		tupdesc = CreateTemplateTupleDesc(2);
+		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "parameter",
                           TEXTOID, -1, 0);
         TupleDescInitEntry(tupdesc, (AttrNumber) 2, "value",
                           TEXTOID, -1, 0);

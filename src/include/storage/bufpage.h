@@ -439,8 +439,11 @@ do { \
 						((overwrite) ? PAI_OVERWRITE : 0) | \
 						((is_heap) ? PAI_IS_HEAP : 0))
 
+#define PageIsVerified(page, blkno)     \
+	PageIsVerifiedExtended(page, blkno, \
+						   PIV_LOG_WARNING | PIV_REPORT_STAT)
 /* Begin - ReqID:SRS-SECURITY-TDE */
-#define PageIsVerified(page, relation_is_permanent, blkno) \
+#define PageIsVerifiedExt(page, relation_is_permanent, blkno)                \
 	PageIsVerifiedExtended(page, MAIN_FORKNUM, relation_is_permanent, blkno, \
 						   PIV_LOG_WARNING | PIV_REPORT_STAT)
 /* End - ReqID:SRS-SECURITY-TDE */
@@ -456,11 +459,12 @@ StaticAssertDecl(BLCKSZ == ((BLCKSZ / sizeof(size_t)) * sizeof(size_t)),
 				 "BLCKSZ has to be a multiple of sizeof(size_t)");
 
 extern void PageInit(Page page, Size pageSize, Size specialSize);
+extern bool PageIsVerifiedExtended(Page page, BlockNumber blkno, int flags);
 /* Begin - ReqID:SRS-SECURITY-TDE */
-extern bool PageIsVerifiedExtended(Page page, ForkNumber forknum,
-								   bool relation_is_permanent,
-								   BlockNumber blkno,
-								   int flags);
+extern bool PageIsVerifiedExtendedExt(Page page, ForkNumber forknum,
+									  bool relation_is_permanent,
+									  BlockNumber blkno,
+									  int flags);
 /* End - ReqID:SRS-SECURITY-TDE */
 extern OffsetNumber PageAddItemExtended(Page page, Item item, Size size,
 										OffsetNumber offsetNumber, int flags);

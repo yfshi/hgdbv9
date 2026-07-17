@@ -175,6 +175,13 @@ parse_fixed_parameters(ParseState *pstate,
  */
 void
 parse_variable_parameters(ParseState *pstate,
+						  Oid **paramTypes, int *numParams)
+{
+	parse_variable_parameters_ext(pstate, paramTypes, numParams, NULL);
+}
+
+void
+parse_variable_parameters_ext(ParseState *pstate,
 						  Oid **paramTypes, int *numParams,
 						  /* Begin - ReqID:SRS-SQL-FUNCOUT */
 						  char **paramModes)

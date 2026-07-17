@@ -772,7 +772,14 @@ updateFuzzyAttrMatchState(int fuzzy_rte_penalty,
  */
 Node *
 scanNSItemForColumn(ParseState *pstate, ParseNamespaceItem *nsitem,
-					int sublevels_up, const char *colname, bool has_plus_token, int location)	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					int sublevels_up, const char *colname, int location)
+{
+	return scanNSItemForColumnExt(pstate, nsitem, sublevels_up, colname, false, location);
+}
+
+Node *
+scanNSItemForColumnExt(ParseState *pstate, ParseNamespaceItem *nsitem,
+					   int sublevels_up, const char *colname, bool has_plus_token, int location) /* ReqID:SRS-SQL-OUTERJOIN(+) */
 {
 	RangeTblEntry *rte = nsitem->p_rte;
 	int			attnum;
@@ -998,8 +1005,15 @@ scanRTEForColumn(ParseState *pstate, RangeTblEntry *rte,
  *	  If localonly is true, only names in the innermost query are considered.
  */
 Node *
-colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token,	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+colNameToVar(ParseState *pstate, const char *colname, bool localonly,
 			 int location)
+{
+	return colNameToVarExt(pstate, colname, localonly, false, location);
+}
+
+Node *
+colNameToVarExt(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token, /* ReqID:SRS-SQL-OUTERJOIN(+) */
+				int location)
 {
 	Node	   *result = NULL;
 	int			sublevels_up = 0;
@@ -1020,8 +1034,8 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 			pstate->p_target_nsitem->p_cols_visible &&
 			(!pstate->p_target_nsitem->p_lateral_only || pstate->p_lateral_active))
 		{
-			result = scanNSItemForColumn(orig_pstate, pstate->p_target_nsitem,
-										 sublevels_up, colname, has_plus_token, location);
+			result = scanNSItemForColumnExt(orig_pstate, pstate->p_target_nsitem,
+											sublevels_up, colname, has_plus_token, location);
 			if (result)
 			{
 				check_lateral_ref_ok(pstate, pstate->p_target_nsitem, location);
@@ -1075,8 +1089,8 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 			/* End - OA-2546 */
 
 			/* use orig_pstate here for consistency with other callers */
-			newresult = scanNSItemForColumn(orig_pstate, nsitem, sublevels_up,
-											colname, has_plus_token, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			newresult = scanNSItemForColumnExt(orig_pstate, nsitem, sublevels_up,
+											   colname, has_plus_token, location); /* ReqID:SRS-SQL-OUTERJOIN(+) */
 
 			if (newresult)
 			{
@@ -1107,8 +1121,8 @@ colNameToVar(ParseState *pstate, const char *colname, bool localonly, bool has_p
 					continue;
 
 				/* use orig_pstate here for consistency with other callers */
-				newresult = scanNSItemForColumn(orig_pstate, nsitem, sublevels_up,
-												colname, has_plus_token, location);
+				newresult = scanNSItemForColumnExt(orig_pstate, nsitem, sublevels_up,
+												   colname, has_plus_token, location);
 
 				if (newresult)
 				{
@@ -2610,7 +2624,7 @@ addRangeTableEntryForFunction(ParseState *pstate,
 		else if (functypclass == TYPEFUNC_SCALAR)
 		{
 			/* Base data type, i.e. scalar */
-			tupdesc = CreateTemplateTupleDesc(1, false);
+			tupdesc = CreateTemplateTupleDesc(1);
 			TupleDescInitEntry(tupdesc,
 							   (AttrNumber) 1,
 							   chooseScalarFunctionAlias(funcexpr, funcname,
@@ -2638,7 +2652,7 @@ addRangeTableEntryForFunction(ParseState *pstate,
 								MaxHeapAttributeNumber),
 						 parser_errposition(pstate,
 											exprLocation((Node *) coldeflist))));
-			tupdesc = CreateTemplateTupleDesc(list_length(coldeflist), false);
+			tupdesc = CreateTemplateTupleDesc(list_length(coldeflist));
 			i = 1;
 			foreach(col, coldeflist)
 			{
@@ -2727,7 +2741,7 @@ addRangeTableEntryForFunction(ParseState *pstate,
 										exprLocation((Node *) funcexprs))));
 
 		/* Merge the tuple descs of each function into a composite one */
-		tupdesc = CreateTemplateTupleDesc(totalatts, false);
+		tupdesc = CreateTemplateTupleDesc(totalatts);
 		natts = 0;
 		for (i = 0; i < nfuncs; i++)
 		{
@@ -3984,7 +3998,7 @@ expandNSItemVars(ParseNamespaceItem *nsitem,
  */
 List *
 expandNSItemAttrs(ParseState *pstate, ParseNamespaceItem *nsitem,
-				  int sublevels_up, bool require_col_privs, int location)
+				  int sublevels_up, int location)
 {
 	RangeTblEntry *rte = nsitem->p_rte;
 	List	   *names,
@@ -4029,11 +4043,8 @@ expandNSItemAttrs(ParseState *pstate, ParseNamespaceItem *nsitem,
 							 false);
 		te_list = lappend(te_list, te);
 
-		if (require_col_privs)
-		{
-			/* Require read access to each column */
-			markVarForSelectPriv(pstate, varnode);
-		}
+		/* Require read access to each column */
+		markVarForSelectPriv(pstate, varnode);
 	}
 
 	Assert(name == NULL && var == NULL);	/* lists not the same length? */

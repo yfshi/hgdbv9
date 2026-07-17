@@ -120,7 +120,13 @@ AddPendingSync(const RelFileNode *rnode)
  * transaction aborts later on, the storage will be destroyed.
  */
 SMgrRelation
-RelationCreateStorage(RelFileNode rnode, char relpersistence, Relation rel)
+RelationCreateStorage(RelFileNode rnode, char relpersistence)
+{
+	return RelationCreateStorageExt(rnode, relpersistence, NULL);
+}
+
+SMgrRelation
+RelationCreateStorageExt(RelFileNode rnode, char relpersistence, Relation rel)
 {
 	PendingRelDelete *pending;
 	SMgrRelation srel;
@@ -555,13 +561,13 @@ RelationCopyStorage(SMgrRelation src, SMgrRelation dst,
 
 		smgrread(src, forkNum, blkno, buf.data);
 
-		if (!PageIsVerifiedExtended(page,
-									/* Begin - ReqID:SRS-SECURITY-TDE */
-									forkNum,
-									relpersistence == RELPERSISTENCE_PERMANENT,
-									/* End - ReqID:SRS-SECURITY-TDE */
-									blkno,
-									PIV_LOG_WARNING | PIV_REPORT_STAT))
+		if (!PageIsVerifiedExtendedExt(page,
+									   /* Begin - ReqID:SRS-SECURITY-TDE */
+									   forkNum,
+									   relpersistence == RELPERSISTENCE_PERMANENT,
+									   /* End - ReqID:SRS-SECURITY-TDE */
+									   blkno,
+									   PIV_LOG_WARNING | PIV_REPORT_STAT))
 		{
 			/*
 			 * For paranoia's sake, capture the file path before invoking the

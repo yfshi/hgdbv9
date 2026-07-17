@@ -311,7 +311,7 @@ get_partition_qual_relid(Oid relid)
 		if (and_args == NIL)
 			result = NULL;
 		else if (list_length(and_args) > 1)
-			result = makeBoolExpr(AND_EXPR, and_args, false, -1);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+			result = makeBoolExpr(AND_EXPR, and_args, -1);
 		else
 			result = linitial(and_args);
 

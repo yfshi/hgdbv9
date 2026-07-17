@@ -848,10 +848,10 @@ calculate_client_proof(fe_scram_state *state,
 	 * Calculate SaltedPassword, and store it in 'state' so that we can reuse
 	 * it later in verify_server_signature.
 	 */
-	if (scram_SaltedPassword(state->sasl_mechanism, state->password, state->salt, state->saltlen,
-							 state->iterations, state->SaltedPassword) < 0 ||
-		scram_ClientKey(state->sasl_mechanism, state->SaltedPassword, ClientKey) < 0 ||
-		scram_H(state->sasl_mechanism, ClientKey, SCRAM_KEY_LEN, StoredKey) < 0 ||
+	if (scram_SaltedPassword_ext(state->sasl_mechanism, state->password, state->salt, state->saltlen,
+								state->iterations, state->SaltedPassword) < 0 ||
+		scram_ClientKey_ext(state->sasl_mechanism, state->SaltedPassword, ClientKey) < 0 ||
+		scram_H_ext(state->sasl_mechanism, ClientKey, SCRAM_KEY_LEN, StoredKey) < 0 ||
 		pg_hmac_init(ctx, StoredKey, SCRAM_KEY_LEN) < 0 ||
 		pg_hmac_update(ctx,
 					   (uint8 *) state->client_first_message_bare,
@@ -911,7 +911,7 @@ verify_server_signature(fe_scram_state *state, bool *match)
 	if (ctx == NULL)
 		return false;
 
-	if (scram_ServerKey(state->sasl_mechanism, state->SaltedPassword, ServerKey) < 0 || //ReqID:SRS-SECURITY-IDENTITYAUTH
+	if (scram_ServerKey_ext(state->sasl_mechanism, state->SaltedPassword, ServerKey) < 0 || //ReqID:SRS-SECURITY-IDENTITYAUTH
 	/* calculate ServerSignature */
 		pg_hmac_init(ctx, ServerKey, SCRAM_KEY_LEN) < 0 ||
 		pg_hmac_update(ctx,
@@ -976,10 +976,10 @@ pg_fe_scram_build_secret(const char *scram_type, const char *password)
 			free(prep_password);
 		return NULL;
 	}
-/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
-	result = scram_build_secret(scram_type, saltbuf, SCRAM_DEFAULT_SALT_LEN,
-								SCRAM_DEFAULT_ITERATIONS, password);
-/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
+	result = scram_build_secret_ext(scram_type, saltbuf, SCRAM_DEFAULT_SALT_LEN,
+									SCRAM_DEFAULT_ITERATIONS, password);
+	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 	if (prep_password)
 		free(prep_password);
 

@@ -2599,9 +2599,9 @@ ParseComplexProjection(ParseState *pstate, const char *funcname, Node *first_arg
 										   ((Var *) first_arg)->varno,
 										   ((Var *) first_arg)->varlevelsup);
 		/* Return a Var if funcname matches a column, else NULL */
-		return scanNSItemForColumn(pstate, nsitem,
-								   ((Var *) first_arg)->varlevelsup,
-								   funcname,  ((Var *) first_arg)->has_outer_join, location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		return scanNSItemForColumnExt(pstate, nsitem,
+									  ((Var *) first_arg)->varlevelsup,
+									  funcname, ((Var *) first_arg)->has_outer_join, location); /* ReqID:SRS-SQL-OUTERJOIN(+) */
 	}
 
 	/*

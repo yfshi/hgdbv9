@@ -105,6 +105,44 @@ ProcedureCreate(const char *procedureName,
 				Datum proconfig,
 				Oid prosupport,
 				float4 procost,
+				float4 prorows)
+{
+	return ProcedureCreateExt(procedureName, procNamespace, replace, returnsSet, returnType,
+							  proowner, languageObjectId, languageValidator, prosrc, probin,
+							  prosqlbody, prokind, security_definer, isLeakProof, isStrict,
+							  volatility, parallel, parameterTypes, allParameterTypes,
+							  parameterModes, parameterNames, parameterDefaults, trftypes,
+							  proconfig, prosupport, procost, prorows,
+							  false, PointerGetDatum(NULL), NULL);
+}
+
+ObjectAddress
+ProcedureCreateExt(const char *procedureName,
+				Oid procNamespace,
+				bool replace,
+				bool returnsSet,
+				Oid returnType,
+				Oid proowner,
+				Oid languageObjectId,
+				Oid languageValidator,
+				const char *prosrc,
+				const char *probin,
+				Node *prosqlbody,
+				char prokind,
+				bool security_definer,
+				bool isLeakProof,
+				bool isStrict,
+				char volatility,
+				char parallel,
+				oidvector *parameterTypes,
+				Datum allParameterTypes,
+				Datum parameterModes,
+				Datum parameterNames,
+				List *parameterDefaults,
+				Datum trftypes,
+				Datum proconfig,
+				Oid prosupport,
+				float4 procost,
 				float4 prorows,
 				bool intisnumber, /* BUG:M0000068 */
 				/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -506,12 +544,12 @@ ProcedureCreate(const char *procedureName,
 			TupleDesc	newdesc;
 
 			olddesc = build_function_result_tupdesc_t(oldtup);
-			newdesc = build_function_result_tupdesc_d(prokind,
-													  allParameterTypes,
-													  parameterModes,
-													  parameterNames,
-													  intisnumber,/* BUG:M0000068 */
-													  parametertypeNames); /* ReqID:SRS-SQL-PACKAGE */
+			newdesc = build_function_result_tupdesc_d_ext(prokind,
+														  allParameterTypes,
+														  parameterModes,
+														  parameterNames,
+														  intisnumber,		   /* BUG:M0000068 */
+														  parametertypeNames); /* ReqID:SRS-SQL-PACKAGE */
 
 			if (olddesc == NULL && newdesc == NULL)
 				 /* ok, both are runtime-defined RECORDs */ ;
@@ -1124,7 +1162,7 @@ fmgr_sql_validator(PG_FUNCTION_ARGS)
 				 * validator function cannot assume that it's only called in
 				 * that context.
 				 */
-				AcquireRewriteLocks(parsetree, true, false, false);	/* BUG#M0000489 */
+				AcquireRewriteLocks(parsetree, true, false);
 				querytree_sublist = pg_rewrite_query(parsetree);
 				querytree_list = lappend(querytree_list, querytree_sublist);
 			}

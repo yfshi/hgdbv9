@@ -88,11 +88,17 @@ PageInit(Page page, Size pageSize, Size specialSize)
  * to pgstat.
  */
 bool
-PageIsVerifiedExtended(Page page,
-					/* Begin - ReqID:SRS-SECURITY-TDE */
-					   ForkNumber forknum, bool relation_is_permanent,
-					/* End - ReqID:SRS-SECURITY-TDE */
-					   BlockNumber blkno, int flags)
+PageIsVerifiedExtended(Page page, BlockNumber blkno, int flags)
+{
+	return PageIsVerifiedExtendedExt(page, MAIN_FORKNUM, true, blkno, flags);
+}
+
+bool
+PageIsVerifiedExtendedExt(Page page,
+						  /* Begin - ReqID:SRS-SECURITY-TDE */
+						  ForkNumber forknum, bool relation_is_permanent,
+						  /* End - ReqID:SRS-SECURITY-TDE */
+						  BlockNumber blkno, int flags)
 {
 	PageHeader	p = (PageHeader) page;
 	size_t	   *pagebytes;

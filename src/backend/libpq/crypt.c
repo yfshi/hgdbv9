@@ -106,7 +106,7 @@ get_password_type(const char *shadow_pass)
 		strspn(shadow_pass + 3, MD5_PASSWD_CHARSET) == MD5_PASSWD_LEN - 3)
 		return PASSWORD_TYPE_MD5;
 
-	if (parse_scram_secret("SCRAM-SHA-256", shadow_pass, &iterations, &encoded_salt,
+	if (parse_scram_secret(shadow_pass, &iterations, &encoded_salt,
 						   stored_key, server_key))
 		return PASSWORD_TYPE_SCRAM_SHA_256;
 	/* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -115,8 +115,8 @@ get_password_type(const char *shadow_pass)
 		strlen(shadow_pass) == SM3_PASSWD_LEN &&
 		strspn(shadow_pass + 3, SM3_PASSWD_CHARSET) == SM3_PASSWD_LEN - 3)
 		return PASSWORD_TYPE_SM3;
-	if (parse_scram_secret("SCRAM-SM3", shadow_pass, &iterations, &encoded_salt,
-						   stored_key, server_key))
+	if (parse_scram_secret_ext("SCRAM-SM3", shadow_pass, &iterations, &encoded_salt,
+							   stored_key, server_key))
 		return PASSWORD_TYPE_SCRAM_SM3;
 #endif
 	/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -180,10 +180,10 @@ encrypt_password(PasswordType target_type, const char *role,
 			return encrypted_password;
 
 		case PASSWORD_TYPE_SCRAM_SM3: //  ReqID:SRS-SECURITY-IDENTITYAUTH
-			return pg_be_scram_build_secret("SCRAM-SM3", password);
+			return pg_be_scram_build_secret_ext("SCRAM-SM3", password);
 #endif
 		case PASSWORD_TYPE_SCRAM_SHA_256:
-			return pg_be_scram_build_secret("SCRAM-SHA-256", password);
+			return pg_be_scram_build_secret(password);
 
 		case PASSWORD_TYPE_PLAINTEXT:
 			elog(ERROR, "cannot encrypt password with 'plaintext'");
@@ -442,7 +442,7 @@ plain_crypt_verify(const char *role, const char *shadow_pass,
 	switch (get_password_type(shadow_pass))
 	{
 		case PASSWORD_TYPE_SCRAM_SHA_256:
-			if (scram_verify_plain_password("SCRAM-SHA-256", role,
+			if (scram_verify_plain_password(role,
 											client_pass,
 											shadow_pass))
 			{
@@ -457,9 +457,9 @@ plain_crypt_verify(const char *role, const char *shadow_pass,
 			break;
 #ifdef USE_GMSSL
 		case PASSWORD_TYPE_SCRAM_SM3: // ReqID:SRS-SECURITY-IDENTITYAUTH
-			if (scram_verify_plain_password("SCRAM-SM3", role,
-											client_pass,
-											shadow_pass))
+			if (scram_verify_plain_password_ext("SCRAM-SM3", role,
+												client_pass,
+												shadow_pass))
 			{
 				return STATUS_OK;
 			}

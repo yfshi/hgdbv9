@@ -254,7 +254,7 @@ Datum pg_wal_md5_verify(PG_FUNCTION_ARGS)
 	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
 	oldcontext = MemoryContextSwitchTo(per_query_ctx);
 	/* Define result set columns */
-	tupdesc = CreateTemplateTupleDesc(CHECK_REL_NUM, false);
+	tupdesc = CreateTemplateTupleDesc(CHECK_REL_NUM);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "wal_filename", TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "expected_md5", TEXTOID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "actual_md5", TEXTOID, -1, 0);

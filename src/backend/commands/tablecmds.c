@@ -2018,7 +2018,7 @@ createAntitamperHistRelation(Relation rel, Datum reloptions)
 	 * history chain table contains all the columns from the origin user table, and then need to
 	 * record the command type,	blocknum, and hash value of last block record.
 	 */
-	chain_desc = CreateTemplateTupleDesc(3, false);
+	chain_desc = CreateTemplateTupleDesc(3);
 
 	/* Now consider the additional columns and initilize the description */
 	TupleDescInitEntry(chain_desc, 1, "rec_num", INT8OID, -1, 0);
@@ -17175,7 +17175,7 @@ index_copy_data(Relation rel, RelFileNode newrnode)
 	 * NOTE: any conflict in relfilenode value will be caught in
 	 * RelationCreateStorage().
 	 */
-	RelationCreateStorage(newrnode, rel->rd_rel->relpersistence, rel);
+	RelationCreateStorageExt(newrnode, rel->rd_rel->relpersistence, rel);
 
 	/* copy main fork */
 	RelationCopyStorage(RelationGetSmgr(rel), dstrel, MAIN_FORKNUM,

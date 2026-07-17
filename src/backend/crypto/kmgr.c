@@ -547,7 +547,7 @@ show_all_encryption_keys(PG_FUNCTION_ARGS)
 	oldcontext = MemoryContextSwitchTo(per_query_ctx);
 
 	/* Build a tuple descriptor for our result type */
-	tupdesc = CreateTemplateTupleDesc(NUM_PG_ENCRYPTION_KEY_ATTS, false);
+	tupdesc = CreateTemplateTupleDesc(NUM_PG_ENCRYPTION_KEY_ATTS);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "keyid",
 					   INT4OID, -1, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "name",

@@ -1754,7 +1754,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 		if (log_parser_stats)
 			ResetUsage();
 
-		query = parse_analyze_varparams(raw_parse_tree,
+		query = parse_analyze_varparams_ext(raw_parse_tree,
 										query_string,
 										&paramTypes,
 										&numParams,
@@ -1828,7 +1828,7 @@ exec_parse_message(const char *query_string,	/* string to execute */
 		MemoryContextSetParent(psrc->context, MessageContext);
 
 	/* Finish filling in the CachedPlanSource */
-	CompleteCachedPlan(psrc,
+	CompleteCachedPlanExt(psrc,
 					   querytree_list,
 					   unnamed_stmt_context,
 					   paramTypes,

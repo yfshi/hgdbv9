@@ -446,7 +446,7 @@ AllocateRelationDesc(Form_pg_class relp)
 	relation->rd_rel = relationForm;
 
 	/* and allocate attribute tuple form storage */
-	relation->rd_att = CreateTemplateTupleDesc(relationForm->relnatts, relationForm->relhasrowid);
+	relation->rd_att = CreateTemplateTupleDescExt(relationForm->relnatts, relationForm->relhasrowid);
 	/* which we mark as a reference-counted tupdesc */
 	relation->rd_att->tdrefcount = 1;
 
@@ -2068,7 +2068,7 @@ formrdesc(const char *relationName, Oid relationReltype,
 	 * because it will never be replaced.  The data comes from
 	 * src/include/catalog/ headers via genbki.pl.
 	 */
-	relation->rd_att = CreateTemplateTupleDesc(natts, hasrowid);
+	relation->rd_att = CreateTemplateTupleDescExt(natts, hasrowid);
 	relation->rd_att->tdrefcount = 1;	/* mark as refcounted */
 
 	relation->rd_att->tdtypeid = relationReltype;
@@ -3904,7 +3904,7 @@ RelationSetNewRelfilenode(Relation relation, char persistence)
 				/* handle these directly, at least for now */
 				SMgrRelation srel;
 
-				srel = RelationCreateStorage(newrnode, persistence, relation);
+				srel = RelationCreateStorageExt(newrnode, persistence, relation);
 				smgrclose(srel);
 			}
 			break;
@@ -4482,7 +4482,7 @@ BuildHardcodedDescriptor(int natts, const FormData_pg_attribute *attrs, bool has
 
 	oldcxt = MemoryContextSwitchTo(CacheMemoryContext);
 
-	result = CreateTemplateTupleDesc(natts, hasrowid);
+	result = CreateTemplateTupleDescExt(natts, hasrowid);
 	result->tdtypeid = RECORDOID;	/* not right, but we don't care */
 	result->tdtypmod = -1;
 
@@ -6123,7 +6123,7 @@ load_relcache_init_file(bool shared)
 		rel->rd_rel = relform;
 
 		/* initialize attribute tuple forms */
-		rel->rd_att = CreateTemplateTupleDesc(relform->relnatts, relform->relhasrowid);
+		rel->rd_att = CreateTemplateTupleDescExt(relform->relnatts, relform->relhasrowid);
 		rel->rd_att->tdrefcount = 1;	/* mark as refcounted */
 
 		rel->rd_att->tdtypeid = relform->reltype ? relform->reltype : RECORDOID;

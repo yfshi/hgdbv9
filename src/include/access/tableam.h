@@ -535,7 +535,6 @@ typedef struct TableAmRoutine
 							   CommandId cid,
 							   LockTupleMode mode,
 							   LockWaitPolicy wait_policy,
-							   int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
 							   uint8 flags,
 							   TM_FailureData *tmfd);
 
@@ -850,6 +849,21 @@ typedef struct TableAmRoutine
 										   struct SampleScanState *scanstate,
 										   TupleTableSlot *slot);
 
+	/* ------------------------------------------------------------------------
+	 * Extra functions.
+	 * ------------------------------------------------------------------------
+	 */
+	/* see table_tuple_lock() for reference about parameters */
+	TM_Result	(*tuple_lock_ext) (Relation rel,
+								   ItemPointer tid,
+								   Snapshot snapshot,
+								   TupleTableSlot *slot,
+								   CommandId cid,
+								   LockTupleMode mode,
+								   LockWaitPolicy wait_policy,
+								   int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
+								   uint8 flags,
+								   TM_FailureData *tmfd);
 } TableAmRoutine;
 
 
@@ -1550,14 +1564,26 @@ static inline TM_Result
 table_tuple_lock(Relation rel, ItemPointer tid, Snapshot snapshot,
 				 TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
 				 LockWaitPolicy wait_policy,
-				 int32 wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
 				 uint8 flags,
 				 TM_FailureData *tmfd)
 {
 	return rel->rd_tableam->tuple_lock(rel, tid, snapshot, slot,
 									   cid, mode, wait_policy,
-									   wait_integer,/* BUG#M0000470:FOR UPDATE WAIT integer */
 									   flags, tmfd);
+}
+
+static inline TM_Result
+table_tuple_lock_ext(Relation rel, ItemPointer tid, Snapshot snapshot,
+					 TupleTableSlot *slot, CommandId cid, LockTupleMode mode,
+					 LockWaitPolicy wait_policy,
+					 int32 wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
+					 uint8 flags,
+					 TM_FailureData *tmfd)
+{
+	return rel->rd_tableam->tuple_lock_ext(rel, tid, snapshot, slot,
+										   cid, mode, wait_policy,
+										   wait_integer, /* BUG#M0000470:FOR UPDATE WAIT integer */
+										   flags, tmfd);
 }
 
 /*

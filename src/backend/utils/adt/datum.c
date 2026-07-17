@@ -925,7 +925,7 @@ heap_copy_tuple_as_orarecord(Datum tuple_datum, Datum ora_recordtype)
 	nulls = palloc(sizeof(bool) * natts);
 	memset(nulls, false, sizeof(bool) * natts);
 
-	newtupdesc = CreateTemplateTupleDesc(natts, false);
+	newtupdesc = CreateTemplateTupleDesc(natts);
 	newtupdesc->tdtypeid = ORARECORDOID;
 	TupleDescInitEntry(newtupdesc, 1,
 					"__###__",
@@ -1017,7 +1017,7 @@ heap_copy_orarecord_as_tuple(Datum tuple_datum)
 	nulls = palloc(sizeof(bool) * natts);
 	memset(nulls, false, sizeof(bool) * natts);
 
-	newtupdesc = CreateTemplateTupleDesc(natts, false);
+	newtupdesc = CreateTemplateTupleDesc(natts);
 	newtupdesc->tdtypeid = tupType;
 
 	for (i = 1; i < tupleDesc->natts; i++)
@@ -1085,7 +1085,7 @@ orarow_heap_form_tuple(Datum type,
 	nulls = palloc(sizeof(bool) * natts);
 	memset(nulls, false, sizeof(bool) * natts);
 
-	newtupdesc = CreateTemplateTupleDesc(natts, false);
+	newtupdesc = CreateTemplateTupleDesc(natts);
 	newtupdesc->tdtypeid = ORARECORDOID;
 	TupleDescInitEntry(newtupdesc, 1,
 					"__###__",

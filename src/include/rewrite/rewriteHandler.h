@@ -20,8 +20,11 @@
 extern List *QueryRewrite(Query *parsetree);
 extern void AcquireRewriteLocks(Query *parsetree,
 								bool forExecute,
-								bool forUpdatePushedDown,
-								bool skipCreateFtmptab); /* BUG#M0000489 */
+								bool forUpdatePushedDown);
+extern void AcquireRewriteLocksExt(Query *parsetree,
+								   bool forExecute,
+								   bool forUpdatePushedDown,
+								   bool skipCreateFtmptab); /* BUG#M0000489 */
 
 extern Node *build_column_default(Relation rel, int attrno);
 

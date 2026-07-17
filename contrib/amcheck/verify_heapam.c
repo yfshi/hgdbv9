@@ -637,7 +637,7 @@ verify_heapam_tupdesc(void)
 	TupleDesc	tupdesc;
 	AttrNumber	a = 0;
 
-	tupdesc = CreateTemplateTupleDesc(HEAPCHECK_RELATION_COLS, false);
+	tupdesc = CreateTemplateTupleDesc(HEAPCHECK_RELATION_COLS);
 	TupleDescInitEntry(tupdesc, ++a, "blkno", INT8OID, -1, 0);
 	TupleDescInitEntry(tupdesc, ++a, "offnum", INT4OID, -1, 0);
 	TupleDescInitEntry(tupdesc, ++a, "attnum", INT4OID, -1, 0);

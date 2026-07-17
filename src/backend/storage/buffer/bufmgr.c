@@ -1111,13 +1111,13 @@ ReadBuffer_common(SMgrRelation smgr, char relpersistence, ForkNumber forkNum,
 			}
 
 			/* check for garbage data */
-			if (!PageIsVerifiedExtended((Page) bufBlock,
-										/* Begin - ReqID:SRS-SECURITY-TDE */
-										forkNum,
-										relpersistence == RELPERSISTENCE_PERMANENT,
-										/* End - ReqID:SRS-SECURITY-TDE */
-										blockNum,
-										PIV_LOG_WARNING | PIV_REPORT_STAT))
+			if (!PageIsVerifiedExtendedExt((Page) bufBlock,
+										   /* Begin - ReqID:SRS-SECURITY-TDE */
+										   forkNum,
+										   relpersistence == RELPERSISTENCE_PERMANENT,
+										   /* End - ReqID:SRS-SECURITY-TDE */
+										   blockNum,
+										   PIV_LOG_WARNING | PIV_REPORT_STAT))
 			{
 				if (mode == RBM_ZERO_ON_ERROR || zero_damaged_pages)
 				{

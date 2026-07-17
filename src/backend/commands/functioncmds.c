@@ -366,6 +366,27 @@ interpret_function_parameter_list(ParseState *pstate,
 								  List **inParameterNames_list,
 								  List **parameterDefaults,
 								  Oid *variadicArgType,
+								  Oid *requiredResultType)
+{
+	interpret_function_parameter_list_ext(pstate, parameters, languageOid, objtype, parameterTypes,
+										  parameterTypes_list, allParameterTypes, parameterModes,
+										  parameterNames, inParameterNames_list, parameterDefaults,
+										  variadicArgType, requiredResultType, NULL);
+}
+
+void
+interpret_function_parameter_list_ext(ParseState *pstate,
+								  List *parameters,
+								  Oid languageOid,
+								  ObjectType objtype,
+								  oidvector **parameterTypes,
+								  List **parameterTypes_list,
+								  ArrayType **allParameterTypes,
+								  ArrayType **parameterModes,
+								  ArrayType **parameterNames,
+								  List **inParameterNames_list,
+								  List **parameterDefaults,
+								  Oid *variadicArgType,
 								  Oid *requiredResultType,
 								  /* Begin - ReqID:SRS-SQL-PACKAGE */
 								  ArrayType **parametertypeNames)
@@ -1917,7 +1938,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	 * Convert remaining parameters of CREATE to form wanted by
 	 * ProcedureCreate.
 	 */
-	interpret_function_parameter_list(pstate,
+	interpret_function_parameter_list_ext(pstate,
 									  stmt->parameters,
 									  languageOid,
 									  stmt->is_procedure ? OBJECT_PROCEDURE : OBJECT_FUNCTION,
@@ -2055,7 +2076,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	 * And now that we have all the parameters, and know we're permitted to do
 	 * so, go ahead and create the function.
 	 */
-	address =  ProcedureCreate(funcname,		/* ReqID:SRS-CMD-PGDUMP */
+	address =  ProcedureCreateExt(funcname,		/* ReqID:SRS-CMD-PGDUMP */
 						   namespaceId,
 						   stmt->replace,
 						   returnsSet,
@@ -3381,7 +3402,13 @@ IsThereFunctionInNamespace(const char *proname, int pronargs,
  * See at ExecuteCallStmt() about the atomic argument.
  */
 void
-ExecuteDoStmt(DoStmt *stmt, bool atomic,
+ExecuteDoStmt(DoStmt *stmt, bool atomic)
+{
+	ExecuteDoStmtExt(stmt, atomic, NULL, NULL);
+}
+
+void
+ExecuteDoStmtExt(DoStmt *stmt, bool atomic,
 			/* Begin - ReqID:SRS-SQL-ANONYOUT */
 			ParamListInfo params,
 			DestReceiver *dest)

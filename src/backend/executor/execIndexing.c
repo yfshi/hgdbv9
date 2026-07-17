@@ -344,7 +344,7 @@ ExecInsertIndexTuples(ResultRelInfo *resultRelInfo,
 			if (!gtt_storage_attached(RelationGetRelid(indexRelation)))
 			{
 				Relation 	rel;
-				RelationCreateStorage(indexRelation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexRelation);
+				RelationCreateStorageExt(indexRelation->rd_node, RELPERSISTENCE_GLOBAL_TEMP, indexRelation);
 				force_enable_gtt_index(indexRelation);
 				rel = table_open(heapRelation->rd_id, ShareUpdateExclusiveLock);
 				index_build(heapRelation, indexRelation, indexInfo, false, true);

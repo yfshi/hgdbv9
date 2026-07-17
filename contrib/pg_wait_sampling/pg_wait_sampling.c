@@ -521,7 +521,7 @@ pg_wait_sampling_get_current(PG_FUNCTION_ARGS)
 		params->ts = GetCurrentTimestamp();
 
 		funcctx->user_fctx = params;
-		tupdesc = CreateTemplateTupleDesc(4, false);	/* ReqID:SRS-MISC-PDR */
+		tupdesc = CreateTemplateTupleDesc(4);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "pid",
 						   INT4OID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "type",
@@ -763,7 +763,7 @@ pg_wait_sampling_get_profile(PG_FUNCTION_ARGS)
 		funcctx->max_calls = profile->count;
 
 		/* Make tuple descriptor */
-		tupdesc = CreateTemplateTupleDesc(5, false);	/* ReqID:SRS-MISC-PDR */
+		tupdesc = CreateTemplateTupleDesc(5);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "pid",
 						   INT4OID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "type",
@@ -880,7 +880,7 @@ pg_wait_sampling_get_history(PG_FUNCTION_ARGS)
 		funcctx->max_calls = history->count;
 
 		/* Make tuple descriptor */
-		tupdesc = CreateTemplateTupleDesc(5, false);	/* ReqID:SRS-MISC-PDR */
+		tupdesc = CreateTemplateTupleDesc(5);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 1, "pid",
 						   INT4OID, -1, 0);
 		TupleDescInitEntry(tupdesc, (AttrNumber) 2, "sample_ts",

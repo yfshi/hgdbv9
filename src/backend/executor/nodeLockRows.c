@@ -183,12 +183,12 @@ lnext:
 		if (!IsolationUsesXactSnapshot())
 			lockflags |= TUPLE_LOCK_FLAG_FIND_LAST_VERSION;
 
-		test = table_tuple_lock(erm->relation, &tid, estate->es_snapshot,
-								markSlot, estate->es_output_cid,
-								lockmode, erm->waitPolicy,
-								erm->waitInteger,/* BUG#M0000470:FOR UPDATE WAIT integer */
-								lockflags,
-								&tmfd);
+		test = table_tuple_lock_ext(erm->relation, &tid, estate->es_snapshot,
+									markSlot, estate->es_output_cid,
+									lockmode, erm->waitPolicy,
+									erm->waitInteger, /* BUG#M0000470:FOR UPDATE WAIT integer */
+									lockflags,
+									&tmfd);
 
 		switch (test)
 		{

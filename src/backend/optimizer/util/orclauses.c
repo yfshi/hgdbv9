@@ -247,7 +247,7 @@ extract_or_clause(RestrictInfo *or_rinfo, RelOptInfo *rel)
 	 * one arm --- but then the input OR node was also redundant.)
 	 */
 	if (clauselist != NIL)
-		return make_orclause(clauselist, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+		return make_orclause(clauselist);
 	return NULL;
 }
 

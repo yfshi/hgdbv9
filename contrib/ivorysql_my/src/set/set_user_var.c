@@ -374,7 +374,7 @@ return_all_user_variable(PG_FUNCTION_ARGS)
 	Tuplestorestate *tupstore;
 
 	oldcontext = MemoryContextSwitchTo(rsinfo->econtext->ecxt_per_query_memory);
-	tupdesc = CreateTemplateTupleDesc(3, false);
+	tupdesc = CreateTemplateTupleDesc(3);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 1, "THREAD_ID", INT4OID, 0, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 2, "VARIABLE_NAME", VARCHAROID, 64, 0);
 	TupleDescInitEntry(tupdesc, (AttrNumber) 3, "VARIABLE_VALUE", VARCHAROID, 1024, 0);

@@ -48,7 +48,13 @@
  * caller can overwrite this if needed.
  */
 TupleDesc
-CreateTemplateTupleDesc(int natts, bool hasrowid)
+CreateTemplateTupleDesc(int natts)
+{
+	return CreateTemplateTupleDescExt(natts, false);
+}
+
+TupleDesc
+CreateTemplateTupleDescExt(int natts, bool hasrowid)
 {
 	TupleDesc	desc;
 
@@ -103,7 +109,7 @@ CreateTupleDesc(int natts, Form_pg_attribute *attrs, bool tdhasrowid, bool is_sy
 		natts = natts - 1;
 	/* End - ReqID:SRS-SQL-ROWID */
 
-	desc = CreateTemplateTupleDesc(natts, false);
+	desc = CreateTemplateTupleDesc(natts);
 
 	for (i = 0; i < natts; ++i)
 		memcpy(TupleDescAttr(desc, i), attrs[i], ATTRIBUTE_FIXED_PART_SIZE);
@@ -124,7 +130,7 @@ CreateTupleDescCopy(TupleDesc tupdesc)
 	TupleDesc	desc;
 	int			i;
 
-	desc = CreateTemplateTupleDesc(tupdesc->natts, tupdesc->tdhasrowid);
+	desc = CreateTemplateTupleDescExt(tupdesc->natts, tupdesc->tdhasrowid);
 
 	/* Flat-copy the attribute array */
 	memcpy(TupleDescAttr(desc, 0),
@@ -165,7 +171,7 @@ CreateTupleDescCopyConstr(TupleDesc tupdesc)
 	TupleConstr *constr = tupdesc->constr;
 	int			i;
 
-	desc = CreateTemplateTupleDesc(tupdesc->natts, tupdesc->tdhasrowid);
+	desc = CreateTemplateTupleDescExt(tupdesc->natts, tupdesc->tdhasrowid);
 
 	/* Flat-copy the attribute array */
 	memcpy(TupleDescAttr(desc, 0),
@@ -803,7 +809,7 @@ BuildDescForRelation(List *schema)
 	 * allocate a new tuple descriptor
 	 */
 	natts = list_length(schema);
-	desc = CreateTemplateTupleDesc(natts, false);
+	desc = CreateTemplateTupleDesc(natts);
 	has_not_null = false;
 
 	attnum = 0;
@@ -913,7 +919,7 @@ BuildDescFromLists(List *names, List *types, List *typmods, List *collations)
 	/*
 	 * allocate a new tuple descriptor
 	 */
-	desc = CreateTemplateTupleDesc(natts, false);
+	desc = CreateTemplateTupleDesc(natts);
 
 	attnum = 0;
 	forfour(l1, names, l2, types, l3, typmods, l4, collations)

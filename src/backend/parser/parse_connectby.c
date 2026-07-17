@@ -297,8 +297,7 @@ makeAndExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *)blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr),
-			false, location);
+	return (Node *) makeBoolExpr(AND_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 static Node *
@@ -317,8 +316,7 @@ makeOrExpr(Node *lexpr, Node *rexpr, int location)
 			return (Node *) blexpr;
 		}
 	}
-	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr),
-				false, location);
+	return (Node *) makeBoolExpr(OR_EXPR, list_make2(lexpr, rexpr), location);
 }
 
 
@@ -3722,7 +3720,7 @@ transformHierarQueryClause(ParseState *pstate, SelectStmt *stmt,
 				replace_rownum_to_param_walker, NULL);
 			temp_select->whereClause = lq->connect_by;
 			top_stmt->stmt = (Node *) temp_select;
-			query = parse_analyze_varparams(top_stmt, source_sql,
+			query = parse_analyze_varparams_ext(top_stmt, source_sql,
 									&paramTypes, &numParams,
 									&paramModes);
 			connect_bysql = ivy_get_query_def(query);

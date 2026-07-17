@@ -351,9 +351,13 @@ extern char *get_func_result_name(Oid functionId);
 extern TupleDesc build_function_result_tupdesc_d(char prokind,
 												 Datum proallargtypes,
 												 Datum proargmodes,
-												 Datum proargnames,
-												 bool intisnumber, /* BUG:M0000068 */
-												 Datum proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+												 Datum proargnames);
+extern TupleDesc build_function_result_tupdesc_d_ext(char prokind,
+													 Datum proallargtypes,
+													 Datum proargmodes,
+													 Datum proargnames,
+													 bool intisnumber,		 /* BUG:M0000068 */
+													 Datum proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
 /* End - ReqID:SRS-SQL-PACKAGE */
 extern TupleDesc build_function_result_tupdesc_t(HeapTuple procTuple);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
