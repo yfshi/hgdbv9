@@ -5739,30 +5739,32 @@ PostgresMain(int argc, char *argv[],
 					whereToSendOutput = DestNone;
 
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
-#ifdef ENABLE_DKY_BETA_FEATURE
-
-				if (is_audit_enable && (*is_audit_enable)() && IsTransactionOrTransactionBlock())
+				if (is_audit_enable && (*is_audit_enable)())
 				{
-					memcpy(audit_msg, "rollback transaction", strlen("rollback transaction") + 1);
 
-					if (audit_aborted_hook)
-						(*audit_aborted_hook)();
+					if (IsTransactionOrTransactionBlock())
+					{
+						memcpy(audit_msg, "rollback transaction", strlen("rollback transaction") + 1);
 
-					AbortCurrentTransaction();
-					StartTransactionCommand();
-					UserAbortTransactionBlock(false);
-					CommitTransactionCommand();
+						if (audit_aborted_hook)
+							(*audit_aborted_hook)();
 
-					if (audit_WriteRecord_hook)
-						(*audit_WriteRecord_hook)();
-				}
-#endif
-				if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
-					audit_system_event_hook(true, SYSTEM_EVENT_LOGOUT_SUCC);
+						AbortCurrentTransaction();
+						StartTransactionCommand();
+						UserAbortTransactionBlock(false);
+						CommitTransactionCommand();
+
+						if (audit_WriteRecord_hook)
+							(*audit_WriteRecord_hook)();
+					}
+
+					if (OidIsValid(MyDatabaseId) && audit_system_event_hook)
+						audit_system_event_hook(true, SYSTEM_EVENT_LOGOUT_SUCC);
 #ifdef USE_SQLITE
-				else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
-					sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGOUT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
+					else if (!OidIsValid(MyDatabaseId) && sqlite_open_db_for_audit_hook)
+						sqlite_open_db_for_audit_hook(SYSTEMAUDIT_LOGOUT, AUDIT_SUCCESS, MyProcPort->user_name, NULL);
 #endif
+				}
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
 				/*
