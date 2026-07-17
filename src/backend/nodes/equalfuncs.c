@@ -1604,6 +1604,7 @@ _equalDropStmt(const DropStmt *a, const DropStmt *b)
 	COMPARE_SCALAR_FIELD(is_purge);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	COMPARE_SCALAR_FIELD(nocheckpart); /* ReqID:SRS-SQL-PARTITION-TABLE */
+	COMPARE_NODE_FIELD(relation);	/* ReqID:SRS-MYSQL-SQL-Alter */
 
 	return true;
 }
@@ -3276,6 +3277,8 @@ _equalConstraint(const Constraint *a, const Constraint *b)
 	COMPARE_SCALAR_FIELD(old_pktable_oid);
 	COMPARE_SCALAR_FIELD(skip_validation);
 	COMPARE_SCALAR_FIELD(initially_valid);
+	COMPARE_STRING_FIELD(idxcomment);	/* SRS-MYSQL-SQL-Alter */
+	COMPARE_NODE_FIELD(idx_key_parts);	/* SRS-MYSQL-SQL-Alter */
 
 	return true;
 }

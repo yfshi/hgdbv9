@@ -131,4 +131,6 @@ extern void modify_judge_or_modify_name(Oid myrelid,
 												   RenameStmt *stmt);
 /* End - BUG#Z5992 */
 
+extern void RemoveIndexOnTable(DropStmt *drop);	/* ReqID:SRS-MYSQL-SQL-Alter */
+
 #endif							/* TABLECMDS_H */

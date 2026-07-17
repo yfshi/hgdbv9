@@ -1811,6 +1811,18 @@ transformTableConstraint(CreateStmtContext *cxt, Constraint *constraint)
 				 constraint->contype);
 			break;
 
+		/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+		case CONSTR_INDEX:
+			if (cxt->isforeign)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("indexes are not supported on foreign tables"),
+						 parser_errposition(cxt->pstate,
+											constraint->location)));
+			cxt->ixconstraints = lappend(cxt->ixconstraints, constraint);
+			break;
+		/* End - ReqID:SRS-MYSQL-SQL-Alter */
+
 		default:
 			elog(ERROR, "unrecognized constraint type: %d",
 				 constraint->contype);
@@ -2984,7 +2996,8 @@ transformIndexConstraints(CreateStmtContext *cxt)
 
 		Assert(constraint->contype == CONSTR_PRIMARY ||
 			   constraint->contype == CONSTR_UNIQUE ||
-			   constraint->contype == CONSTR_EXCLUSION);
+			   constraint->contype == CONSTR_EXCLUSION ||
+			   constraint->contype == CONSTR_INDEX);  /* SRS-MYSQL-SQL-Alter */
 
 		index = transformIndexConstraint(constraint, cxt);
 
@@ -3075,8 +3088,20 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 
 	index = makeNode(IndexStmt);
 
-	index->unique = (constraint->contype != CONSTR_EXCLUSION);
-	index->primary = (constraint->contype == CONSTR_PRIMARY);
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	if (constraint->contype == CONSTR_INDEX)
+	{
+		index->unique = false;
+		index->primary = false;
+		index->isconstraint = false;
+	}
+	else
+	{
+		index->unique = (constraint->contype != CONSTR_EXCLUSION);
+		index->primary = (constraint->contype == CONSTR_PRIMARY);
+		index->isconstraint = true;
+	}
+
 	if (index->primary)
 	{
 		if (cxt->pkey != NULL)
@@ -3092,12 +3117,29 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 		 * DefineIndex will check for it.
 		 */
 	}
-	index->isconstraint = true;
+
 	index->deferrable = constraint->deferrable;
 	index->initdeferred = constraint->initdeferred;
 
 	if (constraint->conname != NULL)
 		index->idxname = pstrdup(constraint->conname);
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	if (constraint->contype == CONSTR_INDEX)
+	{
+		index->idxname = NULL;
+	}
+	else if (constraint->indexname != NULL &&
+			 constraint->keys == NIL)
+	{
+		if (constraint->conname != NULL)
+			index->idxname = pstrdup(constraint->conname);
+		else
+			index->idxname = NULL;
+	}
+	else if (constraint->conname != NULL)
+		index->idxname = pstrdup(constraint->conname);
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 	else
 		index->idxname = NULL;	/* DefineIndex will choose name */
 
@@ -3119,6 +3161,11 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 	index->concurrent = false;
 	index->if_not_exists = false;
 	index->reset_default_tblspc = constraint->reset_default_tblspc;
+
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	if (constraint->idxcomment != NULL)
+		index->idxcomment = pstrdup(constraint->idxcomment);
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 	/*
 	 * If it's ALTER TABLE ADD CONSTRAINT USING INDEX, look up the index and
@@ -3333,7 +3380,12 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 			index->excludeOpNames = lappend(index->excludeOpNames, opname);
 		}
 	}
-
+	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+	else if (constraint->contype == CONSTR_INDEX)
+	{
+		index->indexParams = copyObject(constraint->idx_key_parts);
+	}
+	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 	/*
 	 * For UNIQUE and PRIMARY KEY, we just have a list of column names.
 	 *
@@ -3342,14 +3394,45 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 	 */
 	else
 	{
+		/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+		bool	keys_are_indexelems = (constraint->keys != NIL &&
+									   IsA(linitial(constraint->keys), IndexElem));
+		/* End - ReqID:SRS-MYSQL-SQL-Alter */
 		foreach(lc, constraint->keys)
 		{
-			char	   *key = strVal(lfirst(lc));
+			IndexElem	*keyelem = NULL;	/* ReqID:SRS-MYSQL-SQL-Alter */
+			char		*key;				/* ReqID:SRS-MYSQL-SQL-Alter */
 			bool		found = false;
 			bool		forced_not_null = false;
 			ColumnDef  *column = NULL;
 			ListCell   *columns;
 			IndexElem  *iparam;
+
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			/* if keys are indexElem, just support col_name ASC|DESC */
+			if (keys_are_indexelems)
+			{
+				keyelem = lfirst_node(IndexElem, lc);
+
+				if (keyelem->expr != NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg(constraint->contype == CONSTR_PRIMARY ?
+									"expressions are not supported in primary key constraints" :
+									constraint->contype == CONSTR_UNIQUE ?
+									"expressions are not supported in unique constraints" :
+									"index key expressions are not supported in CREATE TABLE INDEX"),
+							 parser_errposition(cxt->pstate, constraint->location)));
+				if (keyelem->name == NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("index key must be a column name"),
+							 parser_errposition(cxt->pstate, constraint->location)));
+				key = keyelem->name;
+			}
+			else
+				key = strVal(lfirst(lc));
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 			/* Make sure referenced column exists. */
 			foreach(columns, cxt->columns)
@@ -3465,16 +3548,27 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 				}
 			}
 
-			/* OK, add it to the index definition */
-			iparam = makeNode(IndexElem);
-			iparam->name = pstrdup(key);
-			iparam->expr = NULL;
-			iparam->indexcolname = NULL;
-			iparam->collation = NIL;
-			iparam->opclass = NIL;
-			iparam->opclassopts = NIL;
-			iparam->ordering = SORTBY_DEFAULT;
-			iparam->nulls_ordering = SORTBY_NULLS_DEFAULT;
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			/*
+			 * IndexElem keys already carry ASC/DESC (and other options) from
+			 * index_params; copy them.  String keys get default ordering.
+			 */
+			if (keys_are_indexelems)
+				iparam = copyObject(keyelem);
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
+			else
+			{
+				/* OK, add it to the index definition */
+				iparam = makeNode(IndexElem);
+				iparam->name = pstrdup(key);
+				iparam->expr = NULL;
+				iparam->indexcolname = NULL;
+				iparam->collation = NIL;
+				iparam->opclass = NIL;
+				iparam->opclassopts = NIL;
+				iparam->ordering = SORTBY_DEFAULT;
+				iparam->nulls_ordering = SORTBY_NULLS_DEFAULT;
+			}
 			index->indexParams = lappend(index->indexParams, iparam);
 
 			/*
@@ -6304,4 +6398,3 @@ transformSubPartitionTemplateBound(ParseState *pstate, PartitionKey key, OraPart
 	return result_spec;
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
-

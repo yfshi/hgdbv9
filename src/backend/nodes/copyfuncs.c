@@ -3399,6 +3399,8 @@ _copyConstraint(const Constraint *from)
 	COPY_SCALAR_FIELD(skip_validation);
 	COPY_SCALAR_FIELD(initially_valid);
 	COPY_SCALAR_FIELD(table_level); /* BUG#Z1460 */
+	COPY_STRING_FIELD(idxcomment);	/* SRS-MYSQL-SQL-Alter */
+	COPY_NODE_FIELD(idx_key_parts);	/* SRS-MYSQL-SQL-Alter */
 
 	return newnode;
 }
@@ -4081,6 +4083,7 @@ _copyDropStmt(const DropStmt *from)
 	COPY_SCALAR_FIELD(is_purge);
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
 	COPY_SCALAR_FIELD(nocheckpart); /* ReqID:SRS-SQL-PARTITION-TABLE */
+	COPY_NODE_FIELD(relation);	/* ReqID:SRS-MYSQL-SQL-Alter */
 
 	return newnode;
 }

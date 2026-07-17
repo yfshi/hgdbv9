@@ -1,0 +1,3037 @@
+--------- ADD INDEX/KEY
+--------- ADD {INDEX | KEY} [index_name] [index_type] (key_part,...) [index_option]
+------ ADD {INDEX | KEY} [index_name]
+-- no index_name
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b);
+show create table test_index;
+   Table    |                 Create Table                 
+------------+----------------------------------------------
+ test_index | CREATE TABLE "test_index" (                 +
+            |     "a" integer,                            +
+            |     "b" integer,                            +
+            |     "c" character varying(20),              +
+            |     KEY "test_index_b_idx" ("b") USING BTREE+
+            | )
+(1 row)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_index;
+-- ignore index_name
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index b_idx (b);
+show create table test_index;
+   Table    |                 Create Table                 
+------------+----------------------------------------------
+ test_index | CREATE TABLE "test_index" (                 +
+            |     "a" integer,                            +
+            |     "b" integer,                            +
+            |     "c" character varying(20),              +
+            |     KEY "test_index_b_idx" ("b") USING BTREE+
+            | )
+(1 row)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_index;
+------ ADD {INDEX | KEY} [index_type]
+-- test: default using btree
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index(b);
+show create table test_index;
+   Table    |                 Create Table                 
+------------+----------------------------------------------
+ test_index | CREATE TABLE "test_index" (                 +
+            |     "a" integer,                            +
+            |     "b" integer,                            +
+            |     "c" character varying(20),              +
+            |     KEY "test_index_b_idx" ("b") USING BTREE+
+            | )
+(1 row)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+\d+ test_index;
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- test: using btree (col)
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using btree (b);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- test: using hash (col)
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (b);
+show create table test_index;
+   Table    |                Create Table                 
+------------+---------------------------------------------
+ test_index | CREATE TABLE "test_index" (                +
+            |     "a" integer,                           +
+            |     "b" integer,                           +
+            |     "c" character varying(20),             +
+            |     KEY "test_index_b_idx" ("b") USING HASH+
+            | )
+(1 row)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | hash       |         | 
+(1 row)
+
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" hash (b)
+
+drop table test_index;
+------ ADD {INDEX | KEY} (key_part,...)
+------ (key_part,...) is (col ASC|DESC)
+-- test: using btree (col ASC)
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using btree (b ASC);
+show create table test_index;
+   Table    |                 Create Table                 
+------------+----------------------------------------------
+ test_index | CREATE TABLE "test_index" (                 +
+            |     "a" integer,                            +
+            |     "b" integer,                            +
+            |     "c" character varying(20),              +
+            |     KEY "test_index_b_idx" ("b") USING BTREE+
+            | )
+(1 row)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- test: using btree (col DESC)
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using btree (b DESC);
+show create table test_index;
+   Table    |                 Create Table                 
+------------+----------------------------------------------
+ test_index | CREATE TABLE "test_index" (                 +
+            |     "a" integer,                            +
+            |     "b" integer,                            +
+            |     "c" character varying(20),              +
+            |     KEY "test_index_b_idx" ("b") USING BTREE+
+            | )
+(1 row)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_idx |            1 | b           | D         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b DESC)
+
+drop table test_index;
+-- test: using hash (col ASC)
+-- mysql succ, v9 error as hash did not suppot collate
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (b ASC);
+ERROR:  access method "hash" does not support ASC/DESC options
+show create table test_index;
+   Table    |         Create Table          
+------------+-------------------------------
+ test_index | CREATE TABLE "test_index" (  +
+            |     "a" integer,             +
+            |     "b" integer,             +
+            |     "c" character varying(20)+
+            | )
+(1 row)
+
+show index from test_index;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+-- test: using hash (col DESC)
+-- mysql succ, v9 error as hash did not suppot collate
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (b ASC);
+ERROR:  access method "hash" does not support ASC/DESC options
+show create table test_index;
+   Table    |         Create Table          
+------------+-------------------------------
+ test_index | CREATE TABLE "test_index" (  +
+            |     "a" integer,             +
+            |     "b" integer,             +
+            |     "c" character varying(20)+
+            | )
+(1 row)
+
+show index from test_index;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+------ (key_part,...)
+-- c(10) -- mysql succ, v9 error
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (c(10));
+ERROR:  function c(integer) does not exist
+LINE 1: ALTER TABLE test_index add index (c(10));
+                                          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+-- ASC, not showing is asc default
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (a ASC);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_a_idx" btree (a)
+
+drop table test_index;
+-- DESC, showing b DESC
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b DESC);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b DESC)
+
+drop table test_index;
+-- ASC DESC, error
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (a ASC DESC);
+ERROR:  syntax error at or near "DESC"
+LINE 1: ALTER TABLE test_index add index (a ASC DESC);
+                                                ^
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+-- b(10) DESC -- error
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b(10) DESC);
+ERROR:  function b(integer) does not exist
+LINE 1: ALTER TABLE test_index add index (b(10) DESC);
+                                          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+-- abs(b) -- mysql error, v9 succ
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (abs(b));
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_abs_idx" btree (abs(b))
+
+drop table test_index;
+------ (key_part, key_part)
+-- int, int
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (a, b);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_a_b_idx" btree (a, b)
+
+show index from test_index;
+   Table    | Non_unique |      Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+--------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_a_b_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+ test_index |          1 | test_index_a_b_idx |            2 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table test_index;
+-- int, varchar
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b, c);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_c_idx" btree (b, c)
+
+show index from test_index;
+   Table    | Non_unique |      Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+--------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_c_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+ test_index |          1 | test_index_b_c_idx |            2 | c           | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table test_index;
+-- int ASC, int DESC
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (a ASC, b DESC);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_a_b_idx" btree (a, b DESC)
+
+show index from test_index;
+   Table    | Non_unique |      Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+--------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_a_b_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+ test_index |          1 | test_index_a_b_idx |            2 | b           | D         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table test_index;
+-- int DESC, varchar DESC
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b DESC, c DESC);
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_c_idx" btree (b DESC, c DESC)
+
+show index from test_index;
+   Table    | Non_unique |      Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+--------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | test_index_b_c_idx |            1 | b           | D         |           0 |          |        | YES  | btree      |         | 
+ test_index |          1 | test_index_b_c_idx |            2 | c           | D         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table test_index;
+------ ADD [index_option]
+-- [index_option]: KEY_BLOCK_SIZE
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b) KEY_BLOCK_SIZE 200;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- [index_option]: WITH PARSER
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b) with parser MyISAM;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- [index_option]: COMMENT
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b) with parser MyISAM COMMENT 'test add index comment';
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |     Index_comment      
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+------------------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | test add index comment
+(1 row)
+
+drop table test_index;
+-- [index_option]: using btree
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b) using btree;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- [index_option]: using hash
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b) using hash;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" hash (b)
+
+drop table test_index;
+------ ADD {INDEX | KEY} [index_type] (col) [index_option]
+------ if index_option has USING, use it
+-- using hash, using btree
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (b) using btree;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- using btree, using hash
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using btree (b) using hash;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" hash (b)
+
+drop table test_index;
+-- using btree, using btree
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using btree (b) using btree;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+drop table test_index;
+-- using hash, using hash
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (b) using hash;
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" hash (b)
+
+drop table test_index;
+-- using hash (a AESC) using hash
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (a ASC) using hash;
+ERROR:  access method "hash" does not support ASC/DESC options
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+-- using hash (a DESC) using hash
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index using hash (b DESC) using hash;
+ERROR:  access method "hash" does not support ASC/DESC options
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+drop table test_index;
+-- all option fields
+CREATE TABLE test_index(a int, b int, c varchar(20));
+ALTER TABLE test_index add index (b) using btree KEY_BLOCK_SIZE 300 with parser MyISAM COMMENT 'test add index all fields';
+\d+ test_index
+                                        Table "public.test_index"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_index_b_idx" btree (b)
+
+show index from test_index;
+   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |       Index_comment       
+------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------------------
+ test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | test add index all fields
+(1 row)
+
+drop table test_index;
+--------- ADD {FULLTEXT | SPATIAL} [INDEX | KEY]
+--------- ADD {FULLTEXT | SPATIAL} [INDEX | KEY] [index_name] (key_part,...) [index_option]
+----- ADD {FULLTEXT | SPATIAL} [INDEX | KEY]
+-- ADD {FULLTEXT} [INDEX]
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT index (a) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_a_idx" btree (a)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_a_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {FULLTEXT} [KEY]
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT key (b) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_b_idx" btree (b)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {SPATIAL} [INDEX]
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add SPATIAL index (a) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_a_idx" btree (a)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_a_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {SPATIAL} [KEY]
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add SPATIAL key (b) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_b_idx" btree (b)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {FULLTEXT}
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT (a) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_a_idx" btree (a)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_a_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {SPATIAL}
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add SPATIAL (b) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_b_idx" btree (b)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+----- ADD {FULLTEXT | SPATIAL}  [index_name]
+-- ADD {FULLTEXT} [index_name]
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT idx_name(a) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_a_idx" btree (a)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_a_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {SPATIAL} [index_name]
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add SPATIAL idx_name(b) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_b_idx" btree (b)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+----- ADD {FULLTEXT | SPATIAL}  [index_name] (key_part,...)
+-- ADD {FULLTEXT} [index_name] b(10) -- error
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT idx_name(b(10)) ;
+ERROR:  function b(integer) does not exist
+LINE 1: ALTER TABLE test_fullindex add FULLTEXT idx_name(b(10)) ;
+                                                         ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+show index from test_fullindex;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+drop table test_fullindex;
+-- ADD {FULLTEXT} [index_name] b ASC
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT idx_name(b ASC) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_b_idx" btree (b)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+-- ADD {SPATIAL} [index_name] b DESC
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add SPATIAL idx_name(c DESC) ;
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_c_idx" btree (c DESC)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | test_fullindex_c_idx |            1 | c           | D         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table test_fullindex;
+------ ADD {FULLTEXT | SPATIAL} (key_part,...) [index_option]
+-- ADD {FULLTEXT} [index_name] b ASC
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add FULLTEXT idx_name(b ASC) using btree KEY_BLOCK_SIZE 300 with parser MyISAM COMMENT 'test add full index';
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "test_fullindex_b_idx" btree (b)
+
+show index from test_fullindex;
+     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment    
+----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------------
+ test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | test add full index
+(1 row)
+
+drop table test_fullindex;
+-- ADD {SPATIAL} [index_name] c DESC using hash
+CREATE TABLE test_fullindex(a int, b int, c varchar(20));
+ALTER TABLE test_fullindex add SPATIAL idx_name(c DESC) using hash KEY_BLOCK_SIZE 300 with parser MyISAM COMMENT 'test add spital index';
+ERROR:  access method "hash" does not support ASC/DESC options
+\d+ test_fullindex
+                                      Table "public.test_fullindex"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+show index from test_fullindex;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+drop table test_fullindex;
+------------- ADD UNIQUE KEY TEST CASE
+------------- ADD [CONSTRAINT [symbol]] UNIQUE [INDEX|KEY] [index_name] [index_type] (key_part,...) [index_option]
+------ UNIQUE [INDEX|KEY]
+-- UNIQUE index
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+show create table add_uk_t3;
+   Table   |                Create Table                 
+-----------+---------------------------------------------
+ add_uk_t3 | CREATE TABLE "add_uk_t3" (                 +
+           |     "a" integer,                           +
+           |     "b" integer,                           +
+           |     CONSTRAINT "add_uk_t3_a_key" UNIQUE (a)+
+           | )
+(1 row)
+
+drop table add_uk_t3;
+-- UNIQUE key
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+drop table add_uk_t3;
+-- UNIQUE
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+drop table add_uk_t3;
+------ [index_name]
+-- ADD UNIQUE KEY, ignore the index_name
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY uk_3 (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+drop table add_uk_t3;
+-- ADD UNIQUE, ignore the index_name
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE uk_3 (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+drop table add_uk_t3;
+------ [index_type]
+-- default
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+drop table add_uk_t3;
+-- ignore index_type(using btree)
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY using btree (a);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY using btree (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+    "add_uk_t3_a_key1" UNIQUE CONSTRAINT, btree (a)
+
+drop table add_uk_t3;
+-- ignore index_type(using hash)
+------ using btree default because hash did not support unique
+CREATE TABLE add_uk_t3 (a int, b int);
+ALTER TABLE add_uk_t3 ADD UNIQUE KEY using hash (a);
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+
+show index from add_uk_t3;
+   Table   | Non_unique |    Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+-----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_uk_t3 |          0 | add_uk_t3_a_key |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table add_uk_t3;
+------ [index_option]
+------ [index_option]: KEY_BLOCK_SIZE
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add unique key (b) key_block_size 100;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+------ [index_option]: WITH PARSER
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add unique key (b) key_block_size 100 with parser MyISAM;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+------ [index_option]: COMMENT
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add unique index (b) key_block_size 100 with parser MyISAM comment 'test add unique key comment';
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+show index from add_uk_t3;
+   Table   | Non_unique |    Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |        Index_comment        
+-----------+------------+-----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+-----------------------------
+ add_uk_t3 |          0 | add_uk_t3_b_key |            1 | b           | A         |           0 |          |        | YES  | btree      |         | test add unique key comment
+(1 row)
+
+drop table add_uk_t3;
+------ [index_type][index_option]
+-- using btree using btree
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add unique key using btree (b) using btree;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+-- using hash using hash
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add unique key using hash (b) using hash;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+-- using btree using hash
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add unique key using btree (b) using hash;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+------ (key_part): col_name [(length)] ASC| DESC
+-- col_name [(length)], error
+create table add_uk_t1 (a int, b int, c varchar(20));
+alter table add_uk_t1 add unique key (c(10));
+ERROR:  expressions are not supported in unique constraints
+LINE 1: alter table add_uk_t1 add unique key (c(10));
+                                  ^
+\d+ add_uk_t1
+                                        Table "public.add_uk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+show index from add_uk_t1;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+drop table add_uk_t1;
+-- col_name ASC
+create table add_uk_t1 (a int, b int, c varchar(20));
+alter table add_uk_t1 add primary key (a ASC);
+\d+ add_uk_t1
+                                        Table "public.add_uk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "add_uk_t1_pkey" PRIMARY KEY, btree (a)
+
+show index from add_uk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_uk_t1 |          0 | add_uk_t1_pkey |            1 | a           | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table add_uk_t1;
+-- col_name DESC
+create table add_uk_t1 (a int, b int, c varchar(20));
+alter table add_uk_t1 add primary key (b DESC);
+\d+ add_uk_t1
+                                        Table "public.add_uk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "add_uk_t1_pkey" PRIMARY KEY, btree (b DESC)
+
+show index from add_uk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_uk_t1 |          0 | add_uk_t1_pkey |            1 | b           | D         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table add_uk_t1;
+-- int DESC, int ASC
+create table add_uk_t1 (a int, b int, c varchar(20));
+alter table add_uk_t1 add primary key (b DESC, a ASC);
+\d+ add_uk_t1
+                                        Table "public.add_uk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "add_uk_t1_pkey" PRIMARY KEY, btree (b DESC, a)
+
+\d+ add_uk_t1_pkey
+                 Index "public.add_uk_t1_pkey"
+ Column |  Type   | Key? | Definition | Storage | Stats target 
+--------+---------+------+------------+---------+--------------
+ b      | integer | yes  | b          | plain   | 
+ a      | integer | yes  | a          | plain   | 
+primary key, btree, for table "public.add_uk_t1"
+
+show index from add_uk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_uk_t1 |          0 | add_uk_t1_pkey |            1 | b           | D         |           0 |          |        | NO   | btree      |         | 
+ add_uk_t1 |          0 | add_uk_t1_pkey |            2 | a           | A         |           0 |          |        | NO   | btree      |         | 
+(2 rows)
+
+drop table add_uk_t1;
+-- int DESC, varchar DESC
+create table add_uk_t1 (a int, b int, c varchar(20));
+alter table add_uk_t1 add primary key (b DESC, c DESC);
+\d+ add_uk_t1
+                                        Table "public.add_uk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           | not null |         | extended |              | 
+Indexes:
+    "add_uk_t1_pkey" PRIMARY KEY, btree (b DESC, c DESC)
+
+\d+ add_uk_t1_pkey
+                        Index "public.add_uk_t1_pkey"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ b      | integer               | yes  | b          | plain    | 
+ c      | character varying(20) | yes  | c          | extended | 
+primary key, btree, for table "public.add_uk_t1"
+
+show index from add_uk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_uk_t1 |          0 | add_uk_t1_pkey |            1 | b           | D         |           0 |          |        | NO   | btree      |         | 
+ add_uk_t1 |          0 | add_uk_t1_pkey |            2 | c           | D         |           0 |          |        | NO   | btree      |         | 
+(2 rows)
+
+drop table add_uk_t1;
+------ ADD [CONSTRAINT [symbol]] UNIQUE
+-- ADD [CONSTRAINT symbol] UNIQUE
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add constraint ukkkkkk unique key using btree (b) using hash;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "ukkkkkk" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+-- ADD [CONSTRAINT] UNIQUE
+create table add_uk_t3 (a int, b int);
+alter table add_uk_t3 add constraint unique key using btree (b) using hash;
+\d+ add_uk_t3
+                                 Table "public.add_uk_t3"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_uk_t3_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table add_uk_t3;
+------------- ADD PRIMARY KEY TEST CASE
+------------- ADD [CONSTRAINT [symbol]] PRIMARY KEY [index_type] (key_part,...)[index_option]
+------ [CONSTRAINT [symbol]] PRIMARY KEY
+-- [CONSTRAINT symbol] PRIMARY KEY
+CREATE TABLE add_pk_t2 (a int, b int);
+ALTER TABLE add_pk_t2 ADD CONSTRAINT add_pk_sym PRIMARY KEY (b);
+\d+ add_pk_t2
+                                 Table "public.add_pk_t2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "add_pk_sym" PRIMARY KEY, btree (b)
+
+show create table add_pk_t2;
+   Table   |                Create Table                 
+-----------+---------------------------------------------
+ add_pk_t2 | CREATE TABLE "add_pk_t2" (                 +
+           |     "a" integer,                           +
+           |     "b" integer NOT NULL,                  +
+           |     CONSTRAINT "add_pk_sym" PRIMARY KEY (b)+
+           | )
+(1 row)
+
+show index from add_pk_t2;
+   Table   | Non_unique |  Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t2 |          0 | add_pk_sym |            1 | b           | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table add_pk_t2;
+-- [CONSTRAINT] PRIMARY KEY
+CREATE TABLE add_pk_t2 (a int, b int);
+ALTER TABLE add_pk_t2 ADD CONSTRAINT PRIMARY KEY (b);
+\d+ add_pk_t2
+                                 Table "public.add_pk_t2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "add_pk_t2_pkey" PRIMARY KEY, btree (b)
+
+drop table add_pk_t2;
+-- PRIMARY KEY
+CREATE TABLE add_pk_t2 (a int, b int);
+ALTER TABLE add_pk_t2 ADD PRIMARY KEY (b);
+\d+ add_pk_t2
+                                 Table "public.add_pk_t2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "add_pk_t2_pkey" PRIMARY KEY, btree (b)
+
+drop table add_pk_t2;
+----- ADD more than one PK
+CREATE TABLE add_pk_t2 (a int, b int);
+ALTER TABLE add_pk_t2 ADD PRIMARY KEY (b);
+ALTER TABLE add_pk_t2 ADD PRIMARY KEY (b);
+ERROR:  multiple primary keys for table "add_pk_t2" are not allowed
+\d+ add_pk_t2
+                                 Table "public.add_pk_t2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "add_pk_t2_pkey" PRIMARY KEY, btree (b)
+
+drop table add_pk_t2;
+----- ADD more than one PK in one SQL
+CREATE TABLE add_pk_t2 (a int, b int);
+ALTER TABLE add_pk_t2 ADD PRIMARY KEY (b), ADD PRIMARY KEY (a);
+ERROR:  multiple primary keys for table "add_pk_t2" are not allowed
+\d+ add_pk_t2
+                                 Table "public.add_pk_t2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+drop table add_pk_t2;
+------ [index_type] USIN btree | USING HASH
+------ [index_type]: using btree
+-- default using btree
+CREATE TABLE add_pk_t1 (a int, b int);
+ALTER TABLE add_pk_t1 ADD PRIMARY KEY (a);
+show create table add_pk_t1;
+   Table   |                  Create Table                   
+-----------+-------------------------------------------------
+ add_pk_t1 | CREATE TABLE "add_pk_t1" (                     +
+           |     "a" integer NOT NULL,                      +
+           |     "b" integer,                               +
+           |     CONSTRAINT "add_pk_t1_pkey" PRIMARY KEY (a)+
+           | )
+(1 row)
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | a           | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- add pk using btree (a)
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key using btree (a) ;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- add pk(a) using btree
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key (a) using btree;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- add pk using btree (a) using btree
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key using btree (a) using btree;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+------ [index_type]: using hash
+------ using btree default because hash did not support unique
+-- add pk using hash (a)
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key using hash (a)  ;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+show create table add_pk_t1;
+   Table   |                  Create Table                   
+-----------+-------------------------------------------------
+ add_pk_t1 | CREATE TABLE "add_pk_t1" (                     +
+           |     "a" integer NOT NULL,                      +
+           |     "b" integer,                               +
+           |     CONSTRAINT "add_pk_t1_pkey" PRIMARY KEY (a)+
+           | )
+(1 row)
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | a           | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table add_pk_t1;
+-- add pk(a) using hash
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key (a) using hash ;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- add pk using hash (a) using hash
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key using hash (a) using hash ;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+------ [index_type][index_option]: using btree and using hash
+-- btree, hash
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key using btree (a) using hash ;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- hash, btree
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key using hash (a) using btree ;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+------ [index_option]: KEY_BLOCK_SIZE | WITH PARSER | COMMENT
+-- KEY_BLOCK_SIZE
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key (a) key_block_size 100;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- WITH PARSER
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key (a) key_block_size 100 with parser MyISAM;
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+drop table add_pk_t1;
+-- COMMENT
+create table add_pk_t1 (a int, b int);
+alter table add_pk_t1 add primary key (a) key_block_size 100 with parser MyISAM comment 'test add pk comment';
+\d+ add_pk_t1
+                                 Table "public.add_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment    
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | a           | A         |           0 |          |        | NO   | btree      |         | test add pk comment
+(1 row)
+
+drop table add_pk_t1;
+------ (key_part): col_name [(length)] ASC|DESC
+-- col_name [(length)], error
+create table add_pk_t1 (a int, b int, c varchar(20));
+alter table add_pk_t1 add primary key (c(10));
+ERROR:  expressions are not supported in primary key constraints
+LINE 1: alter table add_pk_t1 add primary key (c(10));
+                                  ^
+\d+ add_pk_t1
+                                        Table "public.add_pk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+
+show index from add_pk_t1;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+drop table add_pk_t1;
+-- col_name ASC
+create table add_pk_t1 (a int, b int, c varchar(20));
+alter table add_pk_t1 add primary key (a ASC);
+\d+ add_pk_t1
+                                        Table "public.add_pk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (a)
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | a           | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table add_pk_t1;
+-- col_name DESC
+create table add_pk_t1 (a int, b int, c varchar(20));
+alter table add_pk_t1 add primary key (b DESC);
+\d+ add_pk_t1
+                                        Table "public.add_pk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (b DESC)
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | b           | D         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table add_pk_t1;
+-- int DESC, int ASC
+create table add_pk_t1 (a int, b int, c varchar(20));
+alter table add_pk_t1 add primary key (b DESC, a ASC);
+\d+ add_pk_t1
+                                        Table "public.add_pk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (b DESC, a)
+
+\d+ add_pk_t1_pkey
+                 Index "public.add_pk_t1_pkey"
+ Column |  Type   | Key? | Definition | Storage | Stats target 
+--------+---------+------+------------+---------+--------------
+ b      | integer | yes  | b          | plain   | 
+ a      | integer | yes  | a          | plain   | 
+primary key, btree, for table "public.add_pk_t1"
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | b           | D         |           0 |          |        | NO   | btree      |         | 
+ add_pk_t1 |          0 | add_pk_t1_pkey |            2 | a           | A         |           0 |          |        | NO   | btree      |         | 
+(2 rows)
+
+drop table add_pk_t1;
+-- int DESC, varchar DESC
+create table add_pk_t1 (a int, b int, c varchar(20));
+alter table add_pk_t1 add primary key (b DESC, c DESC);
+\d+ add_pk_t1
+                                        Table "public.add_pk_t1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           | not null |         | extended |              | 
+Indexes:
+    "add_pk_t1_pkey" PRIMARY KEY, btree (b DESC, c DESC)
+
+\d+ add_pk_t1_pkey
+                        Index "public.add_pk_t1_pkey"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ b      | integer               | yes  | b          | plain    | 
+ c      | character varying(20) | yes  | c          | extended | 
+primary key, btree, for table "public.add_pk_t1"
+
+show index from add_pk_t1;
+   Table   | Non_unique |    Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-----------+------------+----------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ add_pk_t1 |          0 | add_pk_t1_pkey |            1 | b           | D         |           0 |          |        | NO   | btree      |         | 
+ add_pk_t1 |          0 | add_pk_t1_pkey |            2 | c           | D         |           0 |          |        | NO   | btree      |         | 
+(2 rows)
+
+drop table add_pk_t1;
+---------- ADD FOREIGN KEY
+---------- ADD [CONSTRAINT [symbol]] FOREIGN KEY [index_name] (col_name,...) reference_definition
+------ [CONSTRAINT]
+CREATE TABLE fk_idx_parent(id int primary key);
+CREATE TABLE fk_idx_child(id int, pid int);
+alter table fk_idx_child ADD CONSTRAINT foreign key fk_ignore_idx (pid) references fk_idx_parent(id);
+\d+ fk_idx_child
+                               Table "public.fk_idx_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "fk_idx_child_pid_fkey" FOREIGN KEY (pid) REFERENCES fk_idx_parent(id)
+
+drop table fk_idx_child;
+drop table fk_idx_parent;
+------ [CONSTRAINT symbol]
+-- conn_idx fk
+CREATE TABLE fk_idx_parent_2(id int primary key);
+CREATE TABLE fk_idx_child_2(id int, pid int);
+alter table fk_idx_child_2 ADD CONSTRAINT conn_idx foreign key (pid) references fk_idx_parent_2(id);
+\d+ fk_idx_child_2
+                              Table "public.fk_idx_child_2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "conn_idx" FOREIGN KEY (pid) REFERENCES fk_idx_parent_2(id)
+
+drop table fk_idx_child_2;
+drop table fk_idx_parent_2;
+------ [index_name]
+-- ignore index_name
+CREATE TABLE fk_idx_parent(id int primary key);
+CREATE TABLE fk_idx_child(id int, pid int);
+ALTER TABLE fk_idx_child ADD foreign key fk_ignore_idx (pid) references fk_idx_parent(id);
+\d+ fk_idx_child
+                               Table "public.fk_idx_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "fk_idx_child_pid_fkey" FOREIGN KEY (pid) REFERENCES fk_idx_parent(id)
+
+drop table fk_idx_child;
+drop table fk_idx_parent;
+------ [CONSTRAINT [symbol]] FOREIGN KEY [index_name]
+-- conn_idx fk
+create table fk_idx_parent_2(id int primary key);
+create table fk_idx_child_2(id int, pid int);
+ALTER TABLE fk_idx_child_2 ADD CONSTRAINT conn_idx foreign key fk_ignore_idx (pid) references fk_idx_parent_2(id);
+\d+ fk_idx_child_2
+                              Table "public.fk_idx_child_2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "conn_idx" FOREIGN KEY (pid) REFERENCES fk_idx_parent_2(id)
+
+drop table fk_idx_child_2;
+drop table fk_idx_parent_2;
+--------- ADD CHECK： mysql just syntax support, did not run the logical
+-- if add check (a>10)， when insert values, dit not check the value
+--------- DROP INDEX
+-- drop index
+CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
+show create table drop_idx_t1;
+    Table    |                 Create Table                  
+-------------+-----------------------------------------------
+ drop_idx_t1 | CREATE TABLE "drop_idx_t1" (                 +
+             |     "a" integer,                             +
+             |     "b" integer,                             +
+             |     KEY "drop_idx_t1_b_idx" ("b") USING BTREE+
+             | )
+(1 row)
+
+show index from drop_idx_t1;
+    Table    | Non_unique |     Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+-------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ drop_idx_t1 |          1 | drop_idx_t1_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+\d+ drop_idx_t1
+                                Table "public.drop_idx_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_t1_b_idx" btree (b)
+
+ALTER TABLE drop_idx_t1 DROP INDEX drop_idx_t1_b_idx;
+show create table drop_idx_t1;
+    Table    |         Create Table         
+-------------+------------------------------
+ drop_idx_t1 | CREATE TABLE "drop_idx_t1" (+
+             |     "a" integer,            +
+             |     "b" integer             +
+             | )
+(1 row)
+
+show index from drop_idx_t1;
+ Table | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+(0 rows)
+
+\d+ drop_idx_t1
+                                Table "public.drop_idx_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+drop table drop_idx_t1;
+-- drop key
+CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
+\d+ drop_idx_t1
+                                Table "public.drop_idx_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_t1_b_idx" btree (b)
+
+ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
+\d+ drop_idx_t1
+                                Table "public.drop_idx_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+drop table drop_idx_t1;
+-- index did not exist
+CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
+ALTER TABLE drop_idx_t1 DROP INDEX drop_idx_t1_b;
+ERROR:  index "drop_idx_t1_b" of relation "drop_idx_t1" does not exist
+drop table drop_idx_t1;
+-- drop twice
+CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
+ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
+ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
+ERROR:  index "drop_idx_t1_b_idx" of relation "drop_idx_t1" does not exist
+drop table drop_idx_t1;
+-- index did not belong to the table
+CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
+CREATE TABLE drop_idx_t2 (a int, b int, INDEX idx_drop_t2_b (b));
+\d+ drop_idx_t1
+                                Table "public.drop_idx_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_t1_b_idx" btree (b)
+
+\d+ drop_idx_t2
+                                Table "public.drop_idx_t2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_t2_b_idx" btree (b)
+
+ALTER TABLE drop_idx_t1 DROP key drop_idx_t2_b_idx;
+ERROR:  index "drop_idx_t2_b_idx" of relation "drop_idx_t1" does not exist
+drop table drop_idx_t1;
+drop table drop_idx_t2;
+-- index is pk
+CREATE TABLE drop_idx_pk_t (a int PRIMARY KEY, b int);
+\d+ drop_idx_pk_t
+                               Table "public.drop_idx_pk_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_pk_t_pkey" PRIMARY KEY, btree (a)
+
+ALTER TABLE drop_idx_pk_t DROP INDEX drop_idx_pk_t_pkey;
+\d+ drop_idx_pk_t
+                               Table "public.drop_idx_pk_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           | not null |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+drop table drop_idx_pk_t;
+-- index is uk
+CREATE TABLE drop_idx_uk_t (a int, b int);
+ALTER TABLE drop_idx_uk_t ADD UNIQUE KEY idx_uniq_key_b (b);
+\d+ drop_idx_uk_t
+                               Table "public.drop_idx_uk_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_uk_t_b_key" UNIQUE CONSTRAINT, btree (b)
+
+ALTER TABLE drop_idx_uk_t DROP INDEX drop_idx_uk_t_b_key;
+\d+ drop_idx_uk_t
+                               Table "public.drop_idx_uk_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+drop table drop_idx_uk_t;
+-- index is fk, error
+CREATE TABLE drop_idx_fkname_parent (id int PRIMARY KEY);
+CREATE TABLE drop_idx_fkname_child (id int, pid int);
+ALTER TABLE drop_idx_fkname_child ADD CONSTRAINT fk_by_name FOREIGN KEY (pid)
+  REFERENCES drop_idx_fkname_parent(id);
+\d+ drop_idx_fkname_child
+                           Table "public.drop_idx_fkname_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "fk_by_name" FOREIGN KEY (pid) REFERENCES drop_idx_fkname_parent(id)
+
+ALTER TABLE drop_idx_fkname_child DROP INDEX fk_by_name;
+ERROR:  index "fk_by_name" of relation "drop_idx_fkname_child" does not exist
+\d+ drop_idx_fkname_child
+                           Table "public.drop_idx_fkname_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "fk_by_name" FOREIGN KEY (pid) REFERENCES drop_idx_fkname_parent(id)
+
+drop table drop_idx_fkname_child;
+drop table drop_idx_fkname_parent;
+-- its a check, could not drop by index
+CREATE TABLE drop_idx_ch_t (a int, b int);
+ALTER TABLE drop_idx_ch_t add check (b>100);
+show create table drop_idx_ch_t;
+     Table     |                       Create Table                       
+---------------+----------------------------------------------------------
+ drop_idx_ch_t | CREATE TABLE "drop_idx_ch_t" (                          +
+               |     "a" integer,                                        +
+               |     "b" integer,                                        +
+               |     CONSTRAINT "drop_idx_ch_t_b_check" CHECK ((b > 100))+
+               | )
+(1 row)
+
+alter table drop_idx_ch_t drop index drop_idx_ch_t_b_check;
+ERROR:  index "drop_idx_ch_t_b_check" of relation "drop_idx_ch_t" does not exist
+show create table drop_idx_ch_t;
+     Table     |                       Create Table                       
+---------------+----------------------------------------------------------
+ drop_idx_ch_t | CREATE TABLE "drop_idx_ch_t" (                          +
+               |     "a" integer,                                        +
+               |     "b" integer,                                        +
+               |     CONSTRAINT "drop_idx_ch_t_b_check" CHECK ((b > 100))+
+               | )
+(1 row)
+
+drop table drop_idx_ch_t;
+--------- DROP PRIMARY KEY
+-- has pk
+CREATE TABLE drop_pk_t1 (a int, b int, primary key (b));
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "drop_pk_t1_pkey" PRIMARY KEY, btree (b)
+
+ALTER TABLE drop_pk_t1 DROP PRIMARY KEY;
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+
+drop table drop_pk_t1;
+-- drop twice
+CREATE TABLE drop_pk_t1 (a int, b int);
+ALTER TABLE drop_pk_t1 ADD PRIMARY KEY(b);
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "drop_pk_t1_pkey" PRIMARY KEY, btree (b)
+
+ALTER TABLE drop_pk_t1 DROP PRIMARY KEY;
+ALTER TABLE drop_pk_t1 DROP PRIMARY KEY;
+ERROR:  relation "drop_pk_t1" constraint primary key did not exist
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+
+drop table drop_pk_t1;
+-- did not have pk
+CREATE TABLE drop_pk_t1 (a int, b int);
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+ALTER TABLE drop_pk_t1 DROP PRIMARY KEY;
+ERROR:  relation "drop_pk_t1" constraint primary key did not exist
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+drop table drop_pk_t1;
+-- its a index, could not drop by pk
+CREATE TABLE drop_pk_t1 (a int, b int);
+ALTER TABLE drop_pk_t1 ADD KEY(b);
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_pk_t1_b_idx" btree (b)
+
+ALTER TABLE drop_pk_t1 DROP PRIMARY KEY;
+ERROR:  relation "drop_pk_t1" constraint primary key did not exist
+drop table drop_pk_t1;
+-- its a unique key, could not drop by pk
+CREATE TABLE drop_pk_t1 (a int, b int);
+ALTER TABLE drop_pk_t1 ADD unique KEY(b);
+\d+ drop_pk_t1
+                                Table "public.drop_pk_t1"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_pk_t1_b_key" UNIQUE CONSTRAINT, btree (b)
+
+ALTER TABLE drop_pk_t1 DROP PRIMARY KEY;
+ERROR:  relation "drop_pk_t1" constraint primary key did not exist
+drop table drop_pk_t1;
+--------- DROP FOREIGN KEY
+-- has fk
+CREATE TABLE drop_fk_parent (id int PRIMARY KEY);
+CREATE TABLE drop_fk_child (id int, pid int,
+  CONSTRAINT drop_fk_sym FOREIGN KEY (pid) REFERENCES drop_fk_parent(id));
+\d+ drop_fk_child
+                               Table "public.drop_fk_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "drop_fk_sym" FOREIGN KEY (pid) REFERENCES drop_fk_parent(id)
+
+ALTER TABLE drop_fk_child DROP FOREIGN KEY drop_fk_sym;
+\d+ drop_fk_child;
+                               Table "public.drop_fk_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+
+drop table drop_fk_child;
+drop table drop_fk_parent;
+-- no fk
+CREATE TABLE drop_fk_parent (id int PRIMARY KEY);
+CREATE TABLE drop_fk_child (id int, pid int);
+\d+ drop_fk_child
+                               Table "public.drop_fk_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+
+ALTER TABLE drop_fk_child DROP FOREIGN KEY drop_fk_sym;
+ERROR:  constraint "drop_fk_sym" of relation "drop_fk_child" does not exist
+\d+ drop_fk_child;
+                               Table "public.drop_fk_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+
+drop table drop_fk_child;
+drop table drop_fk_parent;
+-- drop twice in one SQL
+CREATE TABLE drop_fk_parent (id int PRIMARY KEY);
+CREATE TABLE drop_fk_child (id int, pid int,
+  CONSTRAINT drop_fk_sym FOREIGN KEY (pid) REFERENCES drop_fk_parent(id));
+\d+ drop_fk_child
+                               Table "public.drop_fk_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "drop_fk_sym" FOREIGN KEY (pid) REFERENCES drop_fk_parent(id)
+
+ALTER TABLE drop_fk_child DROP FOREIGN KEY drop_fk_sym, DROP FOREIGN KEY drop_fk_sym;
+ERROR:  constraint "drop_fk_sym" of relation "drop_fk_child" does not exist
+\d+ drop_fk_child;
+                               Table "public.drop_fk_child"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ pid    | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "drop_fk_sym" FOREIGN KEY (pid) REFERENCES drop_fk_parent(id)
+
+drop table drop_fk_child;
+drop table drop_fk_parent;
+-- its pk, could not drop by fk
+CREATE TABLE drop_fk_parent (id int PRIMARY KEY);
+\d+ drop_fk_parent
+                              Table "public.drop_fk_parent"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           | not null |         | plain   |              | 
+Indexes:
+    "drop_fk_parent_pkey" PRIMARY KEY, btree (id)
+
+ALTER TABLE drop_fk_parent DROP FOREIGN KEY drop_fk_parent_pkey;
+ERROR:  constraint "drop_fk_parent_pkey" of relation "drop_fk_parent" is not a foreign key constraint
+\d+ drop_fk_parent;
+                              Table "public.drop_fk_parent"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           | not null |         | plain   |              | 
+Indexes:
+    "drop_fk_parent_pkey" PRIMARY KEY, btree (id)
+
+drop table drop_fk_parent;
+-- its uk, could not drop by fk
+CREATE TABLE drop_fk_parent (id int, b int, unique key idx_b(b));
+\d+ drop_fk_parent
+                              Table "public.drop_fk_parent"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_fk_parent_b_key" UNIQUE CONSTRAINT, btree (b)
+
+ALTER TABLE drop_fk_parent DROP FOREIGN KEY drop_fk_parent_b_key;
+ERROR:  constraint "drop_fk_parent_b_key" of relation "drop_fk_parent" is not a foreign key constraint
+\d+ drop_fk_parent;
+                              Table "public.drop_fk_parent"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_fk_parent_b_key" UNIQUE CONSTRAINT, btree (b)
+
+drop table drop_fk_parent;
+-- its check, could not drop by fk
+CREATE TABLE drop_fk_parent (id int, b int, check (b>10));
+\d+ drop_fk_parent
+                              Table "public.drop_fk_parent"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Check constraints:
+    "drop_fk_parent_b_check" CHECK (b > 10)
+
+ALTER TABLE drop_fk_parent DROP FOREIGN KEY drop_fk_parent_b_check;
+ERROR:  constraint "drop_fk_parent_b_check" of relation "drop_fk_parent" is not a foreign key constraint
+\d+ drop_fk_parent;
+                              Table "public.drop_fk_parent"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ id     | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Check constraints:
+    "drop_fk_parent_b_check" CHECK (b > 10)
+
+drop table drop_fk_parent;
+---------------------- test case for merge constraint for the same column name
+-- merge pk + uk to pk
+CREATE TABLE pk_uk_idx_merge (a int, b int, primary key (a), unique key(a));
+show create table pk_uk_idx_merge;
+      Table      |                     Create Table                      
+-----------------+-------------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                     +
+                 |     "a" integer NOT NULL,                            +
+                 |     "b" integer,                                     +
+                 |     CONSTRAINT "pk_uk_idx_merge_pkey" PRIMARY KEY (a)+
+                 | )
+(1 row)
+
+drop table pk_uk_idx_merge;
+-- merge pk + index to pk
+CREATE TABLE pk_uk_idx_merge (a int, b int, primary key (a), index(a));
+show create table pk_uk_idx_merge;
+      Table      |                     Create Table                      
+-----------------+-------------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                     +
+                 |     "a" integer NOT NULL,                            +
+                 |     "b" integer,                                     +
+                 |     CONSTRAINT "pk_uk_idx_merge_pkey" PRIMARY KEY (a)+
+                 | )
+(1 row)
+
+drop table pk_uk_idx_merge;
+-- merge uk + index to uk
+CREATE TABLE pk_uk_idx_merge (a int, b int,  unique key(a), index (a));
+show create table pk_uk_idx_merge;
+      Table      |                   Create Table                    
+-----------------+---------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                 +
+                 |     "a" integer,                                 +
+                 |     "b" integer,                                 +
+                 |     CONSTRAINT "pk_uk_idx_merge_a_key" UNIQUE (a)+
+                 | )
+(1 row)
+
+drop table pk_uk_idx_merge;
+-- merge index + index to index
+CREATE TABLE pk_uk_idx_merge (a int, b int,  index(a), index (a));
+show create table pk_uk_idx_merge;
+      Table      |                   Create Table                    
+-----------------+---------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                 +
+                 |     "a" integer,                                 +
+                 |     "b" integer,                                 +
+                 |     KEY "pk_uk_idx_merge_a_idx" ("a") USING BTREE+
+                 | )
+(1 row)
+
+drop table pk_uk_idx_merge;
+---------------------- partition table
+------ test case add/drop pk
+create table t_par(a int, id int, name varchar(20)) partition by range(id);
+create table t_par_1 partition of t_par for values from(0) to (100);
+create table t_par_2 partition of t_par for values from(100) to (200);
+create table t_par_3 partition of t_par for values from(200) to (MAXVALUE);
+insert into t_par(a,id) values(10,101);
+select * from t_par;
+ a  | id  | name 
+----+-----+------
+ 10 | 101 | 
+(1 row)
+
+-- error as pk must include partition_key
+alter table t_par add primary key(a);
+ERROR:  unique constraint on partitioned table must include all partitioning columns
+DETAIL:  PRIMARY KEY constraint on table "t_par" lacks column "id" which is part of the partition key.
+-- succ
+alter table t_par add primary key(a, id);
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_pkey" PRIMARY KEY, btree (a, id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_pkey" PRIMARY KEY, btree (a, id)
+
+alter table t_par drop primary key;
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+drop table t_par;
+------ test case add/drop uk
+create table t_par(a int, id int, name varchar(20)) partition by range(id);
+create table t_par_1 partition of t_par for values from(0) to (100);
+create table t_par_2 partition of t_par for values from(100) to (200);
+create table t_par_3 partition of t_par for values from(200) to (MAXVALUE);
+insert into t_par(a,id) values(10,101);
+select * from t_par;
+ a  | id  | name 
+----+-----+------
+ 10 | 101 | 
+(1 row)
+
+-- error uk need include partition_key
+alter table t_par add unique key(a);
+ERROR:  unique constraint on partitioned table must include all partitioning columns
+DETAIL:  UNIQUE constraint on table "t_par" lacks column "id" which is part of the partition key.
+-- succ
+alter table t_par add unique key(a, id);
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_a_id_key" UNIQUE CONSTRAINT, btree (a, id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_a_id_key" UNIQUE CONSTRAINT, btree (a, id)
+
+alter table t_par drop unique key t_par_a_id_key;
+ERROR:  syntax error at or near "unique"
+LINE 1: alter table t_par drop unique key t_par_a_id_key;
+                               ^
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_a_id_key" UNIQUE CONSTRAINT, btree (a, id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_a_id_key" UNIQUE CONSTRAINT, btree (a, id)
+
+drop table t_par;
+------ test case add/drop index
+create table t_par(a int, id int, name varchar(20)) partition by range(id);
+create table t_par_1 partition of t_par for values from(0) to (100);
+create table t_par_2 partition of t_par for values from(100) to (200);
+create table t_par_3 partition of t_par for values from(200) to (MAXVALUE);
+insert into t_par(a,id) values(10,101);
+select * from t_par;
+ a  | id  | name 
+----+-----+------
+ 10 | 101 | 
+(1 row)
+
+-- succ
+alter table t_par add index(a);
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_a_idx" btree (a)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_a_idx" btree (a)
+
+alter table t_par drop index t_par_a_idx;
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+drop table t_par;
+-------------------- drop index on table
+-- drop index
+CREATE TABLE drop_idx_on_t (a int, b int, INDEX idx_drop_on_b (b));
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_on_t_b_idx" btree (b)
+
+show create table drop_idx_on_t;
+     Table     |                  Create Table                   
+---------------+-------------------------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (                 +
+               |     "a" integer,                               +
+               |     "b" integer,                               +
+               |     KEY "drop_idx_on_t_b_idx" ("b") USING BTREE+
+               | )
+(1 row)
+
+DROP INDEX drop_idx_on_t_b_idx ON drop_idx_on_t;
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+show create table drop_idx_on_t;
+     Table     |          Create Table          
+---------------+--------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (+
+               |     "a" integer,              +
+               |     "b" integer               +
+               | )
+(1 row)
+
+drop table drop_idx_on_t;
+-- drop primary key
+CREATE TABLE drop_idx_on_t (a int, b int, primary key(b));
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "drop_idx_on_t_pkey" PRIMARY KEY, btree (b)
+
+show create table drop_idx_on_t;
+     Table     |                    Create Table                     
+---------------+-----------------------------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (                     +
+               |     "a" integer,                                   +
+               |     "b" integer NOT NULL,                          +
+               |     CONSTRAINT "drop_idx_on_t_pkey" PRIMARY KEY (b)+
+               | )
+(1 row)
+
+DROP INDEX drop_idx_on_t_pkey ON drop_idx_on_t;
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+
+show create table drop_idx_on_t;
+     Table     |          Create Table          
+---------------+--------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (+
+               |     "a" integer,              +
+               |     "b" integer NOT NULL      +
+               | )
+(1 row)
+
+drop table drop_idx_on_t;
+-- drop unique key
+CREATE TABLE drop_idx_on_t (a int, b int, unique key(b));
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_on_t_b_key" UNIQUE CONSTRAINT, btree (b)
+
+show create table drop_idx_on_t;
+     Table     |                  Create Table                   
+---------------+-------------------------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (                 +
+               |     "a" integer,                               +
+               |     "b" integer,                               +
+               |     CONSTRAINT "drop_idx_on_t_b_key" UNIQUE (b)+
+               | )
+(1 row)
+
+DROP INDEX drop_idx_on_t_b_key ON drop_idx_on_t;
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+
+show create table drop_idx_on_t;
+     Table     |          Create Table          
+---------------+--------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (+
+               |     "a" integer,              +
+               |     "b" integer               +
+               | )
+(1 row)
+
+drop table drop_idx_on_t;
+-- drop foreign key, error
+CREATE TABLE drop_idx_on_t (a int, b int primary key);
+CREATE TABLE drop_idx_on_t_c(aa int, bb int references drop_idx_on_t(b));
+\d+ drop_idx_on_t_c
+                              Table "public.drop_idx_on_t_c"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ aa     | integer |           |          |         | plain   |              | 
+ bb     | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "drop_idx_on_t_c_bb_fkey" FOREIGN KEY (bb) REFERENCES drop_idx_on_t(b)
+
+show create table drop_idx_on_t_c;
+      Table      |                                     Create Table                                      
+-----------------+---------------------------------------------------------------------------------------
+ drop_idx_on_t_c | CREATE TABLE "drop_idx_on_t_c" (                                                     +
+                 |     "aa" integer,                                                                    +
+                 |     "bb" integer,                                                                    +
+                 |     CONSTRAINT "drop_idx_on_t_c_bb_fkey" FOREIGN KEY (bb) REFERENCES drop_idx_on_t(b)+
+                 | )
+(1 row)
+
+DROP INDEX drop_idx_on_t_c_bb_fkey ON drop_idx_on_t_c;
+ERROR:  index "drop_idx_on_t_c_bb_fkey" of relation "drop_idx_on_t_c" does not exist
+\d+ drop_idx_on_t_c
+                              Table "public.drop_idx_on_t_c"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ aa     | integer |           |          |         | plain   |              | 
+ bb     | integer |           |          |         | plain   |              | 
+Foreign-key constraints:
+    "drop_idx_on_t_c_bb_fkey" FOREIGN KEY (bb) REFERENCES drop_idx_on_t(b)
+
+drop table drop_idx_on_t_c,drop_idx_on_t;
+-- index did not belong to the table
+-- index did not exist
+CREATE TABLE drop_idx_on_t_1 (a int, b int, index(b));
+CREATE TABLE drop_idx_on_t_2 (a int, b int, index(b));
+\d+ drop_idx_on_t_2
+                              Table "public.drop_idx_on_t_2"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           |          |         | plain   |              | 
+Indexes:
+    "drop_idx_on_t_2_b_idx" btree (b)
+
+DROP INDEX drop_idx_on_t_2_b_idx ON drop_idx_on_t_1;
+ERROR:  index "drop_idx_on_t_2_b_idx" of relation "drop_idx_on_t_1" does not exist
+DROP INDEX abcdef ON drop_idx_on_t_1;
+ERROR:  index "abcdef" of relation "drop_idx_on_t_1" does not exist
+DROP TABLE drop_idx_on_t_1,drop_idx_on_t_2;
+-- drop primary key by `PRIMARY`
+CREATE TABLE drop_idx_on_t (a int, b int, primary key(b));
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+Indexes:
+    "drop_idx_on_t_pkey" PRIMARY KEY, btree (b)
+
+show create table drop_idx_on_t;
+     Table     |                    Create Table                     
+---------------+-----------------------------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (                     +
+               |     "a" integer,                                   +
+               |     "b" integer NOT NULL,                          +
+               |     CONSTRAINT "drop_idx_on_t_pkey" PRIMARY KEY (b)+
+               | )
+(1 row)
+
+DROP INDEX `PRIMARY` ON drop_idx_on_t;
+\d+ drop_idx_on_t
+                               Table "public.drop_idx_on_t"
+ Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
+--------+---------+-----------+----------+---------+---------+--------------+-------------
+ a      | integer |           |          |         | plain   |              | 
+ b      | integer |           | not null |         | plain   |              | 
+
+show create table drop_idx_on_t;
+     Table     |          Create Table          
+---------------+--------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (+
+               |     "a" integer,              +
+               |     "b" integer NOT NULL      +
+               | )
+(1 row)
+
+drop table drop_idx_on_t;
+----------- partition table
+------ test case add/drop pk
+create table t_par(a int, id int primary key, name varchar(20)) partition by range(id);
+create table t_par_1 partition of t_par for values from(0) to (100);
+create table t_par_2 partition of t_par for values from(100) to (200);
+create table t_par_3 partition of t_par for values from(200) to (MAXVALUE);
+insert into t_par(a,id) values(10,101);
+select * from t_par;
+ a  | id  | name 
+----+-----+------
+ 10 | 101 | 
+(1 row)
+
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_pkey" PRIMARY KEY, btree (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_pkey" PRIMARY KEY, btree (id)
+
+drop index t_par_pkey on t_par;
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           | not null |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+drop table t_par;
+------ test case add/drop uk
+create table t_par(a int, id int unique key, name varchar(20)) partition by range(id);
+create table t_par_1 partition of t_par for values from(0) to (100);
+create table t_par_2 partition of t_par for values from(100) to (200);
+create table t_par_3 partition of t_par for values from(200) to (MAXVALUE);
+insert into t_par(a,id) values(10,101);
+select * from t_par;
+ a  | id  | name 
+----+-----+------
+ 10 | 101 | 
+(1 row)
+
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_id_key" UNIQUE CONSTRAINT, btree (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_id_key" UNIQUE CONSTRAINT, btree (id)
+
+drop index t_par_id_key on t_par ;
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+drop table t_par;
+-- drop index on table
+create table t_par(a int, id int, name varchar(20), index(id)) partition by range(id);
+create table t_par_1 partition of t_par for values from(0) to (100);
+create table t_par_2 partition of t_par for values from(100) to (200);
+create table t_par_3 partition of t_par for values from(200) to (MAXVALUE);
+insert into t_par(a,id) values(10,101);
+select * from t_par;
+ a  | id  | name 
+----+-----+------
+ 10 | 101 | 
+(1 row)
+
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Indexes:
+    "t_par_id_idx" btree (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+Indexes:
+    "t_par_1_id_idx" btree (id)
+
+drop index t_par_id_idx on t_par;
+\d+ t_par;
+                                    Partitioned table "public.t_par"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition key: RANGE (id)
+Partitions: t_par_1 FOR VALUES FROM (0) TO (100),
+            t_par_2 FOR VALUES FROM (100) TO (200),
+            t_par_3 FOR VALUES FROM (200) TO (MAXVALUE)
+
+\d+ t_par_1;
+                                         Table "public.t_par_1"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ id     | integer               |           |          |         | plain    |              | 
+ name   | character varying(20) |           |          |         | extended |              | 
+Partition of: t_par FOR VALUES FROM (0) TO (100)
+Partition constraint: ((id IS NOT NULL) AND (id >= 0) AND (id < 100))
+
+drop table t_par;
+------------------ PK/UK ASC|DESC on create table
+-- PK: int ASC
+create table t_create_pk(a int, b int, c varchar(20), primary key(b ASC));
+\d+ t_create_pk;
+                                       Table "public.t_create_pk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           | not null |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "t_create_pk_pkey" PRIMARY KEY, btree (b)
+
+\d+ t_create_pk_pkey;
+                Index "public.t_create_pk_pkey"
+ Column |  Type   | Key? | Definition | Storage | Stats target 
+--------+---------+------+------------+---------+--------------
+ b      | integer | yes  | b          | plain   | 
+primary key, btree, for table "public.t_create_pk"
+
+show index from t_create_pk;
+    Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_pk |          0 | t_create_pk_pkey |            1 | b           | A         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table t_create_pk;
+-- PK: int DESC
+create table t_create_pk(a int, b int, c varchar(20), primary key(a DESC));
+\d+ t_create_pk;
+                                       Table "public.t_create_pk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "t_create_pk_pkey" PRIMARY KEY, btree (a DESC)
+
+\d+ t_create_pk_pkey;
+                Index "public.t_create_pk_pkey"
+ Column |  Type   | Key? | Definition | Storage | Stats target 
+--------+---------+------+------------+---------+--------------
+ a      | integer | yes  | a          | plain   | 
+primary key, btree, for table "public.t_create_pk"
+
+show index from t_create_pk;
+    Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_pk |          0 | t_create_pk_pkey |            1 | a           | D         |           0 |          |        | NO   | btree      |         | 
+(1 row)
+
+drop table t_create_pk;
+-- PK: int DESC, varchar DESC
+create table t_create_pk(a int, b int, c varchar(20),  primary key(a DESC, c DESC));
+\d+ t_create_pk;
+                                       Table "public.t_create_pk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           | not null |         | extended |              | 
+Indexes:
+    "t_create_pk_pkey" PRIMARY KEY, btree (a DESC, c DESC)
+
+\d+ t_create_pk_pkey;
+                       Index "public.t_create_pk_pkey"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ a      | integer               | yes  | a          | plain    | 
+ c      | character varying(20) | yes  | c          | extended | 
+primary key, btree, for table "public.t_create_pk"
+
+show index from t_create_pk;
+    Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_pk |          0 | t_create_pk_pkey |            1 | a           | D         |           0 |          |        | NO   | btree      |         | 
+ t_create_pk |          0 | t_create_pk_pkey |            2 | c           | D         |           0 |          |        | NO   | btree      |         | 
+(2 rows)
+
+drop table t_create_pk;
+-- PK: int DESC, varchar ASC
+create table t_create_pk(a int, b int, c varchar(20),  primary key(a DESC, c ASC));
+\d+ t_create_pk;
+                                       Table "public.t_create_pk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           | not null |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           | not null |         | extended |              | 
+Indexes:
+    "t_create_pk_pkey" PRIMARY KEY, btree (a DESC, c)
+
+\d+ t_create_pk_pkey;
+                       Index "public.t_create_pk_pkey"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ a      | integer               | yes  | a          | plain    | 
+ c      | character varying(20) | yes  | c          | extended | 
+primary key, btree, for table "public.t_create_pk"
+
+show index from t_create_pk;
+    Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_pk |          0 | t_create_pk_pkey |            1 | a           | D         |           0 |          |        | NO   | btree      |         | 
+ t_create_pk |          0 | t_create_pk_pkey |            2 | c           | A         |           0 |          |        | NO   | btree      |         | 
+(2 rows)
+
+drop table t_create_pk;
+-- UK: int ASC
+create table t_create_uk(a int, b int, c varchar(20), UNIQUE key(b ASC));
+\d+ t_create_uk;
+                                       Table "public.t_create_uk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "t_create_uk_b_key" UNIQUE CONSTRAINT, btree (b)
+
+\d+ t_create_uk_b_key;
+               Index "public.t_create_uk_b_key"
+ Column |  Type   | Key? | Definition | Storage | Stats target 
+--------+---------+------+------------+---------+--------------
+ b      | integer | yes  | b          | plain   | 
+unique, btree, for table "public.t_create_uk"
+
+show index from t_create_uk;
+    Table    | Non_unique |     Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+-------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_uk |          0 | t_create_uk_b_key |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table t_create_uk;
+-- UK: int DESC
+create table t_create_uk(a int, b int, c varchar(20), UNIQUE(a DESC));
+\d+ t_create_uk;
+                                       Table "public.t_create_uk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "t_create_uk_a_key" UNIQUE CONSTRAINT, btree (a DESC)
+
+\d+ t_create_uk_a_key;
+               Index "public.t_create_uk_a_key"
+ Column |  Type   | Key? | Definition | Storage | Stats target 
+--------+---------+------+------------+---------+--------------
+ a      | integer | yes  | a          | plain   | 
+unique, btree, for table "public.t_create_uk"
+
+show index from t_create_uk;
+    Table    | Non_unique |     Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+-------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_uk |          0 | t_create_uk_a_key |            1 | a           | D         |           0 |          |        | YES  | btree      |         | 
+(1 row)
+
+drop table t_create_uk;
+-- UK: int DESC, varchar DESC
+create table t_create_uk(a int, b int, c varchar(20),  UNIQUE INDEX(a DESC, c DESC));
+\d+ t_create_uk;
+                                       Table "public.t_create_uk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "t_create_uk_a_c_key" UNIQUE CONSTRAINT, btree (a DESC, c DESC)
+
+\d+ t_create_uk_a_c_key;
+                      Index "public.t_create_uk_a_c_key"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ a      | integer               | yes  | a          | plain    | 
+ c      | character varying(20) | yes  | c          | extended | 
+unique, btree, for table "public.t_create_uk"
+
+show index from t_create_uk;
+    Table    | Non_unique |      Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_uk |          0 | t_create_uk_a_c_key |            1 | a           | D         |           0 |          |        | YES  | btree      |         | 
+ t_create_uk |          0 | t_create_uk_a_c_key |            2 | c           | D         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table t_create_uk;
+-- UK: int DESC, varchar ASC
+create table t_create_uk(a int, b int, c varchar(20),  UNIQUE(a DESC, c ASC));
+\d+ t_create_uk;
+                                       Table "public.t_create_uk"
+ Column |         Type          | Collation | Nullable | Default | Storage  | Stats target | Description 
+--------+-----------------------+-----------+----------+---------+----------+--------------+-------------
+ a      | integer               |           |          |         | plain    |              | 
+ b      | integer               |           |          |         | plain    |              | 
+ c      | character varying(20) |           |          |         | extended |              | 
+Indexes:
+    "t_create_uk_a_c_key" UNIQUE CONSTRAINT, btree (a DESC, c)
+
+\d+ t_create_uk_a_c_key;
+                      Index "public.t_create_uk_a_c_key"
+ Column |         Type          | Key? | Definition | Storage  | Stats target 
+--------+-----------------------+------+------------+----------+--------------
+ a      | integer               | yes  | a          | plain    | 
+ c      | character varying(20) | yes  | c          | extended | 
+unique, btree, for table "public.t_create_uk"
+
+show index from t_create_uk;
+    Table    | Non_unique |      Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+---------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ t_create_uk |          0 | t_create_uk_a_c_key |            1 | a           | D         |           0 |          |        | YES  | btree      |         | 
+ t_create_uk |          0 | t_create_uk_a_c_key |            2 | c           | A         |           0 |          |        | YES  | btree      |         | 
+(2 rows)
+
+drop table t_create_uk;
+-- did not support expr
+create table t_create_uk(a int, b int, c varchar(20),  unique key(a+10));
+ERROR:  syntax error at or near "+"
+LINE 1: ...t_create_uk(a int, b int, c varchar(20),  unique key(a+10));
+                                                                 ^
+create table t_create_uk(a int, b int, c varchar(20),  unique key((a+10)));
+ERROR:  expressions are not supported in unique constraints
+LINE 1: ...e table t_create_uk(a int, b int, c varchar(20),  unique key...
+                                                             ^
+------------------ test case: not accpet sch.idx
+create table sch_idx(a int, b int, index idx_b(b));
+show create table sch_idx;
+  Table  |               Create Table                
+---------+-------------------------------------------
+ sch_idx | CREATE TABLE "sch_idx" (                 +
+         |     "a" integer,                         +
+         |     "b" integer,                         +
+         |     KEY "sch_idx_b_idx" ("b") USING BTREE+
+         | )
+(1 row)
+
+drop index public.sch_idx_b_key on sch_idx;
+ERROR:  DROP INDEX ... ON table does not support qualified index names
+HINT:  Use an unqualified index name for the table.
+show create table sch_idx;
+  Table  |               Create Table                
+---------+-------------------------------------------
+ sch_idx | CREATE TABLE "sch_idx" (                 +
+         |     "a" integer,                         +
+         |     "b" integer,                         +
+         |     KEY "sch_idx_b_idx" ("b") USING BTREE+
+         | )
+(1 row)
+
+drop table sch_idx;
