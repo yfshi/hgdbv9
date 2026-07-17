@@ -304,27 +304,27 @@ show schemas like 'c%';
 create table tb(id int);
 create table test(id int, name text, addr text);
 show full columns from tb;
- Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
--------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
- id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ Field | Type | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | int  |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (1 row)
 
 show full fields in tb;
- Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
--------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
- id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ Field | Type | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | int  |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (1 row)
 
 show full columns from tb from public;
- Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
--------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
- id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ Field | Type | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | int  |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (1 row)
 
 show full columns from tb in public;
- Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
--------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
- id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ Field | Type | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | int  |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (1 row)
 
 show full columns from tb where Field = 'name';
@@ -362,17 +362,17 @@ drop table test;
 --desc table
 create table test(id int, name text, addr text);
 desc test;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
- name  | text    | YES  |     |         | 
- addr  | text    | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
+ name  | text | YES  |     |         | 
+ addr  | text | YES  |     |         | 
 (3 rows)
 
 desc test id;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
 (1 row)
 
 desc test 'na%';
@@ -382,17 +382,17 @@ desc test 'na%';
 (1 row)
 
 describe test;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
- name  | text    | YES  |     |         | 
- addr  | text    | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
+ name  | text | YES  |     |         | 
+ addr  | text | YES  |     |         | 
 (3 rows)
 
 describe test id;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
 (1 row)
 
 describe test 'na%';
@@ -403,17 +403,17 @@ describe test 'na%';
 
 create view vtest as select * from test;
 desc vtest;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
- name  | text    | YES  |     |         | 
- addr  | text    | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
+ name  | text | YES  |     |         | 
+ addr  | text | YES  |     |         | 
 (3 rows)
 
 desc vtest id;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
 (1 row)
 
 desc vtest 'na%';
@@ -1013,9 +1013,9 @@ SHOW COLUMNS FROM test_table LIKE '123aaabbb';
 (0 rows)
 
 SHOW COLUMNS FROM test_table LIKE 'name';
- Field |          Type          | Null | Key | Default | Extra 
--------+------------------------+------+-----+---------+-------
- name  | character varying(100) | NO   |     |         | 
+ Field |     Type     | Null | Key | Default | Extra 
+-------+--------------+------+-----+---------+-------
+ name  | varchar(100) | NO   |     |         | 
 (1 row)
 
 drop table test_table;
@@ -1030,27 +1030,27 @@ CREATE TEMPORARY TABLE temp_table (
 	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 SHOW COLUMNS FROM temp_table;
-    Field    |          Type          | Null | Key |                Default                 | Extra 
--------------+------------------------+------+-----+----------------------------------------+-------
- id          | integer                | NO   | PRI | nextval('temp_table_id_seq'::regclass) | 
- name        | character varying(100) | NO   |     |                                        | 
- email       | character varying(150) | YES  | UNI |                                        | 
- department  | character varying(50)  | YES  |     |                                        | 
- salary      | numeric(10,2)          | YES  |     |                                        | 
- hire_date   | date                   | YES  |     |                                        | 
- create_time | timestamp              | YES  |     | "current_timestamp"()                  | 
+    Field    |     Type      | Null | Key |                Default                 | Extra 
+-------------+---------------+------+-----+----------------------------------------+-------
+ id          | int           | NO   | PRI | nextval('temp_table_id_seq'::regclass) | 
+ name        | varchar(100)  | NO   |     |                                        | 
+ email       | varchar(150)  | YES  | UNI |                                        | 
+ department  | varchar(50)   | YES  |     |                                        | 
+ salary      | decimal(10,2) | YES  |     |                                        | 
+ hire_date   | date          | YES  |     |                                        | 
+ create_time | timestamp     | YES  |     | "current_timestamp"()                  | 
 (7 rows)
 
 SHOW COLUMNS FROM temp_table FROM pg_temp_4;
-    Field    |          Type          | Null | Key |                Default                 | Extra 
--------------+------------------------+------+-----+----------------------------------------+-------
- id          | integer                | NO   | PRI | nextval('temp_table_id_seq'::regclass) | 
- name        | character varying(100) | NO   |     |                                        | 
- email       | character varying(150) | YES  | UNI |                                        | 
- department  | character varying(50)  | YES  |     |                                        | 
- salary      | numeric(10,2)          | YES  |     |                                        | 
- hire_date   | date                   | YES  |     |                                        | 
- create_time | timestamp              | YES  |     | "current_timestamp"()                  | 
+    Field    |     Type      | Null | Key |                Default                 | Extra 
+-------------+---------------+------+-----+----------------------------------------+-------
+ id          | int           | NO   | PRI | nextval('temp_table_id_seq'::regclass) | 
+ name        | varchar(100)  | NO   |     |                                        | 
+ email       | varchar(150)  | YES  | UNI |                                        | 
+ department  | varchar(50)   | YES  |     |                                        | 
+ salary      | decimal(10,2) | YES  |     |                                        | 
+ hire_date   | date          | YES  |     |                                        | 
+ create_time | timestamp     | YES  |     | "current_timestamp"()                  | 
 (7 rows)
 
 drop table temp_table;
@@ -1067,11 +1067,11 @@ CREATE TABLE IF NOT EXISTS test_table (
 COMMENT ON COLUMN test_table.name IS 'user name';
 CREATE VIEW test_view AS SELECT id, name, create_time FROM test_table;
 SHOW FULL COLUMNS FROM test_view;
-    Field    |          Type          | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
--------------+------------------------+-----------+------+-----+---------+-------+---------------------------------+---------
- id          | integer                |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
- name        | character varying(100) | "default" | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
- create_time | timestamp              |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+    Field    |     Type     | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------------+--------------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id          | int          |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name        | varchar(100) | "default" | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ create_time | timestamp    |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (3 rows)
 
 drop view test_view;
@@ -1087,27 +1087,27 @@ CREATE TABLE IF NOT EXISTS test_table (
 	create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 SHOW COLUMNS FROM test_table;
-    Field    |          Type          | Null | Key |                Default                 | Extra 
--------------+------------------------+------+-----+----------------------------------------+-------
- id          | integer                | NO   | PRI | nextval('test_table_id_seq'::regclass) | 
- name        | character varying(100) | NO   |     |                                        | 
- email       | character varying(150) | YES  | UNI |                                        | 
- department  | character varying(50)  | YES  |     |                                        | 
- salary      | numeric(10,2)          | YES  |     |                                        | 
- hire_date   | date                   | YES  |     |                                        | 
- create_time | timestamp              | YES  |     | "current_timestamp"()                  | 
+    Field    |     Type      | Null | Key |                Default                 | Extra 
+-------------+---------------+------+-----+----------------------------------------+-------
+ id          | int           | NO   | PRI | nextval('test_table_id_seq'::regclass) | 
+ name        | varchar(100)  | NO   |     |                                        | 
+ email       | varchar(150)  | YES  | UNI |                                        | 
+ department  | varchar(50)   | YES  |     |                                        | 
+ salary      | decimal(10,2) | YES  |     |                                        | 
+ hire_date   | date          | YES  |     |                                        | 
+ create_time | timestamp     | YES  |     | "current_timestamp"()                  | 
 (7 rows)
 
 SHOW FULL COLUMNS FROM test_table;
-    Field    |          Type          | Collation | Null | Key |                Default                 | Extra |           Privileges            | Comment 
--------------+------------------------+-----------+------+-----+----------------------------------------+-------+---------------------------------+---------
- id          | integer                |           | NO   | PRI | nextval('test_table_id_seq'::regclass) |       | INSERT,REFERENCES,SELECT,UPDATE | 
- name        | character varying(100) | "default" | NO   |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- email       | character varying(150) | "default" | YES  | UNI |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- department  | character varying(50)  | "default" | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- salary      | numeric(10,2)          |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- hire_date   | date                   |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
- create_time | timestamp              |           | YES  |     | "current_timestamp"()                  |       | INSERT,REFERENCES,SELECT,UPDATE | 
+    Field    |     Type      | Collation | Null | Key |                Default                 | Extra |           Privileges            | Comment 
+-------------+---------------+-----------+------+-----+----------------------------------------+-------+---------------------------------+---------
+ id          | int           |           | NO   | PRI | nextval('test_table_id_seq'::regclass) |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name        | varchar(100)  | "default" | NO   |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ email       | varchar(150)  | "default" | YES  | UNI |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ department  | varchar(50)   | "default" | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ salary      | decimal(10,2) |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ hire_date   | date          |           | YES  |     |                                        |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ create_time | timestamp     |           | YES  |     | "current_timestamp"()                  |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (7 rows)
 
 drop table test_table;
@@ -1984,17 +1984,17 @@ id1 INT NOT NULL PRIMARY KEY AUTO_INCREMENT,
 name VARCHAR(50)
 );
 SHOW COLUMNS FROM test_show;
- Field |         Type          | Null | Key |                    Default                     |     Extra      
--------+-----------------------+------+-----+------------------------------------------------+----------------
- id1   | integer               | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment
- name  | character varying(50) | YES  |     |                                                | 
+ Field |    Type     | Null | Key |                    Default                     |     Extra      
+-------+-------------+------+-----+------------------------------------------------+----------------
+ id1   | int         | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment
+ name  | varchar(50) | YES  |     |                                                | 
 (2 rows)
 
 SHOW full COLUMNS FROM test_show;
- Field |         Type          | Collation | Null | Key |                    Default                     |     Extra      |           Privileges            | Comment 
--------+-----------------------+-----------+------+-----+------------------------------------------------+----------------+---------------------------------+---------
- id1   | integer               |           | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment | INSERT,REFERENCES,SELECT,UPDATE | 
- name  | character varying(50) | "default" | YES  |     |                                                |                | INSERT,REFERENCES,SELECT,UPDATE | 
+ Field |    Type     | Collation | Null | Key |                    Default                     |     Extra      |           Privileges            | Comment 
+-------+-------------+-----------+------+-----+------------------------------------------------+----------------+---------------------------------+---------
+ id1   | int         |           | NO   | PRI | autoinc_nextval('test_show_id1_seq'::regclass) | auto_increment | INSERT,REFERENCES,SELECT,UPDATE | 
+ name  | varchar(50) | "default" | YES  |     |                                                |                | INSERT,REFERENCES,SELECT,UPDATE | 
 (2 rows)
 
 SHOW CREATE TABLE test_show;
@@ -2192,17 +2192,17 @@ show full tables where Tables_in_public = 'tb';
 
 -- show columns / show full columns
 show columns from tb;
- Field |  Type   | Null | Key | Default | Extra 
--------+---------+------+-----+---------+-------
- id    | integer | YES  |     |         | 
- name  | text    | YES  |     |         | 
+ Field | Type | Null | Key | Default | Extra 
+-------+------+------+-----+---------+-------
+ id    | int  | YES  |     |         | 
+ name  | text | YES  |     |         | 
 (2 rows)
 
 show full columns from tb;
- Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
--------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
- id    | integer |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
- name  | text    | "default" | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ Field | Type | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+------+-----------+------+-----+---------+-------+---------------------------------+---------
+ id    | int  |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+ name  | text | "default" | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
 (2 rows)
 
 drop table tb;

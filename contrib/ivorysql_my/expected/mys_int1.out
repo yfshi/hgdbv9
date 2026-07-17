@@ -407,7 +407,7 @@ create table tb2 as select convert(a, decimal(20,8)) from tb1;
 desc tb2;
  Field |     Type      | Null | Key | Default | Extra 
 -------+---------------+------+-----+---------+-------
- a     | numeric(20,8) | YES  |     |         | 
+ a     | decimal(20,8) | YES  |     |         | 
 (1 row)
 
 select * from tb2;

@@ -54,6 +54,18 @@ WITH FUNCTION ivymy.bool_int8(bool)
 AS ASSIGNMENT;
 /* End - bug#6529 */
 
+-- CREATE OR REPLACE FUNCTION ivymy.bool_int4(bool)
+-- RETURNS int4
+-- AS $$
+-- SELECT $1::int::int4;
+-- $$
+-- LANGUAGE SQL
+-- IMMUTABLE STRICT;
+
+-- CREATE CAST(bool as int4)
+-- WITH FUNCTION ivymy.bool_int4(bool)
+-- AS ASSIGNMENT;
+
 /* Begin - bug#6528 */
 CREATE OR REPLACE FUNCTION ivymy.bool_numeric(bool)
 RETURNS numeric

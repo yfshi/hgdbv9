@@ -2468,9 +2468,9 @@ SELECT a,a/3,a /2023-01-01,a/'3.14' FROM db_test ORDER BY a;
 drop table db_test;
 create table t as select rand();
 describe t;
- Field |       Type       | Null | Key | Default | Extra 
--------+------------------+------+-----+---------+-------
- rand  | double precision | YES  |     |         | 
+ Field |  Type  | Null | Key | Default | Extra 
+-------+--------+------+-----+---------+-------
+ rand  | double | YES  |     |         | 
 (1 row)
 
 drop table t;

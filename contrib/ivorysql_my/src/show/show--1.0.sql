@@ -8,6 +8,36 @@
  */
 
 --
+-- Function: mys_information_schema.mys_format_type (internal)
+-- Maps a PostgreSQL type OID to a MySQL-compatible DATA_TYPE string.
+--
+CREATE OR REPLACE FUNCTION mys_information_schema.mys_format_type(type_oid oid, typmod int4 DEFAULT -1)
+RETURNS varchar(64)
+LANGUAGE sql 
+STABLE 
+PARALLEL SAFE
+RETURNS NULL ON NULL INPUT
+AS $$
+	SELECT CASE
+		WHEN t.typname = 'mysbit'  THEN 'bit'
+		WHEN t.typname = 'bpchar'  THEN CONCAT('char', CASE WHEN typmod >= 0
+			THEN CONCAT('(', information_schema._pg_char_max_length(type_oid, typmod)::text, ')') ELSE '' END)
+		WHEN t.typname = 'float8'  THEN 'double'
+		WHEN t.typname = 'float4'  THEN 'float'
+		WHEN t.typname = 'int4'    THEN 'int'
+		WHEN t.typname = 'numeric' THEN CONCAT('decimal', CASE WHEN typmod >= 0
+			THEN CONCAT('(', information_schema._pg_numeric_precision(type_oid, typmod)::text,
+				',', information_schema._pg_numeric_scale(type_oid, typmod)::text, ')') ELSE '' END)
+		WHEN t.typname = 'varchar' THEN CONCAT('varchar', CASE WHEN typmod >= 0
+			THEN CONCAT('(', information_schema._pg_char_max_length(type_oid, typmod)::text, ')') ELSE '' END)
+		WHEN t.typname = 'year'    THEN 'year'
+		WHEN t.typtype = 'e'       THEN 'enum'
+		ELSE format_type(type_oid, typmod)
+	END
+	FROM pg_type t WHERE t.oid = type_oid
+$$;
+
+--
 --show charset
 --
 CREATE TYPE mys_show_charset_results AS ("Charset" VARCHAR,
@@ -211,7 +241,7 @@ SELECT
 	END::varchar(32) AS "COLLATION_NAME",
 
 	-- COLUMN_TYPE: complete type definition
-	format_type(a.atttypid, a.atttypmod)::longtext AS "COLUMN_TYPE",
+	mys_information_schema.mys_format_type(a.atttypid, a.atttypmod)::longtext AS "COLUMN_TYPE",
 
 	-- COLUMN_KEY: PRI, UNI, MUL
 	CASE
