@@ -385,7 +385,7 @@ char *pq_get_cert(const char *file, char *opt_salt, size_t *cert_len)
 	while (*cert_len  < 2048 && n > 0)
 	{
 		*cert_len += n;
-		n = fread(buffer + *cert_len, 1, 2048, srcFile);
+		n = fread(buffer + *cert_len, 1, 2048 - *cert_len, srcFile);
 	}
 
 	fclose(srcFile);
