@@ -2,9 +2,9 @@
 set mysql.at_or_atat = on;
 set @vara = 4;
 select @vara;
- ?column? 
-----------
-        4
+ @vara 
+-------
+     4
 (1 row)
 
 select @vara := @vara + 2;
@@ -21,9 +21,9 @@ select @vara + 2.2;
 
 set @vara = 4.5;
 select @vara;
- ?column? 
-----------
-      4.5
+ @vara 
+-------
+   4.5
 (1 row)
 
 select @vara := @vara + 2;
@@ -53,9 +53,9 @@ select @vara := @vara + length('aaa') / length('aaa');
 
 set @vara = 4, @vara = 5;
 select @vara;
- ?column? 
-----------
-        5
+ @vara 
+-------
+     5
 (1 row)
 
 select @vara := @vara + 2;
@@ -72,28 +72,28 @@ select @vara + 2.2;
 
 create table settb as select @vara;
 \d settb
-                Table "public.settb"
-  Column  |  Type  | Collation | Nullable | Default 
-----------+--------+-----------+----------+---------
- ?column? | bigint |           |          | 
+               Table "public.settb"
+ Column |  Type  | Collation | Nullable | Default 
+--------+--------+-----------+----------+---------
+ @vara  | bigint |           |          | 
 
 insert into settb values(1),(2),(3);
 select * from settb;
- ?column? 
-----------
-        7
-        1
-        2
-        3
+ @vara 
+-------
+     7
+     1
+     2
+     3
 (4 rows)
 
 drop table settb;
 --@vara is a integer，and use this varibale to paricipate in the calculation
 set @vara := 4;
 select @vara;
- ?column? 
-----------
-        4
+ @vara 
+-------
+     4
 (1 row)
 
 select @vara + 1;
@@ -170,28 +170,28 @@ select (@vara - 4) / 3;
 
 create table settb as select @vara;
 \d settb
-                Table "public.settb"
-  Column  |  Type   | Collation | Nullable | Default 
-----------+---------+-----------+----------+---------
- ?column? | integer |           |          | 
+               Table "public.settb"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ @vara  | integer |           |          | 
 
 insert into settb values(1),(2),(3);
 select * from settb;
- ?column? 
-----------
-        4
-        1
-        2
-        3
+ @vara 
+-------
+     4
+     1
+     2
+     3
 (4 rows)
 
 drop table settb;
 --@vara is a float，and use this varibale to paricipate in the calculation
 set @vara := 4.5;
 select @vara;
- ?column? 
-----------
-      4.5
+ @vara 
+-------
+   4.5
 (1 row)
 
 select @vara + 1;
@@ -269,9 +269,9 @@ select (@vara - 4) / 3;
 --@vara is a float，and use this varibale to paricipate in the calculation
 set @vara := 5.5;
 select @vara;
- ?column? 
-----------
-      5.5
+ @vara 
+-------
+   5.5
 (1 row)
 
 select @vara + 1.6;
@@ -348,28 +348,28 @@ select (@vara - 4.6) / 3.3;
 
 create table settb as select @vara;
 \d settb
-                Table "public.settb"
-  Column  |  Type   | Collation | Nullable | Default 
-----------+---------+-----------+----------+---------
- ?column? | numeric |           |          | 
+               Table "public.settb"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ @vara  | numeric |           |          | 
 
 insert into settb values(1.1),(2.2),(3.3);
 select * from settb;
- ?column? 
-----------
-      5.5
-      1.1
-      2.2
-      3.3
+ @vara 
+-------
+   5.5
+   1.1
+   2.2
+   3.3
 (4 rows)
 
 drop table settb;
 --If the same user define variable is assigned twice, the last assignment will take precedence
 set @varab := 4, @varab := 5;
 select @varab;
- ?column? 
-----------
-        5
+ @varab 
+--------
+      5
 (1 row)
 
 select @varab + 1;
@@ -446,28 +446,28 @@ select (@varab - 6) / 3;
 
 create table settb as select @vara;
 \d settb
-                Table "public.settb"
-  Column  |  Type   | Collation | Nullable | Default 
-----------+---------+-----------+----------+---------
- ?column? | numeric |           |          | 
+               Table "public.settb"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ @vara  | numeric |           |          | 
 
 insert into settb values(1.1),(2.2),(3.3);
 select * from settb;
- ?column? 
-----------
-      5.5
-      1.1
-      2.2
-      3.3
+ @vara 
+-------
+   5.5
+   1.1
+   2.2
+   3.3
 (4 rows)
 
 drop table settb;
 --If the same user define variable is assigned twice, the last assignment will take precedence
 set @varab := 4.6, @varab := 5.4;
 select @varab;
- ?column? 
-----------
-      5.4
+ @varab 
+--------
+    5.4
 (1 row)
 
 select @varab + 1;
@@ -544,28 +544,28 @@ select (@varab - 6) / 3;
 
 create table settb as select @vara;
 \d settb
-                Table "public.settb"
-  Column  |  Type   | Collation | Nullable | Default 
-----------+---------+-----------+----------+---------
- ?column? | numeric |           |          | 
+               Table "public.settb"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ @vara  | numeric |           |          | 
 
 insert into settb values(1.2),(2.3),(3.4);
 select * from settb;
- ?column? 
-----------
-      5.5
-      1.2
-      2.3
-      3.4
+ @vara 
+-------
+   5.5
+   1.2
+   2.3
+   3.4
 (4 rows)
 
 drop table settb;
 --If the same user define variable is assigned twice, the last assignment will take precedence
 set @varab := 5.4, @varab := 4.6;
 select @varab;
- ?column? 
-----------
-      4.6
+ @varab 
+--------
+    4.6
 (1 row)
 
 select @varab + 1.5;
@@ -730,9 +730,9 @@ select @vard := @vard + 1 as rownum, * from test;
 (4 rows)
 
 select @vara;
- ?column? 
-----------
-      5.5
+ @vara 
+-------
+   5.5
 (1 row)
 
 select @vard := @vard + 1 as rownum, @vara := @vara - 1, e.* from (select @vara := 1, @vard := 0)r ,test e where @vard < 5 order by @vard;
@@ -754,30 +754,30 @@ select @vard := @vard + 1 as rownum, @vara := @vara - 1, e.* from (select @vara 
 (4 rows)
 
 select @vard;
- ?column? 
-----------
-        4
+ @vard 
+-------
+     4
 (1 row)
 
 select @vara;
- ?column? 
-----------
-       -3
+ @vara 
+-------
+    -3
 (1 row)
 
 select @vard, @vard := @vard + 1 as rownum, @vard, e.* from (select @vara := 1, @vard := 0)r ,test e;
- ?column? | rownum | ?column? | id | flg 
-----------+--------+----------+----+-----
-        0 |      1 |        1 |  1 | a
-        1 |      2 |        2 |  2 | b
-        2 |      3 |        3 |  3 | c
-        3 |      4 |        4 |  4 | d
+ @vard | rownum | @vard | id | flg 
+-------+--------+-------+----+-----
+     0 |      1 |     1 |  1 | a
+     1 |      2 |     2 |  2 | b
+     2 |      3 |     3 |  3 | c
+     3 |      4 |     4 |  4 | d
 (4 rows)
 
 select @vara;
- ?column? 
-----------
-        1
+ @vara 
+-------
+     1
 (1 row)
 
 select @vard := @vard - 1 as rownum, @vara := @vara - 2 from test e;
@@ -819,30 +819,30 @@ select int4out(rownum1::int), * from (select @vard := @vard + 1 as rownum1, @var
 (4 rows)
 
 select @vard, @vard := @vard + 2, @vard, rownum1 from (select @vard, @vard := @vard + 1 as rownum1, @vard, @vara := @vara - 1, e.* from (select @vara := 1, @vard := 0)r ,test e) f;
- ?column? | ?column? | ?column? | rownum1 
-----------+----------+----------+---------
-        1 |        3 |        3 |       1
-        4 |        6 |        6 |       4
-        7 |        9 |        9 |       7
-       10 |       12 |       12 |      10
+ @vard | ?column? | @vard | rownum1 
+-------+----------+-------+---------
+     1 |        3 |     3 |       1
+     4 |        6 |     6 |       4
+     7 |        9 |     9 |       7
+    10 |       12 |    12 |      10
 (4 rows)
 
 select @vard, @vard := @vard + 2, @vard, * from (select @vard, @vard := @vard + 1 as rownum, @vard, @vara := @vara - 1, e.* from (select @vara := 1, @vard := 0)r ,test e) f;
- ?column? | ?column? | ?column? | ?column? | rownum | ?column? | ?column? | id | flg 
-----------+----------+----------+----------+--------+----------+----------+----+-----
-        1 |        3 |        3 |        0 |      1 |        1 |        0 |  1 | a
-        4 |        6 |        6 |        3 |      4 |        4 |       -1 |  2 | b
-        7 |        9 |        9 |        6 |      7 |        7 |       -2 |  3 | c
-       10 |       12 |       12 |        9 |     10 |       10 |       -3 |  4 | d
+ @vard | ?column? | @vard | @vard | rownum | @vard | ?column? | id | flg 
+-------+----------+-------+-------+--------+-------+----------+----+-----
+     1 |        3 |     3 |     0 |      1 |     1 |        0 |  1 | a
+     4 |        6 |     6 |     3 |      4 |     4 |       -1 |  2 | b
+     7 |        9 |     9 |     6 |      7 |     7 |       -2 |  3 | c
+    10 |       12 |    12 |     9 |     10 |    10 |       -3 |  4 | d
 (4 rows)
 
 select @vard, @vard := @vard + 2, @vard, * from (select @vard, @vard := @vard + 1 as rownum, @vard, @vara := @vara - 1, e.* from (select @vara := 1, @vard := 0)r ,test e) f;
- ?column? | ?column? | ?column? | ?column? | rownum | ?column? | ?column? | id | flg 
-----------+----------+----------+----------+--------+----------+----------+----+-----
-        1 |        3 |        3 |        0 |      1 |        1 |        0 |  1 | a
-        4 |        6 |        6 |        3 |      4 |        4 |       -1 |  2 | b
-        7 |        9 |        9 |        6 |      7 |        7 |       -2 |  3 | c
-       10 |       12 |       12 |        9 |     10 |       10 |       -3 |  4 | d
+ @vard | ?column? | @vard | @vard | rownum | @vard | ?column? | id | flg 
+-------+----------+-------+-------+--------+-------+----------+----+-----
+     1 |        3 |     3 |     0 |      1 |     1 |        0 |  1 | a
+     4 |        6 |     6 |     3 |      4 |     4 |       -1 |  2 | b
+     7 |        9 |     9 |     6 |      7 |     7 |       -2 |  3 | c
+    10 |       12 |    12 |     9 |     10 |    10 |       -3 |  4 | d
 (4 rows)
 
 --@vara is a integer，and use this varibale to paricipate in the calculation
@@ -903,24 +903,24 @@ select @vard := @vard + 1.2 as rownum, @vara := @vara - 1.4, e.* from (select @v
 (4 rows)
 
 select @vard, @vard := @vard + 1.3 as rownum, @vard, e.* from (select @vara := 1.6, @vard := 0.3)r ,test e;
- ?column? | rownum | ?column? | id | flg 
-----------+--------+----------+----+-----
-      0.3 |    1.6 |      1.6 |  1 | a
-      1.6 |    2.9 |      2.9 |  2 | b
-      2.9 |    4.2 |      4.2 |  3 | c
-      4.2 |    5.5 |      5.5 |  4 | d
+ @vard | rownum | @vard | id | flg 
+-------+--------+-------+----+-----
+   0.3 |    1.6 |   1.6 |  1 | a
+   1.6 |    2.9 |   2.9 |  2 | b
+   2.9 |    4.2 |   4.2 |  3 | c
+   4.2 |    5.5 |   5.5 |  4 | d
 (4 rows)
 
 select @vard;
- ?column? 
-----------
-      5.5
+ @vard 
+-------
+   5.5
 (1 row)
 
 select @vara;
- ?column? 
-----------
-      1.6
+ @vara 
+-------
+   1.6
 (1 row)
 
 select @vard := @vard - 1.2 as rownum, @vara := @vara - 2.2, e.* from test e;
@@ -971,12 +971,12 @@ select @vard+1*2 from (select @vard:=@vard+1, id from (select @vard:=1)h, test f
 (4 rows)
 
 select @vard from (select @vard:=@vard+1, id from (select @vard:=1, @vard:=1.2)h, test f)g;
- ?column? 
-----------
-      2.2
-      3.2
-      4.2
-      5.2
+ @vard 
+-------
+   2.2
+   3.2
+   4.2
+   5.2
 (4 rows)
 
 select @e := @e + 1 as rownum from (select @e := 2, @e := 3) r;
@@ -987,8 +987,8 @@ select @e := @e + 1 as rownum from (select @e := 2, @e := 3) r;
 
 set @vara := 'aaa';
 select @vara;
- ?column? 
-----------
+ @vara 
+-------
  aaa
 (1 row)
 
@@ -1012,8 +1012,8 @@ select max(rownum1) num from (select (@vard:=@vard+1) as rownum1 from test resul
 (1 row)
 
 select @vara;
- ?column? 
-----------
+ @vara 
+-------
  aaa
 (1 row)
 
@@ -1022,15 +1022,15 @@ drop table test;
 set @var = 'test';
 create table settb as select @var;
 \d settb
-                 Table "public.settb"
-  Column  |   Type   | Collation | Nullable | Default 
-----------+----------+-----------+----------+---------
- ?column? | longtext |           |          | 
+                Table "public.settb"
+ Column |   Type   | Collation | Nullable | Default 
+--------+----------+-----------+----------+---------
+ @var   | longtext |           |          | 
 
 insert into settb values('a'),('ab'),('abc');
 select * from settb;
- ?column? 
-----------
+ @var 
+------
  test
  a
  ab
@@ -1041,15 +1041,15 @@ drop table settb;
 set @var = 'test'::varchar(10);
 create table settb as select @var;
 \d settb
-                       Table "public.settb"
-  Column  |         Type          | Collation | Nullable | Default 
-----------+-----------------------+-----------+----------+---------
- ?column? | character varying(10) |           |          | 
+                      Table "public.settb"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ @var   | character varying(10) |           |          | 
 
 insert into settb values('a'),('ab'),('abc');
 select * from settb;
- ?column? 
-----------
+ @var 
+------
  test
  a
  ab
@@ -1060,7 +1060,7 @@ insert into settb values('abcdefghijk');
 ERROR:  value too long for type character varying(10)
 insert into settb values('abcdefghij');
 select * from settb;
-  ?column?  
+    @var    
 ------------
  test
  a
@@ -1073,46 +1073,46 @@ drop table settb;
 --symbol
 set @'Var' = 'abc';
 select @Var, @'Var', @"var", @`Var`;
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
- abc      | abc      | abc      | abc
+ @var | @var | @var | @var 
+------+------+------+------
+ abc  | abc  | abc  | abc
 (1 row)
 
 select @VAR, @'VAR', @"VAR", @`VAR`;
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
- abc      | abc      | abc      | abc
+ @var | @var | @var | @var 
+------+------+------+------
+ abc  | abc  | abc  | abc
 (1 row)
 
 set @var_a = 1;
 select @VAR_a;
- ?column? 
-----------
-        1
+ @var_a 
+--------
+      1
 (1 row)
 
 set @var_$ = 2;
 select @VAR_$;
- ?column? 
-----------
-        2
+ @var_$ 
+--------
+      2
 (1 row)
 
 select @VAR_$, @'VAR_$', @"VAR_$", @`VAR_$`;
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-        2 |        2 |        2 |        2
+ @var_$ | @var_$ | @var_$ | @var_$ 
+--------+--------+--------+--------
+      2 |      2 |      2 |      2
 (1 row)
 
 select @VaR_$, @'vAR_$', @"VAr_$", @`var_$`;
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-        2 |        2 |        2 |        2
+ @var_$ | @var_$ | @var_$ | @var_$ 
+--------+--------+--------+--------
+      2 |      2 |      2 |      2
 (1 row)
 
 set @var_11 = 9999.111;
 select @var_11,  @`var_11`,  @'var_11',  @"var_11";
- ?column? | ?column? | ?column? | ?column? 
+ @var_11  | @var_11  | @var_11  | @var_11  
 ----------+----------+----------+----------
  9999.111 | 9999.111 | 9999.111 | 9999.111
 (1 row)
@@ -1124,7 +1124,7 @@ insert into taxable_transactions values(2, 22.9);
 set @name = 43;
 set @total_tax = (select sum(tax) from taxable_transactions);
 select @total_tax;
-     ?column?      
+    @total_tax     
 -------------------
  34.89999961853027
 (1 row)
@@ -1133,23 +1133,23 @@ insert into taxable_transactions values(3, 66.5);
 insert into taxable_transactions values(4, 22.12);
 set @total_tax = (select sum(tax) from taxable_transactions);
 select @total_tax;
-      ?column?      
+     @total_tax     
 --------------------
  123.52000045776367
 (1 row)
 
 set @a = @a + 1;
 select @a;
- ?column? 
-----------
+ @a 
+----
  
 (1 row)
 
 set @a = 1;
 select @a;
- ?column? 
-----------
-        1
+ @a 
+----
+  1
 (1 row)
 
 create table t(id int);
@@ -1171,58 +1171,58 @@ set @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvw
 ERROR:  user variable name 'abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz' is illegal
 select @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz;
 NOTICE:  identifier "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz" will be truncated to "abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk"
- ?column? 
-----------
+ @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghij 
+-----------------------------------------------------------------
  
 (1 row)
 
 select @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk;
- ?column? 
-----------
+ @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghij 
+-----------------------------------------------------------------
  
 (1 row)
 
 select @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghij; --no data
- ?column? 
-----------
+ @abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghij 
+-----------------------------------------------------------------
  
 (1 row)
 
 set @VAR = 1;
 select @var;
- ?column? 
-----------
-        1
+ @var 
+------
+    1
 (1 row)
 
 select @Var;
- ?column? 
-----------
-        1
+ @var 
+------
+    1
 (1 row)
 
 select @vAr;
- ?column? 
-----------
-        1
+ @var 
+------
+    1
 (1 row)
 
 select @vaR;
- ?column? 
-----------
-        1
+ @var 
+------
+    1
 (1 row)
 
 select @VaR;
- ?column? 
-----------
-        1
+ @var 
+------
+    1
 (1 row)
 
 select @VAR;
- ?column? 
-----------
-        1
+ @var 
+------
+    1
 (1 row)
 
 select X'41';
@@ -1233,8 +1233,8 @@ select X'41';
 
 set @v1 = X'41';
 select @v1;
- ?column? 
-----------
+ @v1 
+-----
  A
 (1 row)
 
@@ -1246,35 +1246,35 @@ select X'41' + 0;
 
 set @v2 = X'41' + 0;
 select @v2;
- ?column? 
-----------
+ @v2 
+-----
  65
 (1 row)
 
 set @v3 = cast(X'41' AS UNSIGNED);
 select @v3;
- ?column? 
-----------
+ @v3 
+-----
  65
 (1 row)
 
 select @v1, @v2, @v3;
- ?column? | ?column? | ?column? 
-----------+----------+----------
- A        | 65       | 65
+ @v1 | @v2 | @v3 
+-----+-----+-----
+ A   | 65  | 65
 (1 row)
 
 set @t1 = 1, @t2 = 2, @t3 = 4;
 select @t1, @t2, @t3, @t4 := @t1 + @t2 + @t3;
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-        1 |        2 |        4 |        7
+ @t1 | @t2 | @t3 | ?column? 
+-----+-----+-----+----------
+   1 |   2 |   4 |        7
 (1 row)
 
 select @t1, @t2, @t3, @t4, @t5 = @t1 + @t2 + @t3 + @t4;
- ?column? | ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------+----------
-        1 |        2 |        4 |        7 | 
+ @t1 | @t2 | @t3 | @t4 | ?column? 
+-----+-----+-----+-----+----------
+   1 |   2 |   4 |   7 | 
 (1 row)
 
 select @t3 = 2*@t2, @t4 = 2*@t2;
@@ -1329,30 +1329,30 @@ create table settb(id int, name text);
 insert into settb values (1, 'zhangsanfeng');
 select id, name into @id, @name from settb;
 select @id, @name;
- ?column? |   ?column?   
-----------+--------------
-        1 | zhangsanfeng
+ @id |    @name     
+-----+--------------
+   1 | zhangsanfeng
 (1 row)
 
 select @ID, @NAME;
- ?column? |   ?column?   
-----------+--------------
-        1 | zhangsanfeng
+ @id |    @name     
+-----+--------------
+   1 | zhangsanfeng
 (1 row)
 
 insert into settb values (2, 'zhangcuishan');
 select id, name into @id, @name from settb; --err
 ERROR:  Result consisted of more than one row
 select @id, @name;
- ?column? |   ?column?   
-----------+--------------
-        1 | zhangsanfeng
+ @id |    @name     
+-----+--------------
+   1 | zhangsanfeng
 (1 row)
 
 select @ID, @NAME;
- ?column? |   ?column?   
-----------+--------------
-        1 | zhangsanfeng
+ @id |    @name     
+-----+--------------
+   1 | zhangsanfeng
 (1 row)
 
 drop table settb;
@@ -1527,8 +1527,8 @@ NOTICE:  var:1, var1:zhangsan, @var2:test
 (1 row)
 
 select @var2;
- ?column? 
-----------
+ @var2 
+-------
  test
 (1 row)
 
@@ -1551,23 +1551,23 @@ select funct21('test-1');
 (1 row)
 
 select @vara, @varb;
- ?column? | ?column? 
-----------+----------
- test-1   | test-1bb
+ @vara  |  @varb   
+--------+----------
+ test-1 | test-1bb
 (1 row)
 
 drop function funct21;
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARNAME_001
 set @onlyletter='letter';
 select @onlyletter;		-- letter
- ?column? 
-----------
+ @onlyletter 
+-------------
  letter
 (1 row)
 
 set @7643642='digit';
 select @7643642;		-- digit
- ?column? 
+ @7643642 
 ----------
  digit
 (1 row)
@@ -1576,50 +1576,50 @@ select @7643642;		-- digit
 --select @_$__.$$..;
 set @测试变量='Chinese';
 select @测试变量;		--Chinese
- ?column? 
-----------
+ @测试变量 
+-----------
  Chinese
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARNAME_002
 set @let987='letteranddigit';
 select @let987;	--letteranddigit
-    ?column?    
+    @let987     
 ----------------
  letteranddigit
 (1 row)
 
 set @qw_er.a$='letterandsymbol';
 select @qw_er.a$; --letterandsymbol
-    ?column?     
+    @qw_er.a$    
 -----------------
  letterandsymbol
 (1 row)
 
 set @qwer测试='letterandChinese';
 select @qwer测试;	--letterandChinese
-     ?column?     
+    @qwer测试     
 ------------------
  letterandChinese
 (1 row)
 
 set @45_80.1$9='digitandsymbol';
 select @45_80.1$9;	--digitandsymbol
-    ?column?    
+   @45_80.1$9   
 ----------------
  digitandsymbol
 (1 row)
 
 set @测试12354='digitandChinese';
 select @测试12354; --digitandChinese
-    ?column?     
+   @测试12354    
 -----------------
  digitandChinese
 (1 row)
 
 set @测_$.试='Chineseandsymbol';
 select @测_$.试;	--Chineseandsymbol
-     ?column?     
+     @测_$.试     
 ------------------
  Chineseandsymbol
 (1 row)
@@ -1627,36 +1627,36 @@ select @测_$.试;	--Chineseandsymbol
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARNAME_003
 set @let987测试='letadditadchn';
 select @let987测试; --letadditadchn
-   ?column?    
+  @let987测试  
 ---------------
  letadditadchn
 (1 row)
 
 set @qw_er.a$99='letadditasyl';
 select @qw_er.a$99; --letadditasyl
-   ?column?   
+ @qw_er.a$99  
 --------------
  letadditasyl
 (1 row)
 
 set @tt_set.测$试='letadchnadsyl';
 select @tt_set.测$试;	--letadchnadsyl
-   ?column?    
+ @tt_set.测$试 
 ---------------
  letadchnadsyl
 (1 row)
 
 set @666_测$.试='ditadchnadsyl';
 select @666_测$.试;		--ditadchnadsyl
-   ?column?    
+  @666_测$.试  
 ---------------
  ditadchnadsyl
 (1 row)
 
 set @6qaz66_测$.试='all';
 select @6qaz66_测$.试;	--all
- ?column? 
-----------
+ @6qaz66_测$.试 
+----------------
  all
 (1 row)
 
@@ -1676,9 +1676,9 @@ ERROR:  syntax error at or near "'``ttest'"
 LINE 1: set @'te""s''``ttest'=56;
                     ^
 select @'test!/~/%/^/&/(/)/-/+/=<>《》/:/{}/^/?/,*test';	--56
- ?column? 
-----------
-       56
+ @test!/~/%/^/&/(/)/-/+/=<>《》/:/{}/^/?/,*test 
+----------------------------------------------
+                                           56
 (1 row)
 
 select @'te""s''``ttest';	--err
@@ -1691,9 +1691,9 @@ ERROR:  syntax error at or near ""s''``ttest""
 LINE 1: set @"te""s''``ttest"=66;
                  ^
 select @"test!/~/%/^/&/(/)/-/+/=<>《》/:/{}/^/?/,*test";	--66
- ?column? 
-----------
-       66
+ @test!/~/%/^/&/(/)/-/+/=<>《》/:/{}/^/?/,*test 
+----------------------------------------------
+                                           66
 (1 row)
 
 select @"te""s''``ttest";	--66
@@ -1708,9 +1708,9 @@ ERROR:  syntax error at or near "`ttest`"
 LINE 1: set @`te""s''``ttest`=76;
                       ^
 select @`test!/~/%/^/&/(/)/-/+/=<>《》/:/{}/^/?/,*test`;	--76
- ?column? 
-----------
-       76
+ @test!/~/%/^/&/(/)/-/+/=<>《》/:/{}/^/?/,*test 
+----------------------------------------------
+                                           76
 (1 row)
 
 select @`te""s''``ttest`;	--null
@@ -1722,21 +1722,21 @@ select @`te""s''``ttest`;	--null
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARNAME_006
 set @TESTVAR='ver1';
 select @TESTVAR;	--ver1
- ?column? 
+ @testvar 
 ----------
  ver1
 (1 row)
 
 set @testvar='ver2';
 select @TESTVAR;	--ver2
- ?column? 
+ @testvar 
 ----------
  ver2
 (1 row)
 
 set @teSTVAr='ver3';
 select @TESTVAR;	--ver3
- ?column? 
+ @testvar 
 ----------
  ver3
 (1 row)
@@ -1744,19 +1744,19 @@ select @TESTVAR;	--ver3
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARNAME_007
 set @teSTVAr='ver3';
 select @TESTVAR;     --ver3
- ?column? 
+ @testvar 
 ----------
  ver3
 (1 row)
 
 select @testvar;     --ver3
- ?column? 
+ @testvar 
 ----------
  ver3
 (1 row)
 
 select @TESTVAr;     --ver3
- ?column? 
+ @testvar 
 ----------
  ver3
 (1 row)
@@ -1770,25 +1770,25 @@ set @session_var1='session_var1';
 set @session_var2='session_var2';
 set @session_var3='session_var3';
 select @session_var1, @session_var2, @session_var3;	--session_var1 session_var2 session_var3
-   ?column?   |   ?column?   |   ?column?   
---------------+--------------+--------------
- session_var1 | session_var2 | session_var3
+ @session_var1 | @session_var2 | @session_var3 
+---------------+---------------+---------------
+ session_var1  | session_var2  | session_var3
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_SCOPE_002
 set @session_var1='session_var1';
 select @session_var1;	--session_var1
-   ?column?   
---------------
+ @session_var1 
+---------------
  session_var1
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_001
 set @var1=1234;
 select @var1; --1234
- ?column? 
-----------
-     1234
+ @var1 
+-------
+  1234
 (1 row)
 
 set @var2=test; --err
@@ -1806,46 +1806,46 @@ LINE 1: set @var2=测试;
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_002
 set @var1='1234';
 select @var1;	--1234
- ?column? 
-----------
+ @var1 
+-------
  1234
 (1 row)
 
 set @var2='test';
 select @var2;	--test
- ?column? 
-----------
+ @var2 
+-------
  test
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_003
 set @var1='1234';
 select @var1;	--1234
- ?column? 
-----------
+ @var1 
+-------
  1234
 (1 row)
 
 set @var2='test';
 select @var2;	--test
- ?column? 
-----------
+ @var2 
+-------
  test
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_004
 set @var1:='1234';
 select @var1;	--1234
- ?column? 
-----------
+ @var1 
+-------
  1234
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_005
 set @var1='1234';
 select @var1;	--1234
- ?column? 
-----------
+ @var1 
+-------
  1234
 (1 row)
 
@@ -1880,23 +1880,23 @@ create table tb(tid int);
 insert into tb values(7),(8),(12);
 set @var= 4 + 3;
 select @var;	--7
- ?column? 
-----------
-        7
+ @var 
+------
+    7
 (1 row)
 
 set @var= (select avg(tid) from tb);
 select @var; --9.0
- ?column? 
-----------
-   9.0000
+  @var  
+--------
+ 9.0000
 (1 row)
 
 set @var= @var+1;
 select @var;	--10.0
- ?column? 
-----------
-  10.0000
+  @var   
+---------
+ 10.0000
 (1 row)
 
 set @var= (select avg(tid),sum(tid) from tb);	--f
@@ -1909,46 +1909,46 @@ drop table tb;
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_008
 set @var=@aa+1;
 select @var;  --null
- ?column? 
-----------
+ @var 
+------
  
 (1 row)
 
 set @var21=@var21+1;
 select @var21;
- ?column? 
-----------
+ @var21 
+--------
  
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_009
 set @var= NULL;
 select @var; -- null
- ?column? 
-----------
+ @var 
+------
  
 (1 row)
 
 set @var= '';
 select @var; --''
- ?column? 
-----------
+ @var 
+------
  
 (1 row)
 
 set @var= null;
 select @var; --null
- ?column? 
-----------
+ @var 
+------
  
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_010
 SET @var_tinyint = CAST(127 AS SIGNED),@var_int1 = CAST(255 AS UNSIGNED),@var_smallint = CAST(32767 AS SIGNED),@var_int2 = CAST(65535 AS UNSIGNED),@var_mediumint = CAST(8388607 AS SIGNED),@var_int3 = CAST(16777215 AS UNSIGNED),@var_int = CAST(2147483647 AS SIGNED),@var_int4 = CAST(-2147483648 AS SIGNED),@var_integer = CAST(4294967295 AS UNSIGNED);
 select @var_tinyint,@var_int1,@var_smallint,@var_int2,@var_mediumint,@var_int3,@var_int,@var_int4,@var_integer; --127,255,32767,65535,8388607,16777215,2147483647,-2147483648 ,4294967295
- ?column? | ?column? | ?column? | ?column? | ?column? | ?column? |  ?column?  |  ?column?   |  ?column?  
-----------+----------+----------+----------+----------+----------+------------+-------------+------------
-      127 | 255      |    32767 | 65535    |  8388607 | 16777215 | 2147483647 | -2147483648 | 4294967295
+ @var_tinyint | @var_int1 | @var_smallint | @var_int2 | @var_mediumint | @var_int3 |  @var_int  |  @var_int4  | @var_integer 
+--------------+-----------+---------------+-----------+----------------+-----------+------------+-------------+--------------
+          127 | 255       |         32767 | 65535     |        8388607 | 16777215  | 2147483647 | -2147483648 | 4294967295
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_011
@@ -1956,9 +1956,9 @@ SET @var_float = CAST(3.14 AS DECIMAL(10,2)),
     @var_double = CAST(3.1415926 AS DECIMAL(20,10)),
     @var_real = CAST(1.23 AS DECIMAL(15,5));
 select @var_float,@var_double,@var_real;  --3.14,3.1415926000,1.23000
- ?column? |   ?column?   | ?column? 
-----------+--------------+----------
-     3.14 | 3.1415926000 |  1.23000
+ @var_float | @var_double  | @var_real 
+------------+--------------+-----------
+       3.14 | 3.1415926000 |   1.23000
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CUSTOM_VARVALUES_012
@@ -1973,9 +1973,9 @@ create table binary_types_tb (
 insert into binary_types_tb values('A','B','C','D','E','F');
 set @bin=(select bin_col from binary_types_tb),@varbin=(select varbin_col from binary_types_tb),@blob=(select blob_col from binary_types_tb),@tinyblob=(select tinyblob_col from binary_types_tb),@mediumblob=(select mediumblob_col from binary_types_tb),@longblob=(select longblob_col from binary_types_tb);
 select @bin,@varbin,@blob,@tinyblob,@mediumblob,@longblob; --0x41000000000000000000000000000000|0x42|0x43|0x44|0x45|0x46 
-              ?column?              | ?column? | ?column? | ?column? | ?column? | ?column? 
-------------------------------------+----------+----------+----------+----------+----------
- \x41000000000000000000000000000000 | \x42     | \x43     | \x44     | \x45     | \x46
+                @bin                | @varbin | @blob | @tinyblob | @mediumblob | @longblob 
+------------------------------------+---------+-------+-----------+-------------+-----------
+ \x41000000000000000000000000000000 | \x42    | \x43  | \x44      | \x45        | \x46
 (1 row)
 
 drop table binary_types_tb;
@@ -2004,9 +2004,9 @@ SET @char_var = (SELECT char_col FROM text_types_table),
     @longtext_var = (SELECT longtext_col FROM text_types_table);
 SELECT
     @char_var,@varchar_var,LEFT(@text_var, 20) AS text_sample,@tinytext_var,LEFT(@mediumtext_var, 30) AS mediumtext_sample,LEFT(@longtext_var, 40) AS longtext_sample;  --固定长度文本|可变长度字符串示例|这是标准TEXT类型内容，可存储约65K|小文本|中等长度文本........................| 超长文本数据----------------------------------
-          ?column?          |      ?column?      |            text_sample            | ?column? |          mediumtext_sample           |                longtext_sample                 
-----------------------------+--------------------+-----------------------------------+----------+--------------------------------------+------------------------------------------------
- 固定长度文本               | 可变长度字符串示例 | 这是标准TEXT类型内容，可存储约65K | 小文本   | 中等长度文本........................ | 超长文本数据----------------------------------
+         @char_var          |    @varchar_var    |            text_sample            | @tinytext_var |          mediumtext_sample           |                longtext_sample                 
+----------------------------+--------------------+-----------------------------------+---------------+--------------------------------------+------------------------------------------------
+ 固定长度文本               | 可变长度字符串示例 | 这是标准TEXT类型内容，可存储约65K | 小文本        | 中等长度文本........................ | 超长文本数据----------------------------------
 (1 row)
 
 drop table text_types_table;
@@ -2025,9 +2025,9 @@ SET @date_var = (SELECT date_col FROM time_data_types),
     @time_var = (SELECT time_col FROM time_data_types),
     @year_var = (SELECT year_col FROM time_data_types);
 select @date_var,@datetime_var,@timestamp_var,@time_var,@year_var ; --2025-07-28 | 2025-07-28 17:30:00 | 2025-07-28 17:30:00 | 17:30:00  |      2025
-  ?column?  |      ?column?       |      ?column?       | ?column? | ?column? 
-------------+---------------------+---------------------+----------+----------
- 2025-07-28 | 2025-07-28 17:30:00 | 2025-07-28 17:30:00 | 17:30:00 | 2025
+ @date_var  |    @datetime_var    |   @timestamp_var    | @time_var | @year_var 
+------------+---------------------+---------------------+-----------+-----------
+ 2025-07-28 | 2025-07-28 17:30:00 | 2025-07-28 17:30:00 | 17:30:00  | 2025
 (1 row)
 
 drop table time_data_types;
@@ -2035,14 +2035,14 @@ drop table time_data_types;
 set @int_num=2,@str_num ='25.00';
 set @result1=@int_num *@str_num;
 select @result1;	--50
- ?column? 
+ @result1 
 ----------
        50
 (1 row)
 
 set @result2=@int_num < @str_num;
 select @result2;	--t
- ?column? 
+ @result2 
 ----------
  t
 (1 row)
@@ -2051,7 +2051,7 @@ select @result2;	--t
 set @int_num=2,@str_num ='25.00';
 set @result=CONCAT('One is ', @int_num,',Another is ',@str_num);
 select @result;		--One is 2,Another is 25.00
-         ?column?          
+          @result          
 ---------------------------
  One is 2,Another is 25.00
 (1 row)
@@ -2111,7 +2111,7 @@ CALL calculate_order_prices(5, 10, @fin_pric);
 (1 row)
 
 select @fin_pric;	--1795.50
-  ?column?   
+  @fin_pric  
 -------------
  1795.500000
 (1 row)
@@ -2124,7 +2124,7 @@ CALL calculate_order_prices(@counts_num, 10, @fin_pric2);
 (1 row)
 
 select @fin_pric2;	--7182.00
-  ?column?   
+ @fin_pric2  
 -------------
  7182.000000
 (1 row)
@@ -2168,28 +2168,28 @@ NOTICE:  table "t" does not exist, skipping
 create table t(a int);
 insert into t values (1), (2), (4);
 select @var100, @var100 := @var102 / num, @var102 := @var102 + 1 from (select @var100 := a as num from t) tt;
- ?column? | ?column? | ?column? 
-----------+----------+----------
- 1        |          |         
- 2        |          |         
- 4        |          |         
+ @var100 | ?column? | ?column? 
+---------+----------+----------
+ 1       |          |         
+ 2       |          |         
+ 4       |          |         
 (3 rows)
 
 drop table t;
 --fix bug 6860
 set @x4 = 5, @x5 = @x4 - 1;
 select @x4, @x5; --5 NULL
- ?column? | ?column? 
-----------+----------
-        5 | 
+ @x4 | @x5 
+-----+-----
+   5 | 
 (1 row)
 
 set @var = 1;
 set @var = @var + 1, @var2 = @var;
 select @var, @var2; --2 1
- ?column? | ?column? 
-----------+----------
-        2 |        1
+ @var | @var2 
+------+-------
+    2 |     1
 (1 row)
 
 --fix bug 6860
@@ -2197,15 +2197,15 @@ create table tb(tid int);
 insert into tb values(7.0),(8.0),(12.0);
 set @var = cast((select avg(tid) from tb) as unsigned);
 select @var;
- ?column? 
-----------
+ @var 
+------
  9
 (1 row)
 
 set @var = @var + 1;
 select @var;
- ?column? 
-----------
+ @var 
+------
  10
 (1 row)
 

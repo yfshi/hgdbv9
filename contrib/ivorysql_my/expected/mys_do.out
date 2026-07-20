@@ -74,7 +74,7 @@ do
   IF(@temperature > 20, 'Warm',
   IF(@temperature > 10, 'Cool', 'Cold')));
 select @weather; --Warm
- ?column? 
+ @weather 
 ----------
  Warm
 (1 row)
@@ -85,7 +85,7 @@ do @counter := 0,
 @counter := @counter * 10,
 @counter := @counter + 5;
 select @counter; --15
- ?column? 
+ @counter 
 ----------
        15
 (1 row)
@@ -100,9 +100,9 @@ select @a as addition_result; --15
 
 do @x := 100, @y := 50, @z := @x - @y;
 select @x, @y, @z; --50
- ?column? | ?column? | ?column? 
-----------+----------+----------
-      100 |       50 |       50
+ @x  | @y | @z 
+-----+----+----
+ 100 | 50 | 50
 (1 row)
 
 do @result := (15 * 3) + (20 / 4) - POWER(2, 3);

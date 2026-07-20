@@ -361,9 +361,9 @@ set mysql.use_mysql_do = false;
 prepare stmt from 'set @a=1';
 execute stmt;
 select @a;
- ?column? 
-----------
-        1
+ @a 
+----
+  1
 (1 row)
 
 deallocate prepare stmt;

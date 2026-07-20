@@ -159,9 +159,9 @@ show mysql.at_or_atat ;
 set mysql.at_or_atat = true;
 set @x = 1, GLOBAL datestyle = 'ISO, YMD',lower_case_table_names = 1;
 select @x;
- ?column? 
-----------
-        1
+ @x 
+----
+  1
 (1 row)
 
 show datestyle;
@@ -310,15 +310,15 @@ show lower_case_table_names;
 set @@GLOBAL.max_sort_length=5;
 set @@GLOBAL.work_mem='8MB';
 select @@max_sort_length,@@work_mem;	--5, work_mem 8MB
- ?column? | ?column? 
-----------+----------
- 5        | 8MB
+ @@max_sort_length | @@work_mem 
+-------------------+------------
+ 5                 | 8MB
 (1 row)
 
 select @@global.max_sort_length, @@global.work_mem;  --max_sort_length 5, work_mem 8MB
- ?column? | ?column? 
-----------+----------
- 5        | 8MB
+ @@max_sort_length | @@work_mem 
+-------------------+------------
+ 5                 | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_003
@@ -332,38 +332,38 @@ set @@GLOBAL.max_sort_length=5;
 set @@GLOBAL.work_mem='5MB';
 set @@GLOBAL.work_mem='8MB';
 select @@global.max_sort_length, @@global.work_mem;	-- max_sort_length 5, work_mem 8MB
- ?column? | ?column? 
-----------+----------
- 5        | 8MB
+ @@max_sort_length | @@work_mem 
+-------------------+------------
+ 5                 | 8MB
 (1 row)
 
 set @@GLOBAL.max_sort_length=DEFAULT;
 set @@GLOBAL.work_mem=DEFAULT;
 select @@global.max_sort_length, @@global.work_mem;	-- max_sort_length 1024, work_mem 4MB
- ?column? | ?column? 
-----------+----------
- 1024     | 4MB
+ @@max_sort_length | @@work_mem 
+-------------------+------------
+ 1024              | 4MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_005
 set SESSION sql_mode='';
 set SESSION work_mem='8MB';
 select @@sql_mode, @@work_mem;	 --sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@global.sql_mode, @@global.work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@sql_mode, @@work_mem, @@global.sql_mode,@@global.work_mem;	--'', work_mem 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_006
@@ -372,14 +372,14 @@ WARNING:  SET LOCAL can only be used in transaction blocks
 set LOCAL work_mem='8MB';
 WARNING:  SET LOCAL can only be used in transaction blocks
 select @@sql_mode, @@work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@global.sql_mode;,@@global.work_mem;	--sql_mode'', work_mem 8MB
- ?column? 
-----------
+ @@sql_mode 
+------------
  
 (1 row)
 
@@ -387,99 +387,99 @@ ERROR:  syntax error at or near ","
 LINE 1: ,@@global.work_mem;
         ^
 select @@sql_mode,@@work_mem, @@global.sql_mode,@@global.work_mem;  --'', work_mem 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_007
 set @@SESSION.sql_mode='';
 set @@SESSION.work_mem='8MB';
 select @@sql_mode,@@work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@global.sql_mode,@@global.work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@sql_mode, @@work_mem, @@global.sql_mode, @@global.work_mem;--sql_mode''、work_mem 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_008
 set @@LOCAL.sql_mode='';
 set @@LOCAL.work_mem='8MB';
 select @@sql_mode,@@work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@global.sql_mode,@@global.work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@sql_mode,@@work_mem,@@global.sql_mode,@@global.work_mem;	-- sql_mode '', work_mem 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 select @@sql_mode,@@work_mem,@@global.sql_mode,@@global.work_mem;	--sql_mode'', work_mem 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_009
 set @@sql_mode='';
 set @@work_mem='8MB';
 select @@sql_mode,@@work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@global.sql_mode,@@global.work_mem;	--'', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@sql_mode,@@work_mem,@@global.sql_mode,@@global.work_mem;	--sql_mode'', work_mem 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_010
 set sql_mode='';
 set work_mem='8MB';
 select @@sql_mode,@@work_mem;	--sql_mode '', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@global.sql_mode,@@global.work_mem;	--sql_mode'', work_mem 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 select @@sql_mode,@@work_mem,@@global.sql_mode,@@global.work_mem;	--sql_mode'', 8MB
- ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------
-          | 8MB      |          | 8MB
+ @@sql_mode | @@work_mem | @@sql_mode | @@work_mem 
+------------+------------+------------+------------
+            | 8MB        |            | 8MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_011
@@ -488,8 +488,8 @@ set work_mem='8MB';
 set sql_mode=default;
 set work_mem=default;
 select @@sql_mode,@@work_mem;	--sql_mode'', work_mem 4MB
-                                                                                                 ?column?                                                                                                 | ?column? 
-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+----------
+                                                                                                @@sql_mode                                                                                                | @@work_mem 
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+------------
  REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,ONLY_FULL_GROUP_BY,NO_BACKSLASH_ESCAPES,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION | 4MB
 (1 row)
 
@@ -506,97 +506,97 @@ LINE 1: set @var=1:/#/%/&/**/-/@@sql_mode='';
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_015
 set @@global.sql_mode='',@var='test123',GLOBAL work_mem='8MB';
 select @@global.sql_mode,@var,@@global.work_mem; --@@global.sql_mode:'', @var:test123, @@global.work_mem:8MB
- ?column? | ?column? | ?column? 
-----------+----------+----------
-          | test123  | 8MB
+ @@sql_mode |  @var   | @@work_mem 
+------------+---------+------------
+            | test123 | 8MB
 (1 row)
 
 set @@max_sort_length=8,@var='test1234',@@work_mem='2MB';
 select @@max_sort_length,@var,@@work_mem; --@@max_sort_length:8, @var:test1234, @@global.work_mem:2MB
- ?column? | ?column? | ?column? 
-----------+----------+----------
- 8        | test1234 | 2MB
+ @@max_sort_length |   @var   | @@work_mem 
+-------------------+----------+------------
+ 8                 | test1234 | 2MB
 (1 row)
 
 set @@global.max_sort_length=10,@var='test12345',@@work_mem='5MB';
 select @@global.max_sort_length,@var,@@work_mem; --@@global.max_sort_length:10, @var:test12345, @@work_mem:5MB
- ?column? | ?column?  | ?column? 
-----------+-----------+----------
- 10       | test12345 | 5MB
+ @@max_sort_length |   @var    | @@work_mem 
+-------------------+-----------+------------
+ 10                | test12345 | 5MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_016
 set @@sql_mode='',SESSION work_mem='8MB';
 select @@sql_mode,@@work_mem;	--'', 8MB
- ?column? | ?column? 
-----------+----------
-          | 8MB
+ @@sql_mode | @@work_mem 
+------------+------------
+            | 8MB
 (1 row)
 
 set @@global.max_sort_length=8,@@work_mem='2MB';
 select @@global.max_sort_length,@@work_mem; --8, 2MB
- ?column? | ?column? 
-----------+----------
- 8        | 2MB
+ @@max_sort_length | @@work_mem 
+-------------------+------------
+ 8                 | 2MB
 (1 row)
 
 set @@global.max_sort_length=10,@@global.work_mem='5MB';
 select @@global.max_sort_length,@@global.work_mem; --10, 5MB
- ?column? | ?column? 
-----------+----------
- 10       | 5MB
+ @@max_sort_length | @@work_mem 
+-------------------+------------
+ 10                | 5MB
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_017
 set SESSION sql_mode='', max_sort_length='5',div_precision_increment=5;
 select @@sql_mode,@@max_sort_length,@@div_precision_increment,@@global.sql_mode,@@global.max_sort_length,@@global.div_precision_increment; --'', 5, 5, '', 5, 5
- ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------+----------+----------
-          | 5        | 5        |          | 5        | 5
+ @@sql_mode | @@max_sort_length | @@div_precision_increment | @@sql_mode | @@max_sort_length | @@div_precision_increment 
+------------+-------------------+---------------------------+------------+-------------------+---------------------------
+            | 5                 | 5                         |            | 5                 | 5
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_018
 set SESSION sql_mode='', GLOBAL work_mem='6MB',max_sort_length=5;
 select @@sql_mode,@@max_sort_length,@@work_mem,@@global.sql_mode,@@global.work_mem,@@global.max_sort_length; --'', 5, 6MB, '', 6MB, 5
- ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------+----------+----------
-          | 5        | 6MB      |          | 6MB      | 5
+ @@sql_mode | @@max_sort_length | @@work_mem | @@sql_mode | @@work_mem | @@max_sort_length 
+------------+-------------------+------------+------------+------------+-------------------
+            | 5                 | 6MB        |            | 6MB        | 5
 (1 row)
 
 set GLOBAL sql_mode='', SESSION work_mem='6MB',max_sort_length=5;
 select @@sql_mode,@@max_sort_length,@@work_mem,@@global.sql_mode,@@global.work_mem,@@global.max_sort_length; --'', 5, 6MB, '', 6MB, 5
- ?column? | ?column? | ?column? | ?column? | ?column? | ?column? 
-----------+----------+----------+----------+----------+----------
-          | 5        | 6MB      |          | 6MB      | 5
+ @@sql_mode | @@max_sort_length | @@work_mem | @@sql_mode | @@work_mem | @@max_sort_length 
+------------+-------------------+------------+------------+------------+-------------------
+            | 5                 | 6MB        |            | 6MB        | 5
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_CONFIG_PARAM_019
 set @@GLOBAL.sql_mode='',max_sort_length= 5;
 select @@max_sort_length,@@global.max_sort_length; -- 5
- ?column? | ?column? 
-----------+----------
- 5        | 5
+ @@max_sort_length | @@max_sort_length 
+-------------------+-------------------
+ 5                 | 5
 (1 row)
 
 set @@SESSION.sql_mode='',max_sort_length= 6;
 select @@max_sort_length,@@global.max_sort_length; -- 6
- ?column? | ?column? 
-----------+----------
- 6        | 6
+ @@max_sort_length | @@max_sort_length 
+-------------------+-------------------
+ 6                 | 6
 (1 row)
 
 set @@sql_mode='',max_sort_length=8;
 select @@max_sort_length,@@global.max_sort_length; -- 8
- ?column? | ?column? 
-----------+----------
- 8        | 8
+ @@max_sort_length | @@max_sort_length 
+-------------------+-------------------
+ 8                 | 8
 (1 row)
 
 set @@GLOBAL.sql_mode='',@@SESSION.work_mem='6MB',@@div_precision_increment=5,max_sort_length=DEFAULT;
 select @@max_sort_length,@@global.max_sort_length; -- 1024
- ?column? | ?column? 
-----------+----------
- 1024     | 1024
+ @@max_sort_length | @@max_sort_length 
+-------------------+-------------------
+ 1024              | 1024
 (1 row)
 
 set mysql.at_or_atat = off;

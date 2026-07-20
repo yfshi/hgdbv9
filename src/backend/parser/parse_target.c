@@ -1884,6 +1884,27 @@ FigureColnameInternal(Node *node, char **name)
 
 	switch (nodeTag(node))
 	{
+		/* Begin OA#2622 */
+		case T_VarRef:
+			{
+				VarRef *vr = (VarRef *)node;
+				if (vr->varname)
+				{
+					char		buf[NAMEDATALEN];
+
+					if (vr->varkind == SYSTEM_VAR)
+						snprintf(buf, sizeof(buf), "@@%s", vr->varname);
+					else if (vr->varkind == USER_VAR)
+						snprintf(buf, sizeof(buf), "@%s", vr->varname);
+					else
+						strlcpy(buf, vr->varname, sizeof(buf));
+
+					*name = pstrdup(buf);
+					return 2;
+				}
+			}
+			break;
+		/* End OA#2622 */
 		case T_ColumnRef:
 			{
 				char	   *fname = NULL;

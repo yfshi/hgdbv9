@@ -54,60 +54,60 @@ set NAMES utf8;	--UTF8
 --TC_IVYSQL_MYSQL_SET_ NAMES_004
 SET NAMES 'utf8mb4';
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  UTF8
 (1 row)
 
 SET NAMES 'gbk';
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  GBK
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_ NAMES_005 --no set
 SET NAMES 'utf8mb4' COLLATE 'utf8mb4_unicode_ci';
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  GBK
 (1 row)
 
 SET NAMES 'utf8mb4' COLLATE 'utf32_unicode_ci';
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  GBK
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_ NAMES_006 --no set
 set NAMES 'utf8mb4' COLLATE  'utf8mb4_unicode_ci';
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  GBK
 (1 row)
 
 set NAMES 'utf8mb4' COLLATE  "utf8mb4_general_ci";
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  GBK
 (1 row)
 
 set NAMES 'utf8mb4' COLLATE  utf8mb4_unicode_ci;
 select @@client_encoding;
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  GBK
 (1 row)
 
 --TC_IVYSQL_MYSQL_SET_ NAMES_007
 set NAMES DEFAULT;
 select @@client_encoding;  --UTF8
- ?column? 
-----------
+ @@client_encoding 
+-------------------
  UTF8
 (1 row)
 
