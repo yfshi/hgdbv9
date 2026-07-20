@@ -202,7 +202,8 @@ MYS_REGRESS = numeric_to_times \
 			  mysql_timestamp \
 			  insert_duplicate \
 			  case_when \
-			  create_collation_from
+			  create_collation_from \
+			  test_charset_introducer
 
 
 MYS_JDBC_REGRESS =	proto_jdbc \

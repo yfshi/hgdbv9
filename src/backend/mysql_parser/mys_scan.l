@@ -38,6 +38,10 @@
 #include <unistd.h>
 
 #include "common/string.h"
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+#include "libpq/libpq-be.h"
+#include "miscadmin.h"
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 #include "mysql_parser/mys_gramparse.h"
 #include "parser/parser.h"		/* only needed for GUC variables */
 #include "parser/scansup.h"
@@ -910,13 +914,26 @@ other			.
 <xbq>{xbqstop}	{
 					/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
 					char	   *ident;
+					Size identlen = yyextra->literallen;
 
 					BEGIN(INITIAL);
 					if (yyextra->literallen == 0)
 						yyerror("zero-length delimited identifier");
 					ident = litbufdup(yyscanner);
-					if (yyextra->literallen >= NAMEDATALEN)
-						truncate_identifier(ident, yyextra->literallen, true);
+
+					/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+					if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+					{
+						ident = (char *) pg_do_encoding_conversion((unsigned char *) ident,
+																	strlen(ident),
+																	pg_get_client_encoding(),
+																	GetDatabaseEncoding());
+						identlen = strlen(ident);
+					}
+					/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
+					if (identlen >= NAMEDATALEN)
+						truncate_identifier(ident, identlen, true);
 					yylval->str = ident;
 					return IDENT;
 					/* End - ReqID:SRS-MISC-MYSQL-FRAME */

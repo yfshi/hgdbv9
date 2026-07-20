@@ -17,6 +17,7 @@
 #include "utils/ora_compatible.h"
 #include "utils/syscache.h"
 
+#include "../../charset/ctype.h" /* ReqID：SRS-MYSQL-CHARSET-INTRODUCER */
 #include "../../include/auth.h"
 #include "../../include/server.h"
 #include "../../include/message.h"
@@ -689,6 +690,7 @@ void
 mysql_client_authentication_finish(Port *port)
 {
     StringInfoData pathbuf;
+    CHARSET_INFO *charset_info;
     /* Begin - bug#6321 */
     if (mysql_conn_info.schema)
     {
@@ -706,11 +708,19 @@ mysql_client_authentication_finish(Port *port)
         appendStringInfoString(&pathbuf, quote_identifier(mysql_conn_info.schema));
         SetConfigOption("search_path", pathbuf.data, PGC_USERSET, PGC_S_OVERRIDE); /* OA-REQ-2037 */
         pfree(pathbuf.data);
+        /* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+        charset_info = search_charset_info_by_cs_number(mysql_conn_info.charset);
+
+        SetConfigOption("client_encoding",
+                        charset_info->csname,
+                        PGC_USERSET,
+                        PGC_S_CLIENT);
+        /* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
         CommitTransactionCommand();
     }
     /* End - bug#6321 */
-    
+
     send_ok(0, 0, 0, 0, NULL);
 
     pq_flush();

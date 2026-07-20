@@ -42,7 +42,7 @@ extern const char *ParseExprKindName(ParseExprKind exprKind);
 
 extern Node *make_bigint_const_from_hex(Node *n); /* BUG#5048 5070 */
 
-/* Begin - BUG#M7845 */
+/* Begin - BUG#7845 */
 extern void get_tablename_colname_from_var(ParseState *pstate, Var *var, char **colName, char **tabName);
-/* End - BUG#M7845 */
+/* End - BUG#7845 */
 #endif							/* PARSE_EXPR_H */

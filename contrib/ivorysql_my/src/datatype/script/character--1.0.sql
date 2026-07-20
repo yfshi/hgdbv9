@@ -147,7 +147,7 @@ CREATE OPERATOR ivymy.^ (
 	RIGHTARG = text
 );
 
--- /* Begin - BUG#M7845 */
+-- /* Begin - BUG#7845 */
 --
 -- text ~** text
 --
@@ -175,7 +175,7 @@ CREATE OPERATOR ivymy.!~** (
 	LEFTARG = text,
 	RIGHTARG = text
 );
--- /* End - BUG#M7845 */
+-- /* End - BUG#7845 */
 
 --
 -- cast (text as bool)

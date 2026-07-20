@@ -61,6 +61,7 @@
 #include "nodes/nodeFuncs.h"
 #include "mysql_parser/mys_gramparse.h"
 #include "parser/parser.h"
+#include "parser/pg_object_hook.h"
 #include "parser/scansup.h"
 #include "storage/lmgr.h"
 #include "utils/date.h"
@@ -226,8 +227,9 @@ static Node *makeStringConstCast(char *str, int location, TypeName *typename);
 static Node *makeIntConst(int val, int location);
 static Node *makeFloatConst(char *str, int location);
 static Node *makeBitStringConst(char *str, int location);
-static Node *makeMysBitStringConst(char *str, int location); /* SRS-HEX-LITERAL */
-static Node *makeHexStringConst(char *str, int location); 	/* SRS-HEX-LITERAL */
+static Node *makeIntroducerStringConst(char *str, int location, char *charset_name);	 /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+static Node *makeMysBitStringConst(char *str, int location, char *charset_name); /* SRS-HEX-LITERAL */
+static Node *makeHexStringConst(char *str, int location, char *charset_name); 	/* SRS-HEX-LITERAL */
 static Node *makeNullAConst(int location);
 static Node *makeAConst(Value *v, int location);
 static Node *makeBoolAConst(bool state, int location);
@@ -352,6 +354,11 @@ static char *concatSconstList(List *strs);
 /* Begin - bug#8026 */
 static Node *makeIntervalExpr(Node *value, char *unit, int location);
 /* End - bug#8084 */
+
+/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+static char *text_string_convert_encoding(char *str);
+static int make_expand_properties(char *str, int location, mys_core_yyscan_t yyscanner);
+/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 %}
 
 %pure-parser
@@ -766,6 +773,7 @@ static Node *makeIntervalExpr(Node *value, char *unit, int location);
 
 %type <ival>	Iconst SignedIconst
 %type <str>		Sconst comment_text notify_payload opt_sconst
+%type <str>		literal_sconst filesys_sconst sys_sconst  /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
 %type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
@@ -935,7 +943,7 @@ static Node *makeIntervalExpr(Node *value, char *unit, int location);
 
 	EACH ELSE ELT /* ReqID:SRS-MYSQL-BINARYTYPE */ ENABLE_P ENCLOSED /* ReqID:SRS-MYSQL-SQL-LOADDATA */ ENCODING ENCRYPTED END_P ENGINE_P ENGINES /* ReqID: SRS-MYSQL-PROTOCOL */
 	ENUM_P ESCAPE ESCAPED /* ReqID:SRS-MYSQL-SQL-LOADDATA */ EVENT EXCEPT
-	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
+	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPAND /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */ EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
 	FALSE_P FAMILY FETCH FIELD /* ReqID:SRS-MYSQL-BINARYTYPE */ FIELDS /* ReqID:SRS-MYSQL-SHOW */ FILTER FINALIZE FIRST_P
@@ -2234,7 +2242,7 @@ multi_charset:
 		;
 
 multi_encoding:
-			Sconst									{ $$ = $1; }
+			literal_sconst							{ $$ = $1; }	/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 			| BINARY								{ $$ = (char *) $1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| IDENT 								{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
 			| DEFAULT								{ $$ = NULL; }
@@ -2392,7 +2400,7 @@ show_filter:
 						filter->node = $2;
 						$$ = filter;
 					}
-			| LIKE SCONST
+			| LIKE literal_sconst
 					{
 						ShowFilter *filter = (ShowFilter *)palloc(sizeof(ShowFilter));
 						filter->is_like = true;
@@ -9957,6 +9965,14 @@ common_func_opt_item:
 					/* End - ReqID:SRS-MYSQL-CASE */
 					$$ = makeDefElem("parallel", (Node *)makeString($2), @1);
 				}
+			/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+			| EXPAND Sconst
+				{
+					$$ = makeDefElem("expand_properties",
+									 (Node *) makeInteger(make_expand_properties($2, @2, yyscanner)),
+									 @1);
+				}
+			/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 		;
 
 createfunc_opt_item:
@@ -13335,7 +13351,7 @@ ExplainableStmt:
  *****************************************************************************/
 /* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
 M_PreparableStmt:
-		SCONST
+		sys_sconst							/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 			{
 				$$ = (Node *) makeString($1);
 			}
@@ -20085,7 +20101,7 @@ name:		ColId									{ $$ = $1; };
 
 attr_name:	ColLabel								{ $$ = $1; };
 
-file_name:	Sconst									{ $$ = $1; };
+file_name:	filesys_sconst							{ $$ = $1; };
 
 /*
  * The production for a qualified func_name has to exactly match the
@@ -20118,11 +20134,11 @@ func_name_without_binary:
 
 /* Begin: Req:SRS-MYSQL-SQL-Select */
 sconst_list:
-			Sconst
+			literal_sconst
 				{
 					$$ = list_make1($1);
 				}
-			| sconst_list Sconst
+			| sconst_list literal_sconst
 				{
 					$$ = lappend($1, $2);
 				}
@@ -20150,7 +20166,7 @@ AexprConst: Iconst
 				{	
 					/* Begin - SRS-MYSQL-HEX-LITERAL */
 					if (use_mysql_bit_literal)
-						$$ = makeMysBitStringConst($1, @1);
+						$$ = makeMysBitStringConst($1, @1, NULL);
 					else
 						$$ = makeBitStringConst($1, @1);
 					/* End - SRS-MYSQL-HEX-LITERAL */
@@ -20158,7 +20174,7 @@ AexprConst: Iconst
 			/* Begin - SRS-MYSQL-HEX-LITERAL */
 			| HCONST  // 0xval
 				{
-					$$ = makeHexStringConst($1, @1);
+					$$ = makeHexStringConst($1, @1, NULL);
 				}
 			/* End - SRS-MYSQL-HEX-LITERAL */
 			| XCONST  // x'val' or X'val'
@@ -20184,19 +20200,19 @@ AexprConst: Iconst
 								(errcode(ERRCODE_SYNTAX_ERROR),
 									errmsg("You have an error in your SQL syntax.")));
 				
-					$$ = makeHexStringConst(input + 1, @1);
+					$$ = makeHexStringConst(input + 1, @1, NULL);
 					/* End - SRS-MYSQL-HEX-LITERAL */
 				}
 			/* Begin: Req:SRS-MYSQL-SQL-Select */
 				/*_charset 'val'*/
 			| UNDERSCORE_CHARSET SCONST
 				{
-					$$ = makeAConst(makeIntroducerString($2), @2);
+					$$ = (Node *) makeIntroducerStringConst($2, @2, $1);
 				}
 				/*_charset b'val'*/
 			| UNDERSCORE_CHARSET BCONST
 				{
-					$$ = makeMysBitStringConst($2, @2);
+					$$ = (Node *) makeMysBitStringConst($2, @2, $1);
 				}
 				/*_charset x'val'*/
 			| UNDERSCORE_CHARSET XCONST
@@ -20212,12 +20228,12 @@ AexprConst: Iconst
 								(errcode(ERRCODE_SYNTAX_ERROR),
 									errmsg("You have an error in your SQL syntax.")));
 				
-					$$ = makeHexStringConst(input + 1, @2);
+					$$ = (Node *) makeHexStringConst(input + 1, @2, $1);
 				}
 				/*_charset 0x123*/
 			| UNDERSCORE_CHARSET HCONST
 				{
-					$$ =  makeHexStringConst($2, @2);
+					$$ = (Node *) makeHexStringConst($2, @2, $1);
 				}
 			/* End: Req:SRS-MYSQL-SQL-Select */
 			| func_name_without_binary /* bug#6011 */ Sconst
@@ -20259,7 +20275,7 @@ AexprConst: Iconst
 					t->location = @1;
 					$$ = makeStringConstCast($6, @6, t);
 				}
-			| ConstTypename Sconst
+			| ConstTypename literal_sconst
 				{
 					/* ReqID:SRS-MYSQL-DATETYPE */
 					if (MYS_MODE == compatible_mode)
@@ -20331,6 +20347,33 @@ opt_sconst:
 
 Iconst:		ICONST									{ $$ = $1; };
 Sconst:		SCONST									{ $$ = $1; };
+
+/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+literal_sconst:
+			Sconst			{ 
+								if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+									$$ = text_string_convert_encoding($1);
+								else 
+									$$ = $1;
+							}
+
+sys_sconst:
+			Sconst			{ 
+								if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+									$$ = text_string_convert_encoding($1);
+								else 
+									$$ = $1;
+							}
+
+filesys_sconst:
+			Sconst			{ 
+								if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
+									$$ = text_string_convert_encoding($1);
+								else 
+									$$ = $1;
+							}
+			;
+/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 SignedIconst: Iconst								{ $$ = $1; }
 			| '+' Iconst							{ $$ = + $2; }
@@ -20663,6 +20706,7 @@ unreserved_keyword:
 			| EXCLUDING
 			| EXCLUSIVE
 			| EXECUTE
+			| EXPAND 	/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 			| EXPLAIN
 			| EXPRESSION
 			| EXTENSION
@@ -21367,6 +21411,7 @@ bare_label_keyword:
 			| EXCLUSIVE
 			| EXECUTE
 			| EXISTS
+			| EXPAND 	/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 			| EXPLAIN
 			| EXPRESSION
 			| EXTENSION
@@ -21891,48 +21936,51 @@ makeBitStringConst(char *str, int location)
 
 	return (Node *)n;
 }
+/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+static Node *
+makeIntroducerStringConst(char *str, int location, char *charset_name)
+{
+	A_Const 	*n;
+
+	n = makeNode(A_Const);
+	n->val.type = T_String;
+	n->val.val.str = str;
+	n->location = location;
+	n->val.charset_name = charset_name;
+
+	return (Node *)n;
+}
+/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 
 /* Begin - SRS-MYSQL-HEX-LITERAL */
 static Node *
-makeHexStringConst(char *str, int location)
+makeHexStringConst(char *str, int location, char *charset_name)
 {
 	A_Const 	*n;
-	
+
 	n = makeNode(A_Const);
 	n->val.type = T_HexString;
 	n->val.val.str = str; // the length may be odd
 	n->location = location;
+	n->val.charset_name = charset_name;
 
 	return (Node *)n;
 }
 
 static Node *
-makeMysBitStringConst(char *str, int location)
+makeMysBitStringConst(char *str, int location, char *charset_name)
 {
 	A_Const 	*n;
-	
+
 	n = makeNode(A_Const);
 	n->val.type = T_MysBitString;
 	n->val.val.str = str; // the length may be odd
 	n->location = location;
+	n->val.charset_name = charset_name;
 
 	return (Node *)n;
 }
 /* End - SRS-MYSQL-HEX-LITERAL */
-
-/* Begin: Req:SRS-MYSQL-SQL-Select */
-static Node *
-makeIntroducerConst(char *str, int location)
-{
-	A_Const *n = makeNode(A_Const);
-
-	n->val.type = T_IntroducerConst;
-	n->val.val.str = str;
-	n->location = location;
-
-	return (Node *)n;
-}
-/* End: Req:SRS-MYSQL-SQL-Select */
 
 /* Begin - bug#z6027 */
 static char *
@@ -21980,11 +22028,6 @@ makeAConst(Value *v, int location)
 		case T_Integer:
 			n = makeIntConst(v->val.ival, location);
 			break;
-		/* Begin: Req:SRS-MYSQL-SQL-Select */
-		case T_IntroducerConst:
-			n = makeIntroducerConst(v->val.str, location);
-			break;
-		/* End: Req:SRS-MYSQL-SQL-Select */
 
 		case T_String:
 		default:
@@ -23862,3 +23905,54 @@ makeIntervalExpr(Node *value, char *unit, int location)
 }
 /* End - bug#8026 */
 /* End - ReqID:SRS-MYSQL-SQL-PROC */
+
+/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+static char *
+text_string_convert_encoding(char *str)
+{
+	if (str == NULL)
+		return NULL;
+
+	return (char *) pg_do_encoding_conversion((unsigned char *) str,
+											  strlen(str),
+											  pg_get_client_encoding(),
+											  GetDatabaseEncoding());
+}
+
+static int
+make_expand_properties(char *str, int location, mys_core_yyscan_t yyscanner)
+{
+	int			flags = 0;
+	char	   *item;
+	char	   *next;
+	char	   *end;
+
+
+	for (item = str; item != NULL; item = next)
+	{
+		next = strchr(item, ',');
+		if (next != NULL)
+			*next++ = '\0';
+
+		while (scanner_isspace(*item))
+			item++;
+
+		if (*item == '\0')
+			continue;
+
+		end = item + strlen(item) - 1;
+		while (end > item && scanner_isspace(*end))
+			*end-- = '\0';
+
+		if (pg_strcasecmp(item, "convert_encoding") == 0)
+			flags |= FUNC_EXPAND_PROPERITY_INTRODUCER_CONVERT_ENCODING;
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("unrecognized expand property \"%s\"", item),
+					 parser_errposition(location)));
+	}
+
+	return flags;
+}
+/* End:SRS-MYSQL-CHARSET-INTRODUCER */

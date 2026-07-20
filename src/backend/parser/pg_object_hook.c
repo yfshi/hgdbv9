@@ -223,7 +223,7 @@ GetNamespaceCollation(Oid namespaceId)
  *
  * GetPgObjectOptionItem - get value string from pg_object by key.
  */
-static char *
+char *
 GetPgObjectOptionItem(ObjectAddress address, char *keyVal, int keyLen, int *retLen)
 {
 	PgObjectInfo	info;
@@ -258,7 +258,7 @@ GetPgObjectOptionItem(ObjectAddress address, char *keyVal, int keyLen, int *retL
  *
  * SetPgObjectOptionItems - set json items in pg_object.
  */
-static void
+void
 SetPgObjectOptionItems(ObjectAddress address, char *objname, Oid objnsp, char objkind, char **keystrs, int *keylens, char **valuestrs, int *valuelens, int num)
 {
 	int				i;

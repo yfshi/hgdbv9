@@ -38,3 +38,4 @@ src/case_sensitive/case_sensitive
 src/show/show
 src/information_schema/mys_information_schema
 src/set/set
+src/builtin_functions/add_functions_expand_properties

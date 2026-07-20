@@ -260,6 +260,11 @@ typedef struct PseudoColVar
 } PseudoColVar;
 /* End - ReqID:SRS-SQL-ROWNUM */
 
+typedef enum ConstEncoding
+{
+    CONST_ENCODING_NONE = -1,
+    CONST_ENCODING_BINARY = 0
+} ConstEncoding;
 
 /*
  * Const
@@ -284,6 +289,9 @@ typedef struct Const
 								 * in the Datum. If false, then the Datum
 								 * contains a pointer to the information. */
 	int			location;		/* token location, or -1 if unknown */
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	int			constencoding;	/* source encoding for MySQL _charset introducer literals, or -1 */
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 } Const;
 
 /*

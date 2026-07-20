@@ -768,6 +768,7 @@ _readConst(void)
 	READ_BOOL_FIELD(constbyval);
 	READ_BOOL_FIELD(constisnull);
 	READ_LOCATION_FIELD(location);
+	READ_INT_FIELD(constencoding); /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	token = pg_strtok(&length); /* skip :constvalue */
 	if (local_node->constisnull)

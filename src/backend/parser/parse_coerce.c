@@ -22,6 +22,7 @@
 #include "catalog/pg_enum.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
+#include "miscadmin.h" 				/* ReqId:SRS-MYSQL-CHARSET-INTRODUCER */
 #include "nodes/makefuncs.h"
 #include "nodes/nodeFuncs.h"
 #include "parser/parse_coerce.h"
@@ -1873,6 +1874,114 @@ Str2Mystimes(Const *con, Const *newcon, int dec, bool is_insert)
 }
 /* End - ReqID:SRS-MYSQL-TIMETYPE */
 
+/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+static void
+introducer_const_convert_encoding(Node *node)
+{
+	Const *con;
+	bytea *oldbytes;
+	bytea *bytes;
+	char *src;
+	char *converted;
+	int converted_len;
+	int len;
+
+	con = (Const *)node;
+	if (con == NULL)
+		return;
+	/*
+	 * Charset introducers are initially stored as varlena bytes.  When a
+	 * convert_encoding-enabled expression consumes them, rewrite the Const in place
+	 * to database encoding and clear constencoding so later stages see an
+	 * ordinary string value.
+	 */
+	oldbytes = DatumGetByteaPP(con->constvalue);
+	len = VARSIZE_ANY_EXHDR(oldbytes);
+	src = pnstrdup(VARDATA_ANY(oldbytes), len);
+
+	converted = (char *)pg_do_encoding_conversion((unsigned char *)src,
+												  len,
+												  con->constencoding,
+												  GetDatabaseEncoding());
+
+	converted_len = (converted == src) ? len : strlen(converted);
+	bytes = (bytea *)cstring_to_text_with_len(converted, converted_len);
+	con->constvalue = PointerGetDatum(bytes);
+	con->constencoding = -1;
+
+	return ;
+}
+
+bool
+introducer_convert_encoding_walker(Node *node, void *context)
+{
+	Const *con;
+
+	if (node == NULL)
+		return false;
+
+	check_stack_depth();
+	/*
+	 * This path performs the real conversion.  Only charset introducer Consts
+	 * are rewritten; _binary and ordinary Consts are left untouched.
+	 */
+	if (IsA(node, Const))
+	{
+		con = (Const *)node;
+		if (!con->constisnull && con->constencoding > 0)
+			introducer_const_convert_encoding(node);
+
+		return false;
+	}
+
+	return expression_tree_walker(node, introducer_convert_encoding_walker,
+								  context);
+}
+
+bool
+introducer_detect_encoding_walker(Node *node, void *context)
+{
+	int *encoding;
+	Const *con;
+
+	if (node == NULL)
+		return false;
+
+	check_stack_depth();
+	/*
+	 * The context stores the strongest introducer seen so far:
+	 * -1: no introducer has been found yet
+	 *  0: a _binary introducer was found
+	 * >0: a non-binary _charset introducer was found
+	 *
+	 * _binary has the highest priority.  Once we see it, stop walking because
+	 * callers only need to know that charset conversion must be skipped.
+	 */
+	if (IsA(node, Const))
+	{
+		encoding = (int *)context;
+		con = (Const *)node;
+
+		if (con->constisnull || con->constencoding < 0)
+			return false;
+
+		if (con->constencoding == 0)
+		{
+			*encoding = 0;
+			return true;
+		}
+
+		/* Remember that a non-binary charset introducer exists. */
+		*encoding = con->constencoding;
+
+		return false;
+	}
+
+	return expression_tree_walker(node, introducer_detect_encoding_walker,
+								  context);
+}
+/* End:SRS-MYSQL-CHARSET-INTRODUCER */
+
 /*
  * coerce_type()
  *		Convert an expression to a different type.
@@ -1917,6 +2026,20 @@ coerce_type(ParseState *pstate, Node *node,
 		}
 		/* End - SRS-MYSQL-HEX-LITERAL */
 	}
+
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	if (MYS_MODE == compatible_mode)
+	{
+		Oid baseTypeId = getBaseType(targetTypeId);
+		/*
+		 * INSERT target coercion is the last chance for a bare introducer.
+		 * Const, e.g. INSERT INTO t(c) VALUES (_gbk x'D6D0').
+		 */
+		if (pstate != NULL && pstate->p_expr_kind == EXPR_KIND_INSERT_TARGET &&
+			(TypeCategory(baseTypeId) == TYPCATEGORY_STRING))
+			introducer_convert_encoding_walker(node, NULL);
+	}
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	if (targetTypeId == inputTypeId ||
 		node == NULL)
@@ -2239,6 +2362,7 @@ coerce_type(ParseState *pstate, Node *node,
 		newcon->constlen = typeLen(baseType);
 		newcon->constbyval = typeByVal(baseType);
 		newcon->constisnull = con->constisnull;
+		newcon->constencoding = con->constencoding;  /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 
 		/*
 		 * We use the original literal's location regardless of the position

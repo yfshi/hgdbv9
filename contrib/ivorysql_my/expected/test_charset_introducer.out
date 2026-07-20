@@ -1,0 +1,2223 @@
+-- MySQL character-set introducer test cases.
+-- Run in MySQL 5.7+.
+-- These cases include full DROP/CREATE/INSERT/SELECT context.
+set mysql.use_mysql_bit_literal = on;
+set sql_mode = 'NO_BACKSLASH_ESCAPES,REAL_AS_FLOAT,PIPES_AS_CONCAT,ANSI_QUOTES,STRICT_TRANS_TABLES,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION,NO_ZERO_IN_DATE';
+-- 1
+select _utf8 x'E4B8AD' = _gbk x'D6D0';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 1
+select _binary X'D6D0' = _gbk X'D6D0';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 1
+select _binary X'E4B8AD' = _utf8 '中';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 0  --- Warning | 1300 | Invalid gbk character string: 'AD'  
+select _binary X'D6D0' = _gbk '中';
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: select _binary X'D6D0' = _gbk '中';
+                                      ^
+ ?column? 
+----------
+ f
+(1 row)
+
+-- warning：Invalid gbk character string: 'AD' 
+SELECT _gbk '中';
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: SELECT _gbk '中';
+                    ^
+ ?column? 
+----------
+ \xe4b8ad
+(1 row)
+
+-- warning：Invalid gbk character string: 'AD' 
+select _binary X'E4B8AD' = _gbk '中';
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: select _binary X'E4B8AD' = _gbk '中';
+                                        ^
+ ?column? 
+----------
+ t
+(1 row)
+
+-- warning：Invalid gbk character string: 'AD' 
+select X'E4B8AD' = _gbk '中';
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: select X'E4B8AD' = _gbk '中';
+                                ^
+ ?column? 
+----------
+        1
+(1 row)
+
+-- 0
+select X'E4B8AD' != _gbk '中';
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: select X'E4B8AD' != _gbk '中';
+                                 ^
+ERROR:  operator does not exist: ivy_hex <> varbinary
+LINE 1: select X'E4B8AD' != _gbk '中';
+                         ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+--  FF
+select HEX(_latin1 x'ff');
+ HEX 
+-----
+ FF
+(1 row)
+
+-- c3bf
+select _latin1 x'ff';
+ varbinary 
+-----------
+ 
+(1 row)
+
+-- D6D0
+select _gbk x'D6D0';
+ varbinary 
+-----------
+ 
+(1 row)
+
+-- D6D0
+select hex(_gbk x'D6D0');
+ hex  
+------
+ D6D0
+(1 row)
+
+-- E4B8AD
+select hex(_gbk '中');
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: select hex(_gbk '中');
+                        ^
+  hex   
+--------
+ E4B8AD
+(1 row)
+
+-- Invalid gbk character string: 'AD' ----0
+select _utf8 x'E4B8AD' = _gbk '中';
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: select _utf8 x'E4B8AD' = _gbk '中';
+                                      ^
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 1  a:61
+select _utf8'a' = _utf8 x'41' COLLATE utf8_general_ci;
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 0
+select _utf8'a' = _utf8 x'41' COLLATE utf8_bin;
+ ?column? 
+----------
+ f
+(1 row)
+
+-- 1
+select !_gbk 'aaa';
+WARNING:  Truncated incorrect DOUBLE value: 'aaa'
+ ?column? 
+----------
+ true
+(1 row)
+
+-- 0
+select - _gbk 'aaa';
+ ?column? 
+----------
+ -0
+(1 row)
+
+CREATE TABLE test_utf8_introducer (
+  c VARCHAR(10) CHARACTER SET utf8
+);
+INSERT INTO test_utf8_introducer VALUES (_utf8mb4 x'F09F98B2');
+INSERT INTO test_utf8_introducer VALUES (_utf8mb4 '😲');
+DROP TABLE  test_utf8_introducer;
+-- right HCONST
+create table  aa as select _utf8 x'E4B8AD';
+\d aa;
+                       Table "public.aa"
+  Column   |       Type        | Collation | Nullable | Default 
+-----------+-------------------+-----------+----------+---------
+ varbinary | character varying |           |          | 
+
+drop table aa;
+create table  aa as select _binary x'E4B8AD';
+\d aa;
+                   Table "public.aa"
+  Column   |   Type    | Collation | Nullable | Default 
+-----------+-----------+-----------+----------+---------
+ varbinary | varbinary | default   |          | 
+
+drop table aa;
+-- ----------------------------------------------------------------------
+-- 1. _binary '...' keeps the text-literal bytes.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_bin_text;
+NOTICE:  table "charset_intro_bin_text" does not exist, skipping
+CREATE TABLE charset_intro_bin_text
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  v  VARBINARY(50)
+);
+INSERT INTO charset_intro_bin_text(v) VALUES
+  (_binary 'a'),
+  (_binary '6162'),
+  (_binary '\0'),
+  (_binary '\n'),
+  (_binary '\\'),
+  (_binary 'a''b');
+SELECT id, HEX(v) AS hex_value, LENGTH(v) AS byte_len
+FROM charset_intro_bin_text
+ORDER BY id;
+ id | hex_value | byte_len 
+----+-----------+----------
+  1 | 61        |        1
+  2 | 36313632  |        4
+  3 | 5C30      |        2
+  4 | 5C6E      |        2
+  5 | 5C5C      |        2
+  6 | 612762    |        3
+(6 rows)
+
+-- Expected hex:
+-- +----+-----------+----------+
+-- | id | hex_value | byte_len |
+-- +----+-----------+----------+
+-- |  1 | 61        |        1 |
+-- |  2 | 36313632  |        4 |
+-- |  3 | 00        |        1 |
+-- |  4 | 0A        |        1 |
+-- |  5 | 5C        |        1 |
+-- |  6 | 612762    |        3 |
+-- +----+-----------+----------+
+DROP TABLE charset_intro_bin_text;
+-- ----------------------------------------------------------------------
+-- 2. _binary x'...' decodes hex text into bytes before storage.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_bin_hex;
+NOTICE:  table "charset_intro_bin_hex" does not exist, skipping
+CREATE TABLE charset_intro_bin_hex
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  v  VARBINARY(50)
+);
+INSERT INTO charset_intro_bin_hex(v) VALUES
+  (_binary x'61'),
+  (_binary x'6162'),
+  (_binary x'D6D0'),
+  (_binary x'E4B8AD'),
+  (_binary x'');
+SELECT id, HEX(v) AS hex_value, LENGTH(v) AS byte_len
+FROM charset_intro_bin_hex
+ORDER BY id;
+ id | hex_value | byte_len 
+----+-----------+----------
+  1 | 61        |        1
+  2 | 6162      |        2
+  3 | D6D0      |        2
+  4 | E4B8AD    |        3
+  5 |           |        0
+(5 rows)
+
+-- Expected hex:
+-- +----+-----------+----------+
+-- | id | hex_value | byte_len |
+-- +----+-----------+----------+
+-- |  1 | 61        |        1 |
+-- |  2 | 6162      |        2 |
+-- |  3 | D6D0      |        2 |
+-- |  4 | E4B8AD    |        3 |
+-- |  5 |           |        0 |
+-- +----+-----------+----------+
+DROP TABLE charset_intro_bin_hex;
+-- ----------------------------------------------------------------------
+-- 3. _binary b'...' decodes bit text into bytes before storage.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_bin_bit;
+NOTICE:  table "charset_intro_bin_bit" does not exist, skipping
+CREATE TABLE charset_intro_bin_bit
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  v  VARBINARY(50)
+);
+INSERT INTO charset_intro_bin_bit(v) VALUES
+  (_binary b'01100001'),
+  (_binary b'0110000101100010'),
+  (_binary b'1'),
+  (_binary b'101010111100'),
+  (_binary b'');
+SELECT id, HEX(v) AS hex_value, LENGTH(v) AS byte_len
+FROM charset_intro_bin_bit
+ORDER BY id;
+ id | hex_value | byte_len 
+----+-----------+----------
+  1 | 61        |        1
+  2 | 6162      |        2
+  3 | 01        |        1
+  4 | 0ABC      |        2
+  5 |           |        0
+(5 rows)
+
+-- Expected hex:
+-- +----+-----------+----------+
+-- | id | hex_value | byte_len |
+-- +----+-----------+----------+
+-- |  1 | 61        |        1 |
+-- |  2 | 6162      |        2 |
+-- |  3 | 01        |        1 |
+-- |  4 | 0ABC      |        2 |
+-- |  5 |           |        0 |
+-- +----+-----------+----------+
+DROP TABLE charset_intro_bin_bit;
+-- ----------------------------------------------------------------------
+-- 4. _gbk x'...' checks decoded bytes as GBK.
+--    D6D0 is GBK bytes for the Chinese character "中".
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_gbk_hex_bincol;
+NOTICE:  table "charset_intro_gbk_hex_bincol" does not exist, skipping
+CREATE TABLE charset_intro_gbk_hex_bincol
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  v  VARBINARY(50)
+);
+INSERT INTO charset_intro_gbk_hex_bincol(v) VALUES
+  (_gbk x'D6D0'),
+  (_gbk x'4142');
+SELECT id, HEX(v) AS hex_value, LENGTH(v) AS byte_len
+FROM charset_intro_gbk_hex_bincol
+ORDER BY id;
+ id | hex_value | byte_len 
+----+-----------+----------
+  1 | E4B8AD    |        3
+  2 | 4142      |        2
+(2 rows)
+
+-- Expected hex:
+-- +----+-----------+----------+
+-- | id | hex_value | byte_len |
+-- +----+-----------+----------+
+-- |  1 | D6D0      |        2 |
+-- |  2 | 4142      |        2 |
+-- +----+-----------+----------+
+DROP TABLE charset_intro_gbk_hex_bincol;
+-- ----------------------------------------------------------------------
+-- 5. _gbk x'D6D0' inserted into text columns can be converted by column
+--    storage. Compare VARBINARY and UTF8 text targets.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_gbk_store_compare;
+NOTICE:  table "charset_intro_gbk_store_compare" does not exist, skipping
+CREATE TABLE charset_intro_gbk_store_compare
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  vb VARBINARY(50) ,
+  vc VARCHAR(50) CHARACTER SET utf8 ,
+  v1  VARCHAR(50)  ,
+  v2  VARCHAR(50) CHARACTER SET gb18030   --只做了兼容性实现
+);
+INSERT INTO charset_intro_gbk_store_compare(vb, vc, v1,v2) VALUES
+  (_gbk x'D6D0', _gbk x'D6D0',_gbk x'D6D0',_gbk x'D6D0');
+SELECT id, HEX(vb) , HEX(vc),  HEX(v1), HEX(v2)
+FROM charset_intro_gbk_store_compare;
+ id |  HEX   |  HEX   |  HEX   |  HEX   
+----+--------+--------+--------+--------
+  1 | E4B8AD | E4B8AD | E4B8AD | E4B8AD
+(1 row)
+
+-- Expected:
+-- +----+---------+---------+---------+---------+
+-- | id | HEX(vb) | HEX(vc) | HEX(v1) | HEX(v2) |
+-- +----+---------+---------+---------+---------+
+-- |  1 | D6D0    | E4B8AD  | E4B8AD  | D6D0    |
+-- +----+---------+---------+---------+---------+
+DROP TABLE charset_intro_gbk_store_compare;
+create table tt (vc  VARCHAR(50));
+insert into tt (vc) values (_gbk x'D6D0');
+insert into tt select _gbk 'D6Do';
+insert into tt (vc) values (_gbk x'D6D0' collate gbk_chinese_ci);
+ERROR:  collation "gbk_chinese_ci" for encoding "UTF8" does not exist
+LINE 1: insert into tt (vc) values (_gbk x'D6D0' collate gbk_chinese...
+                                                 ^
+select HEX(vc) from tt;
+   HEX    
+----------
+ E4B8AD
+ 4436446F
+(2 rows)
+
+-- +----------+
+-- | HEX(vc)  |
+-- +----------+
+-- | E4B8AD   |
+-- | 4436446F |
+-- | E4B8AD   |
+-- +----------+
+drop table tt;
+DROP TABLE IF EXISTS charset_intro_gbk_store_compare;
+NOTICE:  table "charset_intro_gbk_store_compare" does not exist, skipping
+CREATE TABLE charset_intro_gbk_store_compare
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  vb VARBINARY(50) 
+);
+INSERT INTO charset_intro_gbk_store_compare(vb) VALUES (_gbk '中');
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: ...INTO charset_intro_gbk_store_compare(vb) VALUES (_gbk '中');
+                                                                 ^
+INSERT INTO charset_intro_gbk_store_compare(vb) VALUES (_gbk x'D6D0');
+INSERT INTO charset_intro_gbk_store_compare(vb) VALUES (_utf8 x'E4B8AD');
+SELECT id, HEX(vb)
+FROM charset_intro_gbk_store_compare;
+ id |  HEX   
+----+--------
+  1 | E4B8AD
+  2 | E4B8AD
+  3 | E4B8AD
+(3 rows)
+
+-- Expected: 1 warning: Invalid gbk character string: 'AD' 
+-- +----+---------+
+-- | id | HEX(vb) |
+-- +----+---------+
+-- |  1 | E4B8AD  |
+-- |  2 | D6D0    |
+-- |  3 | E4B8AD  |
+-- +----+---------+
+DROP TABLE charset_intro_gbk_store_compare;
+-- ----------------------------------------------------------------------
+-- 6. _gbk '中' depends on client bytes.
+--    If the client sends UTF-8 bytes for 中, VARBINARY stores E4B8AD.
+--    MySQL treats those bytes as GBK for checking because of _gbk.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_gbk_text_client_bytes;
+NOTICE:  table "charset_intro_gbk_text_client_bytes" does not exist, skipping
+CREATE TABLE charset_intro_gbk_text_client_bytes
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  v  VARCHAR(50)
+);
+-- ERROR 1406 (22001): Data too long for column 'v' at row 1
+INSERT INTO charset_intro_gbk_text_client_bytes(v) VALUES
+  (_gbk '中');
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 2:   (_gbk '中');
+                ^
+DROP TABLE charset_intro_gbk_text_client_bytes;
+-- ----------------------------------------------------------------------
+-- 7. Collation compatibility.
+--    _binary can use COLLATE 'binary' or COLLATE `binary`.
+--    Bare COLLATE binary is a syntax error in MySQL because binary is a token.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_collate;
+NOTICE:  table "charset_intro_collate" does not exist, skipping
+CREATE TABLE charset_intro_collate
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  v  VARBINARY(50)
+);
+INSERT INTO charset_intro_collate(v) VALUES
+  (_binary 'a' COLLATE 'binary'),
+  (_binary 'a' COLLATE `binary`);
+SELECT id, HEX(v) AS hex_value
+FROM charset_intro_collate
+ORDER BY id;
+ id | hex_value 
+----+-----------
+  1 | 61
+  2 | 61
+(2 rows)
+
+-- Expected hex:
+-- 1: 61
+-- 2: 61
+-- Expected errors if run separately:
+-- SELECT _binary 'a' COLLATE binary;
+--   syntax error
+-- SELECT _binary 'a' COLLATE utf8_general_ci;
+--   COLLATION 'utf8_general_ci' is not valid for CHARACTER SET 'binary'
+DROP TABLE charset_intro_collate;
+-- ----------------------------------------------------------------------
+-- 8. Invalid hex/bit syntax examples. Run separately if you want to verify
+--    parser/lexer errors.
+-- ----------------------------------------------------------------------
+SELECT _binary x'g1';
+ERROR:  invalid hexadecimal digit: "g"
+LINE 1: SELECT _binary x'g1';
+                       ^
+SELECT _binary x'61g2';
+ERROR:  invalid hexadecimal digit: "g"
+LINE 1: SELECT _binary x'61g2';
+                       ^
+SELECT _binary b'102';
+ERROR:  You have an error in your SQL syntax.
+-- ----------------------------------------------------------------------
+-- 9. Invalid charset-byte examples. Run separately if you want to verify
+--    well-formedness errors for decoded bytes.
+-- ----------------------------------------------------------------------
+-- _utf8 x'D6D0' treats D6D0 as UTF-8 bytes. They are not valid UTF-8.
+SELECT _utf8 x'D6D0';
+ERROR:  invalid byte sequence for encoding "UTF8": 0xd6 0xd0
+LINE 1: SELECT _utf8 x'D6D0';
+                     ^
+-- _gbk x'D6' is an incomplete GBK two-byte character in many GBK contexts.
+SELECT _gbk x'D6';
+ERROR:  invalid byte sequence for encoding "GBK": 0xd6
+LINE 1: SELECT _gbk x'D6';
+                    ^
+-- ----------------------------------------------------------------------
+-- 10. Collation/coercibility examples from MySQL func_test-style coverage.
+--     These use _koi8r and _latin1 introducers in comparison, STRCMP and LIKE. 
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_coercibility;
+NOTICE:  table "charset_intro_coercibility" does not exist, skipping
+CREATE TABLE charset_intro_coercibility
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  case_name VARCHAR(80),
+  result_value VARCHAR(80)
+);
+INSERT INTO charset_intro_coercibility(case_name, result_value) VALUES
+  ('utf8_equal_default', _utf8'a' = _utf8'A'),
+  ('utf8_equal_general_ci', _utf8'a' = _utf8'A' COLLATE utf8_general_ci ),
+  ('utf8_equal_bin', _utf8'a' = _utf8'A' COLLATE utf8_bin ),
+  ('utf8_strcmp_default', STRCMP(_utf8'a', _utf8'A') ),
+  ('utf8_strcmp_general_ci', STRCMP(_utf8'a', _utf8'A' COLLATE utf8_general_ci) ),
+  ('utf8_strcmp_bin', STRCMP(_utf8'a', _utf8'A' COLLATE utf8_bin) ),
+  ('utf8_like_default', _utf8'a' LIKE _utf8'A' ),
+  ('utf8_like_general_ci', _utf8'a' LIKE _utf8'A' COLLATE utf8_general_ci ),
+  ('utf8_like_bin', _utf8'a' LIKE _utf8'A' COLLATE utf8_bin );
+SELECT id, case_name, result_value
+FROM charset_intro_coercibility
+ORDER BY id;
+ id |       case_name        | result_value 
+----+------------------------+--------------
+  1 | utf8_equal_default     | false
+  2 | utf8_equal_general_ci  | true
+  3 | utf8_equal_bin         | false
+  4 | utf8_strcmp_default    | -1
+  5 | utf8_strcmp_general_ci | 0
+  6 | utf8_strcmp_bin        | 1
+  7 | utf8_like_default      | false
+  8 | utf8_like_general_ci   | false
+  9 | utf8_like_bin          | false
+(9 rows)
+
+-- +----+-------------------------+--------------+
+-- | id | case_name               | result_value |
+-- +----+-------------------------+--------------+
+-- |  1 | utf8_equal_default     | 1            |
+-- |  2 | utf8_equal_general_ci  | 1            |
+-- |  3 | utf8_equal_bin         | 0            |
+-- |  4 | utf8_strcmp_default    | 0            |
+-- |  5 | utf8_strcmp_general_ci | 0            |
+-- |  6 | utf8_strcmp_bin        | 1            |
+-- |  7 | utf8_like_default      | 1            |
+-- |  8 | utf8_like_general_ci   | 1            |
+-- |  9 | utf8_like_bin          | 0            |
+-- +----+-------------------------+--------------+
+-- 9 rows in set (0.00 sec)
+-- Expected characteristics:
+-- - utf8_general_ci cases are case-insensitive, so 'a' and 'A' compare equal.
+-- - utf8_bin cases are binary/case-sensitive, so 'a' and 'A' differ.
+-- - Exact numeric result values follow MySQL STRCMP/comparison semantics.
+--
+DROP TABLE charset_intro_coercibility;
+-- ----------------------------------------------------------------------
+-- 11. String function examples from MySQL func_str-style coverage.
+--     These verify introducers in POSITION, FIND_IN_SET, SUBSTRING_INDEX,
+--     BETWEEN and IN.
+-- ----------------------------------------------------------------------
+-- 1
+-- _latin1 'B' -> 0x42   _latin1 'a' -> 0x61    0x42 >= 0x61 collate is casesensitive  so return 0/f
+select _latin1'B' >= _latin1'a';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 1
+select _latin1'B' <= _latin1'c';
+ ?column? 
+----------
+ t
+(1 row)
+
+DROP TABLE IF EXISTS charset_intro_string_funcs;
+NOTICE:  table "charset_intro_string_funcs" does not exist, skipping
+CREATE TABLE charset_intro_string_funcs
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  case_name VARCHAR(80),
+  result_value VARCHAR(120)
+);
+INSERT INTO charset_intro_string_funcs(case_name, result_value) VALUES
+  ('position_latin1_default',
+   CAST(POSITION(_latin1'B' IN _latin1'abcd') AS CHAR)),
+  ('position_latin1_bin_haystack',
+   CAST(POSITION(_latin1'B' IN _latin1'abcd' COLLATE latin1_bin) AS CHAR)),
+  ('position_latin1_bin_needle',
+   CAST(POSITION(_latin1'B' COLLATE latin1_bin IN _latin1'abcd') AS CHAR)),
+  ('find_in_set_latin1',
+   CAST(FIND_IN_SET(_latin1'B', _latin1'a,b,c,d') AS CHAR)),
+  ('substring_index_latin1',
+   SUBSTRING_INDEX(_latin1'abcdabcdabcd', _latin1'd', 2)),
+  ('between_latin1_default',
+   CAST(_latin1'B' BETWEEN _latin1'a' AND _latin1'c' AS CHAR)),
+  ('between_latin1_bin_expr',
+   CAST(_latin1'B' COLLATE latin1_bin BETWEEN _latin1'a' AND _latin1'c' AS CHAR)),
+  ('in_latin1_default',
+   CAST(_latin1'B' IN (_latin1'a', _latin1'b') AS CHAR)),
+  ('in_latin1_bin_expr',
+   CAST(_latin1'B' COLLATE latin1_bin IN (_latin1'a', _latin1'b') AS CHAR));
+ERROR:  syntax error at or near "COLLATE"
+LINE 5:    CAST(POSITION(_latin1'B' IN _latin1'abcd' COLLATE latin1_...
+                                                     ^
+INSERT INTO charset_intro_string_funcs(case_name, result_value) VALUES
+  ('position_latin1_default',CAST(POSITION(_latin1'B' IN _latin1'abcd') AS CHAR)),
+  ('find_in_set_latin1',CAST(FIND_IN_SET(_latin1'B', _latin1'a,b,c,d') AS CHAR)),
+  ('substring_index_latin1',SUBSTRING_INDEX(_latin1'abcdabcdabcd', _latin1'd', 2)),
+  ('between_latin1_default',CAST(_latin1'B' BETWEEN _latin1'a' AND _latin1'c' AS CHAR)),
+  ('in_latin1_default',CAST(_latin1'B' IN (_latin1'a', _latin1'b') AS CHAR));
+SELECT id, case_name, result_value
+FROM charset_intro_string_funcs
+ORDER BY id;
+ id |        case_name        | result_value 
+----+-------------------------+--------------
+  1 | position_latin1_default | 0
+  2 | find_in_set_latin1      | 2
+  3 | substring_index_latin1  | abcdabc
+  4 | between_latin1_default  | t
+  5 | in_latin1_default       | f
+(5 rows)
+
+-- +----+-------------------------+--------------+
+-- | id | case_name               | result_value |
+-- +----+-------------------------+--------------+
+-- |  1 | position_latin1_default | 2            |
+-- |  2 | find_in_set_latin1      | 2            |
+-- |  3 | substring_index_latin1  | abcdabc      |
+-- |  4 | between_latin1_default  | 1            |
+-- |  5 | in_latin1_default       | 1            |
+-- +----+-------------------------+--------------+
+-- +----+------------------------------+--------------+
+-- | id | case_name                    | result_value |
+-- +----+------------------------------+--------------+
+-- |  1 | position_latin1_default      | 2            |
+-- |  2 | position_latin1_bin_haystack | 0            |
+-- |  3 | position_latin1_bin_needle   | 0            |
+-- |  4 | find_in_set_latin1           | 2            |
+-- |  5 | substring_index_latin1       | abcdabc      |
+-- |  6 | between_latin1_default       | 1            |
+-- |  7 | between_latin1_bin_expr      | 0            |
+-- |  8 | in_latin1_default            | 1            |
+-- |  9 | in_latin1_bin_expr           | 0            |
+-- +----+------------------------------+--------------+
+-- 9 rows in set (0.00 sec)
+-- 
+-- Expected characteristics:
+-- - latin1 default collation is normally case-insensitive for these tests.
+-- - latin1_bin makes comparisons case-sensitive where that collation controls
+--   the operation.
+-- - SUBSTRING_INDEX returns bytes/text equivalent to "abcdabcd".
+--
+-- Expected errors if run separately:
+SELECT POSITION(_latin1'B' IN _latin2'abcd');
+ position 
+----------
+        0
+(1 row)
+
+--   ERROR 1267: Illegal mix of collations
+SELECT _latin2'B' BETWEEN _latin1'a' AND _latin1'b';
+ ?column? 
+----------
+ t
+(1 row)
+
+--   ERROR 1270: Illegal mix of collations
+SELECT _latin1'B' IN (_latin2'a', _latin1'b');
+ ?column? 
+----------
+ f
+(1 row)
+
+--   ERROR 1270: Illegal mix of collations
+DROP TABLE charset_intro_string_funcs;
+-- ----------------------------------------------------------------------
+-- 12. _ucs2 x'...' examples from MySQL ctype_ucs-style coverage.
+--     x'....' is decoded to bytes first, then interpreted as UCS2.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_ucs2_hex;
+NOTICE:  table "charset_intro_ucs2_hex" does not exist, skipping
+CREATE TABLE charset_intro_ucs2_hex
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  l VARCHAR(40) CHARACTER SET ucs2,
+  r VARCHAR(40) CHARACTER SET ucs2
+);
+-- not surport this syntax, UCS2 not exsit
+INSERT INTO charset_intro_ucs2_hex(l, r) VALUES
+  (LPAD(_ucs2 x'0420', 10, _ucs2 x'0421'),
+   RPAD(_ucs2 X'0420', 10, _ucs2 X'0421')),
+  (LPAD(_ucs2 X'0420', 10, _ucs2 X'04210422'),
+   RPAD(_ucs2 X'0420', 10, _ucs2 X'04210422'));
+ERROR:  syntax error at or near "x'0420'"
+LINE 2:   (LPAD(_ucs2 x'0420', 10, _ucs2 x'0421'),
+                      ^
+SELECT id, HEX(l) AS l_hex, HEX(r) AS r_hex, CHAR_LENGTH(l) AS l_chars,
+       CHAR_LENGTH(r) AS r_chars
+FROM charset_intro_ucs2_hex
+ORDER BY id;
+ id | l_hex | r_hex | l_chars | r_chars 
+----+-------+-------+---------+---------
+(0 rows)
+
+-- +----+------------------------------------------+------------------------------------------+---------+---------+
+-- | id | l_hex                                    | r_hex                                    | l_chars | r_chars |
+-- +----+------------------------------------------+------------------------------------------+---------+---------+
+-- |  1 | 0421042104210421042104210421042104210420 | 0420042104210421042104210421042104210421 |      10 |      10 |
+-- |  2 | 0421042204210422042104220421042204210420 | 0420042104220421042204210422042104220421 |      10 |      10 |
+-- +----+------------------------------------------+------------------------------------------+---------+---------+
+-- 2 rows in set (0.01 sec)
+-- Expected:
+-- - X'0420' and X'0421' are decoded as two-byte UCS2 code units.
+-- - CHAR_LENGTH(l) and CHAR_LENGTH(r) are 10 for both rows.
+-- - HEX output is UCS2 byte representation, not text bytes for "0420".
+DROP TABLE charset_intro_ucs2_hex;
+-- ----------------------------------------------------------------------
+-- 13. _ucs2 x'...' in LIKE patterns, with table context.
+-- ----------------------------------------------------------------------
+--  UCS2 not exsit
+DROP TABLE IF EXISTS charset_intro_ucs2_like;
+NOTICE:  table "charset_intro_ucs2_like" does not exist, skipping
+CREATE TABLE charset_intro_ucs2_like
+(
+  word VARCHAR(20) CHARACTER SET ucs2
+) ENGINE=MyISAM CHARACTER SET ucs2 COLLATE ucs2_general_ci;
+INSERT INTO charset_intro_ucs2_like(word) VALUES ('cat'), ('car'), ('dog');
+SELECT word
+FROM charset_intro_ucs2_like
+WHERE word LIKE _ucs2 x'00630025'
+ORDER BY word;
+ERROR:  syntax error at or near "x'00630025'"
+LINE 3: WHERE word LIKE _ucs2 x'00630025'
+                              ^
+-- +------+
+-- | word |
+-- +------+
+-- | car  |
+-- | cat  |
+-- +------+
+-- 2 rows in set (0.01 sec)
+SELECT word
+FROM charset_intro_ucs2_like
+WHERE word LIKE _ucs2 x'00630061005F'
+ORDER BY word;
+ERROR:  syntax error at or near "x'00630061005F'"
+LINE 3: WHERE word LIKE _ucs2 x'00630061005F'
+                              ^
+-- +------+
+-- | word |
+-- +------+
+-- | car  |
+-- | cat  |
+-- +------+
+-- 2 rows in set (0.01 sec)
+-- Expected:
+-- - _ucs2 x'00630025' is UCS2 bytes for pattern "c%"; returns car, cat.
+-- - _ucs2 x'00630061005F' is UCS2 bytes for pattern "ca_"; returns car, cat.
+DROP TABLE charset_intro_ucs2_like;
+-- ----------------------------------------------------------------------
+-- 14. _latin1 x'...' inserted into a UCS2 column.
+--     This mirrors MySQL ctype_ucs bug20536 coverage with full context.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_latin1_hex_to_ucs2;
+NOTICE:  table "charset_intro_latin1_hex_to_ucs2" does not exist, skipping
+CREATE TABLE charset_intro_latin1_hex_to_ucs2
+(
+  id BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(255) CHARACTER SET ucs2 NOT NULL
+);
+INSERT INTO charset_intro_latin1_hex_to_ucs2(id, name) VALUES
+  (1, _latin1 x'7465737431'),
+  (2, _latin1 x'746573745F32');
+SELECT id, HEX(name) AS ucs2_hex, name
+FROM charset_intro_latin1_hex_to_ucs2
+ORDER BY id;
+ id |   ucs2_hex   |  name  
+----+--------------+--------
+  1 | 7465737431   | test1
+  2 | 746573745F32 | test_2
+(2 rows)
+
+-- +----+--------------------------+--------+
+-- | id | ucs2_hex                 | name   |
+-- +----+--------------------------+--------+
+-- |  1 | 00740065007300740031     | test1  |
+-- |  2 | 0074006500730074005F0032 | test_2 |
+-- +----+--------------------------+--------+
+-- 2 rows in set (0.00 sec)
+-- Expected:
+-- - x'7465737431' decodes to latin1 bytes for "test1", then stores in UCS2.
+-- - Row 1 HEX(name) is expected to be 00740065007300740031.
+-- - Row 2 HEX(name) is expected to be 0074006500730074005F0032.
+DROP TABLE charset_intro_latin1_hex_to_ucs2;
+-- ----------------------------------------------------------------------
+-- 15. _gbk with hex numeric literal and conversion, from ctype_gbk-style
+--     coverage. This uses 0xA14041, not x'...', but exercises introducer
+--     bytes and charset conversion.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_gbk_convert;
+NOTICE:  table "charset_intro_gbk_convert" does not exist, skipping
+CREATE TABLE charset_intro_gbk_convert
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  utf8_hex VARBINARY(100)
+);
+INSERT INTO charset_intro_gbk_convert(utf8_hex) VALUES
+  (UNHEX(HEX(CONVERT(_gbk 0xD6D0 USING utf8))));
+WARNING:  Syntax support only
+SELECT id, HEX(utf8_hex) AS converted_utf8_hex
+FROM charset_intro_gbk_convert;
+ id | converted_utf8_hex 
+----+--------------------
+  1 | E4B8AD
+(1 row)
+
+-- +----+--------------------+
+-- | id | converted_utf8_hex |
+-- +----+--------------------+
+-- |  1 | E4B8AD               |
+-- +----+--------------------+
+-- 1 row in set (0.00 sec)
+-- Expected:
+-- - MySQL test comment says this should produce 0x003F0041:
+--   unassigned GBK double-byte 0xA140 converts to question mark 0x003F,
+--   then single-byte 0x41 converts to UCS2 0x0041.
+-- - Expected converted_utf8_hex: 003F0041
+DROP TABLE charset_intro_gbk_convert;
+-- ----------------------------------------------------------------------
+-- 16. _binary in bitwise/numeric contexts, from varbinary-style coverage.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_binary_ops;
+NOTICE:  table "charset_intro_binary_ops" does not exist, skipping
+CREATE TABLE charset_intro_binary_ops
+(
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  case_name VARCHAR(80),
+  result_value VARCHAR(80)
+);
+INSERT INTO charset_intro_binary_ops(case_name, result_value) VALUES
+  ('binary_12_or_text_12', CAST(_binary '12' | '12' AS CHAR)),
+  ('binary_12_or_binary_12', CAST(_binary '12' | _binary '12' AS CHAR)),
+  -- ('binary_12_or_hex_01', CAST(_binary '12' | 0x01 AS CHAR)),
+  -- ('binary_12_or_int_1', CAST(_binary '12' | 1 AS CHAR)),
+  ('binary_12_shift_left_1', CAST(_binary '12' << 1 AS CHAR));
+SELECT id, case_name, result_value
+FROM charset_intro_binary_ops
+ORDER BY id;
+ id |       case_name        | result_value 
+----+------------------------+--------------
+  1 | binary_12_or_text_12   | 1
+  2 | binary_12_or_binary_12 | 1
+  3 | binary_12_shift_left_1 | 2
+(3 rows)
+
+-- +----+------------------------+--------------+
+-- | id | case_name              | result_value |
+-- +----+------------------------+--------------+
+-- |  1 | binary_12_or_text_12   | 12           |
+-- |  2 | binary_12_or_binary_12 | 12           |
+-- |  3 | binary_12_or_hex_01    | 13           |
+-- |  4 | binary_12_or_int_1     | 13           |
+-- |  5 | binary_12_shift_left_1 | 24           |
+-- +----+------------------------+--------------+
+-- 5 rows in set (0.00 sec)
+-- Expected:
+-- - These expressions use MySQL's numeric interpretation of string/hex
+--   operands in bitwise contexts.
+-- - They are included to verify that _binary introducer does not prevent
+--   numeric-context conversion.
+DROP TABLE charset_intro_binary_ops;
+-- ----------------------------------------------------------------------
+-- 17. _binary in NAME_CONST with COLLATE 'binary', from func_misc-style
+--     coverage.
+-- ----------------------------------------------------------------------
+DROP TABLE IF EXISTS charset_intro_name_const;
+NOTICE:  table "charset_intro_name_const" does not exist, skipping
+CREATE TABLE charset_intro_name_const
+(
+  a DATE
+);
+INSERT INTO charset_intro_name_const(a) VALUES ('2009-01-09');
+SELECT *
+FROM charset_intro_name_const
+WHERE a = NAME_CONST('reportDate', _binary'2009-01-09');
+ERROR:  operator does not exist: date = varbinary
+LINE 3: WHERE a = NAME_CONST('reportDate', _binary'2009-01-09');
+                ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+SELECT *
+FROM charset_intro_name_const
+WHERE a = NAME_CONST('reportDate', '2009-01-09');
+     a      
+------------
+ 2009-01-09
+(1 row)
+
+-- +------------+
+-- | a          |
+-- +------------+
+-- | 2009-01-09 |
+-- +------------+
+-- 1 row in set (0.04 sec)
+-- Expected:
+-- - Returns the row with a = 2009-01-09.
+-- - This verifies _binary text literal plus COLLATE 'binary' in a function.
+DROP TABLE charset_intro_name_const;
+select _utf8 'abc';             --ok  
+ ?column? 
+----------
+ abc
+(1 row)
+
+select _utf8mb4 'abc';          --ok 
+ ?column? 
+----------
+ abc
+(1 row)
+
+select _utf8 x'e4b8ad';         --ok
+ varbinary 
+-----------
+ 中
+(1 row)
+
+select _utf8 x'c0af';           --ERROR 2600 (HY000): invalid utf8 character string: "C0AF"
+ERROR:  invalid byte sequence for encoding "UTF8": 0xc0 0xaf
+LINE 1: select _utf8 x'c0af';
+                     ^
+select _utf8 x'ff';             --ERROR 1300 (HY000): Invalid utf8 character string: 'FF'
+ERROR:  invalid byte sequence for encoding "UTF8": 0xff
+LINE 1: select _utf8 x'ff';
+                     ^
+select HEX(_latin1 x'ff');           --ok
+ HEX 
+-----
+ FF
+(1 row)
+
+create table test_col_type as select _binary 'aaay';
+\d test_col_type;
+             Table "public.test_col_type"
+  Column  |   Type    | Collation | Nullable | Default 
+----------+-----------+-----------+----------+---------
+ ?column? | varbinary | default   |          | 
+
+drop table test_col_type;
+create table test_col_type2 as select _utf8 'aaay';
+\d test_col_type2;
+                 Table "public.test_col_type2"
+  Column  |       Type        | Collation | Nullable | Default 
+----------+-------------------+-----------+----------+---------
+ ?column? | character varying |           |          | 
+
+drop table test_col_type2;
+-- Extracted MySQL 5.7 _charset introducer test cases.
+-- Source tree: mysql-server
+SET NAMES utf8;
+SET sql_mode = 'NO_ENGINE_SUBSTITUTION';
+set mysql.create_database_mode="schema";
+show mysql.create_database_mode;
+ mysql.create_database_mode 
+----------------------------
+ schema
+(1 row)
+
+DROP DATABASE IF EXISTS charset_intro_extract_57;
+NOTICE:  schema "charset_intro_extract_57" does not exist, skipping
+CREATE DATABASE charset_intro_extract_57 DEFAULT CHARACTER SET latin1;
+USE charset_intro_extract_57;
+-- ============================================================================
+-- Source: mysql-test/include/func_in.inc:78-82
+-- Purpose: IN predicate with _koi8r and _latin1 introducers.
+SET NAMES utf8;
+DROP TABLE IF EXISTS t_func_in_intro;
+NOTICE:  table "t_func_in_intro" does not exist, skipping
+CREATE TABLE t_func_in_intro (a CHAR(100)  NOT NULL);
+INSERT INTO t_func_in_intro VALUES ('bbbb'),(_koi8r'����'),(_latin1'����');
+SELECT a FROM t_func_in_intro
+WHERE a IN ('bbbb',_koi8r'����',_latin1'����')
+ORDER BY a;
+                                                  a                                                   
+------------------------------------------------------------------------------------------------------
+ bbbb                                                                                                
+ ï¿½ï¿½ï¿½ï¿½
+ О©╫О©╫О©╫О©╫
+(3 rows)
+
+-- +------------------------------+
+-- | a                            |
+-- +------------------------------+
+-- | bbbb                         |
+-- | ï¿½ï¿½ï¿½ï¿½                 |
+-- | О©╫О©╫О©╫О©╫                 |
+-- +------------------------------+
+-- 3 rows in set (0.02 sec)
+DROP TABLE t_func_in_intro;
+-- ============================================================================
+-- Source: mysql-test/include/ctype_german.inc:13-55
+-- Purpose: _latin1 hex introducers for German ordering/comparison.
+DROP TABLE IF EXISTS t_ctype_german_intro;
+NOTICE:  table "t_ctype_german_intro" does not exist, skipping
+CREATE TABLE t_ctype_german_intro ( s1 text collate utf8_general_ci);
+\d t_ctype_german_intro;
+Table "charset_intro_extract_57.t_ctype_german_intro"
+ Column | Type |    Collation    | Nullable | Default 
+--------+------+-----------------+----------+---------
+ s1     | text | utf8_general_ci |          | 
+
+DELETE FROM t_ctype_german_intro;
+INSERT INTO t_ctype_german_intro VALUES ('ud'),('uf');
+INSERT INTO t_ctype_german_intro VALUES ('od'),('of');
+INSERT INTO t_ctype_german_intro VALUES ('e');
+INSERT INTO t_ctype_german_intro VALUES ('ad'),('af');
+INSERT INTO t_ctype_german_intro VALUES ('a'),('ae'),(_latin1 0xE4);
+INSERT INTO t_ctype_german_intro VALUES ('o'),('oe'),(_latin1 0xF6);
+INSERT INTO t_ctype_german_intro VALUES ('s'),('ss'),(_latin1 0xDF);
+INSERT INTO t_ctype_german_intro VALUES ('u'),('ue'),(_latin1 0xFC);
+INSERT INTO t_ctype_german_intro VALUES (_latin1 0xE6), (_latin1 0xC6);
+INSERT INTO t_ctype_german_intro VALUES (_latin1 0x9C), (_latin1 0x8C);
+SELECT s1, HEX(s1) FROM t_ctype_german_intro ORDER BY s1;
+   s1   | HEX  
+--------+------
+ a      | 61
+ ä      | C3A4
+ ad     | 6164
+ ae     | 6165
+ af     | 6166
+ e      | 65
+ o      | 6F
+ ö      | C3B6
+ od     | 6F64
+ oe     | 6F65
+ of     | 6F66
+ ß      | C39F
+ s      | 73
+ ss     | 7373
+ u      | 75
+ ü      | C3BC
+ ud     | 7564
+ ue     | 7565
+ uf     | 7566
+ \u008C | C28C
+ \u009C | C29C
+ æ      | C3A6
+ Æ      | C386
+(23 rows)
+
+-- +----+---------+
+-- | s1 | HEX(s1) |
+-- +----+---------+
+-- | a  | 61      |
+-- | ä  | C3A4    |
+-- | ad | 6164    |
+-- | ae | 6165    |
+-- | af | 6166    |
+-- | e  | 65      |
+-- | o  | 6F      |
+-- | ö  | C3B6    |
+-- | od | 6F64    |
+-- | oe | 6F65    |
+-- | of | 6F66    |
+-- | s  | 73      |
+-- | ß  | C39F    |
+-- | ss | 7373    |
+-- | u  | 75      |
+-- | ü  | C3BC    |
+-- | ud | 7564    |
+-- | ue | 7565    |
+-- | uf | 7566    |
+-- | Æ  | C386    |
+-- | æ  | C3A6    |
+-- | Œ  | C592    |
+-- | œ  | C593    |
+-- +----+---------+
+SELECT GROUP_CONCAT(s1 ORDER BY BINARY s1) FROM t_ctype_german_intro GROUP BY s1;
+ group_concat 
+--------------
+ a,ä
+ ad
+ ae
+ af
+ e
+ o,ö
+ od
+ oe
+ of
+ s,ß
+ ss
+ u,ü
+ ud
+ ue
+ uf
+ \u008C
+ \u009C
+ Æ,æ
+(18 rows)
+
+-- +-------------------------------------+
+-- | GROUP_CONCAT(s1 ORDER BY BINARY s1) |
+-- +-------------------------------------+
+-- | a,ä                                 |
+-- | ad                                  |
+-- | ae                                  |
+-- | af                                  |
+-- | e                                   |
+-- | o,ö                                 |
+-- | od                                  |
+-- | oe                                  |
+-- | of                                  |
+-- | s,ß                                 |
+-- | ss                                  |
+-- | u,ü                                 |
+-- | ud                                  |
+-- | ue                                  |
+-- | uf                                  |
+-- | Æ,æ                                 |
+-- | Œ,œ                                 |
+-- +-------------------------------------+
+SELECT s1, HEX(s1), HEX(WEIGHT_STRING(s1))
+FROM t_ctype_german_intro
+ORDER BY s1, BINARY(s1);
+   s1   | HEX  |   HEX    
+--------+------+----------
+ a      | 61   | 0041
+ ä      | C3A4 | 0041
+ ad     | 6164 | 00410044
+ ae     | 6165 | 00410045
+ af     | 6166 | 00410046
+ e      | 65   | 0045
+ o      | 6F   | 004F
+ ö      | C3B6 | 004F
+ od     | 6F64 | 004F0044
+ oe     | 6F65 | 004F0045
+ of     | 6F66 | 004F0046
+ s      | 73   | 0053
+ ß      | C39F | 0053
+ ss     | 7373 | 00530053
+ u      | 75   | 0055
+ ü      | C3BC | 0055
+ ud     | 7564 | 00550044
+ ue     | 7565 | 00550045
+ uf     | 7566 | 00550046
+ \u008C | C28C | 008C
+ \u009C | C29C | 009C
+ Æ      | C386 | 00C6
+ æ      | C3A6 | 00C6
+(23 rows)
+
+-- ----+---------+------------------------+
+-- | s1 | HEX(s1) | HEX(WEIGHT_STRING(s1)) |
+-- +----+---------+------------------------+
+-- | a  | 61      | 0041                   |
+-- | ä  | C3A4    | 0041                   |
+-- | ad | 6164    | 00410044               |
+-- | ae | 6165    | 00410045               |
+-- | af | 6166    | 00410046               |
+-- | e  | 65      | 0045                   |
+-- | o  | 6F      | 004F                   |
+-- | ö  | C3B6    | 004F                   |
+-- | od | 6F64    | 004F0044               |
+-- | oe | 6F65    | 004F0045               |
+-- | of | 6F66    | 004F0046               |
+-- | s  | 73      | 0053                   |
+-- | ß  | C39F    | 0053                   |
+-- | ss | 7373    | 00530053               |
+-- | u  | 75      | 0055                   |
+-- | ü  | C3BC    | 0055                   |
+-- | ud | 7564    | 00550044               |
+-- | ue | 7565    | 00550045               |
+-- | uf | 7566    | 00550046               |
+-- | Æ  | C386    | 00C6                   |
+-- | æ  | C3A6    | 00C6                   |
+-- | Œ  | C592    | 0152                   |
+-- | œ  | C593    | 0152                   |
+-- +----+---------+------------------------+
+SELECT s1, HEX(s1)
+FROM t_ctype_german_intro
+WHERE s1='ae'
+ORDER BY s1, BINARY(s1);
+ s1 | HEX  
+----+------
+ ae | 6165
+(1 row)
+
+-- +----+---------+
+-- | s1 | HEX(s1) |
+-- +----+---------+
+-- | ae | 6165    |
+-- +----+---------+
+DROP TABLE t_ctype_german_intro;
+-- ============================================================================
+-- Source: mysql-test/t/union.test:647-680
+-- Purpose: UNION with _latin1 introducers and latin1_bin COLLATE.
+-- ***
+DROP TABLE IF EXISTS t_union_intro;
+NOTICE:  table "t_union_intro" does not exist, skipping
+CREATE TABLE t_union_intro AS
+(SELECT _latin1'test' collate utf8_general_ci) UNION
+(SELECT _latin1'TEST' collate utf8_general_ci) UNION
+(SELECT _latin1'TeST' collate utf8_general_ci);
+SHOW CREATE TABLE t_union_intro;
+     Table     |                       Create Table                       
+---------------+----------------------------------------------------------
+ t_union_intro | CREATE TABLE `t_union_intro` (                          +
+               |     `?column?` character varying COLLATE utf8_general_ci+
+               | )
+(1 row)
+
+SELECT COUNT(*) FROM t_union_intro;
+ COUNT 
+-------
+     1
+(1 row)
+
+-- +----------+
+-- | COUNT(*) |
+-- +----------+
+-- |        1 |
+-- +----------+
+DROP TABLE IF EXISTS t_union_intro;
+CREATE TABLE t_union_intro AS
+(SELECT _latin1'test') UNION
+(SELECT _latin1'TEST') UNION
+(SELECT _latin1'TeST' );
+SHOW CREATE TABLE t_union_intro;
+     Table     |           Create Table           
+---------------+----------------------------------
+ t_union_intro | CREATE TABLE `t_union_intro` (  +
+               |     `?column?` character varying+
+               | )
+(1 row)
+
+SELECT COUNT(*) FROM t_union_intro;
+ COUNT 
+-------
+     3
+(1 row)
+
+-- +----------+
+-- | COUNT(*) |
+-- +----------+
+-- |        1 |
+-- +----------+
+DROP TABLE t_union_intro;
+-- ============================================================================
+-- Source: mysql-test/t/union.test:954-958
+-- Purpose: UNION aggregation between _utf8 and _latin1.
+SELECT _utf8'12' UNION SELECT _latin1'12345';
+ ?column? 
+----------
+ 12
+ 12345
+(2 rows)
+
+-- -------+
+-- | 12    |
+-- +-------+
+-- | 12    |
+-- | 12345 |
+-- +-------+
+-- ============================================================================
+-- Source: mysql-test/t/ctype_collate.test:10-72, 78-105, 129-164
+-- Purpose: _latin1 introducers inserted into latin1 column and COLLATE checks.
+DROP TABLE IF EXISTS t_ctype_collate_intro;
+NOTICE:  table "t_ctype_collate_intro" does not exist, skipping
+CREATE TABLE t_ctype_collate_intro (
+  latin1_f CHAR(32) CHARACTER SET latin1 NOT NULL collate utf8_general_ci
+);
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'A');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'a');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'AD');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'ad');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'AE');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'ae');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'AF');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'af');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'B');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'b');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'U');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'u');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'UE');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'ue');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'SS');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'ss');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'Y');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'y');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'Z');
+INSERT INTO t_ctype_collate_intro (latin1_f) VALUES (_latin1'z');
+SELECT latin1_f FROM t_ctype_collate_intro ORDER BY latin1_f, HEX(latin1_f);
+ latin1_f 
+----------
+ A
+ a
+ AD
+ ad
+ AE
+ ae
+ AF
+ af
+ B
+ b
+ SS
+ ss
+ U
+ u
+ UE
+ ue
+ Y
+ y
+ Z
+ z
+(20 rows)
+
+-- +----------+
+-- | latin1_f |
+-- +----------+
+-- | A        |
+-- | a        |
+-- | AD       |
+-- | ad       |
+-- | AE       |
+-- | ae       |
+-- | AF       |
+-- | af       |
+-- | B        |
+-- | b        |
+-- | SS       |
+-- | ss       |
+-- | U        |
+-- | u        |
+-- | UE       |
+-- | ue       |
+-- | Y        |
+-- | y        |
+-- | Z        |
+-- | z        |
+-- +----------+
+-- 20 rows in set (0.00 sec)
+-- ============================================================================
+-- Source: mysql-test/t/ctype_many.test:14-233
+-- ***
+SET CHARACTER SET latin1;
+DROP TABLE IF EXISTS t_ctype_many_intro;
+NOTICE:  table "t_ctype_many_intro" does not exist, skipping
+CREATE TABLE t_ctype_many_intro (
+  comment CHAR(32)  NOT NULL collate utf8_general_ci,
+  koi8_ru_f CHAR(32) NOT NULL DEFAULT '' collate utf8_general_ci
+);
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES ('a','LAT SMALL A');
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES ('b','LAT SMALL B');
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES ('A','LAT CAPIT A');
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES ('B','LAT CAPIT B');
+-- collate utf8_general_ci,now  need  to add.
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES (_koi8r'�','CYR SMALL A' collate utf8_general_ci);
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES (_koi8r'�','CYR SMALL BE' collate utf8_general_ci);
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES (_koi8r'�','CYR CAPIT A' collate utf8_general_ci);
+INSERT INTO t_ctype_many_intro (koi8_ru_f,comment) VALUES (_koi8r'�','CYR CAPIT BE' collate utf8_general_ci);
+SET CHARACTER SET utf8;
+SELECT koi8_ru_f, MIN(comment), COUNT(*) FROM t_ctype_many_intro GROUP BY 1 order by koi8_ru_f;
+            koi8_ru_f             |               MIN                | COUNT 
+----------------------------------+----------------------------------+-------
+ a                                | LAT CAPIT A                      |     2
+ b                                | LAT CAPIT B                      |     2
+ О©╫                              | CYR CAPIT A                      |     4
+(3 rows)
+
+-- +-----------+--------------+----------+
+-- | koi8_ru_f | MIN(comment) | COUNT(*) |
+-- +-----------+--------------+----------+
+-- | a         | LAT CAPIT A  |        2 |
+-- | b         | LAT CAPIT B  |        2 |
+-- | О©╫       | CYR CAPIT A  |        4 |
+-- +-----------+--------------+----------+
+-- ALTER TABLE t_ctype_many_intro ADD utf8_f CHAR(32) CHARACTER SET utf8 NOT NULL DEFAULT '';
+-- UPDATE t_ctype_many_intro SET utf8_f=CONVERT(koi8_ru_f USING utf8);
+SET CHARACTER SET koi8r;
+SELECT * FROM t_ctype_many_intro;
+             comment              |            koi8_ru_f             
+----------------------------------+----------------------------------
+ LAT SMALL A                      | a                               
+ LAT SMALL B                      | b                               
+ LAT CAPIT A                      | A                               
+ LAT CAPIT B                      | B                               
+ CYR SMALL A                      | О©╫
+ CYR SMALL BE                     | О©╫
+ CYR CAPIT A                      | О©╫
+ CYR CAPIT BE                     | О©╫
+(8 rows)
+
+-- +--------------+-----------+--------+
+-- | comment      | koi8_ru_f | utf8_f |
+-- +--------------+-----------+--------+
+-- | LAT SMALL A  | a         | a      |
+-- | LAT SMALL B  | b         | b      |
+-- | LAT CAPIT A  | A         | A      |
+-- | LAT CAPIT B  | B         | B      |
+-- | CYR SMALL A  | �         | �      |
+-- | CYR SMALL BE | �         | �      |
+-- | CYR CAPIT A  | �         | �      |
+-- | CYR CAPIT BE | �         | �      |
+-- +--------------+-----------+--------+
+-- 8 rows in set (0.00 sec)
+SELECT koi8_ru_f, MIN(comment) FROM t_ctype_many_intro GROUP BY 1 order by koi8_ru_f;
+            koi8_ru_f             |               MIN                
+----------------------------------+----------------------------------
+ a                                | LAT CAPIT A                     
+ b                                | LAT CAPIT B                     
+ О©╫                              | CYR CAPIT A                     
+(3 rows)
+
+-- +-----------+--------------+
+-- | koi8_ru_f | MIN(comment) |
+-- +-----------+--------------+
+-- | a         | LAT CAPIT A  |
+-- | b         | LAT CAPIT B  |
+-- | �         | CYR CAPIT A  |
+-- +-----------+--------------+
+-- 3 rows in set (0.00 sec)
+SELECT LOWER(koi8_ru_f) FROM t_ctype_many_intro ORDER BY 1 DESC;
+ LOWER 
+-------
+ О©╫
+ О©╫
+ О©╫
+ О©╫
+ b
+ b
+ a
+ a
+(8 rows)
+
+-- +------------------+
+-- | LOWER(koi8_ru_f) |
+-- +------------------+
+-- | Ͽ▒                |
+-- | Ͽ▒                |
+-- | Ͽ▒                |
+-- | Ͽ▒                |
+-- | b                |
+-- | b                |
+-- | a                |
+-- | a                |
+-- +------------------+
+-- 8 rows in set (0.00 sec)
+DROP TABLE t_ctype_many_intro;
+-- ============================================================================
+-- Source: mysql-test/include/ctype_utf8mb4.inc:1475-1491
+-- Purpose: conversion tests for character set introducers.
+-- ***
+SET NAMES utf8mb4;
+DROP TABLE IF EXISTS t_utf8mb4_intro;
+NOTICE:  table "t_utf8mb4_intro" does not exist, skipping
+CREATE TABLE t_utf8mb4_intro (a VARCHAR(10) COLLATE utf8_general_ci, b INT) ENGINE=InnoDB;
+INSERT INTO t_utf8mb4_intro VALUES ('a',1);
+SELECT CONCAT(a, IF(b>10, _utf8mb4'x', _utf8mb4'y' collate utf8_general_ci)) FROM t_utf8mb4_intro;
+ CONCAT 
+--------
+ a\x79
+(1 row)
+
+-- +-----------------------------------------------+
+-- | CONCAT(a, IF(b>10, _utf8mb4'x', _utf8mb4'y')) |
+-- +-----------------------------------------------+
+-- | ay                                            |
+-- +-----------------------------------------------+
+-- 1 row in set (0.00 sec)
+-- Source expected error 1267:
+-- SELECT CONCAT(a, IF(b>10, _utf8mb4'æ', _utf8mb4'ß')) FROM t_utf8mb4_intro;
+DROP TABLE t_utf8mb4_intro;
+SET NAMES utf8mb4;
+DROP TABLE IF EXISTS t_utf8mb4_hex_intro;
+NOTICE:  table "t_utf8mb4_hex_intro" does not exist, skipping
+CREATE TABLE t_utf8mb4_hex_intro (a VARCHAR(10) CHARACTER SET latin1, b INT) ENGINE=InnoDB;
+INSERT INTO t_utf8mb4_hex_intro VALUES ('a',1);
+SELECT CONCAT(a, IF(b>10, _utf8mb4 0x78, _utf8mb4 0x79)) FROM t_utf8mb4_hex_intro;
+ CONCAT 
+--------
+ a\x79
+(1 row)
+
+-- +---------------------------------------------------+
+-- | CONCAT(a, IF(b>10, _utf8mb4 0x78, _utf8mb4 0x79)) |
+-- +---------------------------------------------------+
+-- | ay                                                |
+-- +---------------------------------------------------+
+-- 1 row in set (0.00 sec)
+-- Source expected error 1267:
+-- SELECT CONCAT(a, IF(b>10, _utf8mb4 0xC3A6, _utf8mb4 0xC3AF)) FROM t_utf8mb4_hex_intro;
+DROP TABLE t_utf8mb4_hex_intro;
+-- ============================================================================
+-- Source: mysql-test/extra/rpl_tests/rpl_charset.test:124-135
+-- Purpose: BUG#6676, user variable derived from _latin1 introducer.
+DROP DATABASE charset_intro_extract_57 CASCADE;
+NOTICE:  drop cascades to table t_ctype_collate_intro
+\c postgres
+set ivorysql.compatible_mode  = mysql;
+CREATE DATABASE db_gbk
+WITH
+  ENCODING = 'GBK'
+  LC_COLLATE = 'C'
+  LC_CTYPE = 'C'
+  TEMPLATE = template0;
+\c db_gbk;
+SHOW server_encoding;
+ server_encoding 
+-----------------
+ GBK
+(1 row)
+
+set ivorysql.compatible_mode  = mysql;
+CREATE TABLE t (
+  c varchar(20)
+);
+-- ERROR 1366 (HY000): Incorrect string value: '\xE2\x98\x83' for column 'c' at row 1
+INSERT INTO t VALUES (_utf8 x'E29883');
+ERROR:  character with byte sequence 0xe2 0x98 0x83 in encoding "UTF8" has no equivalent in encoding "GBK"
+select HEX(c) from t;
+ HEX 
+-----
+(0 rows)
+
+drop table t;
+-- select _utf8 x'E29883';
+select  HEX(_utf8 x'E29883');
+  HEX   
+--------
+ E29883
+(1 row)
+
+-- error HCONST
+create table bb  as select _utf8 x'E29883';
+\d bb;
+                       Table "public.bb"
+  Column   |       Type        | Collation | Nullable | Default 
+-----------+-------------------+-----------+----------+---------
+ varbinary | character varying |           |          | 
+
+drop table bb;
+-- ok
+create table bb  as select _binary x'E29883';
+\d bb;
+                   Table "public.bb"
+  Column   |   Type    | Collation | Nullable | Default 
+-----------+-----------+-----------+----------+---------
+ varbinary | varbinary | default   |          | 
+
+drop table bb;
+DROP DATABASE db_gbk;
+ERROR:  cannot drop the currently open database
+\c postgres
+set ivorysql.compatible_mode  = mysql;
+SHOW server_encoding;
+ server_encoding 
+-----------------
+ UTF8
+(1 row)
+
+-- create function alter sql
+WITH target_proc AS (
+    /* operator implementation functions */
+    SELECT DISTINCT o.oprcode AS oid
+    FROM pg_catalog.pg_operator o
+    WHERE o.oprname IN ('=', '<=>', '<>', '!=', '<', '<=', '>', '>=')
+      AND o.oprcode <> 0
+      AND (
+            o.oprleft  IN ('text'::regtype, 'varchar'::regtype, 'bpchar'::regtype, 'char'::regtype)
+         OR o.oprright IN ('text'::regtype, 'varchar'::regtype, 'bpchar'::regtype, 'char'::regtype)
+      )
+    UNION
+    /* MySQL compatible functions */
+    SELECT p.oid
+    FROM pg_catalog.pg_proc p
+    JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'ivymy'
+      AND lower(p.proname::text) IN (
+          'strcmp',
+          'least', 'greatest', 'locate', 'instr',
+          'field', 'find_in_set', 'replace', 'substring_index',
+          'trim',
+          'concat', 'concat_ws', 'reverse', 'insert',
+          'lower', 'lcase', 'upper', 'ucase',
+          'left', 'right',
+          'substr', 'substring', 'mid',
+          'ltrim', 'rtrim',
+          'soundex', 'elt', 'make_set', 'repeat',
+          'rpad', 'lpad', 'export_set',
+          'ifnull', 'if', 'coalesce',
+          'text_seq'
+      )
+)
+SELECT DISTINCT format(
+           'ALTER FUNCTION %I.%I(%s) EXPAND "convert_encoding";',
+           n.nspname,
+           p.proname,
+           pg_catalog.pg_get_function_identity_arguments(p.oid)
+       ) AS alter_sql
+FROM target_proc t
+JOIN pg_catalog.pg_proc p ON p.oid = t.oid
+JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
+ORDER BY alter_sql;
+                                            alter_sql                                             
+--------------------------------------------------------------------------------------------------
+ ALTER FUNCTION ivymy."elt"(bigint, VARIADIC text[]) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."elt"(double precision, VARIADIC text[]) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."elt"(numeric, VARIADIC text[]) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."elt"(text, VARIADIC text[]) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."elt"(uint8, VARIADIC text[]) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."field"(VARIADIC "any") EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."field"(VARIADIC arr text[]) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(blob, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(boolean, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(ivy_hex, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(ivy_hex, ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(numeric, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(text, boolean) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(text, ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."left"(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(boolean, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(ivy_hex, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(ivy_hex, ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(numeric, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(text, boolean) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(text, ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."right"(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy."substring"(text, integer, bigint) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_eq(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_eq(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_ge(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_ge(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_gt(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_gt(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_le(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_le(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_lt(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_lt(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_ne(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.anyenum_ne(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.concat(VARIADIC "any") EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.export_set(bigint, text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.export_set(bigint, text, text, numeric, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.export_set(bigint, text, text, text, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.export_set(bigint, text, text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.export_set(text, text, text, text, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(anyenum, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(integer, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(ivy_hex, ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(ivy_hex, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(uint8, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.insert(text, bigint, bigint, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.insert(text, bigint, text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.insert(text, text, bigint, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.insert(text, text, text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.instr(bigint, bigint) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.instr(binary, binary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.instr(integer, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.instr(numeric, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.instr(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lcase(integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lcase(ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lcase(numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lcase(text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.locate(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.locate(text, text, bigint) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.locate(text, text, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.locate(text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.soundex(boolean) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.soundex(ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.soundex(mysbit) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.soundex(numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.soundex(text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(bigint, bigint) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(binary, binary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(date, date) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(double precision, double precision) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(integer, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(numeric, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(varbinary, varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.substring_index(text, text, bigint) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.substring_index(text, text, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.substring_index(text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_seq(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.ucase(integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.ucase(ivy_hex) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.ucase(numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.ucase(text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.upper(bigint) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.upper(integer) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.bpchareq(character, character) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.bpcharge(character, character) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.bpchargt(character, character) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.bpcharle(character, character) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.bpcharlt(character, character) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.bpcharne(character, character) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.nameeqtext(name, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.namegetext(name, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.namegttext(name, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.nameletext(name, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.namelttext(name, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.namenetext(name, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.text_ge(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.text_gt(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.text_le(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.text_lt(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.texteq(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.texteqname(text, name) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.textgename(text, name) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.textgtname(text, name) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.textlename(text, name) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.textltname(text, name) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.textne(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION pg_catalog.textnename(text, name) EXPAND "convert_encoding";
+(113 rows)
+
+-- SELECT *
+-- FROM pg_catalog.pg_object
+-- WHERE refclassid = 'pg_proc'::regclass
+--   AND option->>'convert_encoding' = '1'
+-- ORDER BY obj_oid::regprocedure::text;
+create table dd as select _gbk 'D6D0' = _gbk 'D6D0' collate utf8_general_ci;
+\d dd;
+                  Table "public.dd"
+  Column  |  Type   | Collation | Nullable | Default 
+----------+---------+-----------+----------+---------
+ ?column? | boolean |           |          | 
+
+drop table dd;
+create table dd as select _gbk 'D6D0' collate utf8_general_ci;
+\d dd;
+                          Table "public.dd"
+  Column  |       Type        |    Collation    | Nullable | Default 
+----------+-------------------+-----------------+----------+---------
+ ?column? | character varying | utf8_general_ci |          | 
+
+drop table dd;
+CREATE TABLE t_func_in_intro (a CHAR(100)  NOT NULL);
+insert into t_func_in_intro values ('bb'), (_gbk x'D6D0'), (_utf8 x'E4B8AD');
+select * from t_func_in_intro;
+                                                  a                                                   
+------------------------------------------------------------------------------------------------------
+ bb                                                                                                  
+ 中
+ 中
+(3 rows)
+
+select hex(a)  from t_func_in_intro;
+  hex   
+--------
+ 6262
+ E4B8AD
+ E4B8AD
+(3 rows)
+
+SELECT a FROM t_func_in_intro WHERE a IN  ('bb', _gbk x'D6D0' ,_utf8 x'E4B8AD');
+                                                  a                                                   
+------------------------------------------------------------------------------------------------------
+ bb                                                                                                  
+ 中
+ 中
+(3 rows)
+
+SELECT a FROM t_func_in_intro WHERE a IN  ('bb', _gbk x'D6D0' ,_binary x'E4B8AD');
+                                                  a                                                   
+------------------------------------------------------------------------------------------------------
+ bb                                                                                                  
+ 中
+ 中
+(3 rows)
+
+SELECT a FROM t_func_in_intro WHERE a IN  ('bb', _binary x'D6D0' ,_binary x'E4B8AD');
+                                                  a                                                   
+------------------------------------------------------------------------------------------------------
+ bb                                                                                                  
+ 中
+ 中
+(3 rows)
+
+SELECT a FROM t_func_in_intro WHERE a IN  ( x'E4B8AD',  _gbk x'D6D0' );
+ERROR:  operator does not exist: character = ivy_hex
+LINE 1: SELECT a FROM t_func_in_intro WHERE a IN  ( x'E4B8AD',  _gbk...
+                                              ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+SELECT a FROM t_func_in_intro WHERE a IN  ( _gbk x'D6D0' );
+ a  
+----
+ 中
+ 中
+(2 rows)
+
+-- +-----+
+-- | a   |
+-- +-----+
+-- | 中  |
+-- | 中  |
+-- +-----+
+SELECT a FROM t_func_in_intro WHERE a IN  ('bb',  x'D6D0' );
+ERROR:  operator does not exist: character = ivy_hex
+LINE 1: SELECT a FROM t_func_in_intro WHERE a IN  ('bb',  x'D6D0' );
+                                              ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+-- +----+
+-- | a  |
+-- +----+
+-- | bb |
+-- +----+
+-- empty
+SELECT a FROM t_func_in_intro WHERE a IN  ( _binary x'D6D0' );
+ a 
+---
+(0 rows)
+
+-- empty,   Warning | 1300 | Invalid gbk character string: 'AD'
+SELECT a FROM t_func_in_intro WHERE a IN  ( _gbk '中' );
+WARNING:  invalid byte sequence for character set introducer "gbk", treated as binary charset
+LINE 1: SELECT a FROM t_func_in_intro WHERE a IN  ( _gbk '中' );
+                                                         ^
+ a  
+----
+ 中
+ 中
+(2 rows)
+
+-- Notes:
+--   _gbk x'D6D0' is the GBK byte sequence for the character also encoded as
+--   UTF-8 x'E4B8AD'.
+--   Many cases use HEX(CONVERT(... USING utf8)) so results are stable across
+--   terminals and client character sets.
+SET NAMES utf8;
+SET sql_mode = '';
+set mysql.create_database_mode="schema";
+show mysql.create_database_mode;
+ mysql.create_database_mode 
+----------------------------
+ schema
+(1 row)
+
+CREATE DATABASE IF NOT EXISTS charset_conv_test DEFAULT CHARACTER SET utf8;
+USE charset_conv_test;
+DROP TABLE IF EXISTS function_charset_conversion_seed;
+NOTICE:  table "function_charset_conversion_seed" does not exist, skipping
+CREATE TABLE function_charset_conversion_seed (
+  id INT NOT NULL PRIMARY KEY,
+  gbk_col VARCHAR(20) CHARACTER SET gbk,
+  utf8_col VARCHAR(20) CHARACTER SET utf8,
+  gbk_text TEXT CHARACTER SET gbk,
+  utf8_text TEXT CHARACTER SET utf8
+) DEFAULT CHARACTER SET utf8;
+INSERT INTO function_charset_conversion_seed
+  (id, gbk_col, utf8_col, gbk_text, utf8_text)
+VALUES
+  (1, _gbk x'D6D0', _utf8 x'E4B8AD', _gbk x'D6D0', _utf8 x'E4B8AD'),
+  (2, _gbk 'abc', _utf8 'abc', _gbk 'a,b,c', _utf8 'a,b,c');
+-- 01. Item_bool_func2::fix_length_and_dec
+-- SQL surface: = and other two-argument comparison operators.
+-- Expected: 1, because both literals represent the same character after
+-- comparison collation aggregation.
+SELECT _utf8 x'E4B8AD' = _gbk x'D6D0' AS case_01_eq;
+ case_01_eq 
+------------
+ t
+(1 row)
+
+-- 02. Item_func_between::fix_length_and_dec
+-- SQL surface: BETWEEN / NOT BETWEEN.
+-- Expected: 1. The three string arguments are eligible for comparison
+-- charset/collation aggregation.
+SELECT _gbk 'b' BETWEEN _utf8 'a' AND _utf8 'z' AS case_02_between;
+ case_02_between 
+-----------------
+ t
+(1 row)
+
+-- 03. Item_func_nullif::fix_length_and_dec
+-- SQL surface: NULLIF(expr1, expr2).
+-- Expected: 1/NULL, because NULLIF returns NULL when the two string operands compare
+-- equal after charset/collation aggregation.
+SELECT HEX(NULLIF(_gbk x'D6D0', _utf8 x'E4B8AD')) AS case_03_nullif_is_null;
+ case_03_nullif_is_null 
+------------------------
+ 
+(1 row)
+
+-- 04. Item_func_case::fix_length_and_dec
+-- SQL surface: CASE value WHEN compare_value THEN result ... END.
+-- Expected: 'matched'.
+SELECT CASE _gbk x'D6D0'
+         WHEN _utf8 x'E4B8AD' THEN 'matched'
+         ELSE 'not matched'
+       END AS case_04_case_expr;
+ case_04_case_expr 
+-------------------
+ matched
+(1 row)
+
+-- 05. Item_func_in::fix_length_and_dec
+-- SQL surface: IN / NOT IN.
+-- Expected: 1.
+SELECT _gbk x'D6D0' IN (_utf8 x'E4B8AD', _utf8 'A') AS case_05_in;
+ case_05_in 
+------------
+ t
+(1 row)
+
+-- 06. Item_func_min_max::fix_length_and_dec
+-- SQL surface: scalar LEAST()/GREATEST(), not aggregate MIN()/MAX().
+-- Expected: E4B8AD | 42 the query succeeds and returns one string value after string-result
+-- plus comparison aggregation. The exact least value can depend on collation.
+SELECT
+  HEX(CONVERT(LEAST(_gbk x'D6D0', _utf8 x'E4B8AD') USING utf8)) AS case_06_least_hex,
+  HEX(CONVERT(GREATEST(_gbk 'A', _utf8 'B') USING utf8)) AS case_06_greatest_hex;
+WARNING:  Syntax support only
+WARNING:  Syntax support only
+ case_06_least_hex | case_06_greatest_hex 
+-------------------+----------------------
+ E4B8AD            | 42
+(1 row)
+
+-- 07. Item_func_locate::fix_length_and_dec
+-- SQL surface: LOCATE(), POSITION(), INSTR().
+-- Expected: all three columns return 1.
+SELECT
+  LOCATE(_gbk x'D6D0', _utf8 x'E4B8AD') AS case_07_locate,
+  POSITION(_gbk x'D6D0' IN _utf8 x'E4B8AD') AS case_07_position,
+  INSTR(_utf8 x'E4B8AD', _gbk x'D6D0') AS case_07_instr;
+ case_07_locate | case_07_position | case_07_instr 
+----------------+------------------+---------------
+              1 |                1 |             1
+(1 row)
+
+-- 08. Item_func_field::fix_length_and_dec
+-- SQL surface: FIELD(expr, value1, value2, ...).
+-- Expected: 1.
+SELECT FIELD(_gbk x'D6D0', _utf8 x'E4B8AD', _utf8 'A') AS case_08_field;
+ case_08_field 
+---------------
+             1
+(1 row)
+
+-- 09. Item_func_find_in_set::fix_length_and_dec
+-- SQL surface: FIND_IN_SET(str, strlist).
+-- Expected: 1.
+SELECT FIND_IN_SET(_gbk x'D6D0',
+                   CONCAT(_utf8 x'E4B8AD', _utf8 ',A')) AS case_09_find_in_set;
+ case_09_find_in_set 
+---------------------
+                   0
+(1 row)
+
+-- 10. Item_func_concat::fix_length_and_dec
+-- SQL surface: CONCAT(arg1, arg2, ...).
+-- Expected: E4B8AD41 after display conversion to utf8.
+SELECT HEX(CONVERT(CONCAT(_gbk x'D6D0', _utf8 'A') USING utf8)) AS case_10_concat_hex;
+WARNING:  Syntax support only
+    case_10_concat_hex    
+--------------------------
+ 5C786534623861645C783431
+(1 row)
+
+-- 11. Item_func_concat_ws::fix_length_and_dec
+-- SQL surface: CONCAT_WS(separator, arg1, arg2, ...).
+-- Expected: E4B8AD2C41 after display conversion to utf8.
+SELECT HEX(CONVERT(CONCAT_WS(_utf8 ',', _gbk x'D6D0', _utf8 'A') USING utf8)) AS case_11_concat_ws_hex;
+WARNING:  Syntax support only
+   case_11_concat_ws_hex    
+----------------------------
+ 5C786534623861642C5C783431
+(1 row)
+
+-- 12. Item_func_reverse::fix_length_and_dec
+-- SQL surface: REVERSE(str).
+-- Expected: 41E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(REVERSE(CONCAT(_gbk x'D6D0', _utf8 'A')) USING utf8)) AS case_12_reverse_hex;
+WARNING:  Syntax support only
+   case_12_reverse_hex    
+--------------------------
+ 3134785C646138623465785C
+(1 row)
+
+-- 13. Item_func_replace::fix_length_and_dec
+-- SQL surface: REPLACE(str, from_str, to_str).
+-- Expected: 58, because the matching character is replaced by 'X'.
+SELECT HEX(CONVERT(REPLACE(_gbk x'D6D0', _utf8 x'E4B8AD', _utf8 'X') USING utf8)) AS case_13_replace_hex;
+WARNING:  Syntax support only
+ case_13_replace_hex 
+---------------------
+ 58
+(1 row)
+
+-- 14. Item_func_insert::fix_length_and_dec
+-- SQL surface: INSERT(str, pos, len, newstr).
+-- Expected: 41 after display conversion to utf8.
+SELECT HEX(CONVERT(INSERT(_gbk x'D6D0', 1, 1, _utf8 'A') USING utf8)) AS case_14_insert_func_hex;
+WARNING:  Syntax support only
+ case_14_insert_func_hex 
+-------------------------
+ 41
+(1 row)
+
+-- 15. Item_func_lower::fix_length_and_dec
+-- SQL surface: LOWER() / LCASE().
+-- Expected: 'abc' for both functions.
+SELECT LOWER(_gbk 'ABC') AS case_15_lower, LCASE(_gbk 'ABC') AS case_15_lcase;
+ case_15_lower | case_15_lcase 
+---------------+---------------
+ abc           | abc
+(1 row)
+
+-- 16. Item_func_upper::fix_length_and_dec
+-- SQL surface: UPPER() / UCASE().
+-- Expected: 'ABC' for both functions.
+SELECT UPPER(_gbk 'abc') AS case_16_upper, UCASE(_gbk 'abc') AS case_16_ucase;
+ case_16_upper | case_16_ucase 
+---------------+---------------
+ ABC           | ABC
+(1 row)
+
+-- 17. Item_func_left::fix_length_and_dec
+-- SQL surface: LEFT(str, len).
+-- Expected: E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(LEFT(CONCAT(_gbk x'D6D0', _utf8 'A'), 1) USING utf8)) AS case_17_left_hex;
+WARNING:  Syntax support only
+ case_17_left_hex 
+------------------
+ 5C
+(1 row)
+
+-- 18. Item_func_right::fix_length_and_dec
+-- SQL surface: RIGHT(str, len).
+-- Expected: 41 after display conversion to utf8.
+SELECT HEX(CONVERT(RIGHT(CONCAT(_gbk x'D6D0', _utf8 'A'), 1) USING utf8)) AS case_18_right_hex;
+WARNING:  Syntax support only
+ case_18_right_hex 
+-------------------
+ 31
+(1 row)
+
+-- 19. Item_func_substr::fix_length_and_dec
+-- SQL surface: SUBSTR() / SUBSTRING() / MID().
+-- Expected: E4B8AD for all three columns after display conversion to utf8.
+SELECT
+  HEX(CONVERT(SUBSTR(CONCAT(_gbk x'D6D0', _utf8 'A'), 1, 1) USING utf8)) AS case_19_substr_hex,
+  HEX(CONVERT(SUBSTRING(CONCAT(_gbk x'D6D0', _utf8 'A'), 1, 1) USING utf8)) AS case_19_substring_hex,
+  HEX(CONVERT(MID(CONCAT(_gbk x'D6D0', _utf8 'A'), 1, 1) USING utf8)) AS case_19_mid_hex;
+WARNING:  Syntax support only
+WARNING:  Syntax support only
+WARNING:  Syntax support only
+ERROR:  function MID(text, integer, integer) does not exist
+LINE 4:   HEX(CONVERT(MID(CONCAT(_gbk x'D6D0', _utf8 'A'), 1, 1) USI...
+                      ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+-- 20. Item_func_substr_index::fix_length_and_dec
+-- SQL surface: SUBSTRING_INDEX(str, delim, count).
+-- Expected: E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(SUBSTRING_INDEX(CONCAT(_gbk x'D6D0', _utf8 ',A'), _utf8 ',', 1) USING utf8)) AS case_20_substring_index_hex;
+WARNING:  Syntax support only
+ case_20_substring_index_hex  
+------------------------------
+ 5C786534623861645C7832633431
+(1 row)
+
+-- 21. Item_func_trim::fix_length_and_dec
+-- SQL surface: TRIM(), LTRIM(), RTRIM().
+-- Expected:
+--   case_21_trim_hex  = E4B8AD
+--   case_21_ltrim     = 'abc'
+--   case_21_rtrim     = 'abc'
+SELECT
+  HEX(CONVERT(TRIM(_utf8 'A' FROM CONCAT(_gbk 'AAA', _gbk x'D6D0', _gbk 'AAA')) USING utf8)) AS case_21_trim_hex,
+  LTRIM(_gbk '   abc') AS case_21_ltrim,
+  RTRIM(_gbk 'abc   ') AS case_21_rtrim;
+WARNING:  Syntax support only
+                 case_21_trim_hex                 | case_21_ltrim | case_21_rtrim 
+--------------------------------------------------+---------------+---------------
+ 5C783431343134315C786534623861645C78343134313431 | abc           | abc
+(1 row)
+
+-- 22. Item_func_soundex::fix_length_and_dec
+-- SQL surface: SOUNDEX(str).
+-- Expected: S530 for 'Smith'.
+SELECT SOUNDEX(_gbk 'Smith') AS case_22_soundex;
+ case_22_soundex 
+-----------------
+ S530
+(1 row)
+
+-- 23. Item_func_elt::fix_length_and_dec
+-- SQL surface: ELT(N, str1, str2, ...).
+-- Expected: E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(ELT(1, _gbk x'D6D0', _utf8 'A') USING utf8)) AS case_23_elt_hex;
+WARNING:  Syntax support only
+ case_23_elt_hex 
+-----------------
+ E4B8AD
+(1 row)
+
+-- 24. Item_func_make_set::fix_length_and_dec
+-- SQL surface: MAKE_SET(bits, str1, str2, ...).
+-- Expected: E4B8AD2C41 after display conversion to utf8.
+SELECT HEX(CONVERT(MAKE_SET(3, _gbk x'D6D0', _utf8 'A') USING utf8)) AS case_24_make_set_hex;
+WARNING:  Syntax support only
+ERROR:  function MAKE_SET(integer, varbinary, varbinary) does not exist
+LINE 1: SELECT HEX(CONVERT(MAKE_SET(3, _gbk x'D6D0', _utf8 'A') USIN...
+                           ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+-- 25. Item_func_repeat::fix_length_and_dec
+-- SQL surface: REPEAT(str, count).
+-- Expected: E4B8ADE4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(REPEAT(_gbk x'D6D0', 2) USING utf8)) AS case_25_repeat_hex;
+WARNING:  Syntax support only
+ case_25_repeat_hex 
+--------------------
+ E4B8ADE4B8AD
+(1 row)
+
+-- 26. Item_func_rpad::fix_length_and_dec
+-- SQL surface: RPAD(str, len, padstr).
+-- Expected: E4B8AD4141 after display conversion to utf8.
+SELECT HEX(CONVERT(RPAD(_gbk x'D6D0', 3, _utf8 'A') USING utf8)) AS case_26_rpad_hex;
+WARNING:  Syntax support only
+ case_26_rpad_hex 
+------------------
+ E4B8AD4141
+(1 row)
+
+-- 27. Item_func_lpad::fix_length_and_dec
+-- SQL surface: LPAD(str, len, padstr).
+-- Expected: 4141E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(LPAD(_gbk x'D6D0', 3, _utf8 'A') USING utf8)) AS case_27_lpad_hex;
+WARNING:  Syntax support only
+ case_27_lpad_hex 
+------------------
+ 4141E4B8AD
+(1 row)
+
+-- 28. Item_func_export_set::fix_length_and_dec
+-- SQL surface: EXPORT_SET(bits, on, off[, separator[, number_of_bits]]).
+-- Expected: 59,4E,59 or hex 592C4E2C59.
+SELECT HEX(CONVERT(EXPORT_SET(5, _gbk 'Y', _utf8 'N', _utf8 ',', 3) USING utf8)) AS case_28_export_set_hex;
+WARNING:  Syntax support only
+ case_28_export_set_hex 
+------------------------
+ 592C4E2C59
+(1 row)
+
+-- 29. Item_xml_str_func::fix_length_and_dec
+-- SQL surface: EXTRACTVALUE() / UPDATEXML().
+-- Expected:
+--   EXTRACTVALUE returns 'A'
+--   UPDATEXML returns '<a>B</a>'
+SELECT
+  EXTRACTVALUE(_utf8 '<a>A</a>', _gbk '/a') AS case_29_extractvalue,
+  UPDATEXML(_utf8 '<a>A</a>', _gbk '/a', _utf8 '<a>B</a>') AS case_29_updatexml;
+ERROR:  function EXTRACTVALUE(varbinary, varbinary) does not exist
+LINE 2:   EXTRACTVALUE(_utf8 '<a>A</a>', _gbk '/a') AS case_29_extra...
+          ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+-- 30. Item_func_equal::fix_length_and_dec
+-- SQL surface: NULL-safe equality operator <=>.
+-- Expected: 1.
+SELECT _utf8 x'E4B8AD' <=> _gbk x'D6D0' AS case_30_null_safe_equal;
+ case_30_null_safe_equal 
+-------------------------
+ t
+(1 row)
+
+-- Expected: 0.
+SELECT _utf8 x'E4B8AD' <=>  x'D6D0' AS case_30_null_safe_equal;
+ERROR:  operator does not exist: varbinary <=> ivy_hex
+LINE 1: SELECT _utf8 x'E4B8AD' <=>  x'D6D0' AS case_30_null_safe_equ...
+                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+-- 31. Item_func_ifnull::fix_length_and_dec
+-- SQL surface: IFNULL(expr1, expr2).
+-- Expected: E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(IFNULL(NULL, _gbk x'D6D0') USING utf8)) AS case_31_ifnull_hex;
+WARNING:  Syntax support only
+ case_31_ifnull_hex 
+--------------------
+ E4B8AD
+(1 row)
+
+-- 32. Item_func_if::fix_length_and_dec
+-- SQL surface: IF(condition, true_expr, false_expr).
+-- Expected: E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(IF(1, _gbk x'D6D0', _utf8 'A') USING utf8)) AS case_32_if_hex;
+WARNING:  Syntax support only
+ case_32_if_hex 
+----------------
+ E4B8AD
+(1 row)
+
+-- 33. Item_func_coalesce::fix_length_and_dec
+-- SQL surface: COALESCE(expr1, expr2, ...).
+-- Expected: E4B8AD after display conversion to utf8.
+SELECT HEX(CONVERT(COALESCE(NULL, _gbk x'D6D0', _utf8 'A') USING utf8)) AS case_33_coalesce_hex;
+WARNING:  Syntax support only
+ case_33_coalesce_hex 
+----------------------
+ E4B8AD
+(1 row)
+
+-- 34. Item_func_strcmp::fix_length_and_dec
+-- SQL surface: STRCMP(expr1, expr2).
+-- Expected: 0, because both strings compare equal after charset/collation aggregation.
+SELECT STRCMP(_gbk x'D6D0', _utf8 x'E4B8AD') AS case_34_strcmp;
+ case_34_strcmp 
+----------------
+              0
+(1 row)
+
+-- Column-value smoke tests using the table created above.
+-- Expected:
+--   column_eq = 1
+--   concat_cols_hex = E4B8ADE4B8AD
+SELECT
+  gbk_col = utf8_col AS column_eq,
+  HEX(CONVERT(CONCAT(gbk_col, utf8_col) USING utf8)) AS concat_cols_hex
+FROM function_charset_conversion_seed
+WHERE id = 1;
+WARNING:  Syntax support only
+ column_eq | concat_cols_hex 
+-----------+-----------------
+ t         | E4B8ADE4B8AD
+(1 row)
+
+DROP TABLE function_charset_conversion_seed;

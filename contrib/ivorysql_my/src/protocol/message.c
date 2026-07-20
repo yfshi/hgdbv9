@@ -226,7 +226,7 @@ send_com_stmt_prepare_ok_packet(int statementId, int columns, int params)
     DestroyStringInfo(buf);
 }
 
-/* Begin - bug#m8406 */
+/* Begin - bug#8406 */
 static void
 update_row_count(const QueryCompletion *qc)
 {
@@ -251,7 +251,7 @@ update_row_count(const QueryCompletion *qc)
         mys_row_count = 0;
 }
 
-/* End - bug#m8406 */
+/* End - bug#8406 */
 
 void
 mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undecorated_output)
@@ -263,9 +263,9 @@ mysql_end_command(const QueryCompletion *qc, CommandDest dest, bool force_undeco
 
     last_insert_id = DatumGetUInt64(DirectFunctionCall1(mys_get_lastval, (Datum) 0));
 
-    /* Begin - bug#m8406 */
+    /* Begin - bug#8406 */
     update_row_count(qc);
-    /* End - bug#m8406 */
+    /* End - bug#8406 */
 
     if (current_packet_type == COM_STMT_CLOSE)
     {
@@ -1385,7 +1385,7 @@ has_client_load_local_capabilities(void)
 }
 /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
-/* Begin - bug#m8406 */
+/* Begin - bug#8406 */
 /*
  * row_count()
  *	MySQL-compatible affected-row count for the previous top-level command.
@@ -1400,7 +1400,7 @@ row_count(PG_FUNCTION_ARGS)
 
     PG_RETURN_INT64(mys_row_count);
 }
-/* End - bug#m8406 */
+/* End - bug#8406 */
 
 /* Begin - bug#8562 */
 Datum

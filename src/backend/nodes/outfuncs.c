@@ -1231,6 +1231,7 @@ _outConst(StringInfo str, const Const *node)
 	WRITE_BOOL_FIELD(constbyval);
 	WRITE_BOOL_FIELD(constisnull);
 	WRITE_LOCATION_FIELD(location);
+	WRITE_INT_FIELD(constencoding); /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	appendStringInfoString(str, " :constvalue ");
 	if (node->constisnull)
@@ -3902,6 +3903,12 @@ _outAConst(StringInfo str, const A_Const *node)
 
 	appendStringInfoString(str, " :val ");
 	_outValue(str, &(node->val));
+
+	/* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
+	appendStringInfoString(str, " :charset_name ");
+	outToken(str, node->val.charset_name);
+	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
+
 	WRITE_LOCATION_FIELD(location);
 }
 

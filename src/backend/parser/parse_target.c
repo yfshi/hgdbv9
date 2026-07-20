@@ -104,6 +104,24 @@ transformTargetEntry(ParseState *pstate,
 			expr = transformExpr(pstate, node, exprKind);
 	}
 
+	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+	if (compatible_mode == MYS_MODE && !resjunk)
+	{
+		int encoding = -1;
+		/*
+		 * _charset xxx should become a string expression unless it
+		 * is explicitly _binary (_binary xxx).  This covers SELECT/CTAS style targets.
+		 */
+		(void)introducer_detect_encoding_walker(expr, &encoding);
+		if (encoding > 0)
+		{
+			expr = coerce_type(pstate, expr, exprType(expr), VARCHAROID, -1, COERCION_EXPLICIT,
+							   COERCE_EXPLICIT_CAST,
+							   exprLocation(expr));
+		}
+	}
+	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
 	if (colname == NULL && !resjunk)
 	{
 		/*

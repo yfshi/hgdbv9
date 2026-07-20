@@ -1560,6 +1560,7 @@ _copyConst(const Const *from)
 	COPY_SCALAR_FIELD(consttypmod);
 	COPY_SCALAR_FIELD(constcollid);
 	COPY_SCALAR_FIELD(constlen);
+	COPY_SCALAR_FIELD(constencoding);	/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 
 	if (from->constbyval || from->constisnull)
 	{
@@ -5771,7 +5772,6 @@ _copyValue(const Value *from)
 			break;
 		case T_Float:
 		case T_String:
-		case T_IntroducerConst:			/* Req:SRS-MYSQL-SQL-Select */
 		case T_BitString:
 			COPY_STRING_FIELD(val.str);
 			break;

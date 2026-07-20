@@ -176,6 +176,11 @@ select _binary 123;            -- mysql error: introducer must be followed by a 
 
 select _utf8 'abc';            -- mysql-compatible parser path recognized; current implementation error: _utf8 not supported
 select _utf8mb4 'abc';         -- mysql-compatible parser path recognized; current implementation error: _utf8mb4 not supported
+select _utf8 x'e4b8ad';         --ok
+select _utf8 x'c0af';           --ERROR 2600 (HY000): invalid utf8 character string: "C0AF"
+select _utf8 x'ff';             --ERROR 1300 (HY000): Invalid utf8 character string: 'FF'
+select _latin1 x'ff';           --ok
+
 
 
 create table test_col_type as select _binary 'aaay';

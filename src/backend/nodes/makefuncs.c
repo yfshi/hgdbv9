@@ -372,6 +372,7 @@ makeConst(Oid consttype,
 	cnst->constisnull = constisnull;
 	cnst->constbyval = constbyval;
 	cnst->location = -1;		/* "unknown" */
+	cnst->constencoding = CONST_ENCODING_NONE;	/* no intruducer */
 
 	return cnst;
 }
