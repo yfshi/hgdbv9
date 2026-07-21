@@ -1,0 +1,4 @@
+comment = 'Per-query SQL execution profiler with EXPLAIN, getrusage and pgBufferUsage capture'
+default_version = '1.0'
+module_pathname = '$libdir/hg_profiler'
+relocatable = false
