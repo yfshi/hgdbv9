@@ -621,14 +621,17 @@ sql_resource_limit_get_process_origin_path(void)
 						 * filesystem path, the '\n' needs to be removed.
 						 */
 						strcpy(path, p+1);
-						if ((plen = strlen(path)) > 0)
+
+						plen = strlen(path);
+
+						if (plen > 0)
 						{
 							if (path[plen-1] == '\n')
 							{
 								char temppath[MAX_CURRENT_CGROUP_PATHLEN];
 
 								memset(temppath, 0, sizeof(temppath));
-								strncpy(temppath, path, plen-1);
+								memcpy(temppath, path, plen-1);
 								pathname = pstrdup(temppath);
 							}
 							else

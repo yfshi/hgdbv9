@@ -2855,7 +2855,7 @@ ExecCallTriggerFunc(TriggerData *trigdata,
 {
 	LOCAL_FCINFO(fcinfo, 0);
 	PgStat_FunctionCallUsage fcusage;
-	Datum		result;
+	Datum		result = (Datum) 0;
 	MemoryContext oldContext;
 	/* Begin - ReqID:SRS-SQL-TRIGGER */
 	ObjectAddress	object;

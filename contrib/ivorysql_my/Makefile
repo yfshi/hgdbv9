@@ -132,6 +132,7 @@ MYS_REGRESS = numeric_to_times \
 			  test_mediumblob \
 			  test_longblob \
 			  test_conversion \
+			  insert_ignore \
 			  insert_update \
 			  multi_delete \
 			  replace \

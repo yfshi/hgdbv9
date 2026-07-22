@@ -1159,6 +1159,7 @@ _equalInsertStmt(const InsertStmt *a, const InsertStmt *b)
 	COMPARE_SCALAR_FIELD(override);
 	COMPARE_NODE_FIELD(upsertClause); /* ReqID:SRS-MYSQL-SQL-INSERT */
 	COMPARE_SCALAR_FIELD(isReplace); /* ReqID:SRS-MYSQL-SQL-REPLACE */
+	COMPARE_SCALAR_FIELD(ignore);	  /* bug#8677 */
 
 	return true;
 }

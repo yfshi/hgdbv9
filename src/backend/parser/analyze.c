@@ -1819,6 +1819,21 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 										   attr_num - FirstLowInvalidHeapAttributeNumber);
 	}
 
+	/* Begin - bug#8677 */
+	if (compatible_mode == MYS_MODE && stmt->ignore)
+	{
+		OnConflictClause *clause = makeNode(OnConflictClause);
+		
+		clause->action = ONCONFLICT_NOTHING;
+		clause->infer = NULL;
+		clause->targetList = NIL;
+		clause->whereClause = NULL;
+		clause->location = -1;
+
+		stmt->onConflictClause = clause;
+	}
+	/* End - bug#8677 */
+
 	/*
 	 * If we have any clauses yet to process, set the query namespace to
 	 * contain only the target relation, removing any entries added in a
