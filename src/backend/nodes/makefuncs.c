@@ -675,6 +675,7 @@ makeFuncCall(List *name, List *args, CoercionForm funcformat, int location)
 	n->agg_distinct = false;
 	n->func_variadic = false;
 	n->funcformat = funcformat;
+	n->is_object_method = false; /* ReqID:SRS-SQL-CustomObject */
 	n->location = location;
 	n->rawargs = NIL;	/* BUG#M0000376 */
 	return n;

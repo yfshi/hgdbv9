@@ -30,7 +30,10 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "utils/packagecache.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type_body.h"
+#include "utils/objecttypecache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 typedef struct
 {
@@ -3255,6 +3258,31 @@ record_plan_internel_function_dependency(PlannerInfo *root,
 			}
 		}
 	}
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (funcexpr->function_from == FUNC_FROM_OBJECT &&
+			 OidIsValid(funcexpr->pkgoid))
+	{
+		PlanInvalItem *inval_item = makeNode(PlanInvalItem);
+		Oid			bodyoid;
+
+		inval_item->cacheId = OBJTYPEOID;
+		inval_item->hashValue = GetSysCacheHashValue1(OBJTYPEOID,
+										   ObjectIdGetDatum(funcexpr->pkgoid));
+		root->glob->invalItems = lappend(root->glob->invalItems, inval_item);
+
+		bodyoid = GetSysCacheOid1(OBJTYPEBODYOBJTYPOID,
+								  Anum_pg_object_type_body_oid,
+								  ObjectIdGetDatum(funcexpr->pkgoid));
+		if (OidIsValid(bodyoid))
+		{
+			inval_item = makeNode(PlanInvalItem);
+			inval_item->cacheId = OBJTYPEBODYOID;
+			inval_item->hashValue = GetSysCacheHashValue1(OBJTYPEBODYOID,
+											 ObjectIdGetDatum(bodyoid));
+			root->glob->invalItems = lappend(root->glob->invalItems, inval_item);
+		}
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 }
 /* End - ReqID:SRS-SQL-PACKAGE */
 

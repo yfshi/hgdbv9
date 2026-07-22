@@ -457,6 +457,9 @@ typedef struct FuncCall
 	bool		agg_distinct;	/* arguments were labeled DISTINCT */
 	bool		func_variadic;	/* last argument was labeled VARIADIC */
 	CoercionForm funcformat;	/* how to display this node */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	bool		is_object_method;	/* Oracle object method call syntax */
+	/* End - ReqID:SRS-SQL-CustomObject */
 	int			location;		/* token location, or -1 if unknown */
 	/* Begin - BUG#M0000376 */
 	List		*rawargs;		/* the arguments (list of exprs), not ne transformed */
@@ -2352,6 +2355,10 @@ typedef enum ObjectType
 	OBJECT_PACKAGE,
 	OBJECT_PACKAGE_BODY,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	OBJECT_OBJECT_TYPE,
+	OBJECT_OBJECT_TYPE_BODY,
+	/* End - ReqID:SRS-SQL-CustomObject */
 	OBJECT_SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
 } ObjectType;
 
@@ -4640,6 +4647,25 @@ typedef struct CreatePackageBodyStmt
 	editionable_flag	editable; /* BUG#Z206 Z208 */
 	/* End - BUG#M0000257 */
 } CreatePackageBodyStmt;
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+typedef struct CreateObjectTypeStmt
+{
+	NodeTag		type;
+	bool		replace;
+	List		*objname;
+	List		*parentname;
+	char		*objsrc;
+} CreateObjectTypeStmt;
+
+typedef struct CreateObjectTypeBodyStmt
+{
+	NodeTag		type;
+	bool		replace;
+	List		*objname;
+	char		*bodysrc;
+} CreateObjectTypeBodyStmt;
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /* Begin - ReqID:SRS-SQL-SYNONYM */
 typedef struct CreateSynonymStmt

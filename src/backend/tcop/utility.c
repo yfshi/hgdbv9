@@ -100,6 +100,9 @@
 /* Begin - BUG#Z6657 */
 #include "catalog/pg_namespace.h"
 /* End - BUG#Z6657 */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "commands/objecttypecmds.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /* Begin - BUG#Z6657 */
 #define TINYTEXT_LIMIT 255
@@ -236,6 +239,10 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case T_CreatePackageStmt:
 		case T_CreatePackageBodyStmt:
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case T_CreateObjectTypeStmt:
+		case T_CreateObjectTypeBodyStmt:
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case T_AlterPackageStmt:
 		/* End - ReqID:SRS-SQL-PACKAGE */
 		/* Begin - ReqID:SRS-SQL-DBLINK */
@@ -2197,6 +2204,14 @@ ProcessUtilitySlow(ParseState *pstate,
 			case T_CreatePackageBodyStmt:
 				address = CreatePackageBody((CreatePackageBodyStmt *) parsetree);
 				break;
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case T_CreateObjectTypeStmt:
+				address = CreateObjectType((CreateObjectTypeStmt *) parsetree);
+				break;
+			case T_CreateObjectTypeBodyStmt:
+				address = CreateObjectTypeBody((CreateObjectTypeBodyStmt *) parsetree);
+				break;
+			/* End - ReqID:SRS-SQL-CustomObject */
 			case T_AlterPackageStmt:
 				address = AlterPackage((AlterPackageStmt *) parsetree);
 				break;
@@ -3627,6 +3642,14 @@ CreateCommandTag(Node *parsetree)
 		case T_CreatePackageBodyStmt:
 			tag = CMDTAG_CREATE_PACKAGE_BODY;
 			break;
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case T_CreateObjectTypeStmt:
+			tag = CMDTAG_CREATE_TYPE;
+			break;
+		case T_CreateObjectTypeBodyStmt:
+			tag = CMDTAG_CREATE_TYPE_BODY;
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case T_AlterPackageStmt:
 			tag = CMDTAG_ALTER_PACKAGE;
 			break;
@@ -4255,6 +4278,10 @@ GetCommandLogLevel(Node *parsetree)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case T_CreatePackageStmt:
 		case T_CreatePackageBodyStmt:
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case T_CreateObjectTypeStmt:
+		case T_CreateObjectTypeBodyStmt:
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case T_AlterPackageStmt:
 			lev = LOGSTMT_DDL;
 			break;

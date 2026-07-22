@@ -9997,6 +9997,12 @@ dumpDumpableObjectPg(Archive *fout, const DumpableObject *dobj)
 			/* nothing to do in pg mode */
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case DO_OBJECT_TYPE_SPEC:
+		case DO_OBJECT_TYPE_BODY:
+			/* nothing to do in pg mode */
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case DO_SYN:
 			/* nothing to do in pg mode */
@@ -18745,6 +18751,10 @@ addBoundaryDependenciesPg(DumpableObject **dobjs, int numObjs,
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			case DO_PACKAGE:
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case DO_OBJECT_TYPE_SPEC:
+			case DO_OBJECT_TYPE_BODY:
+			/* End - ReqID:SRS-SQL-CustomObject */
 			case DO_SYN:	/* ReqID:SRS-SQL-SYNONYM */
 			case DO_FUNC:
 			case DO_AGG:

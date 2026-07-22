@@ -249,7 +249,10 @@ static TypeName *OracleSystemTypeName(char *name);
 /* Begin - OA#00001559 */
 static bool isAconstNode(Node *node);
 /* End - OA#00001559 */
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static Node *makeObjectMethodCall(Node *arg, char *method_name, List *args,
+								  int location);
+/* End - ReqID:SRS-SQL-CustomObject */
 
 %}
 
@@ -548,6 +551,7 @@ static bool isAconstNode(Node *node);
 %type <node>	fetch_args select_limit_value
 				offset_clause select_offset_value
 				select_fetch_first_value I_or_F_const
+				object_method_expr object_method_target /* ReqID:SRS-SQL-CustomObject */
 %type <ival>	row_or_rows first_or_next
 
 %type <list>	OptSeqOptList SeqOptList OptParenthesizedSeqOptList
@@ -834,7 +838,8 @@ static bool isAconstNode(Node *node);
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION EXTEND	/* ReqID:SRS-SQL-SEQ */
 	EXTENSION EXTERNAL
 
-	FALSE_P FAMILY FETCH FILENAME /* ReqID:SRS-MISC-BULKLOAD */ FILTER FINALIZE FIRST_P 
+	FALSE_P FAMILY FETCH FILENAME /* ReqID:SRS-MISC-BULKLOAD */ FILTER
+	FINAL_P /* ReqID:SRS-SQL-CustomObject */ FINALIZE FIRST_P 
 	FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */ FLOAT_P FOLLOWING FOLLOWS FOR
 	FORCE FOREIGN FORWARD FREEZE FROM FULL FUNCTION FUNCTIONS
 
@@ -899,6 +904,7 @@ static bool isAconstNode(Node *node);
 	TRUNCATE TRUSTED TYPE_P TYPES_P
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
+	UNDER_P /* ReqID:SRS-SQL-CustomObject */
 	UNLISTEN UNLOGGED UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
@@ -973,6 +979,10 @@ static bool isAconstNode(Node *node);
 %type <boolean> package_is_or_as package_body_is_or_as
 %type <alter_flag> package_compile_options special_options
 /* End - ReqID:SRS-SQL-PACKAGE  */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+%type <node> CreateObjectTypeBodyStmt
+%type <str> object_type_src object_type_body_src opt_object_type_finality
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /* Begin - BUG#Z206 Z208  */
 %type<editionable> opt_ora_editioned ora_editioned
@@ -1158,7 +1168,8 @@ static bool isAconstNode(Node *node);
  * Using the same precedence as IDENT seems right for the reasons given above.
  */
 %nonassoc	UNBOUNDED		/* ideally would have same precedence as IDENT */
-%nonassoc	IDENT PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP
+%nonassoc	BODY			/* prefer CREATE TYPE BODY <name> over type named body */
+%nonassoc	IDENT PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP UNDER_P
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
 %left		'+' '-'
 %left		'*' '/' '%'
@@ -1444,6 +1455,7 @@ stmt:
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			| CreatePackageStmt
 			| CreatePackageBodyStmt
+			| CreateObjectTypeBodyStmt /* ReqID:SRS-SQL-CustomObject */
 			| AlterPackageStmt
 			/* End - ReqID:SRS-SQL-PACKAGE */
 			/* Begin - BUG#M0000201: support question marks as binding variables */
@@ -8989,6 +9001,68 @@ DefineStmt:
 					n->definition = NIL;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			| CREATE TYPE_P any_name AS OBJECT_P
+				{
+					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
+					set_oracle_plsql_bodystart(yyscanner, @5 + 6, 0);
+				}
+			object_type_src opt_object_type_finality
+				{
+					CreateObjectTypeStmt *n = makeNode(CreateObjectTypeStmt);
+
+					n->replace = false;
+					n->objname = $3;
+					n->parentname = NIL;
+					n->objsrc = $8 ? psprintf("%s %s", $7, $8) : $7;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name AS OBJECT_P
+				{
+					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
+					set_oracle_plsql_bodystart(yyscanner, @7 + 6, 0);
+				}
+			object_type_src opt_object_type_finality
+				{
+					CreateObjectTypeStmt *n = makeNode(CreateObjectTypeStmt);
+
+					n->replace = true;
+					n->objname = $5;
+					n->parentname = NIL;
+					n->objsrc = $10 ? psprintf("%s %s", $9, $10) : $9;
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name UNDER_P any_name AS OBJECT_P
+				{
+					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
+					set_oracle_plsql_bodystart(yyscanner, @7 + 6, 0);
+				}
+			object_type_src opt_object_type_finality
+				{
+					CreateObjectTypeStmt *n = makeNode(CreateObjectTypeStmt);
+
+					n->replace = false;
+					n->objname = $3;
+					n->parentname = $5;
+					n->objsrc = $10 ? psprintf("%s %s", $9, $10) : $9;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name UNDER_P any_name AS OBJECT_P
+				{
+					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
+					set_oracle_plsql_bodystart(yyscanner, @9 + 6, 0);
+				}
+			object_type_src opt_object_type_finality
+				{
+					CreateObjectTypeStmt *n = makeNode(CreateObjectTypeStmt);
+
+					n->replace = true;
+					n->objname = $5;
+					n->parentname = $7;
+					n->objsrc = $12 ? psprintf("%s %s", $11, $12) : $11;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-CustomObject */
 			| CREATE TYPE_P any_name AS '(' OptTableFuncElementList ')'
 				{
 					CompositeTypeStmt *n = makeNode(CompositeTypeStmt);
@@ -12405,6 +12479,54 @@ operator_with_argtypes:
  *		some package stmt
  *
  *****************************************************************************/
+/* Begin - ReqID:SRS-SQL-CustomObject */
+object_type_src:	Sconst	{ $$ = $1; }
+		;
+
+opt_object_type_finality:
+			NOT FINAL_P		{ $$ = pstrdup("NOT FINAL"); }
+			| FINAL_P		{ $$ = pstrdup("FINAL"); }
+			| /* EMPTY */	{ $$ = NULL; }
+		;
+
+CreateObjectTypeBodyStmt:
+			CREATE TYPE_P BODY any_name object_type_body_is_or_as object_type_body_src
+				{
+					CreateObjectTypeBodyStmt *n = makeNode(CreateObjectTypeBodyStmt);
+
+					n->replace = false;
+					n->objname = $4;
+					n->bodysrc = $6;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P BODY any_name object_type_body_is_or_as object_type_body_src
+				{
+					CreateObjectTypeBodyStmt *n = makeNode(CreateObjectTypeBodyStmt);
+
+					n->replace = true;
+					n->objname = $6;
+					n->bodysrc = $8;
+					$$ = (Node *) n;
+				}
+			;
+
+object_type_body_is_or_as:
+				IS
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPEBODY);
+						set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+					}
+				|AS
+					{
+						set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPEBODY);
+						set_oracle_plsql_bodystart(yyscanner, @1 + 2, 0);
+					}
+				;
+
+object_type_body_src:	Sconst	{ $$ = $1; }
+		;
+/* End - ReqID:SRS-SQL-CustomObject */
+
 CreatePackageStmt:
 			CREATE opt_or_replace opt_ora_editioned PACKAGE package_names
 			opt_ora_sharing_clause package_proper package_is_or_as package_src
@@ -20153,10 +20275,20 @@ c_expr:		columnref								{ $$ = $1; }
 					else
 						$$ = $2;
 				}
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			| '(' a_expr AS Typename ')'
+				{
+					$$ = makeTypeCast($2, $4, @3);
+				}
+			/* Emd - ReqID:SRS-SQL-CustomObject */
 			| case_expr
 				{ $$ = $1; }
 			| func_expr
 				{ $$ = $1; }
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			| object_method_expr
+				{ $$ = $1; }
+			/* End - ReqID:SRS-SQL-CustomObject */
 			| select_with_parens			%prec UMINUS
 				{
 					SubLink *n = makeNode(SubLink);
@@ -20297,6 +20429,31 @@ c_expr:		columnref								{ $$ = $1; }
 				}
 			/* End - OA-REQ-2132 */
 		;
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+object_method_target:
+			func_expr
+				{ $$ = $1; }
+		;
+
+object_method_expr:
+			object_method_target '.' attr_name '(' func_arg_list_opt ')'
+				{
+					$$ = makeObjectMethodCall($1, $3, $5, @3);
+				}
+			| '(' a_expr AS Typename ')' '.' attr_name '(' func_arg_list_opt ')'
+				{
+					$$ = makeObjectMethodCall(makeTypeCast($2, $4, @3),
+											  $7,
+											  $9,
+											  @7);
+				}
+			| object_method_expr '.' attr_name '(' func_arg_list_opt ')'
+				{
+					$$ = makeObjectMethodCall($1, $3, $5, @3);
+				}
+		;
+/* End - ReqID:SRS-SQL-CustomObject */
 
 func_application: func_name '(' ')'
 				{
@@ -23021,7 +23178,6 @@ unreserved_keyword:
 			| BASEVALUE	/* ReqID:RSR-SQL-Partition-interval */
 			| BEFORE
 			| BEGIN_P
-			| BODY		/* ReqID:SRS-SQL-PACKAGE */
 			| BREADTH
 			| BY
 			| CACHE
@@ -23107,6 +23263,7 @@ unreserved_keyword:
 			| FAMILY
 			| FILENAME  /* ReqID:SRS-MISC-BULKLOAD */
 			| FILTER
+			| FINAL_P	/* ReqID:SRS-SQL-CustomObject */
 			| FINALIZE
 			| FIRST_P
 			| FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */
@@ -23364,6 +23521,7 @@ unreserved_keyword:
 			| UESCAPE
 			| UNBOUNDED
 			| UNCOMMITTED
+			| UNDER_P
 			| UNENCRYPTED
 			| UNKNOWN
 			| UNLIMITED /* SRS-SQL-MULTITABLEINSERT */
@@ -23412,6 +23570,7 @@ col_name_keyword:
 			| BINARY_DOUBLE	/* ReqID:SRS-GKC-DATATYPE_001 */
 			| BINARY_FLOAT	/* ReqID:SRS-GKC-DATATYPE_001 */
 			| BIT
+			| BODY		/* ReqID:SRS-SQL-PACKAGE */
 			| BOOLEAN_P
 			| BYTE_P		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| CHAR_P
@@ -23806,6 +23965,7 @@ bare_label_keyword:
 			| FALSE_P
 			| FAMILY
 			| FILENAME /* ReqID:SRS-MISC-BULKLOAD */
+			| FINAL_P	/* ReqID:SRS-SQL-CustomObject */
 			| FINALIZE
 			| FIRST_P
 			| FLASHBACK /* ReqID:SRS-RECOVERY-FLASHBACK */
@@ -24140,6 +24300,7 @@ bare_label_keyword:
 			| UESCAPE
 			| UNBOUNDED
 			| UNCOMMITTED
+			| UNDER_P
 			| UNENCRYPTED
 			| UNIQUE
 			| UNKNOWN
@@ -24283,6 +24444,21 @@ makeColumnRef(char *colname, List *indirection,
 	c->fields = lcons(makeString(colname), indirection);
 	return (Node *) c;
 }
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static Node *
+makeObjectMethodCall(Node *arg, char *method_name, List *args, int location)
+{
+       FuncCall   *n;
+
+       n = makeFuncCall(list_make1(makeString(method_name)),
+                                        lcons(arg, args),
+                                        COERCE_EXPLICIT_CALL,
+                                        location);
+       n->is_object_method = true;
+       return (Node *) n;
+}
+/* End - ReqID:SRS-SQL-CustomObject */
 
 static Node *
 makeTypeCast(Node *arg, TypeName *typeName, int location)

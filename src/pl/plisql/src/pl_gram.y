@@ -6396,7 +6396,11 @@ check_assignable(PLiSQL_datum *datum, int location)
 			{
 				PLiSQL_var *var = (PLiSQL_var *) datum;
 
-				if (var->info == PROARGMODE_IN)
+				if (var->info == PROARGMODE_IN &&
+					/* Begin - ReqID:SRS-SQL-CustomObject */
+					!(plisql_curr_compile->fn_is_object_constructor &&
+					  strcmp(var->refname, "self") == 0))
+					/* End - ReqID:SRS-SQL-CustomObject */
 					ereport(ERROR,
 							(errcode(ERRCODE_PLPGSQL_ERROR),
 							 errmsg("expression \"%s\" cannot be used as an assignment target",
@@ -6409,7 +6413,11 @@ check_assignable(PLiSQL_datum *datum, int location)
 				 */
 				PLiSQL_rec *rec = (PLiSQL_rec *) datum;
 
-				if (rec->info == PROARGMODE_IN)
+				if (rec->info == PROARGMODE_IN &&
+					/* Begin - ReqID:SRS-SQL-CustomObject */
+					!(plisql_curr_compile->fn_is_object_constructor &&
+					  strcmp(rec->refname, "self") == 0))
+					/* End - ReqID:SRS-SQL-CustomObject */
 					ereport(ERROR,
 							(errcode(ERRCODE_PLPGSQL_ERROR),
 							 errmsg("expression \"%s\" cannot be used as an assignment target",

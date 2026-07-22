@@ -3691,6 +3691,14 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 						msg = gettext_noop("permission denied for package body %s");
 						break;
 					/* End - ReqID:SRS-SQL-PACKAGE */
+					/* Begin - ReqID:SRS-SQL-CustomObject */
+					case OBJECT_OBJECT_TYPE:
+						msg = gettext_noop("permission denied for object type %s");
+						break;
+					case OBJECT_OBJECT_TYPE_BODY:
+						msg = gettext_noop("permission denied for object type body %s");
+						break;
+					/* End - ReqID:SRS-SQL-CustomObject */
 					/* Begin - ReqID:SRS-SQL-SYNONYM */
 					case OBJECT_SYNONYM:
 						msg = gettext_noop("permission denied for synonym %s");
@@ -3843,6 +3851,14 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 						msg = gettext_noop("must be owner of package body %s");
 						break;
 					/* End - ReqID:SRS-SQL-PACKAGE */
+					/* Begin - ReqID:SRS-SQL-CustomObject */
+					case OBJECT_OBJECT_TYPE:
+						msg = gettext_noop("must be owner of object type %s");
+						break;
+					case OBJECT_OBJECT_TYPE_BODY:
+						msg = gettext_noop("must be owner of object type body %s");
+						break;
+					/* End - ReqID:SRS-SQL-CustomObject */
 					/* Begin - ReqID:SRS-SQL-SYNONYM */
 					case OBJECT_SYNONYM:
 						msg = gettext_noop("must be owner of synonym %s");

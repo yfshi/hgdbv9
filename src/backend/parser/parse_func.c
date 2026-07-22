@@ -53,6 +53,12 @@
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #include "mysql_parser/mys_case_sensitive.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "access/tupdesc.h"
+#include "commands/objecttypecmds.h"
+#include "parser/parse_object_type.h"
+#include "utils/typcache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /* Begin - OA-REQ-2252 */
 
@@ -77,6 +83,35 @@ static void unify_hypothetical_args(ParseState *pstate,
 									List *fargs, int numAggregatedArgs,
 									Oid *actual_arg_types, Oid *declared_arg_types);
 static Oid	FuncNameAsType(List *funcname);
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static List *BuildNamePrefix(List *funcname);
+static Node *ParseObjectTypeConstructor(ParseState *pstate, List *funcname,
+										List *fargs, List *argnames,
+										bool proc_call, bool is_column,
+										bool is_object_method,
+										List *agg_order, Expr *agg_filter,
+										WindowDef *over, bool agg_star,
+										bool agg_distinct, bool agg_within_group,
+										bool func_variadic, int location,
+										bool has_udt_type);
+static List *ReorderObjectTypeConstructorArgs(ParseState *pstate,
+											  Oid targetType,
+											  List *fargs,
+											  List *argnames,
+											  int location);
+static bool ConstructorArgNamesMatchAttributes(Oid targetType,
+											   List *argnames);
+static void ReportInvalidObjectTypeConstructorArgs(ParseState *pstate,
+												   Oid targetType,
+												   int location);
+static Node *ParseQualifiedComplexProjection(ParseState *pstate, List *funcname,
+											 List *fargs, List *argnames,
+											 bool proc_call, List *agg_order,
+											 Expr *agg_filter, WindowDef *over,
+											 bool agg_star, bool agg_distinct,
+											 bool agg_within_group,
+											 bool func_variadic, int location);
+/* End - ReqID:SRS-SQL-CustomObject */
 static Node *ParseComplexProjection(ParseState *pstate, const char *funcname,
 									Node *first_arg, int location);
 static Oid	LookupFuncNameInternal(ObjectType objtype, List *funcname,
@@ -332,6 +367,54 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		 */
 	}
 
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	retval = ParseQualifiedComplexProjection(pstate,
+											 funcname,
+											 fargs,
+											 argnames,
+											 proc_call,
+											 agg_order,
+											 agg_filter,
+											 over,
+											 agg_star,
+											 agg_distinct,
+											 agg_within_group,
+											 func_variadic,
+											 location);
+	if (retval != NULL)
+		return retval;
+
+	/*
+	 * If the call name itself is an object type, first try binding it to an
+	 * explicitly declared constructor.  Only when no constructor overload
+	 * matches do we fall back to the default "build a composite row and cast
+	 * it" behavior.
+	 */
+	retval = ParseObjectTypeConstructor(pstate,
+										funcname,
+										fargs,
+										argnames,
+										proc_call,
+										is_column,
+										fn && fn->is_object_method,
+										agg_order,
+										agg_filter,
+										over,
+										agg_star,
+										agg_distinct,
+										agg_within_group,
+										func_variadic,
+										location,
+										has_udt_type);
+	if (retval != NULL)
+		return retval;
+
+	/*
+	 * Try to resolve the function call as an object type method or constructor.
+	 * This handles both explicit constructor calls and member/static method calls.
+	 */
+	/* End - ReqID:SRS-SQL-CustomObject */
+
 	/*
 	 * func_get_detail looks up the function in the catalogs, does
 	 * disambiguation for polymorphic functions, handles inheritance, and
@@ -403,6 +486,32 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			/* End - ReqID:SRS-PLSQL-EXCEPTION */
 		}
 	}
+
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	/*
+	 * Try to resolve as an object type method call (member, static, or constructor).
+	 * If successful, update argument types from the resolved expression list.
+	 */
+	if (fdresult == FUNCDETAIL_NOTFOUND)
+	{
+		fdresult = LookupObjectTypeFunc(pstate, funcname, &fargs, argnames, nargs,
+										actual_arg_types,
+										fn && fn->is_object_method,
+										!func_variadic, true, proc_call, is_column,
+										&funcid, &rettype, &retset,
+										&nvargs, &vatype,
+										&declared_arg_types, &argdefaults,
+										&pfunc, &pkgoid,
+										has_udt_type);
+		if (fdresult != FUNCDETAIL_NOTFOUND)
+		{
+			function_from = FUNC_FROM_OBJECT;
+			nargs = 0;
+			foreach(l, fargs)
+				actual_arg_types[nargs++] = exprType((Node *) lfirst(l));
+		}
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	if (fdresult == FUNCDETAIL_NOTFOUND)
 	{
@@ -914,18 +1023,19 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 	 */
 	/* Begin - BUG#M0000307 */
 	/*
-	 * there, package'func and subproc func
-	 * has reorder fargs, so actual_arg_types should get
-	 * its fargs
+	 * Package functions, subprogram functions, and object type methods
+	 * may have reordered fargs due to named parameter binding, so we need
+	 * to rebuild actual_arg_types from the fargs list.
 	 */
 	if (function_from ==  FUNC_FROM_PACKAGE ||
-		function_from == FUNC_FROM_SUBPROCFUNC)
+		function_from == FUNC_FROM_SUBPROCFUNC ||
+		function_from == FUNC_FROM_OBJECT)
 	{
 		nargsplusdefs = list_length(fargs);
 
 		/*
-		 * only argnames or argdefaults is not null
-		 * we should consider reorder
+		 * Rebuild argument types from fargs if named arguments or defaults
+		 * were used, as these may have caused parameter reordering.
 		 */
 		if (argnames != NIL || argdefaults != NIL)
 		{
@@ -1067,6 +1177,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 		/* End - SRS-PLSQL-SUBPROC */
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		/* Begin - BUG#M000088 */
+		/* Store package or object type OID for method resolution */
 		funcexpr->pkgoid = pkgoid;
 		/* End - BUG#M000088 */
 		funcexpr->has_outer_join = hasplus_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
@@ -1085,6 +1196,11 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			else
 				funcexpr->function_name = nodeToString(funcname);
 		}
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		/* For object methods, store just the method name */
+		else if (function_from == FUNC_FROM_OBJECT)
+			funcexpr->function_name = pstrdup(strVal(llast(funcname)));
+		/* End - ReqID:SRS-SQL-CustomObject */
 		else if (function_from == FUNC_FROM_PG_PROC)
 		{
 			char **p_argtypeNames = NULL;
@@ -2790,6 +2906,388 @@ LookupFuncNameInternal(ObjectType objtype, List *funcname,
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static List *
+BuildNamePrefix(List *funcname)
+{
+	List	   *prefix = NIL;
+	ListCell   *lc;
+
+	foreach(lc, funcname)
+	{
+		if (lnext(funcname, lc) == NULL)
+			break;
+		prefix = lappend(prefix, copyObject(lfirst(lc)));
+	}
+
+	return prefix;
+}
+
+/*
+ * ParseObjectTypeConstructor
+ *    Try to parse a function call as an object type constructor.
+ *    First attempts to find a user-defined constructor; if none matches,
+ *    falls back to the default constructor that maps arguments to attributes.
+ */
+static Node *
+ParseObjectTypeConstructor(ParseState *pstate, List *funcname, List *fargs,
+						   List *argnames, bool proc_call, bool is_column,
+						   bool is_object_method,
+						   List *agg_order, Expr *agg_filter, WindowDef *over,
+						   bool agg_star, bool agg_distinct,
+						   bool agg_within_group, bool func_variadic,
+						   int location, bool has_udt_type)
+{
+	Oid			targetType;
+	RowExpr	   *rowexpr;
+	Node	   *result;
+	Oid			actual_arg_types[FUNC_MAX_ARGS];
+	Oid			funcid;
+	Oid			rettype;
+	Oid			objoid;
+	Oid			vatype;
+	Oid		   *true_typeids;
+	List	   *argdefaults;
+	List	   *lookup_fargs;
+	void	   *pfunc;
+	bool		retset;
+	int			nargs;
+	int			nvargs;
+	FuncDetailCode fdresult;
+	ListCell   *lc;
+	bool		has_declared_ctors;
+
+	/* Object type constructors don't support these SQL features */
+	if (ORA_MODE != compatible_mode ||
+		proc_call ||
+		is_column ||
+		is_object_method ||
+		agg_order != NIL ||
+		agg_filter != NULL ||
+		over != NULL ||
+		agg_star ||
+		agg_distinct ||
+		agg_within_group ||
+		func_variadic)
+		return NULL;
+
+	/* Look up if the function name refers to an object type */
+	targetType = LookupObjectTypeTypidByNames(funcname, true);
+	if (!OidIsValid(targetType))
+		return NULL;
+	has_declared_ctors = ObjectTypeHasConstructorDeclarations(targetType);
+
+	nargs = 0;
+	foreach(lc, fargs)
+		actual_arg_types[nargs++] = exprType((Node *) lfirst(lc));
+
+	lookup_fargs = list_copy(fargs);
+
+	/*
+	 * An explicit Oracle-style constructor body is exposed through the object
+	 * method lookup path.  If that lookup succeeds, ParseFuncOrColumn will
+	 * continue on the normal function-call path instead of building a row
+	 * coercion expression here.
+	 */
+	fdresult = LookupObjectTypeConstructor(pstate,
+										   funcname,
+										   &lookup_fargs,
+										   argnames,
+										   nargs,
+										   actual_arg_types,
+										   false,
+										   &funcid,
+										   &rettype,
+										   &retset,
+										   &nvargs,
+										   &vatype,
+										   &true_typeids,
+										   &argdefaults,
+										   &pfunc,
+										   &objoid,
+										   has_udt_type);
+	if (fdresult != FUNCDETAIL_NOTFOUND)
+		return NULL;
+
+	if (has_declared_ctors &&
+		argnames != NIL &&
+		!ConstructorArgNamesMatchAttributes(targetType, argnames))
+		ReportInvalidObjectTypeConstructorArgs(pstate, targetType, location);
+
+	/*
+	 * No user-defined constructor matched, so emulate Oracle's default
+	 * constructor by mapping arguments onto visible composite attributes and
+	 * coercing the resulting row to the target object type.
+	 */
+	rowexpr = makeNode(RowExpr);
+	rowexpr->args = ReorderObjectTypeConstructorArgs(pstate,
+													 targetType,
+													 fargs,
+													 argnames,
+													 location);
+	rowexpr->row_typeid = RECORDOID;
+	rowexpr->row_format = COERCE_EXPLICIT_CALL;
+	rowexpr->colnames = NIL;
+	rowexpr->location = location;
+
+	result = coerce_to_target_type(pstate,
+								   (Node *) rowexpr,
+								   RECORDOID,
+								   targetType,
+								   -1,
+								   COERCION_EXPLICIT,
+								   COERCE_EXPLICIT_CALL,
+								   location);
+	if (result == NULL)
+		ReportInvalidObjectTypeConstructorArgs(pstate, targetType, location);
+
+	return result;
+}
+
+static List *
+ReorderObjectTypeConstructorArgs(ParseState *pstate, Oid targetType,
+								 List *fargs, List *argnames, int location)
+{
+	TupleDesc	tupdesc;
+	int			attrcount = 0;
+	int			nargs = list_length(fargs);
+	int			nnameargs = list_length(argnames);
+	int			numposargs = nargs - nnameargs;
+	Node	  **argarray;
+	bool	   *assigned;
+	List	   *newargs = NIL;
+	ListCell   *lc;
+	int			argindex = 0;
+	int			i;
+
+	/*
+	 * Use a detached copy here; constructor argument validation runs in parse
+	 * contexts where resource-owner-managed tuple descriptors can be awkward.
+	 */
+	tupdesc = lookup_rowtype_tupdesc_copy(targetType, -1);
+	for (i = 0; i < tupdesc->natts; i++)
+	{
+		if (!TupleDescAttr(tupdesc, i)->attisdropped)
+			attrcount++;
+	}
+
+	if (argnames == NIL)
+	{
+		if (nargs != attrcount)
+		{
+			FreeTupleDesc(tupdesc);
+			ReportInvalidObjectTypeConstructorArgs(pstate, targetType, location);
+		}
+
+		FreeTupleDesc(tupdesc);
+		return list_copy(fargs);
+	}
+
+	/*
+	 * Default constructor named notation follows the composite attribute
+	 * names, not method-parameter metadata.  Rebuild the argument array in
+	 * physical attribute order so the final RowExpr matches the rowtype.
+	 */
+	argarray = (Node **) palloc0(sizeof(Node *) * attrcount);
+	assigned = (bool *) palloc0(sizeof(bool) * attrcount);
+
+	foreach(lc, fargs)
+	{
+		Node   *arg = (Node *) lfirst(lc);
+
+		if (argindex < numposargs)
+		{
+			if (argindex >= attrcount)
+			{
+				FreeTupleDesc(tupdesc);
+				ReportInvalidObjectTypeConstructorArgs(pstate, targetType, location);
+			}
+			argarray[argindex] = arg;
+			assigned[argindex] = true;
+			argindex++;
+			continue;
+		}
+
+		if (!IsA(arg, NamedArgExpr))
+		{
+			FreeTupleDesc(tupdesc);
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("positional argument cannot follow named argument"),
+					 parser_errposition(pstate, exprLocation(arg))));
+		}
+
+		{
+			NamedArgExpr *na = (NamedArgExpr *) arg;
+			int			visible_index = 0;
+			int			matched_index = -1;
+
+			/* Match against non-dropped attributes exactly as row coercion sees them. */
+			for (i = 0; i < tupdesc->natts; i++)
+			{
+				Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
+
+				if (attr->attisdropped)
+					continue;
+
+				if (strcmp(na->name, NameStr(attr->attname)) == 0)
+				{
+					matched_index = visible_index;
+					break;
+				}
+
+				visible_index++;
+			}
+
+			if (matched_index < 0)
+			{
+				FreeTupleDesc(tupdesc);
+				ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_PARAMETER),
+						 errmsg("argument name \"%s\" does not exist",
+								na->name),
+						 parser_errposition(pstate, na->location)));
+			}
+
+			if (assigned[matched_index])
+			{
+				FreeTupleDesc(tupdesc);
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("argument name \"%s\" used more than once",
+								na->name),
+						 parser_errposition(pstate, na->location)));
+			}
+
+			na->argnumber = matched_index;
+			argarray[matched_index] = (Node *) na->arg;
+			assigned[matched_index] = true;
+		}
+
+		argindex++;
+	}
+
+	for (i = 0; i < attrcount; i++)
+	{
+		if (!assigned[i])
+		{
+			FreeTupleDesc(tupdesc);
+			ReportInvalidObjectTypeConstructorArgs(pstate, targetType, location);
+		}
+
+		newargs = lappend(newargs, argarray[i]);
+	}
+
+	FreeTupleDesc(tupdesc);
+	return newargs;
+}
+
+static bool
+ConstructorArgNamesMatchAttributes(Oid targetType, List *argnames)
+{
+	TupleDesc	tupdesc;
+	ListCell   *lc;
+	bool		matches = true;
+
+	if (argnames == NIL)
+		return true;
+
+	tupdesc = lookup_rowtype_tupdesc_copy(targetType, -1);
+	foreach(lc, argnames)
+	{
+		char   *argname = (char *) lfirst(lc);
+		bool	found = false;
+		int		i;
+
+		for (i = 0; i < tupdesc->natts; i++)
+		{
+			Form_pg_attribute attr = TupleDescAttr(tupdesc, i);
+
+			if (attr->attisdropped)
+				continue;
+			if (strcmp(argname, NameStr(attr->attname)) == 0)
+			{
+				found = true;
+				break;
+			}
+		}
+
+		if (!found)
+		{
+			matches = false;
+			break;
+		}
+	}
+
+	FreeTupleDesc(tupdesc);
+	return matches;
+}
+
+static void
+ReportInvalidObjectTypeConstructorArgs(ParseState *pstate, Oid targetType,
+									   int location)
+{
+	ereport(ERROR,
+			(errcode(ERRCODE_CANNOT_COERCE),
+			 errmsg("invalid constructor arguments for object type %s",
+					format_type_be(targetType)),
+			 parser_errposition(pstate, location)));
+}
+
+static Node *
+ParseQualifiedComplexProjection(ParseState *pstate, List *funcname, List *fargs,
+								 List *argnames, bool proc_call, List *agg_order,
+								 Expr *agg_filter, WindowDef *over,
+								 bool agg_star, bool agg_distinct,
+								 bool agg_within_group, bool func_variadic,
+								 int location)
+{
+	List	   *prefix;
+	Node	   *self_expr;
+
+	if (ORA_MODE != compatible_mode ||
+		proc_call ||
+		list_length(funcname) < 2 ||
+		agg_order != NIL ||
+		agg_filter != NULL ||
+		over != NULL ||
+		agg_star ||
+		agg_distinct ||
+		agg_within_group ||
+		func_variadic ||
+		argnames != NIL)
+		return NULL;
+
+	prefix = BuildNamePrefix(funcname);
+	self_expr = TryTransformColumnRef(pstate, prefix);
+	if (self_expr == NULL)
+		return NULL;
+
+	/*
+	 * Preserve the historical projection shortcut for expressions such as
+	 * obj.attr() when the left side already resolves to a composite/object
+	 * value.  This keeps ordinary field projection available before later
+	 * lookup stages try to reinterpret the same syntax as an object method.
+	 */
+	if (fargs != NIL)
+	{
+		Node   *first_arg;
+
+		if (list_length(fargs) != 1)
+			return NULL;
+
+		first_arg = (Node*) (list_nth_cell(fargs, 0))->ptr_value;
+		if (exprType(first_arg) != exprType(self_expr))
+			return NULL;
+	}
+
+	return ParseComplexProjection(pstate,
+								  strVal(llast(funcname)),
+								  self_expr,
+								  location);
+}
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * LookupFuncName

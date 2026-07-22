@@ -3142,6 +3142,7 @@ _outFuncCall(StringInfo str, const FuncCall *node)
 	WRITE_BOOL_FIELD(agg_distinct);
 	WRITE_BOOL_FIELD(func_variadic);
 	WRITE_ENUM_FIELD(funcformat, CoercionForm);
+	WRITE_BOOL_FIELD(is_object_method);	/* ReqID:SRS-SQL-CustomObject */
 	WRITE_LOCATION_FIELD(location);
 	WRITE_NODE_FIELD(rawargs);
 	WRITE_INT_FIELD(ignore_nulls); /* OA-REQ-2348 */

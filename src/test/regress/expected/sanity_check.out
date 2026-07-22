@@ -143,6 +143,8 @@ pg_largeobject_metadata|t
 pg_mfaid|t
 pg_namespace|t
 pg_object|t
+pg_object_type|t
+pg_object_type_body|t
 pg_opclass|t
 pg_operator|t
 pg_opfamily|t

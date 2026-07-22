@@ -73,7 +73,9 @@
 #include "utils/rls.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type_body.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * We must skip "overhead" operations that involve database access when the
@@ -1778,6 +1780,29 @@ setPlanCacheInvalidForPackage(Oid pkgoid)
 									ObjectIdGetDatum(pkgoid));
 	PlanCacheObjectCallback(0, PKGOID, hashvalue);
 }
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+void
+setPlanCacheInvalidForObjectType(Oid objoid)
+{
+	uint32	hashvalue;
+	Oid		bodyoid;
+
+	hashvalue = GetSysCacheHashValue1(OBJTYPEOID,
+									  ObjectIdGetDatum(objoid));
+	PlanCacheObjectCallback(0, OBJTYPEOID, hashvalue);
+
+	bodyoid = GetSysCacheOid1(OBJTYPEBODYOBJTYPOID,
+							  Anum_pg_object_type_body_oid,
+							  ObjectIdGetDatum(objoid));
+	if (!OidIsValid(bodyoid))
+		return;
+
+	hashvalue = GetSysCacheHashValue1(OBJTYPEBODYOID,
+									  ObjectIdGetDatum(bodyoid));
+	PlanCacheObjectCallback(0, OBJTYPEBODYOID, hashvalue);
+}
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * package body has change, we has no way to match its hashvalue

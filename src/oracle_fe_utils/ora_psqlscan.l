@@ -79,6 +79,89 @@ typedef int YYSTYPE;
 extern int	ora_psql_yyget_column(yyscan_t yyscanner);
 extern void ora_psql_yyset_column(int column_no, yyscan_t yyscanner);
 
+/* Begin - ReqID:SRS-SQL-CustomObject */
+/*
+ * Encode the leading words that make Oracle-style CREATE statements use '/'
+ * as the command terminator.  Keep TYPE and TRIGGER distinct; both start with
+ * 't', but only TYPE BODY and TRIGGER should use this path.
+ */
+static char
+ora_psqlscan_slash_word_code(const char *word)
+{
+	if (pg_strcasecmp(word, "create") == 0)
+		return 'c';
+	if (pg_strcasecmp(word, "function") == 0)
+		return 'f';
+	if (pg_strcasecmp(word, "procedure") == 0)
+		return 'p';
+	if (pg_strcasecmp(word, "package") == 0)
+		return 'k';
+	if (pg_strcasecmp(word, "trigger") == 0)
+		return 'g';
+	if (pg_strcasecmp(word, "type") == 0)
+		return 'y';
+	if (pg_strcasecmp(word, "body") == 0)
+		return 'b';
+	if (pg_strcasecmp(word, "or") == 0)
+		return 'o';
+	if (pg_strcasecmp(word, "replace") == 0)
+		return 'r';
+
+	return '\0';
+}
+
+static bool
+ora_psqlscan_is_slash_terminated_create(PsqlScanState state)
+{
+	char	   *idents = state->identifiers;
+
+	if (idents[0] != 'c')
+		return false;
+
+	if (idents[1] == 'f' ||
+		idents[1] == 'p' ||
+		idents[1] == 'k' ||
+		idents[1] == 'g' ||
+		(idents[1] == 'y' && idents[2] == 'b'))
+		return true;
+
+	if (idents[1] == 'o' && idents[2] == 'r' &&
+		(idents[3] == 'f' ||
+		 idents[3] == 'p' ||
+		 idents[3] == 'k' ||
+		 idents[3] == 'g' ||
+		 (idents[3] == 'y' && idents[4] == 'b')))
+		return true;
+
+	return false;
+}
+
+static bool
+ora_psqlscan_preserves_line_comments(PsqlScanState state)
+{
+	char	   *idents = state->identifiers;
+
+	if (idents[0] != 'c')
+		return false;
+	
+	if (idents[1] == 'f' ||
+		idents[1] == 'p' ||
+		idents[1] == 'k' ||
+		(idents[1] == 'y' && idents[2] == 'b'))
+		return true;
+	
+	if (idents[1] == 'o' && idents[2] == 'r' &&
+		(idents[3] == 'f' ||
+		 idents[3] == 'p' ||
+		 idents[3] == 'k' ||
+		 (idents[3] == 'y' && idents[4] == 'b')))
+		return true;
+	
+	return false;
+}
+
+/* End - ReqID:SRS-SQL-CustomObject */
+
 %}
 
 %option reentrant
@@ -1099,32 +1182,28 @@ other			.
 					if (cur_state->identifier_count == 0)
 						memset(cur_state->identifiers, 0, sizeof(cur_state->identifiers));
 
-					if (pg_strcasecmp(yytext, "create") == 0 ||
-						pg_strcasecmp(yytext, "function") == 0 ||
-						pg_strcasecmp(yytext, "procedure") == 0 ||
-						pg_strcasecmp(yytext, "package") == 0 || /* ReqID:SRS-SQL-PACKAGE */
-						pg_strcasecmp(yytext, "trigger") == 0 || /* ReqID:SRS-SQL-TRIGGER */
-						pg_strcasecmp(yytext, "or") == 0 ||
-						pg_strcasecmp(yytext, "replace") == 0)
+					/* Begin - ReqID:SRS-SQL-CustomObject */
+					if (ora_psqlscan_slash_word_code(yytext) != '\0')
 					{
 						if (cur_state->identifier_count < sizeof(cur_state->identifiers))
-							cur_state->identifiers[cur_state->identifier_count] = pg_tolower((unsigned char) yytext[0]);
+							cur_state->identifiers[cur_state->identifier_count] =
+								ora_psqlscan_slash_word_code(yytext);
 					}
+					/* End - ReqID:SRS-SQL-CustomObject */
 
 					/* Begin - ReqID:SRS-SQL-PROC */
 					/*
 					 * Simply discard EDITIONABLE and NONEDITIONABLE that occur in 
-					 * the first 4 identifiers at the beginning of the command.
+					 * the leading identifiers at the beginning of the command.
 					 */
 					if (pg_strcasecmp(yytext, "editionable") != 0 &&
 						pg_strcasecmp(yytext, "noneditionable") != 0)
 					/* End - ReqID:SRS-SQL-PROC */
 						cur_state->identifier_count++;
 
-					if (cur_state->identifiers[0] == 'c' &&
-						(cur_state->identifiers[1] == 'f' || cur_state->identifiers[1] == 'p' || cur_state->identifiers[1] == 't' ||
-						 (cur_state->identifiers[1] == 'o' && cur_state->identifiers[2] == 'r' &&
-						  (cur_state->identifiers[3] == 'f' || cur_state->identifiers[3] == 'p' || cur_state->identifiers[3] == 't'))) &&
+					/* Begin - ReqID:SRS-SQL-CustomObject */
+					if (ora_psqlscan_is_slash_terminated_create(cur_state) &&
+					/* End - ReqID:SRS-SQL-CustomObject */
 						cur_state->paren_depth == 0)
 					{
 						/* Begin - ReqID:SRS-SQL-PROC */
@@ -1538,10 +1617,9 @@ ora_psql_scan_in_quote(PsqlScanState state)
 {
 	if (state->send_space_one_comments &&
 		state->identifier_count >= 4 &&
-		state->identifiers[0] == 'c' &&
-		(state->identifiers[1] == 'f' || state->identifiers[1] == 'p' ||
-		 (state->identifiers[1] == 'o' && state->identifiers[2] == 'r' &&
-		  (state->identifiers[3] == 'f' || state->identifiers[3] == 'p'))))
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		ora_psqlscan_preserves_line_comments(state))
+		/* End - ReqID:SRS-SQL-CustomObject */
 		return true;
 	else
 		return false;

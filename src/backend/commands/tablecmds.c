@@ -145,6 +145,9 @@
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
 #include "commands/schemacmds.h"
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "utils/objecttypecache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * ON COMMIT action list
@@ -15144,6 +15147,48 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				}
 				break;
 
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case OCLASS_OBJECT_TYPE:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (ORA_MODE == compatible_mode && foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add object type Oid to the pending-oids list */
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_OBJECT_TYPE);
+				}
+				else
+				/* End - ReqID:SRS-PLSQL-TYPE */
+				{
+					/*
+					 * We don't expect any of these sorts of objects to depend on
+					 * a column.
+					 */
+					elog(ERROR, "unexpected object depending on column: %s",
+						 getObjectDescription(&foundObject, false));
+				}
+				break;
+
+			case OCLASS_OBJECT_TYPE_BODY:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (ORA_MODE == compatible_mode && foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add object type Oid to the pending-oids list */
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_OBJECT_TYPE_BODY);
+				}
+				else
+				/* End - ReqID:SRS-PLSQL-TYPE */
+				{
+					/*
+					 * We don't expect any of these sorts of objects to depend on
+					 * a column.
+					 */
+					elog(ERROR, "unexpected object depending on column: %s",
+						 getObjectDescription(&foundObject, false));
+				}
+				break;
+			/* End - ReqID:SRS-SQL-CustomObject */
+
 				/*
 				 * There's intentionally no default: case here; we want the
 				 * compiler to warn if a new OCLASS hasn't been handled above.
@@ -22347,6 +22392,32 @@ check_function_dependency_internal(Relation	depRel, SysScanDesc scan)
 					CatalogTupleDelete(depRel, &depTup->t_self);
 				}
 				break;
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case OCLASS_OBJECT_TYPE:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add object type Oid to the pending-oids list */
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_OBJECT_TYPE);
+
+					/* Delete the depend tuples */
+					CatalogTupleDelete(depRel, &depTup->t_self);
+				}
+				break;
+			case OCLASS_OBJECT_TYPE_BODY:
+
+				/* Begin - ReqID:SRS-PLSQL-TYPE */
+				if (foundDep->deptype == DEPENDENCY_TYPE)
+				{
+					/* Add object type body Oid to the pending-oids list */
+					ObjectFunOrPkgSetsAppend(depTypeObjects, foundDep->objid, OCLASS_OBJECT_TYPE_BODY);
+
+					/* Delete the depend tuples */
+					CatalogTupleDelete(depRel, &depTup->t_self);
+				}
+				break;
+			/* End - ReqID:SRS-SQL-CustomObject */
 			default:
 				break;
 		}

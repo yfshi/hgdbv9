@@ -44,7 +44,10 @@
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 #include "commands/packagecmds.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "pl_object_type.h"
+#include "utils/objecttypecache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 
 typedef struct _subprocFuncCandidateList
@@ -1210,6 +1213,14 @@ plisql_register_internal_func(void)
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	plisql_internal_funcs.package_validator = plisql_package_validator;
 	plisql_internal_funcs.package_handle = plisql_package_handle;
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	/* Register object type callback functions for cache and parsing */
+	plisql_internal_funcs.object_type_handle = plisql_object_type_handle;
+	plisql_internal_funcs.object_type_validator = plisql_object_type_validator;
+	plisql_internal_funcs.object_type_parse_spec = plisql_parse_object_type_spec;
+	plisql_internal_funcs.object_type_parse_body = plisql_parse_object_type_body;
+	plisql_internal_funcs.object_type_lookup = plisql_object_type_lookup;
+	/* End - ReqID:SRS-SQL-CustomObject */
 	plisql_internal_funcs.package_parse = plisql_package_parse;
 	plisql_internal_funcs.package_free_list = plisql_free_packagelist;
 	plisql_internal_funcs.get_top_function_id = plisql_top_functin_oid;
@@ -3667,7 +3678,7 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	plisql_compile_tmp_cxt = MemoryContextSwitchTo(func_cxt);
 
 	function->fn_signature = quote_qualified_identifier(NULL, subprocfunc->func_name);
-	function->fn_input_collation = fcinfo->fncollation;
+	function->fn_input_collation = fcinfo ? fcinfo->fncollation : InvalidOid;
 	function->fn_cxt = func_cxt;
 	function->out_param_varno = -1; /* set up for no OUT param */
 	function->resolve_option = plisql_variable_conflict;
@@ -3681,6 +3692,11 @@ plisql_dynamic_compile_subproc(FunctionCallInfo fcinfo,
 	function->nstatements = 0;
 	function->requires_procedure_resowner = false;
 	function->fn_nargs = subprocfunc->function->fn_nargs;
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	/* Preserve object constructor flag for method binding */
+	function->fn_is_object_constructor =
+		subprocfunc->function->fn_is_object_constructor;
+	/* End - ReqID:SRS-SQL-CustomObject */
 	/* Begin - BUG#Z0001268 */
 	/*
 	 * palloc space for fn_varnos
@@ -3974,6 +3990,16 @@ get_parent_func(FuncExpr *expr)
 		psource = (PLiSQL_package *) item->source;
 		return &psource->source;
 	}
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	/* Handle object type method calls */
+	else if (FUNC_EXPR_FROM_OBJECT(expr->function_from))
+	{
+		/* Resolve object type info if not already cached */
+		if (expr->parent_func == NULL)
+			set_objectinfo_from_funcexpr(expr);
+		return (PLiSQL_function *) expr->parent_func;
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 	else
 		return (PLiSQL_function *) expr->parent_func;
 

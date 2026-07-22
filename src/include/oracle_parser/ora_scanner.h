@@ -137,6 +137,11 @@ extern ora_core_yyscan_t ora_scanner_init(const char *str,
 								  ora_core_yy_extra_type *yyext,
 								  const ScanKeywordList *keywordlist,
 								  const uint16 *keyword_tokens);
+/* Begin - ReqID:SRS-SQL-CustomObject */
+/* Convenience entry point using the standard Oracle keyword table. */
+extern ora_core_yyscan_t ora_scanner_init_with_ora_keywords(const char *str,
+								  ora_core_yy_extra_type *yyext);
+/* End - ReqID:SRS-SQL-CustomObject */
 extern void ora_scanner_finish(ora_core_yyscan_t yyscanner);
 extern int	ora_core_yylex(ora_core_YYSTYPE *lvalp, YYLTYPE *llocp,
 					   	   ora_core_yyscan_t yyscanner);
