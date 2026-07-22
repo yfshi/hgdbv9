@@ -59,7 +59,7 @@ create table tttt (a decimal(0, 0));
 desc tttt;
  Field |     Type      | Null | Key | Default | Extra 
 -------+---------------+------+-----+---------+-------
- a     | numeric(10,0) | YES  |     |         | 
+ a     | decimal(10,0) | YES  |     |         | 
 (1 row)
 
 drop table tttt;

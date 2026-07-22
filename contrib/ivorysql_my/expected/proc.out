@@ -183,28 +183,28 @@ LANGUAGE SQL;
 
 -- mysql.proc
 desc mysql.proc;
-        Field         |                Type                 | Null | Key | Default | Extra 
-----------------------+-------------------------------------+------+-----+---------+-------
- db                   | character varying(64)               | YES  |     |         | 
- name                 | character varying(64)               | YES  |     |         | 
- type                 | mysql.enum_mysql_proc_type          | YES  |     |         | 
- specific_name        | character varying(64)               | YES  |     |         | 
- language             | mysql.enum_mysql_proc_language      | YES  |     |         | 
- sql_data_access      | mysql.enum_mysql_proc_access        | YES  |     |         | 
- is_deterministic     | mysql.enum_mysql_proc_deterministic | YES  |     |         | 
- security_type        | mysql.enum_mysql_proc_security      | YES  |     |         | 
- param_list           | blob                                | YES  |     |         | 
- returns              | longblob                            | YES  |     |         | 
- body                 | longblob                            | YES  |     |         | 
- definer              | character varying(93)               | YES  |     |         | 
- created              | timestamp                           | YES  |     |         | 
- modified             | timestamp                           | YES  |     |         | 
- sql_mode             | character varying                   | YES  |     |         | 
- comment              | text                                | YES  |     |         | 
- character_set_client | character varying(32)               | YES  |     |         | 
- collation_connection | character varying(32)               | YES  |     |         | 
- db_collation         | character varying(32)               | YES  |     |         | 
- body_utf8            | longblob                            | YES  |     |         | 
+        Field         |    Type     | Null | Key | Default | Extra 
+----------------------+-------------+------+-----+---------+-------
+ db                   | varchar(64) | YES  |     |         | 
+ name                 | varchar(64) | YES  |     |         | 
+ type                 | enum        | YES  |     |         | 
+ specific_name        | varchar(64) | YES  |     |         | 
+ language             | enum        | YES  |     |         | 
+ sql_data_access      | enum        | YES  |     |         | 
+ is_deterministic     | enum        | YES  |     |         | 
+ security_type        | enum        | YES  |     |         | 
+ param_list           | blob        | YES  |     |         | 
+ returns              | longblob    | YES  |     |         | 
+ body                 | longblob    | YES  |     |         | 
+ definer              | varchar(93) | YES  |     |         | 
+ created              | timestamp   | YES  |     |         | 
+ modified             | timestamp   | YES  |     |         | 
+ sql_mode             | varchar     | YES  |     |         | 
+ comment              | text        | YES  |     |         | 
+ character_set_client | varchar(32) | YES  |     |         | 
+ collation_connection | varchar(32) | YES  |     |         | 
+ db_collation         | varchar(32) | YES  |     |         | 
+ body_utf8            | longblob    | YES  |     |         | 
 (20 rows)
 
 -- show create function

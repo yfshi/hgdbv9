@@ -90,19 +90,19 @@ Tables_in_public:VARCHAR:t4
 Tables_in_public:VARCHAR:t3
 Database:VARCHAR:public
 Field:VARCHAR:c1
-Type:TEXT:integer
+Type:TEXT:int
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c10
-Type:TEXT:double precision
+Type:TEXT:double
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c11
-Type:TEXT:mysbit(10)
+Type:TEXT:bit
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
@@ -114,25 +114,25 @@ Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c13
-Type:TEXT:character(10)
+Type:TEXT:char(10)
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c15
-Type:TEXT:character varying(10)
+Type:TEXT:varchar(10)
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c16
-Type:TEXT:character varying(10)
+Type:TEXT:varchar(10)
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c18
-Type:TEXT:"year"
+Type:TEXT:year
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null

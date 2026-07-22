@@ -3977,14 +3977,14 @@ CREATE TABLE `assortimportfaildetail` (
    PRIMARY KEY (`id`) USING BTREE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb3 ROW_FORMAT=DYNAMIC;
 describe `assortimportfaildetail`;
-   Field    |          Type           | Null | Key |                          Default                           |     Extra      
-------------+-------------------------+------+-----+------------------------------------------------------------+----------------
- id         | integer                 | NO   | PRI | autoinc_nextval('assortimportfaildetail_id_seq'::regclass) | auto_increment
- historyid  | integer                 | YES  |     |                                                            | 
- failrow    | integer                 | YES  |     |                                                            | 
- failcol    | character varying(100)  | YES  |     | NULL::character varying                                    | 
- assortname | character varying(1000) | YES  |     | NULL::character varying                                    | 
- failreason | character varying(100)  | YES  |     | NULL::character varying                                    | 
+   Field    |     Type      | Null | Key |                          Default                           |     Extra      
+------------+---------------+------+-----+------------------------------------------------------------+----------------
+ id         | int           | NO   | PRI | autoinc_nextval('assortimportfaildetail_id_seq'::regclass) | auto_increment
+ historyid  | int           | YES  |     |                                                            | 
+ failrow    | int           | YES  |     |                                                            | 
+ failcol    | varchar(100)  | YES  |     | NULL::character varying                                    | 
+ assortname | varchar(1000) | YES  |     | NULL::character varying                                    | 
+ failreason | varchar(100)  | YES  |     | NULL::character varying                                    | 
 (6 rows)
 
 CREATE TABLE oa2019_1(
@@ -3993,10 +3993,10 @@ CREATE TABLE oa2019_1(
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB ROW_FORMAT=DYNAMIC;
 describe oa2019_1;
-   Field    |          Type          | Null | Key | Default | Extra 
-------------+------------------------+------+-----+---------+-------
- id         | integer                | NO   | PRI |         | 
- failreason | character varying(100) | YES  |     |         | 
+   Field    |     Type     | Null | Key | Default | Extra 
+------------+--------------+------+-----+---------+-------
+ id         | int          | NO   | PRI |         | 
+ failreason | varchar(100) | YES  |     |         | 
 (2 rows)
 
 CREATE TABLE oa2019_2(
@@ -4244,11 +4244,11 @@ fay_daim VARCHAR(50) NOT NULL COMMENT `Court Code`
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT="Trial Information Form";
 CREATE UNIQUE INDEX unique_index ON f_tingsm(paiqxx_id, sheary_id, fay_daim) COMMENT "Single schedulign, Individual personnel, Single court unique";
 DESC f_tingsm;
-   Field   |         Type          | Null | Key | Default | Extra 
------------+-----------------------+------+-----+---------+-------
- paiqxx_id | bigint                | NO   | UNI |         | 
- sheary_id | bigint                | NO   | UNI |         | 
- fay_daim  | character varying(50) | NO   | UNI |         | 
+   Field   |    Type     | Null | Key | Default | Extra 
+-----------+-------------+------+-----+---------+-------
+ paiqxx_id | bigint      | NO   | UNI |         | 
+ sheary_id | bigint      | NO   | UNI |         | 
+ fay_daim  | varchar(50) | NO   | UNI |         | 
 (3 rows)
 
 DROP TABLE f_tingsm;

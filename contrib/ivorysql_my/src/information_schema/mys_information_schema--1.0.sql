@@ -5,32 +5,6 @@
  */
 
 --
--- Function: mys_information_schema.mys_format_type (internal)
--- Maps a PostgreSQL type OID to a MySQL-compatible DATA_TYPE string.
---
-CREATE OR REPLACE FUNCTION mys_information_schema.mys_format_type(type_oid oid)
-RETURNS varchar(64)
-LANGUAGE sql 
-STABLE 
-PARALLEL SAFE
-RETURNS NULL ON NULL INPUT
-AS $$
-	SELECT CASE
-		WHEN t.typname = 'mysbit'  THEN 'bit'
-		WHEN t.typname = 'bpchar'  THEN 'char'
-		WHEN t.typname = 'float8'  THEN 'double'
-		WHEN t.typname = 'float4'  THEN 'float'
-		WHEN t.typname = 'int4'    THEN 'int'
-		WHEN t.typname = 'numeric' THEN 'decimal'
-		WHEN t.typname = 'varchar' THEN 'varchar'
-		WHEN t.typname = 'year'    THEN 'year'
-		WHEN t.typtype = 'e'       THEN 'enum'
-		ELSE format_type(type_oid, null)
-	END
-	FROM pg_type t WHERE t.oid = type_oid
-$$;
-
---
 -- View: mys_information_schema.tables
 --
 
@@ -651,7 +625,7 @@ SELECT
 	CASE WHEN co.collname IS NOT NULL THEN co.collname ELSE NULL END::varchar(32) AS "COLLATION_NAME",
 
 	-- COLUMN_TYPE: complete type definition
-	format_type(a.atttypid, a.atttypmod)::longtext AS "COLUMN_TYPE",
+	mys_information_schema.mys_format_type(a.atttypid, a.atttypmod)::longtext AS "COLUMN_TYPE",
 
 	-- COLUMN_KEY: PRI, UNI, MUL
 	CASE

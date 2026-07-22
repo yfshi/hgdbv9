@@ -30,17 +30,17 @@ select 1::text, "this is a string", 1::"text", 1::text;
 -- Begin - bug#6888
 CREATE TABLE test_real1(col REAL);
 DESC test_real1;
- Field |       Type       | Null | Key | Default | Extra 
--------+------------------+------+-----+---------+-------
- col   | double precision | YES  |     |         | 
+ Field |  Type  | Null | Key | Default | Extra 
+-------+--------+------+-----+---------+-------
+ col   | double | YES  |     |         | 
 (1 row)
 
 SET sql_mode = 'REAL_AS_FLOAT';
 CREATE TEMPORARY TABLE test_real2(col REAL);
 DESC test_real2;
- Field |  Type  | Null | Key | Default | Extra 
--------+--------+------+-----+---------+-------
- col   | float4 | YES  |     |         | 
+ Field | Type  | Null | Key | Default | Extra 
+-------+-------+------+-----+---------+-------
+ col   | float | YES  |     |         | 
 (1 row)
 
 drop table test_real1, test_real2;
