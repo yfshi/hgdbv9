@@ -1786,13 +1786,8 @@ check_dump_pgtype(int *newval, void **extra, GucSource source)
 			ereport(ERROR,
 				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
 				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG mode.")));
-
-	if (PG_MODE == compatible_mode && newmode == ORA_DUMP)
-			ereport(ERROR,
-				(errcode(ERRCODE_CANT_CHANGE_RUNTIME_PARAM),
-				errmsg("parameter ivorysql.dumppgtype cannot be changed in native PG parser.")));
 	
-	if(DB_ORACLE == database_mode && ORA_MODE == compatible_mode
+	if(DB_ORACLE == database_mode
 		&&  (IsNormalProcessingMode() || (IsUnderPostmaster && MyProcPort)))
 	{
 		if (newmode == ORA_DUMP)
