@@ -27,6 +27,11 @@
 
 int					current_packet_type;
 mysql_conn_info_t 	mysql_conn_info;
+/* Begin OA#2577 */
+static MysqlInstanceEntry *mys_instances = NULL;
+static int num_mys_instances = 0;
+static void parse_mysql_instances(const char *port_list_str, const char *db_list_str);
+/* End OA#2577 */
 
 static create_server_listen_hook_type pre_server_listen_hook = NULL;
 static get_protocol_config_hook_type pre_get_protocol_config_hook = NULL; /* bug#6805 */
@@ -206,122 +211,123 @@ mysql_session_init(ProtocolExtensionConfig *self)
 static void
 create_mysql_server_listen(void)
 {
-	int		status;
 	bool	listen_addr_saved = false;
-	char 	*address = mys_listen_address;
-	int 	port = mys_port;
-	
-	if (address)
+	char	*address = mys_listen_address;
+
+	parse_mysql_instances(mys_port, default_database);
+
+	for (int i = 0; i < num_mys_instances; i++)
 	{
-		char	   *rawstring;
-		List	   *elemlist;
-		ListCell   *l;
-		int 		success = 0;
+		int		status;
+		int		port = mys_instances[i].port;
 
-		/* Need a modifiable copy of ListenAddresses */
-		rawstring = pstrdup(address);
-
-		/* Parse string into list of hostnames */
-		if (!SplitGUCList(rawstring, ',', &elemlist))
+		if (address)
 		{
-			/* syntax error in list */
-			ereport(FATAL,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-					 errmsg("invalid list syntax in parameter \"%s\"", "listen_addresses")));
-		}
+			char	   *rawstring;
+			List	   *elemlist;
+			ListCell   *l;
+			int			success = 0;
 
-		foreach(l, elemlist)
-		{
-			char	   *curhost = (char *) lfirst(l);
+			rawstring = pstrdup(address);
 
-			if (strcmp(curhost, "*") == 0)
-				status = StreamServerPort(AF_UNSPEC, NULL,
-										  (unsigned short)port,
-										  NULL,
-										  ListenSocket, MAXLISTEN);
-			else
-				status = StreamServerPort(AF_UNSPEC, curhost,
-										  (unsigned short)port,
-										  NULL,
-										  ListenSocket, MAXLISTEN);
-
-			if (status == STATUS_OK)
+			if (!SplitGUCList(rawstring, ',', &elemlist))
 			{
-				success++;
-				/* record the first successful host addr in lockfile */
-				if (!listen_addr_saved)
+				ereport(FATAL,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("invalid list syntax in parameter \"%s\"", "listen_addresses")));
+			}
+
+			foreach (l, elemlist)
+			{
+				char	   *curhost = (char *)lfirst(l);
+
+				if (strcmp(curhost, "*") == 0)
+					status = StreamServerPort(AF_UNSPEC, NULL,
+											  (unsigned short)port,
+											  NULL,
+											  ListenSocket, MAXLISTEN);
+				else
+					status = StreamServerPort(AF_UNSPEC, curhost,
+											  (unsigned short)port,
+											  NULL,
+											  ListenSocket, MAXLISTEN);
+
+				if (status == STATUS_OK)
 				{
-					AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
-					listen_addr_saved = true;
+					success++;
+					if (!listen_addr_saved)
+					{
+						AddToDataDirLockFile(LOCK_FILE_LINE_LISTEN_ADDR, curhost);
+						listen_addr_saved = true;
+					}
+				}
+				else
+				{
+					ereport(WARNING,
+							(errmsg("could not create Mysql listen socket for \"%s\" on port %d",
+									curhost, port)));
 				}
 			}
-			else
+
+			if (!success && elemlist != NIL)
 			{
-				ereport(WARNING,
-						(errmsg("could not create listen socket for \"%s\"", curhost)));
+				ereport(FATAL,
+						(errmsg("could not create any Mysql TCP/IP sockets for port %d",
+								port)));
 			}
-		}
 
-		if (!success && elemlist != NIL)
-		{
-			ereport(FATAL,
-					(errmsg("could not create any Mysql TCP/IP sockets")));
+			list_free(elemlist);
+			pfree(rawstring);
 		}
-
-		list_free(elemlist);
-		pfree(rawstring);
-	}
 
 #ifdef HAVE_UNIX_SOCKETS
-	if (Unix_socket_directories)
-	{
-		char	   *rawstring;
-		List	   *elemlist;
-		ListCell   *l;
-		int			success = 0;
-
-		/* Need a modifiable copy of Unix_socket_directories */
-		rawstring = pstrdup(Unix_socket_directories);
-
-		/* Parse string into list of directories */
-		if (!SplitDirectoriesString(rawstring, ',', &elemlist))
+		if (Unix_socket_directories)
 		{
-			/* syntax error in list */
-			ereport(FATAL,
-					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-						errmsg("invalid list syntax in parameter \"%s\"",
-							"unix_socket_directories")));
-		}
+			char	   *rawstring;
+			List	   *elemlist;
+			ListCell   *l;
+			int			success = 0;
 
-		foreach(l, elemlist)
-		{
-			char	   *socketdir = (char *) lfirst(l);
+			rawstring = pstrdup(Unix_socket_directories);
 
-			status = StreamServerPort(AF_UNIX, NULL,
-									  (unsigned short)port,
-									  socketdir,
-									  ListenSocket, MAXLISTEN);
-
-			if (status == STATUS_OK)
+			if (!SplitDirectoriesString(rawstring, ',', &elemlist))
 			{
-				success++;
-				/* record the first successful Unix socket in lockfile */
-				if (success == 1)
-					AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
+				ereport(FATAL,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("invalid list syntax in parameter \"%s\"",
+								"unix_socket_directories")));
 			}
-			else
-				ereport(WARNING,
-						(errmsg("could not create mysql Unix-domain socket in directory \"%s\"",
-								socketdir)));
+
+			foreach (l, elemlist)
+			{
+				char	   *socketdir = (char *)lfirst(l);
+
+				status = StreamServerPort(AF_UNIX, NULL,
+										  (unsigned short)port,
+										  socketdir,
+										  ListenSocket, MAXLISTEN);
+
+				if (status == STATUS_OK)
+				{
+					success++;
+					if (success == 1)
+						AddToDataDirLockFile(LOCK_FILE_LINE_SOCKET_DIR, socketdir);
+				}
+				else
+					ereport(WARNING,
+							(errmsg("could not create mysql Unix-domain socket in directory \"%s\" for port %d",
+									socketdir, port)));
+			}
+
+			if (!success && elemlist != NIL)
+				ereport(FATAL,
+						(errmsg("could not create any mysql Unix-domain sockets for port %d",
+								port)));
 		}
-
-		if (!success && elemlist != NIL)
-			ereport(FATAL,
-					(errmsg("could not create any mysql Unix-domain sockets")));
-	}
 #endif
+	}
 
-	// create hash cache for caching_sha2_password
+	/* create hash cache for caching_sha2_password */
 #ifdef USE_OPENSSL
 	create_mysql_auth_cache();
 #endif
@@ -460,6 +466,11 @@ type_is_blob(Oid oid)
 static ProtocolExtensionConfig *
 mys_get_protocol_config(int family, char *local_port)
 {
+	/* In the Windows environment (exec_backend), `num_mys_instances` was not inherited,
+	 * resulting in a value of 0; therefore, parsing is performed again. */
+	if (num_mys_instances == 0)
+		parse_mysql_instances(mys_port, default_database);
+
 	// Check unix domain socket
 	if (IS_AF_UNIX(family))
 	{
@@ -479,19 +490,22 @@ mys_get_protocol_config(int family, char *local_port)
 							"unix_socket_directories")));
 		}
 
-		foreach(l, elemlist)
+		foreach (l, elemlist)
 		{
-			char	   *socketdir = (char *) lfirst(l);
+			char	   *socketdir = (char *)lfirst(l);
 
-			UNIXSOCK_PATH(unixSocketPath, mys_port, socketdir);
-
-			if (!strcmp(local_port, unixSocketPath))
+			for (int i = 0; i < num_mys_instances; i++)
 			{
-				if (mys_protocol_type == PROTOCOL_PG)
-					return &mysql_pg_protocol_config;
+				UNIXSOCK_PATH(unixSocketPath, mys_instances[i].port, socketdir);
 
-				if (mys_protocol_type == PROTOCOL_MYSQL)
-					return &mysql_protocol_config;
+				if (!strcmp(local_port, unixSocketPath))
+				{
+					if (mys_protocol_type == PROTOCOL_PG)
+						return &mysql_pg_protocol_config;
+
+					if (mys_protocol_type == PROTOCOL_MYSQL)
+						return &mysql_protocol_config;
+				}
 			}
 		}
 	}
@@ -499,7 +513,7 @@ mys_get_protocol_config(int family, char *local_port)
 	{
 		int port = pg_atoi(local_port, sizeof(int32), ' ');
 
-		if (port == mys_port)
+		if (lookup_mysql_instance(port) != NULL)
 		{
 			if (mys_protocol_type == PROTOCOL_PG)
 				return &mysql_pg_protocol_config;
@@ -516,6 +530,100 @@ mys_get_protocol_config(int family, char *local_port)
 	return NULL;
 }
 /* End - bug#6805 */
+
+/* Begin OA#2577 */
+void
+parse_mysql_instances(const char *port_list_str, const char *db_list_str)
+{
+	List	   *port_elemlist = NIL;
+	List	   *db_elemlist = NIL;
+	ListCell   *pl, *dl;
+	int			count = 0;
+	int			i;
+
+	/* Parse port list */
+	if (port_list_str && port_list_str[0] != '\0')
+	{
+		if (!SplitGUCList(pstrdup(port_list_str), ',', &port_elemlist))
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"mysql.port\"")));
+	}
+
+	/* Parse database list */
+	if (db_list_str && db_list_str[0] != '\0')
+	{
+		if (!SplitGUCList(pstrdup(db_list_str), ',', &db_elemlist))
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid list syntax in parameter \"mysql.default_database\"")));
+	}
+
+	/* Validate lengths match */
+	{
+		int nports = list_length(port_elemlist);
+		int ndbs = list_length(db_elemlist);
+		if (nports == 0)
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("mysql.port must be set when mysql.default_database has entries")));
+		if (ndbs == 0)
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("mysql.default_database must be set when mysql.port has entries")));
+		if (nports != ndbs)
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("mysql.port has %d entries but mysql.default_database has %d entries "
+							"(must be equal)", nports, ndbs)));
+		count = nports;
+	}
+
+	mys_instances = palloc0(sizeof(MysqlInstanceEntry) * count);
+	num_mys_instances = count;
+
+	pl = list_head(port_elemlist);
+	dl = list_head(db_elemlist);
+	for (i = 0; i < count; i++)
+	{
+		char	   *port_str = (char *) lfirst(pl);
+		char	   *db_name = (char *) lfirst(dl);
+		int			port;
+
+		pl = lnext(port_elemlist, pl);
+		dl = lnext(db_elemlist, dl);
+
+		if (db_name[0] == '\0')
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("empty database name in mysql.default_database")));
+
+		port = atoi(port_str);
+		if (port == 0 || port < 1 || port > 65535)
+			ereport(FATAL,
+					(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+					 errmsg("invalid port number %d in mysql.port, "
+							"must be between 1 and 65535", port)));
+
+		mys_instances[i].port = port;
+		mys_instances[i].database = pstrdup(db_name);
+	}
+
+	list_free(port_elemlist);
+	list_free(db_elemlist);
+}
+
+MysqlInstanceEntry *
+lookup_mysql_instance(int port)
+{
+	for (int i = 0; i < num_mys_instances; i++)
+	{
+		if (mys_instances[i].port == port)
+			return &mys_instances[i];
+	}
+	return NULL;
+}
+/* End OA#2577 */
 
 void
 register_mysql_listener()

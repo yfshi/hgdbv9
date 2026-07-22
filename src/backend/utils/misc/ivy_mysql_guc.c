@@ -94,7 +94,7 @@ static const struct config_enum_entry create_database_mode_options[] = {
 };
 /* End - BUG#Z8480 */
 
-int 	mys_port;
+char 	*mys_port;
 char 	*mys_listen_address;
 int	 	mys_protocol_type;
 int		mys_block_encryption_mode;
@@ -132,7 +132,7 @@ sql_mode_t  sql_mode;
 static char *sql_mode_str = NULL;
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 /* Begin - ReqID:SRS-MYSQL-BINARYTYPE */
-int			max_allowed_packet = 4194304;
+int			max_allowed_packet = 1073741824;
 int			max_sort_length = 1024;
 /* End - ReqID:SRS-MYSQL-BINARYTYPE */
 /* Begin - BUG#Z1434 */
@@ -389,17 +389,6 @@ int			max_execution_time;
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
-	{
-		{"mysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
-			gettext_noop("Sets the MySQL TCP port the server listens on with pg protocol."),
-			NULL
-		},
-		&mys_port,
-		3306, 1, 65535,
-		NULL, NULL, NULL
-	},
-	/* End - ReqID:SRS-MISC-MYSQL-FRAME */
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	{
 		{"lower_case_table_names", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
@@ -465,7 +454,7 @@ int			max_execution_time;
 			GUC_NOT_IN_SAMPLE
 		},
 		&max_allowed_packet,
-		4194304, 1024, 1073741824,
+		1073741824, 1024, 1073741824,
 		NULL, NULL, NULL
 	},
 	{
@@ -595,7 +584,18 @@ int			max_execution_time;
 #endif
 
 #ifdef IVY_MY_GUC_STRING_PARAMS
-	/* Begin - ReqID:SRS-MISC-MYSQL-FRAME */
+	/* Begin - OA#2577 */
+	{
+		{"mysql.port", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
+			gettext_noop("Sets the MySQL TCP ports the server listens on with pg protocol."),
+			NULL,
+			GUC_LIST_INPUT
+		},
+		&mys_port,
+		"3306",
+		NULL, NULL, NULL
+	},
+	/* End - OA#2577 */
 	{
 		{"mysql.listen_addresses", PGC_POSTMASTER, CONN_AUTH_SETTINGS,
 			gettext_noop("Sets MySQL host name or IP address(es) to listen to with pg protocol."),

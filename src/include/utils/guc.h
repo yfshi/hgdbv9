@@ -898,7 +898,7 @@ enum create_database_mode_type
 #define MYS_AES_BEGIN mys_aes_128_ecb
 #define MYS_AES_END mys_aes_256_ofb
 
-extern PGDLLIMPORT int	mys_port;
+extern PGDLLIMPORT char *mys_port;
 extern PGDLLIMPORT char *mys_listen_address;
 extern PGDLLIMPORT int 	mys_protocol_type;
 extern PGDLLIMPORT int 	mys_block_encryption_mode;

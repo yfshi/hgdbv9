@@ -330,6 +330,10 @@ free_handshake_response(mysql_handshake_response_t *resp)
 int
 mysql_conn_handshake(Port *port)
 {
+	char        local_host[NI_MAXHOST];
+	char        local_port[NI_MAXSERV];
+	int         lp;
+	MysqlInstanceEntry *entry;
     MemoryContext oldcontext;
     mysql_handshake_t *handshake;
     mysql_handshake_response_t  *handshakeResp;
@@ -421,8 +425,20 @@ mysql_conn_handshake(Port *port)
 
     port->user_name = pstrdup(handshakeResp->username);
 
-    // Set dafault database for Mysql compatiable
-    port->database_name = pstrdup(default_database);
+    /* Resolve PG database from the port-to-database mapping */
+	/* Begin OA#2577 */
+	pg_getnameinfo_all(&port->laddr.addr, port->laddr.salen,
+						local_host, sizeof(local_host),
+						local_port, sizeof(local_port),
+						NI_NUMERICHOST | NI_NUMERICSERV);
+
+	lp = atoi(local_port);
+
+	entry = lookup_mysql_instance(lp);
+	Assert(entry != NULL);
+
+	port->database_name = pstrdup(entry->database);
+	/* End OA#2577 */
 
     MemoryContextSwitchTo(oldcontext);
 
