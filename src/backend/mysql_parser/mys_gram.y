@@ -18468,6 +18468,13 @@ func_expr_common_subexpr:
 				{
 					$$ = makeSQLValueFunction(SVFOP_CURRENT_USER, -1, @1);
 				}
+			| CURRENT_USER '(' ')'
+				{
+					$$ = (Node *) makeFuncCall(MysqlSystemFuncName("current_user"),
+											   NIL,
+											   COERCE_SQL_SYNTAX,
+											   @1);
+				}
 			| SESSION_USER
 				{
 					$$ = makeSQLValueFunction(SVFOP_SESSION_USER, -1, @1);

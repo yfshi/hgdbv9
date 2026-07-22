@@ -5110,18 +5110,23 @@ List of access methods
                              List of functions
    Schema   |     Name     | Result data type | Argument data types | Type 
 ------------+--------------+------------------+---------------------+------
+ ivymy      | sqrt         | double precision | bigint              | func
+ ivymy      | sqrt         | double precision | boolean             | func
+ ivymy      | sqrt         | double precision | double precision    | func
+ ivymy      | sqrt         | double precision | integer             | func
+ ivymy      | sqrt         | double precision | ivy_hex             | func
+ ivymy      | sqrt         | double precision | numeric             | func
+ ivymy      | sqrt         | double precision | text                | func
  pg_catalog | dsqrt        | double precision | double precision    | func
  pg_catalog | numeric_sqrt | numeric          | numeric             | func
- pg_catalog | sqrt         | double precision | double precision    | func
- pg_catalog | sqrt         | numeric          | numeric             | func
-(4 rows)
+(9 rows)
 
 \df *sqrt num*
                              List of functions
    Schema   |     Name     | Result data type | Argument data types | Type 
 ------------+--------------+------------------+---------------------+------
+ ivymy      | sqrt         | double precision | numeric             | func
  pg_catalog | numeric_sqrt | numeric          | numeric             | func
- pg_catalog | sqrt         | numeric          | numeric             | func
 (2 rows)
 
 \df int*pl

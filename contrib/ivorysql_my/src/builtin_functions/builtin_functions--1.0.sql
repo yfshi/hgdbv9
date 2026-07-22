@@ -4574,7 +4574,18 @@ VOLATILE
 PARALLEL SAFE;
 /* End - bug#8562 */
 
-CREATE FUNCTION ivymy.crc32(varbinary)
+/* Begin - bug#8563 */
+CREATE OR REPLACE FUNCTION ivymy.collation(anyelement)
+RETURNS varchar
+AS 'pg_collation_for'
+LANGUAGE INTERNAL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#8563 */
+
+/* Begin - SXJK-BUILDINFUNCTION */
+CREATE OR REPLACE FUNCTION ivymy.crc32(varbinary)
 RETURNS int8
 AS 'MODULE_PATHNAME','crc32'
 LANGUAGE C
@@ -4582,7 +4593,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(text)
+CREATE OR REPLACE FUNCTION ivymy.crc32(text)
 RETURNS int8
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
@@ -4590,7 +4601,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(int8)
+CREATE OR REPLACE FUNCTION ivymy.crc32(int8)
 RETURNS int8
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
@@ -4598,7 +4609,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(int4)
+CREATE OR REPLACE FUNCTION ivymy.crc32(int4)
 RETURNS int8
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
@@ -4606,7 +4617,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(numeric)
+CREATE OR REPLACE FUNCTION ivymy.crc32(numeric)
 RETURNS int8
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
@@ -4614,7 +4625,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(ivy_hex)
+CREATE OR REPLACE FUNCTION ivymy.crc32(ivy_hex)
 RETURNS int8
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
@@ -4622,7 +4633,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(boolean)
+CREATE OR REPLACE FUNCTION ivymy.crc32(boolean)
 RETURNS int8
 AS 'SELECT ivymy.crc32($1::int8::ivymy.varbinary)'
 LANGUAGE SQL
@@ -4630,7 +4641,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(numeric, int4)
+CREATE OR REPLACE FUNCTION ivymy.truncate(numeric, int4)
 RETURNS numeric
 AS 'MODULE_PATHNAME','numeric_truncate'
 LANGUAGE C
@@ -4638,7 +4649,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(double, int4)
+CREATE OR REPLACE FUNCTION ivymy.truncate(double, int4)
 RETURNS double
 AS 'MODULE_PATHNAME','double_truncate'
 LANGUAGE C
@@ -4646,7 +4657,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(int8, int4)
+CREATE OR REPLACE FUNCTION ivymy.truncate(int8, int4)
 RETURNS int8
 AS 'MODULE_PATHNAME','int_truncate'
 LANGUAGE C
@@ -4654,7 +4665,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(int8, numeric)
+CREATE OR REPLACE FUNCTION ivymy.truncate(int8, numeric)
 RETURNS int8
 AS 'SELECT ivymy.truncate($1, $2::int4)'
 LANGUAGE SQL
@@ -4662,7 +4673,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(int4, int4)
+CREATE OR REPLACE FUNCTION ivymy.truncate(int4, int4)
 RETURNS int4
 AS 'SELECT ivymy.truncate($1::int8, $2)'
 LANGUAGE SQL
@@ -4670,7 +4681,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(int4, numeric)
+CREATE OR REPLACE FUNCTION ivymy.truncate(int4, numeric)
 RETURNS int4
 AS 'SELECT ivymy.truncate($1, $2::int4)'
 LANGUAGE SQL
@@ -4678,7 +4689,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(numeric, numeric)
+CREATE OR REPLACE FUNCTION ivymy.truncate(numeric, numeric)
 RETURNS numeric
 AS 'SELECT ivymy.truncate($1, $2::int4)'
 LANGUAGE SQL
@@ -4686,7 +4697,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(ivy_hex, numeric)
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivy_hex, numeric)
 RETURNS double
 AS 'SELECT ivymy.truncate($1::double, $2::int4)'
 LANGUAGE SQL
@@ -4694,7 +4705,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(text, int4)
+CREATE OR REPLACE FUNCTION ivymy.truncate(text, int4)
 RETURNS double
 AS 'SELECT ivymy.truncate($1::double, $2)'
 LANGUAGE SQL
@@ -4702,7 +4713,7 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.truncate(boolean, int4)
+CREATE OR REPLACE FUNCTION ivymy.truncate(boolean, int4)
 RETURNS int4
 AS 'SELECT ivymy.truncate($1::int4, $2)'
 LANGUAGE SQL
@@ -4710,12 +4721,96 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-/* Begin - bug#8563 */
-CREATE FUNCTION ivymy.collation(anyelement)
-RETURNS text
-AS 'pg_collation_for'
-LANGUAGE INTERNAL
+CREATE OR REPLACE FUNCTION ivymy.sqrt(double)
+RETURNS double
+AS 'MODULE_PATHNAME','double_sqrt'
+LANGUAGE C
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
-/* End - bug#8563 */
+
+CREATE OR REPLACE FUNCTION ivymy.sqrt(numeric)
+RETURNS double
+AS 'SELECT ivymy.sqrt($1::double)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sqrt(int8)
+RETURNS double
+AS 'SELECT ivymy.sqrt($1::double)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sqrt(int4)
+RETURNS double
+AS 'SELECT ivymy.sqrt($1::double)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sqrt(text)
+RETURNS double
+AS 'SELECT ivymy.sqrt($1::double)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sqrt(boolean)
+RETURNS double
+AS 'SELECT ivymy.sqrt($1::int4)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sqrt(ivy_hex)
+RETURNS double
+AS 'SELECT ivymy.sqrt($1::double)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sleep(double)
+RETURNS int8
+AS 'MODULE_PATHNAME','mys_sleep'
+LANGUAGE C
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sleep(text)
+RETURNS int8
+AS 'SELECT ivymy.sleep($1::double)'
+LANGUAGE SQL
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sleep(boolean)
+RETURNS int8
+AS 'SELECT ivymy.sleep($1::double)'
+LANGUAGE SQL
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.sleep(ivy_hex)
+RETURNS int8
+AS 'SELECT ivymy.sleep($1::double)'
+LANGUAGE SQL
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.current_user()
+RETURNS VARCHAR
+LANGUAGE SQL
+STABLE
+PARALLEL SAFE
+AS $$
+	SELECT concat(CURRENT_USER, '@%') as `CURRENT_USER()`;
+$$;
+/* End - SXJK-BUILDINFUNCTION */

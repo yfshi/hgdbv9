@@ -1134,3 +1134,81 @@ select truncate(1.7976931348623157E+308::double, -12);
 select truncate(-1.7976931348623157E+308::double, -7);
 select truncate(-1.7976931348623157E+308::double, -12);
 select truncate('1.7976931348623157E+308', -12);
+
+-- SQRT
+select sqrt(0);
+select sqrt(null);
+select sqrt(4);
+select sqrt(20);
+select sqrt(100);
+select sqrt(-2);
+select sqrt(16.0);
+select sqrt(20.5);
+select sqrt(20.05);
+select sqrt(20.005);
+select sqrt(20.0005);
+select sqrt(cast(-8 as unsigned)), sqrt(18446744073709551614);
+
+select sqrt(1+9);
+select sqrt(2<6);
+select sqrt(false);
+select sqrt('10');
+select sqrt('123456');
+select sqrt('-64');
+select sqrt('99.9999');
+select sqrt('abc');
+select sqrt('10abc10');
+
+set mysql.use_mysql_bit_literal = on;
+select sqrt(0b1010);
+select sqrt(b'10101111');
+select sqrt(0xabcd);
+select sqrt(x'abcdef123456');
+set mysql.use_mysql_bit_literal = off;
+
+select sqrt(5e60), sqrt(1e65), sqrt(10e64-1),sqrt(1e81);
+select sqrt(99999999999999999999999999999999999999999999999999999999999999999999999999999999);
+select sqrt(100000000000000000000000000000000000000000000000000000000000000000000000000000000);
+select sqrt(999999999999999999999999999999999999999999999999999999999999999999999999999999999);
+select sqrt(9999999999999999999999999999999999999999999999999999999999999999999999999999999999);
+select sqrt(999.999999999999999999999999999999999999999999999999999999999999999999999999999999);
+select sqrt(999999.9999999999999999999999999999999999999999999999999999999999999999999999999999);
+select sqrt(999999999999999999999999999999999999999999999999999999999999999999999999999999999.9999999999999999999999999999999999999999999999999999999999999);
+
+create table t1(a int);
+insert into t1 values (1),(2),(2147483647);
+create view v1 as select sqrt(a) my_sqrt from t1;
+select my_sqrt from v1 order by my_sqrt;
+drop view v1;
+drop table t1;
+
+create table t_1(c1 int4, c2 double, c3 decimal(12,5), c4 char(50));
+insert into t_1 values (10000, 24.6789, 8000.00123, '202420252026');
+select * from t_1;
+select sqrt(c1), sqrt(c2), sqrt(c3), sqrt(c4) from t_1;
+create table type_sqrt as select sqrt(c1) c1, sqrt(c2) c2, sqrt(c3) c3, sqrt(c4) c4 from t_1;
+desc type_sqrt;
+drop table type_sqrt;
+insert into t_1 values (10000, 25.0, 10.456, 'HIGH GO');
+select * from t_1 where sqrt(c2) = 5;
+drop table t_1;
+
+-- SLEEP
+select sleep(null);
+select sleep(0);
+select sleep(1);
+select sleep(-10);
+select sleep(1.2);
+select sleep('2');
+select sleep(100 > 50);
+select sleep(false);
+set mysql.use_mysql_bit_literal = on;
+select sleep(0b10);
+select sleep(0x1);
+set mysql.use_mysql_bit_literal = off;
+
+-- CURRENT_USER
+create table t_current_user as select current_user();
+desc t_current_user;
+drop table t_current_user;
+select pg_typeof(current_user());
