@@ -3582,9 +3582,9 @@ WinGetFuncArgInPartition(WindowObject winobj, int argno,
 	/* Begin - OA-REQ-2348 */
 	Datum		datum;
 	bool		null_treatment = false;
-	int			notnull_offset;
-	int			notnull_relpos;
-	int			forward;
+	int			notnull_offset = 0;
+	int			notnull_relpos = 0;
+	int			forward = 0;
 	bool		myisout;
 	/* End - OA-REQ-2348 */
 

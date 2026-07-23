@@ -3562,6 +3562,7 @@ _copyInsertStmt(const InsertStmt *from)
 	COPY_SCALAR_FIELD(override);
 	COPY_NODE_FIELD(upsertClause);/* ReqID:SRS-MYSQL-SQL-INSERT */
 	COPY_SCALAR_FIELD(isReplace); /* ReqID:SRS-MYSQL-SQL-REPLACE */
+	COPY_SCALAR_FIELD(ignore);	  /* bug#8677 */
 
 	return newnode;
 }

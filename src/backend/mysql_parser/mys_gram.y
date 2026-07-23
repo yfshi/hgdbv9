@@ -13520,6 +13520,7 @@ InsertStmt:
 					$9->onConflictClause = $10;
 					$9->returningList = $11;
 					$9->withClause = $1;
+					$9->ignore = $6; 	/* bug#8677 */
 					$$ = (Node *) $9;
 				}
 			| opt_with_clause INSERT opt_lowpriority opt_delayed opt_highpriority opt_ignore opt_into insert_target insert_mysql_rest
@@ -13539,6 +13540,7 @@ InsertStmt:
 					$9->upsertClause = (UpsertClause *)$10;
 					$9->returningList = $11;
 					$9->withClause = $1;
+					$9->ignore = $6;	/* bug#8677 */
 					$$ = (Node *) $9;
 				}
 /* Begin - ReqID:SRS-MYSQL-SQL-REPLACE */

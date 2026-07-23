@@ -21,27 +21,21 @@
  *-------------------------------------------------------------------------
  */
 
-#include "postgres.h"
-/* BEGIN - SQL PARSER */
-#include "fmgr.h"
+ #include "postgres.h"
 
-#include "catalog/pg_type.h"
-#include "mysql_parser/mys_keywords.h"
-/* END - SQL PARSER */
-#include "mb/pg_wchar.h"
-/* BEGIN - SQL PARSER */
-#include "funcapi.h"
-#include "mysql_parser/mys_scanner.h"
-#include "mysql_parser/mys_gramparse.h"
-#include "parser/parser.h"
-#include "utils/builtins.h"
-#include "oracle_parser/ora_parser_hook.h"
-/* END - SQL PARSER */
-#include "parser/parser.h"
-#include "parser/scansup.h"
-/* BEGIN - SQL PARSER */
-#include "utils/ora_compatible.h"
-#include "utils/guc.h"	/* ReqID: SRS-MYSQL-CHARACTERTYPE-CONVERT */
+ #include "catalog/pg_type.h"
+ #include "fmgr.h"
+ #include "funcapi.h"
+ #include "mb/pg_wchar.h"
+ #include "mysql_parser/mys_gramparse.h"
+ #include "mysql_parser/mys_parser_hook.h"
+ #include "mysql_parser/mys_keywords.h"
+ #include "mysql_parser/mys_scanner.h"
+ #include "parser/parser.h"
+ #include "parser/scansup.h"
+ #include "utils/builtins.h"
+ #include "utils/guc.h"
+ #include "utils/ora_compatible.h" 
 
 PG_MODULE_MAGIC;
 

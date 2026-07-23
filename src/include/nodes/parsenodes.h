@@ -1954,6 +1954,7 @@ typedef struct InsertStmt
 	/* ReqID:SRS-MYSQL-SQL-INSERT */
 	UpsertClause *upsertClause; /* DUPLICATE KEY UPDATE clause */
 	bool		isReplace;	/* ReqID:SRS-MYSQL-SQL-REPLACE */
+	bool		ignore;		/* bug#8677 */
 } InsertStmt;
 
 /* ----------------------

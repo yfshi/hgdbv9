@@ -4677,12 +4677,14 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 					 range == (INTERVAL_MASK(YEAR) | INTERVAL_MASK(MONTH))))
 				{
 					int			val2 = 0;
-					int 		mulit = 0;
+					int 		mulit = 1;
 
 					if (type == DTK_HOUR)
 						mulit = HOURS_PER_DAY;
 					else if (type == DTK_MONTH)
 						mulit = MONTHS_PER_YEAR;
+
+					fval = 0;
 
 					if (*cp != '\0')
 					{
@@ -4699,7 +4701,6 @@ DecodeInterval(char **field, int *ftype, int nf, int range,
 							((double) val * mulit + val2) < INT_MIN)
 							return DTERR_FIELD_OVERFLOW;
 						val = val * mulit + val2;
-						fval = 0;
 					}
 				}
 				/* End - bug#8026 */

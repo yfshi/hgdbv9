@@ -4222,15 +4222,13 @@ SplitIdentifierString(char *rawstring, char separator,
 			 && identifier_case_switch == INTERCHANGE && need_case_switch)
 		{
 			char	   *new_name;
+			int 		len = strlen(curname);
 
-			new_name = identifier_case_transform(curname, strlen(curname));
-			/*
-			 * bug#8552:
-			 * The size of curname is unknown, so strlcpy is not recommended,
-			 * for safety, what we actually need to ensure is what new_name
-			 * and curname have the same length. using assert?
-			 */
-			strncpy(curname, new_name, strlen(new_name)); /* bug#8552 */
+			new_name = identifier_case_transform(curname, len);
+
+			memcpy(curname, new_name, len); /* bug#8552 */
+			curname[len] = '\0';
+
 			pfree(new_name);
 		}
 		/* END - case sensitive indentify */
@@ -4699,9 +4697,11 @@ SplitGUCList(char *rawstring, char separator,
 			 && identifier_case_switch == INTERCHANGE && need_case_switch)
 		{
 			char	   *new_name;
+			int 		len = strlen(curname);
 
-			new_name = identifier_case_transform(curname, strlen(curname));
-			strncpy(curname, new_name, strlen(new_name));	/* bug#8552 */
+			new_name = identifier_case_transform(curname, len);
+			memcpy(curname, new_name, len);	/* bug#8552 */
+			curname[len] = '\0';
 			pfree(new_name);
 		}
 		/* END - case sensitive indentify */
