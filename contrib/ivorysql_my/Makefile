@@ -206,8 +206,8 @@ MYS_REGRESS = numeric_to_times \
 			  insert_duplicate \
 			  case_when \
 			  create_collation_from \
-			  test_charset_introducer
-
+			  test_charset_introducer \
+			  mys_alter_index
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28 \

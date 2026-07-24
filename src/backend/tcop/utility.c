@@ -2305,6 +2305,14 @@ ExecDropStmt(DropStmt *stmt, bool isTopLevel)
 			if (stmt->concurrent)
 				PreventInTransactionBlock(isTopLevel,
 										  "DROP INDEX CONCURRENTLY");
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			if (stmt->relation != NULL)
+			{
+				/* MySQL: DROP INDEX index_name ON table_name */
+				RemoveIndexOnTable(stmt);
+				break;
+			}
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 			/* fall through */
 
 		case OBJECT_TABLE:

@@ -342,6 +342,14 @@ static char *checkRoleSpec(RoleSpec *spc);
 static Node *processIntoClauseInSelectStmt(SelectStmt *stmt, IntoClause *itc);
 /* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
 
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+static void ApplyAlterTableIndexKeyOptions(Constraint *con,
+											  char *index_type_before,
+											  List *index_options);
+static void ApplyAlterTableIndexCommentOnly(Constraint *con,
+											   List *index_options);
+/* End - ReqID:SRS-MYSQL-SQL-Alter */
+
 static char *parse_hex_to_cstring(const char *src);			/* bug#z6027 */
 
 static List *
@@ -521,6 +529,8 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %type <str>		foreign_server_version opt_foreign_server_version
 %type <str>		opt_in_database
 
+%type <str>		nonempty_access_method_clause ident_index_name	/* ReqID:SRS-MYSQL-SQL-Alter */
+%type <range>	opt_drop_index_on	/* ReqID:SRS-MYSQL-SQL-Alter */
 %type <str>		OptSchemaName
 %type <list>	OptSchemaEltList
 %type <boolean>	OptAntiTamperWith /* ReqID: SRS-SECURITY-ANTITAMPERING */
@@ -3094,6 +3104,51 @@ after_col:
 		| FIRST_P
 		| AFTER ColId
         ;
+
+opt_drop_index_on:
+		/* EMPTY */							{ $$ = NULL; }
+		| ON any_name algorithm_option index_lock_opt
+			{
+				/* Begin - ReqID:SRS-MYSQL-CASE */
+				MYS_LOWER_LIST_CASE($2);
+				/* End - ReqID:SRS-MYSQL-CASE */
+				$$ = makeRangeVarFromNameList($2);
+			}
+		;
+
+ident_index_name:
+		IDENT								{ $$ = $1; }
+		;
+
+opt_idx_key:	INDEX
+				| KEY
+				| /* EMPTY */
+		;
+nonempty_access_method_clause:
+		USING name
+			{
+				if ((pg_strncasecmp($2, "btree", 5) == 0) ||
+						(pg_strncasecmp($2, "hash", 4) == 0))
+					{
+						/* Begin - ReqID:SRS-MYSQL-CASE */
+						$2 = MYS_STRING_CASE($2);
+						/* End - ReqID:SRS-MYSQL-CASE */
+						$$ = $2;
+					}
+					else
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("syntax error at or near "),
+								 parser_errposition(@2)));
+					}
+			}
+		;
+
+fulltext_spatial:
+		FULLTEXT
+		| SPATIAL
+	;
 /* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 alter_table_cmd:
@@ -3647,6 +3702,32 @@ alter_table_cmd:
 					n->name = $3;
 					n->def = $4;
 
+					$$ = (Node *)n;
+				}
+			| DROP idx_key name
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_DropIndex;
+					n->name = $3;
+					n->behavior = DROP_RESTRICT;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			| DROP PRIMARY KEY
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_DropPrimaryKey;
+					n->behavior = DROP_RESTRICT;
+					n->missing_ok = false;
+					$$ = (Node *)n;
+				}
+			| DROP FOREIGN KEY name
+				{
+					AlterTableCmd *n = makeNode(AlterTableCmd);
+					n->subtype = AT_DropForeignKey;
+					n->name = $4;
+					n->behavior = DROP_RESTRICT;
+					n->missing_ok = false;
 					$$ = (Node *)n;
 				}
 			/* End - SRS-MYSQL-SQL-Alter */
@@ -5153,6 +5234,15 @@ TableConstraint:
 					n->location = @1;
 					$$ = (Node *) n;
 				}
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			| CONSTRAINT ConstraintElem
+				{
+					Constraint *n = castNode(Constraint, $2);
+					n->conname = NULL;
+					n->location = @1;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 			| ConstraintElem						{ $$ = $1; }
 		;
 
@@ -5170,7 +5260,7 @@ ConstraintElem:
 					n->initially_valid = !n->skip_validation;
 					$$ = (Node *)n;
 				}
-			| UNIQUE '(' columnList ')' opt_c_include opt_definition OptConsTableSpace
+			| UNIQUE '(' index_params ')' opt_c_include opt_definition OptConsTableSpace
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
@@ -5188,22 +5278,80 @@ ConstraintElem:
 				}
 			/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			/* OA-2052: support UNIQUE INDEX */
-			| UNIQUE idx_key opt_index_name access_method_clause '(' columnList ')' create_table_index_opt
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			/* UNIQUE USING method (columnList) [index_option] */
+			| UNIQUE nonempty_access_method_clause '(' index_params ')' create_table_index_opt opt_definition
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
+
 					n->contype = CONSTR_UNIQUE;
 					n->location = @1;
-					n->keys = $6;
-					n->including = NULL;
-					n->options = NIL;
 					n->indexname = NULL;
-					n->indexspace = NULL;
+					n->keys = $4;
+					n->including = NIL;
+					n->options = $7;
+					ApplyAlterTableIndexCommentOnly(n, $6);
+					processCASbits($8, @8, "UNIQUE",
+								   &n->deferrable, &n->initdeferred, NULL,
+								   NULL, yyscanner);
+					$$ = (Node *)n;
+				}
+			/* UNIQUE index_name (columnList) [index_option] */
+			| UNIQUE ident_index_name '(' index_params ')' create_table_index_opt opt_definition
+				ConstraintAttributeSpec
+				{
+					Constraint *n = makeNode(Constraint);
+
+					n->contype = CONSTR_UNIQUE;
+					n->location = @1;
+					n->indexname = NULL;
+					n->keys = $4;
+					n->including = NIL;
+					n->options = $7;
+					ApplyAlterTableIndexCommentOnly(n, $6);
+					processCASbits($8, @8, "UNIQUE",
+								   &n->deferrable, &n->initdeferred, NULL,
+								   NULL, yyscanner);
+					$$ = (Node *)n;
+				}
+			/* UNIQUE index_name USING method (columnList) [index_option] */
+			| UNIQUE ident_index_name nonempty_access_method_clause '(' index_params ')' create_table_index_opt opt_definition
+				ConstraintAttributeSpec
+				{
+					Constraint *n = makeNode(Constraint);
+
+					n->contype = CONSTR_UNIQUE;
+					n->location = @1;
+					n->indexname = NULL;
+					n->keys = $5;
+					n->including = NIL;
+					n->options = $8;
+					ApplyAlterTableIndexCommentOnly(n, $7);
 					processCASbits($9, @9, "UNIQUE",
 								   &n->deferrable, &n->initdeferred, NULL,
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
+			/* UNIQUE INDEX|KEY [index_name] [USING method] (columnList) [index_option] */
+			| UNIQUE idx_key opt_index_name mys_access_method_clause '(' index_params ')' create_table_index_opt opt_definition
+				ConstraintAttributeSpec
+				{
+					Constraint *n = makeNode(Constraint);
+
+					n->contype = CONSTR_UNIQUE;
+					n->location = @1;
+					n->indexname = NULL;
+					n->keys = $6;
+					n->including = NIL;
+					n->options = $9;
+					ApplyAlterTableIndexCommentOnly(n, $8);
+					processCASbits($10, @10, "UNIQUE",
+								   &n->deferrable, &n->initdeferred, NULL,
+								   NULL, yyscanner);
+					$$ = (Node *)n;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 			/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 			| UNIQUE ExistingIndex ConstraintAttributeSpec
 				{
@@ -5220,7 +5368,7 @@ ConstraintElem:
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
-			| PRIMARY KEY mys_access_method_clause '(' columnList ')' opt_c_include opt_definition OptConsTableSpaceNoEmpty create_table_index_opt
+			| PRIMARY KEY mys_access_method_clause '(' index_params ')' opt_c_include opt_definition OptConsTableSpaceNoEmpty create_table_index_opt
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
@@ -5231,13 +5379,14 @@ ConstraintElem:
 					n->options = $8;
 					n->indexname = NULL;
 					n->indexspace = $9;
+					ApplyAlterTableIndexCommentOnly(n, $10);	/* ReqID:SRS-MYSQL-SQL-Alter */
 					processCASbits($11, @11, "PRIMARY KEY",
 								   &n->deferrable, &n->initdeferred, NULL,
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
 			/* Begin: oa-2019 */
-			| PRIMARY KEY mys_access_method_clause '(' columnList ')' opt_c_include opt_definition create_table_index_opt
+			| PRIMARY KEY mys_access_method_clause '(' index_params ')' opt_c_include opt_definition create_table_index_opt
 				ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
@@ -5248,6 +5397,7 @@ ConstraintElem:
 					n->options = $8;
 					n->indexname = NULL;
 					n->indexspace = NULL;
+					ApplyAlterTableIndexCommentOnly(n, $9);	/* ReqID:SRS-MYSQL-SQL-Alter */
 					processCASbits($10, @10, "PRIMARY KEY",
 								&n->deferrable, &n->initdeferred, NULL,
 								NULL, yyscanner);
@@ -5288,22 +5438,23 @@ ConstraintElem:
 								   NULL, yyscanner);
 					$$ = (Node *)n;
 				}
-			| FOREIGN KEY '(' columnList ')' REFERENCES qualified_name
+			| FOREIGN KEY opt_index_name '(' columnList ')' REFERENCES qualified_name	/* ReqID:SRS-MYSQL-SQL-Alter */
 				opt_column_list key_match key_actions ConstraintAttributeSpec
 				{
 					Constraint *n = makeNode(Constraint);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
-					MYS_RVAR_CASE($7);
+					MYS_RVAR_CASE($8);
 					/* End - ReqID:SRS-MYSQL-CASE */
 					n->contype = CONSTR_FOREIGN;
 					n->location = @1;
-					n->pktable			= $7;
-					n->fk_attrs			= $4;
-					n->pk_attrs			= $8;
-					n->fk_matchtype		= $9;
-					n->fk_upd_action	= (char) ($10 >> 8);
-					n->fk_del_action	= (char) ($10 & 0xFF);
-					processCASbits($11, @11, "FOREIGN KEY",
+					n->conname = NULL;
+					n->pktable			= $8;
+					n->fk_attrs			= $5;
+					n->pk_attrs			= $9;
+					n->fk_matchtype		= $10;
+					n->fk_upd_action	= (char) ($11 >> 8);
+					n->fk_del_action	= (char) ($11 & 0xFF);
+					processCASbits($12, @12, "FOREIGN KEY",
 								   &n->deferrable, &n->initdeferred,
 								   &n->skip_validation, NULL,
 								   yyscanner);
@@ -5311,51 +5462,38 @@ ConstraintElem:
 					$$ = (Node *)n;
 				}
 			/* Begin - SRS-MYSQL-CREATE-TABLE */
-			| idx_key opt_index_name access_method_clause '(' index_params ')' create_table_index_opt
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			| idx_key opt_index_name mys_access_method_clause '(' index_params ')' create_table_index_opt
+				ConstraintAttributeSpec
 				{
-					IndexStmt *n = makeNode(IndexStmt);
-					n->unique = false;
-					n->idxname = NULL;	/* OA-2052: ignore index name */
-					n->indexParams = $5;
-					n->accessMethod = $3;
-					n->idxcomment = NULL;
-					if ($7 != NULL) /* mysql : options */
-					{
-						ListCell *lc = NULL;
-						foreach (lc, $7)
-						{
-							Node *tmp_node = (Node *)lfirst(lc);
-							if (nodeTag(tmp_node) == T_String)
-							{
-								Value	   *index_type = (Value *)tmp_node;
-								n->accessMethod = index_type->val.str;
-							}
-							else if (nodeTag(tmp_node) == T_CommentStmt)
-							{
-								CommentStmt	   *comment_type = (CommentStmt *)tmp_node;
-								n->idxcomment = comment_type->comment;
-							}
-						}
-					}
+					Constraint *n = makeNode(Constraint);
 
-					n->concurrent = false;
-					n->indexIncludingParams = NIL;
-					n->tableSpace = NULL;
-					n->whereClause = NULL;
-					n->excludeOpNames = NIL;
-					n->indexOid = InvalidOid;
-					n->oldNode = InvalidOid;
-					n->oldCreateSubid = InvalidSubTransactionId;
-					n->oldFirstRelfilenodeSubid = InvalidSubTransactionId;
-					n->primary = false;
-					n->isconstraint = false;
-					n->deferrable = false;
-					n->initdeferred = false;
-					n->transformed = false;
-					n->if_not_exists = false;
-					n->reset_default_tblspc = false;
-					$$ = (Node *)n;
+					n->contype = CONSTR_INDEX;
+					n->location = @1;
+					n->indexname = NULL;
+					n->idx_key_parts = $5;
+					ApplyAlterTableIndexKeyOptions(n, $3, $7);
+					processCASbits($8, @8, "INDEX/KEY",
+								&n->deferrable, &n->initdeferred, NULL,
+								NULL, yyscanner);
+					$$ = (Node *) n;
 				}
+			| fulltext_spatial opt_idx_key opt_index_name '(' index_params ')' create_table_index_opt
+				ConstraintAttributeSpec
+				{
+					Constraint *n = makeNode(Constraint);
+
+					n->contype = CONSTR_INDEX;
+					n->location = @1;
+					n->indexname = NULL;
+					n->idx_key_parts = $5;
+					ApplyAlterTableIndexKeyOptions(n, NULL, $7);
+					processCASbits($8, @8, "INDEX/KEY",
+								&n->deferrable, &n->initdeferred, NULL,
+								NULL, yyscanner);
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-MYSQL-SQL-Alter */
 			/* End - SRS-MYSQL-CREATE-TABLE */
 		;
 
@@ -7800,7 +7938,7 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->concurrent = false;
 					$$ = (Node *)n;
 				}
-			| DROP object_type_any_name any_name_list opt_drop_behavior
+			| DROP object_type_any_name any_name_list opt_drop_behavior opt_drop_index_on	/* ReqID:SRS-MYSQL-SQL-Alter */
 				{
 					DropStmt *n = makeNode(DropStmt);
 					/* Begin - ReqID:SRS-MYSQL-CASE */
@@ -7810,6 +7948,13 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior
 					n->missing_ok = false;
 					n->objects = $3;
 					n->behavior = $4;
+					/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+					n->relation = $5;
+					if ($5 != NULL && $2 != OBJECT_INDEX)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								errmsg("ON clause is only supported for DROP INDEX")));
+					/* End - ReqID:SRS-MYSQL-SQL-Alter */
 					n->concurrent = false;
 					$$ = (Node *)n;
 				}
@@ -22760,6 +22905,74 @@ SplitColQualList(List *qualList,
 	}
 	*constraintList = qualList;
 }
+
+/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+static void
+ApplyAlterTableIndexKeyOptions(Constraint *con,
+							   char *index_type_before,
+							   List *index_options)
+{
+	if (index_type_before != NULL)
+		con->access_method = index_type_before;
+
+	if (index_options == NIL)
+		return;
+	else
+	{
+		ListCell   *lc;
+
+		foreach(lc, index_options)
+		{
+			Node	   *tmp = (Node *) lfirst(lc);
+
+			if (tmp == NULL)
+				continue;
+
+			if (nodeTag(tmp) == T_String)
+			{
+				Value	   *index_type = (Value *) tmp;
+
+				con->access_method = index_type->val.str;
+			}
+
+			if (IsA(tmp, CommentStmt))
+			{
+				CommentStmt *comment_type = (CommentStmt *) tmp;
+
+				con->idxcomment = pstrdup(comment_type->comment);
+			}
+		}
+	}
+}
+/*
+ * PRIMARY KEY: accept MySQL index_option syntax but only apply COMMENT.
+ * access_method (USING BTREE/HASH) is ignored because PG hash does not
+ * support unique indexes.
+ */
+static void
+ApplyAlterTableIndexCommentOnly(Constraint *con, List *index_options)
+{
+	ListCell   *lc;
+
+	if (index_options == NIL)
+		return;
+
+	foreach(lc, index_options)
+	{
+		Node *tmp = (Node *) lfirst(lc);
+
+		if (tmp == NULL)
+			continue;
+
+		if (IsA(tmp, CommentStmt))
+		{
+			CommentStmt *comment_type = (CommentStmt *) tmp;
+
+			con->idxcomment = pstrdup(comment_type->comment);
+		}
+	}
+}
+/* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 /*
  * Process result of ConstraintAttributeSpec, and set appropriate bool flags

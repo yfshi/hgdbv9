@@ -2191,7 +2191,6 @@ alter table test_name change age age2 float;
  age2   | float4                |           | not null |         | plain    |              | 
 Indexes:
     "test_name_pkey" PRIMARY KEY, btree (age2)
-    "test_name_age_idx" btree (age2)
 
 alter table test_name change age2 age2 int;
 \d+ test_name;
@@ -2203,7 +2202,6 @@ alter table test_name change age2 age2 int;
  age2   | integer               |           | not null |         | plain    |              | 
 Indexes:
     "test_name_pkey" PRIMARY KEY, btree (age2)
-    "test_name_age_idx" btree (age2)
 
 select * from test_name;
  id |  name  | age2 

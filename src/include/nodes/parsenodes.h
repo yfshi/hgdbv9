@@ -2504,6 +2504,9 @@ typedef enum AlterTableType
 	/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
 	AT_ModifyColumn,
 	AT_ChangeColumn,
+	AT_DropIndex,
+	AT_DropPrimaryKey,
+	AT_DropForeignKey,
 	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 	AT_ResultCache              /* ReqID:SRS-MISC-RESULT_CACHE */
 } AlterTableType;
@@ -2885,7 +2888,8 @@ typedef enum ConstrType			/* types of constraints */
 	CONSTR_ATTR_NOT_DEFERRABLE,
 	CONSTR_ATTR_DEFERRED,
 	CONSTR_ATTR_IMMEDIATE,
-	CONSTR_AUTO_INCREMENT
+	CONSTR_AUTO_INCREMENT,
+	CONSTR_INDEX				/* SRS-MYSQL-SQL-Alter */
 } ConstrType;
 
 /* Foreign key action codes */
@@ -2954,6 +2958,9 @@ typedef struct Constraint
 	bool		initially_valid;	/* mark the new constraint as valid? */
 	bool		table_level;		/* BUG#Z1460, The constraint is table-level */
 	bool		on_update;	/* ReqID:SRS-MYSQL-TIMESTAMPTYPE */
+
+	char		*idxcomment;	/* SRS-MYSQL-SQL-Alter */
+	List		*idx_key_parts;	/* SRS-MYSQL-SQL-Alter */
 } Constraint;
 
 /* ----------------------
@@ -3573,6 +3580,7 @@ typedef struct DropStmt
 	bool		concurrent;		/* drop index concurrently? */
 	bool		is_purge;		/* purge mode? ReqID:SRS-RECOVERY-FLASHBACK */
 	bool		nocheckpart;	/* ReqID:SRS-SQL-PARTITION-TABLE */
+	RangeVar	*relation;		/* ReqID:SRS-MYSQL-SQL-Alter */
 } DropStmt;
 
 /* ----------------------

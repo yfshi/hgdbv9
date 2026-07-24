@@ -739,6 +739,11 @@ static bool IsAllowedFKTypeChange(Oid old_type, int32 old_typmod,
 									  Oid new_type, int32 new_typmod);
 static bool columnIsPartofForeignKey(Oid relid, AttrNumber attnum);
 static bool CheckColumnIsPrimary(Relation rel, char *colname);
+static void ATExecDropIndex(Relation rel, const char *indexName,
+							DropBehavior behavior,
+							bool missing_ok, LOCKMODE lockmode);
+static void ATCheckExpectedConstraintType(Relation rel, const char *constrName,
+										  bool missing_ok, char expected_contype);
 /* End - ReqID:SRS-MYSQL-SQL-Alter */
 
 /* ----------------------------------------------------------------
@@ -5359,8 +5364,13 @@ AlterTableGetLockLevel(List *cmds)
 			case AT_SetTableSpace:	/* must rewrite heap */
 			case AT_AlterColumnType:	/* must rewrite heap */
 			case AT_AddRowids: /* ReqID:SRS-SQL-ROWID */
-			case AT_ModifyColumn:	/* ReqID:SRS-MYSQL-SQL-Alter */
-			case AT_ChangeColumn:	/* ReqID:SRS-MYSQL-SQL-Alter */
+			/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
+			case AT_ModifyColumn:
+			case AT_ChangeColumn:
+			case AT_DropIndex:
+			case AT_DropPrimaryKey:
+			case AT_DropForeignKey:
+			/* End -ReqID:SRS-MYSQL-SQL-Alter */
 				cmd_lockmode = AccessExclusiveLock;
 				break;
 
@@ -5954,6 +5964,47 @@ ATPrepCmd(List **wqueue, Relation rel, AlterTableCmd *cmd,
 			Assert(cmd != NULL);
 			ATPrepModifyChangeColumn(wqueue, tab, rel, recurse, recursing, cmd, lockmode, context);
 			pass = AT_PASS_ALTER_TYPE;
+			break;
+		case AT_DropIndex:	/* DROP INDEX */
+			ATSimplePermissions(rel, ATT_TABLE);
+			ATCheckPartitionsNotInUse(rel, lockmode);
+			/* No command-specific prep; resolution is done in execution */
+			pass = AT_PASS_DROP;
+			break;
+		case AT_DropPrimaryKey:	/* DROP PRIMARY KEY */
+			{
+				Oid			pkIndexOid;
+				Oid			pkConstraintOid;
+
+				/*
+				 * Resolve the unnamed request to the actual PK constraint
+				 * name so ATExecDropConstraint() can be reused.
+				 */
+				pkIndexOid = RelationGetPrimaryKeyIndex(rel);
+				if (!OidIsValid(pkIndexOid))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_OBJECT),
+							 errmsg("relation \"%s\" constraint primary key did not exist",
+									RelationGetRelationName(rel))));
+
+				pkConstraintOid = get_index_constraint(pkIndexOid);
+				if (!OidIsValid(pkConstraintOid))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_OBJECT),
+							 errmsg("relation \"%s\" constraint primary key did not exist",
+									RelationGetRelationName(rel))));
+
+				cmd->name = get_constraint_name(pkConstraintOid);
+			}
+			ATSimplePermissions(rel, ATT_TABLE);
+			ATCheckPartitionsNotInUse(rel, lockmode);
+			/* No command-specific prep; resolution is done in execution */
+			pass = AT_PASS_DROP;
+			break;
+		case AT_DropForeignKey:	/* DROP FOREIGN KEY */
+			ATSimplePermissions(rel, ATT_TABLE | ATT_FOREIGN_TABLE);
+			ATCheckPartitionsNotInUse(rel, lockmode);
+			pass = AT_PASS_DROP;
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-Alter */
 		case AT_AlterColumnGenericOptions:
@@ -6756,6 +6807,21 @@ ATExecCmd(List **wqueue, AlteredTableInfo *tab,
 			break;
 		case AT_ChangeColumn:
 			ATExecModifyChangeColumn(tab, rel, cmd, lockmode);
+			break;
+		case AT_DropIndex:		/* DROP INDEX */
+			ATExecDropIndex(rel, cmd->name, cmd->behavior, cmd->missing_ok, lockmode);
+			break;
+		case AT_DropPrimaryKey: /* DROP PRIMARY KEY */
+			ATExecDropConstraint(rel, cmd->name, cmd->behavior,
+								 false, false,
+								 cmd->missing_ok, lockmode);
+			break;
+		case AT_DropForeignKey:	/* DROP FOREIGN KEY */
+			ATCheckExpectedConstraintType(rel, cmd->name, cmd->missing_ok,
+										  CONSTRAINT_FOREIGN);
+			ATExecDropConstraint(rel, cmd->name, cmd->behavior,
+								 false, false,
+								 cmd->missing_ok, lockmode);
 			break;
 		/* End - ReqID:SRS-MYSQL-SQL-Alter */
 		/* Begin - ReqID:SRS-MISC-RESULT_CACHE */
@@ -24131,5 +24197,234 @@ ATExecUpdateIdentityAndGeneratedAttr(AlteredTableInfo *tab, Relation rel,
 	CatalogTupleUpdate(attrelation, &heapTup->t_self, heapTup);
 	table_close(attrelation, RowExclusiveLock);
 	heap_freetuple(heapTup);
+}
+
+/*
+ * DROP INDEX index_name ON table_name
+ *
+ * Resolves the table from drop->relation, then for each index name in
+ * drop->objects delegates to ATExecDropIndex() to verify the object is an
+ * index belonging to that table and drop it.
+ */
+void
+RemoveIndexOnTable(DropStmt *drop)
+{
+	Relation	rel;
+	ListCell	*cell;
+
+	Assert(drop->relation != NULL);
+	Assert(drop->removeType == OBJECT_INDEX);
+
+	if (drop->concurrent)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("DROP INDEX CONCURRENTLY does not support the ON clause")));
+
+	rel = table_openrv(drop->relation, AccessExclusiveLock);
+
+	foreach(cell, drop->objects)
+	{
+		char	*indexName;
+		List	*idxnamelist = (List *) lfirst(cell);
+
+		/* check just accpect idx_name, not sch.idx */
+		if (list_length(idxnamelist) != 1)
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("DROP INDEX ... ON table does not support qualified index names"),
+					 errhint("Use an unqualified index name for the table.")));
+		if (!IsA(linitial(idxnamelist), String))
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("invalid index name in DROP INDEX ... ON table")));
+
+		indexName = strVal(linitial(idxnamelist));
+
+		ATExecDropIndex(rel, indexName, drop->behavior,
+						drop->missing_ok, AccessExclusiveLock);
+	}
+
+	table_close(rel, NoLock);
+}
+
+/*
+ * ALTER TABLE ... DROP INDEX
+ *
+ * Resolves indexName as a relation in the namespace of rel, verifies that
+ * it is in fact an index and that it belongs to rel, and drops it.
+ *
+ * If the index is the backing index for a UNIQUE, PRIMARY KEY, or EXCLUSION
+ * constraint, the owning constraint is dropped instead.  The backing index
+ * is then removed as a dependent object.  This mirrors MySQL semantics:
+ * "ALTER TABLE t DROP INDEX uk_idx" on a unique-key index also removes the
+ * constraint, rather than failing with "cannot drop index ... because
+ * constraint ... requires it".
+ *
+ * "missing_ok" is a PostgreSQL-style extension: when true and the index does
+ * not exist, a NOTICE is emitted and the function returns without error.
+ * MySQL itself does not accept IF EXISTS in this position.
+ */
+static void
+ATExecDropIndex(Relation rel, const char *indexName,
+				DropBehavior behavior,
+				bool missing_ok, LOCKMODE lockmode)
+{
+	Oid			indexOid;
+	Oid			constraintOid;
+	HeapTuple	tuple;
+	Form_pg_class classForm;
+	char		relkind;
+	ObjectAddress object;
+
+	/*
+	 * if index name is `PRIMARY`
+	 * drop the primary key by default using
+	 * ALTER TABLE t DROP INDEX `PRIMARY` (and DROP INDEX `PRIMARY` ON t)
+	 */
+	if (pg_strcasecmp(indexName, "PRIMARY") == 0)
+	{
+		Oid			pkIndexOid = RelationGetPrimaryKeyIndex(rel);
+
+		if (!OidIsValid(pkIndexOid))
+		{
+			if (missing_ok)
+			{
+				ereport(NOTICE,
+						(errmsg("relation \"%s\" has no primary key, skipping",
+								RelationGetRelationName(rel))));
+				return;
+			}
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("relation \"%s\" has no primary key",
+							RelationGetRelationName(rel))));
+		}
+		indexName = get_rel_name(pkIndexOid);
+	}
+
+	/*
+	 * Resolve the index name in the same schema as the target table.
+	 * PostgreSQL indexes share the relation namespace with tables, so a
+	 * one-part identifier is sufficient.
+	 */
+	indexOid = get_relname_relid(indexName, rel->rd_rel->relnamespace);
+
+	if (!OidIsValid(indexOid))
+	{
+		if (missing_ok)
+		{
+			ereport(NOTICE,
+					(errmsg("index \"%s\" of relation \"%s\" does not exist, skipping",
+							indexName, RelationGetRelationName(rel))));
+			return;
+		}
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("index \"%s\" of relation \"%s\" does not exist",
+						indexName, RelationGetRelationName(rel))));
+	}
+
+	/*
+	 * Make sure the resolved name actually refers to an index relation,
+	 * not to a table, view, sequence, or some other object that happens to share
+	 * the namespace.
+	 */
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(indexOid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", indexOid);
+	classForm = (Form_pg_class) GETSTRUCT(tuple);
+	relkind = classForm->relkind;
+	ReleaseSysCache(tuple);
+
+	if (relkind != RELKIND_INDEX && relkind != RELKIND_PARTITIONED_INDEX)
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("\"%s\" is not an index", indexName)));
+
+	/*
+	 * Ensure the index actually belongs to the table named in the ALTER TABLE statement.
+	 * Dropping someone else's index just because it lives
+	 * in the same schema would be a nasty footgun.
+	 */
+	if (IndexGetRelation(indexOid, false) != RelationGetRelid(rel))
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("index \"%s\" of relation \"%s\" does not exist",
+						indexName, RelationGetRelationName(rel))));
+
+	/*
+	 * If the index is owned by a constraint (UNIQUE / PRIMARY KEY /
+	 * EXCLUSION), drop the constraint instead.  Plain DROP INDEX on a
+	 * constraint-backed index would otherwise fail with
+	 * "cannot drop index ... because constraint ... requires it", which
+	 * differs from MySQL's behavior of silently removing the unique key.
+	 */
+	constraintOid = get_index_constraint(indexOid);
+	if (OidIsValid(constraintOid))
+		ObjectAddressSet(object, ConstraintRelationId, constraintOid);
+	else
+		ObjectAddressSet(object, RelationRelationId, indexOid);
+
+	performDeletion(&object, behavior, 0);
+}
+
+/*
+ * Validate a typed DROP CONSTRAINT request before execution.
+ *
+ * Used by MySQL-compatible DROP FOREIGN KEY: ensure the named constraint
+ * exists on the target table and matches the expected constraint type.
+ */
+static void
+ATCheckExpectedConstraintType(Relation rel, const char *constrName,
+							  bool missing_ok, char expected_contype)
+{
+	Relation	conrel;
+	SysScanDesc scan;
+	ScanKeyData skey[3];
+	HeapTuple	tuple;
+	Form_pg_constraint con;
+
+	if (expected_contype == '\0')
+		return;
+
+	conrel = table_open(ConstraintRelationId, AccessShareLock);
+
+	ScanKeyInit(&skey[0],
+				Anum_pg_constraint_conrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(RelationGetRelid(rel)));
+	ScanKeyInit(&skey[1],
+				Anum_pg_constraint_contypid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(InvalidOid));
+	ScanKeyInit(&skey[2],
+				Anum_pg_constraint_conname,
+				BTEqualStrategyNumber, F_NAMEEQ,
+				CStringGetDatum(constrName));
+	scan = systable_beginscan(conrel, ConstraintRelidTypidNameIndexId,
+							  true, NULL, 3, skey);
+
+	tuple = systable_getnext(scan);
+	if (!HeapTupleIsValid(tuple))
+	{
+		systable_endscan(scan);
+		table_close(conrel, AccessShareLock);
+		if (!missing_ok)
+			ereport(ERROR,
+					(errcode(ERRCODE_UNDEFINED_OBJECT),
+					 errmsg("constraint \"%s\" of relation \"%s\" does not exist",
+							constrName, RelationGetRelationName(rel))));
+		return;
+	}
+
+	con = (Form_pg_constraint) GETSTRUCT(tuple);
+	if (con->contype != expected_contype)
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("constraint \"%s\" of relation \"%s\" is not a foreign key constraint",
+						constrName, RelationGetRelationName(rel))));
+
+	systable_endscan(scan);
+	table_close(conrel, AccessShareLock);
 }
 /* End - ReqID:SRS-MYSQL-SQL-Alter */
