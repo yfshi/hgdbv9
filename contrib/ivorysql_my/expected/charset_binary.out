@@ -586,10 +586,10 @@ select _binary 'a' COLLATE "C";
 (1 row)
 
 -- error ,because _binary current use default collate to achieve, not binary collate.
-select _bianry 'aa' COLLATE 'binary';
+select cast ('aa' as _bianry) COLLATE 'binary';
 ERROR:  type "_bianry" does not exist
-LINE 1: select _bianry 'aa' COLLATE 'binary';
-               ^
+LINE 1: select cast ('aa' as _bianry) COLLATE 'binary';
+                             ^
 -- expected 1
 SELECT _binary 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_general_ci');
  ?column? 

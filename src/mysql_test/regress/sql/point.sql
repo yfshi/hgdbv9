@@ -58,21 +58,21 @@ SELECT p.* FROM POINT_TBL p WHERE p.f1 ~= '(5.1, 34.5)';
 
 -- point in box
 SELECT p.* FROM POINT_TBL p
-   WHERE p.f1 <@ box '(0,0,100,100)';
+   WHERE p.f1 <@ CAST('(0,0,100,100)' AS box);
 
 SELECT p.* FROM POINT_TBL p
-   WHERE box '(0,0,100,100)' @> p.f1;
+   WHERE CAST('(0,0,100,100)' AS box) @> p.f1;
 
 SELECT p.* FROM POINT_TBL p
-   WHERE not p.f1 <@ box '(0,0,100,100)';
+   WHERE not p.f1 <@ CAST('(0,0,100,100)' AS box);
 
 SELECT p.* FROM POINT_TBL p
-   WHERE p.f1 <@ path '[(0,0),(-10,0),(-10,10)]';
+   WHERE p.f1 <@ CAST('[(0,0),(-10,0),(-10,10)]' AS path);
 
 SELECT p.* FROM POINT_TBL p
-   WHERE not box '(0,0,100,100)' @> p.f1;
+   WHERE not CAST('(0,0,100,100)' AS box) @> p.f1;
 
-SELECT p.f1, p.f1 <-> point '(0,0)' AS dist
+SELECT p.f1, p.f1 <-> CAST('(0,0)' AS point) AS dist
    FROM POINT_TBL p
    ORDER BY dist;
 

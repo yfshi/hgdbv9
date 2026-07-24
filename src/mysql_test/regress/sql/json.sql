@@ -131,23 +131,23 @@ order by 1;
 
 -- to_json, timestamps
 
-select to_json(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
+select to_json(CAST('2014-05-28 12:22:35.614298' AS pg_catalog.timestamp));
 
 BEGIN;
 SET LOCAL TIME ZONE 10.5;
-select to_json(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_json(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
 SET LOCAL TIME ZONE -8;
-select to_json(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_json(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
 COMMIT;
 
 select to_json(date '2014-05-28');
 
 select to_json(date 'Infinity');
 select to_json(date '-Infinity');
-select to_json(pg_catalog.timestamp 'Infinity');
-select to_json(pg_catalog.timestamp '-Infinity');
-select to_json(timestamptz 'Infinity');
-select to_json(timestamptz '-Infinity');
+select to_json(CAST('Infinity' AS pg_catalog.timestamp));
+select to_json(CAST('-Infinity' AS pg_catalog.timestamp));
+select to_json(CAST('Infinity' AS timestamptz));
+select to_json(CAST('-Infinity' AS timestamptz));
 
 --json_agg
 
@@ -616,22 +616,22 @@ DROP TYPE j_unordered_pair;
 
 --json_typeof() function
 select value, json_typeof(value)
-  from (values (json '123.4'),
-               (json '-1'),
-               (json '"foo"'),
-               (json 'true'),
-               (json 'false'),
-               (json 'null'),
-               (json '[1, 2, 3]'),
-               (json '[]'),
-               (json '{"x":"foo", "y":123}'),
-               (json '{}'),
+  from (values (CAST('123.4' AS json)),
+               (CAST('-1' AS json)),
+               (CAST('"foo"' AS json)),
+               (CAST('true' AS json)),
+               (CAST('false' AS json)),
+               (CAST('null' AS json)),
+               (CAST('[1, 2, 3]' AS json)),
+               (CAST('[]' AS json)),
+               (CAST('{"x":"foo", "y":123}' AS json)),
+               (CAST('{}' AS json)),
                (NULL::json))
       as data(value);
 
 -- json_build_array, json_build_object, json_object_agg
 
-SELECT json_build_array('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT json_build_array('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
 SELECT json_build_array('a', NULL); -- ok
 SELECT json_build_array(VARIADIC NULL::text[]); -- ok
 SELECT json_build_array(VARIADIC '{}'::text[]); -- ok
@@ -641,7 +641,7 @@ SELECT json_build_array(VARIADIC '{1,2,3,4}'::text[]); -- ok
 SELECT json_build_array(VARIADIC '{1,2,3,4}'::int[]); -- ok
 SELECT json_build_array(VARIADIC '{{1,4},{2,5},{3,6}}'::int[][]); -- ok
 
-SELECT json_build_object('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT json_build_object('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
 
 SELECT json_build_object(
        'a', json_build_object('b',false,'c',99),
@@ -674,7 +674,7 @@ SELECT json_build_object(null,2);
 
 SELECT json_build_object(r,2) FROM (SELECT 1 AS a, 2 AS b) r;
 
-SELECT json_build_object(json '{"a":1,"b":2}', 3);
+SELECT json_build_object(CAST('{"a":1,"b":2}' AS json), 3);
 
 SELECT json_build_object('{1,2,3}'::int[], 3);
 

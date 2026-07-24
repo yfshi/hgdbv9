@@ -29,22 +29,22 @@ SELECT (@@ f1) AS center
 -- "is horizontal" function
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE ishorizontal(p1.f1, point '(0,0)');
+   WHERE ishorizontal(p1.f1, CAST('(0,0)' AS point));
 
 -- "is horizontal" operator
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE p1.f1 ?- point '(0,0)';
+   WHERE p1.f1 ?- CAST('(0,0)' AS point);
 
 -- "is vertical" function
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE isvertical(p1.f1, point '(5.1,34.5)');
+   WHERE isvertical(p1.f1, CAST('(5.1,34.5)' AS point));
 
 -- "is vertical" operator
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE p1.f1 ?| point '(5.1,34.5)';
+   WHERE p1.f1 ?| CAST('(5.1,34.5)' AS point);
 
 -- Slope
 SELECT p1.f1, p2.f1, slope(p1.f1, p2.f1) FROM POINT_TBL p1, POINT_TBL p2;

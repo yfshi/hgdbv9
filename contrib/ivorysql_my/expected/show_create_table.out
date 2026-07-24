@@ -3549,7 +3549,7 @@ SHOW CREATE TABLE test_part_coll2;
 (1 row)
 
 -- ok, collation is implicitly coerced
-create table test_part_coll_cast partition of test_part_coll_posix for values from (name 'm' collate "C") to ('s');
+create table test_part_coll_cast partition of test_part_coll_posix for values from (CAST('m' AS name) collate "C") to ('s');
 SHOW CREATE TABLE test_part_coll_cast;
         Table        |             Create Table             
 ---------------------+--------------------------------------
@@ -3559,7 +3559,7 @@ SHOW CREATE TABLE test_part_coll_cast;
 (1 row)
 
 -- ok; partition collation silently overrides the default collation of type 'name'
-create table test_part_coll_cast2 partition of test_part_coll_posix for values from (name 's') to ('z');
+create table test_part_coll_cast2 partition of test_part_coll_posix for values from (CAST('s' AS name)) to ('z');
 SHOW CREATE TABLE test_part_coll_cast2;
         Table         |             Create Table              
 ----------------------+---------------------------------------

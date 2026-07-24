@@ -687,7 +687,7 @@ with recursive search_graph(f, t, label) as (
 	select g.*
 	from graph g, search_graph sg
 	where g.f = sg.t
-) cycle f, t set is_cycle to point '(1,1)' default point '(0,0)' using path
+) cycle f, t set is_cycle to CAST('(1,1)' AS point) default CAST('(0,0)' AS point) using path
 select * from search_graph;
 
 with recursive search_graph(f, t, label) as (

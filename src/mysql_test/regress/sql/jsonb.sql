@@ -77,7 +77,7 @@ SELECT '{
 -- ERROR missing value for last field
 
 -- make sure jsonb is passed through json generators without being escaped
-SELECT array_to_json(ARRAY [jsonb '{"a":1}', jsonb '{"b":[2,3]}']);
+SELECT array_to_json(ARRAY [CAST('{"a":1}' AS jsonb), CAST('{"b":[2,3]}' AS jsonb)]);
 
 -- anyarray column
 
@@ -95,23 +95,23 @@ order by 1;
 
 -- to_jsonb, timestamps
 
-select to_jsonb(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
+select to_jsonb(CAST('2014-05-28 12:22:35.614298' AS pg_catalog.timestamp));
 
 BEGIN;
 SET LOCAL TIME ZONE 10.5;
-select to_jsonb(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_jsonb(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
 SET LOCAL TIME ZONE -8;
-select to_jsonb(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_jsonb(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
 COMMIT;
 
 select to_jsonb(date '2014-05-28');
 
 select to_jsonb(date 'Infinity');
 select to_jsonb(date '-Infinity');
-select to_jsonb(pg_catalog.timestamp 'Infinity');
-select to_jsonb(pg_catalog.timestamp '-Infinity');
-select to_jsonb(timestamptz 'Infinity');
-select to_jsonb(timestamptz '-Infinity');
+select to_jsonb(CAST('Infinity' AS pg_catalog.timestamp));
+select to_jsonb(CAST('-Infinity' AS pg_catalog.timestamp));
+select to_jsonb(CAST('Infinity' AS timestamptz));
+select to_jsonb(CAST('-Infinity' AS timestamptz));
 
 --jsonb_agg
 
@@ -279,10 +279,10 @@ SELECT jsonb_exists('{"a":null, "b":"qq"}', 'a');
 SELECT jsonb_exists('{"a":null, "b":"qq"}', 'b');
 SELECT jsonb_exists('{"a":null, "b":"qq"}', 'c');
 SELECT jsonb_exists('{"a":"null", "b":"qq"}', 'a');
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'a';
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'b';
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'c';
-SELECT jsonb '{"a":"null", "b":"qq"}' ? 'a';
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ? 'a';
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ? 'b';
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ? 'c';
+SELECT CAST('{"a":"null", "b":"qq"}' AS jsonb) ? 'a';
 -- array exists - array elements should behave as keys
 SELECT count(*) from testjsonb  WHERE j->'array' ? 'bar';
 -- type sensitive array exists - should return no rows (since "exists" only
@@ -296,23 +296,23 @@ SELECT jsonb_exists_any('{"a":null, "b":"qq"}', ARRAY['b','a']);
 SELECT jsonb_exists_any('{"a":null, "b":"qq"}', ARRAY['c','a']);
 SELECT jsonb_exists_any('{"a":null, "b":"qq"}', ARRAY['c','d']);
 SELECT jsonb_exists_any('{"a":null, "b":"qq"}', '{}'::text[]);
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['a','b'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['b','a'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['c','a'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['c','d'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?| '{}'::text[];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['a','b'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['b','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['c','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['c','d'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| '{}'::text[];
 
 SELECT jsonb_exists_all('{"a":null, "b":"qq"}', ARRAY['a','b']);
 SELECT jsonb_exists_all('{"a":null, "b":"qq"}', ARRAY['b','a']);
 SELECT jsonb_exists_all('{"a":null, "b":"qq"}', ARRAY['c','a']);
 SELECT jsonb_exists_all('{"a":null, "b":"qq"}', ARRAY['c','d']);
 SELECT jsonb_exists_all('{"a":null, "b":"qq"}', '{}'::text[]);
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['a','b'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['b','a'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['c','a'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['c','d'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['a','a', 'b', 'b', 'b'];
-SELECT jsonb '{"a":null, "b":"qq"}' ?& '{}'::text[];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['a','b'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['b','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['c','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['c','d'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['a','a', 'b', 'b', 'b'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& '{}'::text[];
 
 -- typeof
 SELECT jsonb_typeof('{}') AS object;
@@ -333,7 +333,7 @@ SELECT jsonb_typeof('"1.0"') AS string;
 
 -- jsonb_build_array, jsonb_build_object, jsonb_object_agg
 
-SELECT jsonb_build_array('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT jsonb_build_array('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
 SELECT jsonb_build_array('a', NULL); -- ok
 SELECT jsonb_build_array(VARIADIC NULL::text[]); -- ok
 SELECT jsonb_build_array(VARIADIC '{}'::text[]); -- ok
@@ -343,7 +343,7 @@ SELECT jsonb_build_array(VARIADIC '{1,2,3,4}'::text[]); -- ok
 SELECT jsonb_build_array(VARIADIC '{1,2,3,4}'::int[]); -- ok
 SELECT jsonb_build_array(VARIADIC '{{1,4},{2,5},{3,6}}'::int[][]); -- ok
 
-SELECT jsonb_build_object('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT jsonb_build_object('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
 
 SELECT jsonb_build_object(
        'a', jsonb_build_object('b',false,'c',99),
@@ -376,7 +376,7 @@ SELECT jsonb_build_object(null,2);
 
 SELECT jsonb_build_object(r,2) FROM (SELECT 1 AS a, 2 AS b) r;
 
-SELECT jsonb_build_object(json '{"a":1,"b":2}', 3);
+SELECT jsonb_build_object(CAST('{"a":1,"b":2}' AS json), 3);
 
 SELECT jsonb_build_object('{1,2,3}'::int[], 3);
 
@@ -867,7 +867,7 @@ SELECT count(*) FROM (SELECT j FROM (SELECT * FROM testjsonb UNION ALL SELECT * 
 SET enable_hashagg = on;
 SET enable_sort = off;
 SELECT count(*) FROM (SELECT j FROM (SELECT * FROM testjsonb UNION ALL SELECT * FROM testjsonb) js GROUP BY j) js2;
-SELECT distinct * FROM (values (jsonb '{}' || ''::text),('{}')) v(j);
+SELECT distinct * FROM (values (CAST('{}' AS jsonb) || ''::text),('{}')) v(j);
 SET enable_sort = on;
 
 RESET enable_hashagg;

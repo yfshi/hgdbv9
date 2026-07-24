@@ -308,9 +308,9 @@ create table my_blob_t26 (c1 int, c2 blob default 'test');
 ERROR:  ERROR 1101 (42000): BLOB, TEXT, GEOMETRY or JSON column can't have a default value
 -- TODO[TD003]: should error
 select blob'101010' as result;
-ERROR:  syntax error at or near "'101010'"
+ERROR:  syntax error at or near "as"
 LINE 1: select blob'101010' as result;
-                   ^
+                            ^
 DISCARD ALL;
 /*
  * test mysql blob type index.

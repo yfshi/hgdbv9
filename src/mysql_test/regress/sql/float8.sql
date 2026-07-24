@@ -106,51 +106,51 @@ select sign(f1) as sign_f1 from float8_tbl f;
 SET extra_float_digits = 0;
 
 -- square root
-SELECT sqrt(float8 '64') AS eight;
+SELECT sqrt(CAST('64' AS float8)) AS eight;
 
-SELECT |/ float8 '64' AS eight;
+SELECT |/ CAST('64' AS float8) AS eight;
 
 SELECT f.f1, |/f.f1 AS sqrt_f1
    FROM FLOAT8_TBL f
    WHERE f.f1 > '0.0';
 
 -- power
-SELECT power(float8 '144', float8 '0.5');
-SELECT power(float8 'NaN', float8 '0.5');
-SELECT power(float8 '144', float8 'NaN');
-SELECT power(float8 'NaN', float8 'NaN');
-SELECT power(float8 '-1', float8 'NaN');
-SELECT power(float8 '1', float8 'NaN');
-SELECT power(float8 'NaN', float8 '0');
-SELECT power(float8 'inf', float8 '0');
-SELECT power(float8 '-inf', float8 '0');
-SELECT power(float8 '0', float8 'inf');
-SELECT power(float8 '0', float8 '-inf');
-SELECT power(float8 '1', float8 'inf');
-SELECT power(float8 '1', float8 '-inf');
-SELECT power(float8 '-1', float8 'inf');
-SELECT power(float8 '-1', float8 '-inf');
-SELECT power(float8 '0.1', float8 'inf');
-SELECT power(float8 '-0.1', float8 'inf');
-SELECT power(float8 '1.1', float8 'inf');
-SELECT power(float8 '-1.1', float8 'inf');
-SELECT power(float8 '0.1', float8 '-inf');
-SELECT power(float8 '-0.1', float8 '-inf');
-SELECT power(float8 '1.1', float8 '-inf');
-SELECT power(float8 '-1.1', float8 '-inf');
-SELECT power(float8 'inf', float8 '-2');
-SELECT power(float8 'inf', float8 '2');
-SELECT power(float8 'inf', float8 'inf');
-SELECT power(float8 'inf', float8 '-inf');
+SELECT power(CAST('144' AS float8), CAST('0.5' AS float8));
+SELECT power(CAST('NaN' AS float8), CAST('0.5' AS float8));
+SELECT power(CAST('144' AS float8), CAST('NaN' AS float8));
+SELECT power(CAST('NaN' AS float8), CAST('NaN' AS float8));
+SELECT power(CAST('-1' AS float8), CAST('NaN' AS float8));
+SELECT power(CAST('1' AS float8), CAST('NaN' AS float8));
+SELECT power(CAST('NaN' AS float8), CAST('0' AS float8));
+SELECT power(CAST('inf' AS float8), CAST('0' AS float8));
+SELECT power(CAST('-inf' AS float8), CAST('0' AS float8));
+SELECT power(CAST('0' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('0' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('1' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('1' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('-1' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('-1' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('0.1' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('-0.1' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('1.1' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('-1.1' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('0.1' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('-0.1' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('1.1' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('-1.1' AS float8), CAST('-inf' AS float8));
+SELECT power(CAST('inf' AS float8), CAST('-2' AS float8));
+SELECT power(CAST('inf' AS float8), CAST('2' AS float8));
+SELECT power(CAST('inf' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('inf' AS float8), CAST('-inf' AS float8));
 -- Intel's icc misoptimizes the code that controls the sign of this result,
 -- even with -mp1.  Pending a fix for that, only test for "is it zero".
-SELECT power(float8 '-inf', float8 '-2') = '0';
-SELECT power(float8 '-inf', float8 '-3');
-SELECT power(float8 '-inf', float8 '2');
-SELECT power(float8 '-inf', float8 '3');
-SELECT power(float8 '-inf', float8 '3.5');
-SELECT power(float8 '-inf', float8 'inf');
-SELECT power(float8 '-inf', float8 '-inf');
+SELECT power(CAST('-inf' AS float8), CAST('-2' AS float8)) = '0';
+SELECT power(CAST('-inf' AS float8), CAST('-3' AS float8));
+SELECT power(CAST('-inf' AS float8), CAST('2' AS float8));
+SELECT power(CAST('-inf' AS float8), CAST('3' AS float8));
+SELECT power(CAST('-inf' AS float8), CAST('3.5' AS float8));
+SELECT power(CAST('-inf' AS float8), CAST('inf' AS float8));
+SELECT power(CAST('-inf' AS float8), CAST('-inf' AS float8));
 
 -- take exp of ln(f.f1)
 SELECT f.f1, exp(ln(f.f1)) AS exp_ln_f1
@@ -161,7 +161,7 @@ SELECT f.f1, exp(ln(f.f1)) AS exp_ln_f1
 SELECT exp('inf'::float8), exp('-inf'::float8), exp('nan'::float8);
 
 -- cube root
-SELECT ||/ float8 '27' AS three;
+SELECT ||/ CAST('27' AS float8) AS three;
 
 SELECT f.f1, ||/f.f1 AS cbrt_f1 FROM FLOAT8_TBL f;
 
@@ -191,32 +191,32 @@ SELECT * FROM FLOAT8_TBL;
 -- hyperbolic functions
 -- we run these with extra_float_digits = 0 too, since different platforms
 -- tend to produce results that vary in the last place.
-SELECT sinh(float8 '1');
-SELECT cosh(float8 '1');
-SELECT tanh(float8 '1');
-SELECT asinh(float8 '1');
-SELECT acosh(float8 '2');
-SELECT atanh(float8 '0.5');
+SELECT sinh(CAST('1' AS float8));
+SELECT cosh(CAST('1' AS float8));
+SELECT tanh(CAST('1' AS float8));
+SELECT asinh(CAST('1' AS float8));
+SELECT acosh(CAST('2' AS float8));
+SELECT atanh(CAST('0.5' AS float8));
 -- test Inf/NaN cases for hyperbolic functions
-SELECT sinh(float8 'infinity');
-SELECT sinh(float8 '-infinity');
-SELECT sinh(float8 'nan');
-SELECT cosh(float8 'infinity');
-SELECT cosh(float8 '-infinity');
-SELECT cosh(float8 'nan');
-SELECT tanh(float8 'infinity');
-SELECT tanh(float8 '-infinity');
-SELECT tanh(float8 'nan');
-SELECT asinh(float8 'infinity');
-SELECT asinh(float8 '-infinity');
-SELECT asinh(float8 'nan');
+SELECT sinh(CAST('infinity' AS float8));
+SELECT sinh(CAST('-infinity' AS float8));
+SELECT sinh(CAST('nan' AS float8));
+SELECT cosh(CAST('infinity' AS float8));
+SELECT cosh(CAST('-infinity' AS float8));
+SELECT cosh(CAST('nan' AS float8));
+SELECT tanh(CAST('infinity' AS float8));
+SELECT tanh(CAST('-infinity' AS float8));
+SELECT tanh(CAST('nan' AS float8));
+SELECT asinh(CAST('infinity' AS float8));
+SELECT asinh(CAST('-infinity' AS float8));
+SELECT asinh(CAST('nan' AS float8));
 -- acosh(Inf) should be Inf, but some mingw versions produce NaN, so skip test
--- SELECT acosh(float8 'infinity');
-SELECT acosh(float8 '-infinity');
-SELECT acosh(float8 'nan');
-SELECT atanh(float8 'infinity');
-SELECT atanh(float8 '-infinity');
-SELECT atanh(float8 'nan');
+-- SELECT acosh(CAST('infinity' AS float8));
+SELECT acosh(CAST('-infinity' AS float8));
+SELECT acosh(CAST('nan' AS float8));
+SELECT atanh(CAST('infinity' AS float8));
+SELECT atanh(CAST('-infinity' AS float8));
+SELECT atanh(CAST('nan' AS float8));
 
 RESET extra_float_digits;
 

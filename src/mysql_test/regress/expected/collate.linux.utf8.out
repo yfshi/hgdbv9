@@ -437,25 +437,25 @@ SELECT relname FROM pg_class WHERE relname ~* '^abc';
 
 -- to_char
 SET lc_time TO 'tr_TR';
-SELECT to_char(pg_catalog.date '2010-02-01', 'DD TMMON YYYY');
+SELECT to_char(CAST('2010-02-01' AS pg_catalog.date), 'DD TMMON YYYY');
    to_char   
 -------------
  01 ŞUB 2010
 (1 row)
 
-SELECT to_char(pg_catalog.date '2010-02-01', 'DD TMMON YYYY' COLLATE "tr_TR");
+SELECT to_char(CAST('2010-02-01' AS pg_catalog.date), 'DD TMMON YYYY' COLLATE "tr_TR");
    to_char   
 -------------
  01 ŞUB 2010
 (1 row)
 
-SELECT to_char(pg_catalog.date '2010-04-01', 'DD TMMON YYYY');
+SELECT to_char(CAST('2010-04-01' AS pg_catalog.date), 'DD TMMON YYYY');
    to_char   
 -------------
  01 NIS 2010
 (1 row)
 
-SELECT to_char(pg_catalog.date '2010-04-01', 'DD TMMON YYYY' COLLATE "tr_TR");
+SELECT to_char(CAST('2010-04-01' AS pg_catalog.date), 'DD TMMON YYYY' COLLATE "tr_TR");
    to_char   
 -------------
  01 NİS 2010

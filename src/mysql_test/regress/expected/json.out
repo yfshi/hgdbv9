@@ -432,7 +432,7 @@ order by 1;
 (2 rows)
 
 -- to_json, timestamps
-select to_json(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
+select to_json(CAST('2014-05-28 12:22:35.614298' AS pg_catalog.timestamp));
            to_json            
 ------------------------------
  "2014-05-28T12:22:35.614298"
@@ -440,14 +440,14 @@ select to_json(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
 
 BEGIN;
 SET LOCAL TIME ZONE 10.5;
-select to_json(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_json(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
               to_json               
 ------------------------------------
  "2014-05-29T02:52:35.614298+10:30"
 (1 row)
 
 SET LOCAL TIME ZONE -8;
-select to_json(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_json(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
               to_json               
 ------------------------------------
  "2014-05-28T08:22:35.614298-08:00"
@@ -464,25 +464,25 @@ select to_json(date 'Infinity');
 ERROR:  Incorrect DATE value: 'Infinity'
 select to_json(date '-Infinity');
 ERROR:  Incorrect DATE value: '-Infinity'
-select to_json(pg_catalog.timestamp 'Infinity');
+select to_json(CAST('Infinity' AS pg_catalog.timestamp));
   to_json   
 ------------
  "infinity"
 (1 row)
 
-select to_json(pg_catalog.timestamp '-Infinity');
+select to_json(CAST('-Infinity' AS pg_catalog.timestamp));
    to_json   
 -------------
  "-infinity"
 (1 row)
 
-select to_json(timestamptz 'Infinity');
+select to_json(CAST('Infinity' AS timestamptz));
   to_json   
 ------------
  "infinity"
 (1 row)
 
-select to_json(timestamptz '-Infinity');
+select to_json(CAST('-Infinity' AS timestamptz));
    to_json   
 -------------
  "-infinity"
@@ -1973,16 +1973,16 @@ DROP DOMAIN j_ordered_pair;
 DROP TYPE j_unordered_pair;
 --json_typeof() function
 select value, json_typeof(value)
-  from (values (json '123.4'),
-               (json '-1'),
-               (json '"foo"'),
-               (json 'true'),
-               (json 'false'),
-               (json 'null'),
-               (json '[1, 2, 3]'),
-               (json '[]'),
-               (json '{"x":"foo", "y":123}'),
-               (json '{}'),
+  from (values (CAST('123.4' AS json)),
+               (CAST('-1' AS json)),
+               (CAST('"foo"' AS json)),
+               (CAST('true' AS json)),
+               (CAST('false' AS json)),
+               (CAST('null' AS json)),
+               (CAST('[1, 2, 3]' AS json)),
+               (CAST('[]' AS json)),
+               (CAST('{"x":"foo", "y":123}' AS json)),
+               (CAST('{}' AS json)),
                (NULL::json))
       as data(value);
         value         | json_typeof 
@@ -2001,7 +2001,7 @@ select value, json_typeof(value)
 (11 rows)
 
 -- json_build_array, json_build_object, json_object_agg
-SELECT json_build_array('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT json_build_array('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
                            json_build_array                            
 -----------------------------------------------------------------------
  ["a", 1, "b", 1.2, "c", true, "d", null, "e", {"x": 3, "y": [1,2,3]}]
@@ -2055,7 +2055,7 @@ SELECT json_build_array(VARIADIC '{{1,4},{2,5},{3,6}}'::int[][]); -- ok
  [1, 4, 2, 5, 3, 6]
 (1 row)
 
-SELECT json_build_object('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT json_build_object('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
                              json_build_object                              
 ----------------------------------------------------------------------------
  {"a" : 1, "b" : 1.2, "c" : true, "d" : null, "e" : {"x": 3, "y": [1,2,3]}}
@@ -2155,7 +2155,7 @@ ERROR:  argument 1 cannot be null
 HINT:  Object keys should be text.
 SELECT json_build_object(r,2) FROM (SELECT 1 AS a, 2 AS b) r;
 ERROR:  key value must be scalar, not array, composite, or json
-SELECT json_build_object(json '{"a":1,"b":2}', 3);
+SELECT json_build_object(CAST('{"a":1,"b":2}' AS json), 3);
 ERROR:  key value must be scalar, not array, composite, or json
 SELECT json_build_object('{1,2,3}'::int[], 3);
 ERROR:  key value must be scalar, not array, composite, or json

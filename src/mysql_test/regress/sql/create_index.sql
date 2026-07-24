@@ -124,11 +124,11 @@ SELECT count(*) FROM gpolygon_tbl WHERE f1 && '(1000,1000,0,0)'::polygon;
 
 SELECT count(*) FROM gcircle_tbl WHERE f1 && '<(500,500),500>'::circle;
 
-SELECT count(*) FROM point_tbl WHERE f1 <@ box '(0,0,100,100)';
+SELECT count(*) FROM point_tbl WHERE f1 <@ CAST('(0,0,100,100)' AS box);
 
-SELECT count(*) FROM point_tbl WHERE box '(0,0,100,100)' @> f1;
+SELECT count(*) FROM point_tbl WHERE CAST('(0,0,100,100)' AS box) @> f1;
 
-SELECT count(*) FROM point_tbl WHERE f1 <@ polygon '(0,0),(0,100),(100,100),(50,50),(100,0),(0,0)';
+SELECT count(*) FROM point_tbl WHERE f1 <@ CAST('(0,0),(0,100),(100,100),(50,50),(100,0),(0,0)' AS polygon);
 
 SELECT count(*) FROM point_tbl WHERE f1 <@ circle '<(50,50),50>';
 
@@ -196,16 +196,16 @@ SELECT count(*) FROM gcircle_tbl WHERE f1 && '<(500,500),500>'::circle;
 SELECT count(*) FROM gcircle_tbl WHERE f1 && '<(500,500),500>'::circle;
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM point_tbl WHERE f1 <@ box '(0,0,100,100)';
-SELECT count(*) FROM point_tbl WHERE f1 <@ box '(0,0,100,100)';
+SELECT count(*) FROM point_tbl WHERE f1 <@ CAST('(0,0,100,100)' AS box);
+SELECT count(*) FROM point_tbl WHERE f1 <@ CAST('(0,0,100,100)' AS box);
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM point_tbl WHERE box '(0,0,100,100)' @> f1;
-SELECT count(*) FROM point_tbl WHERE box '(0,0,100,100)' @> f1;
+SELECT count(*) FROM point_tbl WHERE CAST('(0,0,100,100)' AS box) @> f1;
+SELECT count(*) FROM point_tbl WHERE CAST('(0,0,100,100)' AS box) @> f1;
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM point_tbl WHERE f1 <@ polygon '(0,0),(0,100),(100,100),(50,50),(100,0),(0,0)';
-SELECT count(*) FROM point_tbl WHERE f1 <@ polygon '(0,0),(0,100),(100,100),(50,50),(100,0),(0,0)';
+SELECT count(*) FROM point_tbl WHERE f1 <@ CAST('(0,0),(0,100),(100,100),(50,50),(100,0),(0,0)' AS polygon);
+SELECT count(*) FROM point_tbl WHERE f1 <@ CAST('(0,0),(0,100),(100,100),(50,50),(100,0),(0,0)' AS polygon);
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM point_tbl WHERE f1 <@ circle '<(50,50),50>';

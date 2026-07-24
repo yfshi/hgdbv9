@@ -210,7 +210,7 @@ FROM (
   ('millisecond', '1 ms'),
   ('microsecond', '1 us')
 ) intervals (str, interval),
-(VALUES (timestamptz '2020-02-29 15:44:17.71393+00')) ts (ts);
+(VALUES (CAST('2020-02-29 15:44:17.71393+00' AS timestamptz))) ts (ts);
 
 -- bin timestamps into arbitrary intervals
 SELECT
@@ -228,14 +228,14 @@ FROM (
   ('100 milliseconds'),
   ('250 microseconds')
 ) intervals (interval),
-(VALUES (timestamptz '2020-02-11 15:44:17.71393')) ts (ts),
-(VALUES (timestamptz '2001-01-01')) origin (origin);
+(VALUES (CAST('2020-02-11 15:44:17.71393' AS timestamptz))) ts (ts),
+(VALUES (CAST('2001-01-01' AS timestamptz))) origin (origin);
 
 -- shift bins using the origin parameter:
-SELECT date_bin('5 min'::interval, timestamptz '2020-02-01 01:01:01+00', timestamptz '2020-02-01 00:02:30+00');
+SELECT date_bin('5 min'::interval, CAST('2020-02-01 01:01:01+00' AS timestamptz), CAST('2020-02-01 00:02:30+00' AS timestamptz));
 
 -- test roundoff edge case when source < origin
-SELECT date_bin('30 minutes'::interval, timestamptz '2024-02-01 15:00:00', timestamptz '2024-02-01 17:00:00');
+SELECT date_bin('30 minutes'::interval, CAST('2024-02-01 15:00:00' AS timestamptz), CAST('2024-02-01 17:00:00' AS timestamptz));
 
 -- disallow intervals with months or years
 SELECT date_bin('5 months'::interval, timestamp with time zone '2020-02-01 01:01:01+00', timestamp with time zone '2001-01-01+00');
@@ -248,7 +248,7 @@ SELECT date_bin('0 days'::interval, timestamp with time zone '1970-01-01 01:00:0
 SELECT date_bin('-2 days'::interval, timestamp with time zone '1970-01-01 01:00:00+00' , timestamp with time zone '1970-01-01 00:00:00+00');
 
 -- test overflow cases
-select date_bin('15 minutes'::interval, timestamptz '294276-12-30', timestamptz '4000-12-20 BC');
+select date_bin('15 minutes'::interval, CAST('294276-12-30' AS timestamptz), CAST('4000-12-20 BC' AS timestamptz));
 select date_bin('200000000 days'::interval, '2024-02-01'::timestamptz, '2024-01-01'::timestamptz);
 select date_bin('365000 days'::interval, '4400-01-01 BC'::timestamptz, '4000-01-01 BC'::timestamptz);
 
@@ -405,7 +405,7 @@ SELECT make_timestamptz(2014, 12, 10, 10, 10, 10, '-16');
 SELECT make_timestamptz(1973, 07, 15, 08, 15, 55.33, '+2') = '1973-07-15 08:15:55.33+02'::timestamptz;
 
 -- full timezone names
-SELECT make_timestamptz(2014, 12, 10, 0, 0, 0, 'Europe/Prague') = timestamptz '2014-12-10 00:00:00 Europe/Prague';
+SELECT make_timestamptz(2014, 12, 10, 0, 0, 0, 'Europe/Prague') = CAST('2014-12-10 00:00:00 Europe/Prague' AS timestamptz);
 SELECT make_timestamptz(2014, 12, 10, 0, 0, 0, 'Europe/Prague') AT TIME ZONE 'UTC';
 SELECT make_timestamptz(1846, 12, 10, 0, 0, 0, 'Asia/Manila') AT TIME ZONE 'UTC';
 SELECT make_timestamptz(1881, 12, 10, 0, 0, 0, 'Europe/Paris') AT TIME ZONE 'UTC';

@@ -4,9 +4,9 @@
 --
 
 -- fixed-length by reference
-SELECT name 'name string' = name 'name string' AS "True";
+SELECT CAST('name string' AS name) = CAST('name string' AS name) AS "True";
 
-SELECT name 'name string' = name 'name string ' AS "False";
+SELECT CAST('name string' AS name) = CAST('name string ' AS name) AS "False";
 
 --
 --

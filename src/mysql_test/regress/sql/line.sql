@@ -19,7 +19,7 @@ INSERT INTO LINE_TBL VALUES ('{NaN,NaN,NaN}');
 -- horizontal
 INSERT INTO LINE_TBL VALUES ('[(1,3),(2,3)]');
 -- vertical
-INSERT INTO LINE_TBL VALUES (line(point '(3,1)', point '(3,2)'));
+INSERT INTO LINE_TBL VALUES (line(CAST('(3,1)' AS point), CAST('(3,2)' AS point)));
 
 -- bad values for parser testing
 INSERT INTO LINE_TBL VALUES ('{}');
@@ -34,7 +34,7 @@ INSERT INTO LINE_TBL VALUES ('[(,2),(3,4)]');
 INSERT INTO LINE_TBL VALUES ('[(1,2),(3,4)');
 INSERT INTO LINE_TBL VALUES ('[(1,2),(1,2)]');
 
-INSERT INTO LINE_TBL VALUES (line(point '(1,0)', point '(1,0)'));
+INSERT INTO LINE_TBL VALUES (line(CAST('(1,0)' AS point), CAST('(1,0)' AS point)));
 
 select * from LINE_TBL;
 

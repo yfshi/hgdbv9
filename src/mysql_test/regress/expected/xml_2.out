@@ -128,7 +128,7 @@ SELECT xmlelement(name foo, text 'bar');
  <foo>bar</foo>
 (1 row)
 
-SELECT xmlelement(name foo, xml 'bar');
+SELECT xmlelement(name foo, CAST('bar' AS xml));
    xmlelement   
 ----------------
  <foo>bar</foo>
@@ -140,7 +140,7 @@ SELECT xmlelement(name foo, text 'b<a/>r');
  <foo>b&lt;a/&gt;r</foo>
 (1 row)
 
-SELECT xmlelement(name foo, xml 'b<a/>r');
+SELECT xmlelement(name foo, CAST('b<a/>r' AS xml));
     xmlelement     
 -------------------
  <foo>b<a/>r</foo>
@@ -153,14 +153,14 @@ SELECT xmlelement(name foo, array[1, 2, 3]);
 (1 row)
 
 SET xmlbinary TO base64;
-SELECT xmlelement(name foo, bytea 'bar');
+SELECT xmlelement(name foo, CAST('bar' as bytea));
    xmlelement    
 -----------------
  <foo>YmFy</foo>
 (1 row)
 
 SET xmlbinary TO hex;
-SELECT xmlelement(name foo, bytea 'bar');
+SELECT xmlelement(name foo, CAST('bar' as bytea));
     xmlelement     
 -------------------
  <foo>626172</foo>
@@ -181,7 +181,7 @@ SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:37'::pg_catalog.time
 SELECT xmlelement(name foo, xmlattributes('infinity'::pg_catalog.timestamp as bar));
 ERROR:  timestamp out of range
 DETAIL:  XML does not support infinite timestamp values.
-SELECT xmlelement(name foo, xmlattributes('<>&"''' as funny, xml 'b<a/>r' as funnier));
+SELECT xmlelement(name foo, xmlattributes('<>&"''' as funny, CAST('b<a/>r' AS xml) as funnier));
                          xmlelement                         
 ------------------------------------------------------------
  <foo funny="&lt;&gt;&amp;&quot;'" funnier="b&lt;a/&gt;r"/>
@@ -356,31 +356,31 @@ SELECT xmlpi(name foo, '   bar');
  <?foo bar?>
 (1 row)
 
-SELECT xmlroot(xml '<foo/>', version no value, standalone no value);
+SELECT xmlroot(CAST('<foo/>' AS xml), version no value, standalone no value);
  xmlroot 
 ---------
  <foo/>
 (1 row)
 
-SELECT xmlroot(xml '<foo/>', version '2.0');
+SELECT xmlroot(CAST('<foo/>' AS xml), version '2.0');
            xmlroot           
 -----------------------------
  <?xml version="2.0"?><foo/>
 (1 row)
 
-SELECT xmlroot(xml '<foo/>', version no value, standalone yes);
+SELECT xmlroot(CAST('<foo/>' AS xml), version no value, standalone yes);
                    xmlroot                    
 ----------------------------------------------
  <?xml version="1.0" standalone="yes"?><foo/>
 (1 row)
 
-SELECT xmlroot(xml '<?xml version="1.1"?><foo/>', version no value, standalone yes);
+SELECT xmlroot(CAST('<?xml version="1.1"?><foo/>' AS xml), version no value, standalone yes);
                    xmlroot                    
 ----------------------------------------------
  <?xml version="1.0" standalone="yes"?><foo/>
 (1 row)
 
-SELECT xmlroot(xmlroot(xml '<foo/>', version '1.0'), version '1.1', standalone no);
+SELECT xmlroot(xmlroot(CAST('<foo/>' AS xml), version '1.0'), version '1.1', standalone no);
                    xmlroot                   
 ---------------------------------------------
  <?xml version="1.1" standalone="no"?><foo/>
@@ -439,25 +439,25 @@ SELECT xmlserialize(content 'good' as char(10));
 
 SELECT xmlserialize(document 'bad' as text);
 ERROR:  not an XML document
-SELECT xml '<foo>bar</foo>' IS DOCUMENT;
+SELECT CAST('<foo>bar</foo>' AS xml) IS DOCUMENT;
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT xml '<foo>bar</foo><bar>foo</bar>' IS DOCUMENT;
+SELECT CAST('<foo>bar</foo><bar>foo</bar>' AS xml) IS DOCUMENT;
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT xml '<abc/>' IS NOT DOCUMENT;
+SELECT CAST('<abc/>' AS xml) IS NOT DOCUMENT;
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT xml 'abc' IS NOT DOCUMENT;
+SELECT CAST('abc' AS xml) IS NOT DOCUMENT;
  ?column? 
 ----------
  t
@@ -514,10 +514,10 @@ LINE 1: EXECUTE foo ('bad');
 DETAIL:  line 1: Start tag expected, '<' not found
 bad
 ^
-SELECT xml '<!DOCTYPE a><a/><b/>';
+SELECT CAST('<!DOCTYPE a><a/><b/>' AS xml);
 ERROR:  invalid XML document
-LINE 1: SELECT xml '<!DOCTYPE a><a/><b/>';
-                   ^
+LINE 1: SELECT CAST('<!DOCTYPE a><a/><b/>' AS xml);
+                    ^
 DETAIL:  line 1: Extra content at the end of the document
 <!DOCTYPE a><a/><b/>
                 ^
@@ -534,42 +534,42 @@ EXECUTE foo ('good');
  <foo/>good
 (1 row)
 
-SELECT xml '<!-- in SQL:2006+ a doc is content too--> <?y z?> <!DOCTYPE a><a/>';
+SELECT CAST('<!-- in SQL:2006+ a doc is content too--> <?y z?> <!DOCTYPE a><a/>' AS xml);
                                 xml                                 
 --------------------------------------------------------------------
  <!-- in SQL:2006+ a doc is content too--> <?y z?> <!DOCTYPE a><a/>
 (1 row)
 
-SELECT xml '<?xml version="1.0"?> <!-- hi--> <!DOCTYPE a><a/>';
+SELECT CAST('<?xml version="1.0"?> <!-- hi--> <!DOCTYPE a><a/>' AS xml);
              xml              
 ------------------------------
   <!-- hi--> <!DOCTYPE a><a/>
 (1 row)
 
-SELECT xml '<!DOCTYPE a><a/>';
+SELECT CAST('<!DOCTYPE a><a/>' AS xml);
        xml        
 ------------------
  <!DOCTYPE a><a/>
 (1 row)
 
-SELECT xml '<!-- hi--> oops <!DOCTYPE a><a/>';
+SELECT CAST('<!-- hi--> oops <!DOCTYPE a><a/>' AS xml);
 ERROR:  invalid XML content
-LINE 1: SELECT xml '<!-- hi--> oops <!DOCTYPE a><a/>';
-                   ^
+LINE 1: SELECT CAST('<!-- hi--> oops <!DOCTYPE a><a/>' AS xml);
+                    ^
 DETAIL:  line 1: StartTag: invalid element name
 <!-- hi--> oops <!DOCTYPE a><a/>
                  ^
-SELECT xml '<!-- hi--> <oops/> <!DOCTYPE a><a/>';
+SELECT CAST('<!-- hi--> <oops/> <!DOCTYPE a><a/>' AS xml);
 ERROR:  invalid XML content
-LINE 1: SELECT xml '<!-- hi--> <oops/> <!DOCTYPE a><a/>';
-                   ^
+LINE 1: SELECT CAST('<!-- hi--> <oops/> <!DOCTYPE a><a/>' AS xml);
+                    ^
 DETAIL:  line 1: StartTag: invalid element name
 <!-- hi--> <oops/> <!DOCTYPE a><a/>
                     ^
-SELECT xml '<!DOCTYPE a><a/><b/>';
+SELECT CAST('<!DOCTYPE a><a/><b/>' AS xml);
 ERROR:  invalid XML content
-LINE 1: SELECT xml '<!DOCTYPE a><a/><b/>';
-                   ^
+LINE 1: SELECT CAST('<!DOCTYPE a><a/><b/>' AS xml);
+                    ^
 DETAIL:  line 1: Extra content at the end of the document
 <!DOCTYPE a><a/><b/>
                 ^
@@ -583,7 +583,7 @@ LINE 1: ...ame employee, xmlforest(name, age, salary as pay)) FROM emp;
                                                                    ^
 CREATE VIEW xmlview5 AS SELECT xmlparse(content '<abc>x</abc>');
 CREATE VIEW xmlview6 AS SELECT xmlpi(name foo, 'bar');
-CREATE VIEW xmlview7 AS SELECT xmlroot(xml '<foo/>', version no value, standalone yes);
+CREATE VIEW xmlview7 AS SELECT xmlroot(CAST('<foo/>' AS xml), version no value, standalone yes);
 CREATE VIEW xmlview8 AS SELECT xmlserialize(content 'good' as char(10));
 CREATE VIEW xmlview9 AS SELECT xmlserialize(content 'good' as text);
 SELECT table_name, view_definition FROM information_schema.views

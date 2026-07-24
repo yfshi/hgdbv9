@@ -38,9 +38,9 @@ SELECT count(*) FROM quad_point_tbl WHERE p IS NOT NULL;
 
 SELECT count(*) FROM quad_point_tbl;
 
-SELECT count(*) FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+SELECT count(*) FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 
-SELECT count(*) FROM quad_point_tbl WHERE box '(200,200,1000,1000)' @> p;
+SELECT count(*) FROM quad_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
 
 SELECT count(*) FROM quad_point_tbl WHERE p << '(5000, 4000)';
 
@@ -58,7 +58,7 @@ FROM quad_point_tbl;
 
 CREATE TEMP TABLE quad_point_tbl_ord_seq2 AS
 SELECT row_number() OVER (ORDER BY p <-> '0,0') n, p <-> '0,0' dist, p
-FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 
 CREATE TEMP TABLE quad_point_tbl_ord_seq3 AS
 SELECT row_number() OVER (ORDER BY p <-> '333,400') n, p <-> '333,400' dist, p
@@ -110,12 +110,12 @@ SELECT count(*) FROM quad_point_tbl;
 SELECT count(*) FROM quad_point_tbl;
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
-SELECT count(*) FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+SELECT count(*) FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
+SELECT count(*) FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM quad_point_tbl WHERE box '(200,200,1000,1000)' @> p;
-SELECT count(*) FROM quad_point_tbl WHERE box '(200,200,1000,1000)' @> p;
+SELECT count(*) FROM quad_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
+SELECT count(*) FROM quad_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM quad_point_tbl WHERE p << '(5000, 4000)';
@@ -149,10 +149,10 @@ WHERE seq.dist IS DISTINCT FROM idx.dist;
 
 EXPLAIN (COSTS OFF)
 SELECT row_number() OVER (ORDER BY p <-> '0,0') n, p <-> '0,0' dist, p
-FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 CREATE TEMP TABLE quad_point_tbl_ord_idx2 AS
 SELECT row_number() OVER (ORDER BY p <-> '0,0') n, p <-> '0,0' dist, p
-FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 SELECT * FROM quad_point_tbl_ord_seq2 seq FULL JOIN quad_point_tbl_ord_idx2 idx
 ON seq.n = idx.n
 WHERE seq.dist IS DISTINCT FROM idx.dist;
@@ -168,12 +168,12 @@ ON seq.n = idx.n
 WHERE seq.dist IS DISTINCT FROM idx.dist;
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM kd_point_tbl WHERE p <@ box '(200,200,1000,1000)';
-SELECT count(*) FROM kd_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+SELECT count(*) FROM kd_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
+SELECT count(*) FROM kd_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM kd_point_tbl WHERE box '(200,200,1000,1000)' @> p;
-SELECT count(*) FROM kd_point_tbl WHERE box '(200,200,1000,1000)' @> p;
+SELECT count(*) FROM kd_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
+SELECT count(*) FROM kd_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM kd_point_tbl WHERE p << '(5000, 4000)';
@@ -207,10 +207,10 @@ WHERE seq.dist IS DISTINCT FROM idx.dist;
 
 EXPLAIN (COSTS OFF)
 SELECT row_number() OVER (ORDER BY p <-> '0,0') n, p <-> '0,0' dist, p
-FROM kd_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+FROM kd_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 CREATE TEMP TABLE kd_point_tbl_ord_idx2 AS
 SELECT row_number() OVER (ORDER BY p <-> '0,0') n, p <-> '0,0' dist, p
-FROM kd_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+FROM kd_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 SELECT * FROM quad_point_tbl_ord_seq2 seq FULL JOIN kd_point_tbl_ord_idx2 idx
 ON seq.n = idx.n
 WHERE seq.dist IS DISTINCT FROM idx.dist;
@@ -236,7 +236,7 @@ RESET extra_float_digits;
 
 -- check ORDER BY distance to NULL
 SELECT (SELECT p FROM kd_point_tbl ORDER BY p <-> pt, p <-> '0,0' LIMIT 1)
-FROM (VALUES (point '1,2'), (NULL), ('1234,5678')) pts(pt);
+FROM (VALUES (CAST('1,2' AS point)), (NULL), ('1234,5678')) pts(pt);
 
 
 EXPLAIN (COSTS OFF)
@@ -313,12 +313,12 @@ SELECT count(*) FROM quad_point_tbl;
 SELECT count(*) FROM quad_point_tbl;
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
-SELECT count(*) FROM quad_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+SELECT count(*) FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
+SELECT count(*) FROM quad_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM quad_point_tbl WHERE box '(200,200,1000,1000)' @> p;
-SELECT count(*) FROM quad_point_tbl WHERE box '(200,200,1000,1000)' @> p;
+SELECT count(*) FROM quad_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
+SELECT count(*) FROM quad_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM quad_point_tbl WHERE p << '(5000, 4000)';
@@ -341,12 +341,12 @@ SELECT count(*) FROM quad_point_tbl WHERE p ~= '(4585, 365)';
 SELECT count(*) FROM quad_point_tbl WHERE p ~= '(4585, 365)';
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM kd_point_tbl WHERE p <@ box '(200,200,1000,1000)';
-SELECT count(*) FROM kd_point_tbl WHERE p <@ box '(200,200,1000,1000)';
+SELECT count(*) FROM kd_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
+SELECT count(*) FROM kd_point_tbl WHERE p <@ CAST('(200,200,1000,1000)' AS box);
 
 EXPLAIN (COSTS OFF)
-SELECT count(*) FROM kd_point_tbl WHERE box '(200,200,1000,1000)' @> p;
-SELECT count(*) FROM kd_point_tbl WHERE box '(200,200,1000,1000)' @> p;
+SELECT count(*) FROM kd_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
+SELECT count(*) FROM kd_point_tbl WHERE CAST('(200,200,1000,1000)' AS box) @> p;
 
 EXPLAIN (COSTS OFF)
 SELECT count(*) FROM kd_point_tbl WHERE p << '(5000, 4000)';

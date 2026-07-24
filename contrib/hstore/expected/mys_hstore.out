@@ -354,85 +354,85 @@ select defined('a=>"NULL", b=>qq', 'a');
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ? 'a';
+select CAST('a=>NULL, b=>qq' AS hstore) ? 'a';
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ? 'b';
+select CAST('a=>NULL, b=>qq' AS hstore) ? 'b';
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ? 'c';
+select CAST('a=>NULL, b=>qq' AS hstore) ? 'c';
  ?column? 
 ----------
  f
 (1 row)
 
-select hstore 'a=>"NULL", b=>qq' ? 'a';
+select CAST('a=>"NULL", b=>qq' AS hstore) ? 'a';
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['a','b'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['a','b'];
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['b','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['b','a'];
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['c','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['c','a'];
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['c','d'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['c','d'];
  ?column? 
 ----------
  f
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?| '{}'::text[];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| '{}'::text[];
  ?column? 
 ----------
  f
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['a','b'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['a','b'];
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['b','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['b','a'];
  ?column? 
 ----------
  t
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['c','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['c','a'];
  ?column? 
 ----------
  f
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['c','d'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['c','d'];
  ?column? 
 ----------
  f
 (1 row)
 
-select hstore 'a=>NULL, b=>qq' ?& '{}'::text[];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& '{}'::text[];
  ?column? 
 ----------
  t
@@ -760,38 +760,38 @@ select pg_column_size('a=>g, b=>c'::hstore || hstore('b', 'gf'))
 (1 row)
 
 -- slice()
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['g','h','i']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['g','h','i']);
  slice 
 -------
  
 (1 row)
 
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b']);
        slice        
 --------------------
  "b"=>"2", "c"=>"3"
 (1 row)
 
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['aa','b']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['aa','b']);
         slice        
 ---------------------
  "b"=>"2", "aa"=>"1"
 (1 row)
 
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b','aa']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b','aa']);
              slice             
 -------------------------------
  "b"=>"2", "c"=>"3", "aa"=>"1"
 (1 row)
 
-select pg_column_size(slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b']))
+select pg_column_size(slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b']))
          = pg_column_size('b=>2, c=>3'::hstore);
  ?column? 
 ----------
  t
 (1 row)
 
-select pg_column_size(slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b','aa']))
+select pg_column_size(slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b','aa']))
          = pg_column_size('aa=>1, b=>2, c=>3'::hstore);
  ?column? 
 ----------
@@ -1063,13 +1063,13 @@ select v #= (hstore('b', 'foo') || hstore('e', '123')) from testhstore1 v;
  (1,foo,1.2,3,123)
 (1 row)
 
-select v #= hstore '' from testhstore0 v;
+select v #= CAST('' AS hstore) from testhstore0 v;
    ?column?    
 ---------------
  (1,foo,1.2,3)
 (1 row)
 
-select v #= hstore '' from testhstore1 v;
+select v #= CAST('' AS hstore) from testhstore1 v;
     ?column?     
 -----------------
  (1,foo,1.2,3,0)
@@ -1083,15 +1083,15 @@ select null::testhstore1 #= (hstore('c', '3.45') || hstore('e', '123'));
  (,,3.45,,123)
 (1 row)
 
-select null::testhstore0 #= hstore '';
+select null::testhstore0 #= CAST('' AS hstore);
  ?column? 
 ----------
  (,,,)
 (1 row)
 
-select null::testhstore1 #= hstore '';
+select null::testhstore1 #= CAST('' AS hstore);
 ERROR:  domain hstestdom1 does not allow null values
-select v #= h from testhstore1 v, (values (hstore 'a=>123',1),('b=>foo,c=>3.21',2),('a=>null',3),('e=>123',4),('f=>blah',5)) x(h,i) order by i;
+select v #= h from testhstore1 v, (values (CAST('a=>123' AS hstore),1),('b=>foo,c=>3.21',2),('a=>null',3),('e=>123',4),('f=>blah',5)) x(h,i) order by i;
      ?column?      
 -------------------
  (123,foo,1.2,3,0)
@@ -1483,7 +1483,7 @@ select count(*) from (select h from (select * from testhstore union all select *
    885
 (1 row)
 
-select distinct * from (values (hstore '' || ''),('')) v(h);
+select distinct * from (values (CAST('' AS hstore) || ''),('')) v(h);
  h 
 ---
  
@@ -1513,7 +1513,7 @@ select hstore_to_json('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f
  {"b": "t", "c": null, "d": "12345", "e": "012345", "f": "1.234", "g": "2.345e+4", "a key": "1"}
 (1 row)
 
-select cast( hstore  '"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' as json);
+select cast( CAST('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' AS hstore) as json);
                                               json                                               
 -------------------------------------------------------------------------------------------------
  {"b": "t", "c": null, "d": "12345", "e": "012345", "f": "1.234", "g": "2.345e+4", "a key": "1"}
@@ -1531,7 +1531,7 @@ select hstore_to_jsonb('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, 
  {"b": "t", "c": null, "d": "12345", "e": "012345", "f": "1.234", "g": "2.345e+4", "a key": "1"}
 (1 row)
 
-select cast( hstore  '"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' as jsonb);
+select cast( CAST('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' AS hstore) as jsonb);
                                               jsonb                                              
 -------------------------------------------------------------------------------------------------
  {"b": "t", "c": null, "d": "12345", "e": "012345", "f": "1.234", "g": "2.345e+4", "a key": "1"}

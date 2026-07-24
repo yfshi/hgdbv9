@@ -30,14 +30,14 @@ INSERT INTO brintest_multi SELECT
 	odd::float8 / (tenthous + 1),
 	format('%s:00:%s:00:%s:00', to_hex(odd), to_hex(even), to_hex(hundred))::macaddr,
 	substr(md5(unique1::text), 1, 16)::macaddr8,
-	inet '10.2.3.4/24' + tenthous,
+	CAST('10.2.3.4/24' AS inet) + tenthous,
 	cidr '10.2.3/24' + tenthous,
 	date '1995-08-15' + tenthous,
 	time '01:20:30' + thousand * interval '18.5 second',
-	pg_catalog.timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
-	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
+	CAST('1942-07-23 03:05:09' AS pg_catalog.timestamp) + tenthous * interval '36.38 hours',
+	CAST('1972-10-10 03:00' AS timestamptz) + thousand * interval '1 hour',
 	justify_days(justify_hours(tenthous * interval '12 minutes')),
-	timetz '01:30:20+02' + hundred * interval '15 seconds',
+	CAST('01:30:20+02' AS timetz) + hundred * interval '15 seconds',
 	tenthous::numeric(36,30) * fivethous * even / (hundred + 1),
 	format('%s%s-%s-%s-%s-%s%s%s', to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'))::uuid,
 	format('%s/%s%s', odd, even, tenthous)::pg_lsn
@@ -45,7 +45,7 @@ FROM tenk1 ORDER BY unique2 LIMIT 100;
 
 -- throw in some NULL's and different values
 INSERT INTO brintest_multi (inetcol, cidrcol) SELECT
-	inet 'fe80::6e40:8ff:fea9:8c46' + tenthous,
+	CAST('fe80::6e40:8ff:fea9:8c46' AS inet) + tenthous,
 	cidr 'fe80::6e40:8ff:fea9:8c46' + tenthous
 FROM tenk1 ORDER BY thousand, tenthous LIMIT 25;
 
@@ -328,13 +328,13 @@ INSERT INTO brintest_multi SELECT
 	odd::float8 / (tenthous + 1),
 	format('%s:00:%s:00:%s:00', to_hex(odd), to_hex(even), to_hex(hundred))::macaddr,
 	substr(md5(unique1::text), 1, 16)::macaddr8,
-	inet '10.2.3.4' + tenthous,
+	CAST('10.2.3.4' AS inet) + tenthous,
 	cidr '10.2.3/24' + tenthous,
 	time '01:20:30' + thousand * interval '18.5 second',
-	pg_catalog.timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
-	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
+	CAST('1942-07-23 03:05:09' AS pg_catalog.timestamp) + tenthous * interval '36.38 hours',
+	CAST('1972-10-10 03:00' AS timestamptz) + thousand * interval '1 hour',
 	justify_days(justify_hours(tenthous * interval '12 minutes')),
-	timetz '01:30:20' + hundred * interval '15 seconds',
+	CAST('01:30:20' AS timetz) + hundred * interval '15 seconds',
 	tenthous::numeric(36,30) * fivethous * even / (hundred + 1),
 	format('%s%s-%s-%s-%s-%s%s%s', to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'), to_char(tenthous, 'FM0000'))::uuid,
 	format('%s/%s%s', odd, even, tenthous)::pg_lsn
@@ -384,7 +384,7 @@ DECLARE curtid tid;
 BEGIN
   LOOP
     INSERT INTO brin_summarize_multi VALUES (1) RETURNING ctid INTO curtid;
-    EXIT WHEN curtid > tid '(2, 0)';
+    EXIT WHEN curtid > CAST('(2, 0)' AS tid);
   END LOOP;
 END;
 $$;
