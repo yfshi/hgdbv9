@@ -105,6 +105,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 ALTER FUNCTION hg_security.check_schema_is_antitamper(schema_oid OID) owner to syssso_role;
+GRANT EXECUTE on FUNCTION hg_security.check_schema_is_antitamper(schema_oid OID) to public;
 
 /* calc hash value function */
 CREATE OR REPLACE FUNCTION hg_security.calculate_row_hash(
@@ -163,6 +164,11 @@ ALTER FUNCTION hg_security.calculate_row_hash(
 	row_data anyelement,
 	exclude_columns text[] )
 owner to syssso_role;
+
+GRANT EXECUTE on FUNCTION hg_security.calculate_row_hash(
+	table_name regclass,
+	row_data anyelement,
+	exclude_columns text[] ) to public;
 
 -- create trigger function
 CREATE OR REPLACE FUNCTION hg_security.set_generic_hash()
@@ -274,6 +280,42 @@ $$;
 ALTER FUNCTION hg_security.set_generic_hash() owner to syssso_role;
 GRANT EXECUTE ON FUNCTION hg_security.set_generic_hash to PUBLIC;
 
+-- get table hash diff value
+CREATE OR REPLACE FUNCTION
+hg_security.get_history_hash_diff_internal(
+    hist_table_oid oid
+)
+RETURNS BIGINT
+AS 'MODULE_PATHNAME', 'get_history_hash_diff_internal'
+LANGUAGE C
+STRICT
+STABLE
+PARALLEL UNSAFE;
+
+ALTER FUNCTION hg_security.get_history_hash_diff_internal(
+	hist_table_oid oid
+)
+owner to syssso_role;
+
+-- insert table hash diff value
+CREATE OR REPLACE FUNCTION
+hg_security.append_history_hash_diff_internal(
+    hist_table_oid oid,
+    diff_value BIGINT
+)
+RETURNS BIGINT
+AS 'MODULE_PATHNAME', 'append_history_hash_diff_internal'
+LANGUAGE C
+STRICT
+VOLATILE
+PARALLEL UNSAFE;
+
+ALTER FUNCTION hg_security.append_history_hash_diff_internal(
+    hist_table_oid oid,
+    diff_value BIGINT
+)
+owner to syssso_role;
+
 -- get table hash value
 CREATE OR REPLACE FUNCTION hg_security.get_table_hash_sum(
 	table_name text,
@@ -281,57 +323,11 @@ CREATE OR REPLACE FUNCTION hg_security.get_table_hash_sum(
 	exclude_columns text[] DEFAULT ARRAY['__hg_hash__']
 )
 RETURNS BIGINT
-LANGUAGE plpgsql
+AS 'MODULE_PATHNAME', 'get_table_hash_sum'
+LANGUAGE C
+STRICT
 STABLE
-AS $$
-DECLARE
-	sum_result BIGINT;
-	query text;
-	col_expressions text;
-	table_oid oid;
-BEGIN
-	-- check table exists
-	SELECT c.oid INTO table_oid
-	FROM pg_class c
-	JOIN pg_namespace n ON c.relnamespace = n.oid
-	WHERE n.nspname = schema_name AND c.relname = table_name;
-
-	IF table_oid IS NULL THEN
-		RAISE EXCEPTION ' %.% does not exists ', schema_name, table_name;
-	END IF;
-
-	WITH column_info AS (
-		SELECT attname,
-			format(
-				'(hashtext(COALESCE(%I::text, ''''))::bigint & x''FFFFFFFF''::bigint)::text',
-				attname
-				) as hash_expr
-		FROM pg_attribute
-		WHERE attrelid = table_oid
-			AND attnum > 0
-			AND NOT attisdropped
-			AND attname != ALL(exclude_columns)
-		ORDER BY attnum
-	)
-	SELECT string_agg(hash_expr, ' || ')
-	INTO col_expressions
-	FROM column_info;
-	-- not column return 0
-	IF col_expressions IS NULL OR col_expressions = '' THEN
-		RETURN 0;
-	END IF;
-
-	query := format(
-		'SELECT COALESCE(SUM(hashtext(%s)::bigint & x''FFFFFFFF''::bigint), 0) FROM %I.%I',
-		rtrim(col_expressions, ' || '),
-		schema_name,
-		table_name
-	);
-
-	EXECUTE query INTO sum_result;
-	RETURN sum_result;
-END;
-$$;
+PARALLEL UNSAFE;
 
 ALTER FUNCTION hg_security.get_table_hash_sum(
 	table_name text,
@@ -357,9 +353,25 @@ DECLARE
 	table_oid oid;
 	schema_oid oid;
 	hist_table_name text;
+	hist_table_oid oid;
 	query text;
 	opt_val text;
+	se_feature_mode_val text;
+	is_superuser_val text;
 BEGIN
+	--check user permissions
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF NOT hg_security.is_syssso(get_current_userid()) THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_hist_check';
+		END IF;
+	ELSE
+		IF NOT is_superuser_val IN('on', 'true', '1') THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_hist_check';
+		END IF;
+	END IF;
+
 	-- check function para
 	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
 		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';
@@ -390,25 +402,18 @@ BEGIN
 	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
 
 	-- 2. sum of insert hash values in history table
-	query := format(
-		'SELECT COALESCE(SUM(hash_ins)::BIGINT, 0)
-			FROM hg_security.%s
-			WHERE hash_ins IS NOT NULL',
-		hist_table_name
-	);
-	EXECUTE query INTO aaaa_insert_sum;
-
 	-- 3. sum of delete hash values in history table
-	query := format(
-		'SELECT COALESCE(SUM(hash_del)::BIGINT, 0)
-			FROM hg_security.%s
-			WHERE hash_del IS NOT NULL',
-		hist_table_name
-	);
-	EXECUTE query INTO aaaa_delete_sum;
-
 	-- 4. insert - delete
-	aaaa_diff := aaaa_insert_sum - aaaa_delete_sum;
+	SELECT c.oid INTO hist_table_oid FROM pg_catalog.pg_class c
+			JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+		WHERE n.nspname = 'hg_security' AND c.relname = hist_table_name
+			AND c.relkind IN ('r', 'p');
+	IF hist_table_oid IS NULL THEN
+		RAISE EXCEPTION
+			'history table hg_security.% does not exist', hist_table_name;
+	END IF;
+
+	aaaa_diff := hg_security.get_history_hash_diff_internal(hist_table_oid);
 
 	-- 5. check
 	--RAISE NOTICE 'table: % hash values: %, history insert values: %, delete values: %, diff values: %',
@@ -442,6 +447,7 @@ DECLARE
 	table_oid oid;
 	schema_oid oid;
 	hist_table_name text;
+	hist_table_oid oid;
 	query text;
 	nextblocknum BIGINT;
 	opt_val text;
@@ -492,25 +498,18 @@ BEGIN
 	table_hash_sum := hg_security.get_table_hash_sum(table_name, schema_name, ARRAY['__hg_hash__']);
 
 	-- 2. sum of insert hash values in history table
-	query := format(
-		'SELECT COALESCE(SUM(hash_ins)::BIGINT, 0)
-			FROM hg_security.%s
-			WHERE hash_ins IS NOT NULL',
-		hist_table_name
-	);
-	EXECUTE query INTO aaaa_insert_sum;
-
 	-- 3. sum of delete hash values in history table
-	query := format(
-		'SELECT COALESCE(SUM(hash_del)::BIGINT, 0)
-			FROM hg_security.%s
-			WHERE hash_del IS NOT NULL',
-		hist_table_name
-	);
-	EXECUTE query INTO aaaa_delete_sum;
-
 	-- 4. insert - delete
-	aaaa_diff := aaaa_insert_sum - aaaa_delete_sum;
+	SELECT c.oid INTO hist_table_oid FROM pg_catalog.pg_class c
+			JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+		WHERE n.nspname = 'hg_security' AND c.relname = hist_table_name
+			AND c.relkind IN ('r', 'p');
+	IF hist_table_oid IS NULL THEN
+		RAISE EXCEPTION
+			'history table hg_security.% does not exist', hist_table_name;
+	END IF;
+
+	aaaa_diff := hg_security.get_history_hash_diff_internal(hist_table_oid);
 
 	-- 5. check
 	--RAISE NOTICE 'table: % hash values: %, history insert values: %, delete values: %, diff values: %',
@@ -518,30 +517,9 @@ BEGIN
 
 	diff_value = table_hash_sum - aaaa_diff;
 
-	EXECUTE format(
-		'SELECT COALESCE(MAX(rec_num), 0)+1 FROM hg_security.%I',
-		hist_table_name) INTO nextblocknum;
 	-- 6. insert difference column
-	IF diff_value != 0 THEN
-		IF diff_value > 0 THEN
-			-- positive numbers:insert
-			EXECUTE format(
-				'INSERT INTO hg_security.%I (rec_num, hash_ins, hash_del) VALUES ($1, $2, NULL)',
-				hist_table_name)
-				USING nextblocknum, diff_value
-				;
-			--RAISE NOTICE 'diff_value =hash_ins[%] ',diff_value;
-		ELSE
-			-- negative numbers:delete
-			EXECUTE format(
-				'INSERT INTO hg_security.%I (rec_num, hash_ins, hash_del) VALUES ($1, NULL, $2)',
-				hist_table_name)
-				USING nextblocknum, ABS(diff_value)
-				;
-			--RAISE NOTICE 'diff_value =hash_del[%] ',ABS(diff_value);
-		END IF;
-	ELSE
-		--RAISE NOTICE 'data is consistent, no supplementation required';
+	IF diff_value <> 0 THEN
+		nextblocknum = hg_security.append_history_hash_diff_internal(hist_table_oid, diff_value);
 	END IF;
 
 	RETURN TRUE;
@@ -572,7 +550,22 @@ DECLARE
 	table_oid oid;
 	query text;
 	opt_val text;
+	se_feature_mode_val text;
+	is_superuser_val text;
 BEGIN
+	--check user permissions
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF NOT hg_security.is_syssso(get_current_userid()) THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_gchain_check';
+		END IF;
+	ELSE
+		IF NOT is_superuser_val IN('on', 'true', '1') THEN
+			RAISE EXCEPTION 'permission denied for function antitamper_gchain_check';
+		END IF;
+	END IF;
+
 	-- check function para
 	IF schema_name IS NULL OR schema_name = '' OR table_name IS NULL  OR table_name = '' THEN
 		RAISE EXCEPTION 'Parameter schema_name and table_name cannot be NULL';

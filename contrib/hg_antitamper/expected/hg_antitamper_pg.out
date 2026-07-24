@@ -10,20 +10,14 @@ create schema ddd with antitamper;
 create table  ddd.t1 (id int, name text);
 insert into ddd.t1 values(1, 'alex'), (2, 'bob'), (3, 'peter');
 select hg_security.antitamper_hist_check('ddd','t1');
- antitamper_hist_check 
------------------------
- t
-(1 row)
-
+ERROR:  permission denied for function antitamper_hist_check
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_check(text,text) line 26 at RAISE
 select hg_security.antitamper_hist_repair('ddd','t1');
 ERROR:  permission denied for function antitamper_hist_repair
-CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 27 at RAISE
+CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 28 at RAISE
 select hg_security.antitamper_gchain_check('ddd','t1');
- antitamper_gchain_check 
--------------------------
- t
-(1 row)
-
+ERROR:  permission denied for function antitamper_gchain_check
+CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_check(text,text) line 23 at RAISE
 select hg_security.antitamper_gchain_repair('ddd','t1');
 ERROR:  permission denied for function antitamper_gchain_repair
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line 25 at RAISE
