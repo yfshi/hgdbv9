@@ -44,8 +44,8 @@ BEGIN
 				starttime timestamp without time zone,
 				sqlcommand text
 			);
-			GRANT select,insert on hg_security.hg_global_antitamper to public;
-			GRANT all ON hg_security.hg_global_antitamper to syssso_role;
+			GRANT select on hg_security.hg_global_antitamper to public;
+			ALTER TABLE hg_security.hg_global_antitamper OWNER TO syssso_role;
 		';
 	END IF;
 END $$;
@@ -69,10 +69,47 @@ BEGIN
 				sqlcommand text
 			);
 			GRANT SELECT on hg_security.hg_global_antitamper_backup to public;
-			GRANT all ON hg_security.hg_global_antitamper_backup to syssso_role;
+			ALTER TABLE hg_security.hg_global_antitamper_backup OWNER TO syssso_role;
 		';
 	END IF;
 END $$;
+
+ALTER TABLE hg_security.hg_global_antitamper ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hg_security.hg_global_antitamper FORCE ROW LEVEL SECURITY;
+ALTER TABLE hg_security.hg_global_antitamper_backup ENABLE ROW LEVEL SECURITY;
+ALTER TABLE hg_security.hg_global_antitamper_backup FORCE ROW LEVEL SECURITY;
+
+CREATE OR REPLACE FUNCTION hg_security.check_antimper_access() RETURNS boolean
+LANGUAGE plpgsql
+AS $$
+DECLARE
+	se_feature_mode_val text;
+	is_superuser_val text;
+BEGIN
+	--check user permissions
+	se_feature_mode_val = current_setting('se_feature.mode', true);
+	is_superuser_val = current_setting('is_superuser', true);
+	IF se_feature_mode_val IN('on', 'true', '1') THEN
+		IF hg_security.is_syssso(get_current_userid()) THEN
+			RETURN TRUE;
+		END IF;
+	ELSE
+		IF is_superuser_val IN('on', 'true', '1') THEN
+			RETURN TRUE;
+		END IF;
+	END IF;
+	RETURN FALSE;
+END;
+$$;
+
+CREATE POLICY antimper_select_policy ON hg_security.hg_global_antitamper FOR SELECT USING (true);
+CREATE POLICY antimper_insert_policy ON hg_security.hg_global_antitamper FOR INSERT WITH CHECK (hg_security.check_antimper_access());
+CREATE POLICY antimper_update_policy ON hg_security.hg_global_antitamper FOR UPDATE USING (hg_security.check_antimper_access());
+CREATE POLICY antimper_delete_policy ON hg_security.hg_global_antitamper FOR DELETE USING (hg_security.check_antimper_access());
+CREATE POLICY antimper_backup_select_policy ON hg_security.hg_global_antitamper_backup FOR SELECT USING (true);
+CREATE POLICY antimper_backup_insert_policy ON hg_security.hg_global_antitamper_backup FOR INSERT WITH CHECK (hg_security.check_antimper_access());
+CREATE POLICY antimper_backup_update_policy ON hg_security.hg_global_antitamper_backup FOR UPDATE USING (hg_security.check_antimper_access());
+CREATE POLICY antimper_backup_delete_policy ON hg_security.hg_global_antitamper_backup FOR DELETE USING (hg_security.check_antimper_access());
 
 CREATE OR REPLACE FUNCTION hg_security.check_schema_is_antitamper(schema_oid OID)
 RETURNS BOOLEAN AS $$
@@ -170,6 +207,24 @@ GRANT EXECUTE on FUNCTION hg_security.calculate_row_hash(
 	row_data anyelement,
 	exclude_columns text[] ) to public;
 
+-- insert hg_security.hg_global_antitamper by trigger function
+CREATE OR REPLACE FUNCTION
+hg_security.insert_global_antitamper_internal(
+	username       text,
+	dbname         text,
+	schema_oid     oid,
+	relation_oid   oid,
+	insert_hash    bigint,
+	delete_hash    bigint,
+	sql_command    text,
+	caller         text
+)
+RETURNS void
+AS 'MODULE_PATHNAME', 'insert_global_antitamper_internal'
+LANGUAGE C
+VOLATILE
+PARALLEL UNSAFE;
+
 -- create trigger function
 CREATE OR REPLACE FUNCTION hg_security.set_generic_hash()
 RETURNS TRIGGER
@@ -250,24 +305,15 @@ BEGIN
 
 	select query into sqlcommand from pg_stat_activity where pid = pg_backend_pid();
 	-- insert global antitamper value
-	INSERT INTO hg_security.hg_global_antitamper (
-		username ,
-		dbname,
-		schemaoid,
-		reloid,
-		starttime,
-		insertrelhash,
-		deleterelhash,
-		sqlcommand
-	) VALUES (
-		current_username,
-		current_dbname,
+	PERFORM hg_security.insert_global_antitamper_internal(
+		current_username::text,
+		current_dbname::text,
 		schema_oid,
 		current_tableoid,
-		CURRENT_TIMESTAMP::timestamp without time zone,
 		hash_ins_val,
 		hash_del_val,
-		sqlcommand
+		sqlcommand,
+		'__set_generic_hash__'::text
 	);
 
 	IF TG_OP = 'DELETE' THEN

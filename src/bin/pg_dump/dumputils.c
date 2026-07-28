@@ -1401,7 +1401,10 @@ bool highgo_is_dumpACL(const char *name)
 		strcmp(name, "pg_track_db_role_settings_history") == 0 ||
 		strcmp(name, "\"pg_track_db_role_settings_history\"") == 0 ||
 		strcmp(name, "\"pg_password_history\"") == 0 ||
-		strcmp(name, "pg_password_history") == 0)
+		strcmp(name, "\"hg_global_antitamper\"") == 0 ||
+		strcmp(name, "hg_global_antitamper") == 0 ||
+		strcmp(name, "\"hg_global_antitamper_backup\"") == 0 ||
+		strcmp(name, "hg_global_antitamper_backup") == 0)
 		return false;
 
 	return true;

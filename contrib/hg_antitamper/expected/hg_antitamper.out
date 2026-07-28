@@ -2427,7 +2427,7 @@ select 1 from hg_security.antitamper_block;
 create schema secure_schema with antitamper;
 create table  secure_schema.test (id int, name text);
 insert into secure_schema.test values(1, 'alex'), (2, 'bob'), (3, 'peter');
-create user user11;
+create user user11_sso;
 create user normal_user;
 create user antitamper_spuser with superuser password 'Hello@123';
 --------------------------------------------------------------------------
@@ -2435,16 +2435,16 @@ grant usage on schema secure_schema to syssso;
 grant all privileges on all tables in schema secure_schema to syssso;
 grant usage on schema hg_security to syssso;
 grant all privileges on all tables in schema hg_security to syssso;
-grant usage on schema secure_schema to user11;
-grant all privileges on all tables in schema secure_schema to user11;
-grant usage on schema hg_security to user11;
-grant all privileges on all tables in schema hg_security to user11;
+grant usage on schema secure_schema to user11_sso;
+grant all privileges on all tables in schema secure_schema to user11_sso;
+grant usage on schema hg_security to user11_sso;
+grant all privileges on all tables in schema hg_security to user11_sso;
 grant usage on schema secure_schema to normal_user;
 grant all privileges on all tables in schema secure_schema to normal_user;
 grant usage on schema hg_security to normal_user;
 grant all privileges on all tables in schema hg_security to normal_user;
 --------------------------------------------------------------------------
-grant syssso_role to user11;
+grant syssso_role to user11_sso;
 -- test se_feature.mode =off
 set role syssso;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
@@ -2456,7 +2456,7 @@ CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_gchain_archive
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 25 at RAISE
-set role user11;
+set role user11_sso;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_hist_repair
 CONTEXT:  PL/pgSQL function hg_security.antitamper_hist_repair(text,text) line 28 at RAISE
@@ -2476,6 +2476,100 @@ CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_repair(text,text) line
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_gchain_archive
 CONTEXT:  PL/pgSQL function hg_security.antitamper_gchain_archive(text,text) line 25 at RAISE
+-- check per
+\c - syssso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper"
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+     323052915 |              
+     566808878 |              
+    1406934039 |              
+(3 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper_backup"
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+\c - user11_sso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper"
+update hg_security.hg_global_antitamper set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+     323052915 |              
+     566808878 |              
+    1406934039 |              
+(3 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper_backup"
+update hg_security.hg_global_antitamper_backup set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+\c - normal_user
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper"
+update hg_security.hg_global_antitamper set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+     323052915 |              
+     566808878 |              
+    1406934039 |              
+(3 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper_backup"
+update hg_security.hg_global_antitamper_backup set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+\c - antitamper_spuser
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (333, 333, 333);
+update hg_security.hg_global_antitamper set deleterelhash=3333 where deleterelhash=333;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+     323052915 |              
+     566808878 |              
+    1406934039 |              
+           333 |          3333
+(4 rows)
+
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (333, 333, 333);
+update hg_security.hg_global_antitamper_backup set deleterelhash=3333 where deleterelhash=333;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+           333 |          3333
+(1 row)
+
+delete from hg_security.hg_global_antitamper_backup;
 -- test se_feature.mode =on
 \c - antitamper_spuser
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
@@ -2529,7 +2623,7 @@ select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_gchain_repair
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_gchain_archive
-\c - user11;
+\c - user11_sso;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
  antitamper_hist_repair 
 ------------------------
@@ -2548,6 +2642,13 @@ select hg_security.antitamper_gchain_archive('secure_schema', 'test');
  t
 (1 row)
 
+\c - normal_user;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_hist_repair
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_repair
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+ERROR:  permission denied for function antitamper_gchain_archive
 \c - antitamper_spuser
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_hist_repair
@@ -2555,6 +2656,130 @@ select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_gchain_repair
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 ERROR:  permission denied for function antitamper_gchain_archive
+\c - syssso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+\c - normal_user;
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper"
+update hg_security.hg_global_antitamper set deleterelhash=2222 where deleterelhash=222; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |             0
+           111 |           111
+(2 rows)
+
+delete from hg_security.hg_global_antitamper; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |             0
+           111 |           111
+(2 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (222, 222, 222); --error
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper_backup"
+update hg_security.hg_global_antitamper_backup set deleterelhash=2222 where deleterelhash=222; --error 
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |              
+    2296795832 |             0
+    2296795832 |             0
+           111 |           111
+(4 rows)
+
+delete from hg_security.hg_global_antitamper_backup; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |              
+    2296795832 |             0
+    2296795832 |             0
+           111 |           111
+(4 rows)
+
+\c - antitamper_spuser
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (333, 333, 333);
+ERROR:  permission denied for table hg_global_antitamper
+update hg_security.hg_global_antitamper set deleterelhash=3333 where deleterelhash=333; --error
+ERROR:  permission denied for table hg_global_antitamper
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |             0
+           111 |           111
+(2 rows)
+
+delete from hg_security.hg_global_antitamper; --error
+ERROR:  permission denied for table hg_global_antitamper
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |             0
+           111 |           111
+(2 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (333, 333, 333); --error
+ERROR:  permission denied for table hg_global_antitamper_backup
+update hg_security.hg_global_antitamper_backup set deleterelhash=3333 where deleterelhash=333; --error
+ERROR:  permission denied for table hg_global_antitamper_backup
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |              
+    2296795832 |             0
+    2296795832 |             0
+           111 |           111
+(4 rows)
+
+delete from hg_security.hg_global_antitamper_backup; --error
+ERROR:  permission denied for table hg_global_antitamper_backup
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |              
+    2296795832 |             0
+    2296795832 |             0
+           111 |           111
+(4 rows)
+
+\c - syssso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |             0
+           111 |          1111
+           111 |          1111
+(3 rows)
+
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+    2296795832 |              
+    2296795832 |             0
+    2296795832 |             0
+           111 |          1111
+           111 |          1111
+(5 rows)
+
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
 \c - syssso;
 alter system set hg_rolstatus.enable=off;
 alter system set se_feature.mode=off;
@@ -2569,7 +2794,7 @@ drop table  secure_schema.test;
 drop schema secure_schema;
 revoke all privileges on all tables in schema hg_security from normal_user;
 revoke usage on schema hg_security from normal_user;
-revoke all privileges on all tables in schema hg_security from user11;
-revoke usage on schema hg_security from user11;
-drop user user11;
+revoke all privileges on all tables in schema hg_security from user11_sso;
+revoke usage on schema hg_security from user11_sso;
+drop user user11_sso;
 drop user normal_user;
