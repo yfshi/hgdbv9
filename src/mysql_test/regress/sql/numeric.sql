@@ -591,7 +591,7 @@ SELECT t1.id1, t1.id2, t1.result, round(t2.expected, 80) as expected
 -- * Square root check
 -- ******************************
 DELETE FROM num_result;
-INSERT INTO num_result SELECT id, 0, SQRT(ABS(val))
+INSERT INTO num_result SELECT id, 0, pg_catalog.SQRT(ABS(val))
     FROM num_data;
 SELECT t1.id1, t1.result, t2.expected
     FROM num_result t1, num_exp_sqrt t2
@@ -689,11 +689,11 @@ FROM v ORDER BY x;
 
 WITH v(x) AS
   (VALUES('0'::numeric),('1'),('4.2'),('inf'),('nan'))
-SELECT x, sqrt(x)
+SELECT x, pg_catalog.sqrt(x)
 FROM v;
 
-SELECT sqrt('-1'::numeric);
-SELECT sqrt('-inf'::numeric);
+SELECT pg_catalog.sqrt('-1'::numeric);
+SELECT pg_catalog.sqrt('-inf'::numeric);
 
 WITH v(x) AS
   (VALUES('1'::numeric),('4.2'),('inf'),('nan'))
@@ -1115,14 +1115,14 @@ select div(12345678901234567890, 123) * 123 + 12345678901234567890 % 123;
 -- Test some corner cases for square root
 --
 
-select sqrt(1.000000000000003::numeric);
-select sqrt(1.000000000000004::numeric);
-select sqrt(96627521408608.56340355805::numeric);
-select sqrt(96627521408608.56340355806::numeric);
-select sqrt(515549506212297735.073688290367::numeric);
-select sqrt(515549506212297735.073688290368::numeric);
-select sqrt(8015491789940783531003294973900306::numeric);
-select sqrt(8015491789940783531003294973900307::numeric);
+select pg_catalog.sqrt(1.000000000000003::numeric);
+select pg_catalog.sqrt(1.000000000000004::numeric);
+select pg_catalog.sqrt(96627521408608.56340355805::numeric);
+select pg_catalog.sqrt(96627521408608.56340355806::numeric);
+select pg_catalog.sqrt(515549506212297735.073688290367::numeric);
+select pg_catalog.sqrt(515549506212297735.073688290368::numeric);
+select pg_catalog.sqrt(8015491789940783531003294973900306::numeric);
+select pg_catalog.sqrt(8015491789940783531003294973900307::numeric);
 
 --
 -- Test code path for raising to integer powers

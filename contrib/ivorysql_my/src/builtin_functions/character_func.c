@@ -34,6 +34,7 @@
 #include "funcapi.h"
 #include "lib/stringinfo.h"
 #include "mb/pg_wchar.h"
+#include "miscadmin.h"
 #include "parser/parse_coerce.h"
 #include "utils/builtins.h"
 #include "utils/date.h"
@@ -168,6 +169,8 @@ PG_FUNCTION_INFO_V1(double_truncate);
 PG_FUNCTION_INFO_V1(numeric_truncate);
 PG_FUNCTION_INFO_V1(int_truncate);
 PG_FUNCTION_INFO_V1(crc32);
+PG_FUNCTION_INFO_V1(double_sqrt);
+PG_FUNCTION_INFO_V1(mys_sleep);
 
 static unsigned
 b64_decode(const char* src, unsigned len, char* dst, bool flag)
@@ -1889,5 +1892,61 @@ crc32(PG_FUNCTION_ARGS)
     FIN_TRADITIONAL_CRC32(crc);
 
     PG_RETURN_INT64(crc);
+}
+
+Datum
+double_sqrt(PG_FUNCTION_ARGS)
+{
+	float8		arg1 = PG_GETARG_FLOAT8(0);
+	float8		result;
+
+	if (arg1 < 0)
+		PG_RETURN_NULL();
+
+	if (arg1 >= 1e82)
+	{	
+		ereport(WARNING, (errmsg("Truncated incorrect DECIMAL value.")));
+		arg1 = 1e65;
+	}
+
+	result = sqrt(arg1);
+
+	if (unlikely(isinf(result)) && !isinf(arg1))
+		float_overflow_error();
+	if (unlikely(result == 0.0) && arg1 != 0.0)
+		float_underflow_error();
+
+	PG_RETURN_FLOAT8(result);
+}
+
+Datum
+mys_sleep(PG_FUNCTION_ARGS)
+{
+	float8		secs;
+	bool		interrupted = false;
+
+	if (PG_ARGISNULL(0) ||
+		(secs = PG_GETARG_FLOAT8(0)) < 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("Incorrect arguments to sleep.")));
+
+#define MYS_SLEEP_SECS_MAX ((float8) 18446744073709551616.0 / 1e9)
+
+	if (secs >= MYS_SLEEP_SECS_MAX)
+		PG_RETURN_INT64(0);
+
+	PG_TRY();
+	{
+		DirectFunctionCall1(pg_sleep, Float8GetDatum(secs));
+	}
+	PG_CATCH();
+	{
+		interrupted = true;
+		FlushErrorState();
+	}
+	PG_END_TRY();
+
+	PG_RETURN_INT64(interrupted ? 1 : 0);
 }
 /* End - ReqID: SRS-MYSQL-BUILDFUNCTION */

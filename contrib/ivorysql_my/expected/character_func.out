@@ -4632,3 +4632,323 @@ select truncate('1.7976931348623157E+308', -12);
  Infinity
 (1 row)
 
+-- SQRT
+select sqrt(0);
+ sqrt 
+------
+    0
+(1 row)
+
+select sqrt(null);
+ sqrt 
+------
+     
+(1 row)
+
+select sqrt(4);
+ sqrt 
+------
+    2
+(1 row)
+
+select sqrt(20);
+       sqrt       
+------------------
+ 4.47213595499958
+(1 row)
+
+select sqrt(100);
+ sqrt 
+------
+   10
+(1 row)
+
+select sqrt(-2);
+ sqrt 
+------
+     
+(1 row)
+
+select sqrt(16.0);
+ sqrt 
+------
+    4
+(1 row)
+
+select sqrt(20.5);
+       sqrt        
+-------------------
+ 4.527692569068709
+(1 row)
+
+select sqrt(20.05);
+        sqrt        
+--------------------
+ 4.4777226354476225
+(1 row)
+
+select sqrt(20.005);
+       sqrt        
+-------------------
+ 4.472694937059758
+(1 row)
+
+select sqrt(20.0005);
+       sqrt        
+-------------------
+ 4.472191856349635
+(1 row)
+
+select sqrt(cast(-8 as unsigned)), sqrt(18446744073709551614);
+    sqrt    |    sqrt    
+------------+------------
+ 4294967296 | 4294967296
+(1 row)
+
+select sqrt(1+9);
+        sqrt        
+--------------------
+ 3.1622776601683795
+(1 row)
+
+select sqrt(2<6);
+ sqrt 
+------
+    1
+(1 row)
+
+select sqrt(false);
+ sqrt 
+------
+    0
+(1 row)
+
+select sqrt('10');
+        sqrt        
+--------------------
+ 3.1622776601683795
+(1 row)
+
+select sqrt('123456');
+       sqrt       
+------------------
+ 351.363060095964
+(1 row)
+
+select sqrt('-64');
+ sqrt 
+------
+     
+(1 row)
+
+select sqrt('99.9999');
+       sqrt       
+------------------
+ 9.99999499999875
+(1 row)
+
+select sqrt('abc');
+WARNING:  Truncated incorrect DOUBLE value: 'abc'
+ sqrt 
+------
+    0
+(1 row)
+
+select sqrt('10abc10');
+WARNING:  Truncated incorrect DOUBLE value: '10abc10'
+        sqrt        
+--------------------
+ 3.1622776601683795
+(1 row)
+
+set mysql.use_mysql_bit_literal = on;
+select sqrt(0b1010);
+        sqrt        
+--------------------
+ 3.1622776601683795
+(1 row)
+
+select sqrt(b'10101111');
+        sqrt        
+--------------------
+ 13.228756555322953
+(1 row)
+
+select sqrt(0xabcd);
+        sqrt        
+--------------------
+ 209.71647527078076
+(1 row)
+
+select sqrt(x'abcdef123456');
+        sqrt        
+--------------------
+ 13744124.839110201
+(1 row)
+
+set mysql.use_mysql_bit_literal = off;
+select sqrt(5e60), sqrt(1e65), sqrt(10e64-1),sqrt(1e81);
+          sqrt          |         sqrt          |         sqrt          |         sqrt          
+------------------------+-----------------------+-----------------------+-----------------------
+ 2.2360679774997895e+30 | 3.162277660168379e+32 | 3.162277660168379e+32 | 3.162277660168379e+40
+(1 row)
+
+select sqrt(99999999999999999999999999999999999999999999999999999999999999999999999999999999);
+ sqrt  
+-------
+ 1e+40
+(1 row)
+
+select sqrt(100000000000000000000000000000000000000000000000000000000000000000000000000000000);
+ sqrt  
+-------
+ 1e+40
+(1 row)
+
+select sqrt(999999999999999999999999999999999999999999999999999999999999999999999999999999999);
+         sqrt          
+-----------------------
+ 3.162277660168379e+40
+(1 row)
+
+select sqrt(9999999999999999999999999999999999999999999999999999999999999999999999999999999999);
+WARNING:  Truncated incorrect DECIMAL value.
+         sqrt          
+-----------------------
+ 3.162277660168379e+32
+(1 row)
+
+select sqrt(999.999999999999999999999999999999999999999999999999999999999999999999999999999999);
+        sqrt        
+--------------------
+ 31.622776601683793
+(1 row)
+
+select sqrt(999999.9999999999999999999999999999999999999999999999999999999999999999999999999999);
+ sqrt 
+------
+ 1000
+(1 row)
+
+select sqrt(999999999999999999999999999999999999999999999999999999999999999999999999999999999.9999999999999999999999999999999999999999999999999999999999999);
+         sqrt          
+-----------------------
+ 3.162277660168379e+40
+(1 row)
+
+create table t1(a int);
+insert into t1 values (1),(2),(2147483647);
+create view v1 as select sqrt(a) my_sqrt from t1;
+select my_sqrt from v1 order by my_sqrt;
+      my_sqrt       
+--------------------
+                  1
+ 1.4142135623730951
+ 46340.950001051984
+(3 rows)
+
+drop view v1;
+drop table t1;
+create table t_1(c1 int4, c2 double, c3 decimal(12,5), c4 char(50));
+insert into t_1 values (10000, 24.6789, 8000.00123, '202420252026');
+select * from t_1;
+  c1   |   c2    |     c3     |                         c4                         
+-------+---------+------------+----------------------------------------------------
+ 10000 | 24.6789 | 8000.00123 | 202420252026                                      
+(1 row)
+
+select sqrt(c1), sqrt(c2), sqrt(c3), sqrt(c4) from t_1;
+ sqrt |       sqrt        |       sqrt        |       sqrt        
+------+-------------------+-------------------+-------------------
+  100 | 4.967786227284745 | 89.44272597590036 | 449911.3824143595
+(1 row)
+
+create table type_sqrt as select sqrt(c1) c1, sqrt(c2) c2, sqrt(c3) c3, sqrt(c4) c4 from t_1;
+desc type_sqrt;
+ Field |  Type  | Null | Key | Default | Extra 
+-------+--------+------+-----+---------+-------
+ c1    | double | YES  |     |         | 
+ c2    | double | YES  |     |         | 
+ c3    | double | YES  |     |         | 
+ c4    | double | YES  |     |         | 
+(4 rows)
+
+drop table type_sqrt;
+insert into t_1 values (10000, 25.0, 10.456, 'HIGH GO');
+select * from t_1 where sqrt(c2) = 5;
+  c1   | c2 |    c3    |                         c4                         
+-------+----+----------+----------------------------------------------------
+ 10000 | 25 | 10.45600 | HIGH GO                                           
+(1 row)
+
+drop table t_1;
+-- SLEEP
+select sleep(null);
+ERROR:  Incorrect arguments to sleep.
+select sleep(0);
+ sleep 
+-------
+     0
+(1 row)
+
+select sleep(1);
+ sleep 
+-------
+     0
+(1 row)
+
+select sleep(-10);
+ERROR:  Incorrect arguments to sleep.
+select sleep(1.2);
+ sleep 
+-------
+     0
+(1 row)
+
+select sleep('2');
+ sleep 
+-------
+     0
+(1 row)
+
+select sleep(100 > 50);
+ sleep 
+-------
+     0
+(1 row)
+
+select sleep(false);
+ sleep 
+-------
+     0
+(1 row)
+
+set mysql.use_mysql_bit_literal = on;
+select sleep(0b10);
+ sleep 
+-------
+     0
+(1 row)
+
+select sleep(0x1);
+ sleep 
+-------
+     0
+(1 row)
+
+set mysql.use_mysql_bit_literal = off;
+-- CURRENT_USER
+create table t_current_user as select current_user();
+desc t_current_user;
+    Field     |  Type   | Null | Key | Default | Extra 
+--------------+---------+------+-----+---------+-------
+ current_user | varchar | YES  |     |         | 
+(1 row)
+
+drop table t_current_user;
+select pg_typeof(current_user());
+     pg_typeof     
+-------------------
+ character varying
+(1 row)
+
