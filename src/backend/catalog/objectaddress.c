@@ -95,6 +95,11 @@
 #include "utils/syscache.h"
 #include "utils/ora_compatible.h"
 #include "commands/user.h"
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type.h"
+#include "catalog/pg_object_type_body.h"
+#include "commands/objecttypecmds.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
@@ -666,6 +671,36 @@ static const ObjectPropertyType ObjectProperty[] =
 		false
 	},
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	{
+		"object type",
+		ObjectTypeRelationId,
+		ObjectTypeObjectIndexId,
+		OBJTYPEOID,
+		-1,
+		Anum_pg_object_type_oid,
+		InvalidAttrNumber,
+		Anum_pg_object_type_objnamespace,
+		Anum_pg_object_type_objowner,
+		InvalidAttrNumber,
+		OBJECT_OBJECT_TYPE,
+		false
+	},
+	{
+		"object type body",
+		ObjectTypeBodyRelationId,
+		ObjectTypeBodyObjectIndexId,
+		OBJTYPEBODYOID,
+		-1,
+		Anum_pg_object_type_body_oid,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		OBJECT_OBJECT_TYPE_BODY,
+		false
+	},
+	/* End - ReqID:SRS-SQL-CustomObject */
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
 	{
 		"synonym",
@@ -915,8 +950,18 @@ static const struct object_type_map
 	/* OCLASS_PACKAGE_BODY */
 	{
 		"package body", OBJECT_PACKAGE_BODY
-	}
+	},
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	/* OCLASS_OBJECT_TYPE */
+	{
+		"object type", OBJECT_OBJECT_TYPE
+	},
+	/* OCLASS_OBJECT_TYPE_BODY */
+	{
+		"object type body", OBJECT_OBJECT_TYPE_BODY
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 };
 
 const ObjectAddress InvalidObjectAddress =
@@ -1216,6 +1261,18 @@ get_object_address(ObjectType objtype, Node *object,
 				address.objectSubId = 0;
 				break;
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case OBJECT_OBJECT_TYPE:
+				address.classId = ObjectTypeRelationId;
+				address.objectId = LookupObjectTypeByNames(castNode(List, object), missing_ok);
+				address.objectSubId = 0;
+				break;
+			case OBJECT_OBJECT_TYPE_BODY:
+				address.classId = ObjectTypeBodyRelationId;
+				address.objectId = LookupObjectTypeBodyByNames(castNode(List, object), missing_ok);
+				address.objectSubId = 0;
+				break;
+			/* End - ReqID:SRS-SQL-CustomObject */
 
 			/* Begin - ReqID:SRS-SQL-SYNONYM */
 			case OBJECT_SYNONYM:
@@ -2473,6 +2530,8 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case OBJECT_PACKAGE:
 		case OBJECT_PACKAGE_BODY:
+		case OBJECT_OBJECT_TYPE: /* ReqID:SRS-SQL-CustomObject */
+		case OBJECT_OBJECT_TYPE_BODY: /* ReqID:SRS-SQL-CustomObject */
 		case OBJECT_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 			objnode = (Node *) name;
 			break;
@@ -2738,6 +2797,18 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 							   NameListToString(castNode(List, object)));
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OBJECT_OBJECT_TYPE:
+			if (!pg_object_type_ownercheck(address.objectId, roleid))
+				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
+							   NameListToString(castNode(List, object)));
+			break;
+		case OBJECT_OBJECT_TYPE_BODY:
+			if (!pg_object_type_body_ownercheck(address.objectId, roleid))
+				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
+							   NameListToString(castNode(List, object)));
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		default:
 			elog(ERROR, "unrecognized object type: %d",
 				 (int) objtype);
@@ -4185,6 +4256,30 @@ getObjectDescription(const ObjectAddress *object, bool missing_ok)
 				break;
 			}
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE:
+			{
+				char *schema_name;
+				char *typ_name;
+
+				get_object_type_nameinfo(object->objectId, &typ_name, &schema_name);
+				appendStringInfo(&buffer, _("object type %s.%s"), schema_name, typ_name);
+				pfree(typ_name);
+				pfree(schema_name);
+				break;
+			}
+		case OCLASS_OBJECT_TYPE_BODY:
+			{
+				char *schema_name;
+				char *typ_name;
+
+				get_object_type_nameinfo_bybodyid(object->objectId, &typ_name, &schema_name);
+				appendStringInfo(&buffer, _("object type body %s.%s"), schema_name, typ_name);
+				pfree(typ_name);
+				pfree(schema_name);
+				break;
+			}
+		/* End - ReqID:SRS-SQL-CustomObject */
 
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case OCLASS_SYNONYM:
@@ -4778,6 +4873,14 @@ getObjectTypeDescription(const ObjectAddress *object, bool missing_ok)
 			appendStringInfoString(&buffer, "package body");
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE:
+			appendStringInfoString(&buffer, "object type");
+			break;
+		case OCLASS_OBJECT_TYPE_BODY:
+			appendStringInfoString(&buffer, "object type body");
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case OCLASS_SYNONYM:
@@ -6115,6 +6218,37 @@ getObjectIdentityParts(const ObjectAddress *object,
 			}
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE:
+			{
+				char *schema_name;
+				char *typ_name;
+
+				get_object_type_nameinfo(object->objectId, &typ_name, &schema_name);
+				appendStringInfo(&buffer, "%s.%s", schema_name, typ_name);
+				if (objname)
+					*objname = lappend(list_make1(pstrdup(schema_name)),
+									   list_make1(pstrdup(typ_name)));
+				pfree(schema_name);
+				pfree(typ_name);
+			}
+			break;
+		case OCLASS_OBJECT_TYPE_BODY:
+			{
+				char *schema_name;
+				char *typ_name;
+
+				get_object_type_nameinfo_bybodyid(object->objectId, &typ_name,
+												  &schema_name);
+				appendStringInfo(&buffer, "%s.%s", schema_name, typ_name);
+				if (objname)
+					*objname = lappend(list_make1(pstrdup(schema_name)),
+									   list_make1(pstrdup(typ_name)));
+				pfree(schema_name);
+				pfree(typ_name);
+			}
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case OCLASS_SYNONYM:

@@ -36,7 +36,8 @@ OBJS = \
 	pl_udt_type.o \
 	pl_ora_record.o \
 	pl_udt_exception.o \
-	pl_ora_collection.o
+	pl_ora_collection.o \
+	pl_object_type.o
 
 DATA = plisql.control plisql--1.0.sql
 
@@ -47,7 +48,7 @@ ORA_REGRESS = plisql_array plisql_call plisql_control plisql_copy plisql_domain 
 	plisql_trap plisql_trigger plisql_varprops plisql_nested_subproc \
 	plisql_nested_subproc2 plisql_out_parameter plisql_type_rowtype \
 	plisql_ora_cursor plisql_ora_cursor2 plisql_ora_record plisql_ora_exception \
-	plisql_autonomous_transaction plisql_goto plisql_ora_plsql_unit
+	plisql_autonomous_transaction plisql_goto plisql_ora_plsql_unit plisql_object_type
 # End - BUGM0000301
 
 # where to find ora_gen_keywordlist.pl and subsidiary files

@@ -72,7 +72,8 @@ CATALOG_HEADERS := \
 	pg_collation.h pg_partitioned_table.h pg_range.h pg_transform.h \
 	pg_secmon_rule.h pg_secmon_threshold.h pg_sequence.h \
 	pg_publication.h pg_publication_rel.h pg_subscription.h \
-	pg_subscription_rel.h pg_package.h pg_package_body.h pg_force_view.h \
+	pg_subscription_rel.h pg_package.h pg_package_body.h \
+	pg_object_type.h pg_object_type_body.h pg_force_view.h \
 	pg_object.h pg_mfaid.h \
 	pg_resgroup.h pg_resgroupcapability.h \
 	pg_recyclebin.h pg_synonym.h \

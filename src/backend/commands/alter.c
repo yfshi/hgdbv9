@@ -77,9 +77,17 @@
 #include "mysql_parser/mys_case_sensitive.h"
 #include "parser/pg_object_hook.h"
 /* End - ReqID:SRS-MYSQL-CASE */
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type.h"
+#include "commands/objecttypecmds.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 static Oid	AlterObjectNamespace_internal(Relation rel, Oid objid, Oid nspOid);
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static Oid	AlterObjectTypeNamespace_oid(Oid objid, Oid nspOid,
+										 ObjectAddresses *objsMoved);
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
@@ -762,6 +770,12 @@ AlterObjectNamespace_oid(Oid classId, Oid objid, Oid nspOid,
 			oldNspOid = AlterTypeNamespace_oid(objid, nspOid, objsMoved);
 			break;
 
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE:
+			oldNspOid = AlterObjectTypeNamespace_oid(objid, nspOid, objsMoved);
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
+
 		case OCLASS_PROC:
 		case OCLASS_COLLATION:
 		case OCLASS_CONVERSION:
@@ -817,6 +831,9 @@ AlterObjectNamespace_oid(Oid classId, Oid objid, Oid nspOid,
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case OCLASS_PACKAGE_BODY:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE_BODY:
+		/* End - ReqID:SRS-SRS-SQL-CustomObject */
 			/* ignore object types that don't have schema-qualified names */
 			break;
 
@@ -828,6 +845,83 @@ AlterObjectNamespace_oid(Oid classId, Oid objid, Oid nspOid,
 
 	return oldNspOid;
 }
+
+/* Begin - ReqID:SRS-SRS-SQL-CustomObject */
+/*
+ * Move an object type to a new namespace.
+ *
+ * The user-visible name lives in the underlying pg_type row, while
+ * pg_object_type keeps a cached namespace for object-type lookups and
+ * dependency tracking.  Keep both catalogs in step.
+ */
+static Oid
+AlterObjectTypeNamespace_oid(Oid objid, Oid nspOid, ObjectAddresses *objsMoved)
+{
+	Relation	rel;
+	HeapTuple	tup;
+	Form_pg_object_type objform;
+	Oid			typid;
+	Oid			oldNspOid;
+	ObjectAddress thisobj;
+
+	thisobj.classId = ObjectTypeRelationId;
+	thisobj.objectId = objid;
+	thisobj.objectSubId = 0;
+
+	if (object_address_present(&thisobj, objsMoved))
+		return InvalidOid;
+
+	tup = SearchSysCache1(OBJTYPEOID, ObjectIdGetDatum(objid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for object type %u", objid);
+
+	objform = (Form_pg_object_type) GETSTRUCT(tup);
+	typid = objform->typid;
+	oldNspOid = objform->objnamespace;
+	ReleaseSysCache(tup);
+
+	if (oldNspOid == nspOid)
+	{
+		InvokeObjectPostAlterHook(ObjectTypeRelationId, objid, 0);
+		add_exact_object_address(&thisobj, objsMoved);
+		return oldNspOid;
+	}
+
+	CheckSetNamespace(oldNspOid, nspOid);
+
+	if (!pg_object_type_ownercheck(objid, GetUserId()))
+		aclcheck_error(ACLCHECK_NOT_OWNER, OBJECT_OBJECT_TYPE,
+					   get_object_type_name(objid));
+
+	/*
+	 * Move the underlying composite type first.  This performs type-level
+	 * duplicate-name checks, updates pg_type/pg_class, and records the type
+	 * in objsMoved so extension schema moves do not process it twice.
+	 */
+	AlterTypeNamespace_oid(typid, nspOid, objsMoved);
+
+	rel = table_open(ObjectTypeRelationId, RowExclusiveLock);
+	tup = SearchSysCacheCopy1(OBJTYPEOID, ObjectIdGetDatum(objid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for object type %u", objid);
+
+	objform = (Form_pg_object_type) GETSTRUCT(tup);
+	objform->objnamespace = nspOid;
+	CatalogTupleUpdate(rel, &tup->t_self, tup);
+	heap_freetuple(tup);
+	table_close(rel, RowExclusiveLock);
+
+	if (changeDependencyFor(ObjectTypeRelationId, objid,
+							NamespaceRelationId, oldNspOid, nspOid) != 1)
+		elog(ERROR, "failed to change schema dependency for object type %u",
+			 objid);
+
+	InvokeObjectPostAlterHook(ObjectTypeRelationId, objid, 0);
+	add_exact_object_address(&thisobj, objsMoved);
+
+	return oldNspOid;
+}
+/* End - ReqID:SRS-SRS-SQL-CustomObject */
 
 /*
  * Generic function to change the namespace of a given object, for simple

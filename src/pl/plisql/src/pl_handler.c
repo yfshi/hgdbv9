@@ -51,6 +51,9 @@
 /* End - ReqID:SRS-SQL-PACKAGE */
 
 #include "catalog/dependency.h"
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "pl_object_type.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 static bool plisql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source);
 static void plisql_extra_warnings_assign_hook(const char *newvalue, void *extra);
@@ -366,6 +369,10 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 		func = plisql_get_package_func(fcinfo, false);
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (function_from == FUNC_FROM_OBJECT)
+		func = plisql_get_object_method_func(fcinfo, false);
+	/* End - ReqID:SRS-SQL-CustomObject */
 	else
 		func = plisql_compile(fcinfo, false);
 	/* End - nSRS-PLSQL-SUBPROC */
@@ -487,6 +494,10 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 			/* End - BUG#M000088 */
 		}
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		else if (function_from == FUNC_FROM_OBJECT)
+			release_object_method_usecount(fcinfo);
+		/* End - ReqID:SRS-SQL-CustomObject */
 
 		/* Be sure to release the procedure resowner if any */
 		if (procedure_resowner)

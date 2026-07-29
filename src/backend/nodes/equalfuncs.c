@@ -1782,6 +1782,31 @@ _equalCreatePackageBodyStmt(const CreatePackageBodyStmt *a, const CreatePackageB
 	return true;
 }
 
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static bool
+_equalCreateObjectTypeStmt(const CreateObjectTypeStmt *a,
+						   const CreateObjectTypeStmt *b)
+{
+	COMPARE_SCALAR_FIELD(replace);
+	COMPARE_NODE_FIELD(objname);
+	COMPARE_NODE_FIELD(parentname);
+	COMPARE_STRING_FIELD(objsrc);
+
+	return true;
+}
+
+static bool
+_equalCreateObjectTypeBodyStmt(const CreateObjectTypeBodyStmt *a,
+							   const CreateObjectTypeBodyStmt *b)
+{
+	COMPARE_SCALAR_FIELD(replace);
+	COMPARE_NODE_FIELD(objname);
+	COMPARE_STRING_FIELD(bodysrc);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-CustomObject */
+
 static bool
 _equalAlterPackageStmt(const AlterPackageStmt *a, const AlterPackageStmt *b)
 {
@@ -2986,6 +3011,7 @@ _equalFuncCall(const FuncCall *a, const FuncCall *b)
 	COMPARE_SCALAR_FIELD(agg_distinct);
 	COMPARE_SCALAR_FIELD(func_variadic);
 	COMPARE_COERCIONFORM_FIELD(funcformat);
+	COMPARE_SCALAR_FIELD(is_object_method); /* ReqID:SRS-SQL-CustomObject */
 	COMPARE_LOCATION_FIELD(location);
 	COMPARE_NODE_FIELD(rawargs);	/* BUG#M0000376 */
 	COMPARE_SCALAR_FIELD(ignore_nulls); /* OA-REQ-2348 */
@@ -4316,6 +4342,14 @@ equal(const void *a, const void *b)
 		case T_CreatePackageBodyStmt:
 			retval = _equalCreatePackageBodyStmt(a, b);
 			break;
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case T_CreateObjectTypeStmt:
+			retval = _equalCreateObjectTypeStmt(a, b);
+			break;
+		case T_CreateObjectTypeBodyStmt:
+			retval = _equalCreateObjectTypeBodyStmt(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case T_AlterPackageStmt:
 			retval = _equalAlterPackageStmt(a, b);
 			break;

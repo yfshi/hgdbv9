@@ -26,6 +26,9 @@
 /* End - ReqID:SRS-SQL-PACKAGE */
 #include "parser/parse_package.h" /* OA#00002227 */
 #include "fmgr.h"
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "parser/parse_func.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*-------------------------------------------------------------------------
  *	Support to ease writing Functions returning composite types
@@ -157,6 +160,11 @@ typedef enum TypeFuncClass
 	TYPEFUNC_OTHER				/* bogus type, eg pseudotype */
 } TypeFuncClass;
 
+/* Begin - ReqID:SRS-SQL-CustomObject */
+typedef struct ObjectTypeSpec ObjectTypeSpec;
+typedef struct ObjectTypeBody ObjectTypeBody;
+/* End - ReqID:SRS-SQL-CustomObject */
+
 /* Begin - SRS-PLSQL-SUBPROC*/
 /*
  * function come from subproc
@@ -178,6 +186,30 @@ typedef struct
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	void (*package_validator) (Oid objectId, bool is_body);
 	PackageCacheItem*  (*package_handle) (Oid objectId, bool is_body);
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	void *(*object_type_handle) (Oid objectId, bool is_body);
+	void (*object_type_validator) (Oid objectId, bool is_body);
+	ObjectTypeSpec *(*object_type_parse_spec) (const char *type_name,
+											 const char *objsrc);
+	ObjectTypeBody *(*object_type_parse_body) (const char *type_name,
+											 const char *bodysrc);
+	FuncDetailCode (*object_type_lookup) (ParseState *pstate,
+										  void *object_source,
+										  const char *method_name,
+										  List **fargs,
+										  bool proc_call,
+										  List *fargnames,
+										  int nargs,
+										  Oid *argtypes,
+										  Oid *funcid,
+										  Oid *rettype,
+										  bool *retset,
+										  int *nvargs,
+										  Oid *vatype,
+										  Oid **true_typeids,
+										  List **argdefaults,
+										  bool has_udt_type);
+	/* End - ReqID:SRS-SQL-CustomObject */
 	void* (*package_parse) (ParseState *pstate,
 							PackageCacheItem *item,
 							List *names,

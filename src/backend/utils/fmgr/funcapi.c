@@ -45,7 +45,9 @@
 #include "access/table.h"
 #include "catalog/indexing.h"
 /* End - ReqID:SRS-PLSQL-TYPE */
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "utils/objecttypecache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 typedef struct polymorphic_actuals
 {
@@ -55,11 +57,7 @@ typedef struct polymorphic_actuals
 	Oid			anymultirange_type; /* anymultirange mapping, if known */
 } polymorphic_actuals;
 
-/* Begin - SRS-PLSQL-SUBPROC */
-PLiSQL_funcs_call plisql_internal_funcs = {NULL, NULL, NULL, NULL, NULL,
-NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-NULL, NULL, NULL, NULL, NULL, false}; /* ReqID:SRS-SQL-PACKAGE */
-/* End - SRS-PLSQL-SUBPROC */
+PLiSQL_funcs_call plisql_internal_funcs = {0}; /* ReqID:SRS-SQL-CustomObject */
 
 /* Begin - ReqID:SRS-PLSQL-CURSOR */
 orarefcursor_funcs_call orarefcursor_funcs = {NULL, NULL, NULL, NULL, NULL, UNLOADED};
@@ -1827,6 +1825,10 @@ get_internal_function_name(FuncExpr *fexpr)
 	if (FUNC_EXPR_FROM_PACKAGE(fexpr->function_from))
 		set_pkginfo_from_funcexpr(fexpr);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (FUNC_EXPR_FROM_OBJECT(fexpr->function_from))
+		set_objectinfo_from_funcexpr(fexpr);
+	/* End - ReqID:SRS-SQL-CustomObject */
 
 	return plisql_internal_funcs.get_internal_func_name(fexpr);
 }
@@ -1846,6 +1848,10 @@ get_internal_function_result_type(FuncExpr *fexpr,
 	if (FUNC_EXPR_FROM_PACKAGE(fexpr->function_from))
 		set_pkginfo_from_funcexpr(fexpr);
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (FUNC_EXPR_FROM_OBJECT(fexpr->function_from))
+		set_objectinfo_from_funcexpr(fexpr);
+	/* End - ReqID:SRS-SQL-CustomObject */
 
 	return plisql_internal_funcs.get_internal_func_result_type(fexpr,
 												NULL,
@@ -2930,6 +2936,10 @@ get_subproc_parallel_enable(FuncExpr *funcexpr)
 
 	if (FUNC_EXPR_FROM_PACKAGE(funcexpr->function_from))
 		set_pkginfo_from_funcexpr(funcexpr);
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (FUNC_EXPR_FROM_OBJECT(funcexpr->function_from))
+		set_objectinfo_from_funcexpr(funcexpr);
+	/* End - ReqID:SRS-SQL-CustomObject */
 
 	return plisql_internal_funcs.get_subproc_parallel_enable(funcexpr);
 }
@@ -2946,6 +2956,10 @@ get_subproc_deterministic(FuncExpr *funcexpr)
 
 	if (FUNC_EXPR_FROM_PACKAGE(funcexpr->function_from))
 		set_pkginfo_from_funcexpr(funcexpr);
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (FUNC_EXPR_FROM_OBJECT(funcexpr->function_from))
+		set_objectinfo_from_funcexpr(funcexpr);
+	/* End - ReqID:SRS-SQL-CustomObject */
 
 	return plisql_internal_funcs.get_subproc_deterministic(funcexpr);
 }

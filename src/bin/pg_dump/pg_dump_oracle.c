@@ -178,6 +178,10 @@ static void dumpFunc(Archive *fout, const FuncInfo *finfo);
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 static void dumpPackage(Archive *fout, const PkgInfo *pkginfo);
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static void dumpObjectType(Archive *fout, const ObjTypeInfo *objtypeinfo);
+static void dumpObjectTypeBody(Archive *fout, const ObjTypeBodyInfo *objtypebodyinfo);
+/* End - ReqID:SRS-SQL-CustomObject */
 static void dumpSynonym(Archive *fout, const SynInfo *syninfo);	/* ReqID:SRS-SQL-SYNONYM */
 static void dumpCast(Archive *fout, const CastInfo *cast);
 static void dumpTransform(Archive *fout, const TransformInfo *transform);
@@ -4633,6 +4637,14 @@ getTypes(Archive *fout, int *numTypes)
 						  initracl_subquery->data,
 						  username_subquery);
 
+		/*
+		 * Exclude composite types that are Oracle object types;
+		 * they will be dumped separately as Oracle object types.
+		 */
+		appendPQExpBufferStr(query,
+			" WHERE t.typtype != 'c' OR NOT EXISTS "
+			"(SELECT 1 FROM pg_catalog.pg_object_type ot WHERE ot.typid = t.oid)");
+
 		destroyPQExpBuffer(acl_subquery);
 		destroyPQExpBuffer(racl_subquery);
 		destroyPQExpBuffer(initacl_subquery);
@@ -5937,6 +5949,160 @@ getPackages(Archive *fout, int *numPkgs)
 }
 
 /* End - ReqID:SRS-SQL-PACKAGE */
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+/*
+ * getObjectTypes
+ *    Read Oracle object type specifications and type bodies.
+ */
+static void
+getObjectTypes(Archive *fout, int *numObjTypes, int *numObjTypeBodies)
+{
+	PGresult   *res;
+	int			ntups;
+	int			i;
+	PQExpBuffer query;
+	ObjTypeInfo   *objtypeinfo;
+	ObjTypeBodyInfo *objtypebodyinfo;
+	int			i_tableoid;
+	int			i_oid;
+	int			i_typid;
+	int			i_parenttypid;
+	int			i_is_final;
+	int			i_objsrc;
+	int			i_objnamespace;
+	int			i_rolname;
+	int			i_typname;
+	int			i_parentnspname;
+	int			i_parenttypname;
+	int			i_objtypoid;
+	int			i_bodysrc;
+
+	/* Query object type specifications */
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query,
+		"SELECT ot.tableoid, ot.oid, ot.typid, ot.parenttypid, "
+		"ot.is_final, ot.objsrc, ot.objnamespace, "
+		"(%s ot.objowner) AS rolname, "
+		"t.typname, pn.nspname AS parentnspname, "
+		"pt.typname AS parenttypname "
+		"FROM pg_catalog.pg_object_type ot "
+		"JOIN pg_catalog.pg_type t ON t.oid = ot.typid "
+		"LEFT JOIN pg_catalog.pg_type pt ON pt.oid = ot.parenttypid "
+		"LEFT JOIN pg_catalog.pg_namespace pn ON pn.oid = pt.typnamespace "
+		"WHERE ot.objnamespace != "
+		"(SELECT oid FROM pg_catalog.pg_namespace "
+		"WHERE nspname = 'pg_catalog')",
+		username_subquery);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	ntups = PQntuples(res);
+	*numObjTypes = ntups;
+
+	objtypeinfo = (ObjTypeInfo *) pg_malloc0(ntups * sizeof(ObjTypeInfo));
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_typid = PQfnumber(res, "typid");
+	i_parenttypid = PQfnumber(res, "parenttypid");
+	i_is_final = PQfnumber(res, "is_final");
+	i_objsrc = PQfnumber(res, "objsrc");
+	i_objnamespace = PQfnumber(res, "objnamespace");
+	i_rolname = PQfnumber(res, "rolname");
+	i_typname = PQfnumber(res, "typname");
+	i_parentnspname = PQfnumber(res, "parentnspname");
+	i_parenttypname = PQfnumber(res, "parenttypname");
+
+	for (i = 0; i < ntups; i++)
+	{
+		objtypeinfo[i].dobj.objType = DO_OBJECT_TYPE_SPEC;
+		objtypeinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+		objtypeinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+		AssignDumpId(&objtypeinfo[i].dobj);
+		objtypeinfo[i].dobj.name = pg_strdup(PQgetvalue(res, i, i_typname));
+		objtypeinfo[i].dobj.namespace =
+			findNamespace(atooid(PQgetvalue(res, i, i_objnamespace)));
+		objtypeinfo[i].rolname = pg_strdup(PQgetvalue(res, i, i_rolname));
+		objtypeinfo[i].objsrc = pg_strdup(PQgetvalue(res, i, i_objsrc));
+		objtypeinfo[i].parentnspname =
+			pg_strdup(PQgetvalue(res, i, i_parentnspname));
+		objtypeinfo[i].parenttypname =
+			pg_strdup(PQgetvalue(res, i, i_parenttypname));
+		objtypeinfo[i].typid = atooid(PQgetvalue(res, i, i_typid));
+		objtypeinfo[i].parenttypid = atooid(PQgetvalue(res, i, i_parenttypid));
+		objtypeinfo[i].is_final = (PQgetvalue(res, i, i_is_final)[0] == 't');
+
+		selectDumpableObject(&(objtypeinfo[i].dobj), fout);
+
+		if (strlen(objtypeinfo[i].rolname) == 0)
+			pg_log_warning("WARNING: owner of object type \"%s\" appears to be invalid\n",
+					  objtypeinfo[i].dobj.name);
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+
+	/* Query object type bodies */
+	query = createPQExpBuffer();
+
+	appendPQExpBuffer(query,
+		"SELECT b.tableoid, b.oid, b.objtypoid, b.bodysrc, "
+		"ot.objnamespace, "
+		"(%s ot.objowner) AS rolname, "
+		"t.typname "
+		"FROM pg_catalog.pg_object_type_body b "
+		"JOIN pg_catalog.pg_object_type ot ON ot.oid = b.objtypoid "
+		"JOIN pg_catalog.pg_type t ON t.oid = ot.typid",
+		username_subquery);
+
+	res = ExecuteSqlQuery(fout, query->data, PGRES_TUPLES_OK);
+
+	ntups = PQntuples(res);
+	*numObjTypeBodies = ntups;
+
+	objtypebodyinfo = (ObjTypeBodyInfo *) pg_malloc0(ntups * sizeof(ObjTypeBodyInfo));
+
+	i_tableoid = PQfnumber(res, "tableoid");
+	i_oid = PQfnumber(res, "oid");
+	i_objtypoid = PQfnumber(res, "objtypoid");
+	i_bodysrc = PQfnumber(res, "bodysrc");
+	i_objnamespace = PQfnumber(res, "objnamespace");
+	i_rolname = PQfnumber(res, "rolname");
+	i_typname = PQfnumber(res, "typname");
+
+	for (i = 0; i < ntups; i++)
+	{
+		char		namebuf[NAMEDATALEN + 8];
+
+		objtypebodyinfo[i].dobj.objType = DO_OBJECT_TYPE_BODY;
+		objtypebodyinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
+		objtypebodyinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
+		AssignDumpId(&objtypebodyinfo[i].dobj);
+		objtypebodyinfo[i].objtypoid =
+			atooid(PQgetvalue(res, i, i_objtypoid));
+		objtypebodyinfo[i].dobj.namespace =
+			findNamespace(atooid(PQgetvalue(res, i, i_objnamespace)));
+		objtypebodyinfo[i].rolname = pg_strdup(PQgetvalue(res, i, i_rolname));
+		objtypebodyinfo[i].typname = pg_strdup(PQgetvalue(res, i, i_typname));
+		objtypebodyinfo[i].bodysrc = pg_strdup(PQgetvalue(res, i, i_bodysrc));
+		snprintf(namebuf, sizeof(namebuf), "%s BODY",
+				 PQgetvalue(res, i, i_typname));
+		objtypebodyinfo[i].dobj.name = pg_strdup(namebuf);
+
+		selectDumpableObject(&(objtypebodyinfo[i].dobj), fout);
+
+		if (strlen(objtypebodyinfo[i].rolname) == 0)
+			pg_log_warning("WARNING: owner of object type body \"%s\" appears to be invalid\n",
+					  objtypebodyinfo[i].dobj.name);
+	}
+
+	PQclear(res);
+	destroyPQExpBuffer(query);
+}
+/* End - ReqID:SRS-SQL-CustomObject */
+
 /* Begin BUG#Z378 */
 static char *
 reloptions_on_commit_parse(char *reloptions, char **on_commit)
@@ -10947,6 +11113,14 @@ dumpDumpableObjectOracle(Archive *fout, const DumpableObject *dobj)
 			dumpPackage(fout, (const PkgInfo *) dobj);
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case DO_OBJECT_TYPE_SPEC:
+			dumpObjectType(fout, (const ObjTypeInfo *) dobj);
+			break;
+		case DO_OBJECT_TYPE_BODY:
+			dumpObjectTypeBody(fout, (const ObjTypeBodyInfo *) dobj);
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case DO_SYN:
 			dumpSynonym(fout, (const SynInfo *) dobj);
@@ -12947,6 +13121,146 @@ dumpPackage(Archive *fout, const PkgInfo *pkginfo)
 	destroyPQExpBuffer(package_identifier);
 }
 /* End - ReqID:SRS-SQL-PACKAGE */
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+/*
+ * dumpObjectType
+ *    Dump an Oracle object type specification.
+ *    Generates CREATE TYPE ... AS OBJECT ( ... ) [NOT] FINAL;
+ *    with optional UNDER clause for inheritance.
+ */
+static void
+dumpObjectType(Archive *fout, const ObjTypeInfo *objtypeinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer q = createPQExpBuffer();
+	PQExpBuffer delq = createPQExpBuffer();
+	char	   *qtypname;
+	char	   *qualtypname;
+	char	   *parentname = NULL;
+
+	if (!objtypeinfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	qtypname = pg_strdup(fmtId(objtypeinfo->dobj.name));
+	qualtypname = pg_strdup(fmtQualifiedDumpable(objtypeinfo));
+
+	/* Format the parent type name if using inheritance. */
+	if (OidIsValid(objtypeinfo->parenttypid))
+		parentname = pg_strdup(fmtQualifiedId(objtypeinfo->parentnspname,
+										 objtypeinfo->parenttypname));
+
+	/*
+	 * objsrc already contains the attribute list, including its parentheses,
+	 * and the optional FINAL/NOT FINAL clause.  Preserve it verbatim.
+	 */
+	if (parentname != NULL)
+		appendPQExpBuffer(q, "CREATE TYPE %s UNDER %s AS OBJECT%s;\n",
+						  qualtypname, parentname, objtypeinfo->objsrc);
+	else
+		appendPQExpBuffer(q, "CREATE TYPE %s AS OBJECT%s;\n",
+						  qualtypname, objtypeinfo->objsrc);
+
+	/* Add slash terminator for Oracle mode */
+	if (((ArchiveHandle *) fout)->format == archNull && db_mode == DB_ORACLE)
+		appendPQExpBufferStr(q, "/\n");
+
+	/* Dropping the underlying type with CASCADE removes the object type too. */
+	appendPQExpBuffer(delq, "DROP TYPE %s CASCADE;\n", qualtypname);
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_extension_member(q, &objtypeinfo->dobj,
+										"TYPE", qtypname,
+										objtypeinfo->dobj.namespace->dobj.name);
+
+	if (objtypeinfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
+		ArchiveEntry(fout, objtypeinfo->dobj.catId, objtypeinfo->dobj.dumpId,
+					 ARCHIVE_OPTS(.tag = qtypname,
+								  .namespace = objtypeinfo->dobj.namespace->dobj.name,
+								  .owner = objtypeinfo->rolname,
+								  .description = "OBJECT TYPE",
+								  .section = SECTION_PRE_DATA,
+								  .createStmt = q->data,
+								  .dropStmt = delq->data));
+
+	if (objtypeinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
+		dumpComment(fout, "TYPE", qtypname,
+					objtypeinfo->dobj.namespace->dobj.name, objtypeinfo->rolname,
+					objtypeinfo->dobj.catId, 0, objtypeinfo->dobj.dumpId);
+
+	if (objtypeinfo->dobj.dump & DUMP_COMPONENT_SECLABEL)
+		dumpSecLabel(fout, "TYPE", qtypname,
+					 objtypeinfo->dobj.namespace->dobj.name, objtypeinfo->rolname,
+					 objtypeinfo->dobj.catId, 0, objtypeinfo->dobj.dumpId);
+
+	if (parentname)
+		free(parentname);
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+	free(qtypname);
+	free(qualtypname);
+}
+
+/*
+ * dumpObjectTypeBody
+ *    Dump an Oracle object type body.
+ *    Generates CREATE TYPE BODY ... AS ... END;
+ */
+static void
+dumpObjectTypeBody(Archive *fout, const ObjTypeBodyInfo *objtypebodyinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer q = createPQExpBuffer();
+	char	   *qtypname;
+	char	   *qualtypname;
+
+	if (!objtypebodyinfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	qtypname = pg_strdup(fmtId(objtypebodyinfo->typname));
+	qualtypname = pg_strdup(fmtQualifiedId(
+		objtypebodyinfo->dobj.namespace->dobj.name,
+		objtypebodyinfo->typname));
+
+	/* bodysrc already includes the final END, but not its terminator. */
+	appendPQExpBuffer(q, "CREATE TYPE BODY %s AS\n%s;\n",
+					  qualtypname, objtypebodyinfo->bodysrc);
+
+	/* Add slash terminator for Oracle mode */
+	if (((ArchiveHandle *) fout)->format == archNull && db_mode == DB_ORACLE)
+		appendPQExpBufferStr(q, "/\n");
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_extension_member(q, &objtypebodyinfo->dobj,
+										"TYPE", qtypname,
+										objtypebodyinfo->dobj.namespace->dobj.name);
+
+	if (objtypebodyinfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
+		ArchiveEntry(fout, objtypebodyinfo->dobj.catId, objtypebodyinfo->dobj.dumpId,
+					 ARCHIVE_OPTS(.tag = qtypname,
+								  .namespace = objtypebodyinfo->dobj.namespace->dobj.name,
+								  .owner = objtypebodyinfo->rolname,
+								  .description = "OBJECT TYPE BODY",
+								  .section = SECTION_PRE_DATA,
+								  .createStmt = q->data));
+
+	if (objtypebodyinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
+		dumpComment(fout, "TYPE", qtypname,
+					objtypebodyinfo->dobj.namespace->dobj.name,
+					objtypebodyinfo->rolname,
+					objtypebodyinfo->dobj.catId, 0, objtypebodyinfo->dobj.dumpId);
+
+	if (objtypebodyinfo->dobj.dump & DUMP_COMPONENT_SECLABEL)
+		dumpSecLabel(fout, "TYPE", qtypname,
+					 objtypebodyinfo->dobj.namespace->dobj.name,
+					 objtypebodyinfo->rolname,
+					 objtypebodyinfo->dobj.catId, 0, objtypebodyinfo->dobj.dumpId);
+
+	destroyPQExpBuffer(q);
+	free(qtypname);
+	free(qualtypname);
+}
+/* End - ReqID:SRS-SQL-CustomObject */
 
 
 /*
@@ -20406,6 +20720,10 @@ addBoundaryDependenciesOracle(DumpableObject **dobjs, int numObjs,
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			case DO_PACKAGE:
 			/* End - ReqID:SRS-SQL-PACKAGE */
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case DO_OBJECT_TYPE_SPEC:
+			case DO_OBJECT_TYPE_BODY:
+			/* End - ReqID:SRS-SQL-CustomObject */
 			case DO_SYN:	/* ReqID:SRS-SQL-SYNONYM */
 			case DO_FUNC:
 			case DO_AGG:
@@ -20775,6 +21093,14 @@ getSchemaDataOracle(Archive *fout, int *numTablesPtr)
 	}
 	/* End- BUG#M229 */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	if (DB_ORACLE == database_mode)
+	{
+		pg_log_info("reading object types");
+		getObjectTypes(fout, &numObjTypes, &numObjTypeBodies);
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
 	if (DB_ORACLE == database_mode)

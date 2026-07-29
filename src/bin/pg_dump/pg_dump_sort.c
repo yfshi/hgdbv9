@@ -72,6 +72,9 @@ enum dbObjectTypePriorities
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PRIO_PACKAGE,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	PRIO_OBJECT_TYPE,
+	/* End - ReqID:SRS-SQL-CustomObject */
 	PRIO_SYNONYM,	/* ReqID:SRS-SQL-SYNONYM */
 	PRIO_FUNC,
 	PRIO_AGG,
@@ -121,6 +124,10 @@ static const int dbObjectTypePriority[] =
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PRIO_PACKAGE,				/* DO_PACKAGE */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	PRIO_OBJECT_TYPE,			/* DO_OBJECT_TYPE_SPEC */
+	PRIO_OBJECT_TYPE,			/* DO_OBJECT_TYPE_BODY */
+	/* End - ReqID:SRS-SQL-CustomObject */
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
 	PRIO_SYNONYM,				/* DO_SYN */
 	/* End - ReqID:SRS-SQL-SYNONYM */
@@ -1710,6 +1717,18 @@ describeDumpableObject(DumpableObject *obj, char *buf, int bufsize)
 					 "SHELL TYPE %s  (ID %d OID %u)",
 					 obj->name, obj->dumpId, obj->catId.oid);
 			return;
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case DO_OBJECT_TYPE_SPEC:
+			snprintf(buf, bufsize,
+					 "OBJECT TYPE %s  (ID %d OID %u)",
+					 obj->name, obj->dumpId, obj->catId.oid);
+			return;
+		case DO_OBJECT_TYPE_BODY:
+			snprintf(buf, bufsize,
+					 "OBJECT TYPE BODY %s  (ID %d OID %u)",
+					 obj->name, obj->dumpId, obj->catId.oid);
+			return;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case DO_PACKAGE:
 			snprintf(buf, bufsize,

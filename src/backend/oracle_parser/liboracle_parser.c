@@ -57,6 +57,17 @@ typedef struct pgssLocationLen
 	int			length;			/* length in bytes, or -1 to ignore */
 } pgssLocationLen;
 
+/* Begin - ReqID:SRS-SQL-CustomObject */
+ora_core_yyscan_t
+ora_scanner_init_with_ora_keywords(const char *str,
+								   ora_core_yy_extra_type *yyext)
+{
+	return ora_scanner_init(str, yyext,
+							&OraScanKeywords,
+							OraScanKeywordTokens);
+}
+/* End - ReqID:SRS-SQL-CustomObject */
+
 /*
  * Working state for computing a query jumble and producing a normalized
  * query string
@@ -365,6 +376,19 @@ internal_yylex(ora_core_yyscan_t yyscanner, YYLTYPE *llocp, TokenAuxData *auxdat
 	/* get token from cache arrays */
 	if (yyextra->loc_pushback < yyextra->num_pushbacks)
 	{
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		/*
+		 * When a token comes from our pushback cache, ora_core_yylex() is not
+		 * called and therefore won't restore the current token's trailing byte.
+		 * Put it back here so body-source captures keep the scan buffer intact.
+		 *
+		 * Keep lookahead_end in place: ora_base_yylex() may still need it to
+		 * re-truncate the current token after this cached lookahead is handled.
+		 */
+		if (yyextra->lookahead_end)
+			*(yyextra->lookahead_end) = yyextra->lookahead_hold_char;
+		/* End - ReqID:SRS-SQL-CustomObject */
+
 		token = yyextra->pushback_token[yyextra->loc_pushback];
 		*auxdata = yyextra->pushback_auxdata[yyextra->loc_pushback];
 		yyextra->loc_pushback++;
@@ -667,8 +691,42 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 		cur_token = SCONST;
 	}
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	else if (yyextra->body_style == OraBody_OBJECTTYPE &&
+			 cur_token != SCONST)
+	{
+		int beginpos = yyextra->body_start;
+		int parenlevel = 0;
+		bool seen_open = false;
+
+		while (cur_token != 0)
+		{
+			if (beginpos < 0)
+				beginpos = *llocp;
+
+			if (cur_token == '(')
+			{
+				parenlevel++;
+				seen_open = true;
+			}
+			else if (cur_token == ')' && seen_open)
+			{
+				parenlevel--;
+				if (parenlevel == 0)
+					break;
+			}
+
+			cur_token = internal_yylex(yyscanner, llocp, &aux1);
+		}
+
+		lvalp->core_yystype.str = pstrdup(yyextra->core_yy_extra.scanbuf + beginpos);
+		*llocp = beginpos;
+		cur_token = SCONST;
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 	else if ((yyextra->body_style == OraBody_PACKAGE ||
-		yyextra->body_style == OraBody_PACKAGEBODY) &&
+			  yyextra->body_style == OraBody_PACKAGEBODY ||
+			  yyextra->body_style == OraBody_OBJECTTYPEBODY) &&
 			cur_token != SCONST)
 	{
 		int beginpos = yyextra->body_start;
@@ -681,7 +739,8 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			if (beginpos < 0)
 				beginpos = *llocp;
 
-			if (yyextra->body_style == OraBody_PACKAGEBODY &&
+			if ((yyextra->body_style == OraBody_PACKAGEBODY ||
+				 yyextra->body_style == OraBody_OBJECTTYPEBODY) &&
 				(cur_token == FUNCTION || cur_token == PROCEDURE))
 			{
 				while(true)
@@ -757,7 +816,8 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 					/*
 					 * there, maybe package body has init block
 					 */
-					if (yyextra->body_style == OraBody_PACKAGEBODY &&
+					if ((yyextra->body_style == OraBody_PACKAGEBODY ||
+						 yyextra->body_style == OraBody_OBJECTTYPEBODY) &&
 						blocklevel == 0)
 					{
 						if (sub_proc_level > 0)

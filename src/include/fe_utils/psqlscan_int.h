@@ -301,7 +301,7 @@ typedef struct PsqlScanStateData
 	 * definitions, so that semicolons do not send query too early.
 	 */
 	int			identifier_count;	/* identifiers since start of statement */
-	char		identifiers[4]; /* records the first few identifiers */
+	char		identifiers[5]; /* records the first few identifiers */ /* ReqID:SRS-SQL-CustomObject */
 	int			begin_depth;	/* depth of begin/end pairs */
 
 	/* Begin - ReqID:SRS-SQL-PROC */

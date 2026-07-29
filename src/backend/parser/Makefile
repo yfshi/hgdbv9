@@ -39,7 +39,8 @@ OBJS = \
 	pg_object_hook.o \
 	parse_connectby.o \
 	../mysql_parser/mys_set_hook.o \
-	parse_multitable_insert.o
+	parse_multitable_insert.o \
+	parse_object_type.o
 
 include $(top_srcdir)/src/backend/common.mk
 

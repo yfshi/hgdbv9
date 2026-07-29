@@ -472,6 +472,10 @@ typedef enum NodeTag
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	T_CreatePackageStmt,
 	T_CreatePackageBodyStmt,
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	T_CreateObjectTypeStmt,
+	T_CreateObjectTypeBodyStmt,
+	/* End - ReqID:SRS-SQL-CustomObject */
 	T_AlterPackageStmt,
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	/* Begin - ReqID:SRS-SQL-SYNONYM */

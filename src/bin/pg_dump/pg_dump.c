@@ -202,6 +202,10 @@ int	numTypes;
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 int	numPkgs;
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+int	numObjTypes;
+int	numObjTypeBodies;
+/* End - ReqID:SRS-SQL-CustomObject */
 int	numFuncs;
 int numSyns;	/* ReqID:SRS-SQL-SYNONYM */
 int	numOperators;

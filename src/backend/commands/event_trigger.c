@@ -967,6 +967,10 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_PACKAGE:
 		case OBJECT_PACKAGE_BODY:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OBJECT_OBJECT_TYPE:
+		case OBJECT_OBJECT_TYPE_BODY:
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case OBJECT_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 		case OBJECT_INDEX:
 		case OBJECT_LANGUAGE:
@@ -1062,6 +1066,10 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_PACKAGE:
 		case OCLASS_PACKAGE_BODY:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE:
+		case OCLASS_OBJECT_TYPE_BODY:
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case OCLASS_SYNONYM:	/* ReqID:SRS-SQL-SYNONYM */
 			return true;
 
@@ -2113,6 +2121,12 @@ stringify_grant_objtype(ObjectType objtype)
 		case OBJECT_PACKAGE_BODY:
 			return "PACKAGE BODY";
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OBJECT_OBJECT_TYPE:
+			return "OBJECT TYPE";
+		case OBJECT_OBJECT_TYPE_BODY:
+			return "OBJECT TYPE BODY";
+		/* End - ReqID:SRS-SQL-CustomObject */
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case OBJECT_SYNONYM:
 			return "synonym";
@@ -2205,6 +2219,12 @@ stringify_adefprivs_objtype(ObjectType objtype)
 		case OBJECT_PACKAGE_BODY:
 			return "PACKAGE BODY";
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OBJECT_OBJECT_TYPE:
+			return "OBJECT TYPE";
+		case OBJECT_OBJECT_TYPE_BODY:
+			return "OBJECT TYPE BODY";
+		/* End - ReqID:SRS-SQL-CustomObject */
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case OBJECT_SYNONYM:
 			return "synonym";

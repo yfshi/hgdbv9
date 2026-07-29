@@ -1297,6 +1297,9 @@ typedef struct PLiSQL_function
 	int			plsql_unit_type_varno;
 	int			plsql_line_varno;
 	/* End - ReqID: OA-2124 */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	bool		fn_is_object_constructor;
+	/* End - ReqID:SRS-SQL-CustomObject */
 } PLiSQL_function;
 
 /* Begin - SRS-PLSQL-SUBPROC */

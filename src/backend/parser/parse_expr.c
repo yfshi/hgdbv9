@@ -61,7 +61,10 @@
 /* Begin - ReqID:SRS-MYSQL-SQL-Select */
 #include "rewrite/rewriteManip.h"
 /* End - ReqID:SRS-MYSQL-SQL-Select */
-
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type.h"
+#include "utils/syscache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 
 /* GUC parameters */
@@ -122,6 +125,10 @@ static Node *transformWholeRowRef(ParseState *pstate,
 static Node *transformIndirection(ParseState *pstate, A_Indirection *ind);
 static Node *transformTypeCast(ParseState *pstate, TypeCast *tc);
 static Node *transformCollateClause(ParseState *pstate, CollateClause *c);
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static bool is_object_type_typid(Oid typid);
+static bool object_type_is_subtype_of(Oid subtypeTypid, Oid targetTypid);
+/* End - ReqID:SRS-SQL-CustomObject */
 static Node *make_row_comparison_op(ParseState *pstate, List *opname,
 									List *largs, List *rargs, int location);
 static Node *make_row_distinct_op(ParseState *pstate, List *opname,
@@ -2281,6 +2288,32 @@ transformColumnRef(ParseState *pstate, ColumnRef *cref)
 	return transformColumnRefInternal(pstate, cref, false);
 }
 /* End - ReqID:SRS-SQL-PROC */
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+Node *
+TryTransformColumnRef(ParseState *pstate, List *fields)
+{
+	ColumnRef  *cref = makeNode(ColumnRef);
+	ParseExprKind save_expr_kind = pstate->p_expr_kind;
+	Node	   *result;
+
+	if (pstate->p_expr_kind == EXPR_KIND_COLUMN_DEFAULT ||
+		pstate->p_expr_kind == EXPR_KIND_PARTITION_BOUND)
+		return NULL;
+
+	cref->fields = copyObject(fields);
+	cref->location = -1;
+	cref->has_outer_join = false;
+
+	if (pstate->p_expr_kind == EXPR_KIND_NONE)
+		pstate->p_expr_kind = EXPR_KIND_OTHER;
+
+	result = transformColumnRefInternal(pstate, cref, true);
+	pstate->p_expr_kind = save_expr_kind;
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 /*
@@ -5327,16 +5360,96 @@ transformTypeCast(ParseState *pstate, TypeCast *tc)
 								   COERCION_EXPLICIT,
 								   COERCE_EXPLICIT_CAST,
 								   location);
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	if (result == NULL &&
+		ORA_MODE == compatible_mode &&
+		object_type_is_subtype_of(inputType, targetType))
+	{
+		ConvertRowtypeExpr *r = makeNode(ConvertRowtypeExpr);
+
+		r->arg = (Expr *) expr;
+		r->resulttype = targetType;
+		r->convertformat = COERCE_EXPLICIT_CAST;
+		r->location = location;
+		result = (Node *) r;
+	}
 	if (result == NULL)
+	{
+		if (ORA_MODE == compatible_mode &&
+			is_object_type_typid(inputType) &&
+			is_object_type_typid(targetType))
+			ereport(ERROR,
+					(errcode(ERRCODE_CANNOT_COERCE),
+					 errmsg("object type %s is not in the parent type chain of %s",
+							format_type_be(targetType),
+							format_type_be(inputType)),
+					 parser_coercion_errposition(pstate, location, expr)));
+
 		ereport(ERROR,
 				(errcode(ERRCODE_CANNOT_COERCE),
 				 errmsg("cannot cast type %s to %s",
 						format_type_be(inputType),
 						format_type_be(targetType)),
 				 parser_coercion_errposition(pstate, location, expr)));
+	}
+	/* End - ReqID:SRS-SQL-CustomObject */
 
 	return result;
 }
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static bool
+is_object_type_typid(Oid typid)
+{
+	return OidIsValid(GetSysCacheOid1(OBJTYPETYPOID,
+									  Anum_pg_object_type_oid,
+									  ObjectIdGetDatum(typid)));
+}
+
+static bool
+object_type_is_subtype_of(Oid subtypeTypid, Oid targetTypid)
+{
+	Oid			currentObjoid;
+	Oid			targetObjoid;
+
+	if (!OidIsValid(subtypeTypid) || !OidIsValid(targetTypid) ||
+		subtypeTypid == targetTypid)
+		return false;
+
+	currentObjoid = GetSysCacheOid1(OBJTYPETYPOID,
+									Anum_pg_object_type_oid,
+									ObjectIdGetDatum(subtypeTypid));
+	targetObjoid = GetSysCacheOid1(OBJTYPETYPOID,
+								   Anum_pg_object_type_oid,
+								   ObjectIdGetDatum(targetTypid));
+	if (!OidIsValid(currentObjoid) || !OidIsValid(targetObjoid))
+		return false;
+
+	while (OidIsValid(currentObjoid))
+	{
+		HeapTuple	tup;
+		Oid			parenttypid;
+
+		tup = SearchSysCache1(OBJTYPEOID, ObjectIdGetDatum(currentObjoid));
+		if (!HeapTupleIsValid(tup))
+			break;
+
+		parenttypid = ((Form_pg_object_type) GETSTRUCT(tup))->parenttypid;
+		ReleaseSysCache(tup);
+
+		if (!OidIsValid(parenttypid))
+			break;
+		if (parenttypid == targetTypid)
+			return true;
+
+		currentObjoid = GetSysCacheOid1(OBJTYPETYPOID,
+										Anum_pg_object_type_oid,
+										ObjectIdGetDatum(parenttypid));
+	}
+
+	return false;
+}
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * Handle an explicit COLLATE clause.

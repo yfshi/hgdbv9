@@ -140,6 +140,10 @@ typedef enum ObjectClass
 	OCLASS_PACKAGE,				/* pg_package */
 	OCLASS_PACKAGE_BODY,			/* pg_package_body */
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	OCLASS_OBJECT_TYPE,			/* pg_object_type */
+	OCLASS_OBJECT_TYPE_BODY,		/* pg_object_type_body */
+	/* End - ReqID:SRS-SQL-CustomObject */
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
 	OCLASS_SYNONYM				/* pg_synonym */
 	/* End - ReqID:SRS-SQL-SYNONYM */

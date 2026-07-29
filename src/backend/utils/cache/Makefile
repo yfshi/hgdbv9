@@ -28,6 +28,7 @@ OBJS = \
 	syscache.o \
 	ts_cache.o \
 	typcache.o \
-	packagecache.o
+	packagecache.o \
+	objecttypecache.o
 
 include $(top_srcdir)/src/backend/common.mk

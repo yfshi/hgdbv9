@@ -859,6 +859,8 @@ RestoreArchiveNative(Archive *AHX)
 									strcmp(te->desc, "CHECK CONSTRAINT") == 0 ||
 									strcmp(te->desc, "FK CONSTRAINT") == 0)
 									strcpy(buffer, "DROP CONSTRAINT");
+								else if (strcmp(te->desc, "OBJECT TYPE") == 0)
+									strcpy(buffer, "DROP TYPE");
 								else
 									snprintf(buffer, sizeof(buffer), "DROP %s",
 											 te->desc);
@@ -1322,6 +1324,8 @@ RestoreArchivePg(Archive *AHX)
 									strcmp(te->desc, "CHECK CONSTRAINT") == 0 ||
 									strcmp(te->desc, "FK CONSTRAINT") == 0)
 									strcpy(buffer, "DROP CONSTRAINT");
+								else if (strcmp(te->desc, "OBJECT TYPE") == 0)
+									strcpy(buffer, "DROP TYPE");
 								else
 									snprintf(buffer, sizeof(buffer), "DROP %s",
 											 te->desc);
@@ -1802,6 +1806,8 @@ RestoreArchiveOracle(Archive *AHX)
 									strcmp(te->desc, "CHECK CONSTRAINT") == 0 ||
 									strcmp(te->desc, "FK CONSTRAINT") == 0)
 									strcpy(buffer, "DROP CONSTRAINT");
+								else if (strcmp(te->desc, "OBJECT TYPE") == 0)
+									strcpy(buffer, "DROP TYPE");
 								else
 									snprintf(buffer, sizeof(buffer), "DROP %s",
 											te->desc);
@@ -2257,6 +2263,8 @@ RestoreArchiveMysql(Archive *AHX)
 									strcmp(te->desc, "CHECK CONSTRAINT") == 0 ||
 									strcmp(te->desc, "FK CONSTRAINT") == 0)
 									strcpy(buffer, "DROP CONSTRAINT");
+								else if (strcmp(te->desc, "OBJECT TYPE") == 0)
+									strcpy(buffer, "DROP TYPE");
 								else
 									snprintf(buffer, sizeof(buffer), "DROP %s",
 											 te->desc);
@@ -5391,6 +5399,8 @@ _getObjectDescription(PQExpBuffer buf, TocEntry *te)
 	if (strcmp(type, "VIEW") == 0 || strcmp(type, "SEQUENCE") == 0 ||
 		strcmp(type, "MATERIALIZED VIEW") == 0)
 		type = "TABLE";
+	else if (strcmp(type, "OBJECT TYPE") == 0)
+		type = "TYPE";
 
 	/* objects that don't require special decoration */
 	if (strcmp(type, "COLLATION") == 0 ||
@@ -5641,8 +5651,10 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* switch ivorysql.compatible_mode to oracle for package. If pg_object */
 			/* records package information in the future, the following code needs */
 			/* to be deleted. */
+			/* Same for object types and triggers. */
 			if (database_mode != DB_MYSQL && (strcmp(te->desc, "PACKAGE") == 0  ||
-				 strcmp(te->desc, "SYNONYM") == 0 || strcmp(te->desc, "TRIGGER") == 0)	/* ReqID:SRS-SQL-SYNONYM */
+				 strcmp(te->desc, "SYNONYM") == 0 || strcmp(te->desc, "TRIGGER") == 0 ||	/* ReqID:SRS-SQL-SYNONYM */
+				 strcmp(te->desc, "OBJECT TYPE") == 0 || strcmp(te->desc, "OBJECT TYPE BODY") == 0)	/* ReqID:SRS-SQL-CustomObject */
 											&& compatible_mode != ORA_MODE)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");
@@ -5742,6 +5754,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			strcmp(te->desc, "EVENT TRIGGER") == 0 ||
 			strcmp(te->desc, "TABLE") == 0 ||
 			strcmp(te->desc, "TYPE") == 0 ||
+			strcmp(te->desc, "OBJECT TYPE") == 0 || /* ReqID:SRS-SQL-CustomObject */
 			strcmp(te->desc, "VIEW") == 0 ||
 			strcmp(te->desc, "MATERIALIZED VIEW") == 0 ||
 			strcmp(te->desc, "SEQUENCE") == 0 ||
@@ -5775,6 +5788,7 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 				 strcmp(te->desc, "INDEX") == 0 ||
 				 strcmp(te->desc, "RULE") == 0 ||
 				 strcmp(te->desc, "TRIGGER") == 0 ||
+				 strcmp(te->desc, "OBJECT TYPE BODY") == 0 || /* ReqID:SRS-SQL-CustomObject */
 				 strcmp(te->desc, "ROW SECURITY") == 0 ||
 				 strcmp(te->desc, "POLICY") == 0 ||
 				 strcmp(te->desc, "USER MAPPING") == 0)
@@ -7229,4 +7243,3 @@ getInstanceIdentifier_case_switch(PGconn *conn)
 	/* End - BUG#Z932 */
 }
 /* End - ReqID:SRS-SQL-FORCEVIEW */
-

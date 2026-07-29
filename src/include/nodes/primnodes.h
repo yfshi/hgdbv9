@@ -598,15 +598,23 @@ typedef enum CoercionForm
 #define FUNC_FROM_PACKAGE		'p'
 #define FUNC_FROM_PACKGE_INITBODY 'b'
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#define FUNC_FROM_OBJECT		'o'
+/* End - ReqID:SRS-SQL-CustomObject */
 
 
 
 #define FUNC_EXPR_FROM_PG_PROC(function_from) \
 	(function_from != FUNC_FROM_SUBPROCFUNC && function_from != FUNC_FROM_PACKAGE \
-	&& function_from != FUNC_FROM_PACKGE_INITBODY)
+	&& function_from != FUNC_FROM_PACKGE_INITBODY && function_from != FUNC_FROM_OBJECT)
 
 #define FUNC_EXPR_FROM_PACKAGE(function_from) \
 	(function_from == FUNC_FROM_PACKAGE)
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#define FUNC_EXPR_FROM_OBJECT(function_from) \
+	(function_from == FUNC_FROM_OBJECT)
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * FuncExpr - expression node for a function call

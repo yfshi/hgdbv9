@@ -36,6 +36,9 @@
 /* Begin - ReqID:SRS-MYSQL-SET */
 #include "mysql_parser/mys_set_hook.h"
 /* End - ReqID:SRS-MYSQL-SET */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "utils/objecttypecache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 static bool expression_returns_set_walker(Node *node, void *context);
 static int	leftmostLoc(int loc1, int loc2);
@@ -98,6 +101,10 @@ exprType(const Node *expr)
 
 				if (FUNC_EXPR_FROM_PACKAGE(funcexpr->function_from))
 					set_pkginfo_from_funcexpr(funcexpr);
+				/* Begin - ReqID:SRS-SQL-CustomObject */
+				else if (FUNC_EXPR_FROM_OBJECT(funcexpr->function_from))
+					set_objectinfo_from_funcexpr(funcexpr);
+				/* End - ReqID:SRS-SQL-CustomObject */
 				if (funcexpr->ref_pkgtype &&
 					FUNC_EXPR_FROM_PG_PROC(funcexpr->function_from))
 					set_pkgtype_from_funcexpr(funcexpr);

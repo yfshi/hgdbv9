@@ -119,6 +119,10 @@
 #include "catalog/pg_secmon_rule.h"
 #include "catalog/pg_secmon_threshold.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type.h"
+#include "catalog/pg_object_type_body.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*---------------------------------------------------------------------------
 
@@ -849,6 +853,52 @@ static const struct cachedesc cacheinfo[] = {
 		8
 	},
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	{ObjectTypeBodyRelationId,	/* OBJTYPEBODYOID */
+		ObjectTypeBodyObjectIndexId,
+		1,
+		{
+			Anum_pg_object_type_body_oid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	{ObjectTypeBodyRelationId,	/* OBJTYPEBODYOBJTYPOID */
+		ObjectTypeBodyObjTypOidIndexId,
+		1,
+		{
+			Anum_pg_object_type_body_objtypoid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	{ObjectTypeRelationId,		/* OBJTYPETYPOID */
+		ObjectTypeTypIdIndexId,
+		1,
+		{
+			Anum_pg_object_type_typid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	{ObjectTypeRelationId,		/* OBJTYPEOID */
+		ObjectTypeObjectIndexId,
+		1,
+		{
+			Anum_pg_object_type_oid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	/* End - ReqID:SRS-SQL-CustomObject */
 	{ProcedureRelationId,		/* PROCNAMEARGSNSP */
 		ProcedureNameArgsNspIndexId,
 		3,

@@ -52,6 +52,10 @@ typedef enum
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	DO_PACKAGE,
 	/* End - ReqID:SRS-SQL-PACKAGE */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	DO_OBJECT_TYPE_SPEC,
+	DO_OBJECT_TYPE_BODY,
+	/* End - ReqID:SRS-SQL-CustomObject */
 	DO_SYN,						/* ReqID:SRS-SQL-SYNONYM */
 	DO_FUNC,
 	DO_AGG,
@@ -235,6 +239,29 @@ typedef struct _pkgInfo
 	char		*initrpkgacl;
 } PkgInfo;
 /* End - ReqID:SRS-SQL-PACKAGE */
+
+/* Begin - ReqID:SRS-SQL-CustomObject */
+typedef struct _objTypeInfo
+{
+	DumpableObject dobj;
+	char	   *rolname;
+	char	   *objsrc;
+	char	   *parentnspname;
+	char	   *parenttypname;
+	Oid			typid;
+	Oid			parenttypid;
+	bool		is_final;
+} ObjTypeInfo;
+
+typedef struct _objTypeBodyInfo
+{
+	DumpableObject dobj;
+	char	   *rolname;
+	char	   *typname;
+	char	   *bodysrc;
+	Oid			objtypoid;
+} ObjTypeBodyInfo;
+/* End - ReqID:SRS-SQL-CustomObject */
 
 
 typedef struct _funcInfo
@@ -874,6 +901,10 @@ extern DumpableObject **pubinfoindex;
 extern int	numTables;
 extern int	numTypes;
 extern int	numPkgs;
+/* Begin - ReqID:SRS-SQL-CustomObject */
+extern int	numObjTypes;
+extern int	numObjTypeBodies;
+/* End - ReqID:SRS-SQL-CustomObject */
 extern int	numFuncs;
 extern int	numSyns;	/* ReqID:SRS-SQL-SYNONYM */
 extern int	numOperators;

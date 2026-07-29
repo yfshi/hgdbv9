@@ -254,6 +254,9 @@ extern void FreeCachedExpression(CachedExpression *cexpr);
 /* Begin - ReqID:SRS-SQL-PACKAGE */
 extern void setPlanCacheInvalidForPackage(Oid pkgoid);
 /* End - ReqID:SRS-SQL-PACKAGE */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+extern void setPlanCacheInvalidForObjectType(Oid objoid);
+/* End - ReqID:SRS-SQL-CustomObject */
 
 
 #endif							/* PLANCACHE_H */

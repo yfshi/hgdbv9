@@ -3067,6 +3067,7 @@ _copyFuncCall(const FuncCall *from)
 	COPY_SCALAR_FIELD(agg_distinct);
 	COPY_SCALAR_FIELD(func_variadic);
 	COPY_SCALAR_FIELD(funcformat);
+	COPY_SCALAR_FIELD(is_object_method); /* ReqID:SRS-SQL-CustomObject */
 	COPY_LOCATION_FIELD(location);
 	COPY_NODE_FIELD(rawargs);	/* BUG#M0000376 */
 	COPY_SCALAR_FIELD(ignore_nulls); /* OA-REQ-2348 */
@@ -5658,6 +5659,33 @@ _copyCreatePackageBodyStmt(const CreatePackageBodyStmt *from)
 	return newnode;
 }
 
+/* Begin - ReqID:SRS-SQL-CustomObject */
+static CreateObjectTypeStmt *
+_copyCreateObjectTypeStmt(const CreateObjectTypeStmt *from)
+{
+	CreateObjectTypeStmt *newnode = makeNode(CreateObjectTypeStmt);
+
+	COPY_SCALAR_FIELD(replace);
+	COPY_NODE_FIELD(objname);
+	COPY_NODE_FIELD(parentname);
+	COPY_STRING_FIELD(objsrc);
+
+	return newnode;
+}
+
+static CreateObjectTypeBodyStmt *
+_copyCreateObjectTypeBodyStmt(const CreateObjectTypeBodyStmt *from)
+{
+	CreateObjectTypeBodyStmt *newnode = makeNode(CreateObjectTypeBodyStmt);
+
+	COPY_SCALAR_FIELD(replace);
+	COPY_NODE_FIELD(objname);
+	COPY_STRING_FIELD(bodysrc);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-CustomObject */
+
 static AlterPackageStmt *
 _copyAlterPackageStmt(const AlterPackageStmt *from)
 {
@@ -6550,6 +6578,14 @@ copyObjectImpl(const void *from)
 		case T_CreatePackageBodyStmt:
 			retval = _copyCreatePackageBodyStmt(from);
 			break;
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case T_CreateObjectTypeStmt:
+			retval = _copyCreateObjectTypeStmt(from);
+			break;
+		case T_CreateObjectTypeBodyStmt:
+			retval = _copyCreateObjectTypeBodyStmt(from);
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 		case T_AlterPackageStmt:
 			retval = _copyAlterPackageStmt(from);
 			break;

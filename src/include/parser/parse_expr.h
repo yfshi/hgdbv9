@@ -26,6 +26,9 @@
 extern bool Transform_null_equals;
 
 extern Node *transformExpr(ParseState *pstate, Node *expr, ParseExprKind exprKind);
+/* Begin - ReqID:SRS-SQL-CustomObject */
+extern Node *TryTransformColumnRef(ParseState *pstate, List *fields);
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /* Begin - ReqID:SRS-SQL-HierarchicalQueries */
 extern Node *IvyTransformColumnRef(ParseState *pstate,

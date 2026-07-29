@@ -2966,6 +2966,15 @@ plisql_parse_dblword(char *paramname/* ReqID:SRS-SQL-ANONYOUT */,char *word1, ch
 								return true;
 							}
 						}
+
+						/* Begin - ReqID:SRS-SQL-CustomObject */
+						/*
+						 * Leave obj.method(...) to the raw parser's object-method
+						 * grammar instead of folding it into a datum reference.
+						 */
+						if (plisql_peek() == '(')
+							break;
+						/* End - ReqID:SRS-SQL-CustomObject */
 					}
 					else
 					{

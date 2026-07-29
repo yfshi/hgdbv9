@@ -109,6 +109,12 @@
 #include "catalog/catalog.h"
 #include "utils/builtins.h"
 /* End - ReqID:SRS-RECOVERY-FLASHBACK */
+/* Begin - ReqID:SRS-SQL-CustomObject */
+#include "catalog/pg_object_type.h"
+#include "catalog/pg_object_type_body.h"
+#include "commands/objecttypecmds.h"
+#include "utils/objecttypecache.h"
+/* End - ReqID:SRS-SQL-CustomObject */
 
 /*
  * Deletion processing requires additional state for each ObjectAddress that
@@ -215,6 +221,10 @@ static const Oid object_classes[] = {
 	/* Begin - ReqID:SRS-SQL-PACKAGE */
 	PackageRelationId,			/* OCLASS_PACKAGE */
 	PackageBodyRelationId,		/* OCLASS_PACKAGE_BODY */
+	/* Begin - ReqID:SRS-SQL-CustomObject */
+	ObjectTypeRelationId,		/* OCLASS_OBJECT_TYPE */
+	ObjectTypeBodyRelationId,	/* OCLASS_OBJECT_TYPE_BODY */
+	/* End - ReqID:SRS-SQL-CustomObject */
 	/* End - ReqID:SRS-SQL-PACKAGE */
 	SynonymRelationId			/* OCLASS_SYNONYM */ /* ReqID:SRS-SQL-SYNONYM */
 };
@@ -1102,7 +1112,9 @@ findDependentObjects(const ObjectAddress *object,
 		if (foundDep->deptype == DEPENDENCY_TYPE &&
 			(getObjectClass(object) == OCLASS_CLASS ||
 			getObjectClass(object) == OCLASS_PACKAGE ||
-			getObjectClass(object) == OCLASS_PACKAGE_BODY))
+			getObjectClass(object) == OCLASS_PACKAGE_BODY ||
+			getObjectClass(object) == OCLASS_OBJECT_TYPE ||
+			getObjectClass(object) == OCLASS_OBJECT_TYPE_BODY))
 		{
 			if (foundDep->classid == 0)
 				continue;
@@ -1142,7 +1154,31 @@ findDependentObjects(const ObjectAddress *object,
 						/* delete the tuple */
 						CatalogTupleDelete(*depRel, &tup->t_self);
 					}
-						break;
+					break;
+				/* Begin - ReqID:SRS-SQL-CustomObject */
+				case OCLASS_OBJECT_TYPE:
+
+					if (foundDep->deptype == DEPENDENCY_TYPE)
+					{
+						/* Add object type Oid to the pending-oids list */
+						ObjectFunOrPkgSetsAppend(dependTypeObjects, foundDep->objid, OCLASS_OBJECT_TYPE);
+
+						/* delete the tuple */
+						CatalogTupleDelete(*depRel, &tup->t_self);
+					}
+					break;
+				case OCLASS_OBJECT_TYPE_BODY:
+
+					if (foundDep->deptype == DEPENDENCY_TYPE)
+					{
+						/* Add object type body Oid to the pending-oids list */
+						ObjectFunOrPkgSetsAppend(dependTypeObjects, foundDep->objid, OCLASS_OBJECT_TYPE_BODY);
+
+						/* delete the tuple */
+						CatalogTupleDelete(*depRel, &tup->t_self);
+					}
+					break;
+				/* End - ReqID:SRS-SQL-CustomObject */
 				default:
 					break;
 			}
@@ -1817,6 +1853,14 @@ doDeletion(const ObjectAddress *object, int flags)
 			DropPackageBodyById(object->objectId);
 			break;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case OCLASS_OBJECT_TYPE:
+			DropObjectTypeById(object->objectId);
+			break;
+		case OCLASS_OBJECT_TYPE_BODY:
+			DropObjectTypeBodyById(object->objectId);
+			break;
+		/* End - ReqID:SRS-SQL-CustomObject */
 
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case OCLASS_SYNONYM:
@@ -2313,8 +2357,14 @@ find_expr_references_walker(Node *node,
 			Oid			funcoid = InvalidOid;
 			bool is_package = false;
 
-			funcoid = get_top_function_info(funcexpr, &is_package);
-			if (OidIsValid(funcoid))
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			if (funcexpr->function_from == FUNC_FROM_OBJECT &&
+				OidIsValid(funcexpr->pkgoid))
+				add_object_address(OCLASS_OBJECT_TYPE, funcexpr->pkgoid, 0,
+								   context->addrs);
+			/* End - ReqID:SRS-SQL-CustomObject */
+			else if ((funcoid = get_top_function_info(funcexpr, &is_package)),
+					 OidIsValid(funcoid))
 			{
 				if (is_package)
 					add_object_address(OCLASS_PACKAGE, funcoid, 0,
@@ -3011,6 +3061,14 @@ ObjectFunOrPkgSetsProcess(ObjectFunOrPkgSets *set)
 					count++;
 				}
 				break;
+			/* Begin - ReqID:SRS-SQL-CustomObject */
+			case OCLASS_OBJECT_TYPE:
+				InvalidObjectType(objectId);
+				break;
+			case OCLASS_OBJECT_TYPE_BODY:
+				InvalidObjectTypeBody(objectId);
+				break;
+			/* End - ReqID:SRS-SQL-CustomObject */
 
 			default:
 				break;
@@ -3472,6 +3530,12 @@ getObjectClass(const ObjectAddress *object)
 		case PackageBodyRelationId:
 			return OCLASS_PACKAGE_BODY;
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		/* Begin - ReqID:SRS-SQL-CustomObject */
+		case ObjectTypeRelationId:
+			return OCLASS_OBJECT_TYPE;
+		case ObjectTypeBodyRelationId:
+			return OCLASS_OBJECT_TYPE_BODY;
+		/* End - ReqID:SRS-SQL-CustomObject */
 
 		/* Begin - ReqID:SRS-SQL-SYNONYM */
 		case SynonymRelationId:
