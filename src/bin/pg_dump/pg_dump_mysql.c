@@ -17923,6 +17923,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 			   *minv,
 			   *cache,
 			   *seqtype;
+	Oid			seqtypid;
 	bool		cycled;
 	bool		is_ascending;
 	int64		default_minv,
@@ -17938,7 +17939,7 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 	if (fout->remoteVersion >= 100000)
 	{
 		appendPQExpBuffer(query,
-						  "SELECT format_type(seqtypid, NULL), "
+						  "SELECT seqtypid, format_type(seqtypid, NULL), "
 						  "seqstart, seqincrement, "
 						  "seqmax, seqmin, "
 						  "seqcache, seqcycle "
@@ -17955,17 +17956,17 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		 * schema-qualified, but actually that's a keyword.
 		 */
 		appendPQExpBuffer(query,
-						  "SELECT 'bigint' AS sequence_type, "
+						  "SELECT %u AS seqtypid, 'bigint' AS sequence_type, "
 						  "start_value, increment_by, max_value, min_value, "
-						  "cache_value, is_cycled FROM %s",
+						  "cache_value, is_cycled FROM %s", INT8OID,
 						  fmtQualifiedDumpable(tbinfo));
 	}
 	else
 	{
 		appendPQExpBuffer(query,
-						  "SELECT 'bigint' AS sequence_type, "
+						  "SELECT %u AS seqtypid, 'bigint' AS sequence_type, "
 						  "0 AS start_value, increment_by, max_value, min_value, "
-						  "cache_value, is_cycled FROM %s",
+						  "cache_value, is_cycled FROM %s", INT8OID,
 						  fmtQualifiedDumpable(tbinfo));
 	}
 
@@ -17980,85 +17981,70 @@ dumpSequence(Archive *fout, const TableInfo *tbinfo)
 		exit_nicely(1);
 	}
 
-	seqtype = PQgetvalue(res, 0, 0);
-	startv = PQgetvalue(res, 0, 1);
-	incby = PQgetvalue(res, 0, 2);
-	maxv = PQgetvalue(res, 0, 3);
-	minv = PQgetvalue(res, 0, 4);
-	cache = PQgetvalue(res, 0, 5);
-	cycled = (strcmp(PQgetvalue(res, 0, 6), "t") == 0);
+	seqtypid = atooid(PQgetvalue(res, 0, 0));
+	seqtype = PQgetvalue(res, 0, 1);
+	startv = PQgetvalue(res, 0, 2);
+	incby = PQgetvalue(res, 0, 3);
+	maxv = PQgetvalue(res, 0, 4);
+	minv = PQgetvalue(res, 0, 5);
+	cache = PQgetvalue(res, 0, 6);
+	cycled = (strcmp(PQgetvalue(res, 0, 7), "t") == 0);
 
 	/* Calculate default limits for a sequence of this type */
 	is_ascending = (incby[0] != '-');
-	if (strcmp(seqtype, "smallint") == 0)
-	{
-		default_minv = is_ascending ? 1 : PG_INT16_MIN;
-		default_maxv = is_ascending ? PG_INT16_MAX : -1;
-	}
-	else if (strcmp(seqtype, "integer") == 0)
-	{
-		default_minv = is_ascending ? 1 : PG_INT32_MIN;
-		default_maxv = is_ascending ? PG_INT32_MAX : -1;
-	}
-	else if (strcmp(seqtype, "bigint") == 0)
-	{
-		default_minv = is_ascending ? 1 : PG_INT64_MIN;
-		default_maxv = is_ascending ? PG_INT64_MAX : -1;
-	}
-	/* Begin - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	else if (strcmp(seqtype, "ivymy.uint1") == 0 || strcmp(seqtype, "uint1") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_UINT8_MAX : -1;
-	}
-
-	else if (strcmp(seqtype, "ivymy.uint2") == 0  || strcmp(seqtype, "uint2") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_UINT16_MAX : -1;
-	}
-
-	else if (strcmp(seqtype, "ivymy.uint3") == 0  || strcmp(seqtype, "uint3") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_UINT24_MAX : -1;
-	}
-
-	else if (strcmp(seqtype, "ivymy.uint4") == 0 || strcmp(seqtype, "uint4") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_UINT32_MAX : -1;
-	}
-	else if (strcmp(seqtype, "ivymy.uint8") == 0 || strcmp(seqtype, "uint8") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_UINT64_MAX : -1;
-	}
-	else if (strcmp(seqtype, "tinyint") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_INT8_MAX : -1;
-	}
-	else if (strcmp(seqtype, "mediumint") == 0)
-	{
-		default_minv = 1;
-		default_maxv = is_ascending ? PG_INT32_MAX : -1;
-	}
-	else if (strcmp(seqtype, "float4") == 0 || strcmp(seqtype, "real") == 0)
-	{
-		default_minv = is_ascending ? 1 : PG_INT32_MIN;
-		default_maxv = is_ascending ? PG_INT32_MAX : -1;
-	}
-	else if (strcmp(seqtype, "double precision") == 0)
-	{
-		default_minv = is_ascending ? 1 : PG_INT64_MIN;
-		default_maxv = is_ascending ? PG_INT64_MAX : -1;
-	}
-	/* End - SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
-	else
-	{
-		fatal("unrecognized sequence type: %s", seqtype);
-		default_minv = default_maxv = 0;	/* keep compiler quiet */
+	switch (seqtypid) {
+		case INT2OID:
+			default_minv = is_ascending ? 1 : PG_INT16_MIN;
+			default_maxv = is_ascending ? PG_INT16_MAX : -1;
+			break;
+		case INT4OID:
+			default_minv = is_ascending ? 1 : PG_INT32_MIN;
+			default_maxv = is_ascending ? PG_INT32_MAX : -1;
+			break;
+		case INT8OID:
+			default_minv = is_ascending ? 1 : PG_INT64_MIN;
+			default_maxv = is_ascending ? PG_INT64_MAX : -1;
+			break;
+		case UINT1OID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_UINT8_MAX : -1;
+			break;
+		case UINT2OID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_UINT16_MAX : -1;
+			break;
+		case UINT3OID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_UINT24_MAX : -1;
+			break;
+		case UINT4OID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_UINT32_MAX : -1;
+			break;
+		case UINT8OID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_UINT64_MAX : -1;
+			break;
+		case TINYINTOID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_INT8_MAX : -1;
+			break;
+		case MEDIUMINTOID:
+			default_minv = 1;
+			default_maxv = is_ascending ? PG_INT32_MAX : -1;
+			break;
+		case FLOAT4OID:
+			default_minv = is_ascending ? 1 : PG_INT32_MIN;
+			default_maxv = is_ascending ? PG_INT32_MAX : -1;
+			break;
+		case FLOAT8OID:
+			default_minv = is_ascending ? 1 : PG_INT64_MIN;
+			default_maxv = is_ascending ? PG_INT64_MAX : -1;
+			break;
+		default:
+			fatal("unrecognized sequence type: %s", seqtype);
+			default_minv = default_maxv = 0;	/* keep compiler quiet */
+			break;
 	}
 
 	/*
