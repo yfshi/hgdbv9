@@ -9,6 +9,30 @@ select oid as dbid from pg_database where datname = current_database() \gset
 select oid as smin_oid from pg_namespace where nspname = 'smin' \gset
 select oid as rmin_oid from pg_roles where rolname = 'rminq' \gset
 
+-- Begin Bug#z8703 Bug#z8704
+select hg_security.set_schema_quota('smin', '1 MB', true);
+select hg_security.set_role_quota('rminq', '1 MB', true);
+
+select pg_sleep(3);
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+
+select hg_security.delete_schema_quota('smin');
+select hg_security.delete_role_quota('rminq');
+
+select pg_sleep(1);
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
+
+select size
+from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'rmin_oid'));
+-- End Bug#z8703 Bug#z8704
+
 -- Enable min quota for both schema and role, then verify the metadata views.
 select hg_security.set_schema_quota('smin', '4 MB', true);
 select hg_security.set_role_quota('rminq', '3 MB', true);

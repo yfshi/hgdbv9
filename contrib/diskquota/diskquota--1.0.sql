@@ -36,21 +36,45 @@ RETURNS void STRICT
 AS 'MODULE_PATHNAME', 'set_role_quota'
 LANGUAGE C;
 
+-- Begin Bug#z8704
 CREATE FUNCTION hg_security.delete_role_quota(username text)
 RETURNS void STRICT
-AS 'delete FROM
-		hg_security.quota_config
-	where
-		targetoid=(select oid from pg_roles where rolname=$1);'
-LANGUAGE SQL;
+AS $$
+DECLARE
+	deleted_count integer;
+BEGIN
+	DELETE FROM hg_security.quota_config
+	WHERE targetoid = (
+		SELECT oid FROM pg_roles WHERE rolname = username
+	);
+
+	GET DIAGNOSTICS deleted_count = ROW_COUNT;
+
+	IF deleted_count > 0 THEN
+		PERFORM hg_security.set_role_quota(username, '0', true);
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 CREATE FUNCTION hg_security.delete_schema_quota(schemaname text)
 RETURNS void STRICT
-AS 'delete FROM
-		hg_security.quota_config
-	where
-		targetoid=( select oid from pg_namespace where nspname=$1);'
-LANGUAGE SQL;
+AS $$
+DECLARE
+	deleted_count integer;
+BEGIN
+	DELETE FROM hg_security.quota_config
+	WHERE targetoid = (
+		SELECT oid FROM pg_namespace WHERE nspname = schemaname
+	);
+
+	GET DIAGNOSTICS deleted_count = ROW_COUNT;
+
+	IF deleted_count > 0 THEN
+		PERFORM hg_security.set_schema_quota(schemaname, '0', true);
+	END IF;
+END;
+$$ LANGUAGE plpgsql;
+-- End Bug#z8704
 
 CREATE FUNCTION hg_security.diskquota_start_worker()
 RETURNS void STRICT
