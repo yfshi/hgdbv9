@@ -995,8 +995,8 @@ Tue Dec 31 19:11:11 2024 PST
 3.14
 3.14E+000
 3.14E+000
-oracle char(32 char)
-oracle char(32 byte)
+oracle char(32 char)            
+oracle char(32 byte)            
 oracle varchar2(32 char)
 oracle varchar2(32 byte)
 2025-01-01

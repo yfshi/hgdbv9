@@ -1193,3 +1193,14 @@ SELECT REGEXP_SUBSTR(FN_REGEXP_SUBSTR(),'[^,]+',1, ROWNUM) FROM DUAL CONNECT BY 
 DROP table TEST_REPLACE;
 DROP FUNCTION FN_REGEXP_SUBSTR;
 /* Begin - OA-REQ-2451 */
+
+/* Begin - BUG#Z8697 */
+select '[' || replace(cast('abc' AS CHAR(10)), 'a', 'A') || ']' as replaced from dual;
+select length(replace(cast('abc' AS CHAR(10)), 'a', 'A')) from dual;
+select length(replace(cast('abc' AS CHAR(10)), 'x', 'X')) from dual;
+select replace(1000, 100, 2000) from dual;
+select replace(12.34, 12, 99) from dual;
+select replace(to_date('2026-07-27','yyyy-mm-dd'), '2024', '2025') from dual;
+SELECT length(REPLACE(CAST('abc' AS CHAR(10 byte)),'a','A')) FROM dual; --10
+SELECT length(REPLACE(CAST('abc' AS CHAR(10 char)),'a','A')) FROM dual; --10
+/* End - BUG#Z8697 */

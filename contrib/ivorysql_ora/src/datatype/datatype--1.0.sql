@@ -336,7 +336,7 @@ WHERE oid = 9004;
 /* CREATE CAST */
 ---------- Compatible Postgresql Cast ----------
 CREATE CAST (sys.oracharchar AS text)
-WITH FUNCTION sys.text(sys.oracharchar)
+WITHOUT FUNCTION
 AS IMPLICIT;
 
 CREATE CAST (text AS sys.oracharchar)
@@ -752,7 +752,7 @@ WHERE oid = 9005;
 /* CREATE CAST */
 ----------- Compatible Postgresql cast -----------
 CREATE CAST (sys.oracharbyte AS text)
-WITH FUNCTION sys.text(sys.oracharbyte)
+WITHOUT FUNCTION
 AS IMPLICIT;
 
 CREATE CAST (text AS sys.oracharbyte)

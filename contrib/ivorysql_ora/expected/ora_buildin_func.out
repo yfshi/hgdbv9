@@ -1769,9 +1769,9 @@ SELECT
     TRANSLATE('HELLO-WORLD', CAST('EO' AS CHAR(10)), 'eo') AS case1_char_param2,
     TRANSLATE('HELLO-WORLD', 'EO', CAST('eo' AS CHAR(10))) AS case1_char_param3
 FROM DUAL;
- case1_char_expr | case1_char_param1 | case1_char_param2 | case1_char_param3 
------------------+-------------------+-------------------+-------------------
- HeLLo-WoRLD     | HeLLo-WoRLD       | HeLLo-WoRLD       | HeLLo-WoRLD
+ case1_char_expr |       case1_char_param1        | case1_char_param2 | case1_char_param3 
+-----------------+--------------------------------+-------------------+-------------------
+ HeLLo-WoRLD     | HeLLo-WoRLD                    | HeLLo-WoRLD       | HeLLo-WoRLD
 (1 row)
 
 SELECT
@@ -1791,9 +1791,9 @@ SELECT
     TRANSLATE('HELLO-WORLD', CAST('EO' AS NCHAR(10)), 'eo') AS case3_nchar_param2,
     TRANSLATE('HELLO-WORLD', 'EO', CAST('eo' AS NCHAR(10))) AS case3_nchar_param3
 FROM DUAL;
- case3_nchar_expr | case3_nchar_param1 | case3_nchar_param2 | case3_nchar_param3 
-------------------+--------------------+--------------------+--------------------
- HeLLo-WoRLD      | HeLLo-WoRLD        | HeLLo-WoRLD        | HeLLo-WoRLD
+ case3_nchar_expr |       case3_nchar_param1       | case3_nchar_param2 | case3_nchar_param3 
+------------------+--------------------------------+--------------------+--------------------
+ HeLLo-WoRLD      | HeLLo-WoRLD                    | HeLLo-WoRLD        | HeLLo-WoRLD
 (1 row)
 
 SELECT
@@ -1952,3 +1952,53 @@ SELECT REGEXP_SUBSTR(FN_REGEXP_SUBSTR(),'[^,]+',1, ROWNUM) FROM DUAL CONNECT BY 
 DROP table TEST_REPLACE;
 DROP FUNCTION FN_REGEXP_SUBSTR;
 /* Begin - OA-REQ-2451 */
+/* Begin - BUG#Z8697 */
+select '[' || replace(cast('abc' AS CHAR(10)), 'a', 'A') || ']' as replaced from dual;
+   replaced   
+--------------
+ [Abc       ]
+(1 row)
+
+select length(replace(cast('abc' AS CHAR(10)), 'a', 'A')) from dual;
+ length 
+--------
+     10
+(1 row)
+
+select length(replace(cast('abc' AS CHAR(10)), 'x', 'X')) from dual;
+ length 
+--------
+     10
+(1 row)
+
+select replace(1000, 100, 2000) from dual;
+ replace 
+---------
+ 20000
+(1 row)
+
+select replace(12.34, 12, 99) from dual;
+ replace 
+---------
+ 99.34
+(1 row)
+
+select replace(to_date('2026-07-27','yyyy-mm-dd'), '2024', '2025') from dual;
+  replace   
+------------
+ 2026-07-27
+(1 row)
+
+SELECT length(REPLACE(CAST('abc' AS CHAR(10 byte)),'a','A')) FROM dual; --10
+ length 
+--------
+     10
+(1 row)
+
+SELECT length(REPLACE(CAST('abc' AS CHAR(10 char)),'a','A')) FROM dual; --10
+ length 
+--------
+     10
+(1 row)
+
+/* End - BUG#Z8697 */
