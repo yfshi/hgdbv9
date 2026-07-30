@@ -1541,7 +1541,7 @@ exec_simple_query(const char *query_string)
         {
 			// Only send ok packet
 			QueryCompletion qc;
-			qc.commandTag = CMDTAG_SELECT;
+			qc.commandTag = CMDTAG_UNKNOWN;
 			qc.nprocessed = 0;
             MyProcPort->protocol_config->fn_end_command(&qc, dest, false);
         }
