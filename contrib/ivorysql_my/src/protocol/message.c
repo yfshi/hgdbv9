@@ -937,13 +937,14 @@ execute_com_stmt_prepare(char *client_sql)
 {
     Query       *query;
     int         param_count;
-    int         column_count;
+    int         column_count = 0;
     PreparedStatement *entry;
     char        stmt_name[NAMEDATALEN];
     TupleDesc   resultDesc;
     PrepareStmt *pstmt;
     ParseState  *pstate;
-    
+    ListCell    *lc;    /* bug#8757 */
+
     /* Begin - bug#7873 */
     if (IsAbortedTransactionBlockState())
     {
@@ -982,7 +983,15 @@ execute_com_stmt_prepare(char *client_sql)
     entry = FetchPreparedStatement(stmt_name, true);
     query = (Query *) linitial(entry->plansource->query_list);
 
-    column_count = list_length(query->targetList);
+    /* Begin - bug#8757 */
+    foreach (lc, query->targetList)
+    {
+        TargetEntry *tle = (TargetEntry *) lfirst(lc);
+        if (!tle->resjunk)
+            column_count++;
+    }
+    /* Begin - bug#8757 */
+
     param_count = entry->plansource->num_params;
     resultDesc = entry->plansource->resultDesc;
 
