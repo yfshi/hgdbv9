@@ -273,7 +273,7 @@ BEGIN
     END IF;
 END $$;
 create table ddl_tb success
-DDL_TB  ID  INT4
+DDL_TB  ID  INTEGER
 DDL_TB  NAME  TEXT
 drop table ddl_tb success
 /
