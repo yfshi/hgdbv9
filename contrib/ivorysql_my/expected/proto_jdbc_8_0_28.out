@@ -605,6 +605,13 @@ total_count	avg_age
 2	28.0000	
 Total rows: 1
 -- End : OA-2499
+-- Begin : Bug#8745
+\! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MysqlTestCommentOnlySql 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+comment-with-query returned; hasResultSet = true
+comment-with-query result = 1
+comment-only returned; hasResultSet = false
+comment-only updateCount = 0
+-- End : Bug#8745
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;
