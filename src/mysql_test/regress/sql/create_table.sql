@@ -833,9 +833,9 @@ create table test_part_coll partition of test_part_coll_posix for values from ('
 -- ok
 create table test_part_coll2 partition of test_part_coll_posix for values from ('g') to ('m');
 -- ok, collation is implicitly coerced
-create table test_part_coll_cast partition of test_part_coll_posix for values from (name 'm' collate "C") to ('s');
+create table test_part_coll_cast partition of test_part_coll_posix for values from (CAST('m' AS name) collate "C") to ('s');
 -- ok; partition collation silently overrides the default collation of type 'name'
-create table test_part_coll_cast2 partition of test_part_coll_posix for values from (name 's') to ('z');
+create table test_part_coll_cast2 partition of test_part_coll_posix for values from (CAST('s' AS name)) to ('z');
 
 drop table test_part_coll_posix;
 

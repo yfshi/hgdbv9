@@ -1,43 +1,43 @@
-select jsonb '{"a": 12}' @? '$';
-select jsonb '{"a": 12}' @? '1';
-select jsonb '{"a": 12}' @? '$.a.b';
-select jsonb '{"a": 12}' @? '$.b';
-select jsonb '{"a": 12}' @? '$.a + 2';
-select jsonb '{"a": 12}' @? '$.b + 2';
-select jsonb '{"a": {"a": 12}}' @? '$.a.a';
-select jsonb '{"a": {"a": 12}}' @? '$.*.a';
-select jsonb '{"b": {"a": 12}}' @? '$.*.a';
-select jsonb '{"b": {"a": 12}}' @? '$.*.b';
-select jsonb '{"b": {"a": 12}}' @? 'strict $.*.b';
-select jsonb '{}' @? '$.*';
-select jsonb '{"a": 1}' @? '$.*';
-select jsonb '{"a": {"b": 1}}' @? 'lax $.**{1}';
-select jsonb '{"a": {"b": 1}}' @? 'lax $.**{2}';
-select jsonb '{"a": {"b": 1}}' @? 'lax $.**{3}';
-select jsonb '[]' @? '$[*]';
-select jsonb '[1]' @? '$[*]';
-select jsonb '[1]' @? '$[1]';
-select jsonb '[1]' @? 'strict $[1]';
+select CAST('{"a": 12}' AS jsonb) @? '$';
+select CAST('{"a": 12}' AS jsonb) @? '1';
+select CAST('{"a": 12}' AS jsonb) @? '$.a.b';
+select CAST('{"a": 12}' AS jsonb) @? '$.b';
+select CAST('{"a": 12}' AS jsonb) @? '$.a + 2';
+select CAST('{"a": 12}' AS jsonb) @? '$.b + 2';
+select CAST('{"a": {"a": 12}}' AS jsonb) @? '$.a.a';
+select CAST('{"a": {"a": 12}}' AS jsonb) @? '$.*.a';
+select CAST('{"b": {"a": 12}}' AS jsonb) @? '$.*.a';
+select CAST('{"b": {"a": 12}}' AS jsonb) @? '$.*.b';
+select CAST('{"b": {"a": 12}}' AS jsonb) @? 'strict $.*.b';
+select CAST('{}' AS jsonb) @? '$.*';
+select CAST('{"a": 1}' AS jsonb) @? '$.*';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? 'lax $.**{1}';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? 'lax $.**{2}';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? 'lax $.**{3}';
+select CAST('[]' AS jsonb) @? '$[*]';
+select CAST('[1]' AS jsonb) @? '$[*]';
+select CAST('[1]' AS jsonb) @? '$[1]';
+select CAST('[1]' AS jsonb) @? 'strict $[1]';
 select jsonb_path_query('[1]', 'strict $[1]');
 select jsonb_path_query('[1]', 'strict $[1]', silent => true);
-select jsonb '[1]' @? 'lax $[10000000000000000]';
-select jsonb '[1]' @? 'strict $[10000000000000000]';
+select CAST('[1]' AS jsonb) @? 'lax $[10000000000000000]';
+select CAST('[1]' AS jsonb) @? 'strict $[10000000000000000]';
 select jsonb_path_query('[1]', 'lax $[10000000000000000]');
 select jsonb_path_query('[1]', 'strict $[10000000000000000]');
-select jsonb '[1]' @? '$[0]';
-select jsonb '[1]' @? '$[0.3]';
-select jsonb '[1]' @? '$[0.5]';
-select jsonb '[1]' @? '$[0.9]';
-select jsonb '[1]' @? '$[1.2]';
-select jsonb '[1]' @? 'strict $[1.2]';
-select jsonb '{"a": [1,2,3], "b": [3,4,5]}' @? '$ ? (@.a[*] >  @.b[*])';
-select jsonb '{"a": [1,2,3], "b": [3,4,5]}' @? '$ ? (@.a[*] >= @.b[*])';
-select jsonb '{"a": [1,2,3], "b": [3,4,"5"]}' @? '$ ? (@.a[*] >= @.b[*])';
-select jsonb '{"a": [1,2,3], "b": [3,4,"5"]}' @? 'strict $ ? (@.a[*] >= @.b[*])';
-select jsonb '{"a": [1,2,3], "b": [3,4,null]}' @? '$ ? (@.a[*] >= @.b[*])';
-select jsonb '1' @? '$ ? ((@ == "1") is unknown)';
-select jsonb '1' @? '$ ? ((@ == 1) is unknown)';
-select jsonb '[{"a": 1}, {"a": 2}]' @? '$[0 to 1] ? (@.a > 1)';
+select CAST('[1]' AS jsonb) @? '$[0]';
+select CAST('[1]' AS jsonb) @? '$[0.3]';
+select CAST('[1]' AS jsonb) @? '$[0.5]';
+select CAST('[1]' AS jsonb) @? '$[0.9]';
+select CAST('[1]' AS jsonb) @? '$[1.2]';
+select CAST('[1]' AS jsonb) @? 'strict $[1.2]';
+select CAST('{"a": [1,2,3], "b": [3,4,5]}' AS jsonb) @? '$ ? (@.a[*] >  @.b[*])';
+select CAST('{"a": [1,2,3], "b": [3,4,5]}' AS jsonb) @? '$ ? (@.a[*] >= @.b[*])';
+select CAST('{"a": [1,2,3], "b": [3,4,"5"]}' AS jsonb) @? '$ ? (@.a[*] >= @.b[*])';
+select CAST('{"a": [1,2,3], "b": [3,4,"5"]}' AS jsonb) @? 'strict $ ? (@.a[*] >= @.b[*])';
+select CAST('{"a": [1,2,3], "b": [3,4,null]}' AS jsonb) @? '$ ? (@.a[*] >= @.b[*])';
+select CAST('1' AS jsonb) @? '$ ? ((@ == "1") is unknown)';
+select CAST('1' AS jsonb) @? '$ ? ((@ == 1) is unknown)';
+select CAST('[{"a": 1}, {"a": 2}]' AS jsonb) @? '$[0 to 1] ? (@.a > 1)';
 
 select jsonb_path_exists('[{"a": 1}, {"a": 2}, 3]', 'lax $[*].a', silent => false);
 select jsonb_path_exists('[{"a": 1}, {"a": 2}, 3]', 'lax $[*].a', silent => true);
@@ -137,19 +137,19 @@ select jsonb_path_query('{"a": {"c": {"b": 1}}}', 'lax $.**{1 to last}.b ? (@ > 
 select jsonb_path_query('{"a": {"c": {"b": 1}}}', 'lax $.**{1 to 2}.b ? (@ > 0)');
 select jsonb_path_query('{"a": {"c": {"b": 1}}}', 'lax $.**{2 to 3}.b ? (@ > 0)');
 
-select jsonb '{"a": {"b": 1}}' @? '$.**.b ? ( @ > 0)';
-select jsonb '{"a": {"b": 1}}' @? '$.**{0}.b ? ( @ > 0)';
-select jsonb '{"a": {"b": 1}}' @? '$.**{1}.b ? ( @ > 0)';
-select jsonb '{"a": {"b": 1}}' @? '$.**{0 to last}.b ? ( @ > 0)';
-select jsonb '{"a": {"b": 1}}' @? '$.**{1 to last}.b ? ( @ > 0)';
-select jsonb '{"a": {"b": 1}}' @? '$.**{1 to 2}.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**{0}.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**{1}.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**{0 to last}.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**{1 to last}.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**{1 to 2}.b ? ( @ > 0)';
-select jsonb '{"a": {"c": {"b": 1}}}' @? '$.**{2 to 3}.b ? ( @ > 0)';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? '$.**.b ? ( @ > 0)';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? '$.**{0}.b ? ( @ > 0)';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? '$.**{1}.b ? ( @ > 0)';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? '$.**{0 to last}.b ? ( @ > 0)';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? '$.**{1 to last}.b ? ( @ > 0)';
+select CAST('{"a": {"b": 1}}' AS jsonb) @? '$.**{1 to 2}.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**{0}.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**{1}.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**{0 to last}.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**{1 to last}.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**{1 to 2}.b ? ( @ > 0)';
+select CAST('{"a": {"c": {"b": 1}}}' AS jsonb) @? '$.**{2 to 3}.b ? ( @ > 0)';
 
 select jsonb_path_query('{"g": {"x": 2}}', '$.g ? (exists (@.x))');
 select jsonb_path_query('{"g": {"x": 2}}', '$.g ? (exists (@.y))');
@@ -173,8 +173,8 @@ select
 		jsonb_build_object('x', x, 'y', y)
 	) as "x && y"
 from
-	(values (jsonb 'true'), ('false'), ('"null"')) x(x),
-	(values (jsonb 'true'), ('false'), ('"null"')) y(y);
+	(values (CAST('true' AS jsonb)), ('false'), ('"null"')) x(x),
+	(values (CAST('true' AS jsonb)), ('false'), ('"null"')) y(y);
 
 select
 	x, y,
@@ -186,33 +186,33 @@ select
 		jsonb_build_object('x', x, 'y', y)
 	) as "x || y"
 from
-	(values (jsonb 'true'), ('false'), ('"null"')) x(x),
-	(values (jsonb 'true'), ('false'), ('"null"')) y(y);
+	(values (CAST('true' AS jsonb)), ('false'), ('"null"')) x(x),
+	(values (CAST('true' AS jsonb)), ('false'), ('"null"')) y(y);
 
-select jsonb '{"a": 1, "b":1}' @? '$ ? (@.a == @.b)';
-select jsonb '{"c": {"a": 1, "b":1}}' @? '$ ? (@.a == @.b)';
-select jsonb '{"c": {"a": 1, "b":1}}' @? '$.c ? (@.a == @.b)';
-select jsonb '{"c": {"a": 1, "b":1}}' @? '$.c ? ($.c.a == @.b)';
-select jsonb '{"c": {"a": 1, "b":1}}' @? '$.* ? (@.a == @.b)';
-select jsonb '{"a": 1, "b":1}' @? '$.** ? (@.a == @.b)';
-select jsonb '{"c": {"a": 1, "b":1}}' @? '$.** ? (@.a == @.b)';
+select CAST('{"a": 1, "b":1}' AS jsonb) @? '$ ? (@.a == @.b)';
+select CAST('{"c": {"a": 1, "b":1}}' AS jsonb) @? '$ ? (@.a == @.b)';
+select CAST('{"c": {"a": 1, "b":1}}' AS jsonb) @? '$.c ? (@.a == @.b)';
+select CAST('{"c": {"a": 1, "b":1}}' AS jsonb) @? '$.c ? ($.c.a == @.b)';
+select CAST('{"c": {"a": 1, "b":1}}' AS jsonb) @? '$.* ? (@.a == @.b)';
+select CAST('{"a": 1, "b":1}' AS jsonb) @? '$.** ? (@.a == @.b)';
+select CAST('{"c": {"a": 1, "b":1}}' AS jsonb) @? '$.** ? (@.a == @.b)';
 
 select jsonb_path_query('{"c": {"a": 2, "b":1}}', '$.** ? (@.a == 1 + 1)');
 select jsonb_path_query('{"c": {"a": 2, "b":1}}', '$.** ? (@.a == (1 + 1))');
 select jsonb_path_query('{"c": {"a": 2, "b":1}}', '$.** ? (@.a == @.b + 1)');
 select jsonb_path_query('{"c": {"a": 2, "b":1}}', '$.** ? (@.a == (@.b + 1))');
-select jsonb '{"c": {"a": -1, "b":1}}' @? '$.** ? (@.a == - 1)';
-select jsonb '{"c": {"a": -1, "b":1}}' @? '$.** ? (@.a == -1)';
-select jsonb '{"c": {"a": -1, "b":1}}' @? '$.** ? (@.a == -@.b)';
-select jsonb '{"c": {"a": -1, "b":1}}' @? '$.** ? (@.a == - @.b)';
-select jsonb '{"c": {"a": 0, "b":1}}' @? '$.** ? (@.a == 1 - @.b)';
-select jsonb '{"c": {"a": 2, "b":1}}' @? '$.** ? (@.a == 1 - - @.b)';
-select jsonb '{"c": {"a": 0, "b":1}}' @? '$.** ? (@.a == 1 - +@.b)';
-select jsonb '[1,2,3]' @? '$ ? (+@[*] > +2)';
-select jsonb '[1,2,3]' @? '$ ? (+@[*] > +3)';
-select jsonb '[1,2,3]' @? '$ ? (-@[*] < -2)';
-select jsonb '[1,2,3]' @? '$ ? (-@[*] < -3)';
-select jsonb '1' @? '$ ? ($ > 0)';
+select CAST('{"c": {"a": -1, "b":1}}' AS jsonb) @? '$.** ? (@.a == - 1)';
+select CAST('{"c": {"a": -1, "b":1}}' AS jsonb) @? '$.** ? (@.a == -1)';
+select CAST('{"c": {"a": -1, "b":1}}' AS jsonb) @? '$.** ? (@.a == -@.b)';
+select CAST('{"c": {"a": -1, "b":1}}' AS jsonb) @? '$.** ? (@.a == - @.b)';
+select CAST('{"c": {"a": 0, "b":1}}' AS jsonb) @? '$.** ? (@.a == 1 - @.b)';
+select CAST('{"c": {"a": 2, "b":1}}' AS jsonb) @? '$.** ? (@.a == 1 - - @.b)';
+select CAST('{"c": {"a": 0, "b":1}}' AS jsonb) @? '$.** ? (@.a == 1 - +@.b)';
+select CAST('[1,2,3]' AS jsonb) @? '$ ? (+@[*] > +2)';
+select CAST('[1,2,3]' AS jsonb) @? '$ ? (+@[*] > +3)';
+select CAST('[1,2,3]' AS jsonb) @? '$ ? (-@[*] < -2)';
+select CAST('[1,2,3]' AS jsonb) @? '$ ? (-@[*] < -3)';
+select CAST('1' AS jsonb) @? '$ ? ($ > 0)';
 
 -- arithmetic errors
 select jsonb_path_query('[1,2,0,3]', '$[*] ? (2 / @ > 0)');
@@ -228,10 +228,10 @@ select jsonb_path_query('1', '$ + "2"', silent => true);
 select jsonb_path_query('[1, 2]', '3 * $', silent => true);
 select jsonb_path_query('"a"', '-$', silent => true);
 select jsonb_path_query('[1,"2",3]', '+$', silent => true);
-select jsonb '["1",2,0,3]' @? '-$[*]';
-select jsonb '[1,"2",0,3]' @? '-$[*]';
-select jsonb '["1",2,0,3]' @? 'strict -$[*]';
-select jsonb '[1,"2",0,3]' @? 'strict -$[*]';
+select CAST('["1",2,0,3]' AS jsonb) @? '-$[*]';
+select CAST('[1,"2",0,3]' AS jsonb) @? '-$[*]';
+select CAST('["1",2,0,3]' AS jsonb) @? 'strict -$[*]';
+select CAST('[1,"2",0,3]' AS jsonb) @? 'strict -$[*]';
 
 -- unwrapping of operator arguments in lax mode
 select jsonb_path_query('{"a": [2]}', 'lax $.a * 3');
@@ -245,16 +245,16 @@ select jsonb_path_query('{"a": [1, 2]}', 'lax $.a * 3', silent => true);
 select jsonb_path_query('2', '$ > 1');
 select jsonb_path_query('2', '$ <= 1');
 select jsonb_path_query('2', '$ == "2"');
-select jsonb '2' @? '$ == "2"';
+select CAST('2' AS jsonb) @? '$ == "2"';
 
-select jsonb '2' @@ '$ > 1';
-select jsonb '2' @@ '$ <= 1';
-select jsonb '2' @@ '$ == "2"';
-select jsonb '2' @@ '1';
-select jsonb '{}' @@ '$';
-select jsonb '[]' @@ '$';
-select jsonb '[1,2,3]' @@ '$[*]';
-select jsonb '[]' @@ '$[*]';
+select CAST('2' AS jsonb) @@ '$ > 1';
+select CAST('2' AS jsonb) @@ '$ <= 1';
+select CAST('2' AS jsonb) @@ '$ == "2"';
+select CAST('2' AS jsonb) @@ '1';
+select CAST('{}' AS jsonb) @@ '$';
+select CAST('[]' AS jsonb) @@ '$';
+select CAST('[1,2,3]' AS jsonb) @@ '$[*]';
+select CAST('[]' AS jsonb) @@ '$[*]';
 select jsonb_path_match('[[1, true], [2, false]]', 'strict $[*] ? (@[0] > $x) [1]', '{"x": 1}');
 select jsonb_path_match('[[1, true], [2, false]]', 'strict $[*] ? (@[0] < $x) [1]', '{"x": 2}');
 
@@ -297,8 +297,8 @@ select jsonb_path_query('[{"a": 1, "b": [1, 2]}, {"c": {"a": "bbb"}}]', '$[*].ke
 select jsonb_path_query('[{"a": 1, "b": [1, 2]}, {"c": {"a": "bbb"}}]', 'strict $.keyvalue()');
 select jsonb_path_query('[{"a": 1, "b": [1, 2]}, {"c": {"a": "bbb"}}]', 'lax $.keyvalue()');
 select jsonb_path_query('[{"a": 1, "b": [1, 2]}, {"c": {"a": "bbb"}}]', 'strict $.keyvalue().a');
-select jsonb '{"a": 1, "b": [1, 2]}' @? 'lax $.keyvalue()';
-select jsonb '{"a": 1, "b": [1, 2]}' @? 'lax $.keyvalue().key';
+select CAST('{"a": 1, "b": [1, 2]}' AS jsonb) @? 'lax $.keyvalue()';
+select CAST('{"a": 1, "b": [1, 2]}' AS jsonb) @? 'lax $.keyvalue().key';
 
 select jsonb_path_query('null', '$.double()');
 select jsonb_path_query('true', '$.double()');
@@ -357,7 +357,7 @@ select jsonb_path_query('"bogus"', '$.datetime()');
 select jsonb_path_query('"12:34"', '$.datetime("aaa")');
 select jsonb_path_query('"aaaa"', '$.datetime("HH24")');
 
-select jsonb '"10-03-2017"' @? '$.datetime("dd-mm-yyyy")';
+select CAST('"10-03-2017"' AS jsonb) @? '$.datetime("dd-mm-yyyy")';
 select jsonb_path_query('"10-03-2017"', '$.datetime("dd-mm-yyyy")');
 select jsonb_path_query('"10-03-2017"', '$.datetime("dd-mm-yyyy").type()');
 select jsonb_path_query('"10-03-2017 12:34"', '$.datetime("dd-mm-yyyy")');
@@ -555,8 +555,8 @@ SELECT jsonb_path_query_first('[{"a": 1}, {"a": 2}, {"a": 3}, {"a": 5}]', '$[*].
 SELECT jsonb_path_query_first('[{"a": 1}]', '$undefined_var');
 SELECT jsonb_path_query_first('[{"a": 1}]', 'false');
 
-SELECT jsonb '[{"a": 1}, {"a": 2}]' @? '$[*].a ? (@ > 1)';
-SELECT jsonb '[{"a": 1}, {"a": 2}]' @? '$[*] ? (@.a > 2)';
+SELECT CAST('[{"a": 1}, {"a": 2}]' AS jsonb) @? '$[*].a ? (@ > 1)';
+SELECT CAST('[{"a": 1}, {"a": 2}]' AS jsonb) @? '$[*] ? (@.a > 2)';
 SELECT jsonb_path_exists('[{"a": 1}, {"a": 2}]', '$[*].a ? (@ > 1)');
 SELECT jsonb_path_exists('[{"a": 1}, {"a": 2}, {"a": 3}, {"a": 5}]', '$[*] ? (@.a > $min && @.a < $max)', vars => '{"min": 1, "max": 4}');
 SELECT jsonb_path_exists('[{"a": 1}, {"a": 2}, {"a": 3}, {"a": 5}]', '$[*] ? (@.a > $min && @.a < $max)', vars => '{"min": 3, "max": 4}');
@@ -575,8 +575,8 @@ SELECT jsonb_path_match('{}', 'lax $.a', silent => false);
 SELECT jsonb_path_match('{}', 'strict $.a', silent => false);
 SELECT jsonb_path_match('{}', 'strict $.a', silent => true);
 SELECT jsonb_path_match('[true, true]', '$[*]', silent => false);
-SELECT jsonb '[{"a": 1}, {"a": 2}]' @@ '$[*].a > 1';
-SELECT jsonb '[{"a": 1}, {"a": 2}]' @@ '$[*].a > 2';
+SELECT CAST('[{"a": 1}, {"a": 2}]' AS jsonb) @@ '$[*].a > 1';
+SELECT CAST('[{"a": 1}, {"a": 2}]' AS jsonb) @@ '$[*].a > 2';
 SELECT jsonb_path_match('[{"a": 1}, {"a": 2}]', '$[*].a > 1');
 SELECT jsonb_path_match('[{"a": 1}]', '$undefined_var');
 SELECT jsonb_path_match('[{"a": 1}]', 'false');

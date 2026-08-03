@@ -3,13 +3,13 @@
 -- all inputs are silently truncated at NAMEDATALEN-1 (63) characters
 --
 -- fixed-length by reference
-SELECT name 'name string' = name 'name string' AS "True";
+SELECT CAST('name string' AS name) = CAST('name string' AS name) AS "True";
  True 
 ------
  t
 (1 row)
 
-SELECT name 'name string' = name 'name string ' AS "False";
+SELECT CAST('name string' AS name) = CAST('name string ' AS name) AS "False";
  False 
 -------
  f

@@ -39,14 +39,14 @@ INSERT INTO brintest SELECT
 	(four + 1.0)/(hundred+1),
 	odd::float8 / (tenthous + 1),
 	format('%s:00:%s:00:%s:00', to_hex(odd), to_hex(even), to_hex(hundred))::macaddr,
-	inet '10.2.3.4/24' + tenthous,
+	CAST('10.2.3.4/24' AS inet) + tenthous,
 	cidr '10.2.3/24' + tenthous,
 	substr(stringu1, 1, 1)::bpchar,
 	time '01:20:30' + thousand * interval '18.5 second',
-	timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
-	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
+	CAST('1942-07-23 03:05:09' AS timestamp) + tenthous * interval '36.38 hours',
+	CAST('1972-10-10 03:00' AS timestamptz) + thousand * interval '1 hour',
 	justify_days(justify_hours(tenthous * interval '12 minutes')),
-	timetz '01:30:20+02' + hundred * interval '15 seconds',
+	CAST('01:30:20+02' AS timetz) + hundred * interval '15 seconds',
 	thousand::bit(10),
 	tenthous::bit(16)::varbit,
 	tenthous::numeric(36,30) * fivethous * even / (hundred + 1),
@@ -58,7 +58,7 @@ FROM tenk1 ORDER BY unique2 LIMIT 100;
 
 -- throw in some NULL's and different values
 INSERT INTO brintest (inetcol, cidrcol, int4rangecol) SELECT
-	inet 'fe80::6e40:8ff:fea9:8c46' + tenthous,
+	CAST('fe80::6e40:8ff:fea9:8c46' AS inet) + tenthous,
 	cidr 'fe80::6e40:8ff:fea9:8c46' + tenthous,
 	'empty'::int4range
 FROM tenk1 ORDER BY thousand, tenthous LIMIT 25;
@@ -378,14 +378,14 @@ INSERT INTO brintest SELECT
 	(four + 1.0)/(hundred+1),
 	odd::float8 / (tenthous + 1),
 	format('%s:00:%s:00:%s:00', to_hex(odd), to_hex(even), to_hex(hundred))::macaddr,
-	inet '10.2.3.4' + tenthous,
+	CAST('10.2.3.4' AS inet) + tenthous,
 	cidr '10.2.3/24' + tenthous,
 	substr(stringu1, 1, 1)::bpchar,
 	time '01:20:30' + thousand * interval '18.5 second',
-	timestamp '1942-07-23 03:05:09' + tenthous * interval '36.38 hours',
-	timestamptz '1972-10-10 03:00' + thousand * interval '1 hour',
+	CAST('1942-07-23 03:05:09' AS timestamp) + tenthous * interval '36.38 hours',
+	CAST('1972-10-10 03:00' AS timestamptz) + thousand * interval '1 hour',
 	justify_days(justify_hours(tenthous * interval '12 minutes')),
-	timetz '01:30:20' + hundred * interval '15 seconds',
+	CAST('01:30:20' AS timetz) + hundred * interval '15 seconds',
 	thousand::bit(10),
 	tenthous::bit(16)::varbit,
 	tenthous::numeric(36,30) * fivethous * even / (hundred + 1),
@@ -423,7 +423,7 @@ DECLARE curtid tid;
 BEGIN
   LOOP
     INSERT INTO brin_summarize VALUES (1) RETURNING ctid INTO curtid;
-    EXIT WHEN curtid > tid '(2, 0)';
+    EXIT WHEN curtid > CAST('(2, 0)' AS tid);
   END LOOP;
 END;
 $$;

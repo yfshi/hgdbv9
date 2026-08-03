@@ -211,7 +211,7 @@ select _binary '\\';           -- ok: bytes 5c 5c
 select _binary 'a' COLLATE 'C';
 select _binary 'a' COLLATE "C";
 -- error ,because _binary current use default collate to achieve, not binary collate.
-select _bianry 'aa' COLLATE 'binary';
+select cast ('aa' as _bianry) COLLATE 'binary';
 
 -- expected 1
 SELECT _binary 'A' REGEXP ('^[a-z]+$' COLLATE 'utf8_general_ci');

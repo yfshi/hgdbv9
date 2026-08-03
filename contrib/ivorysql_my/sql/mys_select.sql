@@ -140,9 +140,9 @@ SELECT c AS 'as alias'
 FROM mysql_select_alias_test
 ORDER BY c;
 
--- SELECT c 'bare alias'
--- FROM mysql_select_alias_test
--- ORDER BY c;
+SELECT c 'bare alias'
+FROM mysql_select_alias_test
+ORDER BY c;
 
 -- SELECT c + 10 'expr alias'
 -- FROM mysql_select_alias_test
@@ -170,27 +170,27 @@ ORDER BY c;
 
 SELECT 'literal value' 'literal alias';
 
-SELECT bool 'true' AS normal_bool_literal;
+SELECT CAST('true' AS bool) AS normal_bool_literal;
 
 -- SELECT pg_typeof(now())::text 'current time alias';
 
 -- SELECT length(text 'abc') 'func arg cast';
 
-SELECT int '1' AS int_literal;
+SELECT CAST('1' AS int) AS int_literal;
 
-SELECT character(2) 'xy' AS char_literal;
+SELECT CAST('xy' AS character(2)) AS char_literal;
 
-SELECT bit(2) '10' AS bit_literal;
+SELECT CAST('10' AS bit(2)) AS bit_literal;
 
-SELECT timestamp(2) '2024-01-02 03:04:05' AS timestamp_literal;
+SELECT CAST('2024-01-02 03:04:05' AS timestamp(2)) AS timestamp_literal;
 
-SELECT timestamptz '2024-01-02 03:04:05+00' AS timestamptz_literal;
+SELECT CAST('2024-01-02 03:04:05+00' AS timestamptz) AS timestamptz_literal;
 
-SELECT time(2) '03:04:05' AS time_literal;
+SELECT CAST('03:04:05' AS time(2)) AS time_literal;
 
-SELECT polygon '((0,0),(1,0),(0,1))' AS polygon_literal;
+SELECT CAST('((0,0),(1,0),(0,1))' AS polygon) AS polygon_literal;
 
-SELECT txid_snapshot '1:1:' AS txid_snapshot_literal;
+SELECT CAST('1:1:' AS txid_snapshot) AS txid_snapshot_literal;
 
 SELECT c AS 'select'
 FROM mysql_select_alias_test

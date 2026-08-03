@@ -558,7 +558,6 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %type <list>	func_name handler_name qual_Op qual_all_Op subquery_Op
 				opt_class opt_inline_handler opt_validator validator_clause
 				opt_collate
-				func_name_without_binary /* bug#6011 */
 
 %type <range>	qualified_name insert_target OptConstrFromTable
 
@@ -787,6 +786,7 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
 %type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
+				bare_columnref		/* OA#2580 */
 %type <str>		NonReservedWord NonReservedWord_or_Sconst
 %type <str>		var_name type_function_name param_name
 				type_function_name_without_binary /* bug#6011 */
@@ -796,7 +796,7 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 
 %type <keyword> unreserved_keyword type_func_name_keyword
 				type_func_name_keyword_without_binary /* bug#6011 */
-%type <keyword> col_name_keyword reserved_keyword
+%type <keyword> col_name_keyword bare_col_name_keyword reserved_keyword
 %type <keyword> bare_label_keyword
 
 %type <node>	TableConstraint TableLikeClause
@@ -20150,6 +20150,16 @@ target_el:	a_expr AS ColLabel
 					$$->location = @1;
 				}
 			/* End - bug#6888 */
+			/* Begin Oa#2580 */
+			| bare_columnref SCONST
+				{
+					$$ = makeNode(ResTarget);
+					$$->name = $2;
+					$$->indirection = NIL;
+					$$->val = makeColumnRef($1, NIL, @1, yyscanner);
+					$$->location = @1;
+				}
+			/* End Oa#2580 */
 			| a_expr BareColLabel
 				{
 					$$ = makeNode(ResTarget);
@@ -20274,18 +20284,6 @@ func_name:	type_function_name
 					}
 		;
 
-/* Begin - bug#6011 */
-func_name_without_binary:
-			type_function_name_without_binary
-					{ $$ = list_make1(makeString($1)); }
-			| ColId indirection
-					{
-						$$ = check_func_name(lcons(makeString($1), $2),
-											 yyscanner);
-					}
-		;
-/* End - bug#6011 */
-
 /* Begin: Req:SRS-MYSQL-SQL-Select */
 sconst_list:
 			literal_sconst
@@ -20390,45 +20388,7 @@ AexprConst: Iconst
 					$$ = (Node *) makeHexStringConst($2, @2, $1);
 				}
 			/* End: Req:SRS-MYSQL-SQL-Select */
-			| func_name_without_binary /* bug#6011 */ Sconst
-				{
-					/* generic type 'literal' syntax */
-					TypeName *t = makeTypeNameFromNameList($1);
-					t->location = @1;
-					$$ = makeStringConstCast($2, @2, t);
-				}
-			| func_name '(' func_arg_list opt_sort_clause ')' Sconst
-				{
-					/* generic syntax with a type modifier */
-					TypeName *t = makeTypeNameFromNameList($1);
-					ListCell *lc;
-
-					/*
-					 * We must use func_arg_list and opt_sort_clause in the
-					 * production to avoid reduce/reduce conflicts, but we
-					 * don't actually wish to allow NamedArgExpr in this
-					 * context, nor ORDER BY.
-					 */
-					foreach(lc, $3)
-					{
-						NamedArgExpr *arg = (NamedArgExpr *) lfirst(lc);
-
-						if (IsA(arg, NamedArgExpr))
-							ereport(ERROR,
-									(errcode(ERRCODE_SYNTAX_ERROR),
-									 errmsg("type modifier cannot have parameter name"),
-									 parser_errposition(arg->location)));
-					}
-					if ($4 != NIL)
-						ereport(ERROR,
-								(errcode(ERRCODE_SYNTAX_ERROR),
-								 errmsg("type modifier cannot have ORDER BY"),
-								 parser_errposition(@4)));
-
-					t->typmods = $3;
-					t->location = @1;
-					$$ = makeStringConstCast($6, @6, t);
-				}
+		
 			| ConstTypename literal_sconst
 				{
 					/* ReqID:SRS-MYSQL-DATETYPE */
@@ -21221,6 +21181,70 @@ col_name_keyword:
 			| ZEROFILL
 		;
 
+/* Begin Oa#2580 */
+bare_columnref:
+			bare_col_name_keyword			{ $$ = pstrdup($1); }
+			| type_function_name_without_binary					{ $$ = $1; }
+		;
+
+bare_col_name_keyword:
+			ADDDATE
+			| ANONYMOUS
+			| BETWEEN
+			| COALESCE
+			| DATE_ADD
+			| DATE_SUB
+			| BLOB_P
+			| ELT
+			| ENUM_P
+			| EXISTS
+			| EXTRACT
+			| FIELD
+			| GET_FORMAT
+			| GREATEST
+			| GROUPING
+			| GROUP_CONCAT
+			| INOUT
+			| LEAST
+			| LONGBLOB
+			| MEDIUMBLOB
+			| NAME_CONST
+			| NATIONAL
+			| NONE
+			| NORMALIZE
+			| NULLIF
+			| OUT_P
+			| OVERLAY
+			| POSITION
+			| PRECISION
+			| ROW
+			| SETOF
+			| SIGNED
+			| SUBDATE
+			| SUBSTRING
+			| TIMESTAMPADD
+			| TIMESTAMPDIFF
+			| TINYBLOB
+			| TREAT
+			| TRIM
+			| UNSIGNED
+			| VALUES
+			| VARBINARY
+			| WEIGHT_STRING
+			| XMLATTRIBUTES
+			| XMLCONCAT
+			| XMLELEMENT
+			| XMLEXISTS
+			| XMLFOREST
+			| XMLNAMESPACES
+			| XMLPARSE
+			| XMLPI
+			| XMLROOT
+			| XMLSERIALIZE
+			| XMLTABLE
+			| ZEROFILL
+		;
+/* End Oa#2580 */
 /* Type/function identifier --- keywords that can be type or function names.
  *
  * Most of these are keywords that are used as operators in expressions;

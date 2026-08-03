@@ -54,67 +54,67 @@ SELECT b.*, area(b.f1) as barea
 -- overlap
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE b.f1 && box '(2.5,2.5,1.0,1.0)';
+   WHERE b.f1 && CAST('(2.5,2.5,1.0,1.0)' AS box);
 
 -- left-or-overlap (x only)
 SELECT b1.*
    FROM BOX_TBL b1
-   WHERE b1.f1 &< box '(2.0,2.0,2.5,2.5)';
+   WHERE b1.f1 &< CAST('(2.0,2.0,2.5,2.5)' AS box);
 
 -- right-or-overlap (x only)
 SELECT b1.*
    FROM BOX_TBL b1
-   WHERE b1.f1 &> box '(2.0,2.0,2.5,2.5)';
+   WHERE b1.f1 &> CAST('(2.0,2.0,2.5,2.5)' AS box);
 
 -- left of
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE b.f1 << box '(3.0,3.0,5.0,5.0)';
+   WHERE b.f1 << CAST('(3.0,3.0,5.0,5.0)' AS box);
 
 -- area <=
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE b.f1 <= box '(3.0,3.0,5.0,5.0)';
+   WHERE b.f1 <= CAST('(3.0,3.0,5.0,5.0)' AS box);
 
 -- area <
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE b.f1 < box '(3.0,3.0,5.0,5.0)';
+   WHERE b.f1 < CAST('(3.0,3.0,5.0,5.0)' AS box);
 
 -- area =
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE b.f1 = box '(3.0,3.0,5.0,5.0)';
+   WHERE b.f1 = CAST('(3.0,3.0,5.0,5.0)' AS box);
 
 -- area >
 SELECT b.f1
    FROM BOX_TBL b				-- zero area
-   WHERE b.f1 > box '(3.5,3.0,4.5,3.0)';
+   WHERE b.f1 > CAST('(3.5,3.0,4.5,3.0)' AS box);
 
 -- area >=
 SELECT b.f1
    FROM BOX_TBL b				-- zero area
-   WHERE b.f1 >= box '(3.5,3.0,4.5,3.0)';
+   WHERE b.f1 >= CAST('(3.5,3.0,4.5,3.0)' AS box);
 
 -- right of
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE box '(3.0,3.0,5.0,5.0)' >> b.f1;
+   WHERE CAST('(3.0,3.0,5.0,5.0)' AS box) >> b.f1;
 
 -- contained in
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE b.f1 <@ box '(0,0,3,3)';
+   WHERE b.f1 <@ CAST('(0,0,3,3)' AS box);
 
 -- contains
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE box '(0,0,3,3)' @> b.f1;
+   WHERE CAST('(0,0,3,3)' AS box) @> b.f1;
 
 -- box equality
 SELECT b.f1
    FROM BOX_TBL b
-   WHERE box '(1,1,3,3)' ~= b.f1;
+   WHERE CAST('(1,1,3,3)' AS box) ~= b.f1;
 
 -- center of box, left unary operator
 SELECT @@(b1.f1) AS p
@@ -220,41 +220,41 @@ SET enable_indexscan = OFF;
 SET enable_bitmapscan = OFF;
 
 CREATE TABLE quad_box_tbl_ord_seq1 AS
-SELECT rank() OVER (ORDER BY b <-> point '123,456') n, b <-> point '123,456' dist, id
+SELECT rank() OVER (ORDER BY b <-> CAST('123,456' AS point)) n, b <-> CAST('123,456' AS point) dist, id
 FROM quad_box_tbl;
 
 CREATE TABLE quad_box_tbl_ord_seq2 AS
-SELECT rank() OVER (ORDER BY b <-> point '123,456') n, b <-> point '123,456' dist, id
-FROM quad_box_tbl WHERE b <@ box '((200,300),(500,600))';
+SELECT rank() OVER (ORDER BY b <-> CAST('123,456' AS point)) n, b <-> CAST('123,456' AS point) dist, id
+FROM quad_box_tbl WHERE b <@ CAST('((200,300),(500,600))' AS box);
 
 SET enable_seqscan = OFF;
 SET enable_indexscan = ON;
 SET enable_bitmapscan = ON;
 
-SELECT count(*) FROM quad_box_tbl WHERE b <<  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b &<  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b &&  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b &>  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b >>  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b >>  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b <<| box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b &<| box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b |&> box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b |>> box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b @>  box '((201,301),(202,303))';
-SELECT count(*) FROM quad_box_tbl WHERE b <@  box '((100,200),(300,500))';
-SELECT count(*) FROM quad_box_tbl WHERE b ~=  box '((200,300),(205,305))';
+SELECT count(*) FROM quad_box_tbl WHERE b <<  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b &<  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b &&  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b &>  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b >>  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b >>  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b <<| CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b &<| CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b |&> CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b |>> CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b @>  CAST('((201,301),(202,303))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b <@  CAST('((100,200),(300,500))' AS box);
+SELECT count(*) FROM quad_box_tbl WHERE b ~=  CAST('((200,300),(205,305))' AS box);
 
 -- test ORDER BY distance
 SET enable_indexscan = ON;
 SET enable_bitmapscan = OFF;
 
 EXPLAIN (COSTS OFF)
-SELECT rank() OVER (ORDER BY b <-> point '123,456') n, b <-> point '123,456' dist, id
+SELECT rank() OVER (ORDER BY b <-> CAST('123,456' AS point)) n, b <-> CAST('123,456' AS point) dist, id
 FROM quad_box_tbl;
 
 CREATE TEMP TABLE quad_box_tbl_ord_idx1 AS
-SELECT rank() OVER (ORDER BY b <-> point '123,456') n, b <-> point '123,456' dist, id
+SELECT rank() OVER (ORDER BY b <-> CAST('123,456' AS point)) n, b <-> CAST('123,456' AS point) dist, id
 FROM quad_box_tbl;
 
 SELECT *
@@ -265,12 +265,12 @@ WHERE seq.id IS NULL OR idx.id IS NULL;
 
 
 EXPLAIN (COSTS OFF)
-SELECT rank() OVER (ORDER BY b <-> point '123,456') n, b <-> point '123,456' dist, id
-FROM quad_box_tbl WHERE b <@ box '((200,300),(500,600))';
+SELECT rank() OVER (ORDER BY b <-> CAST('123,456' AS point)) n, b <-> CAST('123,456' AS point) dist, id
+FROM quad_box_tbl WHERE b <@ CAST('((200,300),(500,600))' AS box);
 
 CREATE TEMP TABLE quad_box_tbl_ord_idx2 AS
-SELECT rank() OVER (ORDER BY b <-> point '123,456') n, b <-> point '123,456' dist, id
-FROM quad_box_tbl WHERE b <@ box '((200,300),(500,600))';
+SELECT rank() OVER (ORDER BY b <-> CAST('123,456' AS point)) n, b <-> CAST('123,456' AS point) dist, id
+FROM quad_box_tbl WHERE b <@ CAST('((200,300),(500,600))' AS box);
 
 SELECT *
 FROM quad_box_tbl_ord_seq2 seq FULL JOIN quad_box_tbl_ord_idx2 idx

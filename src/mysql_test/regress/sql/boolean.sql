@@ -16,71 +16,71 @@ SELECT true AS true;
 
 SELECT false AS false;
 
-SELECT bool 't' AS true;
+SELECT CAST('t' AS bool) AS true;
 
-SELECT bool '   f           ' AS false;
+SELECT CAST('   f           ' AS bool) AS false;
 
-SELECT bool 'true' AS true;
+SELECT CAST('true' AS bool) AS true;
 
-SELECT bool 'test' AS error;
+SELECT CAST('test' AS bool) AS error;
 
-SELECT bool 'false' AS false;
+SELECT CAST('false' AS bool) AS false;
 
-SELECT bool 'foo' AS error;
+SELECT CAST('foo' AS bool) AS error;
 
-SELECT bool 'y' AS true;
+SELECT CAST('y' AS bool) AS true;
 
-SELECT bool 'yes' AS true;
+SELECT CAST('yes' AS bool) AS true;
 
-SELECT bool 'yeah' AS error;
+SELECT CAST('yeah' AS bool) AS error;
 
-SELECT bool 'n' AS false;
+SELECT CAST('n' AS bool) AS false;
 
-SELECT bool 'no' AS false;
+SELECT CAST('no' AS bool) AS false;
 
-SELECT bool 'nay' AS error;
+SELECT CAST('nay' AS bool) AS error;
 
-SELECT bool 'on' AS true;
+SELECT CAST('on' AS bool) AS true;
 
-SELECT bool 'off' AS false;
+SELECT CAST('off' AS bool) AS false;
 
-SELECT bool 'of' AS false;
+SELECT CAST('of' AS bool) AS false;
 
-SELECT bool 'o' AS error;
+SELECT CAST('o' AS bool) AS error;
 
-SELECT bool 'on_' AS error;
+SELECT CAST('on_' AS bool) AS error;
 
-SELECT bool 'off_' AS error;
+SELECT CAST('off_' AS bool) AS error;
 
-SELECT bool '1' AS true;
+SELECT CAST('1' AS bool) AS true;
 
-SELECT bool '11' AS error;
+SELECT CAST('11' AS bool) AS error;
 
-SELECT bool '0' AS false;
+SELECT CAST('0' AS bool) AS false;
 
-SELECT bool '000' AS error;
+SELECT CAST('000' AS bool) AS error;
 
-SELECT bool '' AS error;
+SELECT CAST('' AS bool) AS error;
 
 -- and, or, not in qualifications
 
-SELECT bool 't' or bool 'f' AS true;
+SELECT CAST('t' AS bool) or CAST('f' AS bool) AS true;
 
-SELECT bool 't' and bool 'f' AS false;
+SELECT CAST('t' AS bool) and CAST('f' AS bool) AS false;
 
-SELECT not bool 'f' AS true;
+SELECT not CAST('f' AS bool) AS true;
 
-SELECT bool 't' = bool 'f' AS false;
+SELECT CAST('t' AS bool) = CAST('f' AS bool) AS false;
 
-SELECT bool 't' <> bool 'f' AS true;
+SELECT CAST('t' AS bool) <> CAST('f' AS bool) AS true;
 
-SELECT bool 't' > bool 'f' AS true;
+SELECT CAST('t' AS bool) > CAST('f' AS bool) AS true;
 
-SELECT bool 't' >= bool 'f' AS true;
+SELECT CAST('t' AS bool) >= CAST('f' AS bool) AS true;
 
-SELECT bool 'f' < bool 't' AS true;
+SELECT CAST('f' AS bool) < CAST('t' AS bool) AS true;
 
-SELECT bool 'f' <= bool 't' AS true;
+SELECT CAST('f' AS bool) <= CAST('t' AS bool) AS true;
 
 -- explicit casts to/from text
 SELECT 'TrUe'::text::boolean AS true, 'fAlse'::text::boolean AS false;
@@ -93,11 +93,11 @@ SELECT ''::text::boolean AS invalid;            -- error
 
 CREATE TABLE BOOLTBL1 (f1 bool);
 
-INSERT INTO BOOLTBL1 (f1) VALUES (bool 't');
+INSERT INTO BOOLTBL1 (f1) VALUES (CAST('t' AS bool));
 
-INSERT INTO BOOLTBL1 (f1) VALUES (bool 'True');
+INSERT INTO BOOLTBL1 (f1) VALUES (CAST('True' AS bool));
 
-INSERT INTO BOOLTBL1 (f1) VALUES (bool 'true');
+INSERT INTO BOOLTBL1 (f1) VALUES (CAST('true' AS bool));
 
 
 -- BOOLTBL1 should be full of true's at this point
@@ -106,38 +106,38 @@ SELECT BOOLTBL1.* FROM BOOLTBL1;
 
 SELECT BOOLTBL1.*
    FROM BOOLTBL1
-   WHERE f1 = bool 'true';
+   WHERE f1 = CAST('true' AS bool);
 
 
 SELECT BOOLTBL1.*
    FROM BOOLTBL1
-   WHERE f1 <> bool 'false';
+   WHERE f1 <> CAST('false' AS bool);
 
 SELECT BOOLTBL1.*
    FROM BOOLTBL1
-   WHERE booleq(bool 'false', f1);
+   WHERE booleq(CAST('false' AS bool), f1);
 
-INSERT INTO BOOLTBL1 (f1) VALUES (bool 'f');
+INSERT INTO BOOLTBL1 (f1) VALUES (CAST('f' AS bool));
 
 SELECT BOOLTBL1.*
    FROM BOOLTBL1
-   WHERE f1 = bool 'false';
+   WHERE f1 = CAST('false' AS bool);
 
 
 CREATE TABLE BOOLTBL2 (f1 bool);
 
-INSERT INTO BOOLTBL2 (f1) VALUES (bool 'f');
+INSERT INTO BOOLTBL2 (f1) VALUES (CAST('f' AS bool));
 
-INSERT INTO BOOLTBL2 (f1) VALUES (bool 'false');
+INSERT INTO BOOLTBL2 (f1) VALUES (CAST('false' AS bool));
 
-INSERT INTO BOOLTBL2 (f1) VALUES (bool 'False');
+INSERT INTO BOOLTBL2 (f1) VALUES (CAST('False' AS bool));
 
-INSERT INTO BOOLTBL2 (f1) VALUES (bool 'FALSE');
+INSERT INTO BOOLTBL2 (f1) VALUES (CAST('FALSE' AS bool));
 
 -- This is now an invalid expression
 -- For pre-v6.3 this evaluated to false - thomas 1997-10-23
 INSERT INTO BOOLTBL2 (f1)
-   VALUES (bool 'XXX');
+   VALUES (CAST('XXX' AS bool));
 
 -- BOOLTBL2 should be full of false's at this point
 SELECT BOOLTBL2.* FROM BOOLTBL2;
@@ -155,12 +155,12 @@ SELECT BOOLTBL1.*, BOOLTBL2.*
 
 SELECT BOOLTBL1.*, BOOLTBL2.*
    FROM BOOLTBL1, BOOLTBL2
-   WHERE BOOLTBL2.f1 = BOOLTBL1.f1 and BOOLTBL1.f1 = bool 'false';
+   WHERE BOOLTBL2.f1 = BOOLTBL1.f1 and BOOLTBL1.f1 = CAST('false' AS bool);
 
 
 SELECT BOOLTBL1.*, BOOLTBL2.*
    FROM BOOLTBL1, BOOLTBL2
-   WHERE BOOLTBL2.f1 = BOOLTBL1.f1 or BOOLTBL1.f1 = bool 'true'
+   WHERE BOOLTBL2.f1 = BOOLTBL1.f1 or BOOLTBL1.f1 = CAST('true' AS bool)
    ORDER BY BOOLTBL1.f1, BOOLTBL2.f1;
 
 --

@@ -29,69 +29,69 @@ INSERT INTO INT4_TBL(f1) VALUES ('');
 
 SELECT * FROM INT4_TBL;
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <> CAST('0' AS int2);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <> CAST('0' AS int4);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 = int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 = CAST('0' AS int2);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 = int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 = CAST('0' AS int4);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 < int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 < CAST('0' AS int2);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 < int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 < CAST('0' AS int4);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <= int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <= CAST('0' AS int2);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <= int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <= CAST('0' AS int4);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 > int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 > CAST('0' AS int2);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 > int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 > CAST('0' AS int4);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 >= CAST('0' AS int2);
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 >= CAST('0' AS int4);
 
 -- positive odds
-SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
+SELECT i.* FROM INT4_TBL i WHERE (i.f1 % CAST('2' AS int2)) = CAST('1' AS int2);
 
 -- any evens
-SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE (i.f1 % CAST('2' AS int4)) = CAST('0' AS int2);
 
-SELECT i.f1, i.f1 * int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 * CAST('2' AS int2) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 * int2 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 * CAST('2' AS int2) AS x FROM INT4_TBL i
 WHERE abs(f1) < 1073741824;
 
-SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 * CAST('2' AS int4) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 * CAST('2' AS int4) AS x FROM INT4_TBL i
 WHERE abs(f1) < 1073741824;
 
-SELECT i.f1, i.f1 + int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 + CAST('2' AS int2) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 + int2 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 + CAST('2' AS int2) AS x FROM INT4_TBL i
 WHERE f1 < 2147483646;
 
-SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 + CAST('2' AS int4) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 + CAST('2' AS int4) AS x FROM INT4_TBL i
 WHERE f1 < 2147483646;
 
-SELECT i.f1, i.f1 - int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 - CAST('2' AS int2) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 - int2 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 - CAST('2' AS int2) AS x FROM INT4_TBL i
 WHERE f1 > -2147483647;
 
-SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 - CAST('2' AS int4) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 - CAST('2' AS int4) AS x FROM INT4_TBL i
 WHERE f1 > -2147483647;
 
-SELECT i.f1, i.f1 / int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 / CAST('2' AS int2) AS x FROM INT4_TBL i;
 
-SELECT i.f1, i.f1 / int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 / CAST('2' AS int4) AS x FROM INT4_TBL i;
 
 --
 -- more complex expressions
@@ -106,13 +106,13 @@ SELECT 2- -1 AS three;
 
 SELECT 2 - -2 AS four;
 
-SELECT int2 '2' * int2 '2' = int2 '16' / int2 '4' AS true;
+SELECT CAST('2' AS int2) * CAST('2' AS int2) = CAST('16' AS int2) / CAST('4' AS int2) AS true;
 
-SELECT int4 '2' * int2 '2' = int2 '16' / int4 '4' AS true;
+SELECT CAST('2' AS int4) * CAST('2' AS int2) = CAST('16' AS int2) / CAST('4' AS int4) AS true;
 
-SELECT int2 '2' * int4 '2' = int4 '16' / int2 '4' AS true;
+SELECT CAST('2' AS int2) * CAST('2' AS int4) = CAST('16' AS int4) / CAST('4' AS int2) AS true;
 
-SELECT int4 '1000' < int4 '999' AS false;
+SELECT CAST('1000' AS int4) < CAST('999' AS int4) AS false;
 
 SELECT 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 + 1 AS ten;
 

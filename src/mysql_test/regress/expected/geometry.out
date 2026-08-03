@@ -72,7 +72,7 @@ SELECT (@@ f1) AS center
 -- "is horizontal" function
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE ishorizontal(p1.f1, point '(0,0)');
+   WHERE ishorizontal(p1.f1, CAST('(0,0)' AS point));
         f1        
 ------------------
  (0,0)
@@ -83,7 +83,7 @@ SELECT p1.f1
 -- "is horizontal" operator
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE p1.f1 ?- point '(0,0)';
+   WHERE p1.f1 ?- CAST('(0,0)' AS point);
         f1        
 ------------------
  (0,0)
@@ -94,7 +94,7 @@ SELECT p1.f1
 -- "is vertical" function
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE isvertical(p1.f1, point '(5.1,34.5)');
+   WHERE isvertical(p1.f1, CAST('(5.1,34.5)' AS point));
      f1     
 ------------
  (5.1,34.5)
@@ -103,7 +103,7 @@ SELECT p1.f1
 -- "is vertical" operator
 SELECT p1.f1
    FROM POINT_TBL p1
-   WHERE p1.f1 ?| point '(5.1,34.5)';
+   WHERE p1.f1 ?| CAST('(5.1,34.5)' AS point);
      f1     
 ------------
  (5.1,34.5)

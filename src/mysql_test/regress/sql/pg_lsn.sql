@@ -24,7 +24,7 @@ DROP TABLE PG_LSN_TBL;
 SELECT '0/16AE7F8' = '0/16AE7F8'::pg_lsn;
 SELECT '0/16AE7F8'::pg_lsn != '0/16AE7F7';
 SELECT '0/16AE7F7' < '0/16AE7F8'::pg_lsn;
-SELECT '0/16AE7F8' > pg_lsn '0/16AE7F7';
+SELECT '0/16AE7F8' > CAST('0/16AE7F7' AS pg_lsn);
 SELECT '0/16AE7F7'::pg_lsn - '0/16AE7F8'::pg_lsn;
 SELECT '0/16AE7F8'::pg_lsn - '0/16AE7F7'::pg_lsn;
 SELECT '0/16AE7F7'::pg_lsn + 16::numeric;

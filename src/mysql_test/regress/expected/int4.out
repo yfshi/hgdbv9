@@ -49,7 +49,7 @@ SELECT * FROM INT4_TBL;
  -2147483647
 (6 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <> CAST('0' AS int2);
      f1      
 -------------
       123456
@@ -59,7 +59,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int2 '0';
  -2147483647
 (5 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <> CAST('0' AS int4);
      f1      
 -------------
       123456
@@ -69,33 +69,33 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 <> int4 '0';
  -2147483647
 (5 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 = int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 = CAST('0' AS int2);
  f1 
 ----
   0
 (1 row)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 = int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 = CAST('0' AS int4);
  f1 
 ----
   0
 (1 row)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 < int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 < CAST('0' AS int2);
      f1      
 -------------
      -123456
  -2147483647
 (2 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 < int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 < CAST('0' AS int4);
      f1      
 -------------
      -123456
  -2147483647
 (2 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <= int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <= CAST('0' AS int2);
      f1      
 -------------
            0
@@ -103,7 +103,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 <= int2 '0';
  -2147483647
 (3 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 <= int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 <= CAST('0' AS int4);
      f1      
 -------------
            0
@@ -111,7 +111,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 <= int4 '0';
  -2147483647
 (3 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 > int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 > CAST('0' AS int2);
      f1     
 ------------
      123456
@@ -119,7 +119,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 > int2 '0';
  2147483647
 (3 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 > int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 > CAST('0' AS int4);
      f1     
 ------------
      123456
@@ -127,7 +127,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 > int4 '0';
  2147483647
 (3 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 >= CAST('0' AS int2);
      f1     
 ------------
           0
@@ -136,7 +136,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int2 '0';
  2147483647
 (4 rows)
 
-SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int4 '0';
+SELECT i.* FROM INT4_TBL i WHERE i.f1 >= CAST('0' AS int4);
      f1     
 ------------
           0
@@ -146,7 +146,7 @@ SELECT i.* FROM INT4_TBL i WHERE i.f1 >= int4 '0';
 (4 rows)
 
 -- positive odds
-SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
+SELECT i.* FROM INT4_TBL i WHERE (i.f1 % CAST('2' AS int2)) = CAST('1' AS int2);
      f1     
 ------------
          35
@@ -154,7 +154,7 @@ SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
 (2 rows)
 
 -- any evens
-SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
+SELECT i.* FROM INT4_TBL i WHERE (i.f1 % CAST('2' AS int4)) = CAST('0' AS int2);
    f1    
 ---------
        0
@@ -162,9 +162,9 @@ SELECT i.* FROM INT4_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
  -123456
 (3 rows)
 
-SELECT i.f1, i.f1 * int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 * CAST('2' AS int2) AS x FROM INT4_TBL i;
 ERROR:  integer out of range
-SELECT i.f1, i.f1 * int2 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 * CAST('2' AS int2) AS x FROM INT4_TBL i
 WHERE abs(f1) < 1073741824;
    f1    |    x    
 ---------+---------
@@ -174,7 +174,7 @@ WHERE abs(f1) < 1073741824;
       35 |      70
 (4 rows)
 
-SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 * CAST('2' AS int4) AS x FROM INT4_TBL i;
      f1      |      x      
 -------------+-------------
            0 |           0
@@ -185,7 +185,7 @@ SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i;
  -2147483647 | -4294967294
 (6 rows)
 
-SELECT i.f1, i.f1 * int4 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 * CAST('2' AS int4) AS x FROM INT4_TBL i
 WHERE abs(f1) < 1073741824;
    f1    |    x    
 ---------+---------
@@ -195,9 +195,9 @@ WHERE abs(f1) < 1073741824;
       35 |      70
 (4 rows)
 
-SELECT i.f1, i.f1 + int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 + CAST('2' AS int2) AS x FROM INT4_TBL i;
 ERROR:  integer out of range
-SELECT i.f1, i.f1 + int2 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 + CAST('2' AS int2) AS x FROM INT4_TBL i
 WHERE f1 < 2147483646;
      f1      |      x      
 -------------+-------------
@@ -208,7 +208,7 @@ WHERE f1 < 2147483646;
  -2147483647 | -2147483645
 (5 rows)
 
-SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 + CAST('2' AS int4) AS x FROM INT4_TBL i;
      f1      |      x      
 -------------+-------------
            0 |           2
@@ -219,7 +219,7 @@ SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i;
  -2147483647 | -2147483645
 (6 rows)
 
-SELECT i.f1, i.f1 + int4 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 + CAST('2' AS int4) AS x FROM INT4_TBL i
 WHERE f1 < 2147483646;
      f1      |      x      
 -------------+-------------
@@ -230,9 +230,9 @@ WHERE f1 < 2147483646;
  -2147483647 | -2147483645
 (5 rows)
 
-SELECT i.f1, i.f1 - int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 - CAST('2' AS int2) AS x FROM INT4_TBL i;
 ERROR:  integer out of range
-SELECT i.f1, i.f1 - int2 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 - CAST('2' AS int2) AS x FROM INT4_TBL i
 WHERE f1 > -2147483647;
      f1     |     x      
 ------------+------------
@@ -243,7 +243,7 @@ WHERE f1 > -2147483647;
  2147483647 | 2147483645
 (5 rows)
 
-SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 - CAST('2' AS int4) AS x FROM INT4_TBL i;
      f1      |      x      
 -------------+-------------
            0 |          -2
@@ -254,7 +254,7 @@ SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i;
  -2147483647 | -2147483649
 (6 rows)
 
-SELECT i.f1, i.f1 - int4 '2' AS x FROM INT4_TBL i
+SELECT i.f1, i.f1 - CAST('2' AS int4) AS x FROM INT4_TBL i
 WHERE f1 > -2147483647;
      f1     |     x      
 ------------+------------
@@ -265,7 +265,7 @@ WHERE f1 > -2147483647;
  2147483647 | 2147483645
 (5 rows)
 
-SELECT i.f1, i.f1 / int2 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 / CAST('2' AS int2) AS x FROM INT4_TBL i;
      f1      |        x         
 -------------+------------------
            0 |           0.0000
@@ -276,7 +276,7 @@ SELECT i.f1, i.f1 / int2 '2' AS x FROM INT4_TBL i;
  -2147483647 | -1073741823.5000
 (6 rows)
 
-SELECT i.f1, i.f1 / int4 '2' AS x FROM INT4_TBL i;
+SELECT i.f1, i.f1 / CAST('2' AS int4) AS x FROM INT4_TBL i;
      f1      |        x         
 -------------+------------------
            0 |           0.0000
@@ -315,25 +315,25 @@ SELECT 2 - -2 AS four;
     4
 (1 row)
 
-SELECT int2 '2' * int2 '2' = int2 '16' / int2 '4' AS true;
+SELECT CAST('2' AS int2) * CAST('2' AS int2) = CAST('16' AS int2) / CAST('4' AS int2) AS true;
  true 
 ------
  t
 (1 row)
 
-SELECT int4 '2' * int2 '2' = int2 '16' / int4 '4' AS true;
+SELECT CAST('2' AS int4) * CAST('2' AS int2) = CAST('16' AS int2) / CAST('4' AS int4) AS true;
  true 
 ------
  t
 (1 row)
 
-SELECT int2 '2' * int4 '2' = int4 '16' / int2 '4' AS true;
+SELECT CAST('2' AS int2) * CAST('2' AS int4) = CAST('16' AS int4) / CAST('4' AS int2) AS true;
  true 
 ------
  t
 (1 row)
 
-SELECT int4 '1000' < int4 '999' AS false;
+SELECT CAST('1000' AS int4) < CAST('999' AS int4) AS false;
  false 
 -------
  f

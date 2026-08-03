@@ -55,7 +55,7 @@ SELECT * FROM (TABLE int2_tbl) AS s (a, b);
 ERROR:  relation "int2_tbl" does not exist
 LINE 1: SELECT * FROM (TABLE int2_tbl) AS s (a, b);
                              ^
-SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 <> CAST('0' AS int2);
    f1   
 --------
    1234
@@ -65,7 +65,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int2 '0';
  -32767
 (5 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int4 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 <> CAST('0' AS int4);
    f1   
 --------
    1234
@@ -75,33 +75,33 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 <> int4 '0';
  -32767
 (5 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 = int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 = CAST('0' AS int2);
  f1 
 ----
   0
 (1 row)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 = int4 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 = CAST('0' AS int4);
  f1 
 ----
   0
 (1 row)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 < int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 < CAST('0' AS int2);
    f1   
 --------
   -1234
  -32767
 (2 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 < int4 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 < CAST('0' AS int4);
    f1   
 --------
   -1234
  -32767
 (2 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 <= int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 <= CAST('0' AS int2);
    f1   
 --------
       0
@@ -109,7 +109,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 <= int2 '0';
  -32767
 (3 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 <= int4 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 <= CAST('0' AS int4);
    f1   
 --------
       0
@@ -117,7 +117,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 <= int4 '0';
  -32767
 (3 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 > int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 > CAST('0' AS int2);
   f1   
 -------
   1234
@@ -125,7 +125,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 > int2 '0';
  32767
 (3 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 > int4 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 > CAST('0' AS int4);
   f1   
 -------
   1234
@@ -133,7 +133,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 > int4 '0';
  32767
 (3 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 >= int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 >= CAST('0' AS int2);
   f1   
 -------
      0
@@ -142,7 +142,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 >= int2 '0';
  32767
 (4 rows)
 
-SELECT i.* FROM INT2_TBL i WHERE i.f1 >= int4 '0';
+SELECT i.* FROM INT2_TBL i WHERE i.f1 >= CAST('0' AS int4);
   f1   
 -------
      0
@@ -152,7 +152,7 @@ SELECT i.* FROM INT2_TBL i WHERE i.f1 >= int4 '0';
 (4 rows)
 
 -- positive odds
-SELECT i.* FROM INT2_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
+SELECT i.* FROM INT2_TBL i WHERE (i.f1 % CAST('2' AS int2)) = CAST('1' AS int2);
   f1   
 -------
     35
@@ -160,7 +160,7 @@ SELECT i.* FROM INT2_TBL i WHERE (i.f1 % int2 '2') = int2 '1';
 (2 rows)
 
 -- any evens
-SELECT i.* FROM INT2_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
+SELECT i.* FROM INT2_TBL i WHERE (i.f1 % CAST('2' AS int4)) = CAST('0' AS int2);
   f1   
 -------
      0
@@ -168,7 +168,7 @@ SELECT i.* FROM INT2_TBL i WHERE (i.f1 % int4 '2') = int2 '0';
  -1234
 (3 rows)
 
-SELECT i.f1, i.f1 * int2 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 * CAST('2' AS int2) AS x FROM INT2_TBL i;
    f1   |   x    
 --------+--------
       0 |      0
@@ -179,7 +179,7 @@ SELECT i.f1, i.f1 * int2 '2' AS x FROM INT2_TBL i;
  -32767 | -65534
 (6 rows)
 
-SELECT i.f1, i.f1 * int2 '2' AS x FROM INT2_TBL i
+SELECT i.f1, i.f1 * CAST('2' AS int2) AS x FROM INT2_TBL i
 WHERE abs(f1) < 16384;
   f1   |   x   
 -------+-------
@@ -189,7 +189,7 @@ WHERE abs(f1) < 16384;
     35 |    70
 (4 rows)
 
-SELECT i.f1, i.f1 * int4 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 * CAST('2' AS int4) AS x FROM INT2_TBL i;
    f1   |   x    
 --------+--------
       0 |      0
@@ -200,7 +200,7 @@ SELECT i.f1, i.f1 * int4 '2' AS x FROM INT2_TBL i;
  -32767 | -65534
 (6 rows)
 
-SELECT i.f1, i.f1 + int2 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 + CAST('2' AS int2) AS x FROM INT2_TBL i;
    f1   |   x    
 --------+--------
       0 |      2
@@ -211,7 +211,7 @@ SELECT i.f1, i.f1 + int2 '2' AS x FROM INT2_TBL i;
  -32767 | -32765
 (6 rows)
 
-SELECT i.f1, i.f1 + int2 '2' AS x FROM INT2_TBL i
+SELECT i.f1, i.f1 + CAST('2' AS int2) AS x FROM INT2_TBL i
 WHERE f1 < 32766;
    f1   |   x    
 --------+--------
@@ -222,7 +222,7 @@ WHERE f1 < 32766;
  -32767 | -32765
 (5 rows)
 
-SELECT i.f1, i.f1 + int4 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 + CAST('2' AS int4) AS x FROM INT2_TBL i;
    f1   |   x    
 --------+--------
       0 |      2
@@ -233,7 +233,7 @@ SELECT i.f1, i.f1 + int4 '2' AS x FROM INT2_TBL i;
  -32767 | -32765
 (6 rows)
 
-SELECT i.f1, i.f1 - int2 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 - CAST('2' AS int2) AS x FROM INT2_TBL i;
    f1   |   x    
 --------+--------
       0 |     -2
@@ -244,7 +244,7 @@ SELECT i.f1, i.f1 - int2 '2' AS x FROM INT2_TBL i;
  -32767 | -32769
 (6 rows)
 
-SELECT i.f1, i.f1 - int2 '2' AS x FROM INT2_TBL i
+SELECT i.f1, i.f1 - CAST('2' AS int2) AS x FROM INT2_TBL i
 WHERE f1 > -32767;
   f1   |   x   
 -------+-------
@@ -255,7 +255,7 @@ WHERE f1 > -32767;
  32767 | 32765
 (5 rows)
 
-SELECT i.f1, i.f1 - int4 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 - CAST('2' AS int4) AS x FROM INT2_TBL i;
    f1   |   x    
 --------+--------
       0 |     -2
@@ -266,7 +266,7 @@ SELECT i.f1, i.f1 - int4 '2' AS x FROM INT2_TBL i;
  -32767 | -32769
 (6 rows)
 
-SELECT i.f1, i.f1 / int2 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 / CAST('2' AS int2) AS x FROM INT2_TBL i;
    f1   |      x      
 --------+-------------
       0 |      0.0000
@@ -277,7 +277,7 @@ SELECT i.f1, i.f1 / int2 '2' AS x FROM INT2_TBL i;
  -32767 | -16383.5000
 (6 rows)
 
-SELECT i.f1, i.f1 / int4 '2' AS x FROM INT2_TBL i;
+SELECT i.f1, i.f1 / CAST('2' AS int4) AS x FROM INT2_TBL i;
    f1   |      x      
 --------+-------------
       0 |      0.0000

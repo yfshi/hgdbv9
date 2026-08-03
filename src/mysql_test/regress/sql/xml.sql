@@ -45,19 +45,19 @@ SELECT xmlelement(name duplicate, xmlattributes(1 as a, 2 as b, 3 as a));
 
 SELECT xmlelement(name num, 37);
 SELECT xmlelement(name foo, text 'bar');
-SELECT xmlelement(name foo, xml 'bar');
+SELECT xmlelement(name foo, CAST('bar' AS xml));
 SELECT xmlelement(name foo, text 'b<a/>r');
-SELECT xmlelement(name foo, xml 'b<a/>r');
+SELECT xmlelement(name foo, CAST('b<a/>r' AS xml));
 SELECT xmlelement(name foo, array[1, 2, 3]);
 SET xmlbinary TO base64;
-SELECT xmlelement(name foo, bytea 'bar');
+SELECT xmlelement(name foo, CAST('bar' as bytea));
 SET xmlbinary TO hex;
-SELECT xmlelement(name foo, bytea 'bar');
+SELECT xmlelement(name foo, CAST('bar' as bytea));
 
 SELECT xmlelement(name foo, xmlattributes(true as bar));
 SELECT xmlelement(name foo, xmlattributes('2009-04-09 00:24:37'::pg_catalog.timestamp as bar));
 SELECT xmlelement(name foo, xmlattributes('infinity'::pg_catalog.timestamp as bar));
-SELECT xmlelement(name foo, xmlattributes('<>&"''' as funny, xml 'b<a/>r' as funnier));
+SELECT xmlelement(name foo, xmlattributes('<>&"''' as funny, CAST('b<a/>r' AS xml) as funnier));
 
 
 SELECT xmlparse(content '');
@@ -94,11 +94,11 @@ SELECT xmlpi(name "xml-stylesheet", 'href="mystyle.css" type="text/css"');
 SELECT xmlpi(name foo, '   bar');
 
 
-SELECT xmlroot(xml '<foo/>', version no value, standalone no value);
-SELECT xmlroot(xml '<foo/>', version '2.0');
-SELECT xmlroot(xml '<foo/>', version no value, standalone yes);
-SELECT xmlroot(xml '<?xml version="1.1"?><foo/>', version no value, standalone yes);
-SELECT xmlroot(xmlroot(xml '<foo/>', version '1.0'), version '1.1', standalone no);
+SELECT xmlroot(CAST('<foo/>' AS xml), version no value, standalone no value);
+SELECT xmlroot(CAST('<foo/>' AS xml), version '2.0');
+SELECT xmlroot(CAST('<foo/>' AS xml), version no value, standalone yes);
+SELECT xmlroot(CAST('<?xml version="1.1"?><foo/>' AS xml), version no value, standalone yes);
+SELECT xmlroot(xmlroot(CAST('<foo/>' AS xml), version '1.0'), version '1.1', standalone no);
 SELECT xmlroot('<?xml version="1.1" standalone="yes"?><foo/>', version no value, standalone no);
 SELECT xmlroot('<?xml version="1.1" standalone="yes"?><foo/>', version no value, standalone no value);
 SELECT xmlroot('<?xml version="1.1" standalone="yes"?><foo/>', version no value);
@@ -126,10 +126,10 @@ SELECT xmlserialize(content 'good' as char(10));
 SELECT xmlserialize(document 'bad' as text);
 
 
-SELECT xml '<foo>bar</foo>' IS DOCUMENT;
-SELECT xml '<foo>bar</foo><bar>foo</bar>' IS DOCUMENT;
-SELECT xml '<abc/>' IS NOT DOCUMENT;
-SELECT xml 'abc' IS NOT DOCUMENT;
+SELECT CAST('<foo>bar</foo>' AS xml) IS DOCUMENT;
+SELECT CAST('<foo>bar</foo><bar>foo</bar>' AS xml) IS DOCUMENT;
+SELECT CAST('<abc/>' AS xml) IS NOT DOCUMENT;
+SELECT CAST('abc' AS xml) IS NOT DOCUMENT;
 SELECT '<>' IS NOT DOCUMENT;
 
 
@@ -149,17 +149,17 @@ PREPARE foo (xml) AS SELECT xmlconcat('<foo/>', $1);
 SET XML OPTION DOCUMENT;
 EXECUTE foo ('<bar/>');
 EXECUTE foo ('bad');
-SELECT xml '<!DOCTYPE a><a/><b/>';
+SELECT CAST('<!DOCTYPE a><a/><b/>' AS xml);
 
 SET XML OPTION CONTENT;
 EXECUTE foo ('<bar/>');
 EXECUTE foo ('good');
-SELECT xml '<!-- in SQL:2006+ a doc is content too--> <?y z?> <!DOCTYPE a><a/>';
-SELECT xml '<?xml version="1.0"?> <!-- hi--> <!DOCTYPE a><a/>';
-SELECT xml '<!DOCTYPE a><a/>';
-SELECT xml '<!-- hi--> oops <!DOCTYPE a><a/>';
-SELECT xml '<!-- hi--> <oops/> <!DOCTYPE a><a/>';
-SELECT xml '<!DOCTYPE a><a/><b/>';
+SELECT CAST('<!-- in SQL:2006+ a doc is content too--> <?y z?> <!DOCTYPE a><a/>' AS xml);
+SELECT CAST('<?xml version="1.0"?> <!-- hi--> <!DOCTYPE a><a/>' AS xml);
+SELECT CAST('<!DOCTYPE a><a/>' AS xml);
+SELECT CAST('<!-- hi--> oops <!DOCTYPE a><a/>' AS xml);
+SELECT CAST('<!-- hi--> <oops/> <!DOCTYPE a><a/>' AS xml);
+SELECT CAST('<!DOCTYPE a><a/><b/>' AS xml);
 
 
 -- Test backwards parsing
@@ -170,7 +170,7 @@ CREATE VIEW xmlview3 AS SELECT xmlelement(name element, xmlattributes (1 as ":on
 CREATE VIEW xmlview4 AS SELECT xmlelement(name employee, xmlforest(name, age, salary as pay)) FROM emp;
 CREATE VIEW xmlview5 AS SELECT xmlparse(content '<abc>x</abc>');
 CREATE VIEW xmlview6 AS SELECT xmlpi(name foo, 'bar');
-CREATE VIEW xmlview7 AS SELECT xmlroot(xml '<foo/>', version no value, standalone yes);
+CREATE VIEW xmlview7 AS SELECT xmlroot(CAST('<foo/>' AS xml), version no value, standalone yes);
 CREATE VIEW xmlview8 AS SELECT xmlserialize(content 'good' as char(10));
 CREATE VIEW xmlview9 AS SELECT xmlserialize(content 'good' as text);
 

@@ -212,7 +212,7 @@ select txid_visible_in_snapshot(txid_current(), txid_current_snapshot());
 (1 row)
 
 -- test 64bitness
-select txid_snapshot '1000100010001000:1000100010001100:1000100010001012,1000100010001013';
+select CAST('1000100010001000:1000100010001100:1000100010001012,1000100010001013' AS txid_snapshot);
                             txid_snapshot                            
 ---------------------------------------------------------------------
  1000100010001000:1000100010001100:1000100010001012,1000100010001013
@@ -231,16 +231,16 @@ select txid_visible_in_snapshot('1000100010001015', '1000100010001000:1000100010
 (1 row)
 
 -- test 64bit overflow
-SELECT txid_snapshot '1:9223372036854775807:3';
+SELECT CAST('1:9223372036854775807:3' AS txid_snapshot);
       txid_snapshot      
 -------------------------
  1:9223372036854775807:3
 (1 row)
 
-SELECT txid_snapshot '1:9223372036854775808:3';
+SELECT CAST('1:9223372036854775808:3' AS txid_snapshot);
 ERROR:  invalid input syntax for type pg_snapshot: "1:9223372036854775808:3"
-LINE 1: SELECT txid_snapshot '1:9223372036854775808:3';
-                             ^
+LINE 1: SELECT CAST('1:9223372036854775808:3' AS txid_snapshot);
+                    ^
 -- test txid_current_if_assigned
 BEGIN;
 SELECT txid_current_if_assigned() IS NULL;

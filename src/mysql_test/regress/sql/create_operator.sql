@@ -28,8 +28,8 @@ CREATE OPERATOR #%# (
 );
 
 -- Test operator created above
-SELECT point '(1,2)' <% widget '(0,0,3)' AS t,
-       point '(1,2)' <% widget '(0,0,1)' AS f;
+SELECT CAST('(1,2)' AS point) <% CAST('(0,0,3)' AS widget) AS t,
+       CAST('(1,2)' AS point) <% CAST('(0,0,1)' AS widget) AS f;
 
 -- Test comments
 COMMENT ON OPERATOR ###### (NONE, int4) IS 'bad prefix';

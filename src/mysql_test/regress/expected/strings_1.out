@@ -299,7 +299,7 @@ SELECT CAST(f1 AS text) AS "text(varchar)" FROM VARCHAR_TBL;
  abcd
 (4 rows)
 
-SELECT CAST(name 'namefield' AS text) AS "text(name)";
+SELECT CAST(CAST('namefield' AS name) AS text) AS "text(name)";
  text(name) 
 ------------
  namefield
@@ -330,7 +330,7 @@ SELECT CAST(f1 AS char(10)) AS "char(varchar)" FROM VARCHAR_TBL;
  abcd      
 (4 rows)
 
-SELECT CAST(name 'namefield' AS char(10)) AS "char(name)";
+SELECT CAST(CAST('namefield' AS name) AS char(10)) AS "char(name)";
  char(name) 
 ------------
  namefield 
@@ -352,7 +352,7 @@ SELECT CAST(f1 AS varchar) AS "varchar(char)" FROM CHAR_TBL;
  abcd
 (4 rows)
 
-SELECT CAST(name 'namefield' AS varchar) AS "varchar(name)";
+SELECT CAST(CAST('namefield' AS name) AS varchar) AS "varchar(name)";
  varchar(name) 
 ---------------
  namefield

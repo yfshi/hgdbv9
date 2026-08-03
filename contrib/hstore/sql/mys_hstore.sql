@@ -79,20 +79,20 @@ select defined('a=>NULL, b=>qq', 'a');
 select defined('a=>NULL, b=>qq', 'b');
 select defined('a=>NULL, b=>qq', 'c');
 select defined('a=>"NULL", b=>qq', 'a');
-select hstore 'a=>NULL, b=>qq' ? 'a';
-select hstore 'a=>NULL, b=>qq' ? 'b';
-select hstore 'a=>NULL, b=>qq' ? 'c';
-select hstore 'a=>"NULL", b=>qq' ? 'a';
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['a','b'];
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['b','a'];
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['c','a'];
-select hstore 'a=>NULL, b=>qq' ?| ARRAY['c','d'];
-select hstore 'a=>NULL, b=>qq' ?| '{}'::text[];
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['a','b'];
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['b','a'];
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['c','a'];
-select hstore 'a=>NULL, b=>qq' ?& ARRAY['c','d'];
-select hstore 'a=>NULL, b=>qq' ?& '{}'::text[];
+select CAST('a=>NULL, b=>qq' AS hstore) ? 'a';
+select CAST('a=>NULL, b=>qq' AS hstore) ? 'b';
+select CAST('a=>NULL, b=>qq' AS hstore) ? 'c';
+select CAST('a=>"NULL", b=>qq' AS hstore) ? 'a';
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['a','b'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['b','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['c','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| ARRAY['c','d'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?| '{}'::text[];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['a','b'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['b','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['c','a'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& ARRAY['c','d'];
+select CAST('a=>NULL, b=>qq' AS hstore) ?& '{}'::text[];
 
 -- delete
 
@@ -169,13 +169,13 @@ select pg_column_size('a=>g, b=>c'::hstore || hstore('b', 'gf'))
          = pg_column_size('a=>g, b=>gf'::hstore);
 
 -- slice()
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['g','h','i']);
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b']);
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['aa','b']);
-select slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b','aa']);
-select pg_column_size(slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b']))
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['g','h','i']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['aa','b']);
+select slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b','aa']);
+select pg_column_size(slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b']))
          = pg_column_size('b=>2, c=>3'::hstore);
-select pg_column_size(slice(hstore 'aa=>1, b=>2, c=>3', ARRAY['c','b','aa']))
+select pg_column_size(slice(CAST('aa=>1, b=>2, c=>3' AS hstore), ARRAY['c','b','aa']))
          = pg_column_size('aa=>1, b=>2, c=>3'::hstore);
 
 -- array input
@@ -242,13 +242,13 @@ select v #= hstore('e', null) from testhstore0 v;
 select v #= hstore('e', null) from testhstore1 v;
 select v #= (hstore('b', 'foo') || hstore('a', '123')) from testhstore1 v;
 select v #= (hstore('b', 'foo') || hstore('e', '123')) from testhstore1 v;
-select v #= hstore '' from testhstore0 v;
-select v #= hstore '' from testhstore1 v;
+select v #= CAST('' AS hstore) from testhstore0 v;
+select v #= CAST('' AS hstore) from testhstore1 v;
 select null::testhstore1 #= (hstore('c', '3.45') || hstore('a', '123'));
 select null::testhstore1 #= (hstore('c', '3.45') || hstore('e', '123'));
-select null::testhstore0 #= hstore '';
-select null::testhstore1 #= hstore '';
-select v #= h from testhstore1 v, (values (hstore 'a=>123',1),('b=>foo,c=>3.21',2),('a=>null',3),('e=>123',4),('f=>blah',5)) x(h,i) order by i;
+select null::testhstore0 #= CAST('' AS hstore);
+select null::testhstore1 #= CAST('' AS hstore);
+select v #= h from testhstore1 v, (values (CAST('a=>123' AS hstore),1),('b=>foo,c=>3.21',2),('a=>null',3),('e=>123',4),('f=>blah',5)) x(h,i) order by i;
 
 -- keys/values
 select akeys('aa=>1 , b=>2, cq=>3'::hstore || 'cq=>l, b=>g, fg=>f');
@@ -338,7 +338,7 @@ select count(*) from (select h from (select * from testhstore union all select *
 set enable_hashagg = true;
 set enable_sort = false;
 select count(*) from (select h from (select * from testhstore union all select * from testhstore) hs group by h) hs2;
-select distinct * from (values (hstore '' || ''),('')) v(h);
+select distinct * from (values (CAST('' AS hstore) || ''),('')) v(h);
 set enable_sort = true;
 
 -- btree
@@ -351,11 +351,11 @@ select count(*) from testhstore where h = 'pos=>98, line=>371, node=>CBA, indexe
 
 -- json and jsonb
 select hstore_to_json('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4');
-select cast( hstore  '"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' as json);
+select cast( CAST('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' AS hstore) as json);
 select hstore_to_json_loose('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4, h=> "2016-01-01"');
 
 select hstore_to_jsonb('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4');
-select cast( hstore  '"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' as jsonb);
+select cast( CAST('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4' AS hstore) as jsonb);
 select hstore_to_jsonb_loose('"a key" =>1, b => t, c => null, d=> 12345, e => 012345, f=> 1.234, g=> 2.345e+4, h=> "2016-01-01"');
 
 create table test_json_agg (f1 text, f2 hstore);

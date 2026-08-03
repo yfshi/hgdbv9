@@ -98,19 +98,19 @@ select pg_visible_in_snapshot(pg_current_xact_id(), pg_current_snapshot());
 
 -- test 64bitness
 
-select pg_snapshot '1000100010001000:1000100010001100:1000100010001012,1000100010001013';
+select CAST('1000100010001000:1000100010001100:1000100010001012,1000100010001013' AS pg_snapshot);
 select pg_visible_in_snapshot('1000100010001012', '1000100010001000:1000100010001100:1000100010001012,1000100010001013');
 select pg_visible_in_snapshot('1000100010001015', '1000100010001000:1000100010001100:1000100010001012,1000100010001013');
 
 -- test 64bit overflow
-SELECT pg_snapshot '1:9223372036854775807:3';
-SELECT pg_snapshot '1:9223372036854775808:3';
+SELECT CAST('1:9223372036854775807:3' AS pg_snapshot);
+SELECT CAST('1:9223372036854775808:3' AS pg_snapshot);
 
 -- test pg_current_xact_id_if_assigned
 BEGIN;
 SELECT pg_current_xact_id_if_assigned() IS NULL;
 SELECT pg_current_xact_id() \gset
-SELECT pg_current_xact_id_if_assigned() IS NOT DISTINCT FROM xid8 :'pg_current_xact_id';
+SELECT pg_current_xact_id_if_assigned() IS NOT DISTINCT FROM CAST(:'pg_current_xact_id' AS xid8);
 COMMIT;
 
 -- test xid status functions

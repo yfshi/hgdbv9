@@ -304,7 +304,7 @@ DETAIL:  Expected JSON value, but found "}".
 CONTEXT:  JSON data, line 4: ...yveryveryveryveryveryveryveryverylongfieldname":}
 -- ERROR missing value for last field
 -- make sure jsonb is passed through json generators without being escaped
-SELECT array_to_json(ARRAY [jsonb '{"a":1}', jsonb '{"b":[2,3]}']);
+SELECT array_to_json(ARRAY [CAST('{"a":1}' AS jsonb), CAST('{"b":[2,3]}' AS jsonb)]);
       array_to_json       
 --------------------------
  [{"a": 1},{"b": [2, 3]}]
@@ -327,7 +327,7 @@ order by 1;
 (2 rows)
 
 -- to_jsonb, timestamps
-select to_jsonb(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
+select to_jsonb(CAST('2014-05-28 12:22:35.614298' AS pg_catalog.timestamp));
            to_jsonb           
 ------------------------------
  "2014-05-28T12:22:35.614298"
@@ -335,14 +335,14 @@ select to_jsonb(pg_catalog.timestamp '2014-05-28 12:22:35.614298');
 
 BEGIN;
 SET LOCAL TIME ZONE 10.5;
-select to_jsonb(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_jsonb(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
               to_jsonb              
 ------------------------------------
  "2014-05-29T02:52:35.614298+10:30"
 (1 row)
 
 SET LOCAL TIME ZONE -8;
-select to_jsonb(timestamptz '2014-05-28 12:22:35.614298-04');
+select to_jsonb(CAST('2014-05-28 12:22:35.614298-04' AS timestamptz));
               to_jsonb              
 ------------------------------------
  "2014-05-28T08:22:35.614298-08:00"
@@ -359,25 +359,25 @@ select to_jsonb(date 'Infinity');
 ERROR:  Incorrect DATE value: 'Infinity'
 select to_jsonb(date '-Infinity');
 ERROR:  Incorrect DATE value: '-Infinity'
-select to_jsonb(pg_catalog.timestamp 'Infinity');
+select to_jsonb(CAST('Infinity' AS pg_catalog.timestamp));
   to_jsonb  
 ------------
  "infinity"
 (1 row)
 
-select to_jsonb(pg_catalog.timestamp '-Infinity');
+select to_jsonb(CAST('-Infinity' AS pg_catalog.timestamp));
   to_jsonb   
 -------------
  "-infinity"
 (1 row)
 
-select to_jsonb(timestamptz 'Infinity');
+select to_jsonb(CAST('Infinity' AS timestamptz));
   to_jsonb  
 ------------
  "infinity"
 (1 row)
 
-select to_jsonb(timestamptz '-Infinity');
+select to_jsonb(CAST('-Infinity' AS timestamptz));
   to_jsonb   
 -------------
  "-infinity"
@@ -1102,25 +1102,25 @@ SELECT jsonb_exists('{"a":"null", "b":"qq"}', 'a');
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'a';
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ? 'a';
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'b';
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ? 'b';
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ? 'c';
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ? 'c';
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT jsonb '{"a":"null", "b":"qq"}' ? 'a';
+SELECT CAST('{"a":"null", "b":"qq"}' AS jsonb) ? 'a';
  ?column? 
 ----------
  t
@@ -1178,31 +1178,31 @@ SELECT jsonb_exists_any('{"a":null, "b":"qq"}', '{}'::text[]);
  f
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['a','b'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['a','b'];
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['b','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['b','a'];
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['c','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['c','a'];
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?| ARRAY['c','d'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| ARRAY['c','d'];
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?| '{}'::text[];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?| '{}'::text[];
  ?column? 
 ----------
  f
@@ -1238,37 +1238,37 @@ SELECT jsonb_exists_all('{"a":null, "b":"qq"}', '{}'::text[]);
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['a','b'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['a','b'];
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['b','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['b','a'];
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['c','a'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['c','a'];
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['c','d'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['c','d'];
  ?column? 
 ----------
  f
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?& ARRAY['a','a', 'b', 'b', 'b'];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& ARRAY['a','a', 'b', 'b', 'b'];
  ?column? 
 ----------
  t
 (1 row)
 
-SELECT jsonb '{"a":null, "b":"qq"}' ?& '{}'::text[];
+SELECT CAST('{"a":null, "b":"qq"}' AS jsonb) ?& '{}'::text[];
  ?column? 
 ----------
  t
@@ -1366,7 +1366,7 @@ SELECT jsonb_typeof('"1.0"') AS string;
 (1 row)
 
 -- jsonb_build_array, jsonb_build_object, jsonb_object_agg
-SELECT jsonb_build_array('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT jsonb_build_array('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
                             jsonb_build_array                            
 -------------------------------------------------------------------------
  ["a", 1, "b", 1.2, "c", true, "d", null, "e", {"x": 3, "y": [1, 2, 3]}]
@@ -1420,7 +1420,7 @@ SELECT jsonb_build_array(VARIADIC '{{1,4},{2,5},{3,6}}'::int[][]); -- ok
  [1, 4, 2, 5, 3, 6]
 (1 row)
 
-SELECT jsonb_build_object('a',1,'b',1.2,'c',true,'d',null,'e',json '{"x": 3, "y": [1,2,3]}');
+SELECT jsonb_build_object('a',1,'b',1.2,'c',true,'d',null,'e',CAST('{"x": 3, "y": [1,2,3]}' AS json));
                            jsonb_build_object                            
 -------------------------------------------------------------------------
  {"a": 1, "b": 1.2, "c": true, "d": null, "e": {"x": 3, "y": [1, 2, 3]}}
@@ -1517,7 +1517,7 @@ SELECT jsonb_build_object(null,2);
 ERROR:  argument 1: key must not be null
 SELECT jsonb_build_object(r,2) FROM (SELECT 1 AS a, 2 AS b) r;
 ERROR:  key value must be scalar, not array, composite, or json
-SELECT jsonb_build_object(json '{"a":1,"b":2}', 3);
+SELECT jsonb_build_object(CAST('{"a":1,"b":2}' AS json), 3);
 ERROR:  key value must be scalar, not array, composite, or json
 SELECT jsonb_build_object('{1,2,3}'::int[], 3);
 ERROR:  key value must be scalar, not array, composite, or json
@@ -3280,7 +3280,7 @@ SELECT count(*) FROM (SELECT j FROM (SELECT * FROM testjsonb UNION ALL SELECT * 
    894
 (1 row)
 
-SELECT distinct * FROM (values (jsonb '{}' || ''::text),('{}')) v(j);
+SELECT distinct * FROM (values (CAST('{}' AS jsonb) || ''::text),('{}')) v(j);
  j  
 ----
  {}

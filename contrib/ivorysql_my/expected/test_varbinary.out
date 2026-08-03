@@ -262,9 +262,9 @@ select * from my_varbinary_t18;
 
 -- should syntax error
 select varbinary'101010' as result;
-ERROR:  syntax error at or near "'101010'"
+ERROR:  syntax error at or near "as"
 LINE 1: select varbinary'101010' as result;
-                        ^
+                                 ^
 SET sql_mode = '';
 -- should warning
 insert into  my_varbinary_t15 values ('Database1');
