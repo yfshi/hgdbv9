@@ -786,12 +786,11 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
 %type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
-				bare_columnref		/* OA#2580 */
 %type <str>		NonReservedWord NonReservedWord_or_Sconst
 %type <str>		var_name type_function_name param_name
 				type_function_name_without_binary /* bug#6011 */
 %type <str>		createdb_opt_name plassign_target
-%type <node>	var_value zone_value
+%type <node>	var_value zone_value bare_columnref		/* OA#2580 */
 %type <rolespec> auth_ident RoleSpec opt_granted_by UserId
 
 %type <keyword> unreserved_keyword type_func_name_keyword
@@ -20156,7 +20155,7 @@ target_el:	a_expr AS ColLabel
 					$$ = makeNode(ResTarget);
 					$$->name = $2;
 					$$->indirection = NIL;
-					$$->val = makeColumnRef($1, NIL, @1, yyscanner);
+					$$->val = $1;
 					$$->location = @1;
 				}
 			/* End Oa#2580 */
@@ -21183,8 +21182,18 @@ col_name_keyword:
 
 /* Begin Oa#2580 */
 bare_columnref:
-			bare_col_name_keyword			{ $$ = pstrdup($1); }
-			| type_function_name_without_binary					{ $$ = $1; }
+			bare_col_name_keyword
+				{
+					$$ = makeColumnRef(pstrdup($1), NIL, @1, yyscanner);
+				}
+			| type_function_name_without_binary
+				{
+					$$ = makeColumnRef($1, NIL, @1, yyscanner);
+				}
+			| ColId indirection
+				{
+					$$ = makeColumnRef($1, $2, @1, yyscanner);
+				}
 		;
 
 bare_col_name_keyword:
