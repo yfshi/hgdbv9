@@ -144,6 +144,10 @@ SELECT c 'bare alias'
 FROM mysql_select_alias_test
 ORDER BY c;
 
+SELECT m.c 'bare alias'
+FROM mysql_select_alias_test m
+ORDER BY c;
+
 -- SELECT c + 10 'expr alias'
 -- FROM mysql_select_alias_test
 -- ORDER BY c;
