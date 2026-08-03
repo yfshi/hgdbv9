@@ -1519,3 +1519,11 @@ select typname from pg_type where typname like '%t_enum_grammar%';
 select objname,option from pg_object where objname like '%t_enum_grammar%';
 select typname from pg_type where typname like '%t_enum_like%';
 select objname,option from pg_object where objname like '%t_enum_like%';
+create table enum_collation_test
+(
+    node_state enum('existence', 'inexistence') collate utf8mb3_general_ci
+);
+desc enum_collation_test;
+insert into enum_collation_test values ('existence');
+select * from enum_collation_test where node_state = 'EXISTENCE';
+drop table enum_collation_test;

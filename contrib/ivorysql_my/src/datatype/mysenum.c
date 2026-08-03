@@ -248,8 +248,8 @@ PG_FUNCTION_INFO_V1(anyenum_sum);
 PG_FUNCTION_INFO_V1(format_anonymous_enum);
 PG_FUNCTION_INFO_V1(check_is_anonymous_enum);
 
-inline static int 
-ENUM_STRCMP(char* str1, char * str2)
+inline static int
+ENUM_STRCMP(char *str1, char *str2, Oid coll)
 {
 	char	   *trimstr1 = NULL;
 	char	   *trimstr2 = NULL;
@@ -261,7 +261,7 @@ ENUM_STRCMP(char* str1, char * str2)
 	trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(str2));
 	trimstr2 = TextDatumGetCString(trimtxt);
 
-	return strcmp(trimstr1, trimstr2);
+	return varstr_cmp(trimstr1, strlen(trimstr1), trimstr2, strlen(trimstr2), coll);
 }
 
 Datum
@@ -388,7 +388,7 @@ anyenum_eqtext(PG_FUNCTION_ARGS)
 
 	str1 = get_enum_label(oid);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) == 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2, PG_GET_COLLATION()) == 0);
 }
 
 Datum
@@ -400,7 +400,7 @@ text_eqanyenum(PG_FUNCTION_ARGS)
 	char		*str2 = text_to_cstring(tvalue);
 
 	str1 = get_enum_label(oid);
-	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) == 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1, PG_GET_COLLATION()) == 0);
 }
 
 Datum
@@ -525,7 +525,7 @@ anyenum_netext(PG_FUNCTION_ARGS)
 	text	    *tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) != 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2, PG_GET_COLLATION()) != 0);
 }
 
 Datum
@@ -536,7 +536,7 @@ text_neanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) != 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1, PG_GET_COLLATION()) != 0);
 }
 
 Datum
@@ -664,7 +664,7 @@ anyenum_lttext(PG_FUNCTION_ARGS)
 	text	   	*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) < 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2, PG_GET_COLLATION()) < 0);
 }
 
 Datum
@@ -675,7 +675,7 @@ text_ltanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) < 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1, PG_GET_COLLATION()) < 0);
 }
 
 Datum
@@ -800,7 +800,7 @@ anyenum_letext(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) <= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2, PG_GET_COLLATION()) <= 0);
 }
 
 Datum
@@ -811,7 +811,7 @@ text_leanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) <= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1, PG_GET_COLLATION()) <= 0);
 }
 
 Datum
@@ -936,7 +936,7 @@ anyenum_gttext(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 	
-	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) > 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2, PG_GET_COLLATION()) > 0);
 }
 
 Datum
@@ -947,7 +947,7 @@ text_gtanyenum(PG_FUNCTION_ARGS)
 	text	  	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) > 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1, PG_GET_COLLATION()) > 0);
 }
 
 Datum
@@ -1072,7 +1072,7 @@ anyenum_getext(PG_FUNCTION_ARGS)
 	text		*tvalue = PG_GETARG_TEXT_P(1);
 	char		*str2 = text_to_cstring(tvalue);
 
-	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2) >= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str1, str2, PG_GET_COLLATION()) >= 0);
 }
 
 Datum
@@ -1083,7 +1083,7 @@ text_geanyenum(PG_FUNCTION_ARGS)
 	text	 	*tvalue = PG_GETARG_TEXT_P(0);
 	char		*str2 = text_to_cstring(tvalue);
 	
-	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1) >= 0);
+	PG_RETURN_BOOL(ENUM_STRCMP(str2, str1, PG_GET_COLLATION()) >= 0);
 }
 
 Datum

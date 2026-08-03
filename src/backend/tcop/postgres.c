@@ -1543,6 +1543,10 @@ exec_simple_query(const char *query_string)
 			QueryCompletion qc;
 			qc.commandTag = CMDTAG_UNKNOWN;
 			qc.nprocessed = 0;
+
+			/* Begin - Bug#8745: This needs to be set to true to configure the correct server status. */
+			is_last_parsetree = true;
+			/* End - Bug#8745 */
             MyProcPort->protocol_config->fn_end_command(&qc, dest, false);
         }
 		/* End - Req: SRS-MYSQL-PROTOCOL */

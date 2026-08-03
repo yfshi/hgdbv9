@@ -105,7 +105,7 @@ Key:VARCHAR:null
 Default:TEXT:null
 Extra:VARCHAR:
 Field:VARCHAR:c11
-Type:TEXT:bit
+Type:TEXT:bit(10)
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:TEXT:null
