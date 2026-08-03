@@ -35,6 +35,8 @@
 #endif
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
 
+password_validuntil_hook_type password_validuntil_hook = NULL; /* ReqID:SRS-SECURITY-GRACETIME */
+
 /*
  * Fetch stored password for a user, for authentication.
  *
@@ -46,6 +48,7 @@ char *
 get_role_password(const char *role, char **logdetail)
 {
 	TimestampTz vuntil = 0;
+	TimestampTz now;
 	HeapTuple	roleTup;
 	Datum		datum;
 	bool		isnull;
@@ -80,12 +83,24 @@ get_role_password(const char *role, char **logdetail)
 	/*
 	 * Password OK, but check to be sure we are not past rolvaliduntil
 	 */
-	if (!isnull && vuntil < GetCurrentTimestamp())
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	now = GetCurrentTimestamp();
+
+	if (!isnull && vuntil < now)
 	{
-		*logdetail = psprintf(_("User \"%s\" has an expired password."),
-							  role);
-		return NULL;
+		TimestampTz auth_vuntil = vuntil;
+
+		if (password_validuntil_hook)
+			(*password_validuntil_hook) (role, vuntil, &auth_vuntil);
+
+		if (auth_vuntil < now)
+		{
+			*logdetail = psprintf(_("User \"%s\" has an expired password."),
+								  role);
+			return NULL;
+		}
 	}
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
 
 	return shadow_pass;
 }

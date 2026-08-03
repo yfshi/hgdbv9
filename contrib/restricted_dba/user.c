@@ -377,6 +377,16 @@ alter_role_check(AlterRoleStmt *stmt)
 			dresgroup = defel;
 		}
 		/*End --bug#z4761*/
+		/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+		else if(strcmp(defel->defname, "resetvalidUntil") == 0)
+		{
+			/*
+			 * credcheck: Update role VALID UNTIL automatically after password changes.
+			 * No privilege check is required for this feature.
+			 */
+			;
+		}
+		/* End - ReqID:SRS-SECURITY-GRACETIME */
 		else
 			elog(ERROR, "option \"%s\" not recognized",
 				 defel->defname);

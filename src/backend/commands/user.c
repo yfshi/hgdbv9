@@ -787,6 +787,7 @@ AlterRole(AlterRoleStmt *stmt)
 	DefElem    *dconnlimit = NULL;
 	DefElem    *drolemembers = NULL;
 	DefElem    *dvalidUntil = NULL;
+	DefElem    *dresetvalidUntil = NULL;
 	DefElem    *dbypassRLS = NULL;
 	Oid			roleid;
 	/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
@@ -890,6 +891,16 @@ AlterRole(AlterRoleStmt *stmt)
 						 errmsg("conflicting or redundant options")));
 			dvalidUntil = defel;
 		}
+		/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+		else if (strcmp(defel->defname, "resetvalidUntil") == 0)
+		{
+			if (dresetvalidUntil)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options")));
+			dresetvalidUntil = defel;
+		}
+		/* End - ReqID:SRS-SECURITY-GRACETIME */
 		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 		else if (strcmp(defel->defname, "resourceGroup") == 0)
 		{
@@ -1075,6 +1086,13 @@ AlterRole(AlterRoleStmt *stmt)
 		}		
 		/* End - ReqID:SRS-SECURITY-POWERS */
 	}
+
+	/*
+	 * ReqID:SRS-SECURITY-GRACETIME
+	 * credcheck: automatically update role VALID UNTIL on password change.
+	 */
+	if (!validUntil && dresetvalidUntil)
+		validUntil = strVal(dresetvalidUntil->arg);
 
 	/* Convert validuntil to internal form */
 	if (validUntil)

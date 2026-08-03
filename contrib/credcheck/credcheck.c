@@ -27,6 +27,7 @@
 
 #include "access/heapam.h"
 #include "access/htup_details.h"
+#include "access/parallel.h" /* ReqID:SRS-SECURITY-GRACETIME */
 
 #include "catalog/catalog.h"
 #include "catalog/indexing.h"
@@ -37,6 +38,10 @@
 #include "common/hmac.h"
 #endif
 #include "common/sha2.h"
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+#include "common/int.h"
+#include "datatype/timestamp.h"
+/* End - ReqID:SRS-SECURITY-GRACETIME */
 #include "executor/spi.h"
 
 #include "libpq/auth.h"
@@ -50,6 +55,7 @@
 #include "storage/shmem.h"
 #include "utils/acl.h"
 #include "utils/builtins.h"
+#include "utils/datetime.h" /* ReqID:SRS-SECURITY-GRACETIME */
 #include "utils/guc.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -75,6 +81,9 @@
 /* Begin - ReqID:SRS-SECURITY-AUDIT */
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
+
+/* Check that the current process is not a parallel worker. */
+#define NOT_IN_PARALLEL_WORKER (ParallelWorkerNumber < 0) /* ReqID:SRS-SECURITY-GRACETIME */
 
 /* Default passord encryption */
 #define Password_encryption = PASSWORD_TYPE_SCRAM_SHA_256;
@@ -139,6 +148,7 @@ PG_MODULE_MAGIC;
 /* Hooks */
 static check_password_hook_type prev_check_password_hook = NULL;
 static ProcessUtility_hook_type prev_ProcessUtility = NULL;
+static ExecutorStart_hook_type prev_ExecutorStart = NULL; /* ReqID:SRS-SECURITY-GRACETIME */
 static shmem_startup_hook_type prev_shmem_startup_hook = NULL;
 #if PG_VERSION_NUM >= 150000
 static shmem_request_hook_type prev_shmem_request_hook = NULL;
@@ -243,6 +253,7 @@ static HTAB *pgaf_hash = NULL;
 extern void _PG_init(void);
 extern void _PG_fini(void);
 static void cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO);
+static void cc_ExecutorStart(QueryDesc *queryDesc, int eflags); /* ReqID:SRS-SECURITY-GRACETIME */
 
 static void flush_password_history(void);
 static pgphEntry *pgph_entry_alloc(pgphHashKey *key, TimestampTz password_date);
@@ -264,6 +275,8 @@ static float save_auth_failure(const char *username, pgafHashKey *key);
 static void remove_auth_failure(const char *username, pgafHashKey *key);
 static void pg_banned_role_internal(FunctionCallInfo fcinfo);
 static void login_message_display(const char *current_name);
+static bool check_password_reset_valid_until_guc(int *newval, void **extra, GucSource source); /* ReqID:SRS-SECURITY-GRACETIME */
+
 /* Username flags*/
 static int username_min_length = 1;
 static int username_min_special = 0;
@@ -318,6 +331,16 @@ int login_msg_display_storage = 0;	/* ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 /* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
 static int password_expiration = 3;
 /* End - ReqID:SRS-SECURITY-ENHANCE-8 */
+
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+/* Session-local grace deadline; 0 means this login is not in grace. */
+static int password_grace_time = 0;
+static TimestampTz password_grace_deadline = 0;
+static int password_reset_valid_until = 7;
+/* Session-local flag for privileged logins that are allowed only to rotate passwords. */
+static bool password_restricted_login = false;
+static password_validuntil_hook_type prev_password_validuntil_hook = NULL;
+/* End - ReqID:SRS-SECURITY-GRACETIME */
 
 #if PG_VERSION_NUM >= 120000
 /*
@@ -447,6 +470,7 @@ static bool guc_password_maxlen_check(int *newval, void **extra, GucSource sourc
 
 	return ret;
 }
+#endif
 
 static bool guc_valid_until_check(int *newval, void **extra, GucSource source)
 {
@@ -485,7 +509,6 @@ static bool guc_valid_max_check(int *newval, void **extra, GucSource source)
 
 	return ret;
 }
-#endif
 
 bool check_whitelist(char **newval, void **extra, GucSource source);
 bool is_in_whitelist(char *username);
@@ -1141,6 +1164,20 @@ password_guc()
 							NULL, &password_expiration, 3, 0, INT_MAX,
 							PGC_SIGHUP, 0, guc_int_check, NULL, NULL);
 	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
+
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	DefineCustomIntVariable("credcheck.password_grace_time",
+							gettext_noop("allow logins for a number of days after password expiration"),
+							NULL, &password_grace_time, 0, 0, INT_MAX,
+							PGC_SUSET, 0, NULL, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_reset_valid_until",
+							gettext_noop("set VALID UNTIL to now() + password_reset_valid_until days"
+										" when ALTER ROLE/USER changes a password without an explicit"
+										" VALID UNTIL clause"),
+							NULL, &password_reset_valid_until, 7, 1, INT_MAX,
+							PGC_SUSET, 0, check_password_reset_valid_until_guc, NULL, NULL);
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
 }
 
 #else
@@ -1216,13 +1253,13 @@ password_guc()
 							gettext_noop("force use of VALID UNTIL clause in CREATE ROLE statement"
 										 " with a minimum number of days"),
 							NULL, &password_valid_until, 0, 0, INT_MAX,
-							PGC_USERSET, 0, guc_int_check, NULL, NULL);
+							PGC_USERSET, 0, guc_valid_until_check, NULL, NULL);
 
 	DefineCustomIntVariable("credcheck.password_valid_max",
 							gettext_noop("force use of VALID UNTIL clause in CREATE ROLE statement"
 										 " with a maximum number of days"),
 							NULL, &password_valid_max, 0, 0, INT_MAX,
-							PGC_USERSET, 0, guc_int_check, NULL, NULL);
+							PGC_USERSET, 0, guc_valid_max_check, NULL, NULL);
 
 	DefineCustomEnumVariable("credcheck.password_force_set",
 							 gettext_noop("force use of PASSWORD clause in CREATE USER statement"),
@@ -1253,6 +1290,20 @@ password_guc()
 							NULL, &password_expiration, 3, 0, INT_MAX,
 							PGC_SIGHUP, 0, guc_int_check, NULL, NULL);
 	/* Begin - ReqID:SRS-SECURITY-ENHANCE-8 */
+
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	DefineCustomIntVariable("credcheck.password_grace_time",
+							gettext_noop("allow logins for a number of days after password expiration"),
+							NULL, &password_grace_time, 0, 0, INT_MAX,
+							PGC_SUSET, 0, NULL, NULL, NULL);
+
+	DefineCustomIntVariable("credcheck.password_reset_valid_until",
+							gettext_noop("set VALID UNTIL to now() + password_reset_valid_until days"
+										" when ALTER ROLE/USER changes a password without an explicit"
+										" VALID UNTIL clause"),
+							NULL, &password_reset_valid_until, 7, 1, INT_MAX,
+							PGC_SUSET, 0, check_password_reset_valid_until_guc, NULL, NULL);
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
 }
 
 #endif
@@ -1713,6 +1764,216 @@ check_valid_until(char *valid_until_date)
 	return days;
 }
 
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+PG_FUNCTION_INFO_V1(pg_password_grace_notice);
+
+/*
+ * Return the current session's grace-period warning text, or NULL when this
+ * login is not using the password grace period.
+ */
+Datum
+pg_password_grace_notice(PG_FUNCTION_ARGS)
+{
+	if (!is_enable)
+		PG_RETURN_NULL();
+
+	/* Expose the grace-period warning text to clients such as psql. */
+	if (password_restricted_login)
+		PG_RETURN_TEXT_P(cstring_to_text("password has expired. Change your password immediately."));
+
+	if (password_grace_deadline != 0)
+	{
+		char	   *message;
+		char *grace_until_str =
+				DatumGetCString(DirectFunctionCall1(timestamptz_out,
+												TimestampTzGetDatum(password_grace_deadline)));
+		message = psprintf("password has expired. Grace period remains active until %s."
+						   " Change your password immediately.",
+						   grace_until_str);
+
+		PG_RETURN_TEXT_P(cstring_to_text(message));
+	}
+
+	PG_RETURN_NULL();
+}
+
+/*
+ * Return true when an expired role is eligible for restricted fallback login.
+ * This source tree has no separation-of-duties roles, so only superusers qualify.
+ */
+static bool
+is_password_restricted_role(const char *role)
+{
+	Oid roleid;
+
+	roleid = get_role_oid(role, true);
+	if (se_feature_mode)
+	{
+		if (IS_SYSDBA(roleid) ||
+			IS_SYSSSO(roleid) ||
+			IS_SYSSAO(roleid))
+			return true;
+	}
+	else
+	{
+		if (superuser_arg(roleid))
+			return true;
+	}
+
+	return false;
+}
+
+
+/*
+ * Let expired passwords continue through authentication while the grace
+ * period remains active, and remember that state for later client display.
+ */
+static void
+credcheck_apply_password_grace(const char *role, TimestampTz original_validuntil,
+							  TimestampTz *auth_validuntil)
+{
+	TimestampTz now;
+
+	/* Recompute the auth-time expiry without persisting any extra deadline. */
+	password_grace_deadline = 0;
+	password_restricted_login = false;
+
+	if (prev_password_validuntil_hook)
+		prev_password_validuntil_hook(role, original_validuntil,
+									  auth_validuntil);
+
+	if (!is_enable)
+		return;
+
+	now = GetCurrentTimestamp();
+	if (original_validuntil >= now)
+		return;
+
+	/*
+	 * Derive the grace deadline from the stored password expiration time.
+	 */
+	if (password_grace_time > 0)
+	{
+		TimestampTz grace_validuntil;
+		Interval interval;
+
+		memset(&interval, 0, sizeof(interval));
+		interval.day = password_grace_time;
+
+		grace_validuntil =
+			DatumGetTimestampTz(DirectFunctionCall2(timestamptz_pl_interval,
+													 TimestampTzGetDatum(original_validuntil),
+													 PointerGetDatum(&interval)));
+
+		if (grace_validuntil >= now)
+		{
+			*auth_validuntil = grace_validuntil;
+			password_grace_deadline = *auth_validuntil;
+			return;
+		}
+	}
+
+	if (is_password_restricted_role(role))
+	{
+		/* Authentication succeeds, but hooks restrict the session to rotation. */
+		TIMESTAMP_NOEND(*auth_validuntil);
+		password_restricted_login = true;
+	}
+}
+
+/* Ensure password-reset validity remains within the configured validity bounds. */
+static bool
+check_password_reset_valid_until_guc(int *newval, void **extra, GucSource source)
+{
+	(void) extra;
+	(void) source;
+
+	if (password_valid_until > 0 && *newval < password_valid_until)
+	{
+		GUC_check_errmsg("credcheck.password_reset_valid_until must be greater than or equal to credcheck.password_valid_until");
+		return false;
+	}
+
+	if (password_valid_max > 0 && *newval > password_valid_max)
+	{
+		GUC_check_errmsg("credcheck.password_reset_valid_until must be less than or equal to credcheck.password_valid_max");
+		return false;
+	}
+
+	return true;
+}
+
+/* Build the VALID UNTIL option automatically appended to ALTER ROLE/USER. */
+static DefElem *
+build_validuntil_defelem(int days, int location)
+{
+	TimestampTz dt_now = GetCurrentTimestamp();
+	TimestampTz validuntil;
+	Interval interval;
+	char *until_str;
+
+	memset(&interval, 0, sizeof(interval));
+		interval.day = days;
+
+	validuntil =
+		DatumGetTimestampTz(DirectFunctionCall2(timestamptz_pl_interval,
+												 TimestampTzGetDatum(dt_now),
+												 PointerGetDatum(&interval)));
+	until_str =
+		DatumGetCString(DirectFunctionCall1(timestamptz_out,
+									TimestampTzGetDatum(validuntil)));
+	return makeDefElem("resetvalidUntil",
+					   (Node *) makeString(until_str),
+					   location);
+}
+
+/* Identify the client helper query used to display the expiration notice. */
+static bool
+is_password_notice_probe(Node *parsetree, const char *query)
+{
+	if (nodeTag(parsetree) != T_DoStmt)
+		return false;
+
+	return query != NULL &&
+		(strstr(query, "hg_security.pg_password_grace_notice") != NULL ||
+		 strstr(query, "hg_security.login_message_display") != NULL);
+}
+
+/*
+ * Permit only protocol support commands, the notice probe, and a password
+ * change targeting the current role while a privileged login is restricted.
+ */
+static bool
+restricted_utility_allowed(Node *parsetree,
+									  AlterRoleStmt *stmt,
+									  DefElem *dpassword)
+{
+	/* Allow psql's \password command to inspect the password encryption method. */
+	if (debug_query_string != NULL &&
+		strcmp(debug_query_string, "show password_encryption") == 0)
+		return true;
+
+	if (is_password_notice_probe(parsetree, debug_query_string))
+		return true;
+
+	if (nodeTag(parsetree) != T_AlterRoleStmt || dpassword == NULL)
+		return false;
+
+	return get_rolespec_oid(stmt->role, false) == GetUserId();
+}
+
+/* Allow the current-role lookup issued by psql's password command. */
+static bool
+restricted_query_allowed(void)
+{
+	if (debug_query_string == NULL)
+		return false;
+
+	/* Allow psql's \password command to resolve the current role name. */
+	return strcmp(debug_query_string, "SELECT CURRENT_USER") == 0;
+}
+/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 static void
 check_password(const char *username, const char *password,
 			   PasswordType password_type, Datum validuntil_time,
@@ -1878,6 +2139,12 @@ void _PG_init(void)
 	/* Install hooks */
 	prev_ProcessUtility = ProcessUtility_hook;
 	ProcessUtility_hook = cc_ProcessUtility;
+
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	prev_ExecutorStart = ExecutorStart_hook;
+	ExecutorStart_hook = cc_ExecutorStart;
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 	prev_check_password_hook = check_password_hook;
 	check_password_hook = check_password;
 #if PG_VERSION_NUM >= 150000
@@ -1892,6 +2159,11 @@ void _PG_init(void)
 
 	prev_ClientAuthentication = ClientAuthentication_hook;
 	ClientAuthentication_hook = credcheck_max_auth_failure;
+
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	prev_password_validuntil_hook = password_validuntil_hook;
+	password_validuntil_hook = credcheck_apply_password_grace;
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
 
 	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #ifdef ENABLE_DKY_BETA_FEATURE
@@ -1925,10 +2197,48 @@ void _PG_fini(void)
 	/* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 }
 
+/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+static void
+cc_ExecutorStart(QueryDesc *queryDesc, int eflags)
+{
+	if (is_enable && MyProcPort != NULL && NOT_IN_PARALLEL_WORKER)
+	{
+		/*
+		 * When first login we don't allow anything else than password change.
+		 * This rule is also checked in the ProcessUtility hook because we need
+		 * to allow the ALTER ROLE command to change the password. We must allow
+		 * SELECT CURRENT_USER which is sent by the \passwd command before
+		 * password change.
+		 */
+		if (debug_query_string != NULL &&
+			!is_in_whitelist(MyProcPort->user_name))
+		{
+			if (queryDesc->operation != CMD_UTILITY && password_restricted_login &&
+				!restricted_query_allowed())
+					ereport(ERROR,
+						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+						 errmsg(gettext_noop("you must change your password first."))));
+		}
+	}
+
+	if (prev_ExecutorStart)
+		prev_ExecutorStart(queryDesc, eflags);
+	else
+		standard_ExecutorStart(queryDesc, eflags);
+}
+/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 static void
 cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO)
 {
 	Node *parsetree = pstmt->utilityStmt;
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	bool  clear_restricted_login = false;
+	char *create_role_name = NULL;
+	char *create_role_password = NULL;
+	bool  save_create_password = false;
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
+
 
 	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 #ifdef ENABLE_DKY_BETA_FEATURE
@@ -1936,217 +2246,272 @@ cc_ProcessUtility(PEL_PROCESSUTILITY_PROTO)
 #endif
 	/* Begin - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
-	/* Execute the utility command before */
-	if (prev_ProcessUtility)
-		prev_ProcessUtility(PEL_PROCESSUTILITY_ARGS);
-	else
-		standard_ProcessUtility(PEL_PROCESSUTILITY_ARGS);
-
-	if (!is_enable)
-		return;
-
-	statement_has_password = false;
-
-	switch (nodeTag(parsetree))
+	if (is_enable && MyProcPort != NULL && NOT_IN_PARALLEL_WORKER)
 	{
-	/* Intercept ALTER USER .. RENAME statements */
-	case T_RenameStmt:
-	{
-		RenameStmt *stmt = (RenameStmt *)parsetree;
-		/* We only take care of user renaming */
-		if (stmt->renameType == OBJECT_ROLE && stmt->newname != NULL)
+		statement_has_password = false;
+
+		if (!is_in_whitelist(MyProcPort->user_name))
 		{
-			if (is_in_whitelist(stmt->newname) || is_in_whitelist(stmt->subname))
+			if (nodeTag(parsetree) != T_AlterRoleStmt &&
+				password_restricted_login &&
+				!restricted_utility_allowed(parsetree, NULL, NULL))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+						 errmsg(gettext_noop("you must change your password first."))));
+		}
+
+		switch (nodeTag(parsetree))
+		{
+		/* Intercept ALTER USER .. RENAME statements */
+		case T_RenameStmt:
+		{
+			RenameStmt *stmt = (RenameStmt *)parsetree;
+			/* We only take care of user renaming */
+			if (stmt->renameType == OBJECT_ROLE && stmt->newname != NULL)
+			{
+				if (is_in_whitelist(stmt->newname) || is_in_whitelist(stmt->subname))
+					break;
+
+				/* check the validity of the username */
+				username_check(stmt->newname, NULL);
+
+#if PG_VERSION_NUM >= 120000
+				/* rename the user in the history table */
+				rename_user_in_history(stmt->subname, stmt->newname);
+#endif
+			}
+			break;
+		}
+
+		case T_AlterRoleStmt:
+		{
+			AlterRoleStmt *stmt = (AlterRoleStmt *)parsetree;
+			ListCell *option;
+			char *password;
+			bool save_password = false;
+			DefElem *dpassword = NULL;
+			DefElem *dvalidUntil = NULL;
+
+			if (is_in_whitelist(stmt->role->rolename))
+				break;
+
+			/* Extract options from the statement node tree */
+			foreach (option, stmt->options)
+			{
+				DefElem *defel = (DefElem *)lfirst(option);
+
+				if (strcmp(defel->defname, "password") == 0)
+				{
+					dpassword = defel;
+				}
+				else if (strcmp(defel->defname, "validUntil") == 0)
+				{
+					dvalidUntil = defel;
+				}
+			}
+
+			if (password_restricted_login &&
+				!restricted_utility_allowed(parsetree, stmt, dpassword))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+						 errmsg(gettext_noop("you must change your password first."))));
+
+#if PG_VERSION_NUM >= 120000
+			if (dpassword && dpassword->arg)
+			{
+				statement_has_password = true;
+				password = strVal(dpassword->arg);
+				save_password = check_password_reuse(stmt->role->rolename, password);
+			}
+#endif
+			/*
+			 * ReqID:SRS-SECURITY-GRACETIME
+			 * When a password changes without an explicit VALID UNTIL clause,
+			 * append one based on password_reset_valid_until.
+			 */
+			if (dpassword && !dvalidUntil && password_reset_valid_until > 0)
+			{
+				dvalidUntil = build_validuntil_defelem(password_reset_valid_until, -1);
+				((AlterRoleStmt *)parsetree)->options = lappend(((AlterRoleStmt *)parsetree)->options, dvalidUntil);
+			}
+
+			if (dvalidUntil && dvalidUntil->arg && password_valid_until > 0)
+			{
+				int valid_until = check_valid_until(strVal(dvalidUntil->arg));
+				if (valid_until < password_valid_until)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+							 errmsg(gettext_noop("the VALID UNTIL option must have a date older than %d days"), password_valid_until)));
+			}
+			if (dvalidUntil && dvalidUntil->arg && password_valid_max > 0)
+			{
+				int valid_max = check_valid_until(strVal(dvalidUntil->arg));
+				if (valid_max > password_valid_max)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+							 errmsg(gettext_noop("the VALID UNTIL option must NOT have a date beyond %d days"), password_valid_max)));
+			}
+
+			/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+			if (password_restricted_login && dpassword && dvalidUntil && dvalidUntil->arg)
+			{
+				int valid_days = check_valid_until(strVal(dvalidUntil->arg));
+
+				/* A valid self-password change restores normal session access. */
+				if (valid_days >= 0 && get_rolespec_oid(stmt->role, false) == GetUserId())
+					clear_restricted_login = true;
+			}
+			/* End - ReqID:SRS-SECURITY-GRACETIME */
+
+			/* The password can be saved into the history */
+			if (save_password)
+				save_password_in_history(stmt->role->rolename, password);
+			break;
+		}
+
+		case T_CreateRoleStmt:
+		{
+			CreateRoleStmt *stmt = (CreateRoleStmt *)parsetree;
+			ListCell *option;
+			int valid_until = 0;
+			int valid_max = 0;
+#ifndef ENABLE_DKY_BETA_FEATURE
+			bool has_valid_until = false;
+#endif
+			bool save_password = false;
+			char *password;
+			DefElem *dpassword = NULL;
+			DefElem *dvalidUntil = NULL;
+
+			if (is_in_whitelist(stmt->role))
 				break;
 
 			/* check the validity of the username */
-			username_check(stmt->newname, NULL);
+			username_check(stmt->role, NULL);
+
+			/* Extract options from the statement node tree */
+			foreach (option, stmt->options)
+			{
+				DefElem *defel = (DefElem *)lfirst(option);
+
+				if (strcmp(defel->defname, "password") == 0)
+				{
+					dpassword = defel;
+				}
+				else if (strcmp(defel->defname, "validUntil") == 0)
+				{
+					dvalidUntil = defel;
+				}
+			}
+			if (strcasestr(debug_query_string, "user") && !strcasestr(debug_query_string, "role"))
+				if (!dpassword && password_force_set)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+							 errmsg(gettext_noop("require a PASSWORD option"))));
 
 #if PG_VERSION_NUM >= 120000
-			/* rename the user in the history table */
-			rename_user_in_history(stmt->subname, stmt->newname);
-#endif
-		}
-		break;
-	}
-
-	case T_AlterRoleStmt:
-	{
-		AlterRoleStmt *stmt = (AlterRoleStmt *)parsetree;
-		ListCell *option;
-		char *password;
-		bool save_password = false;
-		DefElem *dpassword = NULL;
-		DefElem *dvalidUntil = NULL;
-
-		if (is_in_whitelist(stmt->role->rolename))
-			break;
-
-		/* Extract options from the statement node tree */
-		foreach (option, stmt->options)
-		{
-			DefElem *defel = (DefElem *)lfirst(option);
-
-			if (strcmp(defel->defname, "password") == 0)
+			if (dpassword && dpassword->arg)
 			{
-				dpassword = defel;
+				statement_has_password = true;
+				password = strVal(dpassword->arg);
+				save_password = check_password_reuse(stmt->role, password);
 			}
-			else if (strcmp(defel->defname, "validUntil") == 0)
-			{
-				dvalidUntil = defel;
-			}
-		}
-
-#if PG_VERSION_NUM >= 120000
-		if (dpassword && dpassword->arg)
-		{
-			statement_has_password = true;
-			password = strVal(dpassword->arg);
-			save_password = check_password_reuse(stmt->role->rolename, password);
-		}
 #endif
-		if (dvalidUntil && dvalidUntil->arg && password_valid_until > 0)
-		{
-			int valid_until = check_valid_until(strVal(dvalidUntil->arg));
-			if (valid_until < password_valid_until)
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-						 errmsg(gettext_noop("the VALID UNTIL option must have a date older than %d days"), password_valid_until)));
-		}
-		if (dvalidUntil && dvalidUntil->arg && password_valid_max > 0)
-		{
-			int valid_max = check_valid_until(strVal(dvalidUntil->arg));
-			if (valid_max > password_valid_max)
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-						 errmsg(gettext_noop("the VALID UNTIL option must NOT have a date beyond %d days"), password_valid_max)));
-		}
-
-		/* The password can be saved into the history */
-		if (save_password)
-			save_password_in_history(stmt->role->rolename, password);
-		break;
-	}
-
-	case T_CreateRoleStmt:
-	{
-		CreateRoleStmt *stmt = (CreateRoleStmt *)parsetree;
-		ListCell *option;
-		int valid_until = 0;
-		int valid_max = 0;
+			if (dvalidUntil && dvalidUntil->arg && password_valid_until > 0)
+			{
+				valid_until = check_valid_until(strVal(dvalidUntil->arg));
 #ifndef ENABLE_DKY_BETA_FEATURE
-		bool has_valid_until = false;
-#endif
-		bool save_password = false;
-		char *password;
-		DefElem *dpassword = NULL;
-		DefElem *dvalidUntil = NULL;
-
-		if (is_in_whitelist(stmt->role))
-			break;
-
-		/* check the validity of the username */
-		username_check(stmt->role, NULL);
-
-		/* Extract options from the statement node tree */
-		foreach (option, stmt->options)
-		{
-			DefElem *defel = (DefElem *)lfirst(option);
-
-			if (strcmp(defel->defname, "password") == 0)
-			{
-				dpassword = defel;
-			}
-			else if (strcmp(defel->defname, "validUntil") == 0)
-			{
-				dvalidUntil = defel;
-			}
-		}
-		if (strcasestr(debug_query_string, "user") && !strcasestr(debug_query_string, "role"))
-			if (!dpassword && password_force_set)
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-						 errmsg(gettext_noop("require a PASSWORD option"))));
-
-#if PG_VERSION_NUM >= 120000
-		if (dpassword && dpassword->arg)
-		{
-			statement_has_password = true;
-			password = strVal(dpassword->arg);
-			save_password = check_password_reuse(stmt->role, password);
-		}
-#endif
-		if (dvalidUntil && dvalidUntil->arg && password_valid_until > 0)
-		{
-			valid_until = check_valid_until(strVal(dvalidUntil->arg));
-#ifndef ENABLE_DKY_BETA_FEATURE
-			has_valid_until = true;
+				has_valid_until = true;
 #else
+				/* check that a minimum number of days for password validity is defined */
+				if (password_valid_until > 0 && valid_until < password_valid_until)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+							 errmsg(gettext_noop("require a VALID UNTIL option with a date older than %d days"), password_valid_until)));
+#endif
+			}
+			if (dvalidUntil && dvalidUntil->arg && password_valid_max > 0)
+			{
+				valid_max = check_valid_until(strVal(dvalidUntil->arg));
+#ifndef ENABLE_DKY_BETA_FEATURE
+				has_valid_until = true;
+#else
+				/* check that a maximum number of days for password validity is defined */
+				if (password_valid_max > 0 && valid_max > password_valid_max)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+							 errmsg(gettext_noop("require a VALID UNTIL option with a date beyond %d days"), password_valid_max)));
+#endif
+			}
+
+#ifndef ENABLE_DKY_BETA_FEATURE
+			/* check that a VALID UNTIL option is present */
+			if (!has_valid_until && (password_valid_until > 0 || password_valid_max > 0))
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
+						 errmsg(gettext_noop("require a VALID UNTIL option"))));
+
 			/* check that a minimum number of days for password validity is defined */
 			if (password_valid_until > 0 && valid_until < password_valid_until)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
 						 errmsg(gettext_noop("require a VALID UNTIL option with a date older than %d days"), password_valid_until)));
-#endif
-		}
-		if (dvalidUntil && dvalidUntil->arg && password_valid_max > 0)
-		{
-			valid_max = check_valid_until(strVal(dvalidUntil->arg));
-#ifndef ENABLE_DKY_BETA_FEATURE
-			has_valid_until = true;
-#else
+
 			/* check that a maximum number of days for password validity is defined */
 			if (password_valid_max > 0 && valid_max > password_valid_max)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
 						 errmsg(gettext_noop("require a VALID UNTIL option with a date beyond %d days"), password_valid_max)));
 #endif
+			if (save_password)
+			{
+				/*
+				 * ReqID:SRS-SECURITY-GRACETIME
+				 * The role OID is not available until the core CREATE ROLE command
+				 * has completed, so defer saving the password history.
+				 */
+				create_role_name = stmt->role;
+				create_role_password = password;
+				save_create_password = true;
+			}
+			break;
 		}
-
-#ifndef ENABLE_DKY_BETA_FEATURE
-		/* check that a VALID UNTIL option is present */
-		if (!has_valid_until && (password_valid_until > 0 || password_valid_max > 0))
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-					 errmsg(gettext_noop("require a VALID UNTIL option"))));
-
-		/* check that a minimum number of days for password validity is defined */
-		if (password_valid_until > 0 && valid_until < password_valid_until)
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-					 errmsg(gettext_noop("require a VALID UNTIL option with a date older than %d days"), password_valid_until)));
-
-		/* check that a maximum number of days for password validity is defined */
-		if (password_valid_max > 0 && valid_max > password_valid_max)
-			ereport(ERROR,
-					(errcode(ERRCODE_INVALID_AUTHORIZATION_SPECIFICATION),
-					 errmsg(gettext_noop("require a VALID UNTIL option with a date beyond %d days"), password_valid_max)));
-#endif
-
-		/* The password can be saved into the history */
-		if (save_password)
-			save_password_in_history(stmt->role, password);
-		break;
-	}
 
 #if PG_VERSION_NUM >= 120000
-	case T_DropRoleStmt:
-	{
-		DropRoleStmt *stmt = (DropRoleStmt *)parsetree;
-		ListCell *item;
-
-		foreach (item, stmt->roles)
+		case T_DropRoleStmt:
 		{
-			RoleSpec *rolspec = lfirst(item);
+			DropRoleStmt *stmt = (DropRoleStmt *)parsetree;
+			ListCell *item;
 
-			remove_user_from_history(rolspec->rolename);
+			foreach (item, stmt->roles)
+			{
+				RoleSpec *rolspec = lfirst(item);
+
+				remove_user_from_history(rolspec->rolename);
+			}
+			break;
 		}
-		break;
-	}
 #endif
-	default:
-		break;
+		default:
+			break;
+		}
 	}
+
+	/* Execute the utility command before */
+	if (prev_ProcessUtility)
+		prev_ProcessUtility(PEL_PROCESSUTILITY_ARGS);
+	else
+		standard_ProcessUtility(PEL_PROCESSUTILITY_ARGS);
+
+	/* Begin - ReqID:SRS-SECURITY-GRACETIME */
+	/* The password can be saved into the history */
+	if (save_create_password)
+		save_password_in_history(create_role_name, create_role_password);
+
+	/* Clear the restriction only after the password change succeeds. */
+	if (clear_restricted_login)
+		password_restricted_login = false;
+	/* End - ReqID:SRS-SECURITY-GRACETIME */
 }
 
 #if PG_VERSION_NUM >= 120000
@@ -3523,6 +3888,13 @@ static Interval *output_time_left(TimestampTz current_valid, TimestampTz current
 	int64 diff_in_microseconds = current_valid - current_time;
 	int64 total_seconds = diff_in_microseconds / 1000000;
 	int days = 0;
+
+	/*
+	 * When in the grace period, `diff_in_microseconds` is negative,
+	 * the impending expiration notice should not be displayed.
+	 */
+	if (diff_in_microseconds <= 0) /* ReqID:SRS-SECURITY-GRACETIME */
+		return NULL;
 
 	days = total_seconds / 86400;
 	total_seconds %= 86400;
