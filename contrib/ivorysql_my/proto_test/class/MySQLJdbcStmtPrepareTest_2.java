@@ -45,9 +45,21 @@ public class MySQLJdbcStmtPrepareTest_2 {
             stmt.executeUpdate("DROP TABLE IF EXISTS test_1");
             stmt.executeUpdate("CREATE TABLE test_1 (a INT, b TEXT)");
             stmt.executeUpdate("INSERT INTO test_1 VALUES (1, 'ABC')");
+            stmt.executeUpdate("DROP TABLE IF EXISTS test_2");
+            stmt.executeUpdate("CREATE TABLE test_2 (c INT, d INT)");
+            stmt.executeUpdate("INSERT INTO test_2 VALUES (10, 120),(15, 100),(30, 80)");
+            stmt.executeUpdate("DROP TABLE IF EXISTS test_3");
+            stmt.executeUpdate("CREATE TABLE test_3 (id INT auto_increment primary key, isvalid INT default 0)");
+            stmt.executeUpdate("INSERT INTO test_3 (isvalid) VALUES (100), (120), (200), (90)");
+            stmt.executeUpdate("DROP TABLE IF EXISTS test_4");
+            stmt.executeUpdate("CREATE TABLE test_4 (a INT, b TEXT, c INT)");
+            stmt.executeUpdate("INSERT INTO test_4 VALUES (1000, 'StmtPrepare TEST', 50), (600, 'HIGH GO', 50), (2000, 'OrderBy TEST', 50), (700, 'MYS_MODE', 30)");
 
             testPreparedStatementWithoutParams(conn);
             testPreparedStatementWithParam(conn);
+            testPreparedStatementWithOrderBy_1(conn);
+            testPreparedStatementWithOrderBy_2(conn);
+            testPreparedStatementWithOrderBy_3(conn);
         } catch (Exception e) {
             System.err.println("Test failed: " + e.getMessage());
             e.printStackTrace();
@@ -145,6 +157,144 @@ public class MySQLJdbcStmtPrepareTest_2 {
 
         } catch (SQLException e) {
             System.err.println("Failed to execute query with parameter: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (pstmt != null) pstmt.close();
+            } catch (SQLException e) {
+                System.err.println("Cleanup error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void testPreparedStatementWithOrderBy_1(Connection conn) {
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            System.out.println("\n--- Test 3-1: PreparedStatement WITHOUT parameters contains order by ---");
+            pstmt = conn.prepareStatement("SELECT c FROM test_2 order by d");
+            rs = pstmt.executeQuery();
+            
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+
+            System.out.print("Columns: ");
+            for (int i = 1; i <= columnCount; i++) {
+                System.out.print(rsmd.getColumnName(i));
+                if (i < columnCount) System.out.print(", ");
+            }
+            System.out.println();
+
+            int rowNum = 0;
+            while (rs.next()) {
+                rowNum++;
+                System.out.print("Row " + rowNum + ": ");
+                for (int i = 1; i <= columnCount; i++) {
+                    System.out.print(rsmd.getColumnName(i) + "=" + rs.getString(i));
+                    if (i < columnCount) System.out.print(", ");
+                }
+                System.out.println();
+            }
+
+            if (rowNum == 0) {
+                System.out.println("No data found in table test_3.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to execute query without parameter contains order by: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (pstmt != null) pstmt.close();
+            } catch (SQLException e) {
+                System.err.println("Cleanup error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void testPreparedStatementWithOrderBy_2(Connection conn) {
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            System.out.println("\n--- Test 3-2: PreparedStatement WITHOUT parameters contains order by ---");
+            pstmt = conn.prepareStatement("SELECT isvalid FROM test_3 order by id");
+            rs = pstmt.executeQuery();
+            
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+
+            System.out.print("Columns: ");
+            for (int i = 1; i <= columnCount; i++) {
+                System.out.print(rsmd.getColumnName(i));
+                if (i < columnCount) System.out.print(", ");
+            }
+            System.out.println();
+
+            int rowNum = 0;
+            while (rs.next()) {
+                rowNum++;
+                System.out.print("Row " + rowNum + ": ");
+                for (int i = 1; i <= columnCount; i++) {
+                    System.out.print(rsmd.getColumnName(i) + "=" + rs.getString(i));
+                    if (i < columnCount) System.out.print(", ");
+                }
+                System.out.println();
+            }
+
+            if (rowNum == 0) {
+                System.out.println("No data found in table test_3.");
+            }
+        } catch (SQLException e) {
+            System.err.println("Failed to execute query without parameter contains order by: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (pstmt != null) pstmt.close();
+            } catch (SQLException e) {
+                System.err.println("Cleanup error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void testPreparedStatementWithOrderBy_3(Connection conn) {
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            System.out.println("\n--- Test 3-3: PreparedStatement WITH parameter contains parameter ---");
+            pstmt = conn.prepareStatement("SELECT b FROM test_4 WHERE c =? order by a");
+
+            pstmt.setInt(1, 50);
+            rs = pstmt.executeQuery();
+
+            ResultSetMetaData rsmd = rs.getMetaData();
+            int columnCount = rsmd.getColumnCount();
+
+            System.out.print("Columns: ");
+            for (int i = 1; i <= columnCount; i++) {
+                System.out.print(rsmd.getColumnName(i));
+                if (i < columnCount) System.out.print(", ");
+            }
+            System.out.println();
+
+            int rowNum = 0;
+            while (rs.next()) {
+                rowNum++;
+                System.out.print("Row " + rowNum + ": ");
+                for (int i = 1; i <= columnCount; i++) {
+                    System.out.print(rsmd.getColumnName(i) + "=" + rs.getString(i));
+                    if (i < columnCount) System.out.print(", ");
+                }
+                System.out.println();
+            }
+
+            if (rowNum == 0) {
+                System.out.println("No record found with c = 50");
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Failed to execute query with parameter contains order by: " + e.getMessage());
         } finally {
             try {
                 if (rs != null) rs.close();

@@ -81,6 +81,9 @@ name:VARCHAR
 size:CHAR
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcPrepareTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 Tables_in_public:VARCHAR:test_1
+Tables_in_public:VARCHAR:test_2
+Tables_in_public:VARCHAR:test_3
+Tables_in_public:VARCHAR:test_4
 Tables_in_public:VARCHAR:t_load
 Tables_in_public:VARCHAR:t_select_into
 Tables_in_public:VARCHAR:test_fetch
@@ -258,6 +261,25 @@ Row 1: a=1, b=ABC
 --- Test 2: PreparedStatement WITH parameter ---
 Columns: a, b
 Row 1: a=1, b=ABC
+
+--- Test 3-1: PreparedStatement WITHOUT parameters contains order by ---
+Columns: c
+Row 1: c=30
+Row 2: c=15
+Row 3: c=10
+
+--- Test 3-2: PreparedStatement WITHOUT parameters contains order by ---
+Columns: isvalid
+Row 1: isvalid=100
+Row 2: isvalid=120
+Row 3: isvalid=200
+Row 4: isvalid=90
+
+--- Test 3-3: PreparedStatement WITH parameter contains parameter ---
+Columns: b
+Row 1: b=HIGH GO
+Row 2: b=StmtPrepare TEST
+Row 3: b=OrderBy TEST
 
 Database connection closed
 \! java -cp proto_test/class/mysql-connector-java-8.0.28.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123

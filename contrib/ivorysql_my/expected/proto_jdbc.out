@@ -248,6 +248,25 @@ Row 1: a=1, b=ABC
 Columns: a, b
 Row 1: a=1, b=ABC
 
+--- Test 3-1: PreparedStatement WITHOUT parameters contains order by ---
+Columns: c
+Row 1: c=30
+Row 2: c=15
+Row 3: c=10
+
+--- Test 3-2: PreparedStatement WITHOUT parameters contains order by ---
+Columns: isvalid
+Row 1: isvalid=100
+Row 2: isvalid=120
+Row 3: isvalid=200
+Row 4: isvalid=90
+
+--- Test 3-3: PreparedStatement WITH parameter contains parameter ---
+Columns: b
+Row 1: b=HIGH GO
+Row 2: b=StmtPrepare TEST
+Row 3: b=OrderBy TEST
+
 Database connection closed
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 === COM_STMT_RESET JDBC Test ===
