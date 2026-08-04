@@ -1006,8 +1006,6 @@ WHERE c.castmethod = 'b' AND
     castsource     |    casttarget     | castfunc | castcontext 
 -------------------+-------------------+----------+-------------
  text              | character         |        0 | i
- text              | char              |        0 | i
- text              | char              |        0 | i
  xml               | text              |        0 | a
  xml               | character         |        0 | a
  xml               | character varying |        0 | a
@@ -1026,7 +1024,7 @@ WHERE c.castmethod = 'b' AND
  varchar2          | character         |        0 | i
  varchar2          | character         |        0 | i
  date              | timestamp         |        0 | i
-(21 rows)
+(19 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

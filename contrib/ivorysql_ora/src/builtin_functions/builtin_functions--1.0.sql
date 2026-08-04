@@ -321,12 +321,14 @@ PARALLEL SAFE	-- BUG#M0000422
 STRICT
 IMMUTABLE;
 
-CREATE FUNCTION sys.replace(varchar, varchar, varchar default NULL)
+/* Begin - BUG#Z8697 */
+CREATE FUNCTION sys.replace(varchar2, varchar2, varchar2 default NULL)
 RETURNS varchar2
 AS 'MODULE_PATHNAME','ora_replace'
 LANGUAGE C
 PARALLEL SAFE	-- BUG#M0000422
 IMMUTABLE;
+/* End - BUG#Z8697 */
 
 /* Begin - BUG#5603 */
 CREATE FUNCTION sys.replace(text, text, text default NULL)
