@@ -3154,7 +3154,13 @@ CREATE OR REPLACE VIEW SYS.TAB_COLS_INTERNAL AS
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(c.relowner)::VARCHAR2)::VARCHAR2(128) AS owner,
         SYS.ORA_CASE_TRANS(c.relname::VARCHAR2)::VARCHAR2(128) AS table_name,
         SYS.ORA_CASE_TRANS(a.attname::VARCHAR2)::VARCHAR2(128) AS column_name,
-        SYS.ORA_CASE_TRANS(t.typname::VARCHAR2)::VARCHAR2(128) AS data_type,
+        /* Begin - OA#2669 */
+        CASE UPPER(t.typname)
+            WHEN 'LONG_RAW'::TEXT THEN 'LONG RAW'
+            WHEN 'FLOAT8'::TEXT THEN 'FLOAT'
+            ELSE UPPER(FORMAT_TYPE(a.atttypid, a.atttypmod))
+        END::VARCHAR2(128) AS data_type,
+        /* End - OA#2669 */
         NULL::VARCHAR2(3) AS data_type_mod,
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(t.typowner)::VARCHAR2)::VARCHAR2(128) AS data_type_owner,
         CASE
