@@ -26,7 +26,7 @@
 #include "utils/rls.h"
 #include "utils/syscache.h"
 #include "utils/varlena.h"
-
+#include "libpq/libpq.h"
 
 /*
  * check_enable_rls
@@ -59,8 +59,19 @@ check_enable_rls(Oid relid, Oid checkAsUser, bool noError)
 	bool		amowner;
 
 	/* Nothing to do for built-in relations */
-	if (relid < (Oid) FirstNormalObjectId)
-		return RLS_NONE;
+	/* begin bug #8740*/
+	if (relid < (Oid)FirstNormalObjectId)
+	{
+		Oid antitamperglobalOid = get_relname_relid("hg_global_antitamper",
+													get_namespace_oid("hg_security", false));
+		Oid antitamperglobalbackupOid = get_relname_relid("hg_global_antitamper_backup",
+														  get_namespace_oid("hg_security", false));
+		if (!(antitamperglobalOid == relid || antitamperglobalbackupOid == relid))
+		{
+			return RLS_NONE;
+		}
+	}
+	/* end bug #8740*/
 
 	/* Fetch relation's relrowsecurity and relforcerowsecurity flags */
 	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(relid));
