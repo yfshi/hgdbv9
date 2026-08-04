@@ -614,6 +614,7 @@ struct pg_conn
 
 	/* Buffer for receiving various parts of messages */
 	PQExpBufferData workBuffer; /* expansible string */
+	char       *osuser;         /* ReqID:SRS-SQL-SYSVIEW */
 };
 
 /* PGcancel stores all data necessary to cancel a connection. A copy of this

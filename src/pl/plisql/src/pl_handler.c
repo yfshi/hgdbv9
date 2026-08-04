@@ -55,6 +55,10 @@
 #include "pl_object_type.h"
 /* End - ReqID:SRS-SQL-CustomObject */
 
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+#include "utils/backend_status.h"
+/* End ReqID:SRS-SQL-SYSVIEW */
+
 static bool plisql_extra_checks_check_hook(char **newvalue, void **extra, GucSource source);
 static void plisql_extra_warnings_assign_hook(const char *newvalue, void *extra);
 static void plisql_extra_errors_assign_hook(const char *newvalue, void *extra);
@@ -345,6 +349,10 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 	MemoryContext	ax_oldcontext = NULL;
 	ResourceOwner	ax_oldresowner= NULL;
 	bool			autonomous = false;
+	Oid top_func_oid = InvalidOid;
+	Oid top_subprogramid = 0;
+	Oid parent_func_oid = InvalidOid;
+	Oid parent_subprogramid = 0;
 
 	nonatomic = fcinfo->context &&
 		IsA(fcinfo->context, CallContext) &&
@@ -443,6 +451,28 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 
 	PG_TRY();
 	{
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		/* Use funcinfo to set PL/SQL info. */
+		if (MyBEEntry)
+		{
+			/* backup old value to restore usage. */
+			top_func_oid = MyBEEntry->st_plsql_entry_object_id;
+			top_subprogramid = MyBEEntry->st_plsql_entry_subprogram_id;
+			parent_func_oid = MyBEEntry->st_plsql_object_id;
+			parent_subprogramid = MyBEEntry->st_plsql_subprogram_id;
+		}
+		if (SPI_get_connected() == 0 ||
+			(SPI_get_connected() == 1 && parent_func_oid == InvalidOid))
+		{
+			/* current is top entry, or not top entry but parent is anonymous block. */
+			pgstat_report_plsql_info(func->fn_oid, 1, func->fn_oid, 1);
+		}
+		else
+		{
+			/* current is not top entry, only update current info. */
+			pgstat_report_plsql_info(top_func_oid, 1, func->fn_oid, 1);
+		}
+		/* End ReqID:SRS-SQL-SYSVIEW */
 		/*
 		 * Determine if called as function or trigger and call appropriate
 		 * subhandler
@@ -463,9 +493,33 @@ plisql_call_handler(PG_FUNCTION_ARGS)
 										   NULL, NULL,
 										   procedure_resowner,
 										   !nonatomic);
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		/* Use funcinfo to set PL/SQL info. */
+		if (SPI_get_connected() > 0)
+		{
+			pgstat_report_plsql_info(top_func_oid, top_subprogramid, parent_func_oid,
+				parent_subprogramid);
+		}
+		else
+		{
+			pgstat_report_plsql_info(0, 0, 0, 0);
+		}
+		/* End ReqID:SRS-SQL-SYSVIEW */
 	}
 	PG_FINALLY();
 	{
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		/* Use funcinfo to set PL/SQL info. */
+		if (SPI_get_connected() > 0)
+		{
+			pgstat_report_plsql_info(top_func_oid, top_subprogramid, parent_func_oid,
+				parent_subprogramid);
+		}
+		else
+		{
+			pgstat_report_plsql_info(0, 0, 0, 0);
+		}
+		/* End ReqID:SRS-SQL-SYSVIEW */
 		/*
 		 * Finish autonomous tansaction if necessary.
 		 */
@@ -707,6 +761,13 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 	/* And run the function */
 	PG_TRY();
 	{
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		/* Use funcinfo to set PL/SQL info, anonymous block can only appear as top entry. */
+		if (SPI_get_connected() == 0)
+		{
+			pgstat_report_plsql_info(0, 0, 0, 1);
+		}
+		/* End ReqID:SRS-SQL-SYSVIEW */
 		retval = plisql_exec_function(func, fake_fcinfo,
 									   simple_eval_estate,
 									   simple_eval_resowner,
@@ -721,9 +782,23 @@ plisql_inline_handler(PG_FUNCTION_ARGS)
 			MemoryContextSwitchTo(ax_oldcontext);
 			CurrentResourceOwner = ax_oldresowner;
 		}
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		/* Use funcinfo to set PL/SQL info, anonymous block can only appear as top entry. */
+		if (SPI_get_connected() == 0)
+		{
+			pgstat_report_plsql_info(0, 0, 0, 0);
+		}
+		/* End ReqID:SRS-SQL-SYSVIEW */
 	}
 	PG_CATCH();
 	{
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		/* Use funcinfo to set PL/SQL info, anonymous block can only appear as top entry. */
+		if (SPI_get_connected() == 0)
+		{
+			pgstat_report_plsql_info(0, 0, 0, 0);
+		}
+		/* End ReqID:SRS-SQL-SYSVIEW */
 		/*
 		 * Finish autonomous tansaction if necessary.
 		 */

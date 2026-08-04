@@ -278,6 +278,10 @@ typedef struct Port
 	TLS_CONNECT *tlcp_conn;
 #endif
 	/* End - ReqID:SRS-SECURITY-TLCP */
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	/* This value is used to set osuser. */
+	char       *osuser;
+	/* End ReqID:SRS-SQL-SYSVIEW */
 } Port;
 
 #ifdef USE_SSL

@@ -35,6 +35,7 @@
 #include "utils/inet.h"
 #include "utils/timestamp.h"
 #include "utils/formatting.h"
+#include <unistd.h>             /* ReqID:SRS-SQL-SYSVIEW */
 
 #define UINT32_ACCESS_ONCE(var)		 ((uint32)(*((volatile uint32 *)&(var))))
 
@@ -2583,3 +2584,238 @@ pg_stat_get_replication_slot(PG_FUNCTION_ARGS)
 	/* Returns the record as Datum */
 	PG_RETURN_DATUM(HeapTupleGetDatum(heap_form_tuple(tupdesc, values, nulls)));
 }
+
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+/*
+ * get_cpu_time
+ *
+ * get user and system cpu time by pid:
+ * -1: error
+ * other: real cpu time
+ */
+static int64
+get_cpu_time(int pid)
+{
+	int64 cpu_time;
+#ifdef WIN32
+	HANDLE handle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+	if (handle = NULL)
+	{
+		return -1;
+	}
+	FILETIME creation, exit, kernel, user;
+	ULARGE_INTEGER total;
+	if (!GetProcessTimes(handle, &creation, &exit, &kernel, &user))
+	{
+		CloseHandle(handle);
+		return -1;
+	}
+	CloseHandle(handle);
+	total.LowPart = user.dwLowDateTime + kernel.dwLowDateTime;
+	total.HighPart = user.dwHighDateTime + kernel.dwHighDateTime;
+	cpu_time = total.QuadPart / 10;
+#else
+	char path[64];
+	FILE *file;
+	int scanned;
+	long clk_tck;
+	unsigned long utime;
+	unsigned long stime;
+	utime = 0;
+	stime = 0;
+	snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+	file = fopen(path, "r");
+	if (file == NULL)
+	{
+		return -1;
+	}
+	for (int i = 0; i < 13; i++)
+	{
+		if (fscanf(file, "%*s") != 0)
+		{
+			fclose(file);
+			return -1;
+		}
+	}
+	scanned = fscanf(file, "%lu %lu", &utime, &stime);
+	fclose(file);
+	if (scanned != 2)
+	{
+		return -1;
+	}
+	clk_tck = sysconf(_SC_CLK_TCK);
+	if (clk_tck <= 0)
+	{
+		/* if sysconf error, return -1 */
+		cpu_time = -1;
+	}
+	else
+	{
+		cpu_time = (int64)((utime + stime) * 1000000LL / clk_tck);
+	}
+#endif
+	return cpu_time;
+}
+
+Datum
+pg_get_session_info(PG_FUNCTION_ARGS)
+{
+#define PG_GET_SESSION_INFO_COLS 8
+	int			num_backends = pgstat_fetch_stat_numbackends();
+	int			curr_backend;
+	int pid = PG_ARGISNULL(0) ? -1 : PG_GETARG_INT32(0);
+	ReturnSetInfo *rsinfo = (ReturnSetInfo *) fcinfo->resultinfo;
+	TupleDesc tupdesc;
+	Tuplestorestate *tupstore;
+	MemoryContext per_query_ctx;
+	MemoryContext oldcontext;
+
+	/* check to see if caller supports us returning a tuplestore */
+	if (rsinfo == NULL || !IsA(rsinfo, ReturnSetInfo))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("set-valued function called in context that cannot accept a set")));
+	}
+	if (!(rsinfo->allowedModes & SFRM_Materialize))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("materialize mode required, but it is not allowed in this context")));
+	}
+
+	/* Build a tuple descriptor for our result type */
+	if (get_call_result_type(fcinfo, NULL, &tupdesc) != TYPEFUNC_COMPOSITE)
+		elog(ERROR, "return type must be a row type");
+
+	per_query_ctx = rsinfo->econtext->ecxt_per_query_memory;
+	oldcontext = MemoryContextSwitchTo(per_query_ctx);
+
+	tupstore = tuplestore_begin_heap(true, false, work_mem);
+	rsinfo->returnMode = SFRM_Materialize;
+	rsinfo->setResult = tupstore;
+	rsinfo->setDesc = tupdesc;
+
+	MemoryContextSwitchTo(oldcontext);
+
+	for (curr_backend = 1; curr_backend <= num_backends; curr_backend++)
+	{
+		PGPROC *proc;
+		uintptr_t paddr;
+		Datum values[PG_GET_SESSION_INFO_COLS];
+		bool nulls[PG_GET_SESSION_INFO_COLS];
+		LocalPgBackendStatus *local_beentry;
+		PgBackendStatus *beentry;
+		int64 cputime;
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, 0, sizeof(nulls));
+
+		/* Get the next one in the list */
+		local_beentry = pgstat_fetch_stat_local_beentry(curr_backend);
+		if (!local_beentry)
+		{
+			int			i;
+			/* Ignore missing entries if looking for specific PID */
+			if (pid != -1)
+				continue;
+
+			for (i = 0; i < lengthof(nulls); i++)
+				nulls[i] = true;
+
+			tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+			continue;
+		}
+
+		beentry = &local_beentry->backendStatus;
+
+		/* If looking for specific PID, ignore all the others */
+		if (pid != -1 && beentry->st_procpid != pid)
+			continue;
+
+		/* get proc from pid */
+		proc = BackendPidGetProc(beentry->st_procpid);
+		if (proc == NULL && (beentry->st_backendType != B_BACKEND))
+			proc = AuxiliaryPidGetProc(beentry->st_procpid);
+		if (proc != NULL)
+		{
+			bytea *paddr_bytes;
+			values[0] = Int32GetDatum(beentry->st_procpid);
+			paddr = (uintptr_t) proc;
+			paddr_bytes = (bytea *) palloc(VARHDRSZ + 8);
+			SET_VARSIZE(paddr_bytes, VARHDRSZ + 8);
+			memcpy(VARDATA(paddr_bytes), &paddr, 8);
+			values[1] = PointerGetDatum(paddr_bytes);
+		}
+		else
+		{
+			nulls[0] = true;
+			nulls[1] = true;
+		}
+		if (beentry->st_osuser)
+			values[2] = CStringGetTextDatum(beentry->st_osuser);
+		else
+			nulls[2] = true;
+
+		/* get PL/SQL info */
+		switch (beentry->st_state)
+		{
+			case STATE_RUNNING:
+			case STATE_FASTPATH:
+				if (beentry->st_plsql_entry_object_id == 0)
+				{
+					nulls[3] = true;
+				}
+				else
+				{
+					values[3] = ObjectIdGetDatum(beentry->st_plsql_entry_object_id);
+				}
+				if (beentry->st_plsql_entry_subprogram_id == 0)
+				{
+					nulls[4] = true;
+				}
+				else
+				{
+					values[4] = Int32GetDatum(beentry->st_plsql_entry_subprogram_id);
+				}
+				if (beentry->st_plsql_object_id == 0)
+				{
+					nulls[5] = true;
+				}
+				else
+				{
+					values[5] = ObjectIdGetDatum(beentry->st_plsql_object_id);
+				}
+				if (beentry->st_plsql_subprogram_id == 0)
+				{
+					nulls[6] = true;
+				}
+				else
+				{
+					values[6] = Int32GetDatum(beentry->st_plsql_subprogram_id);
+				}
+				break;
+			default:
+				nulls[3] = true;
+				nulls[4] = true;
+				nulls[5] = true;
+				nulls[6] = true;
+				break;
+		}
+		/* get cpu time */
+		cputime = get_cpu_time(beentry->st_procpid);
+		if (cputime == -1)
+		{
+			nulls[7] = true;
+		}
+		else
+		{
+			values[7] = Int64GetDatum(cputime);
+		}
+		tuplestore_putvalues(tupstore, tupdesc, values, nulls);
+	}
+
+	/* clean up and return the tuplestore */
+	tuplestore_donestoring(tupstore);
+	return (Datum) 0;
+}
+/* End ReqID:SRS-SQL-SYSVIEW */

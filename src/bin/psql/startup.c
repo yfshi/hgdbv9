@@ -42,6 +42,18 @@
 #endif
 /* End ReqID: SRS-SESSION-VIEWS */
 
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+#ifdef WIN32
+#include <windows.h>
+#else
+#include <pwd.h>
+#endif
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#define OSUSERDATALEN 128
+/* End ReqID:SRS-SQL-SYSVIEW */
+
 /*
  * Global psql options
  */
@@ -125,6 +137,7 @@ static void showHighgoVersion(void);
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 static void EstablishVariableSpace(void);
 #define NOPAGER		0
+static void getosuser(char *osuser, size_t len); /* ReqID:SRS-SQL-SYSVIEW */
 
 static void
 log_pre_callback(void)
@@ -164,6 +177,7 @@ main(int argc, char *argv[])
 	char		tmp_osname[100];
 	ClientInfo	client_info;
 	/* End ReqID: SRS-SESSION-VIEWS */
+	char        tmp_osuser[OSUSERDATALEN]; /* ReqID:SRS-SQL-SYSVIEW */
 
 	pg_logging_init(argv[0]);
 	pg_logging_set_pre_callback(log_pre_callback);
@@ -305,11 +319,16 @@ main(int argc, char *argv[])
 	/*set default ethernet device name with 'eth0' */
 	get_client_info(&client_info);
 	/* End ReqID: SRS-SESSION-VIEWS */
+	/* Begin ReqID:SRS-SQL-SYSVIEW */
+	memset(tmp_osuser, 0, sizeof(tmp_osuser));
+	getosuser(tmp_osuser, OSUSERDATALEN);
+	pset.osuser = pg_strdup(tmp_osuser);
+	/* End ReqID:SRS-SQL-SYSVIEW */
 	/* loop until we have a password if requested by backend */
 	do
 	{
 
-#define PARAMS_ARRAY_SIZE	15 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */
+#define PARAMS_ARRAY_SIZE	16 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */ /* ReqID:SRS-SQL-SYSVIEW */
 
 		const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
 		const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
@@ -347,8 +366,13 @@ main(int argc, char *argv[])
 		keywords[13] = "client.mac";
 		values[13] = pg_strdup(client_info.mac);
 		/* End ReqID: SRS-SESSION-VIEWS */
-		keywords[14] = NULL;
-		values[14] = NULL;
+		/* Begin ReqID:SRS-SQL-SYSVIEW */
+		keywords[14] = "client.osuser";
+		values[14] = pset.osuser;
+		/* End ReqID:SRS-SQL-SYSVIEW */
+		keywords[15] = NULL;
+		values[15] = NULL;
+
 
 		new_pass = false;
 		pset.db = PQconnectdbParams(keywords, values, true);
@@ -1566,3 +1590,53 @@ getosname(char *osname)
 	return;
 }
 /* End ReqID: SRS-SESSION-VIEWS */
+
+/* Begin ReqID:SRS-SQL-SYSVIEW */
+static void
+getosuser(char *osuser, size_t len)
+{
+	const char* src;
+#ifdef WIN32
+	char username[256];
+	DWORD size;
+	if (osuser == NULL)
+	{
+		return;
+	}
+	size = sizeof(username);
+	src = NULL;
+	if (GetUserName(username, &size))
+	{
+		src = username;
+	}
+#else
+	struct passwd resultbuf;
+	struct passwd *result;
+	char pwdbuf[BUFSIZ];
+	if (osuser == NULL)
+	{
+		return;
+	}
+	result = NULL;
+	src = NULL;
+	if (pqGetpwuid(geteuid(), &resultbuf, pwdbuf, sizeof(pwdbuf), &result) == 0 && result != NULL)
+	{
+		src = result->pw_name;
+	}
+#endif
+	if (src == NULL || src[0] == '\0')
+	{
+#ifdef WIN32
+		src = getenv("USERNAME");
+#else
+		src = getenv("USER");
+#endif
+	}
+	if (src == NULL || src[0] == '\0')
+	{
+		return;
+	}
+	strlcpy(osuser, src, len);
+}
+
+/* End ReqID:SRS-SQL-SYSVIEW */

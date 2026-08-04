@@ -2610,6 +2610,16 @@ retry1:
 					port->osname = tmp_osname;
 				}
 				/* End ReqID: SRS-SESSION-VIEWS */
+				/* Begin ReqID:SRS-SQL-SYSVIEW */
+				else if (strcmp(nameptr, "client.osuser") == 0)
+				{
+					char	   *tmp_osuser = pstrdup(valptr);
+
+					pg_clean_ascii(tmp_osuser);
+
+					port->osuser = tmp_osuser;
+				}
+				/* End ReqID:SRS-SQL-SYSVIEW */
 			}
 			offset = valoffset + strlen(valptr) + 1;
 		}
