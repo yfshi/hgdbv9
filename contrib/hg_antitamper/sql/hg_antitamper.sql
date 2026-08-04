@@ -1128,7 +1128,7 @@ create schema secure_schema with antitamper;
 create table  secure_schema.test (id int, name text);
 insert into secure_schema.test values(1, 'alex'), (2, 'bob'), (3, 'peter');
 
-create user user11;
+create user user11_sso;
 create user normal_user;
 create user antitamper_spuser with superuser password 'Hello@123';
 --------------------------------------------------------------------------
@@ -1137,10 +1137,10 @@ grant all privileges on all tables in schema secure_schema to syssso;
 grant usage on schema hg_security to syssso;
 grant all privileges on all tables in schema hg_security to syssso;
 
-grant usage on schema secure_schema to user11;
-grant all privileges on all tables in schema secure_schema to user11;
-grant usage on schema hg_security to user11;
-grant all privileges on all tables in schema hg_security to user11;
+grant usage on schema secure_schema to user11_sso;
+grant all privileges on all tables in schema secure_schema to user11_sso;
+grant usage on schema hg_security to user11_sso;
+grant all privileges on all tables in schema hg_security to user11_sso;
 
 grant usage on schema secure_schema to normal_user;
 grant all privileges on all tables in schema secure_schema to normal_user;
@@ -1148,14 +1148,14 @@ grant usage on schema hg_security to normal_user;
 grant all privileges on all tables in schema hg_security to normal_user;
 --------------------------------------------------------------------------
 
-grant syssso_role to user11;
+grant syssso_role to user11_sso;
 -- test se_feature.mode =off
 set role syssso;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 
-set role user11;
+set role user11_sso;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
@@ -1164,6 +1164,46 @@ set role normal_user;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+-- check per
+\c - syssso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+\c - user11_sso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+update hg_security.hg_global_antitamper set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+update hg_security.hg_global_antitamper_backup set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+\c - normal_user
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+update hg_security.hg_global_antitamper set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+update hg_security.hg_global_antitamper_backup set deleterelhash=2222 where deleterelhash=222;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+
+\c - antitamper_spuser
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (333, 333, 333);
+update hg_security.hg_global_antitamper set deleterelhash=3333 where deleterelhash=333;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (333, 333, 333);
+update hg_security.hg_global_antitamper_backup set deleterelhash=3333 where deleterelhash=333;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+delete from hg_security.hg_global_antitamper_backup;
 
 -- test se_feature.mode =on
 \c - antitamper_spuser
@@ -1184,7 +1224,12 @@ select hg_security.antitamper_hist_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 
-\c - user11;
+\c - user11_sso;
+select hg_security.antitamper_hist_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_repair('secure_schema', 'test');
+select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+\c - normal_user;
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
@@ -1193,6 +1238,49 @@ select hg_security.antitamper_gchain_archive('secure_schema', 'test');
 select hg_security.antitamper_hist_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_repair('secure_schema', 'test');
 select hg_security.antitamper_gchain_archive('secure_schema', 'test');
+
+\c - syssso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+
+\c - normal_user;
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (222, 222, 222);
+update hg_security.hg_global_antitamper set deleterelhash=2222 where deleterelhash=222; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+delete from hg_security.hg_global_antitamper; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (222, 222, 222); --error
+update hg_security.hg_global_antitamper_backup set deleterelhash=2222 where deleterelhash=222; --error 
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+delete from hg_security.hg_global_antitamper_backup; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+
+\c - antitamper_spuser
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (333, 333, 333);
+update hg_security.hg_global_antitamper set deleterelhash=3333 where deleterelhash=333; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+delete from hg_security.hg_global_antitamper; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (333, 333, 333); --error
+update hg_security.hg_global_antitamper_backup set deleterelhash=3333 where deleterelhash=333; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+delete from hg_security.hg_global_antitamper_backup; --error
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+
+\c - syssso
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
 
 \c - syssso;
 alter system set hg_rolstatus.enable=off;
@@ -1205,7 +1293,7 @@ drop schema secure_schema;
 
 revoke all privileges on all tables in schema hg_security from normal_user;
 revoke usage on schema hg_security from normal_user;
-revoke all privileges on all tables in schema hg_security from user11;
-revoke usage on schema hg_security from user11;
-drop user user11;
+revoke all privileges on all tables in schema hg_security from user11_sso;
+revoke usage on schema hg_security from user11_sso;
+drop user user11_sso;
 drop user normal_user;

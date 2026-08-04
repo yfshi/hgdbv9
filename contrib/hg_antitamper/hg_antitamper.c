@@ -57,6 +57,8 @@
 #include "nodes/bitmapset.h"
 #include "nodes/parsenodes.h"
 #include "nodes/execnodes.h"
+#include "se_features_interface.h"
+#include "catalog/pg_authid_d.h"
 
 PG_MODULE_MAGIC;
 
@@ -72,7 +74,8 @@ bool hg_antitamper_enabled = false;
 
 #define HG_HASH_COLUMN_NAME "__hg_hash__"
 #define HG_UINT32_MASK       UINT64CONST(4294967295)
-
+#define HG_SECURITY_SCHEMA					"hg_security"
+#define HG_GLOBAL_ANTITAMPER_TABLE			"hg_global_antitamper"
 /*
  * Common execution state.
  *
@@ -140,7 +143,7 @@ hg_prepare_history_operation(Oid hist_table_oid, bool require_rec_num, HgHistory
 	/*
 	 * Restrict this privileged API to extension-managed history tables.
 	 */
-	if (strcmp(namespace_name, "hg_security") != 0)
+	if (strcmp(namespace_name, HG_SECURITY_SCHEMA) != 0)
 	{
 		char *actual_name;
 
@@ -507,8 +510,245 @@ append_history_hash_diff_internal(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(inserted_rec_num);
 }
 
-PG_FUNCTION_INFO_V1(get_table_hash_sum);
+PG_FUNCTION_INFO_V1(insert_global_antitamper_internal);
 
+/*
+ * Select the temporary execution identity used for inserting into
+ * hg_security.hg_global_antitamper.
+ *
+ * Separation of powers enabled:
+ *     use the bootstrap superuser.
+ *
+ * Separation of powers disabled:
+ *     use role "sso".
+ */
+static Oid
+hg_get_global_antitamper_exec_user(void)
+{
+	if (se_feature_mode)
+		return get_role_oid(SYSSSO_ROLE, false);
+	else
+		return BOOTSTRAP_SUPERUSERID;
+}
+
+
+/*
+ * Prepare the fixed global antitamper table for a privileged INSERT.
+ *
+ * This function reuses HgHistoryExecContext so that the existing
+ * hg_start_history_operation(), hg_finish_history_operation(), and
+ * hg_abort_history_operation() functions can be called unchanged.
+ */
+static void
+hg_prepare_global_antitamper_operation(HgHistoryExecContext *context)
+{
+	Oid namespace_oid;
+	Oid relation_oid;
+	Relation relation;
+	char *namespace_name;
+	const char *relation_name;
+
+	MemSet(context, 0, sizeof(*context));
+
+	namespace_oid = get_namespace_oid(HG_SECURITY_SCHEMA, false);
+	relation_oid = get_relname_relid(HG_GLOBAL_ANTITAMPER_TABLE, namespace_oid);
+
+	if (!OidIsValid(relation_oid))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_TABLE),
+				 errmsg("relation \"%s.%s\" does not exist",
+						HG_SECURITY_SCHEMA, HG_GLOBAL_ANTITAMPER_TABLE)));
+
+	relation = table_open(relation_oid, RowExclusiveLock);
+
+	namespace_name = get_namespace_name(RelationGetNamespace(relation));
+	relation_name = RelationGetRelationName(relation);
+
+	if (namespace_name == NULL ||
+		strcmp(namespace_name, HG_SECURITY_SCHEMA) != 0 ||
+		strcmp(relation_name, HG_GLOBAL_ANTITAMPER_TABLE) != 0)
+	{
+		table_close(relation, RowExclusiveLock);
+
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("unexpected global antitamper table")));
+	}
+
+	if (get_attnum(relation_oid, "username") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "dbname") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "schemaoid") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "reloid") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "insertrelhash") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "deleterelhash") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "starttime") == InvalidAttrNumber ||
+		get_attnum(relation_oid, "sqlcommand") == InvalidAttrNumber)
+	{
+		table_close(relation, RowExclusiveLock);
+
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_COLUMN),
+				 errmsg("table \"%s.%s\" has an invalid structure",
+						HG_SECURITY_SCHEMA,
+						HG_GLOBAL_ANTITAMPER_TABLE)));
+	}
+
+	context->relation = relation;
+	context->table_owner = hg_get_global_antitamper_exec_user();
+	context->qualified_name = quote_qualified_identifier(namespace_name, relation_name);
+	context->user_switched = false;
+	context->spi_connected = false;
+
+	GetUserIdAndSecContext(&context->saved_userid, &context->saved_sec_context);
+}
+
+/*
+ * Insert one global antitamper record.
+ *
+ * SQL signature:
+ *
+ *     insert_global_antitamper_internal(
+ *         username       text,
+ *         dbname         text,
+ *         schema_oid     oid,
+ *         relation_oid   oid,
+ *         insert_hash    bigint,
+ *         delete_hash    bigint,
+ *         sql_command    text,
+ *         caller         text
+ *     ) returns void
+ *
+ * insert_hash, delete_hash and sql_command may be NULL, so the SQL
+ * function must not be declared STRICT.
+ */
+Datum
+insert_global_antitamper_internal(PG_FUNCTION_ARGS)
+{
+	HgHistoryExecContext context;
+	Oid schema_oid;
+	Oid relation_oid;
+	char *caller_name = NULL;
+
+	if (PG_ARGISNULL(0) || PG_ARGISNULL(1) || PG_ARGISNULL(2) || PG_ARGISNULL(3))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_NULL_VALUE_NOT_ALLOWED),
+				 errmsg("username, database name, schema OID and relation OID must not be null")));
+	}
+
+	schema_oid = PG_GETARG_OID(2);
+	relation_oid = PG_GETARG_OID(3);
+
+	if (!PG_ARGISNULL(7))
+	{
+		caller_name = text_to_cstring(PG_GETARG_TEXT_PP(7));
+	}
+
+	if (caller_name == NULL || strcmp(caller_name, "__set_generic_hash__") != 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("permission denied")));
+	}
+
+	hg_prepare_global_antitamper_operation(&context);
+
+	PG_TRY();
+	{
+		char *query;
+		Oid argtypes[7] = {TEXTOID, TEXTOID, OIDOID, OIDOID, INT8OID, INT8OID, TEXTOID};
+		Datum values[7];
+		char nulls[7] = {' ', ' ', ' ', ' ', ' ', ' ', ' '};
+		int spi_rc;
+
+		hg_start_history_operation(&context);
+
+		query = psprintf(
+			"INSERT INTO %s "
+			"("
+			"    username, "
+			"    dbname, "
+			"    schemaoid, "
+			"    reloid, "
+			"    starttime, "
+			"    insertrelhash, "
+			"    deleterelhash, "
+			"    sqlcommand"
+			") "
+			"VALUES "
+			"("
+			"    $1::pg_catalog.text, "
+			"    $2::pg_catalog.text, "
+			"    $3::pg_catalog.oid, "
+			"    $4::pg_catalog.oid, "
+			"    CURRENT_TIMESTAMP::timestamp without time zone, "
+			"    $5::pg_catalog.int8, "
+			"    $6::pg_catalog.int8, "
+			"    $7::pg_catalog.text"
+			")",
+			context.qualified_name);
+
+		values[0] = PG_GETARG_DATUM(0);
+		values[1] = PG_GETARG_DATUM(1);
+		values[2] = ObjectIdGetDatum(schema_oid);
+		values[3] = ObjectIdGetDatum(relation_oid);
+
+		if (PG_ARGISNULL(4))
+		{
+			values[4] = (Datum)0;
+			nulls[4] = 'n';
+		}
+		else
+			values[4] = PG_GETARG_DATUM(4);
+
+		if (PG_ARGISNULL(5))
+		{
+			values[5] = (Datum)0;
+			nulls[5] = 'n';
+		}
+		else
+			values[5] = PG_GETARG_DATUM(5);
+
+		if (PG_ARGISNULL(6))
+		{
+			values[6] = (Datum)0;
+			nulls[6] = 'n';
+		}
+		else
+			values[6] = PG_GETARG_DATUM(6);
+
+		spi_rc = SPI_execute_with_args(query, 7, argtypes, values, nulls, false, 1);
+
+		if (spi_rc != SPI_OK_INSERT)
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+					 errmsg("failed to insert global antitamper record"),
+					 errdetail("SPI_execute_with_args returned %d.", spi_rc)));
+
+		if (SPI_processed != 1)
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+					 errmsg("unexpected number of inserted rows"),
+					 errdetail("Expected one row, inserted %llu.", (unsigned long long)SPI_processed)));
+
+		hg_finish_history_operation(&context);
+	}
+	PG_CATCH();
+	{
+		/*
+		 * Reuse the existing error-path helper to restore the user identity,
+		 * then immediately propagate the original ERROR.
+		 */
+		hg_abort_history_operation(&context);
+		PG_RE_THROW();
+	}
+	PG_END_TRY();
+
+	table_close(context.relation, RowExclusiveLock);
+	PG_RETURN_VOID();
+}
+
+PG_FUNCTION_INFO_V1(get_table_hash_sum);
 /*
  * get_table_hash_sum:
  *     get table hash total value
@@ -532,7 +772,6 @@ get_table_hash_sum(PG_FUNCTION_ARGS)
 	StringInfoData row_expression;
 	StringInfoData query;
 	volatile bool user_switched = false;
-	volatile bool spi_connected = false;
 	volatile int64 sum_result = 0;
 	char relkind;
 	int i;
@@ -661,8 +900,6 @@ get_table_hash_sum(PG_FUNCTION_ARGS)
 					 errmsg("SPI_connect failed"),
 					 errdetail("SPI_connect returned %d.", spi_rc)));
 
-		spi_connected = true;
-
 		spi_rc = SPI_execute(query.data, true, 0);
 		if (spi_rc != SPI_OK_SELECT)
 			ereport(ERROR,
@@ -685,8 +922,6 @@ get_table_hash_sum(PG_FUNCTION_ARGS)
 		sum_result = is_null ? 0 : DatumGetInt64(result_datum);
 
 		spi_rc = SPI_finish();
-		spi_connected = false;
-
 		if (spi_rc != SPI_OK_FINISH)
 			ereport(ERROR,
 					(errcode(ERRCODE_INTERNAL_ERROR),
