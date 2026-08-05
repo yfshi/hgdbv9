@@ -5127,3 +5127,13 @@ PARALLEL
 SAFE
 IMMUTABLE;
 /* End - BUG#8428 8441 */
+
+/* Begin - bug#8594 */
+CREATE FUNCTION ivymy.round(varchar)
+RETURNS numeric
+AS 'SELECT round($1::numeric)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#8594 */

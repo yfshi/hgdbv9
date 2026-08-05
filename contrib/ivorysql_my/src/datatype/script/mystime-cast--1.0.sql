@@ -44,18 +44,39 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mysdate AS ivymy.mystimes)
 WITH FUNCTION ivymy.mysdate_mystimes(ivymy.mysdate, integer)
 AS ASSIGNMENT;
 
--------------------------------------------------------------------------------------------------
--- mysdatetime to other time type 
--------------------------------------------------------------------------------------------------
--- mysdatetime to datetime timestamp time
-CREATE CAST (ivymy.mysdatetime AS ivymy.mysdate)      WITH INOUT AS ASSIGNMENT;
+/* Begin - bug#8693 */
+CREATE FUNCTION ivymy.mysdatetime_mysdate(ivymy.mysdatetime) 
+RETURNS ivymy.mysdate
+AS 'MODULE_PATHNAME','mysdatetime_mysdate'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mysdatetime AS ivymy.mysdate)
+WITH FUNCTION ivymy.mysdatetime_mysdate(ivymy.mysdatetime)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.mysdatetime_mystime(ivymy.mysdatetime) 
+RETURNS ivymy.mystime
+AS 'MODULE_PATHNAME','mysdatetime_mystime'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+
+CREATE CAST (ivymy.mysdatetime AS ivymy.mystime)
+WITH FUNCTION ivymy.mysdatetime_mystime(ivymy.mysdatetime)
+AS ASSIGNMENT;
+/* End - bug#8693 */
+
 CREATE CAST (ivymy.mysdatetime AS ivymy.mystimestamp) WITH INOUT AS ASSIGNMENT;
-CREATE CAST (ivymy.mysdatetime AS ivymy.mystime)      WITH INOUT AS ASSIGNMENT;
--- mysdatetime to datetimes timestamps times
+
 CREATE FUNCTION ivymy.mysdatetime_mysdatetimes(ivymy.mysdatetime, integer) 
 RETURNS ivymy.mysdatetimes 
 AS 'MODULE_PATHNAME','mysdatetime_mysdatetimes'
@@ -63,6 +84,7 @@ LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
+
 CREATE CAST (ivymy.mysdatetime AS ivymy.mysdatetimes)
 WITH FUNCTION ivymy.mysdatetime_mysdatetimes(ivymy.mysdatetime, integer)
 AS ASSIGNMENT;

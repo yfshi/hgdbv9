@@ -1037,7 +1037,9 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 	UNLISTEN UNLOGGED UNSIGNED UNTIL UPDATE USE USER USING UTC_DATE UTC_TIME UTC_TIMESTAMP /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARBINARY VARCHAR VARIABLES /* ReqID:SRS-MYSQL-SHOW */ VARIADIC VARYING
-	VERBOSE VERSION_P VIEW VIEWS VOLATILE WARNINGS /* Bug#Z6036 */ WEIGHT_STRING
+	VERBOSE VERSION_P VIEW VIEWS
+	VIRTUAL /* bug#8693 */
+	VOLATILE WARNINGS /* Bug#Z6036 */ WEIGHT_STRING
 
 	WEEK
 	WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
@@ -5106,6 +5108,31 @@ ColConstraintElem:
 
 					$$ = (Node *)n;
 				}
+			/* Begin - bug#8693 */
+			| GENERATED generated_when AS '(' a_expr ')' VIRTUAL
+				{
+					Constraint *n = makeNode(Constraint);
+					n->contype = CONSTR_GENERATED;
+					n->generated_when = $2;
+					n->raw_expr = $5;
+					n->cooked_expr = NULL;
+					n->location = @1;
+
+					/*
+					 * Can't do this in the grammar because of shift/reduce
+					 * conflicts.  (IDENTITY allows both ALWAYS and BY
+					 * DEFAULT, but generated columns only allow ALWAYS.)  We
+					 * can also give a more useful error message and location.
+					 */
+					if ($2 != ATTRIBUTE_IDENTITY_ALWAYS)
+						ereport(ERROR,
+								(errcode(ERRCODE_SYNTAX_ERROR),
+								 errmsg("for a generated column, GENERATED ALWAYS must be specified"),
+								 parser_errposition(@2)));
+
+					$$ = (Node *)n;
+				}
+			/* End - bug#8693 */
 			| REFERENCES qualified_name opt_column_list key_match key_actions
 				{
 					Constraint *n = makeNode(Constraint);
@@ -21065,6 +21092,7 @@ unreserved_keyword:
 			| VERSION_P
 			| VIEW
 			| VIEWS
+			| VIRTUAL	/* bug#8693 */
 			| VOLATILE
 			| WARNINGS /* Bug#Z6036 */
 			| WEEK
@@ -21926,6 +21954,7 @@ bare_label_keyword:
 			| VERSION_P
 			| VIEW
 			| VIEWS
+			| VIRTUAL	/* bug#8693 */
 			| VOLATILE
 			| WARNINGS /* Bug#Z6036 */
 			| WEIGHT_STRING
@@ -24107,13 +24136,10 @@ makeIntervalExpr(Node *value, char *unit, int location)
 
 	if (base != NULL)
 	{
-		Node	   *iv = makeStringConstCast(pstrdup(base), location,
-											 SystemTypeName("interval"));
+		Node *iv = makeStringConstCast(pstrdup(base), location,
+									   SystemTypeName("interval"));
 
-		/*
-	 	 * 
-	 	 */
-		value = (Node *) makeFuncCall(SystemFuncName("round"),
+		value = (Node *) makeFuncCall(list_make1(makeString("round")),
 								  	  list_make1(value),
 									  COERCE_EXPLICIT_CALL,
 									  -1);

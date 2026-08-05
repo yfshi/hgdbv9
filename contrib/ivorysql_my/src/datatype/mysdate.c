@@ -7030,6 +7030,11 @@ PG_FUNCTION_INFO_V1(mystime_mystimes);
 PG_FUNCTION_INFO_V1(mystimes_mysdatetimes);
 PG_FUNCTION_INFO_V1(mystimes_mystimestamps);
 
+/* Begin - bug#8693 */
+PG_FUNCTION_INFO_V1(mysdatetime_mysdate);
+PG_FUNCTION_INFO_V1(mysdatetime_mystime);
+/* End - bug#8693 */
+
 
 Datum mysdate_mystime(PG_FUNCTION_ARGS)
 {
@@ -7542,3 +7547,23 @@ timestamp_mystimestamp(PG_FUNCTION_ARGS)
 	PG_RETURN_TIMEADT(result);
 }
 /* End - ReqID: SRS-MYSQL-PROC */
+
+/* Begin - bug#8693*/
+Datum
+mysdatetime_mysdate(PG_FUNCTION_ARGS)
+{
+	TimeADT datetime = PG_GETARG_TIMEADT(0);
+	DateADT date = datetime / 1000000;
+
+	PG_RETURN_DATEADT(date);
+}
+
+Datum
+mysdatetime_mystime(PG_FUNCTION_ARGS)
+{
+	TimeADT datetime = PG_GETARG_TIMEADT(0);
+	TimeOffset	time = datetime % 1000000;
+
+	PG_RETURN_TIMEADT(time);
+}
+/* End - bug#8693*/

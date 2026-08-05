@@ -270,3 +270,36 @@ ERROR:  syntax error at or near "INVALID_UNIT"
 LINE 1: SELECT DATE_ADD('2023-01-01', INTERVAL 1 INVALID_UNIT);
                                                  ^
 /* End - bug#8236 */
+/* Begin - bug#8594 */
+set mysql.cast_to_char = on;
+SELECT ADDDATE('2024-01-01 12:00:00', INTERVAL CAST(10 AS CHAR) MINUTE); --  2024-01-01 12:10:00.000000
+          adddate           
+----------------------------
+ 2024-01-01 12:10:00.000000
+(1 row)
+
+SELECT ADDDATE('2024-01-01 12:00:00', round(CAST(10 AS CHAR)) * INTERVAL '1 MINUTE'); --  2024-01-01 12:10:00.000000
+          adddate           
+----------------------------
+ 2024-01-01 12:10:00.000000
+(1 row)
+
+SELECT CAST(10 AS CHAR), ADDDATE('2024-01-01 12:00:00', (INTERVAL '1 MINUTE') * round(CAST(10 AS CHAR))); --  2024-01-01 12:10:00.000000
+ varchar |          adddate           
+---------+----------------------------
+ 10      | 2024-01-01 12:10:00.000000
+(1 row)
+
+SELECT ADDDATE('2024-01-01 12:00:00', (INTERVAL '1 MINUTE') * 10);
+          adddate           
+----------------------------
+ 2024-01-01 12:10:00.000000
+(1 row)
+
+SELECT ADDDATE('2024-01-01 12:00:00', (INTERVAL '1 MINUTE') * round(10));
+          adddate           
+----------------------------
+ 2024-01-01 12:10:00.000000
+(1 row)
+
+/* End - bug#8594 */

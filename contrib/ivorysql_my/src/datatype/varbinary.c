@@ -285,8 +285,7 @@ Datum
 varbinary_bitand(PG_FUNCTION_ARGS)
 {
 	bytea 		*arg1, *arg2;
-	int 		len1, len2;
-	char 		*end1, *end2;
+	char 		*src1, *src2;
 	ulonglong 	long_arg1 = 0,
 				long_arg2 = 0,
 				result = 0;
@@ -297,16 +296,16 @@ varbinary_bitand(PG_FUNCTION_ARGS)
 	arg1 = PG_GETARG_BYTEA_PP(0);
 	arg2 = PG_GETARG_BYTEA_PP(1);
 
-	len1 = VARSIZE_ANY_EXHDR(arg1);
-	len2 = VARSIZE_ANY_EXHDR(arg2);
+	src1 = text_to_cstring((text *) arg1);
+	src2 = text_to_cstring((text *) arg2);
 
-	end1 = VARDATA_ANY(arg1) + len1;
-	end2 = VARDATA_ANY(arg2) + len2;
-
-	long_arg1 = (ulonglong)strtoll(VARDATA_ANY(arg1), &end1, 10);
-	long_arg2 = (ulonglong)strtoll(VARDATA_ANY(arg2), &end2, 10);
+	long_arg1 = (ulonglong)strtoll(src1, NULL, 10);
+	long_arg2 = (ulonglong)strtoll(src2, NULL, 10);
 
 	result = long_arg1 & long_arg2;
+
+	pfree(src1);
+	pfree(src2);
 
 	PG_RETURN_INT64(result);
 }
@@ -315,8 +314,7 @@ Datum
 varbinary_bitor(PG_FUNCTION_ARGS)
 {
 	bytea 		*arg1, *arg2;
-	int 		len1, len2;
-	char 		*end1, *end2;
+	char 		*src1, *src2;
 	ulonglong 	long_arg1 = 0,
 				long_arg2 = 0,
 				result = 0;
@@ -327,16 +325,16 @@ varbinary_bitor(PG_FUNCTION_ARGS)
 	arg1 = PG_GETARG_BYTEA_PP(0);
 	arg2 = PG_GETARG_BYTEA_PP(1);
 
-	len1 = VARSIZE_ANY_EXHDR(arg1);
-	len2 = VARSIZE_ANY_EXHDR(arg2);
+	src1 = text_to_cstring((text *) arg1);
+	src2 = text_to_cstring((text *) arg2);
 
-	end1 = VARDATA_ANY(arg1) + len1;
-	end2 = VARDATA_ANY(arg2) + len2;
-
-	long_arg1 = (ulonglong)strtoll(VARDATA_ANY(arg1), &end1, 10);
-	long_arg2 = (ulonglong)strtoll(VARDATA_ANY(arg2), &end2, 10);
+	long_arg1 = (ulonglong)strtoll(src1, NULL, 10);
+	long_arg2 = (ulonglong)strtoll(src2, NULL, 10);
 
 	result = long_arg1 | long_arg2;
+
+	pfree(src1);
+	pfree(src2);
 
 	PG_RETURN_UINT64(result);
 }
@@ -344,12 +342,11 @@ varbinary_bitor(PG_FUNCTION_ARGS)
 Datum 
 varbinary_bitxor(PG_FUNCTION_ARGS)
 {
-	bytea *arg1, *arg2;
-	int len1, len2;
-	char *end1, *end2;
-	ulonglong long_arg1 = 0;
-	ulonglong long_arg2 = 0;
-	ulonglong result = 0;
+	bytea 		*arg1, *arg2;
+	char 		*src1, *src2;
+	ulonglong 	long_arg1 = 0,
+				long_arg2 = 0,
+				result = 0;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
@@ -357,16 +354,16 @@ varbinary_bitxor(PG_FUNCTION_ARGS)
 	arg1 = PG_GETARG_BYTEA_PP(0);
 	arg2 = PG_GETARG_BYTEA_PP(1);
 
-	len1 = VARSIZE_ANY_EXHDR(arg1);
-	len2 = VARSIZE_ANY_EXHDR(arg2);
+	src1 = text_to_cstring((text *) arg1);
+	src2 = text_to_cstring((text *) arg2);
 
-	end1 = VARDATA_ANY(arg1) + len1;
-	end2 = VARDATA_ANY(arg2) + len2;
-
-	long_arg1 = (ulonglong)strtoll(VARDATA_ANY(arg1), &end1, 10);
-	long_arg2 = (ulonglong)strtoll(VARDATA_ANY(arg2), &end2, 10);
+	long_arg1 = (ulonglong)strtoll(src1, NULL, 10);
+	long_arg2 = (ulonglong)strtoll(src2, NULL, 10);
 
 	result = long_arg1 ^ long_arg2;
+
+	pfree(src1);
+	pfree(src2);
 
 	PG_RETURN_UINT64(result);
 }
@@ -375,8 +372,7 @@ Datum
 varbinary_bitneg(PG_FUNCTION_ARGS)
 {
 	bytea *arg;
-	int len;
-	char *end;
+	char *src;
 	ulonglong long_arg = 0;
 	ulonglong result = 0;
 
@@ -385,13 +381,13 @@ varbinary_bitneg(PG_FUNCTION_ARGS)
 
 	arg = PG_GETARG_BYTEA_PP(0);
 
-	len = VARSIZE_ANY_EXHDR(arg);
+	src = text_to_cstring((text *) arg);
 
-	end = VARDATA_ANY(arg) + len;
-
-	long_arg = (ulonglong)strtoll(VARDATA_ANY(arg), &end, 10);
+	long_arg = (ulonglong)strtoll(src, NULL, 10);
 
 	result = ~long_arg;
+
+	pfree(src);
 
 	PG_RETURN_UINT64(result);
 }
@@ -401,8 +397,7 @@ varbinary_bitshiftleft(PG_FUNCTION_ARGS)
 {
 	bytea *arg;
 	uint32_t shift = PG_GETARG_INT32(1);
-	int len;
-	char *end;
+	char *src;
 	ulonglong long_arg = 0;
 	ulonglong result = 0;
 	ulonglong res = 0;
@@ -412,14 +407,15 @@ varbinary_bitshiftleft(PG_FUNCTION_ARGS)
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
 
-	len = VARSIZE_ANY_EXHDR(arg);
-	end = VARDATA_ANY(arg) + len;
+	src = text_to_cstring((text *) arg);
 
-	long_arg = (ulonglong)strtoll(VARDATA_ANY(arg), &end, 10);
+	long_arg = (ulonglong)strtoll(src, NULL, 10);
 
 	res = long_arg << shift;
 
 	result = shift < sizeof(longlong) * 8 ? (longlong)res : 0LL;
+
+	pfree(src);
 
 	PG_RETURN_UINT64(result);
 }
@@ -429,8 +425,7 @@ varbinary_bitshiftright(PG_FUNCTION_ARGS)
 {
 	bytea *arg;
 	uint32_t shift = PG_GETARG_INT32(1);
-	int len;
-	char *end;
+	char *src;
 	ulonglong long_arg = 0;
 	ulonglong result = 0;
 	ulonglong res = 0;
@@ -440,14 +435,15 @@ varbinary_bitshiftright(PG_FUNCTION_ARGS)
 
 	arg = PG_GETARG_BYTEA_P(0);
 
-	len = VARSIZE_ANY_EXHDR(arg);
-	end = VARDATA_ANY(arg) + len;
+	src = text_to_cstring((text *) arg);
 
-	long_arg = (ulonglong)strtoll(VARDATA_ANY(arg), &end, 10);
+	long_arg = (ulonglong)strtoll(src, NULL, 10);
 
 	res = long_arg >> shift;
 
 	result = shift < sizeof(longlong) * 8 ? (longlong)res : 0LL;
+
+	pfree(src);
 
 	PG_RETURN_UINT64(result);
 }

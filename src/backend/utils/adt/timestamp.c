@@ -1060,7 +1060,6 @@ intervaltypmodin(PG_FUNCTION_ARGS)
 			case INTERVAL_MASK(HOUR) | INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 			case INTERVAL_MASK(MINUTE) | INTERVAL_MASK(SECOND):
 			case INTERVAL_FULL_RANGE:
-			case INTERVAL_MASK(MICROSECOND): /* bug#8026 */
 				/* all OK */
 				break;
 			default:
@@ -1461,12 +1460,6 @@ AdjustIntervalForTypmod(Interval *interval, int32 typmod)
 		{
 			/* fractional-second rounding will be dealt with below */
 		}
-		/* Begin - bug#8026 */
-		else if (range == (INTERVAL_MASK(MICROSECOND)))
-		{
-			/* fractional-second rounding will be dealt with below */
-		}
-		/* End - bug#8026 */
 		else
 			elog(ERROR, "unrecognized interval typmod: %d", typmod);
 

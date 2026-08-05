@@ -1888,3 +1888,16 @@ fay_daim VARCHAR(50) NOT NULL COMMENT `Court Code`
 CREATE UNIQUE INDEX unique_index ON f_tingsm(paiqxx_id, sheary_id, fay_daim) COMMENT "Single schedulign, Individual personnel, Single court unique";
 DESC f_tingsm;
 DROP TABLE f_tingsm;
+
+/* Begin - bug#8693 */
+CREATE TABLE `test_vendor_data` (
+  `VENDOR_ID` int NOT NULL AUTO_INCREMENT COMMENT 'aaa',
+  `ID` int GENERATED ALWAYS AS (`VENDOR_ID`) STORED COMMENT 'bbb',
+  `DATE_TIME` datetime DEFAULT NULL COMMENT 'ccc',
+  `DATA_DATE` date GENERATED ALWAYS AS (CAST(`DATE_TIME` AS DATE)) VIRTUAL COMMENT 'ddd',
+  `DATA_TIME` time GENERATED ALWAYS AS (CAST(`DATE_TIME` AS TIME)) VIRTUAL COMMENT 'eee',
+  `CREATE_TIME` datetime DEFAULT CURRENT_TIMESTAMP COMMENT 'fff',
+  PRIMARY KEY (`VENDOR_ID`)
+);
+drop table test_vendor_data;
+/* End - bug#8693 */
