@@ -1,4 +1,47 @@
 --==============================================================================================--
+-- test check per
+--==============================================================================================--
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+set role syssso;
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper"
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+           111 |           111
+(1 row)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+ERROR:  new row violates row-level security policy for table "hg_global_antitamper_backup"
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+           111 |           111
+(1 row)
+
+reset role;
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+ insertrelhash | deleterelhash 
+---------------+---------------
+(0 rows)
+
+--==============================================================================================--
 -- test schema antitamper
 --==============================================================================================--
 create schema ddd with antitamper;
@@ -11,10 +54,10 @@ select *, __hg_hash__ from ddd.t1;
  111 | aaa  |  4113375802
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |               sqlcommand               
 ----------+---------------+---------------+----------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
 (1 row)
 
 select hg_security.antitamper_hist_check('ddd','t1');
@@ -67,11 +110,11 @@ select *, __hg_hash__ from ddd.t1;
  222 | bbb  |  1491091122
 (2 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |               sqlcommand               
 ----------+---------------+---------------+----------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
 (2 rows)
 
 select hg_security.antitamper_hist_check('ddd','t1');
@@ -125,12 +168,12 @@ select *, __hg_hash__ from ddd.t1;
  111 | zzz  |  1232070655
 (2 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                   sqlcommand                   
 ----------+---------------+---------------+------------------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
-        3 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        6 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
 (3 rows)
 
 select hg_security.antitamper_hist_check('ddd','t1');
@@ -184,13 +227,13 @@ select *, __hg_hash__ from ddd.t1;
  111 | zzz  |  1232070655
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                   sqlcommand                   
 ----------+---------------+---------------+------------------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
-        3 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
-        4 |               |    1491091122 | delete from ddd.t1 where id = 222;
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        6 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
+        7 |               |    1491091122 | delete from ddd.t1 where id = 222;
 (4 rows)
 
 select hg_security.antitamper_hist_check('ddd','t1');
@@ -244,19 +287,19 @@ select hg_security.antitamper_gchain_archive('ddd','t1');
  t
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash | sqlcommand 
 ----------+---------------+---------------+------------
-        5 |    6836537579 |    5604466924 | archive
+        8 |    6836537579 |    5604466924 | archive
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
  blocknum | insertrelhash | deleterelhash |                   sqlcommand                   
 ----------+---------------+---------------+------------------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
-        3 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
-        4 |               |    1491091122 | delete from ddd.t1 where id = 222;
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        6 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
+        7 |               |    1491091122 | delete from ddd.t1 where id = 222;
 (4 rows)
 
 -- add del column
@@ -295,11 +338,11 @@ select *, __hg_hash__ from t2;
  111 | 222 | aaa  |   819114034
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |               sqlcommand                
 ----------+---------------+---------------+-----------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+        8 |    6836537579 |    5604466924 | archive
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
 (2 rows)
 
 select hg_security.antitamper_hist_check('public', 't2');
@@ -352,12 +395,12 @@ select *, __hg_hash__ from t2;
  222 | 333 | bbb  |   910421701
 (2 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |               sqlcommand                
 ----------+---------------+---------------+-----------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
-        7 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
+        8 |    6836537579 |    5604466924 | archive
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+       10 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
 (3 rows)
 
 select hg_security.antitamper_hist_check('public', 't2');
@@ -411,13 +454,13 @@ select *, __hg_hash__ from t2;
  111 | 222 | zzz  |  2308286483
 (2 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
-        7 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
-        8 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
+        8 |    6836537579 |    5604466924 | archive
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+       10 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
+       11 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
 (4 rows)
 
 select hg_security.antitamper_hist_check('public', 't2');
@@ -471,14 +514,14 @@ select *, __hg_hash__ from t2;
  111 | 222 | zzz  |  2308286483
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
-        7 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
-        8 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
-        9 |               |     910421701 | delete from t2 where id = 222;
+        8 |    6836537579 |    5604466924 | archive
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+       10 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
+       11 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
+       12 |               |     910421701 | delete from t2 where id = 222;
 (5 rows)
 
 select hg_security.antitamper_hist_check('public', 't2');
@@ -532,24 +575,24 @@ select hg_security.antitamper_gchain_archive('public','t2');
  t
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash | sqlcommand 
 ----------+---------------+---------------+------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
 (2 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
  blocknum | insertrelhash | deleterelhash |                   sqlcommand                   
 ----------+---------------+---------------+------------------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
-        3 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
-        4 |               |    1491091122 | delete from ddd.t1 where id = 222;
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
-        7 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
-        8 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
-        9 |               |     910421701 | delete from t2 where id = 222;
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        6 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
+        7 |               |    1491091122 | delete from ddd.t1 where id = 222;
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+       10 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
+       11 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
+       12 |               |     910421701 | delete from t2 where id = 222;
 (8 rows)
 
 -- add del column
@@ -743,19 +786,19 @@ select *, __hg_hash__ from nsp2.t3part4;
  2700 | 10 |  3822073143
 (3 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       11 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       12 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       13 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       14 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       15 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       16 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       17 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       18 |               |     744604896 | delete from nsp2.t3 where b = 222;
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       14 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       15 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       16 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       17 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       18 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       19 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       20 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       21 |               |     744604896 | delete from nsp2.t3 where b = 222;
 (10 rows)
 
 select hg_security.antitamper_hist_check('nsp2', 't3');
@@ -872,33 +915,33 @@ select hg_security.antitamper_gchain_archive('nsp2','t3');
  t
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash | sqlcommand 
 ----------+---------------+---------------+------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       19 |   13317185263 |    1396341944 | archive
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       22 |   13317185263 |    1396341944 | archive
 (3 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
  blocknum | insertrelhash | deleterelhash |                   sqlcommand                   
 ----------+---------------+---------------+------------------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
-        3 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
-        4 |               |    1491091122 | delete from ddd.t1 where id = 222;
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
-        7 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
-        8 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
-        9 |               |     910421701 | delete from t2 where id = 222;
-       11 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       12 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       13 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       14 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       15 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       16 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       17 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       18 |               |     744604896 | delete from nsp2.t3 where b = 222;
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        6 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
+        7 |               |    1491091122 | delete from ddd.t1 where id = 222;
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+       10 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
+       11 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
+       12 |               |     910421701 | delete from t2 where id = 222;
+       14 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       15 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       16 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       17 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       18 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       19 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       20 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       21 |               |     744604896 | delete from nsp2.t3 where b = 222;
 (16 rows)
 
 -- add del column
@@ -1077,20 +1120,20 @@ select *, __hg_hash__ from nsp2.t3part4;
  2700 | 10 |  3822073143
 (3 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       19 |   13317185263 |    1396341944 | archive
-       20 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       21 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       22 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       23 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       24 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       25 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       26 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       27 |               |     744604896 | delete from nsp2.t3 where b = 222;
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       22 |   13317185263 |    1396341944 | archive
+       23 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       24 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       25 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       26 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       27 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       28 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       29 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       30 |               |     744604896 | delete from nsp2.t3 where b = 222;
 (11 rows)
 
 select hg_security.antitamper_hist_check('nsp2', 't3');
@@ -1277,23 +1320,23 @@ select *, __hg_hash__ from t4part2;
 ---+---+-------------
 (0 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       19 |   13317185263 |    1396341944 | archive
-       20 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       21 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       22 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       23 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       24 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       25 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       26 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       27 |               |     744604896 | delete from nsp2.t3 where b = 222;
-       28 |     471510092 |               | insert into t4 values (500,1);
-       29 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
-       30 |               |    2086739035 | delete from t4 where b = 222;
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       22 |   13317185263 |    1396341944 | archive
+       23 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       24 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       25 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       26 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       27 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       28 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       29 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       30 |               |     744604896 | delete from nsp2.t3 where b = 222;
+       31 |     471510092 |               | insert into t4 values (500,1);
+       32 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
+       33 |               |    2086739035 | delete from t4 where b = 222;
 (14 rows)
 
 select hg_security.antitamper_hist_check('public', 't4');
@@ -1441,26 +1484,26 @@ select *, __hg_hash__ from t4part2;
 ---+---+-------------
 (0 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       19 |   13317185263 |    1396341944 | archive
-       20 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       21 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       22 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       23 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       24 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       25 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       26 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       27 |               |     744604896 | delete from nsp2.t3 where b = 222;
-       28 |     471510092 |               | insert into t4 values (500,1);
-       29 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
-       30 |               |    2086739035 | delete from t4 where b = 222;
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       22 |   13317185263 |    1396341944 | archive
+       23 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       24 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       25 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       26 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       27 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       28 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       29 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       30 |               |     744604896 | delete from nsp2.t3 where b = 222;
        31 |     471510092 |               | insert into t4 values (500,1);
        32 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
        33 |               |    2086739035 | delete from t4 where b = 222;
+       34 |     471510092 |               | insert into t4 values (500,1);
+       35 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
+       36 |               |    2086739035 | delete from t4 where b = 222;
 (17 rows)
 
 select hg_security.antitamper_hist_check('public', 't4');
@@ -1749,32 +1792,32 @@ select *, __hg_hash__ from a123456789b123456789c123456789d1.a123456789b123456789
  111 | zzz  |  1232070655
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                                                sqlcommand                                                 
 ----------+---------------+---------------+-----------------------------------------------------------------------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       19 |   13317185263 |    1396341944 | archive
-       20 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       21 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       22 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       23 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       24 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       25 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       26 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       27 |               |     744604896 | delete from nsp2.t3 where b = 222;
-       28 |     471510092 |               | insert into t4 values (500,1);
-       29 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
-       30 |               |    2086739035 | delete from t4 where b = 222;
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       22 |   13317185263 |    1396341944 | archive
+       23 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       24 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       25 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       26 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       27 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       28 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       29 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       30 |               |     744604896 | delete from nsp2.t3 where b = 222;
        31 |     471510092 |               | insert into t4 values (500,1);
        32 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
        33 |               |    2086739035 | delete from t4 where b = 222;
-       34 |    3263658105 |               | insert into ddd.t1 values (500);
-       35 |    3263658105 |               | insert into ddd.t1 values (500);
-       36 |    4113375802 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(111, 'aaa');
-       37 |    1491091122 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(222, 'bbb');
-       38 |    1232070655 |    4113375802 | update a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 set name = 'zzz' where id = 111;
-       39 |               |    1491091122 | delete from a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 where id = 222;
+       34 |     471510092 |               | insert into t4 values (500,1);
+       35 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
+       36 |               |    2086739035 | delete from t4 where b = 222;
+       37 |    3263658105 |               | insert into ddd.t1 values (500);
+       38 |    3263658105 |               | insert into ddd.t1 values (500);
+       39 |    4113375802 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(111, 'aaa');
+       40 |    1491091122 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(222, 'bbb');
+       41 |    1232070655 |    4113375802 | update a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 set name = 'zzz' where id = 111;
+       42 |               |    1491091122 | delete from a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 where id = 222;
 (23 rows)
 
 select hg_security.antitamper_hist_check('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
@@ -1807,54 +1850,54 @@ select hg_security.antitamper_gchain_archive('a123456789b123456789c123456789d1',
  t
 (1 row)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
  blocknum | insertrelhash | deleterelhash |                 sqlcommand                 
 ----------+---------------+---------------+--------------------------------------------
-        5 |    6836537579 |    5604466924 | archive
-       10 |    4037822218 |    1729535735 | archive
-       19 |   13317185263 |    1396341944 | archive
-       20 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       21 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       22 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       23 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       24 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       25 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       26 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       27 |               |     744604896 | delete from nsp2.t3 where b = 222;
-       28 |     471510092 |               | insert into t4 values (500,1);
-       29 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
-       30 |               |    2086739035 | delete from t4 where b = 222;
+        8 |    6836537579 |    5604466924 | archive
+       13 |    4037822218 |    1729535735 | archive
+       22 |   13317185263 |    1396341944 | archive
+       23 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       24 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       25 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       26 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       27 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       28 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       29 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       30 |               |     744604896 | delete from nsp2.t3 where b = 222;
        31 |     471510092 |               | insert into t4 values (500,1);
        32 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
        33 |               |    2086739035 | delete from t4 where b = 222;
-       34 |    3263658105 |               | insert into ddd.t1 values (500);
-       35 |    3263658105 |               | insert into ddd.t1 values (500);
-       40 |    6836537579 |    5604466924 | archive
+       34 |     471510092 |               | insert into t4 values (500,1);
+       35 |    2086739035 |     471510092 | update t4 set b = 222 where a = 500;
+       36 |               |    2086739035 | delete from t4 where b = 222;
+       37 |    3263658105 |               | insert into ddd.t1 values (500);
+       38 |    3263658105 |               | insert into ddd.t1 values (500);
+       43 |    6836537579 |    5604466924 | archive
 (20 rows)
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
  blocknum | insertrelhash | deleterelhash |                                                sqlcommand                                                 
 ----------+---------------+---------------+-----------------------------------------------------------------------------------------------------------
-        1 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
-        2 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
-        3 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
-        4 |               |    1491091122 | delete from ddd.t1 where id = 222;
-        6 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
-        7 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
-        8 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
-        9 |               |     910421701 | delete from t2 where id = 222;
-       11 |     471510092 |               | insert into nsp2.t3  values (500,1);
-       12 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
-       13 |     651737048 |               | insert into nsp2.t3  values (1600,10);
-       14 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
-       15 |     984765857 |               | insert into nsp2.t3  values (2600,10);
-       16 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
-       17 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
-       18 |               |     744604896 | delete from nsp2.t3 where b = 222;
-       36 |    4113375802 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(111, 'aaa');
-       37 |    1491091122 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(222, 'bbb');
-       38 |    1232070655 |    4113375802 | update a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 set name = 'zzz' where id = 111;
-       39 |               |    1491091122 | delete from a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 where id = 222;
+        4 |    4113375802 |               | insert into ddd.t1 values(111, 'aaa');
+        5 |    1491091122 |               | insert into ddd.t1 values(222, 'bbb');
+        6 |    1232070655 |    4113375802 | update ddd.t1 set name = 'zzz' where id = 111;
+        7 |               |    1491091122 | delete from ddd.t1 where id = 222;
+        9 |     819114034 |               | insert into t2 values(111, 222, 'aaa');
+       10 |     910421701 |               | insert into t2 values(222, 333, 'bbb');
+       11 |    2308286483 |     819114034 | update t2 set name = 'zzz' where id = 111;
+       12 |               |     910421701 | delete from t2 where id = 222;
+       14 |     471510092 |               | insert into nsp2.t3  values (500,1);
+       15 |    4061476061 |               | insert into nsp2.t3  values (1500,10);
+       16 |     651737048 |               | insert into nsp2.t3  values (1600,10);
+       17 |    2581018166 |               | insert into nsp2.t3  values (2500,10);
+       18 |     984765857 |               | insert into nsp2.t3  values (2600,10);
+       19 |    3822073143 |               | insert into nsp2.t3  values (2700,10);
+       20 |     744604896 |     651737048 | update nsp2.t3 set b = 222 where a = 1600;
+       21 |               |     744604896 | delete from nsp2.t3 where b = 222;
+       39 |    4113375802 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(111, 'aaa');
+       40 |    1491091122 |               | insert into a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 values(222, 'bbb');
+       41 |    1232070655 |    4113375802 | update a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 set name = 'zzz' where id = 111;
+       42 |               |    1491091122 | delete from a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 where id = 222;
 (20 rows)
 
 select * from hg_security.a123456789b123456789c123456789d1_a123456789b123456789c123456789d1_hist;

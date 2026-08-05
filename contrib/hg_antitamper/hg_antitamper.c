@@ -664,6 +664,7 @@ insert_global_antitamper_internal(PG_FUNCTION_ARGS)
 		hg_start_history_operation(&context);
 
 		query = psprintf(
+			"set row_security=on;"
 			"INSERT INTO %s "
 			"("
 			"    username, "

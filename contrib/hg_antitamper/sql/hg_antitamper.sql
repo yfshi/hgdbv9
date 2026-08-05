@@ -1,4 +1,27 @@
 --==============================================================================================--
+-- test check per
+--==============================================================================================--
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+set role syssso;
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+reset role;
+insert into hg_security.hg_global_antitamper(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper;
+insert into hg_security.hg_global_antitamper_backup(reloid, insertrelhash, deleterelhash) values (111, 111, 111);
+update hg_security.hg_global_antitamper_backup set deleterelhash=1111 where deleterelhash=111;
+delete from hg_security.hg_global_antitamper_backup;
+select insertrelhash, deleterelhash from hg_security.hg_global_antitamper_backup;
+--==============================================================================================--
 -- test schema antitamper
 --==============================================================================================--
 create schema ddd with antitamper;
@@ -9,7 +32,7 @@ create table ddd.t1(id int, name text);
 insert into ddd.t1 values(111, 'aaa');
 select *, __hg_hash__ from ddd.t1;
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -34,7 +57,7 @@ END $$;
 
 insert into ddd.t1 values(222, 'bbb');
 select *, __hg_hash__ from ddd.t1;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -59,7 +82,7 @@ END $$;
 
 update ddd.t1 set name = 'zzz' where id = 111;
 select *, __hg_hash__ from ddd.t1;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -84,7 +107,7 @@ END $$;
 
 delete from ddd.t1 where id = 222;
 select *, __hg_hash__ from ddd.t1;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('ddd','t1');
 select hg_security.antitamper_hist_repair('ddd','t1');
 select hg_security.antitamper_gchain_check('ddd','t1');
@@ -108,8 +131,8 @@ BEGIN
 END $$;
 
 select hg_security.antitamper_gchain_archive('ddd','t1');
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
 
 -- add del column
 alter table ddd.t1 alter id type int8;
@@ -134,7 +157,7 @@ CREATE TABLE t2 (id int, id2 int8, name text) WITH(antitamper=true);
 
 insert into t2 values(111, 222, 'aaa');
 select *, __hg_hash__ from t2;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -159,7 +182,7 @@ END $$;
 
 insert into t2 values(222, 333, 'bbb');
 select *, __hg_hash__ from t2;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -184,7 +207,7 @@ END $$;
 
 update t2 set name = 'zzz' where id = 111;
 select *, __hg_hash__ from t2;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -209,7 +232,7 @@ END $$;
 
 delete from t2 where id = 222;
 select *, __hg_hash__ from t2;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('public', 't2');
 select hg_security.antitamper_hist_repair('public', 't2');
 select hg_security.antitamper_gchain_check('public', 't2');
@@ -233,8 +256,8 @@ BEGIN
 END $$;
 
 select hg_security.antitamper_gchain_archive('public','t2');
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
 
 -- add del column
 alter table t2 alter id type int8;
@@ -285,7 +308,7 @@ select *, __hg_hash__ from nsp2.t3;
 select *, __hg_hash__ from nsp2.t3part2;
 select *, __hg_hash__ from nsp2.t3part3;
 select *, __hg_hash__ from nsp2.t3part4;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('nsp2', 't3');
 select hg_security.antitamper_hist_repair('nsp2', 't3');
 select hg_security.antitamper_gchain_check('nsp2', 't3');
@@ -364,8 +387,8 @@ BEGIN
 END $$;
 
 select hg_security.antitamper_gchain_archive('nsp2','t3');
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
 
 -- add del column
 alter table nsp2.t3 alter id type int8;
@@ -412,7 +435,7 @@ select *, __hg_hash__ from nsp2.t3;
 select *, __hg_hash__ from nsp2.t3part2;
 select *, __hg_hash__ from nsp2.t3part3;
 select *, __hg_hash__ from nsp2.t3part4;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('nsp2', 't3');
 select hg_security.antitamper_hist_repair('nsp2', 't3');
 select hg_security.antitamper_gchain_check('nsp2', 't3');
@@ -516,7 +539,7 @@ delete from t4 where b = 222;
 select *, __hg_hash__ from t4;
 select *, __hg_hash__ from t4part2;
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('public', 't4');
 select hg_security.antitamper_hist_repair('public', 't4');
 select hg_security.antitamper_gchain_check('public', 't4');
@@ -584,7 +607,7 @@ select *, __hg_hash__ from t4part2;
 delete from t4 where b = 222;
 select *, __hg_hash__ from t4;
 select *, __hg_hash__ from t4part2;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('public', 't4');
 select hg_security.antitamper_hist_repair('public', 't4');
 select hg_security.antitamper_gchain_check('public', 't4');
@@ -801,15 +824,15 @@ update a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 set nam
 delete from a123456789b123456789c123456789d1.a123456789b123456789c123456789d1 where id = 222;
 select *, __hg_hash__ from a123456789b123456789c123456789d1.a123456789b123456789c123456789d1;
 
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
 select hg_security.antitamper_hist_check('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
 select hg_security.antitamper_hist_repair('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
 select hg_security.antitamper_gchain_check('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
 select hg_security.antitamper_gchain_repair('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
 
 select hg_security.antitamper_gchain_archive('a123456789b123456789c123456789d1','a123456789b123456789c123456789d1');
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper;
-select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper order by blocknum;
+select blocknum,insertrelhash,deleterelhash,sqlcommand from hg_security.hg_global_antitamper_backup order by blocknum;
 
 select * from hg_security.a123456789b123456789c123456789d1_a123456789b123456789c123456789d1_hist;
 
