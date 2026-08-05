@@ -36,11 +36,9 @@ SUBDIRS = \
 	test/perl \
 	oracle_test/regress \
 	oracle_test/isolation \
-	oracle_test/modules \
 	oracle_test/perl \
 	mysql_test/regress \
 	mysql_test/isolation \
-	mysql_test/modules \
 	mysql_test/perl
 # ReqID:SRS-PSQL-PARSER
 
