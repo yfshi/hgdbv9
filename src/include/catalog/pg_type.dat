@@ -1084,12 +1084,11 @@
   typlen => '-1',
   typbyval => 'f',
   typtype => 'b',
-  typcategory => 'S',
+  typcategory => 'U',
   typinput => '-', typoutput => '-',
   typreceive => '-', typsend => '-',
   typmodin => '-', typmodout => '-',
-  typalign => 'i', typstorage => 'x',
-  typcollation => 'default' }
+  typalign => 'i', typstorage => 'x'}
 # End - ReqID:ReqID:SRS-MYSQL-BINARYTYPE
 
 /* Begin - ReqID:SRS-MYSQL-TIMESTAMPTYPE */

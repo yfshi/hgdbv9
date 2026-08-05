@@ -824,26 +824,49 @@ coerce_nonbinary_introducer_operands(ParseState *pstate,
 	(void)introducer_detect_encoding_walker(ltree, left_encoding);
 	(void)introducer_detect_encoding_walker(rtree, right_encoding);
 
-	if (*left_encoding > 0 && *right_encoding > 0)
+	/**
+	 * The operator on the right side is not of binary type. 
+	 * Converting left side to varchar.
+	 */
+	if (*left_encoding > 0 && *right_encoding != 0)
 	{
-		if (exprType(ltree) == VARBINARYOID)
-			*ltree_p = coerce_type(pstate,
-								   ltree,
-								   exprType(ltree),
-								   VARCHAROID,
-								   -1,
-								   COERCION_EXPLICIT,
-								   COERCE_EXPLICIT_CAST,
-								   exprLocation(ltree));
-		if (exprType(rtree) == VARBINARYOID)
-			*rtree_p = coerce_type(pstate,
-								   rtree,
-								   exprType(rtree),
-								   VARCHAROID,
-								   -1,
-								   COERCION_EXPLICIT,
-								   COERCE_EXPLICIT_CAST,
-								   exprLocation(rtree));
+		Oid targetTypeId = exprType(ltree);
+
+		if (targetTypeId == VARBINARYOID)
+			targetTypeId = VARCHAROID;
+		else if (targetTypeId == VARBINARYARRAYOID)
+			targetTypeId = VARCHARARRAYOID;
+
+		*ltree_p = coerce_type(pstate,
+							   ltree,
+							   exprType(ltree),
+							   targetTypeId,
+							   -1,
+							   COERCION_EXPLICIT,
+							   COERCE_EXPLICIT_CAST,
+							   exprLocation(ltree));
+	}
+	/**
+	 * The operator on the left side is not of binary type. 
+	 * Converting right side to varchar.
+	 */
+	if (*left_encoding != 0 && *right_encoding > 0)
+	{
+		Oid targetTypeId = exprType(rtree);
+
+		if (targetTypeId == VARBINARYOID)
+			targetTypeId = VARCHAROID;
+		else if (targetTypeId == VARBINARYARRAYOID)
+			targetTypeId = VARCHARARRAYOID;
+
+		*rtree_p = coerce_type(pstate,
+							   rtree,
+							   exprType(rtree),
+							   targetTypeId,
+							   -1,
+							   COERCION_EXPLICIT,
+							   COERCE_EXPLICIT_CAST,
+							   exprLocation(rtree));
 	}
 }
 /* End - SRS-MYSQL-CHARSET-INTRODUCER */

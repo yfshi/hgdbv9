@@ -669,8 +669,8 @@ ERROR:  set-returning functions are not allowed in partition bound
 LINE 1: ...expr_fail PARTITION OF list_parted FOR VALUES IN (generate_s...
                                                              ^
 CREATE TABLE part_bogus_expr_fail PARTITION OF list_parted FOR VALUES IN ((1+1) collate "POSIX");
-ERROR:  collations are not supported by type bigint
-LINE 1: ...ail PARTITION OF list_parted FOR VALUES IN ((1+1) collate "P...
+ERROR:  partition "part_bogus_expr_fail" would overlap partition "part_p2"
+LINE 1: ...xpr_fail PARTITION OF list_parted FOR VALUES IN ((1+1) colla...
                                                              ^
 -- syntax does not allow empty list of values for list partitions
 CREATE TABLE fail_part PARTITION OF list_parted FOR VALUES IN ();

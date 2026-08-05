@@ -1759,3 +1759,31 @@ select cast(c1 as unsigned) from tb_binary;
 select cast(c1 as float) from tb_binary;
 drop table tb_binary;
 /* End - bug#5184 */
+
+create table t_bit_function (b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63),b5 BIT(1));
+
+insert into t_bit_function values ('A', 1234, b'101010',0x1234,true);
+
+insert into t_bit_function values (b'0', b'0', b'0', b'0', b'0');
+
+CREATE TEMPORARY TABLE tmp AS SELECT
+    binary(b1) AS b1,
+    binary(b2) AS b2,
+    binary(b3) AS b3,
+    binary(b4) AS b4,
+    binary(b5) AS b5
+FROM t_bit_function;
+
+\d  tmp;
+
+drop table tmp;
+drop table t_bit_function;
+
+
+create table aa1 as select (BINARY 'binary_data') collate 'binary';
+\d  aa1;
+drop table aa1;
+
+create table f as select 'aa'  COLLATE 'utf8_bin';
+\d f;
+drop  table f;

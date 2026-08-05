@@ -732,7 +732,7 @@ make_introducer_const(ParseState *pstate, Value *value, Datum val, int location,
 
 	con = makeConst(VARBINARYOID,
 					-1,			/* typmod -1 is OK for all cases */
-					DEFAULT_COLLATION_OID, /* all cases are uncollatable types */
+					InvalidOid, /* all cases are uncollatable types */
 					-1,
 					is_sonst ? PointerGetDatum((bytea *)constvalue) : constvalue,
 					false,

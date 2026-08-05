@@ -128,6 +128,25 @@ ALTER FUNCTION ivymy.ucase(integer) EXPAND 'convert_encoding';
 ALTER FUNCTION ivymy.ucase(numeric) EXPAND 'convert_encoding';
 ALTER FUNCTION ivymy.ucase(text) EXPAND 'convert_encoding';
 
+ALTER FUNCTION ivymy.concat_ws(varbinary, varbinary, varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.export_set(integer, varbinary, varbinary, varbinary, integer) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.find_in_set(varbinary, text) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.find_in_set(varbinary, varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.insert(varbinary, integer, integer, varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.locate(varbinary, varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.lpad(varbinary, integer, varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.repeat(varbinary, integer) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.rpad(varbinary, integer, varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.soundex(varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.substring_index(text, varbinary, integer) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.lcase(varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.ltrim(varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.ucase(varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.rtrim(varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.substring_index(varbinary, text, integer) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.substring_index(varbinary, varbinary, integer) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.upper(varbinary) EXPAND 'convert_encoding';
+ALTER FUNCTION ivymy.lower(varbinary) EXPAND 'convert_encoding';
 
 -- pg_catalog string functions used directly by parser/function lookup
 ALTER FUNCTION pg_catalog.concat_ws(text, VARIADIC "any") EXPAND 'convert_encoding';
@@ -153,3 +172,4 @@ ALTER FUNCTION pg_catalog."substring"(text, integer, integer) EXPAND 'convert_en
 ALTER FUNCTION pg_catalog."substring"(text, text) EXPAND 'convert_encoding';
 ALTER FUNCTION pg_catalog."substring"(text, text, text) EXPAND 'convert_encoding';
 ALTER FUNCTION pg_catalog."position"(text, text) EXPAND 'convert_encoding';
+ALTER FUNCTION pg_catalog."position"(varbinary, varbinary) EXPAND 'convert_encoding';

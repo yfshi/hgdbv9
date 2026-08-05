@@ -137,7 +137,6 @@ select _utf8'a' = _utf8 x'41' COLLATE utf8_bin;
 
 -- 1
 select !_gbk 'aaa';
-WARNING:  Truncated incorrect DOUBLE value: 'aaa'
  ?column? 
 ----------
  true
@@ -145,11 +144,10 @@ WARNING:  Truncated incorrect DOUBLE value: 'aaa'
 
 -- 0
 select - _gbk 'aaa';
- ?column? 
-----------
- -0
-(1 row)
-
+ERROR:  operator does not exist: - character varying
+LINE 1: select - _gbk 'aaa';
+               ^
+HINT:  No operator matches the given name and argument type. You might need to add an explicit type cast.
 CREATE TABLE test_utf8_introducer (
   c VARCHAR(10) CHARACTER SET utf8
 );
@@ -170,7 +168,7 @@ create table  aa as select _binary x'E4B8AD';
                    Table "public.aa"
   Column   |   Type    | Collation | Nullable | Default 
 -----------+-----------+-----------+----------+---------
- varbinary | varbinary | default   |          | 
+ varbinary | varbinary |           |          | 
 
 drop table aa;
 -- ----------------------------------------------------------------------
@@ -312,7 +310,7 @@ FROM charset_intro_gbk_hex_bincol
 ORDER BY id;
  id | hex_value | byte_len 
 ----+-----------+----------
-  1 | E4B8AD    |        3
+  1 | D6D0      |        2
   2 | 4142      |        2
 (2 rows)
 
@@ -342,9 +340,9 @@ INSERT INTO charset_intro_gbk_store_compare(vb, vc, v1,v2) VALUES
   (_gbk x'D6D0', _gbk x'D6D0',_gbk x'D6D0',_gbk x'D6D0');
 SELECT id, HEX(vb) , HEX(vc),  HEX(v1), HEX(v2)
 FROM charset_intro_gbk_store_compare;
- id |  HEX   |  HEX   |  HEX   |  HEX   
-----+--------+--------+--------+--------
-  1 | E4B8AD | E4B8AD | E4B8AD | E4B8AD
+ id | HEX  |  HEX   |  HEX   |  HEX   
+----+------+--------+--------+--------
+  1 | D6D0 | E4B8AD | E4B8AD | E4B8AD
 (1 row)
 
 -- Expected:
@@ -394,7 +392,7 @@ FROM charset_intro_gbk_store_compare;
  id |  HEX   
 ----+--------
   1 | E4B8AD
-  2 | E4B8AD
+  2 | D6D0
   3 | E4B8AD
 (3 rows)
 
@@ -654,7 +652,7 @@ SELECT POSITION(_latin1'B' IN _latin2'abcd');
 SELECT _latin2'B' BETWEEN _latin1'a' AND _latin1'b';
  ?column? 
 ----------
- t
+ f
 (1 row)
 
 --   ERROR 1270: Illegal mix of collations
@@ -804,7 +802,7 @@ SELECT id, HEX(utf8_hex) AS converted_utf8_hex
 FROM charset_intro_gbk_convert;
  id | converted_utf8_hex 
 ----+--------------------
-  1 | E4B8AD
+  1 | D6D0
 (1 row)
 
 -- +----+--------------------+
@@ -935,7 +933,7 @@ create table test_col_type as select _binary 'aaay';
              Table "public.test_col_type"
   Column  |   Type    | Collation | Nullable | Default 
 ----------+-----------+-----------+----------+---------
- ?column? | varbinary | default   |          | 
+ ?column? | varbinary |           |          | 
 
 drop table test_col_type;
 create table test_col_type2 as select _utf8 'aaay';
@@ -946,6 +944,22 @@ create table test_col_type2 as select _utf8 'aaay';
  ?column? | character varying |           |          | 
 
 drop table test_col_type2;
+create table abc as select concat(_gbk 'D6D0', _gbk'D6D0');
+\d abc;
+               Table "public.abc"
+ Column | Type | Collation | Nullable | Default 
+--------+------+-----------+----------+---------
+ concat | text |           |          | 
+
+drop table abc;
+create table abcc as select hex(_gbk x'd6d0');
+\d abcc;
+                     Table "public.abcc"
+ Column |       Type        | Collation | Nullable | Default 
+--------+-------------------+-----------+----------+---------
+ hex    | character varying |           |          | 
+
+drop table abcc;
 -- Extracted MySQL 5.7 _charset introducer test cases.
 -- Source tree: mysql-server
 SET NAMES utf8;
@@ -1536,7 +1550,7 @@ create table bb  as select _binary x'E29883';
                    Table "public.bb"
   Column   |   Type    | Collation | Nullable | Default 
 -----------+-----------+-----------+----------+---------
- varbinary | varbinary | default   |          | 
+ varbinary | varbinary |           |          | 
 
 drop table bb;
 DROP DATABASE db_gbk;
@@ -1592,8 +1606,8 @@ FROM target_proc t
 JOIN pg_catalog.pg_proc p ON p.oid = t.oid
 JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
 ORDER BY alter_sql;
-                                            alter_sql                                             
---------------------------------------------------------------------------------------------------
+                                                   alter_sql                                                   
+---------------------------------------------------------------------------------------------------------------
  ALTER FUNCTION ivymy."elt"(bigint, VARIADIC text[]) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy."elt"(double precision, VARIADIC text[]) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy."elt"(numeric, VARIADIC text[]) EXPAND "convert_encoding";
@@ -1631,11 +1645,15 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.anyenum_lt(text, anyenum) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.anyenum_ne(anyenum, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.anyenum_ne(text, anyenum) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.bpchar_varbinary_eq(character, varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.bpchar_varbinary_ne(character, varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.concat(VARIADIC "any") EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.concat_ws(varbinary, varbinary, varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.export_set(bigint, text, text, numeric) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.export_set(bigint, text, text, numeric, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.export_set(bigint, text, text, text, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.export_set(bigint, text, text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.export_set(integer, varbinary, varbinary, varbinary, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.export_set(text, text, text, text, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.find_in_set(anyenum, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.find_in_set(integer, text) EXPAND "convert_encoding";
@@ -1643,10 +1661,13 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.find_in_set(ivy_hex, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.find_in_set(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.find_in_set(uint8, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(varbinary, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.find_in_set(varbinary, varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, bigint, bigint, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, bigint, text, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, text, bigint, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, text, text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.insert(varbinary, integer, integer, varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.instr(bigint, bigint) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.instr(binary, binary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.instr(integer, integer) EXPAND "convert_encoding";
@@ -1656,15 +1677,24 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.lcase(ivy_hex) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.lcase(numeric) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.lcase(text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lcase(varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.locate(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.locate(text, text, bigint) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.locate(text, text, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.locate(text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.locate(varbinary, varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lower(varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.lpad(varbinary, integer, varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.ltrim(varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.repeat(varbinary, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.rpad(varbinary, integer, varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.rtrim(varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.soundex(boolean) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.soundex(ivy_hex) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.soundex(mysbit) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.soundex(numeric) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.soundex(text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.soundex(varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.strcmp(bigint, bigint) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.strcmp(binary, binary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.strcmp(date, date) EXPAND "convert_encoding";
@@ -1672,17 +1702,25 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.strcmp(integer, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.strcmp(numeric, numeric) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.strcmp(text, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.strcmp(varbinary, character varying) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.strcmp(varbinary, varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.substring_index(text, text, bigint) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.substring_index(text, text, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.substring_index(text, text, numeric) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.substring_index(text, varbinary, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.substring_index(varbinary, text, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.substring_index(varbinary, varbinary, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.text_seq(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.ucase(integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.ucase(ivy_hex) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.ucase(numeric) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.ucase(text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.ucase(varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.upper(bigint) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.upper(integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.upper(varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.varbinary_bpchar_eq(varbinary, character) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.varbinary_bpchar_ne(varbinary, character) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.bpchareq(character, character) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.bpcharge(character, character) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.bpchargt(character, character) EXPAND "convert_encoding";
@@ -1707,7 +1745,7 @@ ORDER BY alter_sql;
  ALTER FUNCTION pg_catalog.textltname(text, name) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.textne(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.textnename(text, name) EXPAND "convert_encoding";
-(113 rows)
+(137 rows)
 
 -- SELECT *
 -- FROM pg_catalog.pg_object
@@ -1928,6 +1966,8 @@ SELECT
 -- SQL surface: FIELD(expr, value1, value2, ...).
 -- Expected: 1.
 SELECT FIELD(_gbk x'D6D0', _utf8 x'E4B8AD', _utf8 'A') AS case_08_field;
+WARNING:  Truncated incorrect DOUBLE value: \xe4b8ad
+WARNING:  Truncated incorrect DOUBLE value: \xe4b8ad
  case_08_field 
 ---------------
              1
@@ -1941,6 +1981,20 @@ SELECT FIND_IN_SET(_gbk x'D6D0',
  case_09_find_in_set 
 ---------------------
                    0
+(1 row)
+
+-- Expected: 0.
+SELECT FIND_IN_SET(_gbk x'D6D0', _utf8 'E4B8AD,A') AS case_09_find_in_set;
+ case_09_find_in_set 
+---------------------
+                   0
+(1 row)
+
+-- Expected: 2.
+SELECT FIND_IN_SET(_gbk 'A', _utf8 'E4B8AD,A') AS case_09_find_in_set;
+ case_09_find_in_set 
+---------------------
+                   2
 (1 row)
 
 -- 10. Item_func_concat::fix_length_and_dec
@@ -1958,9 +2012,9 @@ WARNING:  Syntax support only
 -- Expected: E4B8AD2C41 after display conversion to utf8.
 SELECT HEX(CONVERT(CONCAT_WS(_utf8 ',', _gbk x'D6D0', _utf8 'A') USING utf8)) AS case_11_concat_ws_hex;
 WARNING:  Syntax support only
-   case_11_concat_ws_hex    
-----------------------------
- 5C786534623861642C5C783431
+ case_11_concat_ws_hex 
+-----------------------
+ E4B8AD2C41
 (1 row)
 
 -- 12. Item_func_reverse::fix_length_and_dec
@@ -2162,7 +2216,7 @@ SELECT _utf8 x'E4B8AD' <=> _gbk x'D6D0' AS case_30_null_safe_equal;
 
 -- Expected: 0.
 SELECT _utf8 x'E4B8AD' <=>  x'D6D0' AS case_30_null_safe_equal;
-ERROR:  operator does not exist: varbinary <=> ivy_hex
+ERROR:  operator does not exist: character varying <=> ivy_hex
 LINE 1: SELECT _utf8 x'E4B8AD' <=>  x'D6D0' AS case_30_null_safe_equ...
                                ^
 HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
@@ -2218,6 +2272,34 @@ WARNING:  Syntax support only
  column_eq | concat_cols_hex 
 -----------+-----------------
  t         | E4B8ADE4B8AD
+(1 row)
+
+-- a+1
+select _utf8 'a+1' collate utf8_general_ci;
+ ?column? 
+----------
+ a+1
+(1 row)
+
+-- 0 --->_utf8 'a+1' + ('a' collate utf8_general_ci)
+select _utf8 'a+1' + 'a' collate utf8_general_ci;
+ ?column? 
+----------
+ 0
+(1 row)
+
+-- aaa
+select _binary 'aaa' collate 'binary';
+ ?column? 
+----------
+ \x616161
+(1 row)
+
+-- error
+select _binary 'aaa' collate 'utf8_bin';
+ ?column? 
+----------
+ aaa
 (1 row)
 
 DROP TABLE function_charset_conversion_seed;

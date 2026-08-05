@@ -1157,6 +1157,7 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %left		'+' '-'
 %left		'*' '/' '%'
 %left		'^'
+%left   	NEG /* ReqID:BUG#8428 8441 */
 /* Unary Operators */
 %left		AT				/* sets precedence for AT TIME ZONE */
 %left		COLLATE
@@ -17484,7 +17485,7 @@ interval_second:
 a_expr:		c_expr									{ $$ = $1; }
 			| a_expr TYPECAST Typename
 					{ $$ = makeTypeCast($1, $3, @2); }
-			| a_expr COLLATE any_name
+			| a_expr COLLATE any_name				%prec COLLATE
 				{
 					CollateClause *n = makeNode(CollateClause);
 					n->arg = $1;
@@ -18013,13 +18014,9 @@ a_expr:		c_expr									{ $$ = $1; }
 				}
 			/* End - ReqID:SRS-MYSQL-SQL-INSERT */
 			/* Begin - bug#6011 */
-			| BINARY a_expr %prec COLLATE
+			| BINARY a_expr 					%prec NEG
 				{
-					CollateClause *n = makeNode(CollateClause);
-					n->arg = makeTypeCast($2, MySQLSystemTypeName("varbinary"), @2);
-					n->collname = list_make1(makeString(pstrdup("binary")));
-					n->location = @1;
-					$$ = (Node *) n;
+					$$ = makeTypeCast($2, MySQLSystemTypeName("varbinary"), @2);
 				}
 			/* End - bug#6011 */
 		;

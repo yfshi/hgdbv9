@@ -3554,12 +3554,6 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 	/* transform the test expression, if any */
 	arg = transformExprRecurse(pstate, (Node *) c->arg);
 
-	/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
-	/* Preprocessing that is neither an operator nor a function */
-	if (MYS_MODE == compatible_mode)
-		introducer_convert_encoding_walker(arg, NULL);
-	/* End - SRS-MYSQL-CHARSET-INTRODUCER */
-
 	/* generate placeholder for test expression */
 	if (arg)
 	{
@@ -3603,6 +3597,19 @@ transformCaseExpr(ParseState *pstate, CaseExpr *c)
 		placeholder->typeId = exprType(arg);
 		placeholder->typeMod = exprTypmod(arg);
 		placeholder->collation = exprCollation(arg);
+
+		/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
+		if (MYS_MODE == compatible_mode)
+		{
+			int encoding = -1;
+			introducer_detect_encoding_walker((Node *)arg, &encoding);
+			if(encoding >= 0)
+				placeholder->typeId = VARCHAROID;
+
+			/* Preprocessing that is neither an operator nor a function */
+			introducer_convert_encoding_walker(arg, NULL);
+		}
+		/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 	}
 	else
 		placeholder = NULL;
@@ -5466,6 +5473,51 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 	newc->arg = (Expr *) transformExprRecurse(pstate, c->arg);
 
 	argtype = exprType((Node *) newc->arg);
+
+	/* Begin - BUG#8428 8441 */
+	if (compatible_mode == MYS_MODE)
+	{
+		/*
+		 * MySQL supports adding collate to types that don't have typecollate,
+		 * but it operates in the form of strings.
+		 */
+		if (!type_is_collatable(argtype))
+		{
+			/*
+			 * If it's not a string type and needs binary collation,
+			 * then convert it to varbinary type
+			 */
+			if (pg_strcasecmp(strVal(llast(c->collname)), "binary") == 0)
+			{
+				return (Node *)coerce_type(pstate,
+										   (Node *)newc->arg,
+										   argtype,
+										   VARBINARYOID,
+										   -1,
+										   COERCION_EXPLICIT,
+										   COERCE_EXPLICIT_CAST,
+										   c->location);
+			}
+			/*
+			 * If it's not a string type and needs a non-binary collation,
+			 * convert it to varchar type
+			 */
+			else
+			{
+				newc->arg = (Expr *)coerce_type(pstate,
+												(Node *)newc->arg,
+												exprType((Node *)newc->arg),
+												VARCHAROID,
+												-1,
+												COERCION_EXPLICIT,
+												COERCE_EXPLICIT_CAST,
+												c->location);
+			}
+
+			argtype = exprType((Node *)newc->arg);
+		}
+	}
+	/* End - BUG#8428 8441 */
 
 	/*
 	 * The unknown type is not collatable, but coerce_type() takes care of it

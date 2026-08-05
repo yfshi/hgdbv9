@@ -871,12 +871,6 @@ UPDATE pg_type
 SET typmodout = (SELECT oid FROM pg_proc WHERE proname='varbinary_typmodout')
 WHERE oid = 9242 or oid = 9243;
 
-/* Begin - bug#6011 */
-UPDATE pg_type
-SET typcollation = (SELECT oid FROM pg_collation WHERE collname = 'binary')
-WHERE oid = 9242 or oid = 9243;
-/* End - bug#6011 */
-
 /********************************************************************************
  *
  * VARBINARY CAST
@@ -955,11 +949,11 @@ AS IMPLICIT;
 
 CREATE CAST (ivymy.varbinary AS pg_catalog.bool)
 WITH FUNCTION ivymy.varbinary_bool(ivymy.varbinary, integer, boolean, int8)
-AS IMPLICIT;
+AS ASSIGNMENT;
 
 CREATE CAST (ivymy.varbinary AS bytea)
 WITHOUT FUNCTION
-AS IMPLICIT;
+AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.text AS ivymy.varbinary)
 WITHOUT FUNCTION
@@ -967,7 +961,7 @@ AS ASSIGNMENT;
 
 CREATE CAST (bytea AS ivymy.varbinary)
 WITH FUNCTION ivymy.varbinary(bytea, integer, boolean)
-AS IMPLICIT;
+AS ASSIGNMENT;
 
 CREATE CAST (ivymy.binary AS ivymy.varbinary)
 WITH FUNCTION ivymy.varbinary(ivymy.binary, integer, boolean)
@@ -1001,7 +995,7 @@ IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS text)
 WITH FUNCTION ivymy.varbinary2text(ivymy.varbinary, integer, boolean)
-AS IMPLICIT;
+AS ASSIGNMENT;
 
 -- cast varbinary to bpchar
 CREATE FUNCTION ivymy.varbinary2bpchar(ivymy.varbinary, integer, boolean)
@@ -1029,44 +1023,98 @@ CREATE CAST (ivymy.varbinary AS varchar)
 WITH FUNCTION ivymy.varbinary2varchar(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
+/* Begin - BUG#8428 8441 */
+-- varchar -> varbinary
+CREATE CAST (varchar AS ivymy.varbinary)
+WITHOUT FUNCTION
+AS ASSIGNMENT;
+/* End - BUG#8428 8441 */
+
 -- cast varbinary to int2
 CREATE FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean, int8)
-RETURNS pg_catalog.int2
+RETURNS int2
 AS 'MODULE_PATHNAME','varlena_int2'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE CAST (ivymy.varbinary AS pg_catalog.int2)
+CREATE CAST (ivymy.varbinary AS int2)
 WITH FUNCTION ivymy.varbinary2int2(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
 -- cast varbinary to int4
 CREATE FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean, int8)
-RETURNS pg_catalog.int4
+RETURNS int4
 AS 'MODULE_PATHNAME','varlena_int4'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE CAST (ivymy.varbinary AS pg_catalog.int4)
+CREATE CAST (ivymy.varbinary AS int4)
 WITH FUNCTION ivymy.varbinary2int4(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
 
+/* Begin - BUG#8428 8441 */
+-- cast int4 to varbinary
+CREATE FUNCTION ivymy.int4_varbinary(int4)
+RETURNS ivymy.varbinary
+AS $$
+	SELECT $1::text::ivymy.varbinary
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (int4 AS ivymy.varbinary)
+WITH FUNCTION ivymy.int4_varbinary(int4)
+AS ASSIGNMENT;
+/* End - BUG#8428 8441 */
+
 -- cast varbinary to int8
 CREATE FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean, int8)
-RETURNS pg_catalog.int8
+RETURNS int8
 AS 'MODULE_PATHNAME','varlena_int8'
 LANGUAGE C
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
-CREATE CAST (ivymy.varbinary AS pg_catalog.int8)
+CREATE CAST (ivymy.varbinary AS int8)
 WITH FUNCTION ivymy.varbinary2int8(ivymy.varbinary, integer, boolean, int8)
 AS ASSIGNMENT;
+
+/* Begin - BUG#8428 8441 */
+-- cast int8 to varbinary
+CREATE FUNCTION ivymy.int8_varbinary(int8)
+RETURNS ivymy.varbinary
+AS $$
+	SELECT $1::text::ivymy.varbinary
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (int8 AS ivymy.varbinary)
+WITH FUNCTION ivymy.int8_varbinary(int8)
+AS ASSIGNMENT;
+
+-- cast varbinary to tingint
+CREATE FUNCTION ivymy.varbinary2tinyint(ivymy.varbinary, integer, boolean, bigint)
+RETURNS ivymy.tinyint
+AS 'MODULE_PATHNAME','varlena_int1'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS ivymy.tinyint)
+WITH FUNCTION ivymy.varbinary2tinyint(ivymy.varbinary, integer, boolean, bigint)
+AS ASSIGNMENT;
+/* End - BUG#8428 8441 */
 
 -- cast varbinary to uint2
 CREATE FUNCTION ivymy.varbinary2uint2(ivymy.varbinary, integer, boolean, int8)
@@ -1120,6 +1168,22 @@ CREATE CAST (ivymy.varbinary AS numeric)
 WITH FUNCTION ivymy.varbinary_numeric(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
+/* Begin - BUG#8428 8441 */
+-- cast numeric to varbinary
+CREATE FUNCTION ivymy.numeric2varbinary(numeric)
+RETURNS ivymy.varbinary
+AS $$
+	SELECT $1::text::ivymy.varbinary
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (numeric AS ivymy.varbinary)
+WITH FUNCTION ivymy.numeric2varbinary(numeric)
+AS ASSIGNMENT;
+/* End - BUG#8428 8441 */
 
 -- cast varbinary to date
 CREATE FUNCTION ivymy.varbinary2date(ivymy.varbinary, integer, boolean)
@@ -1159,6 +1223,30 @@ IMMUTABLE;
 CREATE CAST (ivymy.varbinary AS datetime)
 WITH FUNCTION ivymy.varbinary2datetime(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
+
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.varbinary2json(ivymy.varbinary)
+RETURNS json
+AS 'MODULE_PATHNAME','varbinary2json'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS json)
+WITH FUNCTION ivymy.varbinary2json(ivymy.varbinary);
+
+CREATE FUNCTION ivymy.bit2varbinary(pg_catalog.bit)
+RETURNS ivymy.varbinary
+AS 'MODULE_PATHNAME','bit2varbinary'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (pg_catalog.bit AS ivymy.varbinary)
+WITH FUNCTION ivymy.bit2varbinary(pg_catalog.bit);
+/* End - BUG#8428 8441 */
 
 /* End BUG#5048 5070 */
 
@@ -1414,6 +1502,200 @@ CREATE OPERATOR ivymy.!~~ (
 	rightarg  = ivymy.varbinary,
 	negator = ~~
 );
+
+/* Begin - BUG#8428 8441 */
+----operator ~~
+CREATE FUNCTION ivymy.text_varbinary_like(text, ivymy.varbinary)
+RETURNS boolean
+AS $$
+	SELECT $1 LIKE $2::text
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.~~ (
+	PROCEDURE = ivymy.text_varbinary_like,
+	LEFTARG = text,
+	RIGHTARG = ivymy.varbinary,
+	NEGATOR = !~~
+);
+
+----operator !~~
+CREATE FUNCTION ivymy.text_varbinary_notlike(text, ivymy.varbinary)
+RETURNS boolean
+AS $$
+	SELECT $1 NOT LIKE $2::text
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.!~~ (
+	PROCEDURE = ivymy.text_varbinary_notlike,
+	LEFTARG = text,
+	RIGHTARG = ivymy.varbinary,
+	NEGATOR = ~~
+);
+
+----operator ~
+CREATE FUNCTION ivymy.text_varbinary_regex(text, ivymy.varbinary)
+RETURNS boolean
+AS $$
+	SELECT $1 ~ $2::text
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.~ (
+	PROCEDURE = ivymy.text_varbinary_regex,
+	LEFTARG = text,
+	RIGHTARG = ivymy.varbinary
+);
+
+----operator ~*
+CREATE FUNCTION ivymy.text_varbinary_iregex(text, ivymy.varbinary)
+RETURNS boolean
+AS $$
+	SELECT $1 ~* $2::text
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.~* (
+	PROCEDURE = ivymy.text_varbinary_iregex,
+	LEFTARG = text,
+	RIGHTARG = ivymy.varbinary
+);
+
+----operator !~**
+CREATE FUNCTION ivymy.text_varbinary_mys_no_regex(text, ivymy.varbinary)
+RETURNS boolean
+AS $$
+	SELECT $1 !~** $2::text
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.!~** (
+	PROCEDURE = ivymy.text_varbinary_mys_no_regex,
+	LEFTARG = text,
+	RIGHTARG = ivymy.varbinary
+);
+
+
+----operator ~**
+CREATE FUNCTION ivymy.text_varbinary_mys_regex(text, ivymy.varbinary)
+RETURNS boolean
+AS $$
+	SELECT $1 ~** $2::text
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.~** (
+	PROCEDURE = ivymy.text_varbinary_mys_regex,
+	LEFTARG = text,
+	RIGHTARG = ivymy.varbinary
+);
+
+CREATE FUNCTION ivymy.bpchar_varbinary_ne(bpchar, ivymy.varbinary)
+RETURNS bool
+AS $$
+    SELECT $1::text <> $2::text;
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+
+CREATE OPERATOR ivymy.<> (
+    PROCEDURE = ivymy.bpchar_varbinary_ne,
+    LEFTARG = bpchar,
+    RIGHTARG = ivymy.varbinary
+);
+
+CREATE FUNCTION ivymy.varbinary_bpchar_ne(ivymy.varbinary, bpchar)
+RETURNS bool
+AS $$
+    SELECT $1::text <> $1::text;
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.<> (
+    PROCEDURE = ivymy.varbinary_bpchar_ne,
+    LEFTARG = ivymy.varbinary,
+    RIGHTARG = bpchar
+);
+
+
+----operator ||
+CREATE FUNCTION ivymy.varbinary_concat(ivymy.varbinary, ivymy.varbinary)
+RETURNS text
+AS 'MODULE_PATHNAME','varbinary_concat'
+LANGUAGE C
+STRICT
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.|| (
+	PROCEDURE = ivymy.varbinary_concat,
+	LEFTARG = ivymy.varbinary,
+	RIGHTARG = ivymy.varbinary
+);
+
+
+CREATE FUNCTION ivymy.bpchar_varbinary_eq(bpchar, ivymy.varbinary)
+RETURNS bool
+AS $$
+    SELECT $1::text = $2::text;
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.= (
+    PROCEDURE = ivymy.bpchar_varbinary_eq,
+    LEFTARG = bpchar,
+    RIGHTARG = ivymy.varbinary
+);
+
+CREATE FUNCTION ivymy.varbinary_bpchar_eq(ivymy.varbinary, bpchar)
+RETURNS bool
+AS $$
+    SELECT $1::text = $2::text;
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OPERATOR ivymy.= (
+    PROCEDURE = ivymy.varbinary_bpchar_eq,
+    LEFTARG = ivymy.varbinary,
+    RIGHTARG = bpchar
+);
+/* End - BUG#8428 8441 */
 
 ----operator &&
 CREATE OPERATOR ivymy.&& (

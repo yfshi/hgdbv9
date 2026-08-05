@@ -69,13 +69,23 @@ WHERE s IN (_binary 'abc', 'zzz');
 -- MySQL 5.7 expected: abc, ABC
 SELECT s FROM mysql_binary_test
 WHERE s = ANY (ARRAY[_binary 'abc', 'zzz']);
-ERROR:  could not determine which collation to use for string comparison
-HINT:  Use the COLLATE clause to set the collation explicitly.
+  s  
+-----
+ abc
+ ABC
+(2 rows)
+
 -- MySQL 5.7 expected: abc, ABC
 SELECT s FROM mysql_binary_test
 WHERE s <> ALL (ARRAY[_binary 'abc', 'zzz']);
-ERROR:  could not determine which collation to use for string comparison
-HINT:  Use the COLLATE clause to set the collation explicitly.
+  s  
+-----
+ a
+ A
+ a_c
+ a%c
+(4 rows)
+
 -- MySQL 5.7 expected: a, A, a%c, a_c
 SELECT s FROM mysql_binary_test
 WHERE s REGEXP _binary '^[a-z]+$';
@@ -510,7 +520,7 @@ create table test_col_type as select _binary 'aaay';
              Table "public.test_col_type"
   Column  |   Type    | Collation | Nullable | Default 
 ----------+-----------+-----------+----------+---------
- ?column? | varbinary | default   |          | 
+ ?column? | varbinary |           |          | 
 
 drop table test_col_type;
 create table test_col_b as select _binary b'010000001';
@@ -518,7 +528,7 @@ create table test_col_b as select _binary b'010000001';
                Table "public.test_col_b"
   Column   |   Type    | Collation | Nullable | Default 
 -----------+-----------+-----------+----------+---------
- varbinary | varbinary | default   |          | 
+ varbinary | varbinary |           |          | 
 
 drop table test_col_b;
 select _binary b'102';         -- mysql error: invalid binary digit
@@ -576,13 +586,13 @@ select _binary '\\';           -- ok: bytes 5c 5c
 select _binary 'a' COLLATE 'C';
  ?column? 
 ----------
- \x61
+ a
 (1 row)
 
 select _binary 'a' COLLATE "C";
  ?column? 
 ----------
- \x61
+ a
 (1 row)
 
 -- error ,because _binary current use default collate to achieve, not binary collate.
@@ -635,11 +645,14 @@ SELECT name FROM users WHERE name REGEXP 'TONY';
  tony123
 (3 rows)
 
--- casesencitive
+-- casesencitive  --now is error, Because _binary and binary can not be distinguished
 SELECT name FROM users WHERE name REGEXP binary 'TONY';
- name 
-------
-(0 rows)
+  name   
+---------
+ tony
+ Tony
+ tony123
+(3 rows)
 
 SELECT name FROM users WHERE name REGEXP  ('TONY' collate utf8_bin);
  name 

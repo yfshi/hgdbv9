@@ -1814,16 +1814,16 @@ WARNING:  Truncated incorrect DECIMAL value: 'q1w2'
 -- TODO[TD004]: error
 SELECT  cast(c1 as json)          FROM my_varbinary_t08;
 ERROR:  invalid input syntax for type json
-DETAIL:  Token "\" is invalid.
-CONTEXT:  JSON data, line 1: \...
+DETAIL:  Token "abcd" is invalid.
+CONTEXT:  JSON data, line 1: abcd
 SELECT convert(c1, json)          FROM my_varbinary_t08;
 ERROR:  invalid input syntax for type json
-DETAIL:  Token "\" is invalid.
-CONTEXT:  JSON data, line 1: \...
+DETAIL:  Token "abcd" is invalid.
+CONTEXT:  JSON data, line 1: abcd
 SELECT         c1::json           FROM my_varbinary_t08;
 ERROR:  invalid input syntax for type json
-DETAIL:  Token "\" is invalid.
-CONTEXT:  JSON data, line 1: \...
+DETAIL:  Token "abcd" is invalid.
+CONTEXT:  JSON data, line 1: abcd
 -- EXPECT: ok, {1234, abcd, 1q2w, q1w2}
 -- TODO[TD004]: ok, but get diff value
 SELECT  cast(c1 as nchar)         FROM my_varbinary_t08;

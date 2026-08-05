@@ -317,6 +317,8 @@ SELECT INSERT('abcdefg', 2, 3, 'Z'); -- 'aZefg'
 
 SELECT INSERT('abcdefg', '2a', 3, 'Z'); -- 'aZefg'
 WARNING:  Truncated incorrect INTEGER value: '2a'
+LINE 1: SELECT INSERT('abcdefg', '2a', 3, 'Z');
+                                 ^
  insert 
 --------
  aZefg
@@ -2815,8 +2817,8 @@ ORDER BY
  int_to_datetime          | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  time_to_int              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  int_to_time              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- binary_to_int            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
- int_to_binary            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
+ binary_to_int            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
+ int_to_binary            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
  concat_to_int            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  empty_string_to_int      | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  string_zero_to_int       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
@@ -2840,12 +2842,12 @@ ORDER BY
  string_to_null           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  time_to_string           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  string_to_time           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- binary_to_string         | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
- string_to_binary         | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
- hex_to_string            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
- string_to_hex            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
- bit_to_string            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
- string_to_bit            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | binary
+ binary_to_string         | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
+ string_to_binary         | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
+ hex_to_string            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
+ string_to_hex            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
+ bit_to_string            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
+ string_to_bit            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
  scientific_to_string     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  string_to_scientific     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  expression_to_string     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 

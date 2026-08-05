@@ -37,6 +37,7 @@ PG_FUNCTION_INFO_V1(mystext_xor);
 PG_FUNCTION_INFO_V1(mystext_logic_not);
 PG_FUNCTION_INFO_V1(mystext_logic_and);
 PG_FUNCTION_INFO_V1(text_bool);
+PG_FUNCTION_INFO_V1(varlena_int1);
 PG_FUNCTION_INFO_V1(varlena_int2);
 PG_FUNCTION_INFO_V1(varlena_int4);
 PG_FUNCTION_INFO_V1(varlena_int8);
@@ -553,6 +554,21 @@ mys_isnull(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(false);
 }
 
+/* Begin - BUG#8428 8441 */
+Datum
+varlena_int1(PG_FUNCTION_ARGS)
+{
+	text		*arg = PG_GETARG_TEXT_PP(0);
+	char		*src = (char *) text_to_cstring(arg);
+	int8		ret;
+	bool		is_insert = CALL_IN_INSERT();
+
+	ret = my_atoi_int8(src, is_insert);
+
+	PG_RETURN_INT8(ret);
+}
+/* End - BUG#8428 8441 */
+
 Datum
 varlena_int2(PG_FUNCTION_ARGS)
 {
@@ -560,9 +576,6 @@ varlena_int2(PG_FUNCTION_ARGS)
 	char		*src = (char *) text_to_cstring(arg);
 	int16		ret;
 	bool		is_insert = CALL_IN_INSERT();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
 
 	ret = my_atoi_int16(src, is_insert);
 	
@@ -577,9 +590,6 @@ varlena_int4(PG_FUNCTION_ARGS)
 	int32		ret;
 	bool		is_insert = CALL_IN_INSERT();
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	ret = my_atoi_int32(src, is_insert);
 	
 	PG_RETURN_INT32(ret);
@@ -592,9 +602,6 @@ varlena_int8(PG_FUNCTION_ARGS)
 	char		*src = (char *) text_to_cstring(arg);
 	int64		ret;
 	bool		is_insert = CALL_IN_INSERT();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
 
 	ret = my_atoi_int64(src, is_insert);
 	
@@ -609,9 +616,6 @@ varlena_uint1(PG_FUNCTION_ARGS)
 	uint8		ret;
 	bool		is_insert = CALL_IN_INSERT();
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	ret = my_atoi_uint8(src, is_insert);
 	
 	PG_RETURN_UINT8(ret);
@@ -624,9 +628,6 @@ varlena_uint2(PG_FUNCTION_ARGS)
 	char		*src = (char *) text_to_cstring(arg);
 	uint16		ret;
 	bool		is_insert = CALL_IN_INSERT();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
 
 	ret = my_atoi_uint16(src, is_insert);
 	
@@ -641,9 +642,6 @@ varlena_uint4(PG_FUNCTION_ARGS)
 	uint32		ret;
 	bool		is_insert = CALL_IN_INSERT();
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	ret = my_atoi_uint32(src, is_insert);
 	
 	PG_RETURN_UINT32(ret);
@@ -656,9 +654,6 @@ varlena_uint8(PG_FUNCTION_ARGS)
 	char		*src = (char *) text_to_cstring(arg);
 	uint64		ret;
 	bool		is_insert = CALL_IN_INSERT();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
 
 	ret = my_atoi_uint64(src, is_insert);
 	
@@ -674,9 +669,6 @@ varlena_float4(PG_FUNCTION_ARGS)
 	float		ret;
 	bool		is_insert = CALL_IN_INSERT();
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	ret = my_atof(src, is_insert);
 	
 	PG_RETURN_FLOAT4(ret);
@@ -690,9 +682,6 @@ varlena_float8(PG_FUNCTION_ARGS)
 	double		ret;
 	bool		is_insert = CALL_IN_INSERT();
 
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
-
 	ret = my_atod(src, is_insert);
 	
 	PG_RETURN_FLOAT8(ret);
@@ -705,9 +694,6 @@ varlena_numeric(PG_FUNCTION_ARGS)
 	text		*arg = PG_GETARG_TEXT_PP(0);
 	char		*src = (char *) text_to_cstring(arg);
 	bool		is_insert = CALL_IN_INSERT();
-
-	if (PG_ARGISNULL(0))
-		PG_RETURN_NULL();
 
 	ret = my_aton(src, PG_GETARG_INT32(1), is_insert);
 	

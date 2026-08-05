@@ -1023,6 +1023,7 @@ WHERE c.castmethod = 'b' AND
  pg_node_tree      | text              |        0 | i
  cidr              | inet              |        0 | i
  character varying | character         |        0 | i
+ character varying | varbinary         |        0 | a
  pg_ndistinct      | bytea             |        0 | i
  pg_dependencies   | bytea             |        0 | i
  pg_mcv_list       | bytea             |        0 | i
@@ -1033,7 +1034,7 @@ WHERE c.castmethod = 'b' AND
  mediumblob        | bytea             |        0 | i
  longblob          | bytea             |        0 | i
  binary            | bytea             |        0 | i
- varbinary         | bytea             |        0 | i
+ varbinary         | bytea             |        0 | a
  ivy_hex           | bytea             |        0 | a
  ivy_hex           | text              |        0 | a
  ivy_hex           | tinyblob          |        0 | a
@@ -1049,7 +1050,7 @@ WHERE c.castmethod = 'b' AND
  timestamp         | numeric           |        0 | i
  time              | bigint            |        0 | i
  time              | numeric           |        0 | i
-(35 rows)
+(36 rows)
 
 -- **************** pg_conversion ****************
 -- Look for illegal values in pg_conversion fields.

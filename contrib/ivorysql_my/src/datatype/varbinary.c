@@ -21,6 +21,7 @@
 #include "catalog/pg_type.h"
 #include "fmgr.h"
 #include "parser/parse_oper.h"
+#include "parser/scansup.h"  /* ReqID - BUG#8428 8441 */
 #include "libpq/pqformat.h"
 #include "lib/stringinfo.h"
 #include "miscadmin.h"
@@ -30,6 +31,7 @@
 #include "utils/elog.h"
 #include "utils/fmgrprotos.h"
 #include "utils/guc.h"
+#include "utils/lsyscache.h" /* ReqID - BUG#8428 8441 */
 #include "utils/numeric.h"
 #include "utils/sortsupport.h"
 #include "utils/varlena.h"
@@ -54,6 +56,12 @@ PG_FUNCTION_INFO_V1(varbinary_bitneg);
 PG_FUNCTION_INFO_V1(varbinary_bitshiftright);
 PG_FUNCTION_INFO_V1(varbinary_bitshiftleft);
 PG_FUNCTION_INFO_V1(varbinary_sortsupport);
+
+/* Begin - BUG#8428 8441 */
+PG_FUNCTION_INFO_V1(varbinary_concat);
+PG_FUNCTION_INFO_V1(varbinary2json);
+PG_FUNCTION_INFO_V1(bit2varbinary);
+/* Begin - BUG#8428 8441 */
 
 typedef long long int longlong;
 typedef unsigned long long int ulonglong;
@@ -577,3 +585,90 @@ varbinary2varchar(PG_FUNCTION_ARGS)
 	return result;
 }
 /* End BUG#5048 5070 */
+
+/* Begin - BUG#8428 8441 */
+Datum
+varbinary_concat(PG_FUNCTION_ARGS)
+{
+    bytea *arg1 = PG_GETARG_BYTEA_PP(0);
+    bytea *arg2 = PG_GETARG_BYTEA_PP(1);
+
+    int32 len1 = VARSIZE_ANY_EXHDR(arg1);
+    int32 len2 = VARSIZE_ANY_EXHDR(arg2);
+
+    text *result;
+
+    result = (text *) palloc(VARHDRSZ + len1 + len2);
+
+    SET_VARSIZE(result, VARHDRSZ + len1 + len2);
+
+    memcpy(VARDATA(result),
+           VARDATA_ANY(arg1),
+           len1);
+
+    memcpy(VARDATA(result) + len1,
+           VARDATA_ANY(arg2),
+           len2);
+
+    PG_RETURN_TEXT_P(result);
+}
+
+Datum
+varbinary2json(PG_FUNCTION_ARGS)
+{
+	bytea *arg = PG_GETARG_BYTEA_PP(0);
+	const char *data = VARDATA_ANY(arg);
+	int32 len = VARSIZE_ANY_EXHDR(arg);
+	char *str;
+	Oid typinput;
+	Oid typioparam;
+	FmgrInfo finfo;
+	Datum result;
+
+	if (memchr(data, '\0', len) != NULL)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_TEXT_REPRESENTATION),
+				 errmsg("invalid input syntax for type json"),
+				 errdetail("JSON text cannot contain zero bytes.")));
+
+	str = pnstrdup(data, len);
+
+	getTypeInputInfo(JSONOID, &typinput, &typioparam);
+	fmgr_info(typinput, &finfo);
+
+	result = InputFunctionCall(&finfo, str, typioparam, -1);
+
+	PG_RETURN_DATUM(result);
+}
+
+Datum
+bit2varbinary(PG_FUNCTION_ARGS)
+{
+	VarBit		   *bits = PG_GETARG_VARBIT_P(0);
+	int				bitlen = VARBITLEN(bits);
+	int				outlen = (bitlen + 7) / 8;
+	int				shift = outlen * 8 - bitlen;
+	unsigned char  *src = VARBITS(bits);
+	bytea		   *result;
+	unsigned char  *dst;
+	int				i;
+
+	result = (bytea *) palloc0(VARHDRSZ + outlen);
+	SET_VARSIZE(result, VARHDRSZ + outlen);
+	dst = (unsigned char *) VARDATA(result);
+
+	/* Right-align the bit string into whole bytes, as MySQL does. */
+	for (i = 0; i < bitlen; i++)
+	{
+		int			outbit;
+
+		if ((src[i / 8] & (0x80 >> (i % 8))) == 0)
+			continue;
+
+		outbit = i + shift;
+		dst[outbit / 8] |= 0x80 >> (outbit % 8);
+	}
+
+	PG_RETURN_BYTEA_P(result);
+}
+/* End - BUG#8428 8441 */

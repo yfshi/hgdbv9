@@ -742,6 +742,18 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.locate(ivymy.varbinary, ivymy.varbinary)
+RETURNS int4
+AS $$
+	SELECT ivymy.locate($1::text, $2::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- lcase
 CREATE FUNCTION ivymy.lcase(text)
@@ -772,6 +784,17 @@ select lcase($1::text);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 /* End - SRS-MYSQL-HEX-LITERAL */
 
+/* Begin - BUG#8428 8441 */
+CREATE OR REPLACE FUNCTION ivymy.lcase(ivymy.varbinary)
+RETURNS text
+AS $$ SELECT pg_catalog.lower($1::text) $$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
+
 -- ucase
 
 CREATE FUNCTION ivymy.ucase(text)
@@ -801,6 +824,17 @@ AS $$
 select ucase($1::text);
 $$ LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
 /* End - SRS-MYSQL-HEX-LITERAL */
+
+/* Begin - BUG#8428 8441 */
+CREATE OR REPLACE FUNCTION ivymy.ucase(ivymy.varbinary)
+RETURNS text
+AS $$ SELECT pg_catalog.upper($1::text) $$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- insert
 
@@ -841,6 +875,19 @@ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.insert(ivymy.varbinary, integer, integer, ivymy.varbinary)
+RETURNS varchar
+AS $$
+	SELECT ivymy.insert($1::text, $2, $3, $4::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- bin
 
@@ -1048,6 +1095,30 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 /* End - SRS-MYSQL-HEX-LITERAL */
+
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.find_in_set(ivymy.varbinary, ivymy.varbinary)
+RETURNS int4
+AS $$
+	SELECT ivymy.find_in_set($1::text, $2::text) 
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.find_in_set(ivymy.varbinary, pg_catalog.text)
+RETURNS int4
+AS $$
+	SELECT ivymy.find_in_set($1::text, $2)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- hex
 CREATE OR REPLACE FUNCTION ivymy.hex(text)
@@ -1261,6 +1332,19 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - SRS-MYSQL-HEX-LITERAL */
 
+/* Begin - BUG#8428 8441 */
+CREATE OR REPLACE FUNCTION ivymy.soundex(ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT ivymy.soundex($1::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
+
 -- export_set
 
 CREATE FUNCTION ivymy.export_set(int8, text, text, text default ',', int default 64)
@@ -1293,6 +1377,19 @@ AS $$
     select export_set($1, $2, $3, $4::text, 64);
 $$ LANGUAGE SQL PARALLEL SAFE IMMUTABLE STRICT;
 /* End - BUG#Z5515 */
+
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.export_set(integer, ivymy.varbinary, ivymy.varbinary, ivymy.varbinary, integer)
+RETURNS text
+AS $$
+	SELECT ivymy.export_set($1, $2::text, $3::text, $4::text, $5)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- ord
 CREATE FUNCTION ivymy.ord(text)
@@ -1359,6 +1456,41 @@ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#8428 8441 */
+CREATE OR REPLACE FUNCTION ivymy.substring_index(ivymy.varbinary, ivymy.varbinary, integer)
+RETURNS text
+AS $$
+	SELECT ivymy.substring_index($1::text, $2::text, $3)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE FUNCTION ivymy.substring_index(pg_catalog.text, ivymy.varbinary, integer)
+RETURNS text
+AS $$
+	SELECT ivymy.substring_index($1, $2::text, $3)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION ivymy.substring_index(ivymy.varbinary, pg_catalog.text, integer)
+RETURNS text
+AS $$
+	SELECT ivymy.substring_index($1::text, $2, $3)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- from_base64
 
@@ -1454,6 +1586,16 @@ LANGUAGE SQL
 STRICT
 PARALLEL SAFE
 IMMUTABLE;
+
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.length(ivymy.varbinary)
+RETURNS int
+AS 'select length($1::text)'
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 -- octet_length
 
@@ -3401,6 +3543,30 @@ LANGUAGE SQL
 STRICT
 IMMUTABLE;
 
+/* Begin - BUG#8428 8441 */
+-- STRCMP with varbinary and string arguments
+CREATE OR REPLACE FUNCTION ivymy.STRCMP(ivymy.varbinary, ivymy.varbinary)
+RETURNS int4
+AS $$
+	SELECT ivymy.STRCMP($1::text, $2::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION ivymy.STRCMP(ivymy.varbinary, varchar)
+RETURNS int4
+AS $$
+	SELECT ivymy.STRCMP($1::text, $2::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+/* End - BUG#8428 8441 */
+
 -- unhex
 
 CREATE FUNCTION ivymy.unhex(text)
@@ -3512,6 +3678,16 @@ END;
 $$
 LANGUAGE plpgsql;
 
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.weight_string(ivymy.varbinary, int4, int4, int4)
+RETURNS varbinary
+AS $$
+	SELECT ivymy.weight_string(($1::text) collate 'binary', $2, $3, $4);
+$$
+LANGUAGE SQL
+STABLE
+STRICT;
+/* End - BUG#8428 8441 */
 
 -- instr
 
@@ -3962,6 +4138,19 @@ STRICT
 PARALLEL SAFE;
 /* End - bug#6988 */
 
+/* Begin - BUG#8428 8441 */
+CREATE OR REPLACE FUNCTION ivymy.upper(ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT pg_catalog.upper($1::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
+
 --rand(seed)
 CREATE FUNCTION ivymy.rand(bigint)
 RETURNS double 
@@ -4122,6 +4311,15 @@ PARALLEL SAFE
 STRICT
 IMMUTABLE;
 /* End Bug#Z7500 */
+
+/* Begin - BUG#8428 8441 */
+CREATE FUNCTION ivymy.aes_encrypt(varbinary, text, text default NULL, text default '', text default '', text default '')
+RETURNS varbinary
+AS 'MODULE_PATHNAME','ivymy_aes_encrypt'
+LANGUAGE C
+PARALLEL SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */
 
 /* Begin Bug#Z7502 */
 CREATE FUNCTION ivymy.aes_encrypt(numeric, text, text default NULL, text default '', text default '', text default '')
@@ -4584,8 +4782,18 @@ IMMUTABLE
 PARALLEL SAFE;
 /* End - bug#8563 */
 
-/* Begin - SXJK-BUILDINFUNCTION */
+/* Begin - BUG#8428 8441 */
 CREATE OR REPLACE FUNCTION ivymy.crc32(varbinary)
+RETURNS int8
+AS 'MODULE_PATHNAME','crc32'
+LANGUAGE C
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - BUG#8428 8441 */
+
+/* Begin - SXJK-BUILDINFUNCTION */
+CREATE FUNCTION ivymy.crc32(bytea)
 RETURNS int8
 AS 'MODULE_PATHNAME','crc32'
 LANGUAGE C
@@ -4814,3 +5022,108 @@ AS $$
 	SELECT concat(CURRENT_USER, '@%') as `CURRENT_USER()`;
 $$;
 /* End - SXJK-BUILDINFUNCTION */
+
+/* Begin - BUG#8428 8441 */
+----function position
+CREATE OR REPLACE FUNCTION pg_catalog.position(ivymy.varbinary, ivymy.varbinary)
+RETURNS int4
+AS $$
+	SELECT pg_catalog.strpos($2::text, $1::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- CONCAT_WS(separator, arg1, arg2)
+CREATE OR REPLACE FUNCTION ivymy.concat_ws(ivymy.varbinary, ivymy.varbinary, ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT pg_catalog.concat_ws($1::text, $2::text, $3::text) 
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- LOWER/UPPER
+CREATE OR REPLACE FUNCTION ivymy.lower(ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT pg_catalog.lower($1::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- TRIM/BTRIM(text, varbinary)
+CREATE FUNCTION pg_catalog.btrim(text, ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT pg_catalog.btrim($1, $2::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- REPEAT(str, count)
+CREATE OR REPLACE FUNCTION ivymy.repeat(ivymy.varbinary, integer)
+RETURNS text
+AS $$
+	SELECT pg_catalog.repeat($1::text, $2)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- RPAD/LPAD
+CREATE OR REPLACE FUNCTION ivymy.lpad(ivymy.varbinary, integer, ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT pg_catalog.lpad($1::text, $2, $3::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+CREATE OR REPLACE FUNCTION ivymy.rpad(ivymy.varbinary, integer, ivymy.varbinary)
+RETURNS text
+AS $$
+	SELECT pg_catalog.rpad($1::text, $2, $3::text)
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- LTRIM(varbinary)
+CREATE FUNCTION ivymy.ltrim(ivymy.varbinary)
+RETURNS text
+AS $$ SELECT pg_catalog.ltrim($1::text) $$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+
+-- RTRIM(varbinary)
+CREATE FUNCTION ivymy.rtrim(ivymy.varbinary)
+RETURNS text
+AS $$ SELECT pg_catalog.rtrim($1::text) $$
+LANGUAGE SQL
+STRICT
+PARALLEL
+SAFE
+IMMUTABLE;
+/* End - BUG#8428 8441 */

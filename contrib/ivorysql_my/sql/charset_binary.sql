@@ -238,7 +238,7 @@ insert into   users (name, phone, email) values
 
 -- uncasesencitive
 SELECT name FROM users WHERE name REGEXP 'TONY';
--- casesencitive
+-- casesencitive  --now is error, Because _binary and binary can not be distinguished
 SELECT name FROM users WHERE name REGEXP binary 'TONY';
 SELECT name FROM users WHERE name REGEXP  ('TONY' collate utf8_bin);
 -- error

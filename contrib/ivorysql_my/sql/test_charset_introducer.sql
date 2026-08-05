@@ -760,6 +760,14 @@ create table test_col_type2 as select _utf8 'aaay';
 \d test_col_type2;
 drop table test_col_type2;
 
+create table abc as select concat(_gbk 'D6D0', _gbk'D6D0');
+\d abc;
+drop table abc;
+
+
+create table abcc as select hex(_gbk x'd6d0');
+\d abcc;
+drop table abcc;
 
 -- Extracted MySQL 5.7 _charset introducer test cases.
 -- Source tree: mysql-server
@@ -1365,6 +1373,11 @@ SELECT FIELD(_gbk x'D6D0', _utf8 x'E4B8AD', _utf8 'A') AS case_08_field;
 SELECT FIND_IN_SET(_gbk x'D6D0',
                    CONCAT(_utf8 x'E4B8AD', _utf8 ',A')) AS case_09_find_in_set;
 
+-- Expected: 0.
+SELECT FIND_IN_SET(_gbk x'D6D0', _utf8 'E4B8AD,A') AS case_09_find_in_set;
+-- Expected: 2.
+SELECT FIND_IN_SET(_gbk 'A', _utf8 'E4B8AD,A') AS case_09_find_in_set;
+
 -- 10. Item_func_concat::fix_length_and_dec
 -- SQL surface: CONCAT(arg1, arg2, ...).
 -- Expected: E4B8AD41 after display conversion to utf8.
@@ -1514,5 +1527,15 @@ SELECT
   HEX(CONVERT(CONCAT(gbk_col, utf8_col) USING utf8)) AS concat_cols_hex
 FROM function_charset_conversion_seed
 WHERE id = 1;
+
+-- a+1
+select _utf8 'a+1' collate utf8_general_ci;
+-- 0 --->_utf8 'a+1' + ('a' collate utf8_general_ci)
+select _utf8 'a+1' + 'a' collate utf8_general_ci;
+
+-- aaa
+select _binary 'aaa' collate 'binary';
+-- error
+select _binary 'aaa' collate 'utf8_bin';
 
 DROP TABLE function_charset_conversion_seed;
