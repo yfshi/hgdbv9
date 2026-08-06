@@ -935,3 +935,86 @@ SELECT set_config('search_path', trim(leading 'ivymy, ' from current_setting('se
  "$user", public
 (1 row)
 
+---- bug#8747
+RESET sql_mode;
+CREATE TABLE year_01(created_year YEAR NOT NULL);
+INSERT INTO year_01 VALUES ('1901');
+INSERT INTO year_01 VALUES ('20.2');
+INSERT INTO year_01 VALUES ('');
+WARNING:  invalid input syntax for type double precision: ""
+LINE 1: INSERT INTO year_01 VALUES ('');
+                                    ^
+select * from year_01;
+ created_year 
+--------------
+ 1901
+ 2020
+ 0000
+(3 rows)
+
+drop table year_01;
+CREATE TABLE year_02(id int,created_year YEAR);
+INSERT INTO year_02(id,created_year)VALUES (1,'2016'),(2,'2017'),(3,'2018'),(1,'2019'),(2,'2020'),(3,'2021');
+select * from year_02;
+ id | created_year 
+----+--------------
+  1 | 2016
+  2 | 2017
+  3 | 2018
+  1 | 2019
+  2 | 2020
+  3 | 2021
+(6 rows)
+
+drop table year_02;
+---- bug#8766
+-- case 1:
+create table test_8766(a year not null);
+insert into test_8766 values('26.44'),('26.45'),('26.46');
+select * from test_8766;
+  a   
+------
+ 2026
+ 2026
+ 2026
+(3 rows)
+
+drop table test_8766;
+-- case 2:
+create table test_8766(a int, b year not null);
+insert into test_8766 values(0,'26.0'),(1,'26.1'),(2,'26.2'),(3,'26.3'),(4,'26.4'),(5,'26.5'),(6,'26.6'),(7,'26.7'),(8,'26.8'),(9,'26.9');
+select * from test_8766;
+ a |  b   
+---+------
+ 0 | 2026
+ 1 | 2026
+ 2 | 2026
+ 3 | 2026
+ 4 | 2026
+ 5 | 2027
+ 6 | 2027
+ 7 | 2027
+ 8 | 2027
+ 9 | 2027
+(10 rows)
+
+drop table test_8766;
+-- case 3:
+create table test_8766(a int, b year not null);
+insert into test_8766 values(0,'2026.0'),(1,'2026.1'),(2,'2026.2'),(3,'2026.3'),(4,'2026.4'),(5,'2026.5'),(6,'2026.6'),(7,'2026.7'),(8,'2026.8'),(9,'2026.9');
+select * from test_8766;
+ a |  b   
+---+------
+ 0 | 2026
+ 1 | 2026
+ 2 | 2026
+ 3 | 2026
+ 4 | 2026
+ 5 | 2027
+ 6 | 2027
+ 7 | 2027
+ 8 | 2027
+ 9 | 2027
+(10 rows)
+
+drop table test_8766;

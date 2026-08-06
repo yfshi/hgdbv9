@@ -127,6 +127,45 @@ static YearADT int4_to_YearADT(int32 year);
 static int year_cmp_internal(YearADT y1, YearADT y2);
 static int year_fastcmp(Datum x, Datum y, SortSupport ssup);
 
+/* Begin - bug#8747, bug#8766 */
+/*
+ * check if string has '.' 'e' or 'E'
+ */
+static bool
+year_string_has_fraction(const char *str)
+{
+	const char *p = str;
+
+	while (*p != '\0' && isspace((unsigned char) *p))
+		p++;
+
+	for (; *p != '\0'; p++)
+	{
+		if (*p == '.' || *p == 'e' || *p == 'E')
+			return true;
+	}
+
+	return false;
+}
+
+/*
+ * YEAR float input uses round-half-up manually
+ * need get the same result with mysql
+ * avoid rint() handle error: 2026.5->2026, 2027.5->2028(Banker's Rounding)
+ * need 2026.5 -> 2027
+ * if input >= 0, using floor(xx+0.5) to Round Down to the nearest integer
+ * else, using ceil(xx-0.5) to Round Up to the nearest integer
+ */
+static int32
+float8_to_int32_half_up(double val)
+{
+	if (val >= 0.0)
+		return (int32) floor(val + 0.5);
+	else
+		return (int32) ceil(val - 0.5);
+}
+/* End - bug#8747, bug#8766 */
+
 /*
  * year_in()
  * Given year text string, convert to internal year format.
@@ -141,9 +180,49 @@ Datum year_in(PG_FUNCTION_ARGS)
 	int    len = 0;
 	YearADT result;
 
-	num = float8in_internals(str_in, &endptr, &hasError) + 0.05;
-	tmp = (int32) DirectFunctionCall1(dtoi4, Float8GetDatum(num));
 	len = strlen(str_in);
+
+	/* Begin - bug#8747, bug#8766 */
+	/*
+	 * year_string_has_fraction() to check if there have '.', 'e' or 'E'
+	 * if input is decimals (xx.xx), using float8_to_int32_half_up()
+	 * if input is integer (xx), using strtol()
+	 */
+	if (year_string_has_fraction(str_in))
+	{
+		num = float8in_internals(str_in, &endptr, &hasError);
+		tmp = float8_to_int32_half_up(num);
+	}
+	else
+	{
+		const char	*p = str_in;
+		long		lval;
+		char		*int_endptr = NULL;
+
+		while (*p != '\0' && isspace((unsigned char) *p))
+			p++;
+
+		errno = 0;
+		lval = strtol(p, &int_endptr, 10);
+
+		if (p == int_endptr)
+		{
+			hasError = true;
+			tmp = 0;
+		}
+		else
+		{
+			endptr = int_endptr;
+
+			if (errno == ERANGE || lval < PG_INT32_MIN || lval > PG_INT32_MAX)
+				ereport(ERROR,
+						(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+						 errmsg("value \"%s\" is out of range for type year", str_in)));
+
+			tmp = (int32) lval;
+		}
+	}
+	/* End - bug#8747, bug#8766 */
 
 	if (hasError)
 	{
