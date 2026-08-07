@@ -165,8 +165,8 @@ from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_TB1' order by colu
  SYSVIEW_TAB_COLS_TB1 | COL3        | BIT(10)                  | 10          |                |            | Y        | 3         |                |              | 100       | UTF8               | 10                   | 0           |             |           | NO            | NO             | 3                  | COL3               | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL4        | BOOLEAN                  | 1           |                |            | Y        | 4         |                |              | 100       | UTF8               | 0                    | 1           |             |           | NO            | NO             | 4                  | COL4               | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL5        | BYTEA                    | 0           |                |            | Y        | 5         |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 5                  | COL5               | NO              | NO
- SYSVIEW_TAB_COLS_TB1 | COL6        | CHAR(11)                 | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO            | NO             | 6                  | COL6               | NO              | NO
- SYSVIEW_TAB_COLS_TB1 | COL7        | VARCHAR2(12)             | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | NO            | NO             | 7                  | COL7               | YES             | NO
+ SYSVIEW_TAB_COLS_TB1 | COL6        | CHAR                     | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO            | NO             | 6                  | COL6               | NO              | NO
+ SYSVIEW_TAB_COLS_TB1 | COL7        | VARCHAR2                 | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | NO            | NO             | 7                  | COL7               | YES             | NO
  SYSVIEW_TAB_COLS_TB1 | COL8        | DATE                     | 8           |                |            | Y        | 8         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 8                  | COL8               | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL9        | FLOAT                    | 8           | 15             |            | Y        | 9         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO            | NO             | 9                  | COL9               | NO              | NO
  SYSVIEW_TAB_COLS_TB1 | COL10       | INET                     | 0           |                |            | Y        | 10        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO            | NO             | 10                 | COL10              | NO              | NO
@@ -199,8 +199,8 @@ from all_tab_cols where upper(table_name) = 'SYSVIEW_TAB_COLS_V1' order by colum
  SYSVIEW_TAB_COLS_V1 | COL3        | BIT(10)                  | 10          |                |            | Y        | 3         |                |              |           | UTF8               | 10                   |             |             |           | NO            | NO             | 3                  | COL3               | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL4        | BOOLEAN                  | 1           |                |            | Y        | 4         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 4                  | COL4               | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL5        | BYTEA                    | 0           |                |            | Y        | 5         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 5                  | COL5               | NO              | NO
- SYSVIEW_TAB_COLS_V1 | COL6        | CHAR(11)                 | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO            | NO             | 6                  | COL6               | NO              | NO
- SYSVIEW_TAB_COLS_V1 | COL7        | VARCHAR2(12)             | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO            | NO             | 7                  | COL7               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL6        | CHAR                     | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO            | NO             | 6                  | COL6               | NO              | NO
+ SYSVIEW_TAB_COLS_V1 | COL7        | VARCHAR2                 | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO            | NO             | 7                  | COL7               | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL8        | DATE                     | 8           |                |            | Y        | 8         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 8                  | COL8               | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL9        | FLOAT                    | 8           | 15             |            | Y        | 9         |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 9                  | COL9               | NO              | NO
  SYSVIEW_TAB_COLS_V1 | COL10       | INET                     | 0           |                |            | Y        | 10        |                |              |           | UTF8               | 0                    |             |             |           | NO            | NO             | 10                 | COL10              | NO              | NO
@@ -301,8 +301,8 @@ from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_TB1'  order 
  SYSVIEW_TAB_COLUMNS_TB1 | COL3        | BIT(10)                  | 10          |                |            | Y        | 3         |                |              | 100       | UTF8               | 10                   | 0           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL4        | BOOLEAN                  | 1           |                |            | Y        | 4         |                |              | 100       | UTF8               | 0                    | 1           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL5        | BYTEA                    | 0           |                |            | Y        | 5         |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
- SYSVIEW_TAB_COLUMNS_TB1 | COL6        | CHAR(11)                 | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO              | NO
- SYSVIEW_TAB_COLUMNS_TB1 | COL7        | VARCHAR2(12)             | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | YES             | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL6        | CHAR                     | 44          |                |            | N        | 6         |                |              | 0         | UTF8               | 11                   | 12          | 11          | B         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_TB1 | COL7        | VARCHAR2                 | 48          |                |            | Y        | 7         | 9              | qwertyuio    | 0         | UTF8               | 12                   | 10          | 12          | B         | YES             | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL8        | DATE                     | 8           |                |            | Y        | 8         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL9        | FLOAT                    | 8           | 15             |            | Y        | 9         |                |              | 100       | UTF8               | 0                    | 8           |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_TB1 | COL10       | INET                     | 0           |                |            | Y        | 10        |                |              | 100       | UTF8               | 0                    | 0           |             |           | NO              | NO
@@ -335,8 +335,8 @@ from all_tab_columns where upper(table_name) = 'SYSVIEW_TAB_COLUMNS_V1'  order b
  SYSVIEW_TAB_COLUMNS_V1 | COL3        | BIT(10)                  | 10          |                |            | Y        | 3         |                |              |           | UTF8               | 10                   |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL4        | BOOLEAN                  | 1           |                |            | Y        | 4         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL5        | BYTEA                    | 0           |                |            | Y        | 5         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
- SYSVIEW_TAB_COLUMNS_V1 | COL6        | CHAR(11)                 | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO              | NO
- SYSVIEW_TAB_COLUMNS_V1 | COL7        | VARCHAR2(12)             | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL6        | CHAR                     | 44          |                |            | Y        | 6         |                |              |           | UTF8               | 11                   |             | 11          | B         | NO              | NO
+ SYSVIEW_TAB_COLUMNS_V1 | COL7        | VARCHAR2                 | 48          |                |            | Y        | 7         |                |              |           | UTF8               | 12                   |             | 12          | B         | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL8        | DATE                     | 8           |                |            | Y        | 8         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL9        | FLOAT                    | 8           | 15             |            | Y        | 9         |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
  SYSVIEW_TAB_COLUMNS_V1 | COL10       | INET                     | 0           |                |            | Y        | 10        |                |              |           | UTF8               | 0                    |             |             |           | NO              | NO
@@ -2402,46 +2402,66 @@ DROP TABLE PAR_TEST;
 /* Begin - OA#2669 */
 CREATE TABLE OA_2669_TB(
     COL1 LONG RAW,
-    COL2 TIMESTAMP(6) WITH TIME ZONE,
-    COL3 NVARCHAR2,
-    COL4 FLOAT,
-    COL5 TIMESTAMP(6),
-    COL6 TIMESTAMP(6) WITH LOCAL TIME ZONE,
-    COL7 INTERVAL YEAR(5) TO MONTH,
-    COL8 CHAR,
-    COL9 NCHAR,
-    COL10 INTERVAL DAY(9) TO SECOND(6),
-    COL11 DATE,
-    COL12 VARCHAR2,
-    COL13 VARCHAR2(128),
-    COL14 CHAR(128),
-    COL15 NVARCHAR2(63),
-    COL16 NCHAR(128),
+    COL2 FLOAT,
+    COL3 TIMESTAMP(6),
+    COL4 TIMESTAMP(6) WITH TIME ZONE,
+    COL5 TIMESTAMP(6) WITH LOCAL TIME ZONE,
+    COL6 INTERVAL YEAR(5) TO MONTH,
+    COL7 INTERVAL DAY(9) TO SECOND(6),
+    COL8 DATE,
+    COL9 CHAR,
+    COL10 NCHAR,
+    COL11 CHAR(10),
+    COL12 NCHAR(10),
+    COL13 NVARCHAR2,
+    COL14 NVARCHAR2(128),
+    COL15 VARCHAR2,
+    COL16 VARCHAR2(128),
     COL17 VARCHAR2(16 CHAR),
-    COL18 VARCHAR2(17 BYTE)
+    COL18 VARCHAR2(17 BYTE),
+    COL19 BINARY_DOUBLE,
+    COL20 BINARY_FLOAT,
+    COL21 BINARY_INTEGER,
+    COL22 NUMBER,
+    COL23 TIME,
+    COL24 TIME WITH TIME ZONE,
+    COL26 RAW(10),
+    COL27 INTEGER,
+    COL28 XMLTYPE,
+    COL29 LONG RAW
 );
 SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE FROM DBA_TAB_COLUMNS WHERE UPPER(TABLE_NAME) = UPPER('OA_2669_TB');
  table_name | column_name |             data_type             
 ------------+-------------+-----------------------------------
  oa_2669_tb | col1        | LONG RAW
- oa_2669_tb | col2        | TIMESTAMP(6) WITH TIME ZONE
- oa_2669_tb | col3        | VARCHAR2
- oa_2669_tb | col4        | FLOAT
- oa_2669_tb | col5        | TIMESTAMP(6)
- oa_2669_tb | col6        | TIMESTAMP(6) WITH LOCAL TIME ZONE
- oa_2669_tb | col7        | INTERVAL YEAR(5) TO MONTH
- oa_2669_tb | col8        | CHAR(1)
- oa_2669_tb | col9        | CHAR(1 CHAR)
- oa_2669_tb | col10       | INTERVAL DAY(9) TO SECOND(6)
- oa_2669_tb | col11       | DATE
- oa_2669_tb | col12       | VARCHAR2
- oa_2669_tb | col13       | VARCHAR2(128)
- oa_2669_tb | col14       | CHAR(128)
- oa_2669_tb | col15       | VARCHAR2(63 CHAR)
- oa_2669_tb | col16       | CHAR(128 CHAR)
- oa_2669_tb | col17       | VARCHAR2(16 CHAR)
- oa_2669_tb | col18       | VARCHAR2(17)
-(18 rows)
+ oa_2669_tb | col2        | FLOAT
+ oa_2669_tb | col3        | TIMESTAMP(6)
+ oa_2669_tb | col4        | TIMESTAMP(6) WITH TIME ZONE
+ oa_2669_tb | col5        | TIMESTAMP(6) WITH LOCAL TIME ZONE
+ oa_2669_tb | col6        | INTERVAL YEAR(5) TO MONTH
+ oa_2669_tb | col7        | INTERVAL DAY(9) TO SECOND(6)
+ oa_2669_tb | col8        | DATE
+ oa_2669_tb | col9        | CHAR
+ oa_2669_tb | col10       | CHAR
+ oa_2669_tb | col11       | CHAR
+ oa_2669_tb | col12       | CHAR
+ oa_2669_tb | col13       | VARCHAR2
+ oa_2669_tb | col14       | VARCHAR2
+ oa_2669_tb | col15       | VARCHAR2
+ oa_2669_tb | col16       | VARCHAR2
+ oa_2669_tb | col17       | VARCHAR2
+ oa_2669_tb | col18       | VARCHAR2
+ oa_2669_tb | col19       | BINARY_DOUBLE
+ oa_2669_tb | col20       | BINARY_FLOAT
+ oa_2669_tb | col21       | BINARY_INTEGER
+ oa_2669_tb | col22       | NUMBER
+ oa_2669_tb | col23       | TIME WITHOUT TIME ZONE
+ oa_2669_tb | col24       | TIME WITH TIME ZONE
+ oa_2669_tb | col26       | RAW
+ oa_2669_tb | col27       | INTEGER
+ oa_2669_tb | col28       | XMLTYPE
+ oa_2669_tb | col29       | LONG RAW
+(28 rows)
 
 DROP TABLE OA_2669_TB;
 /* End - OA#2669 */
