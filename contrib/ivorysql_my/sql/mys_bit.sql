@@ -3,11 +3,13 @@ SET mysql.use_mysql_bit_literal TO on;
 
 create table t (c bit);
 \d t;
+desc t;
 drop table t;
 create table t (c bit(0));
 create table t (c bit(65));
 create table t (c bit(32));
 \d t;
+desc t;
 
 insert into t values(1234);
 insert into t values('abcd');

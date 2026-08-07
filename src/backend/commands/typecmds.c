@@ -1171,14 +1171,19 @@ DefineEnum(CreateEnumStmt *stmt)
 	Oid			enumArrayOid;
 	ObjectAddress enumTypeAddr;
 	Oid			objectOwner = GetUserId();	/* ReqID:SRS-SQL-SCHEMA */
+	Oid			enumCollation = InvalidOid;
 
 	/* Convert list of names to a name and namespace */
 	enumNamespace = QualifiedNameGetCreationNamespace(stmt->typeName,
 													  &enumName);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (compatible_mode == MYS_MODE)
+	if (compatible_mode == MYS_MODE) {
 		enumName = mysql_string_case_hook(enumName);
+		/* Begin - OA#2670: Add support for sorting rules to enumeration types */
+		enumCollation = DEFAULT_COLLATION_OID;
+		/* End - OA#2670 */
+	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 
 	/* Check we have creation rights in target namespace */
@@ -1240,7 +1245,7 @@ DefineEnum(CreateEnumStmt *stmt)
 				   -1,			/* typMod (Domains only) */
 				   0,			/* Array dimensions of typbasetype */
 				   false,		/* Type NOT NULL */
-				   InvalidOid); /* type's collation */
+				   enumCollation); /* type's collation */
 
 	/* Enter the enum's values into pg_enum */
 	EnumValuesCreate(enumTypeAddr.objectId, stmt->vals);

@@ -4736,7 +4736,7 @@ insert into region_orders (order_id, user_id, order_amount, regioncol) VALUES
  order_amount | numeric(10,2)                          |           | not null | 
  order_time   | timestamp                              |           |          | "current_timestamp"()
  regioncol    | region_orders_regioncol_anonymous_enum |           | not null | 
-Partition key: LIST (regioncol)
+Partition key: LIST (regioncol COLLATE "default")
 Number of partitions: 7 (Use \d+ to list them.)
 
 \d region_orders_北京
@@ -4826,7 +4826,7 @@ ERROR:  child table "region_orders_北京" has different type for column "region
  order_amount | numeric(10,2)                          |           | not null | 
  order_time   | timestamp                              |           |          | "current_timestamp"()
  regioncol    | region_orders_regioncol_anonymous_enum |           | not null | 
-Partition key: LIST (regioncol)
+Partition key: LIST (regioncol COLLATE "default")
 Number of partitions: 0
 
 \d region_orders_北京
@@ -4972,3 +4972,21 @@ select objname,option from pg_object where objname like '%t_enum_like%';
 ---------+--------
 (0 rows)
 
+create table enum_collation_test
+(
+    node_state enum('existence', 'inexistence') collate utf8mb3_general_ci
+);
+desc enum_collation_test;
+   Field    |               Type               | Null | Key | Default | Extra 
+------------+----------------------------------+------+-----+---------+-------
+ node_state | enum('existence', 'inexistence') | YES  |     |         | 
+(1 row)
+
+insert into enum_collation_test values ('existence');
+select * from enum_collation_test where node_state = 'EXISTENCE';
+ node_state 
+------------
+ existence
+(1 row)
+
+drop table enum_collation_test;

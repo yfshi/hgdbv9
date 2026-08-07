@@ -6,6 +6,12 @@ create table t (c bit);
 --------+-----------+-----------+----------+---------
  c      | mysbit(1) |           |          | 
 
+desc t;
+ Field |  Type  | Null | Key | Default | Extra 
+-------+--------+------+-----+---------+-------
+ c     | bit(1) | YES  |     |         | 
+(1 row)
+
 drop table t;
 create table t (c bit(0));
 ERROR:  length for type bit must be at least 1
@@ -21,6 +27,12 @@ create table t (c bit(32));
  Column |    Type    | Collation | Nullable | Default 
 --------+------------+-----------+----------+---------
  c      | mysbit(32) |           |          | 
+
+desc t;
+ Field |  Type   | Null | Key | Default | Extra 
+-------+---------+------+-----+---------+-------
+ c     | bit(32) | YES  |     |         | 
+(1 row)
 
 insert into t values(1234);
 insert into t values('abcd');
