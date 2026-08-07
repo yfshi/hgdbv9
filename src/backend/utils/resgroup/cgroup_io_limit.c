@@ -407,7 +407,7 @@ get_iostat(Oid groupid, List *io_limit)
 	ctl.hcxt = CurrentMemoryContext;
 	io_stat_hash =
 		hash_create("hash table for bdi -> io stat", list_length(io_limit), &ctl,
-					HASH_ELEM | HASH_CONTEXT);
+					HASH_ELEM | HASH_CONTEXT | HASH_BLOBS); /* Bug:oa-2686 */
 
 	while (pg_get_line_append(f, line))
 	{
