@@ -71,7 +71,7 @@ extern void AtEOXact_Enum(void);
 extern int  compare_two_enum_value(Oid oid1, Oid oid2);
 extern int  enum_cmp_internal(Oid arg1, Oid arg2, FunctionCallInfo fcinfo);
 extern Oid  get_enum_oid(Oid enumtypid, int enumsortorder);
-extern Oid  get_enum_oid_by_label(Oid enumtypid, const char *enumlabel);
+extern Oid  get_enum_oid_by_label(Oid enumtypid, const char *enumlabel, Oid collation);
 extern Oid  get_enum_enumtypid(Oid oid);
 extern bool enum_is_equal(Oid enumOid1, Oid enumOid2);
 extern char *get_enum_label(Oid oid);

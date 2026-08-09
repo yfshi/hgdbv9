@@ -4418,6 +4418,7 @@ _copyCreateEnumStmt(const CreateEnumStmt *from)
 	COPY_NODE_FIELD(typeName);
 	COPY_NODE_FIELD(vals);
 	COPY_SCALAR_FIELD(anonymous_enum);
+	COPY_SCALAR_FIELD(collation);			/* Bug #8862 */
 
 	return newnode;
 }

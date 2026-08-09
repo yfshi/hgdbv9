@@ -1639,7 +1639,7 @@ CreateEnumTypeForFunction(List *parameters, Oid namespaceId, char *funcName, boo
 
 			strVal(llast(t->names)) = ChooseTypeName(funcName, "proc", "anonymous_enum", namespaceId, false);
 			
-			DefineAnonymousEnum(t);
+			DefineAnonymousEnum(t, InvalidOid);
 
 			parameters_have_enum = true;
 		}

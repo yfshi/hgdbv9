@@ -32,6 +32,7 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "utils/varlena.h"
 
 static Oid	enum_endpoint(Oid enumtypoid, ScanDirection direction);
 static ArrayType *enum_range_internal(Oid enumtypoid, Oid lower, Oid upper);
@@ -194,7 +195,7 @@ get_enum_oid(Oid enumtypid, int enumsortorder)
 
 /* get enum oid by enumtypid and enumlabel */
 Oid
-get_enum_oid_by_label(Oid enumtypid, const char *enumlabel)
+get_enum_oid_by_label(Oid enumtypid, const char *enumlabel, Oid collation)
 {
 	Relation 	enum_rel;
 	ScanKeyData skey;
@@ -218,7 +219,8 @@ get_enum_oid_by_label(Oid enumtypid, const char *enumlabel)
 		Form_pg_enum en = (Form_pg_enum) GETSTRUCT(maptup);
 
 		/* If this is the target superclass, we're done */
-		if (strcmp(en->enumlabel.data, enumlabel) == 0)
+		if (varstr_cmp(en->enumlabel.data, strlen(en->enumlabel.data),
+					   enumlabel, strlen(enumlabel), collation) == 0)
 		{
 			Oid		resultoid = en->oid;
 			systable_endscan(scan);
@@ -431,6 +433,24 @@ enum_in(PG_FUNCTION_ARGS)
 		tup = SearchSysCache2(ENUMTYPOIDNAME,
 							  ObjectIdGetDatum(enumtypoid),
 							  CStringGetDatum(trimname));
+
+		/* Begin Bug#8862:
+		 *
+		 * The syscache lookup above uses the exact enum label.  If it
+		 * does not match, look up the label using the enum type's
+		 * collation instead.  Fetch the pg_enum tuple again after finding
+		 * its OID so that the original enum_in() safety-check path below
+		 * is preserved.
+		 */
+		if (!HeapTupleIsValid(tup))
+		{
+			result = get_enum_oid_by_label(enumtypoid, trimname,
+										   get_typcollation(enumtypoid));
+
+			if (InvalidOid != result)
+				tup = SearchSysCache1(ENUMOID, ObjectIdGetDatum(result));
+		}
+		/*End Bug#8862*/
 
 		if (!HeapTupleIsValid(tup))
 		{

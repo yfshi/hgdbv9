@@ -1525,5 +1525,19 @@ create table enum_collation_test
 );
 desc enum_collation_test;
 insert into enum_collation_test values ('existence');
+insert into enum_collation_test values ('EXISTENCE');
 select * from enum_collation_test where node_state = 'EXISTENCE';
+-- Should Empty Set
+select * from enum_collation_test where node_state like 'E%';
+
+-- should failed
+set sql_mode to default;
+create table enum_collation_test2(node enum('a', 'A') collate utf8mb3_general_ci);
+set sql_mode = '';
+-- shouled success
+create table enum_collation_test2(node enum('a', 'A') collate utf8mb3_general_ci);
+
+-- reset
+set sql_mode to default;
 drop table enum_collation_test;
+drop table enum_collation_test2;
