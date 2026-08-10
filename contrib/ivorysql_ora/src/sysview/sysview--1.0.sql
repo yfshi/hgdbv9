@@ -3158,6 +3158,11 @@ CREATE OR REPLACE VIEW SYS.TAB_COLS_INTERNAL AS
         CASE UPPER(t.typname)
             WHEN 'LONG_RAW'::TEXT THEN 'LONG RAW'
             WHEN 'FLOAT8'::TEXT THEN 'FLOAT'
+            WHEN 'ORAVARCHARCHAR'::TEXT THEN 'VARCHAR2'
+            WHEN 'ORAVARCHARBYTE'::TEXT THEN 'VARCHAR2'
+            WHEN 'ORACHARBYTE'::TEXT THEN 'CHAR'
+            WHEN 'ORACHARCHAR'::TEXT THEN 'CHAR'
+            WHEN 'RAW'::TEXT THEN 'RAW'
             ELSE UPPER(FORMAT_TYPE(a.atttypid, a.atttypmod))
         END::VARCHAR2(128) AS data_type,
         /* End - OA#2669 */
