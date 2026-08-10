@@ -1,6 +1,6 @@
 # hg_integrity_check extension
 comment = 'hg_integrity_check -- wal file integrity check'
-default_version = '1.0'
+default_version = '1.1'
 module_pathname = '$libdir/hg_integrity_check'
 relocatable = true
 trusted = true
