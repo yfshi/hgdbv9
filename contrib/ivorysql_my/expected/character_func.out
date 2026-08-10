@@ -2796,71 +2796,71 @@ ORDER BY
 		ELSE 10
 	END,
 	ORDINAL_POSITION;
-        test_case         | DATA_TYPE | COLUMN_TYPE | CHARACTER_MAXIMUM_LENGTH | NUMERIC_PRECISION | NUMERIC_SCALE | IS_NULLABLE | CHARACTER_SET_NAME | COLLATION_NAME 
---------------------------+-----------+-------------+--------------------------+-------------------+---------------+-------------+--------------------+----------------
- int_to_string            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_int            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- int_to_float             | decimal   | decimal     |                          |                   |               | YES         | UTF8               | 
- float_to_int             | decimal   | decimal     |                          |                   |               | YES         | UTF8               | 
- bigint_to_string         | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_bigint         | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- int_to_date              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- date_to_int              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- int_to_string_false      | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_int_false      | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- date_to_int_false        | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- bool_to_int              | int       | int         |                          | 32                | 0             | YES         | UTF8               | 
- int_to_bool              | int       | int         |                          | 32                | 0             | YES         | UTF8               | 
- null_to_int              | int       | int         |                          | 32                | 0             | YES         | UTF8               | 
- int_to_null              | int       | int         |                          | 32                | 0             | YES         | UTF8               | 
- datetime_to_int          | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- int_to_datetime          | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- time_to_int              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- int_to_time              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- binary_to_int            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- int_to_binary            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- concat_to_int            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- empty_string_to_int      | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_zero_to_int       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- very_large_int_to_string | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- float_to_string          | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_float          | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- float_to_date            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- date_to_float            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- float_to_string_false    | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- null_to_float            | decimal   | decimal     |                          |                   |               | YES         | UTF8               | 
- float_to_null            | decimal   | decimal     |                          |                   |               | YES         | UTF8               | 
- decimal_to_string        | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_date           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- date_to_string           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_datetime       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- datetime_to_string       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- bool_to_string_false     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- bool_to_string           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_bool           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- null_to_string           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_null           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- time_to_string           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_time           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- binary_to_string         | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- string_to_binary         | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- hex_to_string            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- string_to_hex            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- bit_to_string            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- string_to_bit            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- scientific_to_string     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_scientific     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- expression_to_string     | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- function_to_string       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- zero_to_string           | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- negative_to_string       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- spatial_to_string        | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- string_to_spatial        | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
- date_to_datetime         | datetime  | datetime    |                          |                   |               | YES         | UTF8               | 
- datetime_to_date         | datetime  | datetime    |                          |                   |               | YES         | UTF8               | 
- null_to_bool             | tinyint   | tinyint     |                          |                   |               | YES         | UTF8               | 
- bool_to_null             | tinyint   | tinyint     |                          |                   |               | YES         | UTF8               | 
- null_default             | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
+        test_case         | DATA_TYPE  | COLUMN_TYPE | CHARACTER_MAXIMUM_LENGTH | NUMERIC_PRECISION | NUMERIC_SCALE | IS_NULLABLE | CHARACTER_SET_NAME | COLLATION_NAME 
+--------------------------+------------+-------------+--------------------------+-------------------+---------------+-------------+--------------------+----------------
+ int_to_string            | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_int            | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ int_to_float             | decimal    | decimal     |                          |                   |               | YES         | UTF8               | 
+ float_to_int             | decimal    | decimal     |                          |                   |               | YES         | UTF8               | 
+ bigint_to_string         | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_bigint         | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ int_to_date              | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ date_to_int              | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ int_to_string_false      | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_int_false      | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ date_to_int_false        | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ bool_to_int              | int(11)    | int(11)     |                          | 32                | 0             | YES         | UTF8               | 
+ int_to_bool              | int(11)    | int(11)     |                          | 32                | 0             | YES         | UTF8               | 
+ null_to_int              | int(11)    | int(11)     |                          | 32                | 0             | YES         | UTF8               | 
+ int_to_null              | int(11)    | int(11)     |                          | 32                | 0             | YES         | UTF8               | 
+ datetime_to_int          | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ int_to_datetime          | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ time_to_int              | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ int_to_time              | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ binary_to_int            | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ int_to_binary            | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ concat_to_int            | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ empty_string_to_int      | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_zero_to_int       | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ very_large_int_to_string | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ float_to_string          | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_float          | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ float_to_date            | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ date_to_float            | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ float_to_string_false    | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ null_to_float            | decimal    | decimal     |                          |                   |               | YES         | UTF8               | 
+ float_to_null            | decimal    | decimal     |                          |                   |               | YES         | UTF8               | 
+ decimal_to_string        | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_date           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ date_to_string           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_datetime       | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ datetime_to_string       | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ bool_to_string_false     | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ bool_to_string           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_bool           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ null_to_string           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_null           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ time_to_string           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_time           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ binary_to_string         | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ string_to_binary         | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ hex_to_string            | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ string_to_hex            | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ bit_to_string            | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ string_to_bit            | varbinary  | varbinary   |                          |                   |               | YES         | UTF8               | 
+ scientific_to_string     | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_scientific     | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ expression_to_string     | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ function_to_string       | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ zero_to_string           | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ negative_to_string       | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ spatial_to_string        | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ string_to_spatial        | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
+ date_to_datetime         | datetime   | datetime    |                          |                   |               | YES         | UTF8               | 
+ datetime_to_date         | datetime   | datetime    |                          |                   |               | YES         | UTF8               | 
+ null_to_bool             | tinyint(4) | tinyint(4)  |                          |                   |               | YES         | UTF8               | 
+ bool_to_null             | tinyint(4) | tinyint(4)  |                          |                   |               | YES         | UTF8               | 
+ null_default             | varchar    | varchar     |                          |                   |               | YES         | UTF8               | 
 (63 rows)
 
 set mysql.enable_mysql_information_schema TO off;
@@ -4106,9 +4106,9 @@ select truncate(-6666, -2.7);
 
 create table tb1 as select truncate(9223372036854775807, 3);
 desc tb1;
-  Field   |  Type  | Null | Key | Default | Extra 
-----------+--------+------+-----+---------+-------
- truncate | bigint | YES  |     |         | 
+  Field   |    Type    | Null | Key | Default | Extra 
+----------+------------+------+-----+---------+-------
+ truncate | bigint(20) | YES  |     |         | 
 (1 row)
 
 select * from tb1;

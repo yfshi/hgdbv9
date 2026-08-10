@@ -359,7 +359,7 @@ typedef enum BackendType
 	B_LOGGER,
 } BackendType;
 
-extern BackendType MyBackendType;
+extern PGDLLIMPORT BackendType MyBackendType;
 
 #define AmRegularBackendProcess()	(MyBackendType == B_BACKEND)
 
