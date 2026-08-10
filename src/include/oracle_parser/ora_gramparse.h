@@ -123,7 +123,11 @@ extern int	ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp,
 extern void set_oracle_plsql_body(ora_core_yyscan_t yyscanner, OraBodyStyle body_style);
 extern void set_oracle_plsql_bodystart(ora_core_yyscan_t yyscanner, int body_start, int body_level);
 /* End - ReqID:SRS-SQL-PROC */
-
+/* Begin - Reqid:SRS-WRAP-PLPGSQL*/
+extern bool prepare_oracle_wrapped_plsql_body(ora_core_yyscan_t yyscanner,
+											  OraBodyStyle body_style,
+											  int wrapped_end);
+/* End - Reqid:SRS-WRAP-PLPGSQL*/
 /* from ora_gram.y */
 extern void ora_parser_init(ora_base_yy_extra_type *yyext);
 extern int	ora_base_yyparse(ora_core_yyscan_t yyscanner);

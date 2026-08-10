@@ -5643,6 +5643,8 @@ _copyCreatePackageStmt(const CreatePackageStmt *from)
 	COPY_NODE_FIELD(propers);
 	COPY_SCALAR_FIELD(editable);
 	COPY_STRING_FIELD(pkgsrc);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	COPY_SCALAR_FIELD(wrap_source);
 
 	return newnode;
 }
@@ -5656,6 +5658,8 @@ _copyCreatePackageBodyStmt(const CreatePackageBodyStmt *from)
 	COPY_NODE_FIELD(pkgname);
 	COPY_SCALAR_FIELD(editable);
 	COPY_STRING_FIELD(bodysrc);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	COPY_SCALAR_FIELD(wrap_source);
 
 	return newnode;
 }

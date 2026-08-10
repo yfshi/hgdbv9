@@ -309,6 +309,13 @@ extern PGDLLIMPORT int  database_mode;	/* SRS-MISC-COMPATDM-SQL */
 extern PGDLLIMPORT int  compatible_mode;
 /* END - SQL PARSER */
 
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN */
+#define ORACLE_WRAP_AES		0
+#define ORACLE_WRAP_SM4		1
+
+extern PGDLLIMPORT int	oracle_wrap_algorithm;
+/* End - Reqid:SRS-PLPGSQL-HIDDEN */
+
 /* BEGIN - ReqID:SRS-MISC-USER */
 extern PGDLLIMPORT int  dumppgtype;
 /* END - ReqID:SRS-MISC-USER */

@@ -32,6 +32,7 @@ SUBDIRS = \
 	pg_waldump \
 	pgbench \
 	psql \
+	wrap \
 	scripts
 
 # Begin - ReqID:SRS-SECURITY-IDENTITYAUTH

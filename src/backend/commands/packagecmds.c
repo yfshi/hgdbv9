@@ -45,6 +45,7 @@
 #include "utils/lsyscache.h"
 #include "utils/inval.h"
 #include "utils/guc.h"
+#include "utils/plsqlwrap.h" /* Reqid:SRS-PLPGSQL-HIDDEN*/
 #include "utils/packagecache.h"
 #include "utils/catcache.h"
 #include "commands/packagecmds.h"
@@ -576,6 +577,7 @@ ObjectAddress
 CreatePackage(CreatePackageStmt *stmt)
 {
 	char	   *pkgname;
+	char	   *pkgsrc; /* Reqid:SRS-PLPGSQL-HIDDEN*/
 	Oid			namespaceId;
 	AclResult	aclresult;
 	HeapTuple	languageTuple;
@@ -669,12 +671,13 @@ CreatePackage(CreatePackageStmt *stmt)
 
 	/* handle package proper */
 	handle_package_proper(stmt->propers, &define_invok, &access_source, &use_collation);
+	pkgsrc = stmt->wrap_source ? ivy_plsql_wrap_source(stmt->pkgsrc) : stmt->pkgsrc; /* Reqid:SRS-PLPGSQL-HIDDEN*/
 
 	return
 		 CreatePackage_internal(pkgname,
 								namespaceId,
 								ownerId,
-								stmt->pkgsrc,
+								pkgsrc,
 								stmt->replace,
 								define_invok,
 								editable, /* BUG#Z206 Z208 */
@@ -689,6 +692,7 @@ ObjectAddress
 CreatePackageBody(CreatePackageBodyStmt *stmt)
 {
 	char	   *pkgname;
+	char	   *bodysrc; /* Reqid:SRS-PLPGSQL-HIDDEN*/
 	Oid			namespaceId;
 	AclResult	aclresult;
 
@@ -701,11 +705,12 @@ CreatePackageBody(CreatePackageBodyStmt *stmt)
 	if (aclresult != ACLCHECK_OK)
 		aclcheck_error(aclresult, OBJECT_SCHEMA,
 					get_namespace_name(namespaceId));
+	bodysrc = stmt->wrap_source ? ivy_plsql_wrap_source(stmt->bodysrc) : stmt->bodysrc; /* Reqid:SRS-PLPGSQL-HIDDEN*/
 
 	return
 		 CreatePackageBody_internal(pkgname,
 									namespaceId,
-									stmt->bodysrc,
+									bodysrc,
 									stmt->replace,
 									stmt->editable);
 

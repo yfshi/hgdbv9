@@ -44,6 +44,8 @@
 #include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+/* Reqid:SRS-PLPGSQL-HIDDEN*/
+#include "utils/plsqlwrap.h"
 #include "utils/regproc.h"
 #include "utils/rel.h"
 #include "utils/syscache.h"
@@ -411,7 +413,8 @@ do_compile(FunctionCallInfo fcinfo,
 								  Anum_pg_proc_prosrc, &isnull);
 	if (isnull)
 		elog(ERROR, "null prosrc");
-	proc_source = TextDatumGetCString(prosrcdatum);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	proc_source = ivy_plsql_unwrap_source(TextDatumGetCString(prosrcdatum));
 	plisql_scanner_init(proc_source);
 
 	plisql_error_funcname = pstrdup(NameStr(procStruct->proname));

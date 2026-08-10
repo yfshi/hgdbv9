@@ -1207,6 +1207,34 @@ void set_oracle_plsql_bodystart(ora_core_yyscan_t yyscanner, int body_start, int
 }
 /* End - ReqID:SRS-SQL-PROC */
 
+/* Begin - Reqid:SRS-WRAP-PLPGSQL*/
+/*
+ * Start WRAPPED source scanning after consuming an optional plaintext IS/AS
+ * token.  Other tokens are restored so encrypted payloads are captured from
+ * immediately after WRAPPED.
+ */
+bool
+prepare_oracle_wrapped_plsql_body(ora_core_yyscan_t yyscanner,
+								  OraBodyStyle body_style, int wrapped_end)
+{
+	TokenAuxData aux;
+	YYLTYPE		location;
+	int			token;
+
+	set_oracle_plsql_body(yyscanner, body_style);
+	token = internal_yylex(yyscanner, &location, &aux);
+	if (token == IS || token == AS)
+	{
+		set_oracle_plsql_bodystart(yyscanner, aux.lloc + aux.leng, 0);
+		return true;
+	}
+
+	push_back_token(yyscanner, token, &aux);
+	set_oracle_plsql_bodystart(yyscanner, wrapped_end, 0);
+	return false;
+}
+/* End - Reqid:SRS-WRAP-PLPGSQL*/
+
 /* convert hex digit (caller should have verified that) to value */
 static unsigned int
 hexval(unsigned char c)

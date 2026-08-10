@@ -90,6 +90,7 @@
 /* BEGIN - SQL PARSER */
 #include "utils/ora_compatible.h"
 /* END - SQL PARSER */
+#include "utils/plsqlwrap.h" /* Reqid:SRS-PLPGSQL-HIDDEN*/
 #include "utils/rel.h"
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
@@ -119,6 +120,17 @@
 /* Begin - ReqID: SRS-PLSQL-DBMS_UTILITY */
 static ObjectAddress invalidateFunctionInternal(Oid funcOid, ObjectType objType);
 /* End - ReqID: SRS-PLSQL-DBMS_UTILITY */
+
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+/*
+ *  Return true when source wrapping is supported by Oracle PL/iSQL.
+ */
+static bool
+function_wrap_language_allowed(Oid languageOid)
+{
+	return (ORA_MODE == compatible_mode) && (languageOid == LANG_PLISQL_OID);
+}
+/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 
 /*
  *	 Examine the RETURNS clause of the CREATE FUNCTION statement
@@ -1179,8 +1191,9 @@ compute_function_attributes(ParseState *pstate,
 							float4 *prorows,
 							Oid *prosupport,
 							char *parallel_p,
-							bool *intisnumber_p,/* BUG:M0000068 */
-						    int32 *expand_properties_p) /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+							bool *intisnumber_p, /* BUG:M0000068 */
+							int32 *expand_properties_p, /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+							bool *wrap_source_p) /* Reqid:SRS-PLPGSQL-HIDDEN*/
 {
 	ListCell   *option;
 	DefElem    *as_item = NULL;
@@ -1196,6 +1209,7 @@ compute_function_attributes(ParseState *pstate,
 	DefElem    *rows_item = NULL;
 	DefElem    *support_item = NULL;
 	DefElem    *parallel_item = NULL;
+	DefElem    *wrap_source_item = NULL; /* Reqid:SRS-PLPGSQL-HIDDEN*/
 	/* Begin - ReqID:SRS-SQL-PROC */
 	DefElem    *accessible_item = NULL;
 	DefElem    *default_collation_item = NULL;
@@ -1308,6 +1322,27 @@ compute_function_attributes(ParseState *pstate,
 			result_cache_item = defel;
 		}
 		/* End - ReqID:SRS-SQL-PROC */
+		/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+		else if (strcmp(defel->defname, "wrap_source") == 0)
+		{
+			/* Oracle WRAPPED input carries its payload in this option. */
+			if (wrap_source_item)
+				ereport(ERROR,
+						(errcode(ERRCODE_SYNTAX_ERROR),
+						 errmsg("conflicting or redundant options"),
+						 parser_errposition(pstate, defel->location)));
+			if (defel->arg != NULL)
+			{
+				if (as_item)
+					ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("conflicting or redundant options"),
+							 parser_errposition(pstate, defel->location)));
+				as_item = defel;
+			}
+			wrap_source_item = defel;
+		}
+		/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 		/* Begin - ReqID:SRS-MYSQL-PROC */
 		else if (MYS_MODE == compatible_mode && strcmp(defel->defname, "owner") == 0)
 		{
@@ -1400,6 +1435,10 @@ compute_function_attributes(ParseState *pstate,
 	if (expand_properties_item)
 		*expand_properties_p = intVal(expand_properties_item->arg);
 	/* End:SRS-MYSQL-CHARSET-INTRODUCER */
+
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	if (wrap_source_item)
+		*wrap_source_p = true;
 }
 
 
@@ -1793,6 +1832,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 				isStrict,
 				security,
 				isLeakProof,
+				wrap_source,	/* Reqid:SRS-PLPGSQL-HIDDEN*/
 				intisnumber;	/* BUG:M0000068 */
 	char		volatility;
 	ArrayType  *proconfig;
@@ -1853,6 +1893,7 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 	isStrict = false;
 	security = false;
 	isLeakProof = false;
+	wrap_source = false;	/* Reqid:SRS-PLPGSQL-HIDDEN*/
 	intisnumber = convert_plisql_int_to_number;		/* BUG:M0000068 */
 	volatility = PROVOLATILE_VOLATILE;
 	proconfig = NULL;
@@ -1874,8 +1915,9 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 								&isWindowFunc, &volatility,
 								&isStrict, &security, &isLeakProof,
 								&proconfig, &procost, &prorows,
-								&prosupport, &parallel, &intisnumber, /* BUG:M0000068 */
-								&expand_properties); 	 /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+								&prosupport, &parallel, &intisnumber /* BUG:M0000068 */,
+								&expand_properties, /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+								&wrap_source /* Reqid:SRS-PLPGSQL-HIDDEN*/);
 
 	if (!language)
 	{
@@ -2066,6 +2108,22 @@ CreateFunction(ParseState *pstate, CreateFunctionStmt *stmt)
 						parameterTypes_list, inParameterNames_list,
 						&prosrc_str, &probin_str, &prosqlbody,
 						pstate->p_sourcetext);
+
+	/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+	if (wrap_source)
+	{
+		if (!function_wrap_language_allowed(languageOid))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("source wrapping is only supported for Oracle PL/iSQL functions and procedures")));
+		if (prosqlbody != NULL)
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+					 errmsg("source wrapping is not supported with inline SQL function body")));
+
+		prosrc_str = ivy_plsql_wrap_source(prosrc_str);
+	}
+	/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 
 	/*
 	 * Set default values for COST and ROWS depending on other parameters;

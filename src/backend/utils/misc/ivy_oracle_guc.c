@@ -105,6 +105,11 @@ int		enable_ora_merge_tuning = OMERGE_TUNING_OFF;
 int	database_mode = DB_PG;
 int	compatible_mode = PG_MODE;
 /* END - SQL PARSER */
+
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN */
+int	oracle_wrap_algorithm = ORACLE_WRAP_AES;
+/* End - Reqid:SRS-PLPGSQL-HIDDEN */
+
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 bool		allow_out_parameter_const = false;
 bool		result_first = false;
@@ -291,6 +296,14 @@ static const struct config_enum_entry compatible_mode_options[] = {
 	{NULL, 0, false}
 /* END - SQL PARSER */
 };
+
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN */
+static const struct config_enum_entry oracle_wrap_options[] = {
+	{"aes", ORACLE_WRAP_AES, false},
+	{"sm4", ORACLE_WRAP_SM4, false},
+	{NULL, 0, false}
+};
+/* End - Reqid:SRS-PLPGSQL-HIDDEN */
 
 /* Begin - BUG#M0000201: support question marks as binding variables */
 /* where the application is coming from */
@@ -1534,6 +1547,18 @@ static struct config_enum Ivy_ConfigureNamesEnum[] =
 		check_compatible_mode, assign_compatible_mode, NULL
 	},
 	/* END - SQL PARSER */
+
+	/* Begin - Reqid:SRS-PLPGSQL-HIDDEN */
+	{
+		{"ivorysql.wrap_algo", PGC_SUSET, COMPAT_ORACLE_OPTIONS,
+			gettext_noop("Select the PL/SQL source wrapping cipher."),
+			gettext_noop("Valid values are aes and sm4. SM4 requires an OpenSSL/GmSSL build that provides SM4-CBC.")
+		},
+		&oracle_wrap_algorithm,
+		ORACLE_WRAP_AES, oracle_wrap_options,
+		NULL, NULL, NULL
+	},
+	/* End - Reqid:SRS-PLPGSQL-HIDDEN */
 
 	/* BEGIN - case sensitive indentify */
 	{
