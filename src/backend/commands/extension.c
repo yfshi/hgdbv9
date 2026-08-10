@@ -2090,6 +2090,66 @@ InsertExtensionTuple(const char *extName, Oid extOwner,
 	return myself;
 }
 
+#ifdef USE_LICENSE
+/*
+ * CheckExtensionDeletionAllowed
+ *   Reject DROP for extensions on the protection list.
+ *
+ * The check lives here, in the single choke point through which every
+ * extension deletion path flows (plain DROP EXTENSION, CASCADE, or a
+ * cascading drop of a containing schema), so no matter how the drop is
+ * triggered it cannot be bypasswd. The list is compilie-timie fixed.
+ */
+static void
+CheckExtensionDeletionAllowed(Oid extId)
+{
+	/*
+	 * Extensions on this list can never be dropped. Add the names of any
+	 * extensions that must be kept permanently (e.g. pg_object).
+	 */
+	static const char *const protected_extensions[] = {
+		"plpgsql",
+		"uuid-ossp",
+		"postgres_fdw",
+		"pgagent",
+		"pg_track_settings",
+		"sqlite_fdw",
+		/* Internal extensions */
+		"ivorysql_ora",
+		"ivorysql_my",
+		"pg_object",
+		"plisql",
+		"plmysql",
+		"hg_misc",
+		"gb18030_2022",
+		"ora_synonym",
+		"credcheck",
+		"hg_sysmac",
+		"hg_antitamper",
+		"hg_rolstatus",
+		"hg_integrity_check",
+		"restricted_dba",
+		"pg_audit",
+		NULL
+	};
+	const char *name = get_extension_name(extId);
+
+	if (name == NULL)
+		return;
+
+	for (int i = 0; protected_extensions[i] != NULL; i++)
+	{
+		if (strcmp(protected_extensions[i], name) == 0)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+					 errmsg("extension \"%s\" is protected and cannot be dropped",
+							name)));
+		}
+	}
+}
+#endif
+
 /*
  * Guts of extension deletion.
  *
@@ -2125,6 +2185,10 @@ RemoveExtensionById(Oid extId)
 	if (audit_drop_pg_audit_hook)
 		(*audit_drop_pg_audit_hook)(get_extension_name(extId));
 /* End - ReqID:SRS-SECURITY-AUDIT */
+
+#ifdef USE_LICENSE
+	CheckExtensionDeletionAllowed(extId);
+#endif
 
 	rel = table_open(ExtensionRelationId, RowExclusiveLock);
 
