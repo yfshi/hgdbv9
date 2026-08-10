@@ -1008,12 +1008,12 @@ Node *
 colNameToVar(ParseState *pstate, const char *colname, bool localonly,
 			 int location)
 {
-	return colNameToVarExt(pstate, colname, localonly, false, location);
+	return colNameToVarExt(pstate, colname, localonly, false, location, false);
 }
 
 Node *
 colNameToVarExt(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token, /* ReqID:SRS-SQL-OUTERJOIN(+) */
-				int location)
+				int location, bool ignore_ambiguous)
 {
 	Node	   *result = NULL;
 	int			sublevels_up = 0;
@@ -1087,6 +1087,35 @@ colNameToVarExt(ParseState *pstate, const char *colname, bool localonly, bool ha
 			if (compatible_mode == MYS_MODE && nsitem->p_rte->relkind == RELKIND_COMPOSITE_TYPE)
 				continue;
 			/* End - OA-2546 */
+
+			/* Begin - Bug#8878 */
+			if (compatible_mode == MYS_MODE && ignore_ambiguous)
+			{
+				int i;
+				int matches = 0;
+				int ncols = list_length(nsitem->p_names->colnames);
+
+				for (i = 0; i < ncols; i++)
+				{
+					ParseNamespaceColumn *nscol = &nsitem->p_nscolumns[i];
+					char *colname_item;
+
+					if (nscol->p_varno == 0)
+						continue;
+
+					colname_item = strVal(list_nth(nsitem->p_names->colnames, i));
+					if (pg_strcasecmp(colname_item, colname) == 0)
+						matches++;
+				}
+
+				if (matches == 0)
+					continue;
+
+				/* Ambiguous lookup means there is no unique FROM column. */
+				if (matches > 1 || result != NULL)
+					return NULL;
+			}
+			/* End - Bug#8878 */
 
 			/* use orig_pstate here for consistency with other callers */
 			newresult = scanNSItemForColumnExt(orig_pstate, nsitem, sublevels_up,

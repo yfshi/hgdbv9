@@ -112,12 +112,6 @@ static bool current_in_having_clause(ParseState *pstate);
 static Node *resolve_having_ref(ParseState *pstate, ColumnRef *cref);
 static Node *resolve_having_field(ParseState *pstate, ColumnRef *cref);
 
-static Node *search_targetList_and_groupList(ParseState *orig_pstate,
-											 ParseState *level_pstate,
-											 ColumnRef *cref,
-											 int location,
-											 int sublevels_up,
-											 bool second_parsing);
 /* End: Req:SRS-MYSQL-SQL-Select */
 static Node *transformWholeRowRef(ParseState *pstate,
 								  ParseNamespaceItem *nsitem,
@@ -1295,7 +1289,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 							((Var *) node)->location = cref->location;
 					}
 					else
-						node = colNameToVarExt(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+						node = colNameToVarExt(pstate, colname, false, cref->has_outer_join, cref->location, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 				/* Begin: Req:SRS-MYSQL-SQL-Select */
 				else if (compatible_mode == MYS_MODE)
@@ -1314,7 +1308,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 				/* End - BUG#M0000217 */
 				{
 					/* Try to identify as an unqualified column */
-					node = colNameToVarExt(pstate, colname, false, cref->has_outer_join, cref->location);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
+					node = colNameToVarExt(pstate, colname, false, cref->has_outer_join, cref->location, false);	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 				}
 
 				/* Begin - ReqID:SRS-SQL-HierarchicalQueries */
@@ -1488,7 +1482,7 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 								if (field_pstate->p_group_clauses)
 								{
 									if (can_find_targetList_and_groupList(field_pstate) &&
-										!search_targetList_and_groupList(pstate, field_pstate, cref, cref->location, levels_up, true))
+										!search_targetList_and_groupList(pstate, field_pstate, cref, cref->location, levels_up, true, NULL))
 									{
 										node = NULL;
 										crerr = CRERR_NO_COLUMN;
@@ -1950,13 +1944,14 @@ get_tablename_colname_from_var(ParseState *pstate, Var *var, char **colName, cha
 
 }
 
-static Node *
+Node *
 search_targetList_and_groupList(ParseState *orig_pstate,
 								ParseState *level_pstate,
 								ColumnRef *cref,
 								int location,
 								int sublevels_up,
-								bool second_parsing)
+								bool second_parsing,
+								TargetEntry **target_tle)
 {
 	/* Per-level rule: prefer targetList alias, then try GROUP BY found_name. */
 	Node *target_result = NULL;
@@ -2083,25 +2078,28 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 	}
 	/* End - BUG#M7840 M7839 */
 
-	foreach (lc, level_pstate->p_group_clauses)
+	if (orig_pstate->p_expr_kind != EXPR_KIND_GROUP_BY)
 	{
-		Node *gexpr = (Node *)lfirst(lc);
-		Node *group_expr;
+		foreach (lc, level_pstate->p_group_clauses)
+		{
+			Node *gexpr = (Node *)lfirst(lc);
+			Node *group_expr;
 
-		if (!IsA(gexpr, ColumnRef) ||
-			list_length(((ColumnRef *)gexpr)->fields) != 1)
-			continue;
+			if (!IsA(gexpr, ColumnRef) ||
+				list_length(((ColumnRef *)gexpr)->fields) != 1)
+				continue;
 
-		if (pg_strcasecmp(strVal(linitial(((ColumnRef *)gexpr)->fields)), found_name) != 0)
-			continue;
+			if (pg_strcasecmp(strVal(linitial(((ColumnRef *)gexpr)->fields)), found_name) != 0)
+				continue;
 
-		group_expr = colNameToVarExt(level_pstate, found_name, false, cref->has_outer_join, location);
-		if (group_expr == NULL)
-			continue;
-		IncrementVarSublevelsUp(group_expr, sublevels_up, 0);
+			group_expr = colNameToVarExt(level_pstate, found_name, false, cref->has_outer_join, location, true);
+			if (group_expr == NULL)
+				continue;
+			IncrementVarSublevelsUp(group_expr, sublevels_up, 0);
 
-		group_result = group_expr;
-		break;
+			group_result = group_expr;
+			break;
+		}
 	}
 
 	/*
@@ -2124,7 +2122,11 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 	}
 
 	if (target_result != NULL)
+	{
+		if (target_tle != NULL)
+			*target_tle = found;
 		return target_result;
+	}
 
 	return group_result;
 }
@@ -2165,7 +2167,7 @@ resolve_having_ref(ParseState *pstate, ColumnRef *cref)
 	name = strVal(llast(cref->fields));
 
 	result = search_targetList_and_groupList(pstate, pstate, cref,
-											 cref->location, 0, false);
+											 cref->location, 0, false, NULL);
 	if (result != NULL)
 		return result;
 
@@ -2185,7 +2187,7 @@ resolve_having_ref(ParseState *pstate, ColumnRef *cref)
 		{
 			result = search_targetList_and_groupList(pstate, level_pstate,
 													 cref, cref->location,
-													 sublevels_up, false);
+													 sublevels_up, false, NULL);
 			if (result != NULL)
 				return result;
 		}
@@ -2198,7 +2200,7 @@ resolve_having_ref(ParseState *pstate, ColumnRef *cref)
 			(!level_pstate->p_hasAggs &&
 			 level_pstate->p_group_clauses == NIL))
 		{
-			result = colNameToVarExt(level_pstate, name, true, cref->has_outer_join, cref->location);
+			result = colNameToVarExt(level_pstate, name, true, cref->has_outer_join, cref->location, false);
 			IncrementVarSublevelsUp(result, sublevels_up, 0);
 			if (result != NULL)
 				return result;
@@ -2237,7 +2239,7 @@ resolve_having_field(ParseState *pstate, ColumnRef *cref)
 		 */
 
 		char *matched_refname = NULL;
-		result = colNameToVarExt(level_pstate, name, true, cref->has_outer_join, cref->location);
+		result = colNameToVarExt(level_pstate, name, true, cref->has_outer_join, cref->location, false);
 		IncrementVarSublevelsUp(result, sublevels_up, 0);
 
 		if (result != NULL)
@@ -2264,7 +2266,7 @@ resolve_having_field(ParseState *pstate, ColumnRef *cref)
 		{
 			result = search_targetList_and_groupList(pstate, level_pstate,
 													 cref, cref->location,
-													 sublevels_up, false);
+													 sublevels_up, false, NULL);
 			if (result != NULL)
 				return result;
 		}
