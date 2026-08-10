@@ -868,8 +868,6 @@ create table ddd.t1(id int, name text);
 
 grant usage on schema ddd to user1;
 grant all privileges on all tables in schema ddd to user1;
-grant usage on schema hg_security to user1;
-grant all privileges on all tables in schema hg_security to user1;
 
 insert into ddd.t1 values(111, 'aaa');
 insert into ddd.t1 values(222, 'bbb');
@@ -1157,13 +1155,8 @@ create user antitamper_spuser with superuser password 'Hello@123';
 --------------------------------------------------------------------------
 grant usage on schema secure_schema to syssso;
 grant all privileges on all tables in schema secure_schema to syssso;
-grant usage on schema hg_security to syssso;
-grant all privileges on all tables in schema hg_security to syssso;
-
 grant usage on schema secure_schema to user11_sso;
 grant all privileges on all tables in schema secure_schema to user11_sso;
-grant usage on schema hg_security to user11_sso;
-grant all privileges on all tables in schema hg_security to user11_sso;
 
 grant usage on schema secure_schema to normal_user;
 grant all privileges on all tables in schema secure_schema to normal_user;

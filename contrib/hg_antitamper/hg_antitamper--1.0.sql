@@ -102,6 +102,9 @@ BEGIN
 END;
 $$;
 
+ALTER FUNCTION hg_security.check_antimper_access() owner to syssso_role;
+GRANT EXECUTE on FUNCTION hg_security.check_antimper_access() to public;
+
 CREATE POLICY antimper_select_policy ON hg_security.hg_global_antitamper FOR SELECT USING (true);
 CREATE POLICY antimper_insert_policy ON hg_security.hg_global_antitamper FOR INSERT WITH CHECK (hg_security.check_antimper_access());
 CREATE POLICY antimper_update_policy ON hg_security.hg_global_antitamper FOR UPDATE USING (hg_security.check_antimper_access());
@@ -224,6 +227,27 @@ AS 'MODULE_PATHNAME', 'insert_global_antitamper_internal'
 LANGUAGE C
 VOLATILE
 PARALLEL UNSAFE;
+
+ALTER FUNCTION hg_security.insert_global_antitamper_internal(
+	username       text,
+	dbname         text,
+	schema_oid     oid,
+	relation_oid   oid,
+	insert_hash    bigint,
+	delete_hash    bigint,
+	sql_command    text,
+	caller         text
+) owner to syssso_role;
+GRANT EXECUTE ON FUNCTION hg_security.insert_global_antitamper_internal(
+	username       text,
+	dbname         text,
+	schema_oid     oid,
+	relation_oid   oid,
+	insert_hash    bigint,
+	delete_hash    bigint,
+	sql_command    text,
+	caller         text
+) to PUBLIC;
 
 -- create trigger function
 CREATE OR REPLACE FUNCTION hg_security.set_generic_hash()
