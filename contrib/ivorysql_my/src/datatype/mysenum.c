@@ -3403,6 +3403,7 @@ anyenum_text_notlike(PG_FUNCTION_ARGS)
 											  CStringGetTextDatum(str1), 
 											  val2));
 
+	pfree(str1);
 	PG_RETURN_BOOL(result);
 }
 
@@ -3618,7 +3619,7 @@ enum_cmp_text(PG_FUNCTION_ARGS)
 
 	enumtypid = get_enum_enumtypid(a);
 
-	b = get_enum_oid_by_label(enumtypid, label);
+	b = get_enum_oid_by_label(enumtypid, label, PG_GET_COLLATION());
 
 	if (!OidIsValid(b))
 		return -1;

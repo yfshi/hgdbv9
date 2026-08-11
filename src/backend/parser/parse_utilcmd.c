@@ -85,6 +85,7 @@
 #include "utils/spccache.h" /* ReqID:SRS-SECURITY-TABLESPACE */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "utils/varlena.h"
 #include "mysql_parser/mys_case_sensitive.h"	/* ReqID:SRS-MYSQL-CASE */
 #include "catalog/pg_trigger.h"
 
@@ -137,6 +138,7 @@ typedef struct
 
 static void transformColumnDefinition(CreateStmtContext *cxt,
 									  ColumnDef *column);
+static void validate_mysql_enum_values(List *vals, Oid collid);
 static void transformTableConstraint(CreateStmtContext *cxt,
 									 Constraint *constraint);
 static void transformTableLikeClause(CreateStmtContext *cxt,
@@ -1126,6 +1128,48 @@ remove_auto_seq(CreateStmtContext *cxt)
 }
 /* End - ReqID:SRS-MYSQL-SQL-Alter */
 
+/*Begin Bug#8862*/
+static void
+validate_mysql_enum_values(List *vals, Oid collid)
+{
+	int			count = list_length(vals);
+	char	  **labels = palloc(sizeof(char *) * count);
+	char	  **trimlabels = palloc(sizeof(char *) * count);
+	ListCell   *lc;
+	int			p = 0;
+
+	foreach(lc, vals)
+	{
+		Datum		trimtxt;
+
+		labels[p] = strVal(lfirst(lc));
+		trimtxt = DirectFunctionCall1(rtrim1, CStringGetTextDatum(labels[p]));
+		trimlabels[p] = TextDatumGetCString(trimtxt);
+		p++;
+	}
+
+	for (int i = 0; i < count; i++)
+	{
+		for (int j = i + 1; j < count; j++)
+		{
+			if (varstr_cmp(trimlabels[i], strlen(trimlabels[i]),
+						   trimlabels[j], strlen(trimlabels[j]), collid) == 0)
+				ereport(is_strict_mode() ? ERROR : WARNING,
+						(errcode(ERRCODE_DUPLICATE_OBJECT),
+						 errmsg("Column has duplicated value '%s' in ENUM", labels[j])));
+		}
+	}
+
+	for (int k = 0; k < count; k++)
+		pfree(trimlabels[k]);
+
+	pfree(trimlabels);
+	pfree(labels);
+
+	return;
+}
+/*End Bug#8862*/
+
 /*
  * transformColumnDefinition -
  *		transform a single ColumnDef within CREATE TABLE
@@ -1231,6 +1275,7 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		typename_is_enum(column->typeName))
 	{
 		Oid 		enumnspoid;
+		Oid			colColl = DEFAULT_COLLATION_OID;
 		char 		*enumTypeName = NULL;
 		char 		*enumnspstr = NULL;
 
@@ -1250,7 +1295,19 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 		column->typeName->names = lcons(makeString(enumnspstr), column->typeName->names);
 		strVal(llast(column->typeName->names)) = enumTypeName;
 
-		DefineAnonymousEnum(column->typeName);
+		/* Begin Bug#8862:
+		 *	In Mysql, should ensure that the label remains unique under different collations.
+		 */
+		if (column->collClause)
+		{
+			colColl = LookupCollation(cxt->pstate,
+									  column->collClause->collname,
+									  column->collClause->location);
+		}
+		validate_mysql_enum_values(column->typeName->typmods, colColl);
+
+		DefineAnonymousEnum(column->typeName, colColl);
+		/*End Bug#8862*/
 
 		is_enum_col = true;
 	}

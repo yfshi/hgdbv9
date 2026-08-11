@@ -1178,11 +1178,15 @@ DefineEnum(CreateEnumStmt *stmt)
 													  &enumName);
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
-	if (compatible_mode == MYS_MODE) {
+	if (compatible_mode == MYS_MODE)
+	{
 		enumName = mysql_string_case_hook(enumName);
-		/* Begin - OA#2670: Add support for sorting rules to enumeration types */
-		enumCollation = DEFAULT_COLLATION_OID;
-		/* End - OA#2670 */
+
+		/* Begin Bug#8862 */
+		enumCollation = stmt->collation;
+		if (!OidIsValid(enumCollation))
+			enumCollation = DEFAULT_COLLATION_OID;
+		/* End Bug#8862 */
 	}
 	/* End - ReqID:SRS-MYSQL-CASE */
 
@@ -4816,7 +4820,7 @@ CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char *relname, char *colna
 	typname->names = lcons(makeString(enumnspstr), typname->names);
 	strVal(llast(typname->names)) = enumTypeName;
 
-	DefineAnonymousEnum(typname);
+	DefineAnonymousEnum(typname, attTup->attcollation);
 
 	/* CommandCounterIncrement here to ensure that preceding changes are all
 	 * visible to the type checking step.
@@ -4829,7 +4833,7 @@ CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char *relname, char *colna
  *		Registers a new anoymous enum without an array type, using the given name.
  */
 Oid
-DefineAnonymousEnum(TypeName *typname)
+DefineAnonymousEnum(TypeName *typname, Oid collation)
 {
 	CreateEnumStmt *stmt;
 	ObjectAddress address;
@@ -4838,6 +4842,7 @@ DefineAnonymousEnum(TypeName *typname)
 	stmt->typeName = typname->names;
 	stmt->vals = typname->typmods;
 	stmt->anonymous_enum = true;
+	stmt->collation = collation;	/* Begin Bug#8862 */
 
 	address = DefineEnum(stmt);
 
