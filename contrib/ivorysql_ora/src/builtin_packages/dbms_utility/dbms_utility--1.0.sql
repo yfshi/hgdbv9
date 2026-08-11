@@ -1291,7 +1291,7 @@ CREATE OR REPLACE PACKAGE BODY SYS.DBMS_UTILITY IS
         END IF;
 
         IF platform_part LIKE '%x86_64%' OR platform_part LIKE '%amd64%' THEN v_arch := 'x86_64';
-        ELSIF platform_part LIKE '%arrch64%' OR platform_part LIKE '%arm64%' THEN v_arch := 'arrch64';
+        ELSIF platform_part LIKE '%aarch64%' OR platform_part LIKE '%arm64%' THEN v_arch := 'aarch64';
         ELSIF platform_part LIKE '%i686%' OR platform_part LIKE '%i386%' THEN v_arch := 'x86';
         ELSIF platform_part LIKE '%ppc64%' THEN v_arch := 'ppc';
         ELSIF platform_part LIKE '%s390x%' THEN v_arch := 's390x';
