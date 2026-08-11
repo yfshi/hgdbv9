@@ -90,6 +90,7 @@ Tables_in_public:VARCHAR:test_4
 Tables_in_public:VARCHAR:t_load
 Tables_in_public:VARCHAR:t_select_into
 Tables_in_public:VARCHAR:test_multi_queries
+Tables_in_public:VARCHAR:test_binary_temporal
 Tables_in_public:VARCHAR:t4
 Tables_in_public:VARCHAR:t3
 Database:VARCHAR:public
@@ -615,6 +616,16 @@ comment-with-query result = 1
 comment-only returned; hasResultSet = false
 comment-only updateCount = 0
 -- End : Bug#8745
+-- Begin : OA-2688
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcFetchBinaryTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+DATE text=2026-04-29 binary=2026-04-29
+TIME text=12:34:56 binary=12:34:56
+TIME(6) text=12:34:56.123456 binary=12:34:56.123456
+DATETIME text=2026-04-29 04:05:54 binary=2026-04-29 04:05:54
+DATETIME(6) text=2026-04-29 04:05:54.123456 binary=2026-04-29 04:05:54.123456
+TIMESTAMP text=2026-04-29 04:05:54 binary=2026-04-29 04:05:54
+TIMESTAMP(6) text=2026-04-29 04:05:54.123456 binary=2026-04-29 04:05:54.123456
+-- End : OA-2688
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

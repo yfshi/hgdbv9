@@ -306,6 +306,121 @@ send_textproto(TupleTableSlot *slot, DR_printtup *myState, int natts, StringInfo
 }
 
 static void
+mysdate2tm(DateADT date, struct pg_tm *tm)
+{
+    tm->tm_year = date / 10000;
+    tm->tm_mon = (date % 10000) / 100;
+    tm->tm_mday = date % 100;
+}
+
+static void
+mystime2tm(TimeADT time, struct pg_tm *tm, bool *neg)
+{
+    if (time < 0)
+    {
+        time *= -1;
+        *neg = true;
+    }
+    else
+    {
+        *neg = false;
+    }
+
+    tm->tm_hour = time / 10000;
+    tm->tm_min = (time % 10000) / 100;
+    tm->tm_sec = time % 100;
+}
+
+static void
+mystimes2tm(Numeric val, struct pg_tm *tm, fsec_t *fsec, bool *neg)
+{
+    lldiv_t lld;
+
+    numeric_to_lldiv_t(val, &lld);
+
+    if (lld.quot < 0)
+    {
+        lld.quot *= -1;
+        *neg = true;
+    }
+    else
+    {
+        *neg = false;
+    }
+
+    tm->tm_hour = lld.quot / 10000;
+    tm->tm_min = (lld.quot % 10000) / 100;
+    tm->tm_sec = lld.quot % 100;
+
+    *fsec = lld.rem / 1000;
+}
+
+static void
+mysdatetime2tm(TimeADT datetime, struct pg_tm *tm)
+{
+    bool    neg;
+    DateADT date = datetime / 1000000;
+    TimeADT time = datetime % 1000000;
+
+    mysdate2tm(date, tm);
+    mystime2tm(time, tm, &neg);
+}
+
+static void
+mysdatetimes2tm(Numeric val, struct pg_tm *tm, fsec_t *fsec)
+{
+    TimeADT datetime;
+    DateADT date;
+    TimeADT time;
+    lldiv_t lld;
+    bool    neg;
+
+    numeric_to_lldiv_t(val, &lld);
+
+    datetime = lld.quot;
+    date = datetime / 1000000;
+    time = datetime % 1000000;
+
+    mysdate2tm(date, tm);
+    mystime2tm(time, tm, &neg);
+
+    *fsec = lld.rem / 1000;
+}
+
+static void
+mystimestamp2tm(TimeADT timestamp, struct pg_tm *tm)
+{
+    DateADT date = timestamp / 1000000;
+    TimeADT time = timestamp % 1000000;
+    bool    neg;
+
+    mysdate2tm(date, tm);
+    mystime2tm(time, tm, &neg);
+}
+
+static void
+mystimestamps2tm(Numeric val, struct pg_tm *tm, fsec_t *fsec)
+{
+    TimeADT timestamp;
+    DateADT date;
+    TimeADT time;
+    lldiv_t lld;
+    bool    neg;
+
+    numeric_to_lldiv_t(val, &lld);
+
+    timestamp = lld.quot;
+
+    date = timestamp / 1000000;
+    time = timestamp % 1000000;
+
+    mysdate2tm(date, tm);
+    mystime2tm(time, tm, &neg);
+
+    *fsec = lld.rem / 1000;
+}
+
+static void
 append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, PrinttupAttrInfo *thisState)
 {
     switch (item->mysql_type_id)
@@ -450,22 +565,30 @@ append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, Pr
             {
                 struct pg_tm tt, *tm = &tt;
                 DateADT date = DatumGetDateADT(binval);
-                j2date(date + POSTGRES_EPOCH_JDATE, &(tm->tm_year), &(tm->tm_mon), &(tm->tm_mday));
+
+                mysdate2tm(date, tm);
+
                 mq_append_int1(buf, 0x04);
                 mq_append_int2(buf, tm->tm_year);
                 mq_append_int1(buf, tm->tm_mon);
+                mq_append_int1(buf, tm->tm_mday);
                 
                 break;
             }
         case MYSQL_TYPE_TIMESTAMP:
             {
-                int tz;
-                fsec_t fsec;
                 struct pg_tm tt, *tm = &tt;
-                const char *tzn = NULL;
-                TimestampTz val = DatumGetTimestampTz(binval);
+                fsec_t fsec;
 
-                timestamp2tm(val, &tz, tm, &fsec, &tzn, NULL);
+                if (item->oid == MYSTIMESTAMPSOID)
+                {
+                    mystimestamps2tm(DatumGetNumeric(binval), tm, &fsec);
+                }
+                else
+                {
+                    mystimestamp2tm(DatumGetTimeADT(binval), tm);
+                    fsec = 0;
+                }
 
                 mq_append_int1(buf, 0x0b);
                 mq_append_int2(buf, tm->tm_year);
@@ -479,10 +602,19 @@ append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, Pr
             }
         case MYSQL_TYPE_DATETIME:
             {
-                Timestamp val = DatumGetTimestamp(binval);
                 struct pg_tm tt, *tm = &tt;
                 fsec_t fsec;
-                timestamp2tm(val, NULL, tm, &fsec, NULL, NULL);
+
+                if (item->oid == MYSDATETIMESOID)
+                {
+                    mysdatetimes2tm(DatumGetNumeric(binval), tm, &fsec);
+                }
+                else
+                {
+                    mysdatetime2tm(DatumGetTimeADT(binval), tm);
+                    fsec = 0;
+                }
+
                 mq_append_int1(buf, 0x0b);
                 mq_append_int2(buf, tm->tm_year);
                 mq_append_int1(buf, tm->tm_mon);
@@ -495,13 +627,27 @@ append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, Pr
             }
         case MYSQL_TYPE_TIME:
             {
-                TimeADT val = DatumGetTimeADT(binval);
                 struct pg_tm tt, *tm = &tt;
                 fsec_t fsec;
-                time2tm(val, tm, &fsec);
+                bool neg;
+                
+                if (item->oid == MYSTIMESOID)
+                {                    
+                    mystimes2tm(DatumGetNumeric(binval), tm, &fsec, &neg);
+                }
+                else
+                {
+                    mystime2tm(DatumGetTimeADT(binval), tm, &neg);
+                    fsec = 0;
+                }
 
                 mq_append_int1(buf, 0x0c);
-                val > 0 ? mq_append_int1(buf, 0x00) : mq_append_int1(buf, 0x01);
+
+                if (neg)
+                    mq_append_int1(buf, 0x01);
+                else
+                    mq_append_int1(buf, 0x00);
+
                 mq_append_int4(buf, 0x00);
                 mq_append_int1(buf, tm->tm_hour);
                 mq_append_int1(buf, tm->tm_min);
