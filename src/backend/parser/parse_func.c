@@ -255,7 +255,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			pstate->p_ref_hook_state &&
 			pstate->p_isVarParamState)
 			ParseVarParamState(pstate->p_ref_hook_state, arg,
-							&firstOutIsReturn, proc_call, nargs);
+							&firstOutIsReturn, proc_call);
 
 		/*
 		 * If it is CALL by JDBC, we discard the first argument from the parameter list.

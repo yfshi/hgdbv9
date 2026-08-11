@@ -37,6 +37,7 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
 /* End - ReqID:SRS-SQL-FUNCOUT */
+#include "executor/spi.h" /* OA#2707 */
 
 typedef struct FixedParamState
 {
@@ -592,7 +593,7 @@ GetParamMode(Oid *paramTypes, int numParams)
  */
 void
 ParseVarParamState(void *arg, Node *param,
-				bool *firstOutIsReturn, bool proc_call, int narg)
+				bool *firstOutIsReturn, bool proc_call)
 {
 	int 		   index;
 	char 		   mode;
@@ -611,14 +612,25 @@ ParseVarParamState(void *arg, Node *param,
 
 	if (where_from == FROM_JDBC &&
 		!proc_call &&
-		narg == 0 &&
+		/* Begin - OA#2707 */
+		index == 0 &&
+		SPI_get_connected() < 0 &&
+		/* End - OA#2707 */
 		firstOutIsReturn != NULL &&
 		mode == PROARGMODE_OUT)
 		*firstOutIsReturn = true;
 
-	/* If parameter type is UNKNOWNOID, set type oid to VOIDOID */
-	if (*firstOutIsReturn &&
-		(*vps->paramTypes)[index] == UNKNOWNOID)
+	/*
+	 * OA#2707:
+	 * Here, we need to set the OID of the return parameter to
+	 * VOIDOID because we cannot distinguish between return parameters and
+	 * `out` paramters. in the case of a PBE call, the 'P' phase identifies the first
+	 * paramter as a return parameter, but does not set its OID to 'VOIDOI` if the execution
+	 * plan becomes invalid during the 'B' or 'E' phase and requires re-parsing, the sysstem will
+	 * be unable to distinguish whether the first parameter is a return parameter or an `out`
+	 * parameter, leading to  function parsing failure
+	 */
+	if (*firstOutIsReturn)
 		(*vps->paramTypes)[index] = VOIDOID;
 }
 /* End - ReqID:SRS-SQL-FUNCOUT */
