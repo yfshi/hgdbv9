@@ -262,7 +262,7 @@ pg_resgroup_get_iostats(PG_FUNCTION_ARGS)
 
 	if (SRF_IS_FIRSTCALL())
 	{
-		int nattr = 8;
+		int nattr = 7;	/* Bug:oa-2686 */
 		MemoryContext oldContext;
 		TupleDesc tupdesc;
 
@@ -344,8 +344,8 @@ pg_resgroup_get_iostats(PG_FUNCTION_ARGS)
 
 	if (funcctx->call_cntr < funcctx->max_calls)
 	{
-		Datum values[8];
-		bool nulls[8];
+		Datum values[7];	/* Bug:oa-2686 */
+		bool nulls[7];	/* Bug:oa-2686 */
 		HeapTuple tuple;
 		ListCell *cell = (ListCell *) funcctx->user_fctx;
 		/* funcctx->user_fctx = (void *) cell->next; */
