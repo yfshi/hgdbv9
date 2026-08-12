@@ -166,6 +166,9 @@
 
 #include "se_features_interface.h" /* ReqID: LOCK-SESSION */
 
+/* Begin - BUG#Z8893 */
+#include "utils/sqlresourcelimit.h"
+/* End - BUG#Z8893 */
 
 #ifndef PG_KRB_SRVTAB
 #define PG_KRB_SRVTAB ""
@@ -14222,6 +14225,15 @@ check_sourcelimitmode(int *newval, void **extra, GucSource source)
 			return false;
 		}
 	}
+
+	/* Begin - BUG#Z8893 */
+#ifndef WIN32
+	if (*newval == RESOURCE_LIMIT_OFF)
+	{
+		reset_process_to_origin_cpu();
+	}
+	/* End - BUG#Z8893 */
+#endif
 
 	return true;
 }
