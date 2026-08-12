@@ -1,0 +1,655 @@
+CREATE USER u_utl_raw PASSWORD 'highgo@123';
+SET SESSION AUTHORIZATION u_utl_raw;
+-- check bit operation func
+select utl_raw.bit_and(null, '');
+ bit_and 
+---------
+ 
+(1 row)
+
+select utl_raw.bit_and(null, 'aabb');
+ bit_and 
+---------
+ 
+(1 row)
+
+select utl_raw.bit_and('aabb', '');
+ bit_and 
+---------
+ 
+(1 row)
+
+select utl_raw.bit_and('aabb', 'bbccdd');
+ bit_and  
+----------
+ \xaa88dd
+(1 row)
+
+select utl_raw.bit_complement(null);
+ bit_complement 
+----------------
+ 
+(1 row)
+
+select utl_raw.bit_complement('');
+ bit_complement 
+----------------
+ 
+(1 row)
+
+select utl_raw.bit_complement('11223344');
+ bit_complement 
+----------------
+ \xeeddccbb
+(1 row)
+
+select utl_raw.bit_or(null, '');
+ bit_or 
+--------
+ 
+(1 row)
+
+select utl_raw.bit_or(null, 'aabb');
+ bit_or 
+--------
+ 
+(1 row)
+
+select utl_raw.bit_or('aabb', '');
+ bit_or 
+--------
+ 
+(1 row)
+
+select utl_raw.bit_or('aabb', 'bbccdd');
+  bit_or  
+----------
+ \xbbffdd
+(1 row)
+
+select utl_raw.bit_xor(null, '');
+ bit_xor 
+---------
+ 
+(1 row)
+
+select utl_raw.bit_xor(null, 'aabb');
+ bit_xor 
+---------
+ 
+(1 row)
+
+select utl_raw.bit_xor('aabb', '');
+ bit_xor 
+---------
+ 
+(1 row)
+
+select utl_raw.bit_xor('aabb', 'bbccdd');
+ bit_xor  
+----------
+ \x1177dd
+(1 row)
+
+-- check cast from
+select utl_raw.cast_from_binary_double(123.4567);
+ cast_from_binary_double 
+-------------------------
+ \x405edd3a92a30553
+(1 row)
+
+select utl_raw.cast_from_binary_double(123.4567,2);
+ cast_from_binary_double 
+-------------------------
+ \x5305a3923add5e40
+(1 row)
+
+select utl_raw.cast_from_binary_double(123.4567,4);
+ERROR:  invalid endianess value: 4
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_from_binary_double line 20 at RETURN
+select utl_raw.cast_from_binary_double(BINARY_DOUBLE_INFINITY, 2);
+ cast_from_binary_double 
+-------------------------
+ \x000000000000f07f
+(1 row)
+
+select utl_raw.cast_from_binary_double('');
+ cast_from_binary_double 
+-------------------------
+ 
+(1 row)
+
+select utl_raw.cast_from_binary_double(123.4567,'');
+ cast_from_binary_double 
+-------------------------
+ 
+(1 row)
+
+select utl_raw.cast_from_binary_float(123.4567);
+ cast_from_binary_float 
+------------------------
+ \x42f6e9d5
+(1 row)
+
+select utl_raw.cast_from_binary_float(123.4567,2);
+ cast_from_binary_float 
+------------------------
+ \xd5e9f642
+(1 row)
+
+select utl_raw.cast_from_binary_float(123.4567,4);
+ERROR:  invalid endianess value: 4
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_from_binary_float line 24 at RETURN
+select utl_raw.cast_from_binary_float(BINARY_FLOAT_INFINITY, 2);
+ cast_from_binary_float 
+------------------------
+ \x0000807f
+(1 row)
+
+select utl_raw.cast_from_binary_float('');
+ cast_from_binary_float 
+------------------------
+ 
+(1 row)
+
+select utl_raw.cast_from_binary_float(123.4567,'');
+ cast_from_binary_float 
+------------------------
+ 
+(1 row)
+
+select utl_raw.cast_from_binary_integer(123);
+ cast_from_binary_integer 
+--------------------------
+ \x0000007b
+(1 row)
+
+select utl_raw.cast_from_binary_integer(123,2);
+ cast_from_binary_integer 
+--------------------------
+ \x7b000000
+(1 row)
+
+select utl_raw.cast_from_binary_integer(123,4);
+ERROR:  invalid endianess value: 4
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_from_binary_integer line 28 at RETURN
+select utl_raw.cast_from_binary_integer('');
+ cast_from_binary_integer 
+--------------------------
+ 
+(1 row)
+
+select utl_raw.cast_from_binary_integer(123,'');
+ cast_from_binary_integer 
+--------------------------
+ 
+(1 row)
+
+select utl_raw.cast_from_number(123);
+    cast_from_number    
+------------------------
+ \x0001000000000000007b
+(1 row)
+
+select utl_raw.cast_from_number(123.4567);
+      cast_from_number      
+----------------------------
+ \x0002000000000004007b11d7
+(1 row)
+
+select utl_raw.cast_from_number('');
+ cast_from_number 
+------------------
+ 
+(1 row)
+
+-- check cast to
+select utl_raw.cast_to_binary_double(utl_raw.cast_from_binary_double(123.4567));
+ cast_to_binary_double 
+-----------------------
+ 1.234567E+002
+(1 row)
+
+select utl_raw.cast_to_binary_double(utl_raw.cast_from_binary_double(123.4567, 2), 2);
+ cast_to_binary_double 
+-----------------------
+ 1.234567E+002
+(1 row)
+
+select utl_raw.cast_to_binary_double('\x5305a3923add5e40', 2);            -- 123.4567 eg. 1.234567E+002
+ cast_to_binary_double 
+-----------------------
+ 1.234567E+002
+(1 row)
+
+select utl_raw.cast_to_binary_double('\x5305a3923add5e401234567890', 2);  -- 123.4567 eg. 1.234567E+002
+ cast_to_binary_double 
+-----------------------
+ 1.234567E+002
+(1 row)
+
+select utl_raw.cast_to_binary_double('\x5305a3923add5e', 2);              -- not enough long, error
+ERROR:  RAW length 7 is less than 8 bytes required
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_to_binary_double line 38 at assignment
+select utl_raw.cast_to_binary_double('\x5305a3923add5e40', 4);            -- error endianess
+ERROR:  invalid endianess value: 4
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_to_binary_double line 38 at assignment
+select utl_raw.cast_to_binary_double('');
+ cast_to_binary_double 
+-----------------------
+ 
+(1 row)
+
+select utl_raw.cast_to_binary_double('\x5305a3923add5e40','');
+ cast_to_binary_double 
+-----------------------
+ 
+(1 row)
+
+select utl_raw.cast_to_binary_float(utl_raw.cast_from_binary_float(123.4567));        -- 123.4567 eg. 1.234567E+002
+ cast_to_binary_float 
+----------------------
+ 1.234567E+002
+(1 row)
+
+select utl_raw.cast_to_binary_float(utl_raw.cast_from_binary_float(123.4567, 2), 2);  -- 123.4567 eg. 1.234567E+002
+ cast_to_binary_float 
+----------------------
+ 1.234567E+002
+(1 row)
+
+select utl_raw.cast_to_binary_float('\x42f6e9d5', 1);                                 -- 123.4567 eg. 1.234567E+002
+ cast_to_binary_float 
+----------------------
+ 1.234567E+002
+(1 row)
+
+-- 123.4567 big_endian to raw, little to float, oracle is -3.21554848E+013, highgo is -3.2155485E+013
+select utl_raw.cast_to_binary_float('\x42f6e9d53add5e401234567890', 2);
+ cast_to_binary_float 
+----------------------
+ -3.2155485E+013
+(1 row)
+
+-- 123.4567 little_endian from binary_double to raw, then cast to binary_float use little_endian, oracle is -1.02880587E-027, highgo is -1.0288059E-027
+select utl_raw.cast_to_binary_float('\x5305a3923add5e', 2);
+ cast_to_binary_float 
+----------------------
+ -1.0288059E-027
+(1 row)
+
+select utl_raw.cast_to_binary_float('\x5305a3923add5e40', 4);
+ERROR:  invalid endianess value: 4
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_to_binary_float line 47 at assignment
+select utl_raw.cast_to_binary_float('');
+ cast_to_binary_float 
+----------------------
+ 
+(1 row)
+
+select utl_raw.cast_to_binary_float('\x5305a3923add5e40','');
+ cast_to_binary_float 
+----------------------
+ 
+(1 row)
+
+select utl_raw.cast_to_binary_integer(utl_raw.cast_from_binary_integer(123));
+ cast_to_binary_integer 
+------------------------
+                    123
+(1 row)
+
+select utl_raw.cast_to_binary_integer(utl_raw.cast_from_binary_integer(123, 2), 2);
+ cast_to_binary_integer 
+------------------------
+                    123
+(1 row)
+
+-- 123 little_endian from binary_integer to raw, then cast to binary_integer use big_endian, eg. 2063597568
+select utl_raw.cast_to_binary_integer('\x7b000000', 1);
+ cast_to_binary_integer 
+------------------------
+             2063597568
+(1 row)
+
+select utl_raw.cast_to_binary_integer('\x7b0000001234', 2);    -- error, raw of binary_integer too long
+ERROR:  RAW length 6 is more than 4 bytes required
+CONTEXT:  PL/iSQL function sys.utl_raw.cast_to_binary_integer line 55 at RETURN
+select utl_raw.cast_to_binary_integer('', 2);
+ cast_to_binary_integer 
+------------------------
+                       
+(1 row)
+
+select utl_raw.cast_to_binary_integer('\x7b000000', '');
+ cast_to_binary_integer 
+------------------------
+                       
+(1 row)
+
+select utl_raw.cast_to_number(utl_raw.cast_from_number(123.456));
+ cast_to_number 
+----------------
+ 123.456
+(1 row)
+
+select utl_raw.cast_to_number(utl_raw.cast_from_number(-5678.1234));
+ cast_to_number 
+----------------
+ -5678.1234
+(1 row)
+
+select utl_raw.cast_to_number(utl_raw.cast_from_number(56781234));
+ cast_to_number 
+----------------
+ 56781234
+(1 row)
+
+select utl_raw.cast_to_number(utl_raw.cast_from_number(''));
+ cast_to_number 
+----------------
+ 
+(1 row)
+
+select utl_raw.cast_to_number('');
+ cast_to_number 
+----------------
+ 
+(1 row)
+
+-- check cast to nvarchar2/raw/varchar2
+select utl_raw.cast_to_raw('Hello, HighGo!');
+          cast_to_raw           
+--------------------------------
+ \x48656c6c6f2c2048696768476f21
+(1 row)
+
+select utl_raw.cast_to_varchar2(utl_raw.cast_to_raw('Hello, HighGo!'));
+ cast_to_varchar2 
+------------------
+ Hello, HighGo!
+(1 row)
+
+select utl_raw.cast_to_nvarchar2(utl_raw.cast_to_raw('Hello, HighGo!'));
+ cast_to_nvarchar2 
+-------------------
+ Hello, HighGo!
+(1 row)
+
+-- check compare
+select utl_raw.compare('','');
+ compare 
+---------
+ 0
+(1 row)
+
+select utl_raw.compare('','00');
+ compare 
+---------
+ 0
+(1 row)
+
+select utl_raw.compare('','aa');
+ compare 
+---------
+ 1
+(1 row)
+
+select utl_raw.compare('','aa', 'aabb');
+ compare 
+---------
+ 0
+(1 row)
+
+select utl_raw.compare('aabbccdddd','aabbcc', 'ddaabb');
+ compare 
+---------
+ 0
+(1 row)
+
+-- check concat
+select utl_raw.concat();
+ concat 
+--------
+ 
+(1 row)
+
+select utl_raw.concat('a', '', 'b', '', 'c', '', 'd', '', 'e', '', 'f','');
+     concat     
+----------------
+ \x0a0b0c0d0e0f
+(1 row)
+
+-- check convert
+select utl_raw.convert('','','');
+ERROR:  convert_raw, from_charset and to_charset cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_raw.convert line 202 at RETURN
+select utl_raw.convert(utl_raw.cast_to_raw('Hello, HighGo!'),'al16utf16','utf8');
+ERROR:  invalid encoding name: al16utf16
+CONTEXT:  PL/iSQL function sys.utl_raw.convert line 202 at RETURN
+select utl_raw.convert(utl_raw.cast_to_raw('Hello, HighGo!'),'gbk','utf8');
+            convert             
+--------------------------------
+ \x48656c6c6f2c2048696768476f21
+(1 row)
+
+-- check copies
+select utl_raw.copies('',1);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.copies line 211 at RAISE
+select utl_raw.copies('a',1);
+ copies 
+--------
+ \x0a
+(1 row)
+
+select utl_raw.copies('a',0);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.copies line 216 at RAISE
+select utl_raw.copies('a',10);
+         copies         
+------------------------
+ \x0a0a0a0a0a0a0a0a0a0a
+(1 row)
+
+-- check length
+select utl_raw.length('');
+ length 
+--------
+ 
+(1 row)
+
+select utl_raw.length('123');
+ length 
+--------
+ 2
+(1 row)
+
+select utl_raw.length('123abc');
+ length 
+--------
+ 3
+(1 row)
+
+-- check overlay
+select utl_raw.overlay('','');
+ERROR:  overlay_str and target cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_raw."overlay" line 245 at RETURN
+select utl_raw.overlay('','1');
+ERROR:  overlay_str and target cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_raw."overlay" line 245 at RETURN
+select utl_raw.overlay('12345','aabbccdd');
+  overlay   
+------------
+ \x012345dd
+(1 row)
+
+select utl_raw.overlay('12345','aabbccdd', 2);
+  overlay   
+------------
+ \xaa012345
+(1 row)
+
+select utl_raw.overlay('12345','aabbccdd', 10);
+          overlay           
+----------------------------
+ \xaabbccdd0000000000012345
+(1 row)
+
+select utl_raw.overlay('12345','aabbccdd', 10, 5);
+            overlay             
+--------------------------------
+ \xaabbccdd00000000000123450000
+(1 row)
+
+select utl_raw.overlay('12345','aabbccdd', 10, 5, 'ffeeddd');
+            overlay             
+--------------------------------
+ \xaabbccdd0f0f0f0f0f0123450f0f
+(1 row)
+
+-- check reverse
+select utl_raw.reverse('');
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.reverse line 249 at RETURN
+select utl_raw.reverse('123');
+ reverse 
+---------
+ \x2301
+(1 row)
+
+select utl_raw.reverse('123456');
+ reverse  
+----------
+ \x563412
+(1 row)
+
+-- check substr
+select utl_raw.substr('',0);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.substr line 258 at RAISE
+select utl_raw.substr('',1);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.substr line 258 at RAISE
+select utl_raw.substr('aaa', 1);
+ substr 
+--------
+ \x0aaa
+(1 row)
+
+select utl_raw.substr('aaa', 1, 2);
+ substr 
+--------
+ \x0aaa
+(1 row)
+
+select utl_raw.substr('aaa', 1, 3);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.substr line 286 at RAISE
+select utl_raw.substr('aaa', 2, 2);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.substr line 286 at RAISE
+select utl_raw.substr('aabbccdd', -5, 2);
+ERROR:  numeric or value error
+CONTEXT:  PL/iSQL function sys.utl_raw.substr line 269 at RAISE
+select utl_raw.substr('aabbccdd', -4, 3);
+  substr  
+----------
+ \xaabbcc
+(1 row)
+
+-- check translate --param cannot be null, all error
+select utl_raw.translate('','','');
+ERROR:  translate raw, from_set or to_set cannot be null
+CONTEXT:  PL/iSQL function sys.utl_raw.translate line 292 at RETURN
+select utl_raw.translate('aa','','');
+ERROR:  translate raw, from_set or to_set cannot be null
+CONTEXT:  PL/iSQL function sys.utl_raw.translate line 292 at RETURN
+select utl_raw.translate('aa','11','');
+ERROR:  translate raw, from_set or to_set cannot be null
+CONTEXT:  PL/iSQL function sys.utl_raw.translate line 292 at RETURN
+select utl_raw.translate('aabbccdd','11','223344');
+ translate  
+------------
+ \xaabbccdd
+(1 row)
+
+select utl_raw.translate('aabbccdd','aa11','223344');
+ translate  
+------------
+ \x22bbccdd
+(1 row)
+
+select utl_raw.translate('aabbccdd','aa11cc','223344');
+ translate  
+------------
+ \x22bb44dd
+(1 row)
+
+select utl_raw.translate('aabbccdd','aa11cc','2233');
+ translate 
+-----------
+ \x22bbdd
+(1 row)
+
+-- check transliterate
+select utl_raw.transliterate('');
+ERROR:  translate raw, from_set or to_set cannot be null
+CONTEXT:  PL/iSQL function sys.utl_raw.transliterate line 296 at RETURN
+select utl_raw.transliterate('aabbccdde');
+ transliterate 
+---------------
+ \x0000000000
+(1 row)
+
+select utl_raw.transliterate('aabbccddee0100', '99887766');
+  transliterate   
+------------------
+ \x00000000008899
+(1 row)
+
+select utl_raw.transliterate('aabbccddee0100', '', 'aabbccdd');
+  transliterate   
+------------------
+ \x00000000ee0100
+(1 row)
+
+select utl_raw.transliterate('aabbccddee0100', '112233445566', 'aabbccdd');
+  transliterate   
+------------------
+ \x11223344ee0100
+(1 row)
+
+select utl_raw.transliterate('aabbccddee0100', '112233', 'aabbccdd', 'fedcba');
+  transliterate   
+------------------
+ \x112233feee0100
+(1 row)
+
+-- check xrange
+select utl_raw.xrange();
+                                                                                                                                                                                                                                                               xrange                                                                                                                                                                                                                                                               
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+(1 row)
+
+select utl_raw.xrange('77');
+                                                                                                                                        xrange                                                                                                                                        
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x7778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff
+(1 row)
+
+select utl_raw.xrange('', '33');
+                                                   xrange                                                   
+------------------------------------------------------------------------------------------------------------
+ \x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30313233
+(1 row)
+
+select utl_raw.xrange('77', '33');
+                                                                                                                                                                                            xrange                                                                                                                                                                                            
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ \x7778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f30313233
+(1 row)
+
+RESET SESSION AUTHORIZATION;
+DROP USER u_utl_raw CASCADE;

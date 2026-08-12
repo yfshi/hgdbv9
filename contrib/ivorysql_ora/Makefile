@@ -51,7 +51,8 @@ OBJS = \
 	src/tstl2cl/c_stack.o \
 	src/tstl2cl/c_iterator.o \
 	src/builtin_packages/dbms_lock/dbms_lock.o \
-	src/builtin_packages/dbms_utility/dbms_utility.o
+	src/builtin_packages/dbms_utility/dbms_utility.o \
+	src/builtin_packages/utl_raw/utl_raw.o
 
 EXTENSION = ivorysql_ora
 
@@ -133,7 +134,8 @@ ORA_REGRESS = \
 	ora_dbms_rowid \
 	ora_dbms_lock \
 	ora_dbms_utility \
-	ora_forall
+	ora_forall \
+	ora_utl_raw
 
 #/* Begin - ReqID:SRS-PLSQL-Collection */
 PG_CPPFLAGS = -I$../src/tstl2cl/include -I$../src/tstl2cl -I$(srcdir) -I$../src/include
