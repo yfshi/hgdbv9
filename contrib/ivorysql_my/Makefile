@@ -117,6 +117,7 @@ MYS_REGRESS = numeric_to_times \
 			  pipes_as_concat \
 			  rename \
 			  multi_update \
+			  type \
 			  mys_enum	\
 			  mys_text \
 			  mys_tinytext \

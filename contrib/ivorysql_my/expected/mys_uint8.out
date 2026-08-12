@@ -3105,9 +3105,9 @@ create table t(a bigint unsigned, b bigint unsigned);
 insert into t values (1, 2);
 create table tt as select a div b from t;
 desc tt;        -- uint8
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint8 | YES  |     |         | 
+  Field   |        Type         | Null | Key | Default | Extra 
+----------+---------------------+------+-----+---------+-------
+ ?column? | bigint(20) unsigned | YES  |     |         | 
 (1 row)
 
 drop table t;
@@ -3125,9 +3125,9 @@ select * from tt;   -- 0, 33333
 (2 rows)
 
 desc tt;        -- uint8
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint8 | YES  |     |         | 
+  Field   |        Type         | Null | Key | Default | Extra 
+----------+---------------------+------+-----+---------+-------
+ ?column? | bigint(20) unsigned | YES  |     |         | 
 (1 row)
 
 drop table tt;
@@ -3161,9 +3161,9 @@ create table t(a bigint unsigned, b int);
 insert into t values (1, 2);
 create table tt as select a div b from t;
 desc tt;    -- uint8
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint8 | YES  |     |         | 
+  Field   |        Type         | Null | Key | Default | Extra 
+----------+---------------------+------+-----+---------+-------
+ ?column? | bigint(20) unsigned | YES  |     |         | 
 (1 row)
 
 drop table tt;
@@ -3181,9 +3181,9 @@ create table t(a bigint unsigned, b int8);
 insert into t values (1, 2);
 create table tt as select a div b from t;
 desc tt;        -- uint8
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint8 | YES  |     |         | 
+  Field   |        Type         | Null | Key | Default | Extra 
+----------+---------------------+------+-----+---------+-------
+ ?column? | bigint(20) unsigned | YES  |     |         | 
 (1 row)
 
 drop table tt;
@@ -3201,9 +3201,9 @@ create table t(a int2, b bigint unsigned);
 insert into t values (1, 2);
 create table tt as select a div b from t;
 desc tt;        -- uint4
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint4 | YES  |     |         | 
+  Field   |       Type       | Null | Key | Default | Extra 
+----------+------------------+------+-----+---------+-------
+ ?column? | int(10) unsigned | YES  |     |         | 
 (1 row)
 
 drop table tt;
@@ -3233,9 +3233,9 @@ create table t(a int, b bigint unsigned);
 insert into t values (1, 2);
 create table tt as select a div b from t;
 desc tt;        -- uint4
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint4 | YES  |     |         | 
+  Field   |       Type       | Null | Key | Default | Extra 
+----------+------------------+------+-----+---------+-------
+ ?column? | int(10) unsigned | YES  |     |         | 
 (1 row)
 
 drop table tt;
@@ -3255,9 +3255,9 @@ create table t(a int8, b bigint unsigned);
 insert into t values (1, 2);
 create table tt as select a div b from t;
 desc tt;        -- uint8
-  Field   | Type  | Null | Key | Default | Extra 
-----------+-------+------+-----+---------+-------
- ?column? | uint8 | YES  |     |         | 
+  Field   |        Type         | Null | Key | Default | Extra 
+----------+---------------------+------+-----+---------+-------
+ ?column? | bigint(20) unsigned | YES  |     |         | 
 (1 row)
 
 drop table tt;

@@ -3979,9 +3979,9 @@ CREATE TABLE `assortimportfaildetail` (
 describe `assortimportfaildetail`;
    Field    |     Type      | Null | Key |                          Default                           |     Extra      
 ------------+---------------+------+-----+------------------------------------------------------------+----------------
- id         | int           | NO   | PRI | autoinc_nextval('assortimportfaildetail_id_seq'::regclass) | auto_increment
- historyid  | int           | YES  |     |                                                            | 
- failrow    | int           | YES  |     |                                                            | 
+ id         | int(11)       | NO   | PRI | autoinc_nextval('assortimportfaildetail_id_seq'::regclass) | auto_increment
+ historyid  | int(11)       | YES  |     |                                                            | 
+ failrow    | int(11)       | YES  |     |                                                            | 
  failcol    | varchar(100)  | YES  |     | NULL::character varying                                    | 
  assortname | varchar(1000) | YES  |     | NULL::character varying                                    | 
  failreason | varchar(100)  | YES  |     | NULL::character varying                                    | 
@@ -3995,7 +3995,7 @@ CREATE TABLE oa2019_1(
 describe oa2019_1;
    Field    |     Type     | Null | Key | Default | Extra 
 ------------+--------------+------+-----+---------+-------
- id         | int          | NO   | PRI |         | 
+ id         | int(11)      | NO   | PRI |         | 
  failreason | varchar(100) | YES  |     |         | 
 (2 rows)
 
@@ -4246,8 +4246,8 @@ CREATE UNIQUE INDEX unique_index ON f_tingsm(paiqxx_id, sheary_id, fay_daim) COM
 DESC f_tingsm;
    Field   |    Type     | Null | Key | Default | Extra 
 -----------+-------------+------+-----+---------+-------
- paiqxx_id | bigint      | NO   | UNI |         | 
- sheary_id | bigint      | NO   | UNI |         | 
+ paiqxx_id | bigint(20)  | NO   | UNI |         | 
+ sheary_id | bigint(20)  | NO   | UNI |         | 
  fay_daim  | varchar(50) | NO   | UNI |         | 
 (3 rows)
 

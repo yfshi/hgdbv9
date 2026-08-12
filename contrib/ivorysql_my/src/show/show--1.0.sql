@@ -22,81 +22,32 @@ PARALLEL SAFE
 RETURNS NULL ON NULL INPUT
 AS $$
 	SELECT CASE
-		WHEN t.typname = 'mysbit' THEN
-			CONCAT(
-				'bit',
-				CASE
-					WHEN typmod >= 0 THEN
-						CONCAT('(', typmod, ')')
-					ELSE
-						''
-				END
-			)
+		WHEN t.typname = 'tinyint'		THEN 'tinyint(4)'
+		WHEN t.typname = 'int2'			THEN 'smallint(6)'
+		WHEN t.typname = 'mediumint'	THEN 'mediumint(9)'
+		WHEN t.typname = 'int4'			THEN 'int(11)'
+		WHEN t.typname = 'int8'			THEN 'bigint(20)'
+		WHEN t.typname = 'uint1'		THEN 'tinyint(3) unsigned'
+		WHEN t.typname = 'uint2'		THEN 'smallint(5) unsigned'
+		WHEN t.typname = 'uint3'		THEN 'mediumint(8) unsigned'
+		WHEN t.typname = 'uint4'		THEN 'int(10) unsigned'
+		WHEN t.typname = 'uint8'		THEN 'bigint(20) unsigned'
 
-		WHEN t.typname = 'bpchar' THEN
-			CONCAT(
-				'char',
-				CASE
-					WHEN typmod >= 0 THEN
-						CONCAT(
-							'(',
-							information_schema._pg_char_max_length(type_oid, typmod)::text,
-							')'
-						)
-					ELSE
-						''
-				END
-			)
-
-		WHEN t.typname = 'float8' THEN
-			'double'
-
-		WHEN t.typname = 'float4' THEN
-			'float'
-
-		WHEN t.typname = 'int4' THEN
-			'int'
-
-		WHEN t.typname = 'numeric' THEN
-			CONCAT(
-				'decimal',
-				CASE
-					WHEN typmod >= 0 THEN
-						CONCAT(
-							'(',
-							information_schema._pg_numeric_precision(type_oid, typmod)::text,
-							',',
-							information_schema._pg_numeric_scale(type_oid, typmod)::text,
-							')'
-						)
-					ELSE
-						''
-				END
-			)
-
-		WHEN t.typname = 'varchar' THEN
-			CONCAT(
-				'varchar',
-				CASE
-					WHEN typmod >= 0 THEN
-						CONCAT(
-							'(',
-							information_schema._pg_char_max_length(type_oid, typmod)::text,
-							')'
-						)
-					ELSE
-						''
-				END
-			)
-
-		WHEN t.typname = 'year' THEN
-			'year'
-
-		WHEN t.typtype = 'e' THEN
+		WHEN t.typname = 'mysbit'  THEN CONCAT('bit', CASE WHEN typmod >= 0 THEN CONCAT('(', typmod, ')') ELSE '' END)
+		WHEN t.typname = 'bpchar'  THEN CONCAT('char', CASE WHEN typmod >= 0
+			THEN CONCAT('(', information_schema._pg_char_max_length(type_oid, typmod)::text, ')') ELSE '' END)
+		WHEN t.typname = 'float8'  THEN 'double'
+		WHEN t.typname = 'float4'  THEN 'float'
+		
+		WHEN t.typname = 'numeric' THEN CONCAT('decimal', CASE WHEN typmod >= 0
+			THEN CONCAT('(', information_schema._pg_numeric_precision(type_oid, typmod)::text,
+				',', information_schema._pg_numeric_scale(type_oid, typmod)::text, ')') ELSE '' END)
+		WHEN t.typname = 'varchar' THEN CONCAT('varchar', CASE WHEN typmod >= 0
+			THEN CONCAT('(', information_schema._pg_char_max_length(type_oid, typmod)::text, ')') ELSE '' END)
+		WHEN t.typname = 'year'    THEN 'year'
+		WHEN t.typtype = 'e'       THEN
 			COALESCE(ivymy.format_anonymous_enum(type_oid), 'enum')
-
-		ELSE
-			format_type(type_oid, typmod)
+		ELSE format_type(type_oid, typmod)
 	END
 	FROM pg_type t
 	WHERE t.oid = type_oid

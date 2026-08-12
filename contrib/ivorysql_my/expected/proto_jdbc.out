@@ -83,7 +83,7 @@ Tables_in_public:VARCHAR:t4
 Tables_in_public:VARCHAR:t3
 Database:VARCHAR:public
 Field:VARCHAR:c1
-Type:VARCHAR:int
+Type:VARCHAR:int(11)
 Null:VARCHAR:YES
 Key:VARCHAR:null
 Default:VARCHAR:null

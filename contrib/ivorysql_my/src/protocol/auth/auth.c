@@ -339,6 +339,10 @@ mysql_conn_handshake(Port *port)
     mysql_handshake_response_t  *handshakeResp;
     StringInfo buf;
 
+    /* Begin - bug#8889 */
+    MyBackendType = B_BACKEND;
+    /* End - bug#8889 */
+
     /* Begin - OA-2543
 	 * If we're going to reject the connection due to database state, say so
 	 * now instead of wasting cycles on an authentication exchange. (This also
