@@ -395,6 +395,9 @@ static void process_ordered_aggregate_single(AggState *aggstate,
 static void process_ordered_aggregate_multi(AggState *aggstate,
 											AggStatePerTrans pertrans,
 											AggStatePerGroup pergroupstate);
+static void process_ordered_aggregate_distinct_order(AggState *aggstate,
+												 AggStatePerTrans pertrans,
+												 AggStatePerGroup pergroupstate);
 static void finalize_aggregate(AggState *aggstate,
 							   AggStatePerAgg peragg,
 							   AggStatePerGroup pergroupstate,
@@ -609,6 +612,11 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 		 */
 		if (pertrans->sortstates[aggstate->current_set])
 			tuplesort_end(pertrans->sortstates[aggstate->current_set]);
+		/* Begin Bug#8652 */
+		if (pertrans->numOrderCols > 0 &&
+			pertrans->orderstates[aggstate->current_set])
+			tuplesort_end(pertrans->orderstates[aggstate->current_set]);
+		/* End Bug#8652 */
 
 
 		/*
@@ -628,6 +636,7 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 									  work_mem, NULL, false);
 		}
 		else
+		{
 			pertrans->sortstates[aggstate->current_set] =
 				tuplesort_begin_heap(pertrans->sortdesc,
 									 pertrans->numSortCols,
@@ -636,6 +645,22 @@ initialize_aggregate(AggState *aggstate, AggStatePerTrans pertrans,
 									 pertrans->sortCollations,
 									 pertrans->sortNullsFirst,
 									 work_mem, NULL, false);
+			
+			/* Begin Bug#8652: Create a second sorter for the aggregate ORDER BY keys. */	
+			if (pertrans->numOrderCols > 0)
+			{
+				pertrans->orderstates[aggstate->current_set] =
+					tuplesort_begin_heap(pertrans->sortdesc,
+									pertrans->numOrderCols,
+									pertrans->orderColIdx,
+									pertrans->orderOperators,
+									pertrans->orderCollations,
+									pertrans->orderNullsFirst,
+									work_mem, NULL, false);
+
+			}
+			/* End Bug#8652 */
+		}
 	}
 
 	/*
@@ -1039,6 +1064,114 @@ process_ordered_aggregate_multi(AggState *aggstate,
 	tmpcontext->ecxt_outertuple = save;
 }
 
+/* Begin Bug#8652 
+ * Run an aggregate whose DISTINCT keys and ORDER BY keys are independent.
+ *
+ * The first tuplesort orders by the DISTINCT keys.  One complete tuple for
+ * every DISTINCT key is put into a second tuplesort using the aggregate ORDER
+ * BY keys, and the transition function is invoked from that sorted stream.
+ */
+static void
+process_ordered_aggregate_distinct_order(AggState *aggstate,
+										 AggStatePerTrans pertrans,
+										 AggStatePerGroup pergroupstate)
+{
+	ExprContext *tmpcontext = aggstate->tmpcontext;
+	FunctionCallInfo fcinfo = pertrans->transfn_fcinfo;
+	TupleTableSlot *slot1 = pertrans->sortslot;
+	TupleTableSlot *slot2 = pertrans->uniqslot;
+	int			numTransInputs = pertrans->numTransInputs;
+	int			numDistinctCols = pertrans->numDistinctCols;
+	Datum		newAbbrevVal = (Datum) 0;
+	Datum		oldAbbrevVal = (Datum) 0;
+	bool		haveOldValue = false;
+	TupleTableSlot *save = aggstate->tmpcontext->ecxt_outertuple;
+	int			i;
+
+	Assert(pertrans->numOrderCols > 0);
+
+	tuplesort_performsort(pertrans->sortstates[aggstate->current_set]);
+
+	ExecClearTuple(slot1);
+	if (slot2)
+		ExecClearTuple(slot2);
+
+	/* First pass: retain one complete tuple for each DISTINCT key. */
+	while (tuplesort_gettupleslot(pertrans->sortstates[aggstate->current_set],
+								  true, true, slot1, &newAbbrevVal))
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		tmpcontext->ecxt_outertuple = slot1;
+		tmpcontext->ecxt_innertuple = slot2;
+
+		if (numDistinctCols == 0 ||
+			!haveOldValue ||
+			newAbbrevVal != oldAbbrevVal ||
+			!ExecQual(pertrans->equalfnMulti, tmpcontext))
+		{
+			tuplesort_puttupleslot(pertrans->orderstates[aggstate->current_set],
+								   slot1);
+
+			if (numDistinctCols > 0)
+			{
+				/* swap the slot pointers to retain the current tuple */
+				TupleTableSlot *tmpslot = slot2;
+
+				slot2 = slot1;
+				slot1 = tmpslot;
+				/* avoid ExecQual() calls by reusing abbreviated keys */
+				oldAbbrevVal = newAbbrevVal;
+				haveOldValue = true;
+			}
+		}
+
+		/* Reset context each time */
+		ResetExprContext(tmpcontext);
+
+		ExecClearTuple(slot1);
+	}
+
+	if (slot2)
+		ExecClearTuple(slot2);
+
+	tuplesort_end(pertrans->sortstates[aggstate->current_set]);
+	pertrans->sortstates[aggstate->current_set] = NULL;
+
+	/* Second pass: order retained rows and run the transition function. */
+	tuplesort_performsort(pertrans->orderstates[aggstate->current_set]);
+
+	while (tuplesort_gettupleslot(pertrans->orderstates[aggstate->current_set],
+								  true, true, slot1, NULL))
+	{
+		CHECK_FOR_INTERRUPTS();
+
+		slot_getsomeattrs(slot1, numTransInputs);
+
+		/* Load values into fcinfo */
+		/* Start from 1, since the 0th arg will be the transition value */
+		for (i = 0; i < numTransInputs; i++)
+		{
+			fcinfo->args[i + 1].value = slot1->tts_values[i];
+			fcinfo->args[i + 1].isnull = slot1->tts_isnull[i];
+		}
+
+		advance_transition_function(aggstate, pertrans, pergroupstate);
+
+		/* Reset context each time */
+		ResetExprContext(tmpcontext);
+
+		ExecClearTuple(slot1);
+	}
+
+	tuplesort_end(pertrans->orderstates[aggstate->current_set]);
+	pertrans->orderstates[aggstate->current_set] = NULL;
+
+	/* restore previous slot, potentially in use for grouping sets */
+	tmpcontext->ecxt_outertuple = save;
+}
+/* End Bug#8652 */
+
 /*
  * Compute the final value of one aggregate.
  *
@@ -1332,7 +1465,11 @@ finalize_aggregates(AggState *aggstate,
 			Assert(aggstate->aggstrategy != AGG_HASHED &&
 				   aggstate->aggstrategy != AGG_MIXED);
 
-			if (pertrans->numInputs == 1)
+			if (pertrans->numOrderCols > 0)
+				process_ordered_aggregate_distinct_order(aggstate,			/* Begin Bug#8652 */
+												 pertrans,
+												 pergroupstate);
+			else if (pertrans->numInputs == 1)
 				process_ordered_aggregate_single(aggstate,
 												 pertrans,
 												 pergroupstate);
@@ -4063,6 +4200,7 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 	List	   *sortlist;
 	int			numSortCols;
 	int			numDistinctCols;
+	int			numOrderCols = 0;
 	int			i;
 
 	/* Begin filling in the pertrans data */
@@ -4243,9 +4381,15 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 	}
 	else if (aggref->aggdistinct)
 	{
+		/* Begin Bug#8652 */
 		sortlist = aggref->aggdistinct;
 		numSortCols = numDistinctCols = list_length(sortlist);
-		Assert(numSortCols >= list_length(aggref->aggorder));
+
+		if (aggref->aggdistinctorderseparate)
+			numOrderCols = list_length(aggref->aggorder);
+		else
+			Assert(numSortCols >= list_length(aggref->aggorder));
+		/* End Bug#8652 */
 	}
 	else
 	{
@@ -4256,6 +4400,7 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 
 	pertrans->numSortCols = numSortCols;
 	pertrans->numDistinctCols = numDistinctCols;
+	pertrans->numOrderCols = numOrderCols;
 
 	/*
 	 * If we have either sorting or filtering to do, create a tupledesc and
@@ -4319,6 +4464,36 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 			i++;
 		}
 		Assert(i == numSortCols);
+
+		if (numOrderCols > 0)
+		{
+			pertrans->orderColIdx =
+				(AttrNumber *) palloc(numOrderCols * sizeof(AttrNumber));
+			pertrans->orderOperators =
+				(Oid *) palloc(numOrderCols * sizeof(Oid));
+			pertrans->orderCollations =
+				(Oid *) palloc(numOrderCols * sizeof(Oid));
+			pertrans->orderNullsFirst =
+				(bool *) palloc(numOrderCols * sizeof(bool));
+
+			i = 0;
+			foreach(lc, aggref->aggorder)
+			{
+				SortGroupClause *sortcl = (SortGroupClause *) lfirst(lc);
+				TargetEntry *tle =
+					get_sortgroupclause_tle(sortcl, aggref->args);
+
+				Assert(OidIsValid(sortcl->sortop));
+				pertrans->orderColIdx[i] = tle->resno;
+				pertrans->orderOperators[i] = sortcl->sortop;
+				pertrans->orderCollations[i] =
+					exprCollation((Node *) tle->expr);
+				pertrans->orderNullsFirst[i] = sortcl->nulls_first;
+				i++;
+			}
+			Assert(i == numOrderCols);
+		}
+		/* End Bug#8652 */
 	}
 
 	if (aggref->aggdistinct)
@@ -4335,7 +4510,7 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 			ops[i++] = ((SortGroupClause *) lfirst(lc))->eqop;
 
 		/* lookup / build the necessary comparators */
-		if (numDistinctCols == 1)
+		if (numDistinctCols == 1 && numOrderCols == 0)
 			fmgr_info(get_opcode(ops[0]), &pertrans->equalfnOne);
 		else
 			pertrans->equalfnMulti =
@@ -4350,6 +4525,11 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 
 	pertrans->sortstates = (Tuplesortstate **)
 		palloc0(sizeof(Tuplesortstate *) * numGroupingSets);
+	if (numOrderCols > 0)
+	{
+		pertrans->orderstates = (Tuplesortstate **)
+			palloc0(sizeof(Tuplesortstate *) * numGroupingSets);
+	}
 }
 
 
@@ -4416,6 +4596,11 @@ ExecEndAgg(AggState *node)
 		{
 			if (pertrans->sortstates[setno])
 				tuplesort_end(pertrans->sortstates[setno]);
+			/* Begin Bug#8652 */
+			if (pertrans->numOrderCols > 0 &&
+				pertrans->orderstates[setno])
+				tuplesort_end(pertrans->orderstates[setno]);
+			/* End Bug#8652 */
 		}
 	}
 
@@ -4491,6 +4676,13 @@ ExecReScanAgg(AggState *node)
 				tuplesort_end(pertrans->sortstates[setno]);
 				pertrans->sortstates[setno] = NULL;
 			}
+			/* Begin Bug#8652 */
+			if (pertrans->numOrderCols > 0 && pertrans->orderstates[setno])
+			{
+				tuplesort_end(pertrans->orderstates[setno]);
+				pertrans->orderstates[setno] = NULL;
+			}
+			/* End Bug#8652 */
 		}
 	}
 

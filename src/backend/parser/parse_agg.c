@@ -107,6 +107,24 @@ static Node *change_ungrouped_columns_mutator(Node *node,
 static Node *buildAnyValueNode(Var *var, Query *qry);
 /* End - OA#2908  Not Full Group */
 
+/* Begin Bug#8652 */
+static bool
+sort_clause_has_resjunk(List *sortClause, List *targetList)
+{
+	ListCell   *lc;
+
+	foreach(lc, sortClause)
+	{
+		SortGroupClause *sortcl = lfirst_node(SortGroupClause, lc);
+		TargetEntry *tle = get_sortgroupclause_tle(sortcl, targetList);
+
+		if (tle->resjunk)
+			return true;
+	}
+
+	return false;
+}
+/* End Bug#8652 */
 
 
 
@@ -226,7 +244,16 @@ transformAggregateCall(ParseState *pstate, Aggref *agg,
 		 */
 		if (agg_distinct)
 		{
-			tdistinct = transformDistinctClause(pstate, &tlist, torder, true);
+			/* Begin Bug#8652 */
+			if (compatible_mode == MYS_MODE &&
+				sort_clause_has_resjunk(torder, tlist))
+			{
+				agg->aggdistinctorderseparate = true;
+				tdistinct = transformDistinctClause(pstate, &tlist, NIL, true);
+			}
+			else
+				tdistinct = transformDistinctClause(pstate, &tlist, torder, true);
+			/* End Bug#8652 */
 
 			/*
 			 * Remove this check if executor support for hashed distinct for

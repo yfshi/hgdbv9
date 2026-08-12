@@ -849,6 +849,27 @@ SELECT GROUP_CONCAT(DISTINCT col ORDER BY col ASC SEPARATOR '-') FROM (SELECT 'b
 WITH test_data AS (SELECT unnest (array [1,1,1,2,2,2,1]) AS grp,unnest (array ['Apple','Banana',null,'Cherry','Date',null,'Elderberry']) AS item) SELECT grp, GROUP_CONCAT(DISTINCT item ORDER BY item SEPARATOR ' | ') AS full_features FROM test_data GROUP BY grp ORDER BY grp;
 -- End - bug#7234
 
+/* Begin Bug#8652: GROUP_CONCAT DISTINCT and ORDER BY may use independent expressions. */
+CREATE TABLE t(id int, name text);
+INSERT INTO t VALUES (7, 'b');
+INSERT INTO t VALUES (3, 'b');
+INSERT INTO t VALUES (5, 'a');
+INSERT INTO t VALUES (1, 'c');
+INSERT INTO t VALUES (9, 'a');
+SELECT GROUP_CONCAT(DISTINCT name ORDER BY id) FROM t;
+SELECT GROUP_CONCAT(
+           DISTINCT CONCAT('(', t.value_text, ')', IFNULL(t.name_text, ''))
+           ORDER BY t.value_text
+           SEPARATOR ','
+       )
+FROM (
+    SELECT 'B' AS value_text, 'name2' AS name_text
+    UNION ALL SELECT 'A', 'name1'
+    UNION ALL SELECT 'A', 'name1'
+) t;
+drop table t;
+/* End Bug#8652 */
+
 -- begin - bug#7234
 SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',200)) t; 	-- 602
 SELECT length(GROUP_CONCAT(col)) FROM (SELECT repeat('a',200) col UNION ALL SELECT repeat('b',200) UNION ALL SELECT repeat('c',1000)) t;	-- 1024, warning
@@ -1212,3 +1233,9 @@ create table t_current_user as select current_user();
 desc t_current_user;
 drop table t_current_user;
 select pg_typeof(current_user());
+/* Begin Bug#8652 */
+SET work_mem = '64kB';
+SELECT GROUP_CONCAT(DISTINCT i::text ORDER BY (-i)) FROM generate_series(1,10) i;
+SELECT length(GROUP_CONCAT(DISTINCT i::text ORDER BY (-i))) FROM generate_series(1,1000) i;
+RESET work_mem;
+/* End Bug#8652 */
