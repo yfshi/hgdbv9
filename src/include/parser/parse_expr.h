@@ -48,4 +48,14 @@ extern Node *make_bigint_const_from_hex(Node *n); /* BUG#5048 5070 */
 /* Begin - BUG#7845 */
 extern void get_tablename_colname_from_var(ParseState *pstate, Var *var, char **colName, char **tabName);
 /* End - BUG#7845 */
+
+/* Begin - Bug#8878 */
+extern Node *search_targetList_and_groupList(ParseState *orig_pstate,
+											 ParseState *level_pstate,
+											 ColumnRef *cref,
+											 int location,
+											 int sublevels_up,
+											 bool second_parsing,
+											 TargetEntry **target_tle);
+/* End - Bug#8878 */
 #endif							/* PARSE_EXPR_H */

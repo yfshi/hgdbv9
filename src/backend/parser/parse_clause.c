@@ -2863,6 +2863,37 @@ checkTargetlistEntrySQL92(ParseState *pstate, TargetEntry *tle,
 	}
 }
 
+/* Begin - Bug#8878 */
+static bool
+target_item_conflicts_with_group_name(ParseState *pstate, TargetEntry *tle,
+									  const char *name)
+{
+	Var *tle_var;
+	char *real_colname = NULL;
+
+	if (tle == NULL || tle->resjunk || tle->resname == NULL)
+		return false;
+
+	/* Try to reduce the SELECT expression to a simple Var. */
+	tle_var = (Var *)strip_explicit_to_var((Node *)tle->expr);
+
+	/* If it is a Var, recover its original visible column name. */
+	if (tle_var != NULL)
+		get_tablename_colname_from_var(pstate, tle_var, &real_colname, NULL);
+
+	/*
+	 * Return true only when the SELECT item is an alias that conflicts with a
+	 * unique FROM column of the same GROUP BY name.(Table t has a column called b)
+	 *
+	 * Examples:
+	 *   SELECT a AS b FROM t GROUP BY b;      true:  "b" is an alias for column "a"
+	 *   SELECT a + 1 AS b FROM t GROUP BY b;  true:  "b" is an expression alias
+	 *   SELECT b AS b FROM t GROUP BY b;      false: "b" is the original column name
+	 */
+	return (!tle_var || (real_colname != NULL && pg_strcasecmp(real_colname, name) != 0)) && pg_strcasecmp(tle->resname, name) == 0;
+}
+/* End - Bug#8878 */
+
 /*
  *	findTargetlistEntrySQL92 -
  *	  Returns the targetlist entry matching the given (untransformed) node.
@@ -2949,56 +2980,60 @@ findTargetlistEntrySQL92(ParseState *pstate, Node *node, List **tlist,
 			 * breaks no cases that are legal per spec, and it seems a more
 			 * self-consistent behavior.
 			 */
-			/* Begin: Req:SRS-MYSQL-SQL-Select */
+			/* Begin - Bug#8878 */
 			if (compatible_mode == MYS_MODE)
 			{
-				if (colNameToVar(pstate, name, true, location) != NULL)
+				Node *target_result;
+				TargetEntry *target_tle;
+				ParseExprKind save_expr_kind;
+
+				/*
+				 * findTargetlistEntrySQL92 receives the active clause kind as an
+				 * argument, while the MySQL-compatible helper uses p_expr_kind to
+				 * choose GROUP BY/HAVING behavior.  Synchronize it only for this
+				 * lookup and restore the caller's ParseState immediately after.
+				 */
+				save_expr_kind = pstate->p_expr_kind;
+				pstate->p_expr_kind = exprKind;
+				target_result = search_targetList_and_groupList(pstate, pstate,
+																(ColumnRef *)node,
+																location, 0, false,
+																&target_tle);
+				pstate->p_expr_kind = save_expr_kind;
+				if (target_result != NULL)
 				{
-					/**
-					 * Name conflicts only occur when targetList exist alias.
-					 * After searched for the table, only determine whether it exists in the targetList.
+					/*
+					 * GROUP BY name follows these cases:
+					 * 1. Alias exists, no same-name FROM column: use the SELECT alias.
+					 * 2. Alias exists, one same-name FROM column: warn if they differ; FROM wins.
+					 * 3. Alias exists, multiple same-name FROM columns: ignore ambiguous FROM and use the alias.
+					 * 4. No alias, multiple same-name FROM columns: report ambiguous column.
+					 * 5. No alias, one same-name FROM column: use the FROM column.
 					 */
-					foreach (tl, *tlist)
+					Node *unique_col = colNameToVarExt(pstate, name, true, false, location,
+														true);
+					if (unique_col != NULL &&
+						target_item_conflicts_with_group_name(pstate, target_tle, name))
 					{
-						TargetEntry *select_tle = (TargetEntry *)lfirst(tl);
-						char *real_colname = NULL;
-						Node *tleVar = strip_explicit_to_var((Node *)select_tle->expr);
-
-						/* If there is a stripped Node, it must be of type Var*/
-						if (tleVar)
-							get_tablename_colname_from_var(pstate, (Var *)tleVar, &real_colname, NULL);
-
-						/**
-						 * is visible &&
-						 * expr isn`t Var, just juge tle_resname equal name
-						 * select_tle in table(real_colname != NULL),  real_colname not equal fount name, so resname is alias
-						 * so just judge resname equal name. if equal, name in table ans targetlist.
-						 *
-						 * (real_colname && pg_strcasecmp(real_colname, name) != 0) prevent  'a as a', we determinr it table col, not alias.
-						 */
-						if (!select_tle->resjunk &&
-							(!tleVar || (real_colname && pg_strcasecmp(real_colname, name) != 0)) &&
-							pg_strcasecmp(select_tle->resname, name) == 0)
-						{
-							ereport(WARNING,
-									(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-									 errmsg("Column '%s' in group statement is ambiguous",
-											name),
-									 parser_errposition(pstate, location)));
-							break;
-						}
+						ereport(WARNING,
+								(errcode(ERRCODE_AMBIGUOUS_COLUMN),
+								 errmsg("Column '%s' in group statement is ambiguous",
+										name),
+								 parser_errposition(pstate, location)));
+						return findTargetlistEntrySQL99(pstate, node, tlist, exprKind);
 					}
-					name = NULL;
+					else
+					{
+						checkTargetlistEntrySQL92(pstate, target_tle, exprKind);
+						return target_tle;
+					}
 				}
 			}
-			/* End: Req:SRS-MYSQL-SQL-Select */
-			else
-			{
-				if (colNameToVar(pstate, name, true, location) != NULL)
-					name = NULL;
-			}
-		}
+			/* Begin - Bug#8878 */
 
+			if (colNameToVar(pstate, name, true, location) != NULL)
+				name = NULL;
+		}
 
 		if (name != NULL)
 		{

@@ -2243,7 +2243,7 @@ drop table domain_t;
 
 
 
---BUG#M7840
+--BUG#7840
 create table  product (
 id int primary key,
 name varchar(20),
@@ -2258,7 +2258,7 @@ insert into  product values
 SELECT name AS PNAME FROM product HAVING pname = 'Apple';
 
 
---BUG#M7839
+--BUG#7839
 SELECT name,total AS price
 FROM (SELECT name,SUM(price) AS total FROM product GROUP BY name) t
 HAVING total > 15;
@@ -2267,6 +2267,57 @@ HAVING total > 15;
 SELECT name, total AS price,price AS original_price
 FROM (SELECT name, SUM(price) AS total,price  FROM product GROUP BY name,price) t
 HAVING price > 15;
+
+
+--BUG8878
+DROP TABLE IF EXISTS t1;
+DROP TABLE IF EXISTS t2;
+DROP TABLE IF EXISTS t3;
+
+CREATE TABLE t1 (id int, end_slice_time timestamp);
+CREATE TABLE t2 (id int, end_slice_time timestamp);
+CREATE TABLE t3 (id int, allocation_time timestamp);
+
+INSERT INTO t1 VALUES (1, '2024-01-01 00:00:00'), (2, '2024-01-02 00:00:00');
+INSERT INTO t2 VALUES (1, '2024-02-01 00:00:00'), (2, '2024-02-02 00:00:00');
+INSERT INTO t3 VALUES (1, '2024-03-01 00:00:00'), (2, '2024-03-02 00:00:00');
+
+-- 1. Alias exists, and no FROM column has the same original name.
+-- OK: GROUP BY uses SELECT alias.
+SELECT allocation.allocation_time AS end_slice_time
+FROM t3 allocation
+GROUP BY end_slice_time;
+
+-- 2. Alias exists, and exactly one FROM column has the same original name.
+-- WARNING: FROM column wins.
+SELECT allocation.allocation_time AS end_slice_time
+FROM t1 sec
+LEFT JOIN t3 allocation ON true
+GROUP BY end_slice_time;
+
+-- 3. Alias exists, and multiple FROM columns have the same original name.
+-- OK: ambiguous FROM probe is ignored, so GROUP BY uses SELECT alias.
+SELECT allocation.allocation_time AS end_slice_time
+FROM t1 sec
+LEFT JOIN t2 embf ON true
+LEFT JOIN t3 allocation ON true
+GROUP BY end_slice_time;
+
+-- 4. Alias does not exist, and multiple FROM columns have the same original name.
+-- ERROR: column reference "end_slice_time" is ambiguous.
+SELECT allocation.allocation_time
+FROM t1 sec
+LEFT JOIN t2 embf ON true
+LEFT JOIN t3 allocation ON true
+GROUP BY end_slice_time;
+
+-- 5. Alias does not exist, and exactly one FROM column has the same original name.
+-- OK: GROUP BY uses the single FROM column.
+SELECT allocation.allocation_time
+FROM t1 sec
+LEFT JOIN t3 allocation ON true
+GROUP BY end_slice_time;
+
 
 
 set sql_mode = default;

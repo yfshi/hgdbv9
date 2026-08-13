@@ -45,7 +45,7 @@ extern Node *scanNSItemForColumnExt(ParseState *pstate, ParseNamespaceItem *nsit
 extern Node *colNameToVar(ParseState *pstate, const char *colname, bool localonly,
 						  int location);
 extern Node *colNameToVarExt(ParseState *pstate, const char *colname, bool localonly, bool has_plus_token, /* ReqID:SRS-SQL-OUTERJOIN(+) */
-							 int location);
+							 int location, bool ignore_ambiguous);
 extern void markVarForSelectPriv(ParseState *pstate, Var *var);
 extern Relation parserOpenTable(ParseState *pstate, const RangeVar *relation,
 								int lockmode);
