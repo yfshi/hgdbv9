@@ -586,7 +586,7 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
                     mq_get_int1(buf, (uint8 *) &tm->tm_min);
                     mq_get_int1(buf, (uint8 *) &tm->tm_sec);
                     
-                    datetime = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) * 1000000 + 
+                    datetime = (tm->tm_year * 10000 + tm->tm_mon * 100 + tm->tm_mday) * 1000000L + 
                                 tm->tm_hour * 10000 + tm->tm_min * 100 + tm->tm_sec;
 
                     value = TimeADTGetDatum(datetime);

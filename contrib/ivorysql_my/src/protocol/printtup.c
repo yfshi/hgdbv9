@@ -173,6 +173,11 @@ binary_row_description_message(TupleDesc typeinfo, List *targetlist)
         pfree(field);
     }
 
+    /* Begin OA-2717 */
+    if (!has_client_capabilities(CLIENT_DEPRECATE_EOF))
+        send_eof(0, 0);
+    /* End - OA-2717 */
+
     DestroyStringInfo(buf);
 }
 
