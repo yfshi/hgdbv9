@@ -213,6 +213,7 @@ search_charset_info_by_coll_id(Oid coll, bool missing_ok)
         {
             pfree(collname);
             collname = collctype;
+            collctype  = NULL;	/* OA-2721 */
         }
         /* End - bug#8474 */
         
@@ -242,6 +243,10 @@ search_charset_info_by_coll_id(Oid coll, bool missing_ok)
 
 	if (collname)
 		pfree(collname);
+	/* Begin - OA-2721 */
+	if (collctype)
+		pfree(collctype);
+	/* End - OA-2721 */
 
     return entry->cs;
 }
