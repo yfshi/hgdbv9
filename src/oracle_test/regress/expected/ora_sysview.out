@@ -1585,7 +1585,7 @@ select comp_id, comp_name, version, version_full, status, modified, namespace, s
  hg_sysmac          | hg_sysmac          | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
  hg_antitamper      | hg_antitamper      | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
  hg_rolstatus       | hg_rolstatus       | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
- hg_integrity_check | hg_integrity_check | 1.0     | 1.0          | VALID  |          | hg_security | hg_security |           |         |           | 
+ hg_integrity_check | hg_integrity_check | 1.1     | 1.1          | VALID  |          | hg_security | hg_security |           |         |           | 
 (18 rows)
 
 \c - enrol22

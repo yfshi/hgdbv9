@@ -55,7 +55,8 @@
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
-WalFileUpdatemd5_type WalFileUpdatemd5 = NULL; /* ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+WalFileUpdateChecksum_type WalFileUpdateChecksum = NULL; /* ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+														 /* ReqID: SRS-SECURITY-AUTHENTICATION-METHOD */
 /* ----------
  * Timer definitions.
  * ----------
@@ -478,12 +479,12 @@ pgarch_ArchiverCopyLoop(void)
 				 */
 				pgstat_send_archiver(xlog, false);
 
-				/* Begin - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
-				if (WalFileUpdatemd5 && (XLogArchiveMode > ARCHIVE_MODE_OFF) )
+				/* Begin - ReqID: SRS-SECURITY-EAL4-WAL_MD5*/ /* SRS-SECURITY-AUTHENTICATION-METHOD */
+				if (WalFileUpdateChecksum && (XLogArchiveMode > ARCHIVE_MODE_OFF) )
 				{
-					(*WalFileUpdatemd5)(xlog, XLogArchiveCommand);
+					(*WalFileUpdateChecksum)(xlog, XLogArchiveCommand);
 				}
-				/* End - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */
+				/* End - ReqID: SRS-SECURITY-EAL4-WAL_MD5 */ /*SRS-SECURITY-AUTHENTICATION-METHOD */
 
 				break;			/* out of inner retry loop */
 			}

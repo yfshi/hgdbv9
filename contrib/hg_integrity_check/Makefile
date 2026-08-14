@@ -8,7 +8,7 @@ OBJS = \
 
 
 EXTENSION = hg_integrity_check
-DATA = hg_integrity_check--1.0.sql
+DATA = hg_integrity_check--1.0.sql hg_integrity_check--1.0--1.1.sql
 PGFILEDESC = "hg_integrity_check"
 
 TAP_TESTS = 1

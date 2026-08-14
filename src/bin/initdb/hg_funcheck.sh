@@ -1,43 +1,50 @@
 #!/bin/bash
 SCRIPT_DIR=$(cd "$(dirname "$0")/.." && pwd)
 
-function initmd5 {
-	if ! command -v md5sum > /dev/null 2>&1; then
-		echo "md5sum command not found!"
+# Begin - SRS-SECURITY-AUTHENTICATION-METHOD
+function initsha256 {
+	if ! command -v sha256sum > /dev/null 2>&1; then
+		echo "sha256sum command not found!"
 		exit 2
 	fi
-	md5=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` `find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | md5sum | awk '{print $1}')
-	echo ${md5} > $SCRIPT_DIR/etc/.md5
+	sha256=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` \
+		`find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | sha256sum | awk '{print $1}')
+	echo ${sha256} > $SCRIPT_DIR/etc/.sha256
 }
+# End - SRS-SECURITY-AUTHENTICATION-METHOD
 
-function checkmd5 {
-	if ! command -v md5sum > /dev/null 2>&1; then
-		echo "md5sum command not found!"
+# Begin - SRS-SECURITY-AUTHENTICATION-METHOD
+function checksha256 {
+	if ! command -v sha256sum > /dev/null 2>&1; then
+		echo "sha256sum command not found!"
 		exit 2
 	fi
-	oldmd5=$(cat $SCRIPT_DIR/etc/.md5)
-	newmd5=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` `find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | md5sum | awk '{print $1}')
+	oldsha256=$(cat $SCRIPT_DIR/etc/.sha256)
+	newsha256=$(cat `find $SCRIPT_DIR/bin -type f` `find $SCRIPT_DIR/lib -type f` \
+		`find $SCRIPT_DIR/include -type f` `find $SCRIPT_DIR/share -type f` | sha256sum | awk '{print $1}')
 
-	if [ "${newmd5}" = "${oldmd5}" ]
+	if [ "${newsha256}" = "${oldsha256}" ]
 	then
 		echo "Consistency check successful"
-		echo "Initialize MD5 value: ${oldmd5}"
-		echo "current MD5 value: ${newmd5}"
+		echo "Initialize SHA256 value: ${oldsha256}"
+		echo "current SHA256 value: ${newsha256}"
 		exit 1
 	else
 		echo "Consistency check failed"
-		echo "Initialize MD5 value: ${oldmd5}"
-		echo "current MD5 value: ${newmd5}"
-		#echo "check failed!" > $SCRIPT_DIR/etc/.checkfailedi
+		echo "Initialize SHA256 value: ${oldsha256}"
+		echo "current SHA256 value: ${newsha256}"
 		exit 2
 	fi
 }
+# End - SRS-SECURITY-AUTHENTICATION-METHOD
 
 function usage {
 	echo "hg_check [option]..."
 	echo "General options"
-	echo "-i, --init  Initialize MD5 value"
-	echo "-c, --check check MD5 value"
+	# Begin - SRS-SECURITY-AUTHENTICATION-METHOD
+	echo "-i, --init Initialize SHA256 value"
+	echo "-c, --check check SHA256 value"
+	# End - SRS-SECURITY-AUTHENTICATION-METHOD
 	echo "======================================"
 }
 
@@ -50,13 +57,13 @@ if [ -n $1 ]
 then
 	case "$1" in
 		-i)
-			initmd5;;
+			initsha256;; # SRS-SECURITY-AUTHENTICATION-METHOD
 		--init)
-			initmd5;;
+			initsha256;; # SRS-SECURITY-AUTHENTICATION-METHOD
 		-c)
-			checkmd5;;
+			checksha256;; # SRS-SECURITY-AUTHENTICATION-METHOD
 		--check)
-			checkmd5;;	
+			checksha256;; # SRS-SECURITY-AUTHENTICATION-METHOD
 		-h)
 			echo "======================================"
 			echo "--help or -h  How do we use it."

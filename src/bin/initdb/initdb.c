@@ -1911,6 +1911,62 @@ setup_auth(FILE *cmdfd)
 					  username, escape_quotes(superuser_password));
 }
 
+/* Begin - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+
+#define MIN_PASSWORD_LENGTH 10
+#define MAX_PASSWORD_LENGTH 64
+
+/*
+ * Check whether a password satisfies the initdb complexity requirements.
+ *
+ * A valid password is between MIN_PASSWORD_LENGTH and MAX_PASSWORD_LENGTH
+ * bytes long and contains at least one lowercase letter, one uppercase
+ * letter, one digit, and one special character.
+ */
+static bool
+check_password_complexity(const char *password)
+{
+	const unsigned char *p = (const unsigned char *) password;
+	size_t		password_length = strnlen(password, INT_MAX);
+	int			lower = 0;
+	int			upper = 0;
+	int			digit = 0;
+	int			special = 0;
+
+	if (password_length < MIN_PASSWORD_LENGTH ||
+		password_length > MAX_PASSWORD_LENGTH)
+		return false;
+
+	for (; *p; p++)
+	{
+		if (islower(*p))
+			lower++;
+		else if (isupper(*p))
+			upper++;
+		else if (isdigit(*p))
+			digit++;
+		else
+			special++;
+	}
+
+	return lower > 0 && upper > 0 && digit > 0 && special > 0;
+}
+
+static void
+print_password_complexity_rules(void)
+{
+	fprintf(stderr,
+			_("Password must meet the following requirements:\n"
+			  "  - length must be between %d and %d\n"
+			  "  - contain at least one uppercase letter\n"
+			  "  - contain at least one lowercase letter\n"
+			  "  - contain at least one digit\n"
+			  "  - contain at least one special character\n"),
+			MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH);
+}
+#endif
+/* End - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 
 /*
  * get the superuser password if required
@@ -1932,8 +1988,24 @@ get_su_pwd(void)
 
 		printf("\n");
 		fflush(stdout);
+
+		/* Begin - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+		for (;;)
+		{
+			pwd1 = simple_prompt("Enter default dba user password: ", false);
+			if (check_password_complexity(pwd1))
+				break;
+
+			print_password_complexity_rules();
+			free(pwd1);
+		}
+#else
+		/* End - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 		/* Begin - ReqID:SRS-SECURITY-POWERS Bug#z4747 */
 		pwd1 = simple_prompt("Enter default dba user password: ", false);
+#endif
+
 		/* End - ReqID:SRS-SECURITY-POWERS Bug#z4747 */
 		pwd2 = simple_prompt("Enter it again: ", false);
 		if (strcmp(pwd1, pwd2) != 0)
@@ -1950,7 +2022,21 @@ get_su_pwd(void)
 
 			printf("\n");
 			fflush(stdout);
+			/* Begin - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+			for (;;)
+			{
+				syssso_pwd1 = simple_prompt("Enter default sso user password: ", false);
+				if (check_password_complexity(syssso_pwd1))
+					break;
+
+				print_password_complexity_rules();
+				free(syssso_pwd1);
+			}
+#else
+			/* End - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 			syssso_pwd1 = simple_prompt("Enter default sso user password: ", false);
+#endif
 			syssso_pwd2 = simple_prompt("Enter it again: ", false);
 			if (strcmp(syssso_pwd1, syssso_pwd2) != 0)
 			{
@@ -1960,7 +2046,21 @@ get_su_pwd(void)
 
 			printf("\n");
 			fflush(stdout);
+			/* Begin - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+			for (;;)
+			{
+				syssao_pwd1 = simple_prompt("Enter default sao user password: ", false);
+				if (check_password_complexity(syssao_pwd1))
+					break;
+
+				print_password_complexity_rules();
+				free(syssao_pwd1);
+			}
+#else
+			/* End - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 			syssao_pwd1 = simple_prompt("Enter default sao user password: ", false);
+#endif
 			syssao_pwd2 = simple_prompt("Enter it again: ", false);
 			if (strcmp(syssao_pwd1, syssao_pwd2) != 0)
 			{
@@ -2014,6 +2114,19 @@ get_su_pwd(void)
 		fclose(pwf);
 
 		(void) pg_strip_crlf(pwd1);
+
+	/* Begin - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+		if (!check_password_complexity(pwd1))
+		{
+			pg_log_error("password from file \"%s\" does not meet complexity requirements",
+						 pwfilename);
+			print_password_complexity_rules();
+			free(pwd1);
+			exit(1);
+		}
+#endif
+	/* End - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 	}
 
 	superuser_password = pwd1;
@@ -3057,8 +3170,13 @@ check_authmethod_unspecified(const char **authmethod)
 {
 	if (*authmethod == NULL)
 	{
+	/* Begin - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
+#if defined(ENABLE_DKY_BETA_FEATURE)
+		*authmethod = "scram-sha-256";
+#else /* End - ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 		authwarning = true;
 		*authmethod = "trust";
+#endif /* ReqID:SRS-SECURITY-AUTHENTICATION-METHOD */
 	}
 }
 
