@@ -26,11 +26,11 @@ public class MySQLJdbcStmtPrepareTest_2 {
 
 		if (jar_version.equals("new"))
 		{
-			url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC";
+			url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&emulateUnsupportedPstmts=false";
 		}
 		else
 		{
-			url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&useSSL=false";
+			url_jdbc = "jdbc:mysql://?allowPublicKeyRetrieval=true&useServerPrepStmts=true&serverTimezone=UTC&useSSL=false&emulateUnsupportedPstmts=false";
 		}
 
 		Connection conn = null;
@@ -60,6 +60,7 @@ public class MySQLJdbcStmtPrepareTest_2 {
             testPreparedStatementWithOrderBy_1(conn);
             testPreparedStatementWithOrderBy_2(conn);
             testPreparedStatementWithOrderBy_3(conn);
+           testPreparedStatementWithParamUpdate(conn);
         } catch (Exception e) {
             System.err.println("Test failed: " + e.getMessage());
             e.printStackTrace();
@@ -295,6 +296,28 @@ public class MySQLJdbcStmtPrepareTest_2 {
 
         } catch (SQLException e) {
             System.err.println("Failed to execute query with parameter contains order by: " + e.getMessage());
+        } finally {
+            try {
+                if (rs != null) rs.close();
+                if (pstmt != null) pstmt.close();
+            } catch (SQLException e) {
+                System.err.println("Cleanup error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void testPreparedStatementWithParamUpdate(Connection conn) {
+        PreparedStatement pstmt = null;
+        ResultSet rs = null;
+
+        try {
+            System.out.println("\n--- Test 4: PreparedStatement WITH parameter ---");
+            pstmt = conn.prepareStatement("UPDATE test_1 set a=?");
+
+            pstmt.setInt(1, 1);
+            pstmt.executeUpdate();
+        } catch (SQLException e) {            
+            throw new RuntimeException("prepare sql execute fail", e);
         } finally {
             try {
                 if (rs != null) rs.close();
