@@ -52,7 +52,7 @@ extern bool query_contains_extern_params(Query *query);
 extern Node *ParseParamVariable(Node *arg);
 extern char *GetParamMode(Oid *paramTypes, int numParams); /* BUG:M0000083 */
 extern void ParseVarParamState(void *arg, Node *param,
-							bool *firstOutIsReturn, bool proc_call, int narg);
+							bool *firstOutIsReturn, bool proc_call);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 /* Begin - ReqID:SRS-SQL-ANONYOUT */
 extern int push_oraparam_stack(void);

@@ -1,0 +1,13 @@
+
+bindvar[0]=1,bindvar[1]=32767,bindvar[2]=-32768,bindvar[3]=0
+0,0,0,-1
+
+again exec
+
+bindvar[0]=1,bindvar[1]=32767,bindvar[2]=-32768,bindvar[3]=0
+0,0,0,-1
+
+
+bindvar[0]=32767,bindvar[1]=-32768,bindvar[2]=0,bindvar[3]=1
+0,0,-1,0
+

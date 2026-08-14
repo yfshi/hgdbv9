@@ -748,7 +748,9 @@ BEGIN
    DBMS_OUTPUT.PUT_LINE('Total rows : ' ||  SQL%BULK_ROWCOUNT(1));
 END;
 /
-Total rows : 
+ERROR:  Reference to uninitialized collection
+CONTEXT:  SQL statement "CALL DBMS_OUTPUT.PUT_LINE('Total rows : ' ||  SQL.bulk_rowcount[1])"
+PL/iSQL function inline_code_block line 3 at CALL
 DELETE FROM employees_temp;
 INSERT INTO employees_temp VALUES(1, 'kim', 1);
 INSERT INTO employees_temp VALUES(2, 'Joe', 2);

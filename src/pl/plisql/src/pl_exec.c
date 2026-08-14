@@ -8412,6 +8412,11 @@ void
 plisql_init_sql_cursor(void)
 {
 	sql_cursor_init = false;
+	/* Begin - OA#2707 */
+	/* init bulk_rowcount */
+	bulk_rowcount_flag = BULK_ROWCOUNT_UNINITIALIZED;
+	sql_bulk_rowcount = (Datum) 0;
+	/* End - OA#2707 */
 }
 
 

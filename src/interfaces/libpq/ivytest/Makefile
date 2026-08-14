@@ -17,7 +17,7 @@ LDFLAGS_INTERNAL += $(libpq_pgport)
 PROGS = testlibpq testlibpqstmt2 testlibpq_nullstmt testlibpq_allout testlibpq_prepare_plsql testlibpq_prepare_dml \
         testlibpq_binary_double testlibpq_binary_float testlibpq_interval testlibpq_number testlibpq_prepare_call \
 	testlibpq_call testlibpqstmt2_call testlibpq_question_mark testlibpq_refcursor_out_ora testlibpq_question_mark2 \
-	testlibpq_prepare_plsql_dml testlibpq_prepare_anonlymous_parameter testlibpq_returnvoid
+	testlibpq_prepare_plsql_dml testlibpq_prepare_anonlymous_parameter testlibpq_returnvoid testlibpq_jdbc
 
 all: $(PROGS)
 
