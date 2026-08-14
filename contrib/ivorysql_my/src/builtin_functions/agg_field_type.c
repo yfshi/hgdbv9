@@ -1095,6 +1095,11 @@ mysql_type_to_pg_type(enum_field_types mysql_type, bool unsigned_flag, bool bina
 		case MYSQL_TYPE_NULL:
 			return TEXTOID;
 
+		/* Begin OA#2701 */
+		case MYSQL_TYPE_BIT:
+			return MYSBITOID;
+		/* End OA#2701 */
+
 		default:
 			return VARCHAROID;
 	}

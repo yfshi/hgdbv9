@@ -282,3 +282,24 @@ select pg_typeof(a || b) from t_times;
  character varying
 (1 row)
 
+/* Begin OA#2701 */
+set sql_mode = '';
+select 1 as or_result where 1=1 || 2=2;
+ or_result 
+-----------
+         1
+(1 row)
+
+select 1 as or_result where 1=0 || 2=3;
+ or_result 
+-----------
+(0 rows)
+
+select 1 as or_result where 1=1 ||/* comment */2=2;
+ or_result 
+-----------
+         1
+(1 row)
+
+reset sql_mode;
+/* End OA#2701 */

@@ -107,6 +107,103 @@ CREATE OPERATOR ivymy.+ (
 );
 
 --
+-- text - float8
+--
+CREATE OR REPLACE FUNCTION ivymy.mystextfloat8_mi(text, pg_catalog.float8)
+	RETURNS pg_catalog.float8
+	AS 'MODULE_PATHNAME', 'mystextfloat8_mi'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.- (
+	FUNCTION = mystextfloat8_mi,
+	LEFTARG = text,
+	RIGHTARG = pg_catalog.float8
+);
+
+--
+-- text * float8
+--
+CREATE OR REPLACE FUNCTION ivymy.mystextfloat8_mul(text, float8)
+	RETURNS float8
+	AS 'MODULE_PATHNAME', 'mystextfloat8_mul'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.* (
+	FUNCTION = mystextfloat8_mul,
+	LEFTARG = text,
+	RIGHTARG = float8
+);
+
+--
+-- text / float8
+--
+CREATE OR REPLACE FUNCTION ivymy.mystextfloat8_div(text, float8)
+	RETURNS float8
+	AS 'MODULE_PATHNAME', 'mystextfloat8_div'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy./ (
+	FUNCTION = mystextfloat8_div,
+	LEFTARG = text,
+	RIGHTARG = float8
+);
+
+--
+-- float8 + text 
+--
+CREATE OR REPLACE FUNCTION ivymy.mysfloat8text_pl(float8, text)
+	RETURNS float8
+	AS 'MODULE_PATHNAME', 'mysfloat8text_pl'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.+ (
+	FUNCTION = mysfloat8text_pl,
+	LEFTARG = float8,
+	RIGHTARG = text
+);
+
+--
+-- float8 - text 
+--
+CREATE OR REPLACE FUNCTION ivymy.mysfloat8text_mi(float8, text)
+	RETURNS float8
+	AS 'MODULE_PATHNAME', 'mysfloat8text_mi'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.- (
+	FUNCTION = mysfloat8text_mi,
+	LEFTARG = float8,
+	RIGHTARG = text
+);
+
+--
+-- float8 * text 
+--
+CREATE OR REPLACE FUNCTION ivymy.mysfloat8text_mul(float8, text)
+	RETURNS float8
+	AS 'MODULE_PATHNAME', 'mysfloat8text_mul'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy.* (
+	FUNCTION = mysfloat8text_mul,
+	LEFTARG = float8,
+	RIGHTARG = text
+);
+
+--
+-- float8 / text 
+--
+CREATE OR REPLACE FUNCTION ivymy.mysfloat8text_div(float8, text)
+	RETURNS float8
+	AS 'MODULE_PATHNAME', 'mysfloat8text_div'
+	LANGUAGE C STRICT IMMUTABLE PARALLEL SAFE;
+
+CREATE OPERATOR ivymy./ (
+	FUNCTION = mysfloat8text_div,
+	LEFTARG = float8,
+	RIGHTARG = text
+);
+--
 -- ! text
 --
 CREATE OR REPLACE FUNCTION ivymy.mystext_logic_not(text)
@@ -235,69 +332,7 @@ LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
 CREATE CAST(text as pg_catalog.float8)
 WITH FUNCTION ivymy.text_float8(text, int, bool, int8)
-AS IMPLICIT;
-
---
--- cast (varchar as int2)
---
-CREATE FUNCTION ivymy.varchar_int2(varchar, int, bool, int8) 
-RETURNS int2
-AS 'MODULE_PATHNAME', 'varlena_int2'
-LANGUAGE C 
-STRICT 
-PARALLEL SAFE 
-IMMUTABLE;
-
-CREATE CAST(varchar as int2) 
-WITH FUNCTION ivymy.varchar_int2(varchar, int, bool, int8) 
 AS ASSIGNMENT;
-
---
--- cast (varchar as int4)
---
-CREATE FUNCTION ivymy.varchar_int4(varchar, int, bool, int8) 
-RETURNS pg_catalog.int4
-AS 'MODULE_PATHNAME', 'varlena_int4'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE CAST(varchar as pg_catalog.int4) 
-WITH FUNCTION ivymy.varchar_int4(varchar, int, bool, int8) 
-AS ASSIGNMENT;
-
---
--- cast (varchar as int8)
---
-CREATE FUNCTION ivymy.varchar_int8(varchar, int, bool, int8) 
-RETURNS pg_catalog.int8
-AS 'MODULE_PATHNAME', 'varlena_int8'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE CAST(varchar as pg_catalog.int8)
-WITH FUNCTION ivymy.varchar_int8(varchar, int, bool, int8) 
-AS ASSIGNMENT;
-
--- Begin - ReqID:SRS-MYSQL-SET
---
--- cast (varchar as numeric)
---
-create or replace function ivymy.varchar_numeric(varchar, int, bool, int8) 
-returns numeric
-as 'MODULE_PATHNAME', 'varlena_numeric'
-LANGUAGE C
-STRICT
-PARALLEL SAFE
-IMMUTABLE;
-
-CREATE CAST (varchar AS numeric)
-WITH FUNCTION ivymy.varchar_numeric(varchar, int, bool, int8)
-AS ASSIGNMENT;
--- End - ReqID:SRS-MYSQL-SET
 
 /* Begin - bug#z5590 */
 create or replace function ivymy.text_numeric(text, int, bool, int8) 
@@ -327,18 +362,102 @@ CREATE OPERATOR <=> (
 	rightarg = text
 );
 
-/* Begin - ReqID:SRS-MYSQL-SQL-Alter */
---
--- cast (varchar as float4)
---
-CREATE CAST (varchar AS float4)
-WITH FUNCTION ivymy.text_float4(text, integer, boolean, int8)
-AS ASSIGNMENT;
+/* Begin OA#2701 */
+CREATE FUNCTION ivymy.text_eq_float8(text, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'varlena_eq_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
 
---
--- cast (varchar as float8)
---
-CREATE CAST (varchar AS float8)
-WITH FUNCTION ivymy.text_float8(text, integer, boolean, int8)
-AS ASSIGNMENT;
-/* End - ReqID:SRS-MYSQL-SQL-Alter */
+CREATE OPERATOR ivymy.= (
+	procedure = ivymy.text_eq_float8,
+	leftarg = text,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.text_ne_float8(text, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'varlena_ne_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.<> (
+	procedure = ivymy.text_ne_float8,
+	leftarg = text,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.text_lt_float8(text, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'varlena_lt_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.< (
+	procedure = ivymy.text_lt_float8,
+	leftarg = text,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.text_le_float8(text, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'varlena_le_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.<= (
+	procedure = ivymy.text_le_float8,
+	leftarg = text,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.text_gt_float8(text, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'varlena_gt_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.> (
+	procedure = ivymy.text_gt_float8,
+	leftarg = text,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.text_ge_float8(text, float8)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'varlena_ge_float8'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.>= (
+	procedure = ivymy.text_ge_float8,
+	leftarg = text,
+	rightarg = float8
+);
+
+CREATE FUNCTION ivymy.float8_lt_text(float8, text)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'float8_lt_varlena'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.< (
+	procedure = ivymy.float8_lt_text,
+	leftarg = float8,
+	rightarg = text
+);
+
+CREATE FUNCTION ivymy.float8_ge_text(float8, text)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'float8_ge_varlena'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.>= (
+	procedure = ivymy.float8_ge_text,
+	leftarg = float8,
+	rightarg = text
+);
+
+CREATE FUNCTION ivymy.text_sum(float8, text)
+RETURNS float8
+AS 'MODULE_PATHNAME', 'varlena_sum'
+LANGUAGE C PARALLEL SAFE IMMUTABLE;
+
+CREATE AGGREGATE ivymy.sum(text) (
+	SFUNC = ivymy.text_sum,
+	STYPE = float8
+);
+/* End OA#2701 */

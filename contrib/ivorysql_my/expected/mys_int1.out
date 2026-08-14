@@ -1247,3 +1247,24 @@ show create table `f_gerxx`;
 (1 row)
 
 drop table `f_gerxx`;
+/* Begin OA#2701 */
+CREATE TABLE biz_apply_sample (
+    smear_count ivymy.tinyint,
+    is_deleted int
+);
+INSERT INTO biz_apply_sample VALUES
+(5, 0);
+SELECT CASE
+           WHEN 1 = 1 THEN smear_count
+           ELSE 1
+       END AS smear_count_result
+FROM biz_apply_sample
+WHERE is_deleted = 0
+LIMIT 1;
+ smear_count_result 
+--------------------
+                  5
+(1 row)
+
+DROP TABLE IF EXISTS biz_apply_sample;
+/* End OA#2701 */

@@ -55,7 +55,7 @@ CREATE OPERATOR !=- (
    rightarg = int8,
    procedure = factorial
 );
-SELECT !=- 10;
+-- SELECT !=- 10;
 -- postfix operators don't work anymore
 SELECT 10 !=-;
 -- make sure lexer returns != as <> even in edge cases

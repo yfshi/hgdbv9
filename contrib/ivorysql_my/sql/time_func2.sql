@@ -539,3 +539,76 @@ select extract(hour from 20200925121014), extract(minute from 20200925121014), e
 select extract(quarter from 20200925121014), extract(year_month from 20200925121014), extract(day_microsecond from 20200925121014);
 select extract(microsecond from 20200925121014.123456), extract(second from 20200925121014.1234);
 select extract(year_month from 20200925121014.101010), extract(day_microsecond from 20200925121014.000012);
+
+/* Begin OA#2701 */
+SELECT
+	pg_typeof(DATE_ADD(CAST('2026-08-13 10:20:30' AS pg_catalog.timestamp), INTERVAL 1 DAY)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(DATE_SUB(CAST('2026-08-13 10:20:30' AS pg_catalog.timestamp), INTERVAL 1 DAY)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(DATE_ADD(CAST('2026-08-13 10:20:30' AS DATETIME), INTERVAL 1 DAY)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(DATE_SUB(CAST('2026-08-13 10:20:30' AS DATETIME), INTERVAL 1 DAY)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(DATE_ADD(CAST('2026-08-13 10:20:30.123456' AS DATETIME(6)), INTERVAL 1 MICROSECOND)) =
+		'ivymy.mysdatetimes'::regtype
+	AND pg_typeof(DATE_SUB(CAST('2026-08-13 10:20:30.123456' AS DATETIME(6)), INTERVAL 1 MICROSECOND)) =
+		'ivymy.mysdatetimes'::regtype AS ok;
+
+SELECT
+	pg_typeof(ADDDATE(CAST('2026-08-13 10:20:30' AS pg_catalog.timestamp), 1)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(SUBDATE(CAST('2026-08-13 10:20:30' AS pg_catalog.timestamp), 1)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(ADDDATE(CAST('2026-08-13 10:20:30' AS DATETIME), 1)) =
+		'ivymy.mysdatetime'::regtype
+	AND pg_typeof(SUBDATE(CAST('2026-08-13 10:20:30' AS DATETIME), 1)) =
+		'ivymy.mysdatetime'::regtype 
+	AND pg_typeof(ADDDATE(CAST('2026-08-13 10:20:30.123456' AS DATETIME(6)), 1)) =
+		'ivymy.mysdatetimes'::regtype
+	AND pg_typeof(SUBDATE(CAST('2026-08-13 10:20:30.123456' AS DATETIME(6)), 1)) =
+		'ivymy.mysdatetimes'::regtype AS ok;
+
+select DATE_SUB(CAST('1998-08-14' AS DATE), INTERVAL 1 MONTH);
+
+SELECT pg_typeof(DATE_SUB(CAST('1998-08-14' AS DATE), INTERVAL 1 MONTH)) =
+		'ivymy.mysdatetimes'::regtype AS ok;
+
+SELECT
+	pg_typeof(DATE_ADD(CAST('1998-08-14' AS DATE), INTERVAL 1 DAY)) =
+		'ivymy.mysdatetimes'::regtype
+	AND pg_typeof(DATE_ADD(CAST('1998-08-14' AS DATE), INTERVAL 1 HOUR)) =
+		'ivymy.mysdatetimes'::regtype
+	AND pg_typeof(DATE_SUB(CAST('1998-08-14' AS DATE), INTERVAL 1 SECOND)) =
+		'ivymy.mysdatetimes'::regtype
+	AND pg_typeof(ADDDATE(CAST('1998-08-14' AS DATE), 1)) =
+		'ivymy.mysdatetimes'::regtype
+	AND pg_typeof(SUBDATE(CAST('1998-08-14' AS DATE), 1)) =
+		'ivymy.mysdatetimes'::regtype AS ok;
+
+SELECT
+	pg_typeof(DATE_ADD(CAST('2026-08-13 10:20:30' AS pg_catalog.text), INTERVAL 1 DAY)) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(DATE_SUB(CAST('2026-08-13 10:20:30' AS pg_catalog.text), INTERVAL 1 DAY)) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(DATE_ADD(CAST(20260813102030 AS pg_catalog.numeric), INTERVAL 1 DAY)) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(DATE_SUB(CAST(20260813102030 AS pg_catalog.numeric), INTERVAL 1 DAY)) =
+		'pg_catalog.text'::regtype AS ok;
+
+SELECT
+	pg_typeof(ADDDATE(CAST('2026-08-13 10:20:30' AS pg_catalog.text), 1)) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(SUBDATE(CAST('2026-08-13 10:20:30' AS pg_catalog.text), 1)) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(ADDDATE(CAST(20260813102030 AS pg_catalog.numeric), 1)) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(SUBDATE(CAST(20260813102030 AS pg_catalog.numeric), 1)) =
+		'pg_catalog.text'::regtype AS ok;
+
+SELECT
+	pg_typeof(ADDDATE(CAST('2026-08-13 10:20:30' AS pg_catalog.text), '1')) =
+		'pg_catalog.text'::regtype
+	AND pg_typeof(SUBDATE(CAST('2026-08-13 10:20:30' AS pg_catalog.text), '1')) =
+		'pg_catalog.text'::regtype AS ok;
+/* End OA#2701 */

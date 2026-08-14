@@ -4476,7 +4476,7 @@ IMMUTABLE;
 
 -- CREATE FUNCTION adddate
 CREATE FUNCTION ivymy.adddate(pg_catalog.timestamp, pg_catalog.interval)
-RETURNS text
+RETURNS datetime
 AS 'MODULE_PATHNAME','timestamp_adddate_interval'
 LANGUAGE C
 STRICT
@@ -4484,7 +4484,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(datetime(6), pg_catalog.interval)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','datetimes_adddate_interval'
 LANGUAGE C
 STRICT
@@ -4492,15 +4492,15 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(datetime, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+RETURNS datetime
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)::datetime'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(date, pg_catalog.interval)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','date_adddate_interval'
 LANGUAGE C
 STRICT
@@ -4509,7 +4509,7 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(text, pg_catalog.interval)
 RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
@@ -4517,14 +4517,14 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(numeric, pg_catalog.interval)
 RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(pg_catalog.timestamp, int)
-RETURNS text
+RETURNS datetime
 AS 'MODULE_PATHNAME','timestamp_adddate_days'
 LANGUAGE C
 STRICT
@@ -4532,7 +4532,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(datetime(6), int)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','datetimes_adddate_days'
 LANGUAGE C
 STRICT
@@ -4540,7 +4540,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(date, int)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','date_adddate_days'
 LANGUAGE C
 STRICT
@@ -4549,7 +4549,7 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(numeric, int)
 RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
@@ -4557,15 +4557,15 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(text, int)
 RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.adddate(datetime, int)
-RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
+RETURNS datetime
+AS 'SELECT ivymy.adddate($1::datetime(6), $2)::datetime'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
@@ -4574,49 +4574,16 @@ PARALLEL SAFE;
 /* Begin - bug#z8088 */
 CREATE FUNCTION ivymy.adddate(text, text)
 RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2::int)'
+AS 'SELECT ivymy.adddate($1, $2::int)'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 /* End - bug#z8088 */
 
--- CREATE FUNCTION date_add
-CREATE FUNCTION ivymy.date_add(datetime, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.adddate($1, $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE FUNCTION ivymy.date_add(date, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.adddate($1, $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE FUNCTION ivymy.date_add(text, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE FUNCTION ivymy.date_add(numeric, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.adddate($1::datetime(6), $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
 -- CREATE FUNCTION subdate
 CREATE FUNCTION ivymy.subdate(pg_catalog.timestamp, pg_catalog.interval)
-RETURNS text
+RETURNS datetime
 AS 'MODULE_PATHNAME','timestamp_subdate_interval'
 LANGUAGE C
 STRICT
@@ -4624,7 +4591,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(datetime(6), pg_catalog.interval)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','datetimes_subdate_interval'
 LANGUAGE C
 STRICT
@@ -4632,15 +4599,15 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(datetime, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+RETURNS datetime
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)::datetime'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(date, pg_catalog.interval)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','date_subdate_interval'
 LANGUAGE C
 STRICT
@@ -4649,7 +4616,7 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(text, pg_catalog.interval)
 RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
@@ -4657,14 +4624,14 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(numeric, pg_catalog.interval)
 RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(pg_catalog.timestamp, int)
-RETURNS text
+RETURNS datetime
 AS 'MODULE_PATHNAME','timestamp_subdate_days'
 LANGUAGE C
 STRICT
@@ -4672,7 +4639,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(datetime(6), int)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','datetimes_subdate_days'
 LANGUAGE C
 STRICT
@@ -4680,7 +4647,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(date, int)
-RETURNS text
+RETURNS ivymy.mysdatetimes
 AS 'MODULE_PATHNAME','date_subdate_days'
 LANGUAGE C
 STRICT
@@ -4689,7 +4656,7 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(numeric, int)
 RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
@@ -4697,15 +4664,15 @@ PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(text, int)
 RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
 CREATE FUNCTION ivymy.subdate(datetime, int)
-RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
+RETURNS datetime
+AS 'SELECT ivymy.subdate($1::datetime(6), $2)::datetime'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
@@ -4714,47 +4681,12 @@ PARALLEL SAFE;
 /* Begin - bug#z8088 */
 CREATE FUNCTION ivymy.subdate(text, text)
 RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2::int)'
+AS 'SELECT ivymy.subdate($1::datetime(6), $2::int)::text'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 /* End - bug#z8088 */
-
--- CREATE FUNCTION date_sub
-CREATE FUNCTION ivymy.date_sub(datetime, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.subdate($1, $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE FUNCTION ivymy.date_sub(date, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.subdate($1, $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
-CREATE FUNCTION ivymy.date_sub(text, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime, $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-
-/* Begin - bug#8427 */
-CREATE FUNCTION ivymy.date_sub(numeric, pg_catalog.interval)
-RETURNS text
-AS 'SELECT ivymy.subdate($1::datetime(6), $2)'
-LANGUAGE SQL
-STRICT
-IMMUTABLE
-PARALLEL SAFE;
-/* End - bug#8427 */
 /* End - SRS-MYSQL-BUILDINFUNCTION */
 
 /* Begin - ReqID: SRS-MYSQL-PROC */

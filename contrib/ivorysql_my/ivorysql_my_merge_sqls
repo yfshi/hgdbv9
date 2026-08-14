@@ -29,6 +29,7 @@ src/datatype/script/mystimes
 src/datatype/script/mystime-cast
 src/datatype/script/binary
 src/datatype/script/character
+src/datatype/script/varchar
 src/datatype/script/bit
 src/datatype/script/hex
 src/builtin_functions/builtin_functions
