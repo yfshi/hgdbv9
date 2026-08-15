@@ -283,6 +283,8 @@ Row 1: b=HIGH GO
 Row 2: b=StmtPrepare TEST
 Row 3: b=OrderBy TEST
 
+--- Test 4: PreparedStatement WITH parameter ---
+
 Database connection closed
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcStmtResetTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 === COM_STMT_RESET JDBC Test ===
