@@ -70,7 +70,7 @@ enum SERVER_STATUS_flags_enum {
 
 #define ServerStatus() ( \
     (mys_autocommit ? SERVER_STATUS_AUTOCOMMIT : 0) | \
-    (!is_last_parsetree ? SERVER_MORE_RESULTS_EXISTS : 0) /* OA-2499 */ \
+    (is_last_parsetree ? 0 : SERVER_MORE_RESULTS_EXISTS) /* OA-2499 */ \
 )
 
 // client capabilities
