@@ -841,7 +841,8 @@ func_execute_check(Oid proc_oid)
 			else if (restricted_dba &&
 					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
 					 procForm->pronamespace != PG_PUBLIC_NAMESPACE &&
-					 procForm->pronamespace != PG_SYS_NAMESPACE)
+					 procForm->pronamespace != PG_SYS_NAMESPACE &&
+					 procForm->pronamespace != PG_IVYMY_NAMESPACE) /* Bug#z8952: skip checking function under ivymy schema*/
 					 /* Bug#z6190: we skip checking function under sys schema */
 			{
 				/*
