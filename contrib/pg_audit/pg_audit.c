@@ -3396,10 +3396,13 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 
 //		case T_AtVariableSet:	/* added by luotao on 2021/3/29 */
 //			break;
-//		case T_CreateRedactionPolicyStmt:
-//		case T_DropRedactionPolicyStmt:
-//		case T_AlterRedactionPolicyStmt:
-//			break;
+		/* Begin - BUG#Z8964 */
+		case T_CreateRedactionPolicyStmt:
+		case T_DropRedactionPolicyStmt:
+		case T_AlterRedactionPolicyStmt:
+			break;
+		/* End - BUG#Z8964 */
+
 		/* Begin - BUG#Z5791 */
 		case T_CreateSynonymStmt:
 			strcpy(buf, CREATE_SYNONYM_S);	/* BUG#Z5807 */
@@ -3411,8 +3414,13 @@ audit_get_actionname_from_tree(Node *parsetree, char *buf)
 			strcpy(buf, DROP_SYNONYM_S);	/* BUG#Z5807 */
 			break;
 		/* End - BUG#Z5791 */
+		/* Begin - BUG#Z8968 */
+		case T_FlashbackStmt:
+		case T_PurgeStmt:
+			break;
+		/* End - BUG#Z8968 */
 		default:
-			elog(WARNING, "unrecognized node type: %d",
+			elog(LOG, "unrecognized node type: %d",		/* BUG#Z8964 #Z8968 */
 				 (int) nodeTag(parsetree));
 			strcpy(buf, INVALID_STMT_S);
 			break;
