@@ -365,3 +365,19 @@ CREATE SCHEMA "schd";
 CREATE TABLE "schd"."MixedCaseTable"("Col_Id" serial NOT NULL, "Col_Name" varchar(50 char) NOT NULL, "Col_Age" int4);	-- OK
 DROP SCHEMA "schd" CASCADE;
 /* End - bug#8552 */
+
+/* Begin - bug#8996 */
+create table t_8996(id int, arr int[]);
+insert into t_8996 values(1, '{1,2,3}');
+select * from t_8996;
+-- error
+update t_8996 set t.arr[xxxx] = array[7,8,9];
+update t_8996 as t set t.arr[xxxx] = array[7,8,9];
+update t_8996 as t set arr[xxxx] = array[7,8,9];
+update t_8996 as t set arr[1] = array[7,8,9];
+-- ok
+update t_8996 as t set arr = array[7,8,9];
+update t_8996 as t set t.arr = array[7,8,9];
+update t_8996 as t set t.arr[10] = 10;
+drop table t_8996;
+/* End - bug#8996 */

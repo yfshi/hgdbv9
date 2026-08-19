@@ -730,3 +730,34 @@ CREATE TABLE "schd"."MixedCaseTable"("Col_Id" serial NOT NULL, "Col_Name" varcha
 DROP SCHEMA "schd" CASCADE;
 NOTICE:  drop cascades to table schd."MixedCaseTable"
 /* End - bug#8552 */
+/* Begin - bug#8996 */
+create table t_8996(id int, arr int[]);
+insert into t_8996 values(1, '{1,2,3}');
+select * from t_8996;
+ id |   arr   
+----+---------
+  1 | {1,2,3}
+(1 row)
+
+-- error
+update t_8996 set t.arr[xxxx] = array[7,8,9];
+ERROR:  Perhaps you meant to assign the table alias "t"
+update t_8996 as t set t.arr[xxxx] = array[7,8,9];
+ERROR:  "xxxx": invalid identifier
+LINE 1: update t_8996 as t set t.arr[xxxx] = array[7,8,9];
+                                     ^
+update t_8996 as t set arr[xxxx] = array[7,8,9];
+ERROR:  "xxxx": invalid identifier
+LINE 1: update t_8996 as t set arr[xxxx] = array[7,8,9];
+                                   ^
+update t_8996 as t set arr[1] = array[7,8,9];
+ERROR:  subscripted assignment to "arr" requires type integer but expression is of type integer[]
+LINE 1: update t_8996 as t set arr[1] = array[7,8,9];
+                               ^
+HINT:  You will need to rewrite or cast the expression.
+-- ok
+update t_8996 as t set arr = array[7,8,9];
+update t_8996 as t set t.arr = array[7,8,9];
+update t_8996 as t set t.arr[10] = 10;
+drop table t_8996;
+/* End - bug#8996 */
