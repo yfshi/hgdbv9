@@ -1356,13 +1356,16 @@ ERROR:  Column "a" in HAVING clause is ambiguous
 LINE 1: ...LECT a,b as a FROM (SELECT '1' as a,'2' as b) b  HAVING a=1;
                                                                    ^
 SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=2;
-ERROR:  Column "a" in HAVING clause is ambiguous
-LINE 1: SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=2;
-                                                        ^
+ a | a 
+---+---
+ 1 | 2
+(1 row)
+
 SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=1;
-ERROR:  Column "a" in HAVING clause is ambiguous
-LINE 1: SELECT a,2 as a FROM (SELECT '1' as a) b HAVING a=1;
-                                                        ^
+ a | a 
+---+---
+(0 rows)
+
 SELECT 1 FROM (SELECT 1) a WHERE a=2;
 ERROR:  operator does not exist: record = integer
 LINE 1: SELECT 1 FROM (SELECT 1) a WHERE a=2;
@@ -3057,6 +3060,58 @@ GROUP BY end_slice_time;
  2024-03-01 00:00:00
  2024-03-01 00:00:00
 (2 rows)
+
+-- BUG8998
+drop table product;
+create table product (id int primary key,name varchar(20),
+price int,category varchar(20));
+insert into product values(1,'Apple',10,'Fruit'),(2,'Banana',20,'Fruit'),
+(3,'Orange',30,'Fruit'),(4,'Book',50,'Book'),(5,'Pen',5,'Book');
+-- ok
+SELECT name, price,  SUM(price) AS price  
+FROM product
+having price > 5;
+ name  | price | price 
+-------+-------+-------
+ Apple |    10 |   115
+(1 row)
+
+-- WARNING:  Column 'price' in group statement is ambiguous
+SELECT name, price, SUM(price) AS price 
+FROM product
+GROUP BY name, price;
+WARNING:  Column 'price' in group statement is ambiguous
+LINE 3: GROUP BY name, price;
+                       ^
+  name  | price | price 
+--------+-------+-------
+ Pen    |     5 |     5
+ Orange |    30 |    30
+ Book   |    50 |    50
+ Apple  |    10 |    10
+ Banana |    20 |    20
+(5 rows)
+
+-- ok
+SELECT name, price, SUM(price) AS price, cast(price as char) as price FROM product having price > 5;
+ name  | price | price | price 
+-------+-------+-------+-------
+ Apple |    10 |   115 | 1
+(1 row)
+
+-- WARNING:  Column 'price' in group statement is ambiguous
+SELECT name, price, SUM(price) AS price, cast(price as char) as price FROM product  group by price;
+WARNING:  Column 'price' in group statement is ambiguous
+LINE 1: ..., cast(price as char) as price FROM product  group by price;
+                                                                 ^
+  name  | price | price | price 
+--------+-------+-------+-------
+ Orange |    30 |    30 | 3
+ Pen    |     5 |     5 | 5
+ Apple  |    10 |    10 | 1
+ Book   |    50 |    50 | 5
+ Banana |    20 |    20 | 2
+(5 rows)
 
 set sql_mode = default;
 set mysql.at_or_atat = off;

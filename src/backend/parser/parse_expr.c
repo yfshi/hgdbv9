@@ -2025,18 +2025,6 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 			/* The target item is not a regular field, such as aggregation, func, expression, strong conversion */
 			else
 			{
-				if (found && alias_name_match)
-				{
-					if (equal((Node *)found->expr, (Node *)tle->expr))
-						continue;
-
-					ereport(ERROR,
-							(errcode(ERRCODE_AMBIGUOUS_COLUMN),
-							 errmsg("Column \"%s\" in %s clause is ambiguous",
-									found_name,
-									ParseExprKindName(orig_pstate->p_expr_kind)),
-							 parser_errposition(orig_pstate, location)));
-				}
 				/* strong conversion : cast(a as int) as  a , cast(a as int)
 				 * both tle->resname=a, deistinction should be tle->resname_is_alias.
 				 * cast(a as int) as  a -> tle->resname_is_alias=true.
@@ -2049,7 +2037,10 @@ search_targetList_and_groupList(ParseState *orig_pstate,
 				 * Mysql does not consider cast(a as int) to be an alias match.
 				 */
 				if (tle->resname_is_alias && alias_name_match)
+				{
 					found = tle;
+					break;
+				}
 			}
 		}
 

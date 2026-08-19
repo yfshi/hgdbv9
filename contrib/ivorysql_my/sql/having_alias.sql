@@ -2319,6 +2319,27 @@ LEFT JOIN t3 allocation ON true
 GROUP BY end_slice_time;
 
 
+-- BUG8998
+drop table product;
+create table product (id int primary key,name varchar(20),
+price int,category varchar(20));
+
+insert into product values(1,'Apple',10,'Fruit'),(2,'Banana',20,'Fruit'),
+(3,'Orange',30,'Fruit'),(4,'Book',50,'Book'),(5,'Pen',5,'Book');
+
+-- ok
+SELECT name, price,  SUM(price) AS price  
+FROM product
+having price > 5;
+-- WARNING:  Column 'price' in group statement is ambiguous
+SELECT name, price, SUM(price) AS price 
+FROM product
+GROUP BY name, price;
+
+-- ok
+SELECT name, price, SUM(price) AS price, cast(price as char) as price FROM product having price > 5;
+-- WARNING:  Column 'price' in group statement is ambiguous
+SELECT name, price, SUM(price) AS price, cast(price as char) as price FROM product  group by price;
 
 set sql_mode = default;
 set mysql.at_or_atat = off;
