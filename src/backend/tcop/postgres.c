@@ -152,7 +152,7 @@ check_connrules_hook_type check_rules_hook = NULL;
 /* End ReqID: SRS-CLIENT-AUTH */
 
 /* Begin - OA-2249 */
-bool is_last_parsetree = false;
+bool is_last_parsetree = true;
 /* End - OA-2249 */
 
 /* ----------------
@@ -1530,6 +1530,13 @@ exec_simple_query(const char *query_string)
 	 */
 	finish_xact_command();
 
+	/* Begin - Bug#8745
+	 * This needs to be set to true to configure the correct server status.
+	 * Reset it when finish all command.
+	 */
+	is_last_parsetree = true;
+	/* End - Bug#8745 */
+
 	/*
 	 * If there were no parsetrees, return EmptyQueryResponse message.
 	 */
@@ -1544,9 +1551,6 @@ exec_simple_query(const char *query_string)
 			qc.commandTag = CMDTAG_UNKNOWN;
 			qc.nprocessed = 0;
 
-			/* Begin - Bug#8745: This needs to be set to true to configure the correct server status. */
-			is_last_parsetree = true;
-			/* End - Bug#8745 */
             MyProcPort->protocol_config->fn_end_command(&qc, dest, false);
         }
 		/* End - Req: SRS-MYSQL-PROTOCOL */

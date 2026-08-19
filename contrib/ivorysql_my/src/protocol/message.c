@@ -659,6 +659,13 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
             Oid		typioparam;
             char    *str = mq_get_string_lenenc(buf, NULL, NULL);
 
+            /* Begin - bug#8955 */
+            if (str == NULL)
+            {
+                str = "";
+            }
+            /* End - bug#8955 */
+
             getTypeInputInfo(param_type, &typinput, &typioparam);
                     
             value = OidInputFunctionCall(typinput, str, typioparam, -1);
@@ -1244,6 +1251,8 @@ int
 mysql_process_command(StringInfo buf)
 {
     current_packet_type = pq_getmsgbyte(buf);
+
+    is_last_parsetree = true;   /* bug#8955 */
 
     switch (current_packet_type)
     {
