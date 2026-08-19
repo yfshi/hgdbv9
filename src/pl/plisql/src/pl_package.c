@@ -34,6 +34,8 @@
 #include "catalog/pg_proc.h"
 #include "utils/syscache.h"
 #include "utils/builtins.h"
+/* Reqid:SRS-PLPGSQL-HIDDEN*/
+#include "utils/plsqlwrap.h"
 #include "commands/packagecmds.h"
 /* Begin - ReqID:SRS-PLSQL-TYPE */
 #include "access/table.h"
@@ -953,7 +955,8 @@ package_body_doCompile(HeapTuple pkgbodyTup,
 								  Anum_pg_package_body_bodysrc, &isnull);
 	if (isnull)
 		elog(ERROR, "null bodysrc");
-	body_source = TextDatumGetCString(pkgbodydatum);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	body_source = ivy_plsql_unwrap_source(TextDatumGetCString(pkgbodydatum));
 	plisql_scanner_init(body_source);
 
 	/* Begin - BUG#M0000183 */
@@ -1236,7 +1239,8 @@ package_doCompile(HeapTuple pkgTup, bool forValidator)
 								  Anum_pg_package_pkgsrc, &isnull);
 	if (isnull)
 		elog(ERROR, "null pkgsrc");
-	pkg_source = TextDatumGetCString(pkgdatum);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	pkg_source = ivy_plsql_unwrap_source(TextDatumGetCString(pkgdatum));
 	plisql_scanner_init(pkg_source);
 
 	/* Begin - BUG#M0000227 */

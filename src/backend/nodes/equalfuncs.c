@@ -1767,6 +1767,8 @@ _equalCreatePackageStmt(const CreatePackageStmt *a, const CreatePackageStmt *b)
 	COMPARE_NODE_FIELD(propers);
 	COMPARE_SCALAR_FIELD(editable);
 	COMPARE_STRING_FIELD(pkgsrc);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	COMPARE_SCALAR_FIELD(wrap_source);
 
 	return true;
 }
@@ -1778,6 +1780,8 @@ _equalCreatePackageBodyStmt(const CreatePackageBodyStmt *a, const CreatePackageB
 	COMPARE_NODE_FIELD(pkgname);
 	COMPARE_SCALAR_FIELD(editable);
 	COMPARE_STRING_FIELD(bodysrc);
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	COMPARE_SCALAR_FIELD(wrap_source);
 
 	return true;
 }

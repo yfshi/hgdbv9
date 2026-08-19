@@ -4639,6 +4639,8 @@ typedef struct CreatePackageStmt
 	List		*pkgname;
 	List		*propers;		/* invok rigth or access by or default collation */
 	char		*pkgsrc;
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	bool		wrap_source;	/* hide source text before storing it */
 	/* Begin - BUG#M0000257 */
 	/* Begin - BUG#Z206 Z208  */
 	editionable_flag	editable;		/* EDITIONABLE */
@@ -4653,6 +4655,8 @@ typedef struct CreatePackageBodyStmt
 	bool		replace;
 	List		*pkgname;
 	char		*bodysrc;
+	/* Reqid:SRS-PLPGSQL-HIDDEN*/
+	bool		wrap_source;	/* hide source text before storing it */
 	/* Begin - BUG#M0000257 */
 	editionable_flag	editable; /* BUG#Z206 Z208 */
 	/* End - BUG#M0000257 */

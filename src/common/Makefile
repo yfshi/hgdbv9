@@ -82,7 +82,8 @@ OBJS_COMMON = \
 	mac.o	\
 	hkdf.o	\
 	pass_crypt.o \
-	hex.o
+	hex.o \
+	plsqlwrap_crypto.o
 
 ifeq ($(with_gmssl),yes)
 OBJS_COMMON += sm3_common.o

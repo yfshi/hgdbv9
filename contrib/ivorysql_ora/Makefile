@@ -55,6 +55,10 @@ OBJS = \
 
 EXTENSION = ivorysql_ora
 
+ifeq ($(MAKECMDGOALS), oracle-check)
+TAP_TESTS = 1
+endif
+
 # Begin - ReqID:SRS-MISC-SQLMERGE
 # SQL(s) which need to be generated only if which is specified here.
 DATA = ivorysql_ora--1.0.sql
@@ -144,6 +148,14 @@ subdir = contrib/ivorysql_ora
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
+endif
+
+ifneq ($(filter openssl yes,$(with_ssl) $(with_gmssl)),)
+ORA_REGRESS += ora_wrap
+endif
+
+ifeq ($(with_gmssl),yes)
+ORA_REGRESS += ora_wrap_sm4
 endif
 
 # Begin - ReqID:SRS-PLSQL-DBMS_JOB

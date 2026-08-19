@@ -3,6 +3,12 @@ CREATE OR REPLACE PROCEDURE sys.dbmsddl_alter_compile(type text, schema text, na
 AS 'MODULE_PATHNAME','dbmsddl_alter_compile'
 LANGUAGE C;
 
+
+CREATE OR REPLACE FUNCTION sys.dbms_ddl_wrap(src varchar2)
+RETURNS varchar2
+AS 'MODULE_PATHNAME', 'dbms_ddl_wrap'
+LANGUAGE C IMMUTABLE STRICT;
+
 CREATE OR REPLACE PACKAGE SYS.DBMS_DDL AUTHID DEFINER
 AS
 	PROCEDURE ALTER_COMPILE(
@@ -10,6 +16,7 @@ AS
 		schema varchar2,
 		name varchar2,
 		reuse_settings boolean default false);
+	FUNCTION wrap(src varchar2) RETURN varchar2;
 END;
 
 CREATE OR REPLACE PACKAGE BODY SYS.DBMS_DDL
@@ -23,6 +30,11 @@ AS
 	IS
 	BEGIN
 		sys.dbmsddl_alter_compile(type, schema, name, reuse_settings);
+	END;
+
+	FUNCTION wrap(src varchar2) RETURN varchar2 IS
+	BEGIN
+		RETURN sys.dbms_ddl_wrap(src);
 	END;
 END;
 

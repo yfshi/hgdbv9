@@ -32,7 +32,7 @@
 #include "commands/packagecmds.h"
 #include "commands/trigger.h"
 #include "parser/scansup.h"
-
+#include "utils/plsqlwrap.h"
 
 typedef enum AlterCompileType
 {
@@ -180,3 +180,25 @@ dbmsddl_alter_compile(PG_FUNCTION_ARGS)
 	}
 	PG_RETURN_VOID();
 }
+
+
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+PG_FUNCTION_INFO_V1(dbms_ddl_wrap);
+
+/*
+ * SQL-callable implementation of SYS.DBMS_DDL.WRAP.
+ *
+ * The input is a complete PL/SQL DDL statement.  The function returns a DDL
+ * statement whose body is replaced by the IvorySQL wrapped payload while the
+ * object header remains readable and executable.
+ */
+Datum
+dbms_ddl_wrap(PG_FUNCTION_ARGS)
+{
+	text	   *src = PG_GETARG_TEXT_PP(0);
+	char	   *ddl = text_to_cstring(src);
+	char	   *wrapped = ivy_plsql_wrap_ddl(ddl);
+
+	PG_RETURN_TEXT_P(cstring_to_text(wrapped));
+}
+/* End - Reqid:SRS-PLPGSQL-HIDDEN*/

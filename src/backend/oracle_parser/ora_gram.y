@@ -67,6 +67,7 @@
 #include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/numeric.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
+#include "utils/plsqlwrap.h"
 #include "utils/xml.h"
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
 #include "parser/parse_param.h"
@@ -911,7 +912,7 @@ static Node *makeObjectMethodCall(Node *arg, char *method_name, List *args,
 	VERBOSE VERSION_P VERSIONS_P /* ReqID:SRS-SECURITY-FLASHBACK */ 
 	VIEW VIEWS VIRTUAL VISIBLE VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */	/* ReqID:SRS-SQL-INVISIBLECOL */
 
-	WAIT/* BUG#M0000470:FOR UPDATE WAIT integer */ WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPER WRITE
+	WAIT/* BUG#M0000470:FOR UPDATE WAIT integer */ WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPED WRAPPER WRITE
 
 	XML_P XMLATTRIBUTES XMLCONCAT XMLELEMENT XMLEXISTS XMLFOREST XMLNAMESPACES
 	XMLPARSE XMLPI XMLROOT XMLSERIALIZE XMLTABLE
@@ -926,10 +927,11 @@ static Node *makeObjectMethodCall(Node *arg, char *method_name, List *args,
 				accessor implementation_type implementation_package opt_procedure_args_with_defaults
 				opt_ora_procedure_source_clause_list ora_procedure_source_clause_list
 				opt_ora_createfunc_opt_list compiler_parameters_clause compiler_parameters_list
-%type <defelt>	ora_createfunc_opt_item ora_function_source_clause_item ora_invoker_rights_clause
+%type <defelt>	ora_createfunc_opt_item wrapped_routine_src ora_function_source_clause_item ora_invoker_rights_clause
 				ora_accessible_by_clause ora_result_cache_clause
 				ora_sql_macro_clause ora_pipelined_clause ora_parallel_enable_clause
 				ora_procedure_source_clause_item
+%type <boolean> wrapped_routine_start
 %type <ival>	opt_unit_kind
 %type <str>		any_identifier default_collation_option default_collation_clause
 %type <node>	ivy_routine_body accessor_item sql_macro_options implementation_package_type
@@ -974,9 +976,10 @@ static Node *makeObjectMethodCall(Node *arg, char *method_name, List *args,
 %type <node> CreatePackageStmt CreatePackageBodyStmt AlterPackageStmt
 %type <node> package_proper_item
 %type <list> package_proper package_proper_list package_names package_names_list
-%type <str> package_src
+%type <str> package_src wrapped_package_src wrapped_package_body_src
 %type <objtype> package_type
-%type <boolean> package_is_or_as package_body_is_or_as
+%type <boolean> package_is_or_as package_body_is_or_as opt_ora_wrap_clause
+	wrapped_package_start wrapped_package_body_start
 %type <alter_flag> package_compile_options special_options
 /* End - ReqID:SRS-SQL-PACKAGE  */
 /* Begin - ReqID:SRS-SQL-CustomObject */
@@ -11984,6 +11987,16 @@ ora_createfunc_opt_item:
 				{
 					$$ = makeDefElem("as", (Node *)$2, @1);
 				}
+			/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+			| wrapped_routine_src
+				{
+					$$ = $1;
+				}
+			| ENCRYPTED
+				{
+					$$ = makeDefElem("wrap_source", NULL, @1);
+				}
+			/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 			| LANGUAGE NonReservedWord_or_Sconst
 				{
 					$$ = makeDefElem("language", (Node *)makeString($2), @1);
@@ -12001,6 +12014,31 @@ ora_createfunc_opt_item:
 					$$ = $1;
 				}
 		;
+
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+/*
+ * Keep WRAPPED and its payload in one production for functions and
+ * procedures. Both use the PL/iSQL routine scanner mode.
+ */
+wrapped_routine_src:
+		wrapped_routine_start func_as
+			{
+				char *source = strVal(linitial($2));
+				if (!$1 && !ivy_plsql_source_is_wrapped(source))
+				{
+					parser_yyerror("syntax error after WRAPPED");
+				}
+				$$ = makeDefElem("wrap_source", (Node *)$2, @1);
+			}
+		;
+
+wrapped_routine_start:
+		WRAPPED
+			{
+				$$ = prepare_oracle_wrapped_plsql_body(yyscanner, OraBody_FUNC, @1 + 7);
+			}
+ 		;
+/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 
 ora_func_is_or_as:
 			IS
@@ -12528,19 +12566,35 @@ object_type_body_src:	Sconst	{ $$ = $1; }
 /* End - ReqID:SRS-SQL-CustomObject */
 
 CreatePackageStmt:
+			/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
 			CREATE opt_or_replace opt_ora_editioned PACKAGE package_names
-			opt_ora_sharing_clause package_proper package_is_or_as package_src
-				{
-					CreatePackageStmt *n = makeNode(CreatePackageStmt);
+				opt_ora_sharing_clause package_proper wrapped_package_src
+					{
+						CreatePackageStmt *n = makeNode(CreatePackageStmt);
 
-					n->replace = $2;
-					n->editable = $3;
-					n->pkgname = $5;
-					n->propers = $7;
-					n->pkgsrc = $9;
-					$$ = (Node *) n;
-				}
-			;
+						n->replace = $2;
+						n->editable = $3;
+						n->pkgname = $5;
+						n->propers = $7;
+						n->wrap_source = true;
+						n->pkgsrc = $8;
+						$$ = (Node *) n;
+					}
+			/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
+			| CREATE opt_or_replace opt_ora_editioned PACKAGE package_names
+				opt_ora_sharing_clause package_proper opt_ora_wrap_clause package_is_or_as package_src
+					{
+						CreatePackageStmt *n = makeNode(CreatePackageStmt);
+
+						n->replace = $2;
+						n->editable = $3;
+						n->pkgname = $5;
+						n->propers = $7;
+						n->wrap_source = $8;
+						n->pkgsrc = $10;
+						$$ = (Node *) n;
+					}
+				;
 
 package_names_list:
 			package_names
@@ -12591,6 +12645,12 @@ package_type:	PACKAGE	{ $$ = OBJECT_PACKAGE; }
 				|PACKAGE_BODY BODY { $$ = OBJECT_PACKAGE_BODY; }
 				;
 
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+opt_ora_wrap_clause:
+				ENCRYPTED { $$ = true; }
+				| /*EMPTY*/ { $$ = false; }
+				;
+/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 
 package_is_or_as:
 				IS
@@ -12612,19 +12672,76 @@ package_is_or_as:
 package_src:	Sconst	{ $$ = $1; }
 		;
 
-CreatePackageBodyStmt:
-			CREATE opt_or_replace opt_ora_editioned PACKAGE_BODY BODY package_names
-			opt_ora_sharing_clause package_body_is_or_as package_src
-				{
-					CreatePackageBodyStmt *n = makeNode(CreatePackageBodyStmt);
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+/* Read a wrapped package specification with package-specific boundaries. */
+wrapped_package_src:
+				wrapped_package_start package_src
+					{
+						if (!$1 && !ivy_plsql_source_is_wrapped($2))
+							parser_yyerror("syntax error after WRAPPED");
+						$$ = $2;
+					}
+				;
 
-					n->replace = $2;
-					n->editable = $3;
-					n->pkgname = $6;
-					n->bodysrc = $9;
-					$$ = (Node *)n;
-				}
-			;
+wrapped_package_start:
+				WRAPPED
+					{
+						$$ = prepare_oracle_wrapped_plsql_body(yyscanner, OraBody_PACKAGE, @1 + 7);
+					}
+				;
+/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
+
+CreatePackageBodyStmt:
+			/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+			CREATE opt_or_replace opt_ora_editioned PACKAGE_BODY BODY package_names
+				opt_ora_sharing_clause wrapped_package_body_src
+					{
+						CreatePackageBodyStmt *n = makeNode(CreatePackageBodyStmt);
+
+						n->replace = $2;
+						n->editable = $3;
+						n->pkgname = $6;
+						n->wrap_source = true;
+						n->bodysrc = $8;
+						$$ = (Node *) n;
+					}
+			/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
+			| CREATE opt_or_replace opt_ora_editioned PACKAGE_BODY BODY package_names
+				opt_ora_sharing_clause opt_ora_wrap_clause package_body_is_or_as package_src
+					{
+						CreatePackageBodyStmt *n = makeNode(CreatePackageBodyStmt);
+
+						n->replace = $2;
+						n->editable = $3;
+						n->pkgname = $6;
+						n->wrap_source = $8;
+						n->bodysrc = $10;
+						$$ = (Node *)n;
+					}
+				;
+
+/* Begin - Reqid:SRS-PLPGSQL-HIDDEN*/
+/* Keep WRAPPED and its payload in one production so the scanner is configured
+ * before package_src reads the Oracle-style encrypted source text. */
+wrapped_package_body_src:
+				wrapped_package_body_start package_src
+ 					{
+						if (!$1 && !ivy_plsql_source_is_wrapped($2))
+							parser_yyerror("syntax error after WRAPPED");
+						$$ = $2;
+ 					}
+				;
+
+wrapped_package_body_start:
+				WRAPPED
+					{
+						/* Read an Oracle-style wrapped package body payload. */
+						$$ = prepare_oracle_wrapped_plsql_body(yyscanner,
+															OraBody_PACKAGEBODY,
+															@1 + 7);
+					}
+				;
+/* End - Reqid:SRS-PLPGSQL-HIDDEN*/
 
 package_body_is_or_as:
 				IS
@@ -23546,6 +23663,7 @@ unreserved_keyword:
 			| WITHIN
 			| WITHOUT
 			| WORK
+			| WRAPPED
 			| WRAPPER
 			| WRITE
 			| XML_P
@@ -24334,6 +24452,7 @@ bare_label_keyword:
 			| WHEN
 			| WHITESPACE_P
 			| WORK
+			| WRAPPED
 			| WRAPPER
 			| WRITE
 			| XML_P
