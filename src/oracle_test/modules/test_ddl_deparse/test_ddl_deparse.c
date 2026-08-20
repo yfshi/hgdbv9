@@ -285,7 +285,7 @@ get_altertable_subcmdtypes(PG_FUNCTION_ARGS)
 				break;
 			/* Begin - ReqID:SRS-SQL-FORCEVIEW */
 			case AT_ForceViewCompile:
-				strtype = "COMPILE FOIRCE VIEW";
+				strtype = "COMPILE FORCE VIEW";
 				break;
 			/* End - ReqID:SRS-SQL-FORCEVIEW */
 			/* Begin - ReqID:SRS-SQL-NLSSORT */
