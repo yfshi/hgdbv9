@@ -1,0 +1,5 @@
+# hg_wait_states extension
+comment = 'background wait event states'
+default_version = '1.0'
+module_pathname = '$libdir/hg_wait_states'
+relocatable = true
