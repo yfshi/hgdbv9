@@ -123,6 +123,8 @@ PG_FUNCTION_INFO_V1(datediff);
 PG_FUNCTION_INFO_V1(from_days);
 PG_FUNCTION_INFO_V1(convert_tz);
 PG_FUNCTION_INFO_V1(get_format);
+PG_FUNCTION_INFO_V1(extract_times);
+PG_FUNCTION_INFO_V1(extract_datetimes);
 
 #define MICRO_PER_NANOSEC 1000
 #define FORMAT_TIME_BOUND 838
@@ -236,6 +238,61 @@ static int64 log_10_int[20] = {
     1000000000000000ULL, 10000000000000000ULL, 100000000000000000ULL,
     1000000000000000000ULL, 10000000000000000000ULL
 };
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+typedef enum {
+    UNIT_YEAR,
+    UNIT_MONTH,
+    UNIT_DAY,
+    UNIT_HOUR,
+    UNIT_MINUTE,
+    UNIT_SECOND,
+    UNIT_MICROSECOND,
+    UNIT_QUARTER,
+    UNIT_WEEK,
+    UNIT_YEAR_MONTH,
+    UNIT_DAY_HOUR,
+    UNIT_DAY_MINUTE,
+    UNIT_DAY_SECOND,
+    UNIT_HOUR_MINUTE,
+    UNIT_HOUR_SECOND,
+    UNIT_MINUTE_SECOND,
+    UNIT_DAY_MICROSECOND,
+    UNIT_HOUR_MICROSECOND,
+    UNIT_MINUTE_MICROSECOND,
+    UNIT_SECOND_MICROSECOND,
+    UNIT_UNKNOWN
+} IntervalUnitType;
+
+typedef struct {
+    const char *name;
+    IntervalUnitType type;
+} IntervalUnit;
+
+static const IntervalUnit interval_units[] = {
+    {"year",               UNIT_YEAR},
+    {"month",              UNIT_MONTH},
+    {"day",                UNIT_DAY},
+    {"hour",               UNIT_HOUR},
+    {"minute",             UNIT_MINUTE},
+    {"second",             UNIT_SECOND},
+    {"microsecond",        UNIT_MICROSECOND},
+    {"quarter",            UNIT_QUARTER},
+    {"week",               UNIT_WEEK},
+    {"year_month",         UNIT_YEAR_MONTH},
+    {"day_hour",           UNIT_DAY_HOUR},
+    {"day_minute",         UNIT_DAY_MINUTE},
+    {"day_second",         UNIT_DAY_SECOND},
+    {"hour_minute",        UNIT_HOUR_MINUTE},
+    {"hour_second",        UNIT_HOUR_SECOND},
+    {"minute_second",      UNIT_MINUTE_SECOND},
+    {"day_microsecond",    UNIT_DAY_MICROSECOND},
+    {"hour_microsecond",   UNIT_HOUR_MICROSECOND},
+    {"minute_microsecond", UNIT_MINUTE_MICROSECOND},
+    {"second_microsecond", UNIT_SECOND_MICROSECOND},
+    {NULL, UNIT_UNKNOWN}
+};
+/* End - SRS-MYSQL-BUILDINFUNCTION */
 
 static Date_time_format time_24hrs_format = {{0}, '\0', 0, (char *)"%H:%i:%S", 8};
 static Date_time_format time_ampm_format= {{0}, '\0', 0, (char *)"%I:%i:%S %p", 11};
@@ -4714,3 +4771,302 @@ date_subdate_days(PG_FUNCTION_ARGS)
 
 	PG_RETURN_TEXT_P(cstring_to_text(str));
 }
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+static IntervalUnitType
+check_unit(const char *lowunits)
+{
+    int i;
+
+    for (i = 0; interval_units[i].name != NULL; i++)
+    {
+        if (strcmp(lowunits, interval_units[i].name) == 0)
+            return interval_units[i].type;
+    }
+    return UNIT_UNKNOWN;
+}
+
+static void
+get_current_ymd(int *year, int *mon, int *mday)
+{	
+	TimestampTz now = GetCurrentTimestamp();
+	int	tz;
+	fsec_t	fsec;
+	struct pg_tm tm;
+
+	if (timestamp2tm(now, &tz, &tm, &fsec, NULL, NULL) != 0)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("timestamp out of range")));
+	}
+
+	*year = tm.tm_year;
+	*mon  = tm.tm_mon;
+	*mday = tm.tm_mday;
+}
+
+Datum
+extract_times(PG_FUNCTION_ARGS)
+{
+	text		*units  = PG_GETARG_TEXT_PP(0);
+	Numeric		t_num  = PG_GETARG_NUMERIC(1);
+	char		*lowunits;
+	IntervalUnitType	unit_type;
+	int64		result;
+	int			hour,min,sec,
+				microsecond;
+	int			cur_year = 0,
+				cur_mon = 0,
+				cur_mday = 0;
+	lldiv_t		lld;
+	bool		need_curdate = false;
+
+    lowunits = downcase_truncate_identifier(VARDATA_ANY(units),
+                                            VARSIZE_ANY_EXHDR(units),
+                                            false);
+    unit_type = check_unit(lowunits);
+
+	if (unit_type == UNIT_UNKNOWN)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("unit \"%s\" not recognized", lowunits)));
+	}
+
+	numeric_to_lldiv_t(DatumGetNumeric(t_num), &lld);
+
+	hour = lld.quot % 1000000 / 10000;
+	min = lld.quot % 10000 / 100;
+	sec = lld.quot % 100;
+	microsecond = lld.rem / 1000;
+
+    switch (unit_type)
+    {
+        case UNIT_YEAR:
+        case UNIT_MONTH:
+        case UNIT_DAY:
+        case UNIT_QUARTER:
+        case UNIT_WEEK:
+        case UNIT_YEAR_MONTH:
+            need_curdate = true;
+            break;
+        default:
+            need_curdate = false;
+            break;
+    }
+
+    if (need_curdate)
+		get_current_ymd(&cur_year, &cur_mon, &cur_mday);
+
+    switch (unit_type)
+    {
+        case UNIT_YEAR:
+            result = cur_year;
+            break;
+
+        case UNIT_MONTH:
+            result = cur_mon;
+            break;
+
+        case UNIT_DAY:
+            result = cur_mday;
+            break;
+
+        case UNIT_QUARTER:
+            result = (cur_mon - 1) / 3 + 1;
+            break;
+
+        case UNIT_WEEK:
+            result = date2isoweek(cur_year, cur_mon, cur_mday);
+            break;
+
+        case UNIT_MINUTE:
+            result = min;
+            break;
+
+        case UNIT_SECOND:
+            result = sec;
+            break;
+
+        case UNIT_MICROSECOND:
+            result = microsecond;
+            break;
+
+        case UNIT_YEAR_MONTH:
+            result = cur_year * 100 + cur_mon;
+            break;
+
+		case UNIT_DAY_HOUR:
+        case UNIT_HOUR:
+            result = hour;
+            break;
+
+        case UNIT_DAY_MINUTE:
+        case UNIT_HOUR_MINUTE:
+            result = hour * 100 + min;
+            break;
+
+        case UNIT_DAY_SECOND:
+        case UNIT_HOUR_SECOND:
+            result = (int64) hour * 10000 + min * 100 + sec;
+            break;
+
+        case UNIT_DAY_MICROSECOND:
+        case UNIT_HOUR_MICROSECOND:
+            result = ((int64) hour * 10000 + min * 100 + sec) * 1000000 + microsecond;
+            break;
+
+        case UNIT_MINUTE_SECOND:
+            result = min * 100 + sec;
+            break;
+
+        case UNIT_MINUTE_MICROSECOND:
+            result = (int64) (min * 100 + sec) * 1000000 + microsecond;
+            break;
+
+        case UNIT_SECOND_MICROSECOND:
+            result = (int64) sec * 1000000 + microsecond;
+            break;
+
+        default:
+            ereport(ERROR,
+                    (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                     errmsg("unit \"%s\" not supported for times type",
+                            lowunits)));
+            result = 0;
+            break;
+    }
+
+    PG_RETURN_INT64(result);
+}
+
+Datum
+extract_datetimes(PG_FUNCTION_ARGS)
+{
+    text       *units  = PG_GETARG_TEXT_PP(0);
+    Numeric     dt_num = PG_GETARG_NUMERIC(1);
+    char       *lowunits;
+    IntervalUnitType	unit_type;
+    int64       result;
+    int			year,mon,mday,
+				hour,min,sec,
+				microsecond;
+	lldiv_t		lld;
+
+    lowunits = downcase_truncate_identifier(VARDATA_ANY(units),
+                                            VARSIZE_ANY_EXHDR(units),
+                                            false);
+    unit_type = check_unit(lowunits);
+
+	if (unit_type == UNIT_UNKNOWN)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("unit \"%s\" not recognized", lowunits)));
+	}
+
+	numeric_to_lldiv_t(DatumGetNumeric(dt_num), &lld);
+
+	year = lld.quot / 10000000000;
+	mon = lld.quot % 10000000000 / 100000000;
+	mday = lld.quot % 100000000 / 1000000;
+	hour = lld.quot % 1000000 / 10000;
+	min = lld.quot % 10000 / 100;
+	sec = lld.quot % 100;
+	microsecond = lld.rem / 1000;
+
+    switch (unit_type)
+    {
+        case UNIT_YEAR:
+            result = year;
+            break;
+
+        case UNIT_MONTH:
+            result = mon;
+            break;
+
+        case UNIT_DAY:
+            result = mday;
+            break;
+
+        case UNIT_QUARTER:
+            result = (mon - 1) / 3 + 1;
+            break;
+
+        case UNIT_WEEK:
+            result = date2isoweek(year, mon, mday);
+            break;
+
+        case UNIT_HOUR:
+            result = hour;
+            break;
+
+        case UNIT_MINUTE:
+            result = min;
+            break;
+
+        case UNIT_SECOND:
+            result = sec;
+            break;
+
+        case UNIT_MICROSECOND:
+            result = microsecond;
+            break;
+
+        case UNIT_YEAR_MONTH:
+            result = year * 100 + mon;
+            break;
+
+        case UNIT_DAY_HOUR:
+            result = mday * 100 + hour;
+            break;
+
+        case UNIT_DAY_MINUTE:
+            result = mday * 10000 + hour * 100 + min;
+            break;
+
+        case UNIT_DAY_SECOND:
+            result = (int64) mday * 1000000 + hour * 10000 + min * 100 + sec;
+            break;
+
+        case UNIT_HOUR_MINUTE:
+            result = hour * 100 + min;
+            break;
+
+        case UNIT_HOUR_SECOND:
+            result = (int64) hour * 10000 + min * 100 + sec;
+            break;
+
+        case UNIT_MINUTE_SECOND:
+            result = min * 100 + sec;
+            break;
+
+        case UNIT_DAY_MICROSECOND:
+            result = ((int64) mday * 1000000 + hour * 10000 + min * 100 + sec) * 1000000 + microsecond;
+            break;
+
+        case UNIT_HOUR_MICROSECOND:
+            result = ((int64) hour * 10000 + min * 100 + sec) * 1000000 + microsecond;
+            break;
+
+        case UNIT_MINUTE_MICROSECOND:
+            result = (int64) (min * 100 + sec) * 1000000 + microsecond;
+            break;
+
+        case UNIT_SECOND_MICROSECOND:
+            result = (int64) sec * 1000000 + microsecond;
+            break;
+
+        default:
+            ereport(ERROR,
+                    (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+                     errmsg("unit \"%s\" not supported for datetimes type",
+                            lowunits)));
+            result = 0;
+            break;
+    }
+
+    PG_RETURN_INT64(result);
+}
+/* End - SRS-MYSQL-BUILDINFUNCTION */

@@ -210,10 +210,11 @@ SELECT 1 AS week, 2 AS quarter, 3 AS day_hour, 4 AS microsecond;                
 (1 row)
 
 SELECT EXTRACT(WEEK FROM DATE '2020-08-11'), EXTRACT(QUARTER FROM DATE '2020-08-11'); -- 33 3
-ERROR:  function pg_catalog.extract(unknown, date) does not exist
-LINE 1: SELECT EXTRACT(WEEK FROM DATE '2020-08-11'), EXTRACT(QUARTER...
-               ^
-HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ extract | extract 
+---------+---------
+      33 |       3
+(1 row)
+
 -- Cleanup
 DROP VIEW v_dateadd;
 ERROR:  view "v_dateadd" does not exist
