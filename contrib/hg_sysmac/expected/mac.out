@@ -1042,3 +1042,90 @@ SELECT pg_sleep(1);
 DROP USER usr1;
 DROP USER usr2;
 -- End #BUG7896 --
+-- Begin #BUG9020 --
+show hg_sysmac.global_on;
+ hg_sysmac.global_on 
+---------------------
+ on
+(1 row)
+
+alter system set hg_sysmac.global_table_level = on;
+select pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+select pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+CREATE ROLE poc_sec_user1 LOGIN PASSWORD 'Hello@123';
+CREATE ROLE poc_sec_user2 LOGIN PASSWORD 'Hello@123';
+CREATE SCHEMA poc_mac;
+CREATE TABLE poc_mac.low_table(id integer PRIMARY KEY, note text);
+CREATE TABLE poc_mac.high_table(id integer PRIMARY KEY, note text);
+INSERT INTO poc_mac.low_table VALUES (1, 'LOW_SEED');
+INSERT INTO poc_mac.high_table VALUES (1, 'HIGH_SEED');
+---test matview
+CREATE MATERIALIZED VIEW mvtest_tm AS SELECT * FROM poc_mac.high_table;
+GRANT USAGE ON SCHEMA poc_mac TO syssso;
+GRANT USAGE ON SCHEMA poc_mac TO poc_sec_user1, poc_sec_user2;
+---maybe coredump
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA poc_mac TO poc_sec_user1, poc_sec_user2;
+GRANT SELECT, INSERT, UPDATE, DELETE ON mvtest_tm TO poc_sec_user1,poc_sec_user2;
+--error
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA hg_security TO poc_sec_user1,poc_sec_user1;
+ERROR:  permission denied
+DETAIL:  Cannot grant sysmac-schema hg_security functions to regular users.
+GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO poc_sec_user1,poc_sec_user1;
+ERROR:  permission denied
+DETAIL:  Cannot grant pg_catalog tables to regular users.
+SELECT hg_security.set_user_seclabel('poc_sec_user1'::regrole, 's2');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT hg_security.set_user_seclabel('poc_sec_user2'::regrole, 's0');
+ set_user_seclabel 
+-------------------
+ set
+(1 row)
+
+SELECT hg_security.set_table_seclabel('mvtest_tm'::regclass, 's2');
+ERROR:  Setting table seclabel for current object is not supported.
+SELECT hg_security.get_table_seclabel('mvtest_tm'::regclass);
+ get_table_seclabel 
+--------------------
+ 
+(1 row)
+
+--error
+SELECT hg_security.set_column_seclabel('mvtest_tm'::regclass, 1, 's0');
+ERROR:  Setting column seclabel for materialized view is not supported.
+\c - poc_sec_user1
+select * from mvtest_tm;
+ id |   note    
+----+-----------
+  1 | HIGH_SEED
+(1 row)
+
+\c - poc_sec_user2
+select * from mvtest_tm;
+ id |   note    
+----+-----------
+  1 | HIGH_SEED
+(1 row)
+
+\c - :boot_user
+--clean data
+drop  MATERIALIZED VIEW  mvtest_tm;
+drop table poc_mac.high_table;
+drop table poc_mac.low_table;
+drop schema poc_mac;
+drop role poc_sec_user1;
+drop role poc_sec_user2;
+-- End #BUG9020 --

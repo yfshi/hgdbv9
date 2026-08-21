@@ -189,13 +189,7 @@ check_relation_privileges(Oid relOid,
 	if (!global_on) /* Bug - #z5940 */
 		return true;
 
-	if ((raw_label_s = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), 0,true)))
-		seclabel_s = string_to_seclabel(raw_label_s, NULL, true);
-	if ((raw_label_o = get_obj_seclabel_internal(RelationRelationId, relOid, 0,true)))
-		seclabel_o = string_to_seclabel(raw_label_o, NULL, true);
-	else
-		no_seclabel = true; /*fast path if no label on target*/
-
+	/* Begin - Bug#z9020 */
 	/*
 	 * Check type
 	 */
@@ -209,9 +203,16 @@ check_relation_privileges(Oid relOid,
 			break;
 
 		default:
-			elog(ERROR, "relation type %c not supported", relkind);
-			break;
+			return true;
 	}
+	/* End - Bug#z9020 */
+
+	if ((raw_label_s = get_obj_seclabel_internal(AuthIdRelationId, GetUserId(), 0,true)))
+		seclabel_s = string_to_seclabel(raw_label_s, NULL, true);
+	if ((raw_label_o = get_obj_seclabel_internal(RelationRelationId, relOid, 0,true)))
+		seclabel_o = string_to_seclabel(raw_label_o, NULL, true);
+	else
+		no_seclabel = true; /*fast path if no label on target*/
 
 	if (global_table_level && !no_seclabel) /* Bug - #z5940 #z6122 */
 	{

@@ -405,3 +405,57 @@ SELECT pg_sleep(1);
 DROP USER usr1;
 DROP USER usr2;
 -- End #BUG7896 --
+
+-- Begin #BUG9020 --
+show hg_sysmac.global_on;
+alter system set hg_sysmac.global_table_level = on;
+select pg_reload_conf();
+select pg_sleep(1);
+CREATE ROLE poc_sec_user1 LOGIN PASSWORD 'Hello@123';
+CREATE ROLE poc_sec_user2 LOGIN PASSWORD 'Hello@123';
+
+CREATE SCHEMA poc_mac;
+
+CREATE TABLE poc_mac.low_table(id integer PRIMARY KEY, note text);
+CREATE TABLE poc_mac.high_table(id integer PRIMARY KEY, note text);
+
+INSERT INTO poc_mac.low_table VALUES (1, 'LOW_SEED');
+INSERT INTO poc_mac.high_table VALUES (1, 'HIGH_SEED');
+
+---test matview
+CREATE MATERIALIZED VIEW mvtest_tm AS SELECT * FROM poc_mac.high_table;
+
+GRANT USAGE ON SCHEMA poc_mac TO syssso;
+GRANT USAGE ON SCHEMA poc_mac TO poc_sec_user1, poc_sec_user2;
+
+---maybe coredump
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA poc_mac TO poc_sec_user1, poc_sec_user2;
+GRANT SELECT, INSERT, UPDATE, DELETE ON mvtest_tm TO poc_sec_user1,poc_sec_user2;
+
+--error
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA hg_security TO poc_sec_user1,poc_sec_user1;
+GRANT SELECT ON ALL TABLES IN SCHEMA pg_catalog TO poc_sec_user1,poc_sec_user1;
+
+SELECT hg_security.set_user_seclabel('poc_sec_user1'::regrole, 's2');
+SELECT hg_security.set_user_seclabel('poc_sec_user2'::regrole, 's0');
+SELECT hg_security.set_table_seclabel('mvtest_tm'::regclass, 's2');
+SELECT hg_security.get_table_seclabel('mvtest_tm'::regclass);
+--error
+SELECT hg_security.set_column_seclabel('mvtest_tm'::regclass, 1, 's0');
+
+\c - poc_sec_user1
+select * from mvtest_tm;
+
+\c - poc_sec_user2
+select * from mvtest_tm;
+
+\c - :boot_user
+
+--clean data
+drop  MATERIALIZED VIEW  mvtest_tm;
+drop table poc_mac.high_table;
+drop table poc_mac.low_table;
+drop schema poc_mac;
+drop role poc_sec_user1;
+drop role poc_sec_user2;
+-- End #BUG9020 --

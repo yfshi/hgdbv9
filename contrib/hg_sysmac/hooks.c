@@ -171,41 +171,88 @@ sysmac_utility_command(PlannedStmt *pstmt,
 
 				if (!IS_SYSSSO(grantee_uid) && !superuser_arg(grantee_uid))
 				{
+					/* Begin - Bug#z9020 */
 					if (action->objtype == OBJECT_TABLE)
 					{
-						foreach(cell, action->objects)
+						/*
+						 * Security Restriction - Granting ANY privilege on system catalog tables is strictly prohibited.
+						 * - Do NOT grant ANY privilege (e.g., SELECT, INSERT, UPDATE, DELETE, ALL, etc.) on
+						 *   ALL TABLES IN SCHEMA pg_catalog to any ordinary user.
+						 * - Do NOT grant ANY privilege on the individual tables pg_seclabel or pg_shseclabel
+						 *   to any ordinary user.
+						 */
+						if (action->targtype == ACL_TARGET_OBJECT)
 						{
-							RangeVar   *relvar = (RangeVar *) lfirst(cell);
-							Oid			relOid;
-
-							relOid = RangeVarGetRelid(relvar, NoLock, true);
-							if (relOid == SharedSecLabelRelationId ||
-								relOid == SecLabelRelationId)
+							foreach(cell, action->objects)
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-										errmsg("permission denied"),
-										errdetail("Cannot grant sysmac-related `%s` to regular users.", relvar->relname)));
+								RangeVar   *relvar = (RangeVar *) lfirst(cell);
+								Oid			relOid;
+
+								relOid = RangeVarGetRelid(relvar, NoLock, true);
+								if (relOid == SharedSecLabelRelationId ||
+									relOid == SecLabelRelationId)
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+											errmsg("permission denied"),
+											errdetail("Cannot grant sysmac-related `%s` to regular users.", relvar->relname)));
+								}
+							}
+						}
+						else if (action->targtype == ACL_TARGET_ALL_IN_SCHEMA)
+						{
+							foreach(cell, action->objects)
+							{
+								char	   *nspname = strVal(lfirst(cell));
+
+								if (strcmp(nspname, "pg_catalog") == 0)
+									ereport(ERROR,
+											(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+											errmsg("permission denied"),
+											errdetail("Cannot grant pg_catalog tables to regular users.")));
 							}
 						}
 					}
 					else if (action->objtype == OBJECT_FUNCTION)
 					{
-						foreach(cell, action->objects)
+						/*
+						 * Security Restriction - Granting EXECUTE privilege on security‑critical functions is strictly prohibited.
+						 * - Do NOT grant EXECUTE on ALL FUNCTIONS IN SCHEMA hg_security to any ordinary user.
+						 * - Do NOT grant EXECUTE on any individual “hg_sysmac” functions within the hg_security
+						 *   schema to any ordinary user.
+						 */
+						if (action->targtype == ACL_TARGET_OBJECT)
 						{
-							ObjectWithArgs *func = (ObjectWithArgs *) lfirst(cell);
-							Oid			funcid;
-
-							funcid = LookupFuncWithArgs(OBJECT_FUNCTION, func, false);
-							if (is_sysmac_function(funcid))
+							foreach(cell, action->objects)
 							{
-								ereport(ERROR,
-										(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
-										errmsg("permission denied"),
-										errdetail("Cannot grant sysmac-related functions to regular users.")));
+								ObjectWithArgs *func = (ObjectWithArgs *) lfirst(cell);
+								Oid			funcid;
+
+								funcid = LookupFuncWithArgs(OBJECT_FUNCTION, func, false);
+								if (is_sysmac_function(funcid))
+								{
+									ereport(ERROR,
+											(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+											errmsg("permission denied"),
+											errdetail("Cannot grant sysmac-related functions to regular users.")));
+								}
+							}
+						}
+						else if (action->targtype == ACL_TARGET_ALL_IN_SCHEMA)
+						{
+							foreach(cell, action->objects)
+							{
+								char	   *nspname = strVal(lfirst(cell));
+
+								if (strcmp(nspname, "hg_security") == 0)
+									ereport(ERROR,
+											(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+											errmsg("permission denied"),
+											errdetail("Cannot grant sysmac-schema hg_security functions to regular users.")));
 							}
 						}
 					}
+					/* End - Bug#z9020 */
 				}
 			}
 			break;

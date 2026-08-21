@@ -585,23 +585,37 @@ set_table_seclabel(PG_FUNCTION_ARGS)
 
 	switch (relkind)
 	{
-		case 'i':
+		/*
+		 * MAC currently supports only the following object types:
+		 *  - Table
+		 *  - Partitioned table
+		 *  - Sequence
+		 *  - View
+		 */
+		case RELKIND_RELATION:
+		case RELKIND_PARTITIONED_TABLE:
+		case RELKIND_SEQUENCE:
+		case RELKIND_VIEW:
+			break;
+
+		case RELKIND_INDEX:
 			elog(ERROR, "Setting table seclabel for index is not supported.");
 			break;
 
-		case 'c':
+		case RELKIND_COMPOSITE_TYPE:
 			elog(ERROR, "Setting table seclabel for composite type is not supported.");
 			break;
 
-		case 'f':
+		case RELKIND_FOREIGN_TABLE:
 			elog(ERROR, "Setting table seclabel for foreign table is not supported.");
 			break;
 
-		case 'I':
+		case RELKIND_PARTITIONED_INDEX:
 			elog(ERROR, "Setting table seclabel for partitioned index is not supported.");
 			break;
 
 		default:
+			elog(ERROR, "Setting table seclabel for current object is not supported.");
 			break;
 	}
 	/* End - bug#z6002 */
@@ -658,27 +672,44 @@ set_column_seclabel(PG_FUNCTION_ARGS)
 
 	switch (relkind)
 	{
-		case 'i':
+		/*
+		 * MAC currently supports only the following object types:
+		 *  - Table
+		 *  - Partitioned table
+		 *  - View
+		 */
+		case RELKIND_RELATION:
+		case RELKIND_PARTITIONED_TABLE:
+		case RELKIND_VIEW:
+			break;
+
+		case RELKIND_INDEX:
 			elog(ERROR, "Setting column seclabel for index is not supported.");
 			break;
 
-		case 'c':
+		case RELKIND_COMPOSITE_TYPE:
 			elog(ERROR, "Setting column seclabel for composite type is not supported.");
 			break;
 
-		case 'f':
+		case RELKIND_FOREIGN_TABLE:
 			elog(ERROR, "Setting column seclabel for foreign table is not supported.");
 			break;
 
-		case 'S':
+		case RELKIND_SEQUENCE:
 			elog(ERROR, "Setting column seclabel for sequence is not supported.");
 			break;
 
-		case 'I':
+		case RELKIND_PARTITIONED_INDEX:
 			elog(ERROR, "Setting column seclabel for partitioned index is not supported.");
 			break;
 
+		case RELKIND_MATVIEW:
+			/* doesn't support row policy */
+			elog(ERROR, "Setting column seclabel for materialized view is not supported.");
+			break;
+
 		default:
+			elog(ERROR, "Setting column seclabel for current object is not supported.");
 			break;
 	}
 	/* End - bug#z6002 */
