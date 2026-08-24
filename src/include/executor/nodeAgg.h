@@ -165,6 +165,17 @@ typedef struct AggStatePerTransData
 	FunctionCallInfo serialfn_fcinfo;
 
 	FunctionCallInfo deserialfn_fcinfo;
+	
+	/* Begin Bug#8652 */
+	int			numOrderCols;
+	AttrNumber *orderColIdx;
+	Oid		   *orderOperators;
+	Oid		   *orderCollations;
+	bool	   *orderNullsFirst;
+	
+	/* second-pass sort objects, if separate */
+	Tuplesortstate **orderstates;
+	/* End Bug#8652 */
 }			AggStatePerTransData;
 
 /*

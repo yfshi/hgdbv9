@@ -429,6 +429,7 @@ typedef struct Aggref
 	int			aggtransno;		/* unique ID of transition state in the Agg */
 	bool		has_outer_join;	/* ReqID:SRS-SQL-OUTERJOIN(+) */
 	int			location;		/* token location, or -1 if unknown */
+	bool		aggdistinctorderseparate; /* Bug#8652: DISTINCT and ORDER BY need separate sort passes */
 } Aggref;
 
 /*

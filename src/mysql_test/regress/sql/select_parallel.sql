@@ -13,6 +13,12 @@ set parallel_tuple_cost=0;
 set min_parallel_table_scan_size=0;
 set max_parallel_workers_per_gather=4;
 
+/* Begin Bug#8652 */
+explain (costs off)
+  select count(distinct ten order by unique1) from tenk1;
+select count(distinct ten order by unique1) from tenk1;
+/* End Bug#8652 */
+
 -- Parallel Append with partial-subplans
 explain (costs off)
   select round(avg(aa)), sum(aa) from a_star;
