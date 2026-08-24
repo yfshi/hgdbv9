@@ -1001,7 +1001,7 @@ drop PACKAGE tab_privs_pkg;
 select * from session_privs;
 select * from session_privs where upper(privilege) = 'CREATE TABLE';
 
-select comp_id, comp_name, version, version_full, status, modified, namespace, schema, procedure, startup, parent_id, other_schemas from dba_registry;
+select comp_id, comp_name, version, version_full, status, modified, namespace, schema, procedure, startup, parent_id, other_schemas from dba_registry ORDER BY comp_id, namespace, schema;
 
 \c - enrol22
 select * from session_privs;

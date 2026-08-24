@@ -849,8 +849,8 @@ GRANT ALL ON SEQUENCE pgagent.pga_schedule_jscid_seq TO syssao;
 GRANT ALL ON SEQUENCE pgagent.pga_jobstep_jstid_seq TO syssao;
 -- /* End - BUG#00004708 */
 
-GRANT ALL ON FUNCTION public.sqlite_fdw_handler TO syssao;
-GRANT ALL ON FUNCTION public.sqlite_fdw_handler TO syssao_role;
+GRANT ALL ON FUNCTION hg_security.sqlite_fdw_handler TO syssao;
+GRANT ALL ON FUNCTION hg_security.sqlite_fdw_handler TO syssao_role;
 
 ALTER FUNCTION hg_security.current_is_syssao OWNER TO syssao;
 GRANT ALL ON FUNCTION hg_security.current_is_syssao TO syssao_role;
