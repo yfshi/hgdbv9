@@ -2,14 +2,17 @@
 
 #include "access/printtup.h"
 #include "c.h"
+#include "catalog/pg_enum.h"
 #include "tcop/pquery.h"
 #include "utils/builtins.h"
+#include "utils/catcache.h"
 #include "utils/bytea.h"
 #include "utils/date.h"
 #include "utils/datetime.h"
 #include "utils/lsyscache.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
+#include "utils/syscache.h"
 #include "utils/varbit.h"
 
 #include "../include/ivorysql_my.h"
@@ -17,6 +20,188 @@
 #include "../include/server.h"
 #include "../include/printtup.h"
 #include "../include/mqformat.h"
+
+/**
+ * Begin - bug#9024
+ * ORM framework like those in GO language utilize the length and decimal fields
+ * of response packets, which can significantly impact data consistency.
+ * It's imperative to maintain consistency with MySQL.
+ */
+static void
+get_column_length_and_decimal(FormData_pg_attribute *attr, uint32 *length, uint32 *decimals)
+{
+    uint32 len = 0;
+    uint32 dec = 0;
+    Oid typoid = attr->atttypid;
+    int mbmaxlen = pg_database_encoding_max_length();
+    int typmod = attr->atttypmod;
+
+    switch (typoid)
+    {
+        // number
+        case TINYINTOID:
+            len = 4;
+            break;
+        case INT2OID:
+            len = 6;
+            break;
+        case MEDIUMINTOID:
+            len = 9;
+            break;
+        case INT4OID:
+            len = 11;
+            break;
+        case INT8OID:
+            len = 20;
+            break;
+        case UINT1OID:
+            len = 3;
+            break;
+        case UINT2OID:
+            len = 5;
+            break;
+        case UINT3OID:
+            len = 8;
+            break;
+        case UINT4OID:
+            len = 10;
+            break;
+        case UINT8OID:
+            len = 20;
+            break;
+        case FLOAT4OID:
+            len = 12;
+            dec = 31;
+            break;
+        case FLOAT8OID:
+            len = 22;
+            dec = 31;
+            break;
+        
+        // numeric
+        case NUMERICOID:
+            dec = ((typmod - VARHDRSZ) & 0xffff);
+            len = ((typmod - VARHDRSZ) >> 16) & 0xffff;
+
+            // Decimal point and sign of positive and negative
+            len += 2;
+            break;
+
+        // character
+        case CHAROID:
+            len = 1 * mbmaxlen; // only 1 character
+            break;
+        case BPCHAROID:
+        case VARCHAROID:
+            len = (typmod - VARHDRSZ) * mbmaxlen;
+            break;
+        case TEXTOID:
+            len = 262140;
+            break;
+        case TINYTEXTOID:
+            len = 1020;
+            break;
+        case MEDIUMTEXTOID:
+            len = 67108860;
+            break;
+        case LONGTEXTOID:
+            len = 4294967295;
+            break;
+
+        // binary
+        case MYSBITOID:
+            len = typmod;
+            break;
+        case BINARYOID:
+        case VARBINARYOID:
+            len = typmod - VARHDRSZ;
+            break;
+        case MYBLOBOID:
+            len = 65535;
+            break;
+        case TINYBLOBOID:
+            len = 255;
+            break;
+        case MEDIUMBLOBOID:
+            len = 16777215;
+            break;
+        case LONGBLOBOID:
+            len = 4294967295;
+            break;
+
+        // time
+        case YEAROID:
+            len = 4;
+            break;
+        case MYSDATEOID:
+            len = 10;
+            break;
+        case MYSTIMEOID:
+            len = 10;
+            break;
+        case MYSTIMESOID:
+            len = 10;
+            dec = typmod;
+
+            // A space between date and time
+            len += (1 + dec);
+            break;
+        case MYSDATETIMEOID:
+        case MYSTIMESTAMPOID:
+            len = 19;
+            break;
+        case MYSDATETIMESOID:
+        case MYSTIMESTAMPSOID:
+            len = 19;
+            dec = typmod;
+
+            // A space between date and time
+            len += (1 + dec);
+            break;
+
+        // json
+        case JSONOID:
+            len = 4294967295;
+            break;
+        
+        default:
+            if (type_is_enum(typoid))
+            {
+                int			nelems;
+	            CatCList   	*list;
+
+                list = SearchSysCacheList1(ENUMTYPOIDNAME, ObjectIdGetDatum(typoid));
+                nelems = list->n_members;
+                
+                for (int i = 0; i < nelems; i++)
+                {
+                    HeapTuple exists_tup = &(list->members[i]->tuple);
+                    Form_pg_enum exists_en = (Form_pg_enum) GETSTRUCT(exists_tup);
+                    char *enumlabel = NameStr(exists_en->enumlabel);
+                    int label_len = strlen(enumlabel);
+
+                    if (label_len > len)
+                        len = label_len;
+                }
+
+                len *= mbmaxlen;
+
+	            ReleaseCatCacheList(list);
+            }
+            else
+            {
+                len = 4294967295;
+            }
+
+            // TO DO set
+
+            break;
+    }
+
+    *length = len;
+    *decimals = dec;
+}
+/* End - bug#9024 */
 
 static mysql_column_definition_t *
 make_column_definition_with_attr(FormData_pg_attribute *attr)
@@ -29,37 +214,9 @@ make_column_definition_with_attr(FormData_pg_attribute *attr)
     field->name = attr->attname.data;
     field->type = item->mysql_type_id;
 
-    if (attr->atttypmod != -1)
-        field->length = attr->atttypmod;
-    else
-        field->length = DEFAULLT_DATA_FIELD_LEN;
-
-    switch (item->mysql_type_id)
-    {
-        /* since mysql-jdbc 5.1.47 don't support enum and set. */
-        case MYSQL_TYPE_ENUM:
-        case MYSQL_TYPE_SET:
-            field->type = MYSQL_TYPE_STRING;
-            break;
-
-        /* Begin - BUG#7611 */
-        case MYSQL_TYPE_TIME:
-        case MYSQL_TYPE_DATETIME:
-        case MYSQL_TYPE_TIMESTAMP:
-        {
-            int fsp = (attr->atttypmod != -1) ? attr->atttypmod : 0;
-            int base_len = (item->mysql_type_id == MYSQL_TYPE_TIME) ? 10 : 19;
-
-            field->decimals = fsp;
-            field->length = base_len + (fsp > 0 ? fsp + 1 : 0);
-
-            break;
-        }
-
-        default:
-            break;
-        /* End - BUG#7611 */
-    }
+    /* Begin - bug#9024 */
+    get_column_length_and_decimal(attr, &field->length, &field->decimals);
+    /* End - bug#9024 */
 
     field->flags = item->flags;
     field->charset = item->charset_flag;
