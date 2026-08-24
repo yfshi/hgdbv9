@@ -125,6 +125,7 @@ FROM pg_catalog.pg_class c
 WHERE
 	c.relpersistence != 't' AND /* Bug - #z5989 */
 	c.relkind IN ('r', 'v', 'm', 'p', 'f')                              -- Tables, views, materialized views, partitioned tables, foreign tables
+	AND NOT c.relispartition /*Bug -  #z9006*/
 ORDER BY c.oid;		-- bug#Z5983
 
 
@@ -586,7 +587,7 @@ SELECT
 	CASE WHEN a.attnotnull THEN 'NO' ELSE 'YES' END::varchar(3) AS "IS_NULLABLE",  -- Whether column allows NULL
 
 	-- DATA_TYPE logic compatible with MySQL conventions
-	mys_information_schema.mys_format_type(t.oid)::varchar(64) AS "DATA_TYPE",
+	mys_information_schema.mys_data_type(t.oid)::varchar(64) AS "DATA_TYPE",
 
 	-- Max character length for character types
 	CAST(information_schema._pg_char_max_length(

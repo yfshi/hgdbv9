@@ -2219,4 +2219,64 @@ show indexes from tb;
 drop table tb;
 reset mysql.create_database_mode;
 set sql_mode = DEFAULT;
--- # Begin - BUG#7662
+-- # End - BUG#7662
+-- # Begin - BUG#9010 9006
+CREATE SCHEMA aaa;
+CREATE SCHEMA bbb;
+CREATE TABLE aaa.t(a int);
+CREATE TABLE bbb.t(b int);
+USE aaa;
+SHOW FULL COLUMNS FROM t;
+ Field |  Type   | Collation | Null | Key | Default | Extra |           Privileges            | Comment 
+-------+---------+-----------+------+-----+---------+-------+---------------------------------+---------
+ a     | int(11) |           | YES  |     |         |       | INSERT,REFERENCES,SELECT,UPDATE | 
+(1 row)
+
+create schema szw;
+CREATE TABLE szw.p_key_primary
+(
+    id bigint NOT NULL,
+    content varchar(200) COLLATE utf8mb4_0900_ai_ci
+)
+PARTITION BY HASH (id);
+CREATE TABLE szw.p_key_primary_p0
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 0
+);
+CREATE TABLE szw.p_key_primary_p1
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 1
+);
+CREATE TABLE szw.p_key_primary_p2
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 2
+);
+CREATE TABLE szw.p_key_primary_p3
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 3
+);
+SHOW TABLES FROM szw;
+ Tables_in_szw 
+---------------
+ p_key_primary
+(1 row)
+
+drop schema aaa CASCADE;
+NOTICE:  drop cascades to table t
+drop schema bbb CASCADE;
+NOTICE:  drop cascades to table bbb.t
+drop schema szw CASCADE;
+NOTICE:  drop cascades to table szw.p_key_primary
+-- # End - BUG#9010 9006

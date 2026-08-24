@@ -26,8 +26,10 @@
 #include "common/hashfn.h"
 #include "common/int.h"
 #include "common/unicode_norm.h"
+#include "executor/execExpr.h"
 #include "lib/hyperloglog.h"
 #include "libpq/pqformat.h"
+#include "nodes/makefuncs.h"
 #include "miscadmin.h"
 #include "mysql_parser/mys_case_sensitive.h"
 #include "nodes/execnodes.h"
@@ -6352,6 +6354,20 @@ build_concat_foutcache(FunctionCallInfo fcinfo, int argidx)
 	return foutcache;
 }
 
+/* Begin - BUG#8554 */
+static bool
+is_binary_type(Oid typid)
+{
+	return typid == BINARYOID ||
+		   typid == VARBINARYOID ||
+		   typid == TINYBLOBOID ||
+		   typid == BLOBOID ||
+		   typid == MEDIUMBLOBOID ||
+		   typid == LONGBLOBOID ||
+		   typid == MYBLOBOID;
+}
+/* End - BUG#8554 */
+
 /*
  * Implementation of both concat() and concat_ws().
  *
@@ -6425,6 +6441,55 @@ concat_internal(const char *sepstr, int argidx,
 				first_arg = false;
 			else
 				appendStringInfoString(&str, sepstr);
+
+			/* Begin - BUG#8554 */
+			if (compatible_mode == MYS_MODE)
+			{
+				Oid valtype;
+				bytea *bytes;
+
+				valtype = get_fn_expr_argtype(fcinfo->flinfo, i);
+				if (is_binary_type(valtype))
+				{
+					bytes = DatumGetByteaPP(value);
+
+					appendBinaryStringInfo(&str,
+										   VARDATA_ANY(bytes),
+										   VARSIZE_ANY_EXHDR(bytes));
+					continue;
+				}
+				else if (valtype == MYSBITOID)
+				{
+					Const *currentconst;
+					Datum result;
+					bytea *bytes;
+					int16 typlen;
+					bool typbyval;
+
+					get_typlenbyval(valtype, &typlen, &typbyval);
+
+					currentconst = makeConst(valtype,
+											 -1,
+											 InvalidOid,
+											 typlen,
+											 value,
+											 false,
+											 typbyval);
+
+					result =
+						mys_convert_current_const_to_target_const(currentconst,
+																  VARBINARYOID);
+
+					bytes = DatumGetByteaPP(result);
+
+					appendBinaryStringInfo(&str,
+										   VARDATA_ANY(bytes),
+										   VARSIZE_ANY_EXHDR(bytes));
+
+					continue;
+				}
+			}
+			/* End - BUG#8554 */
 
 			/* call the appropriate type output function, append the result */
 			appendStringInfoString(&str,

@@ -34,6 +34,88 @@ ORDER BY ordinal_position;
 RESET ROLE;
 DROP TABLE test_schema.sample_table;
 
+-- # Begin - BUG#8916
+
+DROP TABLE IF EXISTS test_schema.test_all_types;
+
+CREATE TABLE test_schema.test_all_types
+(
+    /* signed integer */
+    c_tiny          TINYINT,
+    c_tiny_m        TINYINT(2),
+
+    c_small         SMALLINT,
+    c_small_m       SMALLINT(4),
+
+    c_medium        MEDIUMINT,
+    c_medium_m      MEDIUMINT(6),
+
+    c_int           INT,
+    c_int_m         INT(7),
+
+    c_big           BIGINT,
+    c_big_m         BIGINT(12),
+
+    /* unsigned integer uint1/uint2/uint3/uint4/uint8 */
+    c_uint1         TINYINT UNSIGNED,
+    c_uint1_m       TINYINT(2) UNSIGNED,
+
+    c_uint2         SMALLINT UNSIGNED,
+    c_uint2_m       SMALLINT(4) UNSIGNED,
+
+    c_uint3         MEDIUMINT UNSIGNED,
+    c_uint3_m       MEDIUMINT(6) UNSIGNED,
+
+    c_uint4         INT UNSIGNED,
+    c_uint4_m       INT(7) UNSIGNED,
+
+    c_uint8         BIGINT UNSIGNED,
+    c_uint8_m       BIGINT(12) UNSIGNED,
+
+    /* bit */
+    c_bit           BIT,
+    c_bit_m         BIT(8),
+
+    /* character */
+    c_char          CHAR(10),
+    c_varchar       VARCHAR(100),
+
+    /* exact numeric */
+    c_decimal       DECIMAL,
+    c_decimal_ps    DECIMAL(10,2),
+
+    /* approximate numeric */
+    c_float         FLOAT,
+    c_double        DOUBLE,
+
+    /* date/time */
+    c_date          DATE,
+    c_datetime      DATETIME,
+    c_datetime_fsp  DATETIME(3),
+    c_timestamp     TIMESTAMP,
+    c_timestamp_fsp TIMESTAMP(6),
+    c_time          TIME,
+    c_time_fsp      TIME(4),
+
+    /* year */
+    c_year          YEAR,
+    c_year4         YEAR(4),
+
+    /* enum */
+    c_enum          ENUM('a','b','c')
+);
+
+SELECT
+    COLUMN_NAME,
+    DATA_TYPE,
+    COLUMN_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'test_schema'
+    AND TABLE_NAME = 'test_all_types'
+ORDER BY ORDINAL_POSITION;
+
+drop table test_schema.test_all_types;
+-- # End - BUG#8916
 ------------------------------------------------------------
 -- 3. Test for information_schema.key_column_usage
 ------------------------------------------------------------

@@ -9,7 +9,7 @@
 
 --
 -- Function: mys_information_schema.mys_format_type (internal)
--- Maps a PostgreSQL type OID to a MySQL-compatible DATA_TYPE string.
+-- Maps a PostgreSQL type OID to a MySQL-compatible COLUMN_TYPE string.
 --
 CREATE OR REPLACE FUNCTION mys_information_schema.mys_format_type(
 	type_oid oid,
@@ -52,6 +52,49 @@ AS $$
 	FROM pg_type t
 	WHERE t.oid = type_oid
 $$;
+
+-- Begin - BUG#8916
+--
+-- Function: mys_information_schema.mys_data_type (internal)
+-- Maps a PostgreSQL type OID to a MySQL-compatible DATA_TYPE string.
+--
+CREATE OR REPLACE FUNCTION mys_information_schema.mys_data_type(
+    type_oid oid
+)
+RETURNS varchar(64)
+LANGUAGE sql
+STABLE
+PARALLEL SAFE
+RETURNS NULL ON NULL INPUT
+AS $$
+    SELECT CASE
+        WHEN t.typname = 'tinyint'   THEN 'tinyint'
+        WHEN t.typname = 'int2'      THEN 'smallint'
+        WHEN t.typname = 'mediumint' THEN 'mediumint'
+        WHEN t.typname = 'int4'      THEN 'int'
+        WHEN t.typname = 'int8'      THEN 'bigint'
+
+        WHEN t.typname = 'uint1'     THEN 'tinyint'
+        WHEN t.typname = 'uint2'     THEN 'smallint'
+        WHEN t.typname = 'uint3'     THEN 'mediumint'
+        WHEN t.typname = 'uint4'     THEN 'int'
+        WHEN t.typname = 'uint8'     THEN 'bigint'
+
+        WHEN t.typname = 'mysbit'    THEN 'bit'
+        WHEN t.typname = 'bpchar'    THEN 'char'
+        WHEN t.typname = 'float8'    THEN 'double'
+        WHEN t.typname = 'float4'    THEN 'float'
+        WHEN t.typname = 'numeric'   THEN 'decimal'
+        WHEN t.typname = 'varchar'   THEN 'varchar'
+        WHEN t.typname = 'year'      THEN 'year'
+        WHEN t.typtype = 'e'         THEN 'enum'
+
+        ELSE format_type(t.oid, -1)
+    END::varchar(64)
+    FROM pg_type t
+    WHERE t.oid = type_oid
+$$;
+-- End - BUG#8916
 
 --
 --show charset
@@ -603,6 +646,13 @@ BEGIN
 			EXTRA, PRIVILEGES, COLUMN_COMMENT
 		FROM mys_information_schema.showcolumns
 		WHERE table_name = tb_name
+			-- Begin - BUG#9010
+			AND table_schema = (
+				SELECT c.relnamespace::regnamespace::text
+				FROM pg_class c
+				WHERE c.oid = to_regclass(tb_name)
+			)
+			-- End - BUG#9010
 		ORDER BY ORDINAL_POSITION;
 	ELSE
 		RETURN QUERY SELECT
