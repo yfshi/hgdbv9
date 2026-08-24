@@ -5312,7 +5312,7 @@ transformUpdateTargetList(ParseState *pstate, List *origTlist)
 		{
 			updateTargetListEntry(pstate, tle, colname_temp,
 								  attrno,
-								  NULL,
+								  list_copy_tail(origTarget->indirection, 1), /* bug#8996 */
 								  origTarget->location);
 		}
 		else
