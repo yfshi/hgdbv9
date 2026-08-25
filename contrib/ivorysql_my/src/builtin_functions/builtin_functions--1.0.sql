@@ -608,7 +608,12 @@ CREATE OR REPLACE FUNCTION ivymy.to_char(mysdatetimes, text) RETURNS text
 AS $$
     SELECT pg_catalog.to_char($1::pg_catalog.timestamp, $2);
 $$ LANGUAGE SQL STABLE PARALLEL SAFE;
-/* Begin - BUG#7487 */
+/* End - BUG#7487 */
+
+CREATE OR REPLACE FUNCTION ivymy.to_char(mysdate, text) RETURNS text
+AS $$
+    SELECT ivymy.to_char($1::mysdatetime, $2);
+$$ LANGUAGE SQL STABLE PARALLEL SAFE;
 
 /*TIMESTAMP*/
 CREATE OR REPLACE FUNCTION ivymy.timestamp(text)
@@ -4782,7 +4787,7 @@ IMMUTABLE
 PARALLEL SAFE;
 /* End - bug#8563 */
 
-/* Begin - BUG#8428 8441 */
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
 CREATE OR REPLACE FUNCTION ivymy.crc32(varbinary)
 RETURNS int8
 AS 'MODULE_PATHNAME','crc32'
@@ -4790,9 +4795,7 @@ LANGUAGE C
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
-/* End - BUG#8428 8441 */
 
-/* Begin - SXJK-BUILDINFUNCTION */
 CREATE FUNCTION ivymy.crc32(bytea)
 RETURNS int8
 AS 'MODULE_PATHNAME','crc32'
@@ -5021,7 +5024,7 @@ PARALLEL SAFE
 AS $$
 	SELECT concat(CURRENT_USER, '@%') as `CURRENT_USER()`;
 $$;
-/* End - SXJK-BUILDINFUNCTION */
+
 
 /* Begin - BUG#8428 8441 */
 ----function position
@@ -5137,3 +5140,70 @@ STRICT
 IMMUTABLE
 PARALLEL SAFE;
 /* End - bug#8594 */
+
+/* Begin - SRS-MYSQL-BUILDINFUNCTION */
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mystimes)
+RETURNS int8
+AS 'MODULE_PATHNAME','extract_times'
+LANGUAGE C
+STRICT
+STABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mystime)
+RETURNS int8
+AS 'SELECT ivymy.extract($1, $2::ivymy.mystimes)'
+LANGUAGE SQL
+STRICT
+STABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mysdatetimes)
+RETURNS int8
+AS 'MODULE_PATHNAME','extract_datetimes'
+LANGUAGE C
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mysdatetime)
+RETURNS int8
+AS 'SELECT ivymy.extract($1, $2::ivymy.mysdatetimes)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mystimestamps)
+RETURNS int8
+AS 'SELECT ivymy.extract($1, $2::ivymy.mysdatetimes)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mystimestamp)
+RETURNS int8
+AS 'SELECT ivymy.extract($1, $2::ivymy.mysdatetimes)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, ivymy.mysdate)
+RETURNS int8
+AS 'SELECT ivymy.extract($1, $2::ivymy.mysdatetimes)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.extract(text, numeric)
+RETURNS int8
+AS 'SELECT ivymy.extract($1, $2::ivymy.mysdatetimes)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+/* End - SRS-MYSQL-BUILDINFUNCTION */

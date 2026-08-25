@@ -18673,7 +18673,7 @@ func_expr_common_subexpr:
 				}
 			| EXTRACT '(' extract_list ')'
 				{
-					$$ = (Node *) makeFuncCall(SystemFuncName("extract"),
+					$$ = (Node *) makeFuncCall(list_make1(makeString("extract")),
 											   $3,
 											   COERCE_SQL_SYNTAX,
 											   @1);
@@ -19787,6 +19787,7 @@ extract_list:
  /* Begin - SRS-MYSQL-BUILDINFUNCTION */
 extract_arg:
 			IDENT									{ $$ = $1; }
+			| YEAR_P								{ $$ = "year"; }
 			| MONTH_P								{ $$ = "month"; }
 			| DAY_P									{ $$ = "day"; }
 			| HOUR_P								{ $$ = "hour"; }
@@ -19795,6 +19796,17 @@ extract_arg:
 			| WEEK									{ $$ = "week"; }
 			| MICROSECOND							{ $$ = "microsecond"; }
 			| QUARTER								{ $$ = "quarter"; }
+			| YEAR_MONTH							{ $$ = "year_month"; }
+			| DAY_HOUR								{ $$ = "day_hour"; }
+			| DAY_MINUTE							{ $$ = "day_minute"; }
+			| DAY_SECOND							{ $$ = "day_second"; }
+			| DAY_MICROSECOND						{ $$ = "day_microsecond"; }
+			| HOUR_MINUTE							{ $$ = "hour_minute"; }
+			| HOUR_SECOND							{ $$ = "hour_second"; }
+			| HOUR_MICROSECOND						{ $$ = "hour_microsecond"; }
+			| MINUTE_SECOND							{ $$ = "minute_second"; }
+			| MINUTE_MICROSECOND					{ $$ = "minute_microsecond"; }
+			| SECOND_MICROSECOND					{ $$ = "second_microsecond"; }
 			| Sconst								{ $$ = $1; }
 		;
 

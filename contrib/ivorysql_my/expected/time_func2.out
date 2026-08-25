@@ -1184,3 +1184,1085 @@ SELECT FROM_UNIXTIME(1673094834, '%a'); -- sat
 (1 row)
 
 /* End - bug#8424 */
+-- EXTRACT
+create table extract_date(d mysdate);
+insert into extract_date values ('2025-04-20');
+select extract(microsecond from d) from extract_date;
+ extract 
+---------
+ 3264226
+(1 row)
+
+select extract(second from d) from extract_date;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(minute from d) from extract_date;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(hour from d) from extract_date;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(day from d) from extract_date;
+ extract 
+---------
+      20
+(1 row)
+
+select extract(week from d) from extract_date;
+ extract 
+---------
+      16
+(1 row)
+
+select extract(month from d) from extract_date;
+ extract 
+---------
+       4
+(1 row)
+
+select extract(quarter from d) from extract_date;
+ extract 
+---------
+       2
+(1 row)
+
+select extract(year from d) from extract_date;
+ extract 
+---------
+    2025
+(1 row)
+
+select extract(second_microsecond from d) from extract_date;
+ extract 
+---------
+ 3264226
+(1 row)
+
+select extract(minute_microsecond from d) from extract_date;
+ extract 
+---------
+ 3264226
+(1 row)
+
+select extract(minute_second from d) from extract_date;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(hour_microsecond from d) from extract_date;
+ extract 
+---------
+ 3264226
+(1 row)
+
+select extract(hour_second from d) from extract_date;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(hour_minute from d) from extract_date;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(day_microsecond from d) from extract_date;
+    extract     
+----------------
+ 20000003264226
+(1 row)
+
+select extract(day_second from d) from extract_date;
+ extract  
+----------
+ 20000000
+(1 row)
+
+select extract(day_minute from d) from extract_date;
+ extract 
+---------
+  200000
+(1 row)
+
+select extract(day_hour from d) from extract_date;
+ extract 
+---------
+    2000
+(1 row)
+
+select extract(year_month from d) from extract_date;
+ extract 
+---------
+  202504
+(1 row)
+
+drop table extract_date;
+create table extract_time(t mystime);
+insert into extract_time values('15:02:40');
+select extract(microsecond from t) from extract_time;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(second from t) from extract_time;
+ extract 
+---------
+      40
+(1 row)
+
+select extract(minute from t) from extract_time;
+ extract 
+---------
+       2
+(1 row)
+
+select extract(hour from t) from extract_time;
+ extract 
+---------
+      15
+(1 row)
+
+select extract(second_microsecond from t) from extract_time;
+ extract  
+----------
+ 40000000
+(1 row)
+
+select extract(minute_microsecond from t) from extract_time;
+  extract  
+-----------
+ 240000000
+(1 row)
+
+select extract(minute_second from t) from extract_time;
+ extract 
+---------
+     240
+(1 row)
+
+select extract(hour_microsecond from t) from extract_time;
+   extract    
+--------------
+ 150240000000
+(1 row)
+
+select extract(hour_second from t) from extract_time;
+ extract 
+---------
+  150240
+(1 row)
+
+select extract(hour_minute from t) from extract_time;
+ extract 
+---------
+    1502
+(1 row)
+
+select extract(day_microsecond from t) from extract_time;
+   extract    
+--------------
+ 150240000000
+(1 row)
+
+select extract(day_second from t) from extract_time;
+ extract 
+---------
+  150240
+(1 row)
+
+select extract(day_minute from t) from extract_time;
+ extract 
+---------
+    1502
+(1 row)
+
+select extract(day_hour from t) from extract_time;
+ extract 
+---------
+      15
+(1 row)
+
+drop table extract_time;
+create table extract_times(ts mystimes(6));
+insert into extract_times values('09:21:35.010203');
+select extract(microsecond from ts) from extract_times;
+ extract 
+---------
+   10203
+(1 row)
+
+select extract(second from ts) from extract_times;
+ extract 
+---------
+      35
+(1 row)
+
+select extract(minute from ts) from extract_times;
+ extract 
+---------
+      21
+(1 row)
+
+select extract(hour from ts) from extract_times;
+ extract 
+---------
+       9
+(1 row)
+
+select extract(second_microsecond from ts) from extract_times;
+ extract  
+----------
+ 35010203
+(1 row)
+
+select extract(minute_microsecond from ts) from extract_times;
+  extract   
+------------
+ 2135010203
+(1 row)
+
+select extract(minute_second from ts) from extract_times;
+ extract 
+---------
+    2135
+(1 row)
+
+select extract(hour_microsecond from ts) from extract_times;
+   extract   
+-------------
+ 92135010203
+(1 row)
+
+select extract(hour_second from ts) from extract_times;
+ extract 
+---------
+   92135
+(1 row)
+
+select extract(hour_minute from ts) from extract_times;
+ extract 
+---------
+     921
+(1 row)
+
+select extract(day_microsecond from ts) from extract_times;
+   extract   
+-------------
+ 92135010203
+(1 row)
+
+select extract(day_second from ts) from extract_times;
+ extract 
+---------
+   92135
+(1 row)
+
+select extract(day_minute from ts) from extract_times;
+ extract 
+---------
+     921
+(1 row)
+
+select extract(day_hour from ts) from extract_times;
+ extract 
+---------
+       9
+(1 row)
+
+drop table extract_times;
+create table extract_datetime(dt mysdatetime);
+insert into extract_datetime values('2020-12-10 15:30:45');
+select extract(microsecond from dt) from extract_datetime;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(second from dt) from extract_datetime;
+ extract 
+---------
+      45
+(1 row)
+
+select extract(minute from dt) from extract_datetime;
+ extract 
+---------
+      30
+(1 row)
+
+select extract(hour from dt) from extract_datetime;
+ extract 
+---------
+      15
+(1 row)
+
+select extract(day from dt) from extract_datetime;
+ extract 
+---------
+      10
+(1 row)
+
+select extract(week from dt) from extract_datetime;
+ extract 
+---------
+      50
+(1 row)
+
+select extract(month from dt) from extract_datetime;
+ extract 
+---------
+      12
+(1 row)
+
+select extract(quarter from dt) from extract_datetime;
+ extract 
+---------
+       4
+(1 row)
+
+select extract(year from dt) from extract_datetime;
+ extract 
+---------
+    2020
+(1 row)
+
+select extract(second_microsecond from dt) from extract_datetime;
+ extract  
+----------
+ 45000000
+(1 row)
+
+select extract(minute_microsecond from dt) from extract_datetime;
+  extract   
+------------
+ 3045000000
+(1 row)
+
+select extract(minute_second from dt) from extract_datetime;
+ extract 
+---------
+    3045
+(1 row)
+
+select extract(hour_microsecond from dt) from extract_datetime;
+   extract    
+--------------
+ 153045000000
+(1 row)
+
+select extract(hour_second from dt) from extract_datetime;
+ extract 
+---------
+  153045
+(1 row)
+
+select extract(hour_minute from dt) from extract_datetime;
+ extract 
+---------
+    1530
+(1 row)
+
+select extract(day_microsecond from dt) from extract_datetime;
+    extract     
+----------------
+ 10153045000000
+(1 row)
+
+select extract(day_second from dt) from extract_datetime;
+ extract  
+----------
+ 10153045
+(1 row)
+
+select extract(day_minute from dt) from extract_datetime;
+ extract 
+---------
+  101530
+(1 row)
+
+select extract(day_hour from dt) from extract_datetime;
+ extract 
+---------
+    1015
+(1 row)
+
+select extract(year_month from dt) from extract_datetime;
+ extract 
+---------
+  202012
+(1 row)
+
+drop table extract_datetime;
+create table extract_datetimes(dts mysdatetimes(6));
+insert into extract_datetimes values('2005-02-15 06:51:19.113355');
+select extract(microsecond from dts) from extract_datetimes;
+ extract 
+---------
+  113355
+(1 row)
+
+select extract(second from dts) from extract_datetimes;
+ extract 
+---------
+      19
+(1 row)
+
+select extract(minute from dts) from extract_datetimes;
+ extract 
+---------
+      51
+(1 row)
+
+select extract(hour from dts) from extract_datetimes;
+ extract 
+---------
+       6
+(1 row)
+
+select extract(day from dts) from extract_datetimes;
+ extract 
+---------
+      15
+(1 row)
+
+select extract(week from dts) from extract_datetimes;
+ extract 
+---------
+       7
+(1 row)
+
+select extract(month from dts) from extract_datetimes;
+ extract 
+---------
+       2
+(1 row)
+
+select extract(quarter from dts) from extract_datetimes;
+ extract 
+---------
+       1
+(1 row)
+
+select extract(year from dts) from extract_datetimes;
+ extract 
+---------
+    2005
+(1 row)
+
+select extract(second_microsecond from dts) from extract_datetimes;
+ extract  
+----------
+ 19113355
+(1 row)
+
+select extract(minute_microsecond from dts) from extract_datetimes;
+  extract   
+------------
+ 5119113355
+(1 row)
+
+select extract(minute_second from dts) from extract_datetimes;
+ extract 
+---------
+    5119
+(1 row)
+
+select extract(hour_microsecond from dts) from extract_datetimes;
+   extract   
+-------------
+ 65119113355
+(1 row)
+
+select extract(hour_second from dts) from extract_datetimes;
+ extract 
+---------
+   65119
+(1 row)
+
+select extract(hour_minute from dts) from extract_datetimes;
+ extract 
+---------
+     651
+(1 row)
+
+select extract(day_microsecond from dts) from extract_datetimes;
+    extract     
+----------------
+ 15065119113355
+(1 row)
+
+select extract(day_second from dts) from extract_datetimes;
+ extract  
+----------
+ 15065119
+(1 row)
+
+select extract(day_minute from dts) from extract_datetimes;
+ extract 
+---------
+  150651
+(1 row)
+
+select extract(day_hour from dts) from extract_datetimes;
+ extract 
+---------
+    1506
+(1 row)
+
+select extract(year_month from dts) from extract_datetimes;
+ extract 
+---------
+  200502
+(1 row)
+
+drop table extract_datetimes;
+create table extract_timestamp(tp mystimestamp);
+insert into extract_timestamp values('2018-10-01 03:47:16');
+select extract(microsecond from tp) from extract_timestamp;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(second from tp) from extract_timestamp;
+ extract 
+---------
+      16
+(1 row)
+
+select extract(minute from tp) from extract_timestamp;
+ extract 
+---------
+      47
+(1 row)
+
+select extract(hour from tp) from extract_timestamp;
+ extract 
+---------
+       3
+(1 row)
+
+select extract(day from tp) from extract_timestamp;
+ extract 
+---------
+       1
+(1 row)
+
+select extract(week from tp) from extract_timestamp;
+ extract 
+---------
+      40
+(1 row)
+
+select extract(month from tp) from extract_timestamp;
+ extract 
+---------
+      10
+(1 row)
+
+select extract(quarter from tp) from extract_timestamp;
+ extract 
+---------
+       4
+(1 row)
+
+select extract(year from tp) from extract_timestamp;
+ extract 
+---------
+    2018
+(1 row)
+
+select extract(second_microsecond from tp) from extract_timestamp;
+ extract  
+----------
+ 16000000
+(1 row)
+
+select extract(minute_microsecond from tp) from extract_timestamp;
+  extract   
+------------
+ 4716000000
+(1 row)
+
+select extract(minute_second from tp) from extract_timestamp;
+ extract 
+---------
+    4716
+(1 row)
+
+select extract(hour_microsecond from tp) from extract_timestamp;
+   extract   
+-------------
+ 34716000000
+(1 row)
+
+select extract(hour_second from tp) from extract_timestamp;
+ extract 
+---------
+   34716
+(1 row)
+
+select extract(hour_minute from tp) from extract_timestamp;
+ extract 
+---------
+     347
+(1 row)
+
+select extract(day_microsecond from tp) from extract_timestamp;
+    extract    
+---------------
+ 1034716000000
+(1 row)
+
+select extract(day_second from tp) from extract_timestamp;
+ extract 
+---------
+ 1034716
+(1 row)
+
+select extract(day_minute from tp) from extract_timestamp;
+ extract 
+---------
+   10347
+(1 row)
+
+select extract(day_hour from tp) from extract_timestamp;
+ extract 
+---------
+     103
+(1 row)
+
+select extract(year_month from tp) from extract_timestamp;
+ extract 
+---------
+  201810
+(1 row)
+
+drop table extract_timestamp;
+create table extract_timestamps(tps mystimestamps(6));
+insert into extract_timestamps values('2010-08-31 12:37:05.123456');
+select extract(microsecond from tps) from extract_timestamps;
+ extract 
+---------
+  123456
+(1 row)
+
+select extract(second from tps) from extract_timestamps;
+ extract 
+---------
+       5
+(1 row)
+
+select extract(minute from tps) from extract_timestamps;
+ extract 
+---------
+      37
+(1 row)
+
+select extract(hour from tps) from extract_timestamps;
+ extract 
+---------
+      12
+(1 row)
+
+select extract(day from tps) from extract_timestamps;
+ extract 
+---------
+      31
+(1 row)
+
+select extract(week from tps) from extract_timestamps;
+ extract 
+---------
+      35
+(1 row)
+
+select extract(month from tps) from extract_timestamps;
+ extract 
+---------
+       8
+(1 row)
+
+select extract(quarter from tps) from extract_timestamps;
+ extract 
+---------
+       3
+(1 row)
+
+select extract(year from tps) from extract_timestamps;
+ extract 
+---------
+    2010
+(1 row)
+
+select extract(second_microsecond from tps) from extract_timestamps;
+ extract 
+---------
+ 5123456
+(1 row)
+
+select extract(minute_microsecond from tps) from extract_timestamps;
+  extract   
+------------
+ 3705123456
+(1 row)
+
+select extract(minute_second from tps) from extract_timestamps;
+ extract 
+---------
+    3705
+(1 row)
+
+select extract(hour_microsecond from tps) from extract_timestamps;
+   extract    
+--------------
+ 123705123456
+(1 row)
+
+select extract(hour_second from tps) from extract_timestamps;
+ extract 
+---------
+  123705
+(1 row)
+
+select extract(hour_minute from tps) from extract_timestamps;
+ extract 
+---------
+    1237
+(1 row)
+
+select extract(day_microsecond from tps) from extract_timestamps;
+    extract     
+----------------
+ 31123705123456
+(1 row)
+
+select extract(day_second from tps) from extract_timestamps;
+ extract  
+----------
+ 31123705
+(1 row)
+
+select extract(day_minute from tps) from extract_timestamps;
+ extract 
+---------
+  311237
+(1 row)
+
+select extract(day_hour from tps) from extract_timestamps;
+ extract 
+---------
+    3112
+(1 row)
+
+select extract(year_month from tps) from extract_timestamps;
+ extract 
+---------
+  201008
+(1 row)
+
+drop table extract_timestamps;
+select extract(year from date'2003-06-30');
+ extract 
+---------
+    2003
+(1 row)
+
+select extract(year_month from date'2003-06-30');
+ extract 
+---------
+  200306
+(1 row)
+
+select extract(hour from time'19:42:01');
+ extract 
+---------
+      19
+(1 row)
+
+select extract(minute_second from time'19:42:01');
+ extract 
+---------
+    4201
+(1 row)
+
+select extract(quarter from timestamp'2003-06-30 19:42:01');
+ extract 
+---------
+       2
+(1 row)
+
+select extract(day_microsecond from timestamp'2003-06-30 19:42:01');
+    extract     
+----------------
+ 30194201000000
+(1 row)
+
+select extract(DAY from '2017-01-21'::mysdate);
+ extract 
+---------
+      21
+(1 row)
+
+select extract(MINUTE from '14:09:42'::mystime);
+ extract 
+---------
+       9
+(1 row)
+
+select extract(MICROSECOND from '14:09:42.003003'::mystimes);
+ extract 
+---------
+    3003
+(1 row)
+
+select extract(HOUR_MINUTE from '2017-01-21 14:09:42'::mysdatetime);
+ extract 
+---------
+    1409
+(1 row)
+
+select extract(SECOND_MICROSECOND from '2017-01-21 14:09:42.003003'::mysdatetimes);
+ extract  
+----------
+ 42003003
+(1 row)
+
+select extract(QUARTER from '2017-01-21 14:09:42'::mystimestamp);
+ extract 
+---------
+       1
+(1 row)
+
+select extract(DAY_HOUR from '2017-01-21 14:09:42.003003'::mystimestamps);
+ extract 
+---------
+    2114
+(1 row)
+
+select extract(YEAR_MONTH from date'-2017-01-21');
+ERROR:  Incorrect DATE value: '-2017-01-21'
+select extract(MINUTE from time'-14:09:42');
+ extract 
+---------
+      -9
+(1 row)
+
+select extract(MICROSECOND from time'-14:09:42.6060');
+ extract 
+---------
+ -606000
+(1 row)
+
+select extract(HOUR_MICROSECOND from time'-14:09:42.1');
+    extract    
+---------------
+ -140942100000
+(1 row)
+
+select extract(SECOND_MICROSECOND from time'-14:09:42.05051');
+  extract  
+-----------
+ -42050510
+(1 row)
+
+select extract(QUARTER from timestamp'-2017-01-21 14:09:42');
+ERROR:  Incorrect DATETIME value: '-2017-01-21 14:09:42'
+create table extract_negtime(t mystime);
+insert into extract_negtime values('-14:09:42');
+select extract(microsecond from t) from extract_negtime;
+ extract 
+---------
+       0
+(1 row)
+
+select extract(hour from t) from extract_negtime;
+ extract 
+---------
+     -14
+(1 row)
+
+select extract(second_microsecond from t) from extract_negtime;
+  extract  
+-----------
+ -42000000
+(1 row)
+
+select extract(minute_microsecond from t) from extract_negtime;
+  extract   
+------------
+ -942000000
+(1 row)
+
+select extract(minute_second from t) from extract_negtime;
+ extract 
+---------
+    -942
+(1 row)
+
+select extract(hour_microsecond from t) from extract_negtime;
+    extract    
+---------------
+ -140942000000
+(1 row)
+
+select extract(hour_second from t) from extract_negtime;
+ extract 
+---------
+ -140942
+(1 row)
+
+select extract(hour_minute from t) from extract_negtime;
+ extract 
+---------
+   -1409
+(1 row)
+
+select extract(day_microsecond from t) from extract_negtime;
+    extract    
+---------------
+ -140942000000
+(1 row)
+
+select extract(day_second from t) from extract_negtime;
+ extract 
+---------
+ -140942
+(1 row)
+
+select extract(day_minute from t) from extract_negtime;
+ extract 
+---------
+   -1409
+(1 row)
+
+select extract(day_hour from t) from extract_negtime;
+ extract 
+---------
+     -14
+(1 row)
+
+drop table extract_negtime;
+create table extract_negtimes(ts mystimes(6));
+insert into extract_negtimes values('-14:09:42.000111');
+select extract(microsecond from ts) from extract_negtimes;
+ extract 
+---------
+    -111
+(1 row)
+
+select extract(hour from ts) from extract_negtimes;
+ extract 
+---------
+     -14
+(1 row)
+
+select extract(second_microsecond from ts) from extract_negtimes;
+  extract  
+-----------
+ -42000111
+(1 row)
+
+select extract(minute_microsecond from ts) from extract_negtimes;
+  extract   
+------------
+ -942000111
+(1 row)
+
+select extract(minute_second from ts) from extract_negtimes;
+ extract 
+---------
+    -942
+(1 row)
+
+select extract(hour_microsecond from ts) from extract_negtimes;
+    extract    
+---------------
+ -140942000111
+(1 row)
+
+select extract(hour_second from ts) from extract_negtimes;
+ extract 
+---------
+ -140942
+(1 row)
+
+select extract(hour_minute from ts) from extract_negtimes;
+ extract 
+---------
+   -1409
+(1 row)
+
+select extract(day_microsecond from ts) from extract_negtimes;
+    extract    
+---------------
+ -140942000111
+(1 row)
+
+select extract(day_second from ts) from extract_negtimes;
+ extract 
+---------
+ -140942
+(1 row)
+
+select extract(day_minute from ts) from extract_negtimes;
+ extract 
+---------
+   -1409
+(1 row)
+
+select extract(day_hour from ts) from extract_negtimes;
+ extract 
+---------
+     -14
+(1 row)
+
+drop table extract_negtimes;
+select extract(year from 20200925), extract(month from 20200925), extract(day from 20200925);
+ extract | extract | extract 
+---------+---------+---------
+    2020 |       9 |      25
+(1 row)
+
+select extract(year from 20200925121014), extract(month from 20200925121014), extract(day from 20200925121014);
+ extract | extract | extract 
+---------+---------+---------
+    2020 |       9 |      25
+(1 row)
+
+select extract(hour from 20200925121014), extract(minute from 20200925121014), extract(second from 20200925121014);
+ extract | extract | extract 
+---------+---------+---------
+      12 |      10 |      14
+(1 row)
+
+select extract(quarter from 20200925121014), extract(year_month from 20200925121014), extract(day_microsecond from 20200925121014);
+ extract | extract |    extract     
+---------+---------+----------------
+       3 |  202009 | 25121014000000
+(1 row)
+
+select extract(microsecond from 20200925121014.123456), extract(second from 20200925121014.1234);
+ extract | extract 
+---------+---------
+       0 |      14
+(1 row)
+
+select extract(year_month from 20200925121014.101010), extract(day_microsecond from 20200925121014.000012);
+ extract |    extract     
+---------+----------------
+  202009 | 25121014000000
+(1 row)
+
