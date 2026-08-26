@@ -1602,6 +1602,16 @@ PARALLEL SAFE
 IMMUTABLE;
 /* End - BUG#8428 8441 */
 
+/* Begin - BUG#8554 */
+CREATE OR REPLACE FUNCTION ivymy.length(mysbit)
+RETURNS int4
+AS 'MODULE_PATHNAME', 'mysbit_length'
+LANGUAGE C
+IMMUTABLE
+STRICT
+PARALLEL SAFE;
+/* End - BUG#8554 */
+
 -- octet_length
 
 CREATE FUNCTION ivymy.octet_length(numeric)

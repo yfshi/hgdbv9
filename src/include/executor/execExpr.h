@@ -909,4 +909,8 @@ extern void ExecEvalPkgGlobalVarExec(ExprState *state, ExprEvalStep *op);
 extern void ExecEvalOraRow(ExprState *state, ExprEvalStep *op);
 /* End - BUG#7712 */
 
+/* Begin - ReqID:SRS-MYSQL-SET */
+extern Datum mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid);
+/* End - ReqID:SRS-MYSQL-SET */
+
 #endif							/* EXEC_EXPR_H */

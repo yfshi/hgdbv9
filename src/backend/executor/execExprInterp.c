@@ -207,9 +207,6 @@ static pg_attribute_always_inline void ExecAggPlainTransByRef(AggState *aggstate
 															  AggStatePerGroup pergroup,
 															  ExprContext *aggcontext,
 															  int setno);
-/* Begin - ReqID:SRS-MYSQL-SET */
-static Datum mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid);
-/* End - ReqID:SRS-MYSQL-SET */
 
 /*
  * ScalarArrayOpExprHashEntry
@@ -4751,7 +4748,7 @@ ExecAggPlainTransByRef(AggState *aggstate, AggStatePerTrans pertrans,
  * Returns:
  *	the value of target type.
  */
-static Datum
+Datum
 mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
 {
 	Datum			retdatum;

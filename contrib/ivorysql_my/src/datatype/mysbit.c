@@ -107,6 +107,7 @@ PG_FUNCTION_INFO_V1(mysbit_notlike);
 PG_FUNCTION_INFO_V1(mysbit_hash);
 PG_FUNCTION_INFO_V1(mysbit_hash_extended);
 PG_FUNCTION_INFO_V1(bit_uint8);
+PG_FUNCTION_INFO_V1(mysbit_length);
 
 static int
 get_bit_length(uint8 *s, int len)
@@ -1122,3 +1123,14 @@ bit_uint8(PG_FUNCTION_ARGS)
 	PG_RETURN_UINT64(result);
 }
 /* End - bug#z5805 */
+
+/* Begin - BUG#8554 */
+Datum
+mysbit_length(PG_FUNCTION_ARGS)
+{
+	VarBit	   *input = PG_GETARG_VARBIT_P(0);
+	int			bit_len = VARBITLEN(input);
+
+	PG_RETURN_INT32((bit_len + BITS_PER_BYTE - 1) / BITS_PER_BYTE);
+}
+/* End - BUG#8554 */

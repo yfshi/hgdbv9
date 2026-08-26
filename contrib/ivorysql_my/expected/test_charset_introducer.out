@@ -1463,7 +1463,7 @@ INSERT INTO t_utf8mb4_intro VALUES ('a',1);
 SELECT CONCAT(a, IF(b>10, _utf8mb4'x', _utf8mb4'y' collate utf8_general_ci)) FROM t_utf8mb4_intro;
  CONCAT 
 --------
- a\x79
+ ay
 (1 row)
 
 -- +-----------------------------------------------+
@@ -1483,7 +1483,7 @@ INSERT INTO t_utf8mb4_hex_intro VALUES ('a',1);
 SELECT CONCAT(a, IF(b>10, _utf8mb4 0x78, _utf8mb4 0x79)) FROM t_utf8mb4_hex_intro;
  CONCAT 
 --------
- a\x79
+ ay
 (1 row)
 
 -- +---------------------------------------------------+
@@ -1980,7 +1980,7 @@ SELECT FIND_IN_SET(_gbk x'D6D0',
                    CONCAT(_utf8 x'E4B8AD', _utf8 ',A')) AS case_09_find_in_set;
  case_09_find_in_set 
 ---------------------
-                   0
+                   1
 (1 row)
 
 -- Expected: 0.
@@ -2002,9 +2002,9 @@ SELECT FIND_IN_SET(_gbk 'A', _utf8 'E4B8AD,A') AS case_09_find_in_set;
 -- Expected: E4B8AD41 after display conversion to utf8.
 SELECT HEX(CONVERT(CONCAT(_gbk x'D6D0', _utf8 'A') USING utf8)) AS case_10_concat_hex;
 WARNING:  Syntax support only
-    case_10_concat_hex    
---------------------------
- 5C786534623861645C783431
+ case_10_concat_hex 
+--------------------
+ E4B8AD41
 (1 row)
 
 -- 11. Item_func_concat_ws::fix_length_and_dec
@@ -2022,9 +2022,9 @@ WARNING:  Syntax support only
 -- Expected: 41E4B8AD after display conversion to utf8.
 SELECT HEX(CONVERT(REVERSE(CONCAT(_gbk x'D6D0', _utf8 'A')) USING utf8)) AS case_12_reverse_hex;
 WARNING:  Syntax support only
-   case_12_reverse_hex    
---------------------------
- 3134785C646138623465785C
+ case_12_reverse_hex 
+---------------------
+ 41E4B8AD
 (1 row)
 
 -- 13. Item_func_replace::fix_length_and_dec
@@ -2072,7 +2072,7 @@ SELECT HEX(CONVERT(LEFT(CONCAT(_gbk x'D6D0', _utf8 'A'), 1) USING utf8)) AS case
 WARNING:  Syntax support only
  case_17_left_hex 
 ------------------
- 5C
+ E4B8AD
 (1 row)
 
 -- 18. Item_func_right::fix_length_and_dec
@@ -2082,7 +2082,7 @@ SELECT HEX(CONVERT(RIGHT(CONCAT(_gbk x'D6D0', _utf8 'A'), 1) USING utf8)) AS cas
 WARNING:  Syntax support only
  case_18_right_hex 
 -------------------
- 31
+ 41
 (1 row)
 
 -- 19. Item_func_substr::fix_length_and_dec
@@ -2104,9 +2104,9 @@ HINT:  No function matches the given name and argument types. You might need to 
 -- Expected: E4B8AD after display conversion to utf8.
 SELECT HEX(CONVERT(SUBSTRING_INDEX(CONCAT(_gbk x'D6D0', _utf8 ',A'), _utf8 ',', 1) USING utf8)) AS case_20_substring_index_hex;
 WARNING:  Syntax support only
- case_20_substring_index_hex  
-------------------------------
- 5C786534623861645C7832633431
+ case_20_substring_index_hex 
+-----------------------------
+ E4B8AD
 (1 row)
 
 -- 21. Item_func_trim::fix_length_and_dec
@@ -2120,9 +2120,9 @@ SELECT
   LTRIM(_gbk '   abc') AS case_21_ltrim,
   RTRIM(_gbk 'abc   ') AS case_21_rtrim;
 WARNING:  Syntax support only
-                 case_21_trim_hex                 | case_21_ltrim | case_21_rtrim 
---------------------------------------------------+---------------+---------------
- 5C783431343134315C786534623861645C78343134313431 | abc           | abc
+ case_21_trim_hex | case_21_ltrim | case_21_rtrim 
+------------------+---------------+---------------
+ E4B8AD           | abc           | abc
 (1 row)
 
 -- 22. Item_func_soundex::fix_length_and_dec

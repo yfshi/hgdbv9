@@ -867,4 +867,63 @@ show indexes from tb;
 drop table tb;
 reset mysql.create_database_mode;
 set sql_mode = DEFAULT;
--- # Begin - BUG#7662
+-- # End - BUG#7662
+
+-- # Begin - BUG#9010 9006
+CREATE SCHEMA aaa;
+CREATE SCHEMA bbb;
+
+CREATE TABLE aaa.t(a int);
+CREATE TABLE bbb.t(b int);
+
+USE aaa;
+
+SHOW FULL COLUMNS FROM t;
+
+
+
+create schema szw;
+CREATE TABLE szw.p_key_primary
+(
+    id bigint NOT NULL,
+    content varchar(200) COLLATE utf8mb4_0900_ai_ci
+)
+PARTITION BY HASH (id);
+
+CREATE TABLE szw.p_key_primary_p0
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 0
+);
+
+CREATE TABLE szw.p_key_primary_p1
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 1
+);
+
+CREATE TABLE szw.p_key_primary_p2
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 2
+);
+
+CREATE TABLE szw.p_key_primary_p3
+PARTITION OF szw.p_key_primary
+FOR VALUES WITH
+(
+    MODULUS 4,
+    REMAINDER 3
+);
+
+SHOW TABLES FROM szw;
+drop schema aaa CASCADE;
+drop schema bbb CASCADE;
+drop schema szw CASCADE;
+-- # End - BUG#9010 9006

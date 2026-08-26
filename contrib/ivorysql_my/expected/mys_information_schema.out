@@ -36,12 +36,117 @@ WHERE table_schema = 'test_schema' AND table_name = 'sample_table'
 ORDER BY ordinal_position;
  TABLE_CATALOG | TABLE_SCHEMA |  TABLE_NAME  | COLUMN_NAME | ORDINAL_POSITION |                    COLUMN_DEFAULT                    | IS_NULLABLE | DATA_TYPE | CHARACTER_MAXIMUM_LENGTH | CHARACTER_OCTET_LENGTH | NUMERIC_PRECISION | NUMERIC_SCALE | DATETIME_PRECISION | CHARACTER_SET_NAME | COLLATION_NAME | COLUMN_TYPE | COLUMN_KEY | EXTRA | PRIVILEGES | COLUMN_COMMENT | GENERATION_EXPRESSION 
 ---------------+--------------+--------------+-------------+------------------+------------------------------------------------------+-------------+-----------+--------------------------+------------------------+-------------------+---------------+--------------------+--------------------+----------------+-------------+------------+-------+------------+----------------+-----------------------
- def           | test_schema  | sample_table | id          | 1                | nextval('test_schema.sample_table_id_seq'::regclass) | NO          | int(11)   |                          |                        | 32                | 0             |                    | UTF8               |                | int(11)     | PRI        |       | SELECT     |                | 
+ def           | test_schema  | sample_table | id          | 1                | nextval('test_schema.sample_table_id_seq'::regclass) | NO          | int       |                          |                        | 32                | 0             |                    | UTF8               |                | int(11)     | PRI        |       | SELECT     |                | 
  def           | test_schema  | sample_table | description | 6                |                                                      | YES         | text      |                          | 1073741824             |                   |               |                    | UTF8               |                | text        |            |       | UPDATE     | test           | 
 (2 rows)
 
 RESET ROLE;
 DROP TABLE test_schema.sample_table;
+-- # Begin - BUG#8916
+DROP TABLE IF EXISTS test_schema.test_all_types;
+NOTICE:  table "test_all_types" does not exist, skipping
+CREATE TABLE test_schema.test_all_types
+(
+    /* signed integer */
+    c_tiny          TINYINT,
+    c_tiny_m        TINYINT(2),
+    c_small         SMALLINT,
+    c_small_m       SMALLINT(4),
+    c_medium        MEDIUMINT,
+    c_medium_m      MEDIUMINT(6),
+    c_int           INT,
+    c_int_m         INT(7),
+    c_big           BIGINT,
+    c_big_m         BIGINT(12),
+    /* unsigned integer uint1/uint2/uint3/uint4/uint8 */
+    c_uint1         TINYINT UNSIGNED,
+    c_uint1_m       TINYINT(2) UNSIGNED,
+    c_uint2         SMALLINT UNSIGNED,
+    c_uint2_m       SMALLINT(4) UNSIGNED,
+    c_uint3         MEDIUMINT UNSIGNED,
+    c_uint3_m       MEDIUMINT(6) UNSIGNED,
+    c_uint4         INT UNSIGNED,
+    c_uint4_m       INT(7) UNSIGNED,
+    c_uint8         BIGINT UNSIGNED,
+    c_uint8_m       BIGINT(12) UNSIGNED,
+    /* bit */
+    c_bit           BIT,
+    c_bit_m         BIT(8),
+    /* character */
+    c_char          CHAR(10),
+    c_varchar       VARCHAR(100),
+    /* exact numeric */
+    c_decimal       DECIMAL,
+    c_decimal_ps    DECIMAL(10,2),
+    /* approximate numeric */
+    c_float         FLOAT,
+    c_double        DOUBLE,
+    /* date/time */
+    c_date          DATE,
+    c_datetime      DATETIME,
+    c_datetime_fsp  DATETIME(3),
+    c_timestamp     TIMESTAMP,
+    c_timestamp_fsp TIMESTAMP(6),
+    c_time          TIME,
+    c_time_fsp      TIME(4),
+    /* year */
+    c_year          YEAR,
+    c_year4         YEAR(4),
+    /* enum */
+    c_enum          ENUM('a','b','c')
+);
+SELECT
+    COLUMN_NAME,
+    DATA_TYPE,
+    COLUMN_TYPE
+FROM INFORMATION_SCHEMA.COLUMNS
+WHERE TABLE_SCHEMA = 'test_schema'
+    AND TABLE_NAME = 'test_all_types'
+ORDER BY ORDINAL_POSITION;
+   COLUMN_NAME   | DATA_TYPE |      COLUMN_TYPE      
+-----------------+-----------+-----------------------
+ c_tiny          | tinyint   | tinyint(4)
+ c_tiny_m        | tinyint   | tinyint(4)
+ c_small         | smallint  | smallint(6)
+ c_small_m       | smallint  | smallint(6)
+ c_medium        | mediumint | mediumint(9)
+ c_medium_m      | mediumint | mediumint(9)
+ c_int           | int       | int(11)
+ c_int_m         | int       | int(11)
+ c_big           | bigint    | bigint(20)
+ c_big_m         | bigint    | bigint(20)
+ c_uint1         | tinyint   | tinyint(3) unsigned
+ c_uint1_m       | tinyint   | tinyint(3) unsigned
+ c_uint2         | smallint  | smallint(5) unsigned
+ c_uint2_m       | smallint  | smallint(5) unsigned
+ c_uint3         | mediumint | mediumint(8) unsigned
+ c_uint3_m       | mediumint | mediumint(8) unsigned
+ c_uint4         | int       | int(10) unsigned
+ c_uint4_m       | int       | int(10) unsigned
+ c_uint8         | bigint    | bigint(20) unsigned
+ c_uint8_m       | bigint    | bigint(20) unsigned
+ c_bit           | bit       | bit(1)
+ c_bit_m         | bit       | bit(8)
+ c_char          | char      | char(10)
+ c_varchar       | varchar   | varchar(100)
+ c_decimal       | decimal   | decimal
+ c_decimal_ps    | decimal   | decimal(10,2)
+ c_float         | float     | float
+ c_double        | double    | double
+ c_date          | date      | date
+ c_datetime      | datetime  | datetime
+ c_datetime_fsp  | datetime  | datetime(3)
+ c_timestamp     | timestamp | timestamp
+ c_timestamp_fsp | timestamp | timestamp(6)
+ c_time          | time      | time
+ c_time_fsp      | time      | time(4)
+ c_year          | year      | year
+ c_year4         | year      | year
+ c_enum          | enum      | enum('a', 'b', 'c')
+(38 rows)
+
+drop table test_schema.test_all_types;
+-- # End - BUG#8916
 ------------------------------------------------------------
 -- 3. Test for information_schema.key_column_usage
 ------------------------------------------------------------
@@ -85,13 +190,12 @@ SELECT table_schema, table_name, table_type, engine, table_rows,
 FROM information_schema.tables
 WHERE table_schema = 'test_schema_ivymy'
 ORDER BY table_name;
-   table_schema    | table_name  | table_type | engine | table_rows | avg_row_length | data_length | max_data_length | index_length | data_free | auto_increment |  table_comment  
--------------------+-------------+------------+--------+------------+----------------+-------------+-----------------+--------------+-----------+----------------+-----------------
- test_schema_ivymy | base_tbl    | BASE TABLE | InnoDB | 0          | 0              | 16384       | 0               | 8192         | 16384     |                | Base Table Test
- test_schema_ivymy | part_tbl    | BASE TABLE | InnoDB | 0          | 0              | 0           |                 | 0            | 16384     |                | 
- test_schema_ivymy | part_tbl_p1 | BASE TABLE | InnoDB | 0          | 0              | 8192        | 0               | 0            | 16384     |                | 
- test_schema_ivymy | vw_tbl      | VIEW       |        |            |                |             |                 |              |           |                | VIEW
-(4 rows)
+   table_schema    | table_name | table_type | engine | table_rows | avg_row_length | data_length | max_data_length | index_length | data_free | auto_increment |  table_comment  
+-------------------+------------+------------+--------+------------+----------------+-------------+-----------------+--------------+-----------+----------------+-----------------
+ test_schema_ivymy | base_tbl   | BASE TABLE | InnoDB | 0          | 0              | 16384       | 0               | 8192         | 16384     |                | Base Table Test
+ test_schema_ivymy | part_tbl   | BASE TABLE | InnoDB | 0          | 0              | 0           |                 | 0            | 16384     |                | 
+ test_schema_ivymy | vw_tbl     | VIEW       |        |            |                |             |                 |              |           |                | VIEW
+(3 rows)
 
 -- test auto_increment
 CREATE TABLE test_schema_ivymy.t1(
