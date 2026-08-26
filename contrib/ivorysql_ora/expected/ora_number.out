@@ -1173,6 +1173,26 @@ SELECT '' AS to_char_26, to_char('100'::number, 'FM999');
             | 100
 (1 row)
 
+--Begin OA-2752
+SELECT to_char(null, 'FM999,999,999,999,999,990.00') FROM DUAL;
+ to_char 
+---------
+ 
+(1 row)
+
+SELECT to_char(null, null) FROM DUAL;
+ to_char 
+---------
+ 
+(1 row)
+
+SELECT to_char('1', 'FM999,999,999,999,999,990.00') FROM DUAL;
+ to_char 
+---------
+ 1.00
+(1 row)
+
+--End OA-2752
 -- TO_NUMBER()
 --
 SELECT '' AS to_number_1,  to_number('-34,338,492', '99G999G999');
@@ -1381,7 +1401,7 @@ select div(-9999999999999999999999::number,1000000000000000000000)*1000000000000
 select mod (70.0,70) ;
  mod 
 -----
- 0.0
+   0
 (1 row)
 
 select div (70.0,70) ;
@@ -1418,6 +1438,12 @@ select div(12345678901234567890, 123) * 123 + 12345678901234567890 % 123;
        ?column?       
 ----------------------
  12345678901234567890
+(1 row)
+
+select '2026-08-25'::date + 1 + 4/24 - mod('2026-08-25'::date - TRUNC('2026-08-23'::date), 1); -- OA-2751
+  ?column?  
+------------
+ 2026-08-26
 (1 row)
 
 --
