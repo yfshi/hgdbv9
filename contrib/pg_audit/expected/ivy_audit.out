@@ -1506,5 +1506,6 @@ select * from hg_security.show_audit_param();
  audit.exclude_ips       | 
  audit.ignore_sync_lsn   | on
  audit.ignore_no_data    | off
-(22 rows)
+ audit.nested_statements | off
+(23 rows)
 

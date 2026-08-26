@@ -256,6 +256,7 @@ typedef enum AuditParameter
         AUDIT_IP,
         AUDIT_IGNORE_SYNC_LSN,
         AUDIT_POC,
+        AUDIT_NESTED_STATMENTS,
         NUM_AUDIT_PARAMS
 } AuditParameter;
 /* End - BUG#Z6092 */
@@ -1226,6 +1227,19 @@ static void audit_define_GUC(void)
 						NULL,
 						NULL);
 
+	/* Begin BUG - Z9033 */
+	DefineCustomEnumVariable(audit_parameters[AUDIT_NESTED_STATMENTS],
+						 "turn on or off pg_audit",
+						 NULL,
+						 (int *)&(audit_GUC.nested_statements),
+						 AUDIT_OFF,
+						 audit_turn_options,
+						 PGC_POSTMASTER,
+						 0,
+						 NULL,
+						 NULL,
+						 NULL);
+	/* End BUG - Z9033 */
 
 	MemoryContextSwitchTo(oldContext);
 }
@@ -2204,7 +2218,8 @@ audit_ExecutorStart_hook(QueryDesc *queryDesc, int eflags)
 	MemoryContext contextOld;
 	AuditEventStackItem *stackItem;
 
-	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
+	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress() //BUG - Z7959
+		&& (audit_GUC.nested_statements == AUDIT_ON || SPI_get_connected() == -1))    //BUG - Z9033
 	{
 		if (!internalStatement && audit_config_have_data())
 		{
@@ -3354,7 +3369,7 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 
 	if (audit_GUC.audit_enable == AUDIT_ON && !RecoveryInProgress())  //BUG - Z7959
 	{
-		if (!internalStatement)
+		if (!internalStatement && (audit_GUC.nested_statements == AUDIT_ON || SPI_get_connected() == -1))  //BUG - Z9033
 		{
 			audit_get_actionname_from_tree(pstmt->utilityStmt, event);
 

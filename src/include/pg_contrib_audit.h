@@ -504,6 +504,7 @@ typedef struct AduitSwitchGUC
 	List *exclude_ips_list;
 	AuditSwitch ignore_sync_lsn;
 	AuditSwitch poc;
+	AuditSwitch nested_statements;  //BUG - Z9033
 }AduitSwitchGUC;
 
 extern bool receive_sighup;

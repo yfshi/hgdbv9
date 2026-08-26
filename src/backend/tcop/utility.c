@@ -1838,6 +1838,7 @@ ProcessUtilitySlow(ParseState *pstate,
 
 			case T_DropForeignServerStmt:
 				RemoveForeignServer((DropForeignServerStmt *) parsetree);
+				commandCollected = true; //  BUG - Z9033
 				break;
 
 			case T_CreateUserMappingStmt:
@@ -1862,6 +1863,7 @@ ProcessUtilitySlow(ParseState *pstate,
 			/* Begin - ReqID:SRS-SQL-DBLINK */
 			case T_CreateDatabaseLinkStmt:
 				CreateDatabaseLink((CreateDatabaseLinkStmt *) parsetree);
+				commandCollected = true;  //  BUG - Z9033
 				break;
 
 			case T_AlterDatabaseLinkStmt:
@@ -1870,6 +1872,7 @@ ProcessUtilitySlow(ParseState *pstate,
 
 			case T_AlterSessionCloseDblinkStmt:
 				AlterSessionCloseDblink((AlterSessionCloseDblinkStmt *) parsetree);
+				commandCollected = true;  //  BUG - Z9033
 				break;
 
 			case T_DropDatabaseLinkStmt:
@@ -1900,6 +1903,7 @@ ProcessUtilitySlow(ParseState *pstate,
 
 					RemoveForeignServer(dpstmt);
 				}
+				commandCollected = true;  //  BUG - Z9033
 				break;
 				/* End - ReqID:SRS-SQL-DBLINK */
 			case T_CompositeTypeStmt:	/* CREATE TYPE (composite) */
