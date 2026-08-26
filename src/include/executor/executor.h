@@ -87,6 +87,12 @@ extern PGDLLIMPORT ExecutorEnd_hook_type ExecutorEnd_hook;
 typedef bool (*ExecutorCheckPerms_hook_type) (List *, bool);
 extern PGDLLIMPORT ExecutorCheckPerms_hook_type ExecutorCheckPerms_hook;
 
+/* Hook for security plugins to inspect the final row before it is written. */
+typedef void (*ExecutorCheckWrite_hook_type) (Relation relation,
+										  TupleTableSlot *slot,
+										  CmdType operation);
+extern PGDLLIMPORT ExecutorCheckWrite_hook_type ExecutorCheckWrite_hook;
+
 
 /*
  * prototypes from functions in execAmi.c

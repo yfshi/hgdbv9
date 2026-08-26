@@ -17,6 +17,7 @@
  */
 #include "postgres.h"
 #include "pg_audit.h"
+#include "sql_security.h"
 #include <assert.h>
 #ifdef USE_SQLITE
 #include <sqlite3.h>
@@ -1318,7 +1319,6 @@ stack_push(void)
 	return stackItem;
 }
 
-
 /*
  * Function: audit_get_type_DML()
  *
@@ -2247,6 +2247,12 @@ audit_ExecutorStart_hook(QueryDesc *queryDesc, int eflags)
 		next_ExecutorStart_hook(queryDesc, eflags);
 	else
 		standard_ExecutorStart(queryDesc, eflags);
+
+	/*
+	 * Executor initialization is complete, but ExecutorRun has not started.
+	 * An ERROR here follows pg_audit's normal failed-statement cleanup path.
+	 */
+	audit_sql_security_block_pending(queryDesc->sourceText);
 }
 
 
@@ -3439,6 +3445,9 @@ audit_ProcessUtility_hook(PlannedStmt *pstmt,
 			}
 		}
 	}
+
+	/* Block before standard_ProcessUtility performs any operation. */
+	audit_sql_security_block_pending(queryString);
 
 	/* Call the standard process utility chain. */
 	if (next_ProcessUtility_hook)
@@ -10486,6 +10495,7 @@ _PG_init(void)
 	}
 
 	audit_define_GUC();
+	audit_sql_security_init();
 	audit_change_GUC();
 
 	EmitWarningsOnPlaceholders("pg_audit");
@@ -10498,7 +10508,9 @@ _PG_init(void)
 void
 _PG_fini(void)
 {
+	audit_sql_security_fini();
 	ProcessUtility_hook = next_ProcessUtility_hook ;
+	ExecutorStart_hook = next_ExecutorStart_hook;
 	ExecutorCheckPerms_hook = next_ExecutorCheckPerms_hook;
 }
 
