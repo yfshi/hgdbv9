@@ -1124,10 +1124,6 @@ ExecInsert(ModifyTableContext *context,
 			return NULL;		/* "do nothing" */
 	}
 
-	/* Inspect the value after BEFORE triggers and before any physical write. */
-	if (ExecutorCheckWrite_hook)
-		(*ExecutorCheckWrite_hook) (resultRelationDesc, slot, CMD_INSERT);
-
 	/* INSTEAD OF ROW INSERT Triggers */
 	if (resultRelInfo->ri_TrigDesc &&
 		resultRelInfo->ri_TrigDesc->trig_insert_instead_row)
@@ -2658,10 +2654,6 @@ ExecUpdate(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	 */
 	if (!ExecUpdatePrologue(context, resultRelInfo, tupleid, oldtuple, slot))
 		return NULL;
-
-	/* Inspect the value after BEFORE triggers and before any physical write. */
-	if (ExecutorCheckWrite_hook)
-		(*ExecutorCheckWrite_hook) (resultRelationDesc, slot, CMD_UPDATE);
 
 	/* INSTEAD OF ROW UPDATE Triggers */
 	if (resultRelInfo->ri_TrigDesc &&

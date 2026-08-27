@@ -1,7 +1,7 @@
 # contrib/pg_audit/Makefile
 
 MODULE_big = pg_audit
-OBJS = pg_audit.o sql_security.o $(WIN32RES)
+OBJS = pg_audit.o  $(WIN32RES)
 
 TAP_TESTS = 1
 
@@ -29,7 +29,6 @@ include $(top_srcdir)/contrib/contrib-global.mk
 endif
 
 #SHLIB_LINK += -L$(top_builddir)/src/port -lpgport -lpgport_shlib -lpgport_srv
-SHLIB_LINK += -lxml2
 
 #REGRESS = pg_audit
 #ORA_REGRESS = pg_audit
@@ -39,7 +38,7 @@ TAP_TESTS = 1
 ifeq ($(with_sqlite), yes)
 SQLITE_LIB = sqlite3
 
-SHLIB_LINK += -lsqlite3
+SHLIB_LINK := -lsqlite3
 endif
 
 
@@ -49,3 +48,4 @@ endif
 #else
 #SHLIB_LINK += -L$(top_builddir)/src/port -lpgport
 #endif
+

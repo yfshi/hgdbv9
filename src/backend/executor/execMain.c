@@ -89,7 +89,6 @@ ExecutorEnd_hook_type ExecutorEnd_hook = NULL;
 
 /* Hook for plugin to get control in ExecCheckRTPerms() */
 ExecutorCheckPerms_hook_type ExecutorCheckPerms_hook = NULL;
-ExecutorCheckWrite_hook_type ExecutorCheckWrite_hook = NULL;
 
 static int executor_run_nesting_level = 0; /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
