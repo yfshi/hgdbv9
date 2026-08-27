@@ -96,6 +96,7 @@ static TypeItem type_items[] = {
 	{"numeric", 	MYSQL_TYPE_NEWDECIMAL, 	NUMERICOID, 	0, 				COLLATE_BINARY},
     
     {"char", 		MYSQL_TYPE_STRING, 		CHAROID, 		0, 				COLLATE_UTF8MB4_GENERAL_CI},
+	{"bpchar", 		MYSQL_TYPE_STRING, 		BPCHAROID, 		0, 				COLLATE_UTF8MB4_GENERAL_CI},
     {"varchar", 	MYSQL_TYPE_VAR_STRING, 	VARCHAROID, 	0, 				COLLATE_UTF8MB4_GENERAL_CI},
 	{"text", 		MYSQL_TYPE_BLOB, 		TEXTOID, 		BLOB_FLAG, 		COLLATE_UTF8MB4_GENERAL_CI},
 	{"tinytext", 	MYSQL_TYPE_BLOB, 		TINYTEXTOID, 	BLOB_FLAG, 		COLLATE_UTF8MB4_GENERAL_CI},
@@ -126,7 +127,6 @@ static TypeItem type_items[] = {
     {"time", 		MYSQL_TYPE_STRING, 		TIMEOID, 		0, 				COLLATE_BINARY},
     {"timestamptz", MYSQL_TYPE_STRING, 		TIMESTAMPTZOID, 0, 				COLLATE_BINARY},
     {"timestamp", 	MYSQL_TYPE_STRING, 		TIMESTAMPOID, 	0, 				COLLATE_BINARY},
-	{"bpchar", 		MYSQL_TYPE_VARCHAR, 	BPCHAROID, 		0, 				COLLATE_UTF8MB4_GENERAL_CI},
 	{"bit", 		MYSQL_TYPE_VAR_STRING, 	BITOID, 		BINARY_FLAG, 	COLLATE_BINARY},
     {"varbit", 		MYSQL_TYPE_VAR_STRING, 	VARBITOID, 		0, 				COLLATE_BINARY},
 	{"bytea", 		MYSQL_TYPE_VAR_STRING, 	BYTEAOID, 		0, 				COLLATE_BINARY},
@@ -437,11 +437,13 @@ GetItemByTypeOid(Oid oid, bool report_warning)
 	switch (typeForm->typtype)
 	{
 		case 'e':
-			result->mysql_type_id = MYSQL_TYPE_ENUM;
+			result->mysql_type_id = MYSQL_TYPE_STRING;
+			result->flags |= ENUM_FLAG;
 			break;
 		/* TO DO set type
 		case 's':
-			result->mysql_type_id = MYSQL_TYPE_SET;
+			result->mysql_type_id = MYSQL_TYPE_STRING;
+			result->flags |= SET_FLAG;
 			break;
 		*/
 		default:

@@ -320,6 +320,11 @@ send_column_definition41_packet(mysql_column_definition_t *field)
     const char *name = field->name ? field->name : "";
     char *org_name = field->org_name ? field->org_name : "";
 
+    /* Begin - bug#9024 */
+    if (field->type == MYSQL_TYPE_VARCHAR)
+        field->type = MYSQL_TYPE_VAR_STRING;
+    /* End - bug#9024 */
+
     mq_append_string_lenenc(buf, catalog, strlen(catalog));
     mq_append_string_lenenc(buf, db, strlen(db));
     mq_append_string_lenenc(buf, table, strlen(table));
