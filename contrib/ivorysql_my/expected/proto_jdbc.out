@@ -19,7 +19,7 @@ c9:FLOAT
 c10:DOUBLE
 c11:BIT
 c12:TINYINT
-c13:VARCHAR
+c13:CHAR
 c15:VARCHAR
 QUERY PLAN:VARCHAR
 Hash Join
@@ -55,7 +55,7 @@ c9:FLOAT
 c10:DOUBLE
 c11:BIT
 c12:TINYINT
-c13:VARCHAR
+c13:CHAR
 c15:VARCHAR
 QUERY PLAN:VARCHAR
 Hash Join
@@ -148,7 +148,7 @@ c9:FLOAT:null
 c10:DOUBLE:null
 c11:BIT:null
 c12:TINYINT:null
-c13:VARCHAR:null
+c13:CHAR:null
 c15:VARCHAR:null
 c16:VARCHAR:null
 c18:YEAR:null
@@ -156,15 +156,15 @@ c19:DATE:null
 c20:TIME:null
 c21:TIMESTAMP:null
 c22:DATETIME:null
-c23:BLOB:null
+c23:TINYBLOB:null
 c24:BLOB:null
-c25:BLOB:null
-c26:BLOB:null
+c25:MEDIUMBLOB:null
+c26:LONGBLOB:null
 c27:GEOMETRY:null
 c29:VARCHAR:null
 c32:CHAR:null
 c33:CHAR:null
-c34:VARCHAR:null
+c34:CHAR:null
 c35:VARCHAR:null
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcAutoCommitTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
 select relname from pg_class where relname like '%autocommit_test%' order by relname;

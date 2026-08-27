@@ -769,6 +769,11 @@ SELECT '' AS to_char_23, to_char(val, '9.999EEEE') FROM num_data;
 SELECT '' AS to_char_24, to_char('100'::number, 'FM999.9');
 SELECT '' AS to_char_25, to_char('100'::number, 'FM999.');
 SELECT '' AS to_char_26, to_char('100'::number, 'FM999');
+--Begin OA-2752
+SELECT to_char(null, 'FM999,999,999,999,999,990.00') FROM DUAL;
+SELECT to_char(null, null) FROM DUAL;
+SELECT to_char('1', 'FM999,999,999,999,999,990.00') FROM DUAL;
+--End OA-2752
 
 -- TO_NUMBER()
 --
@@ -847,6 +852,7 @@ select 12345678901234567890 % 123;
 select 12345678901234567890 / 123;
 select div(12345678901234567890, 123);
 select div(12345678901234567890, 123) * 123 + 12345678901234567890 % 123;
+select '2026-08-25'::date + 1 + 4/24 - mod('2026-08-25'::date - TRUNC('2026-08-23'::date), 1); -- OA-2751
 
 --
 -- Test code path for raising to integer powers

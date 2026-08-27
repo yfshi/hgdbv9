@@ -10,7 +10,7 @@
  */
 
 #ifndef MYS_PROMPT_H
-#define MyS_PROMPT_H
+#define MYS_PROMPT_H
 
 #include "fe_utils/conditional.h"
 /* enum promptStatus_t is now defined by psqlscan.h */

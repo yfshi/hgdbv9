@@ -710,6 +710,13 @@ PARALLEL SAFE
 LANGUAGE SQL IMMUTABLE;
 /* End - OA-REQ-2128 */
 
+/* Begin - OA-2752 */
+CREATE OR REPLACE FUNCTION sys.to_char(text, text)
+RETURNS varchar2
+AS 'select pg_catalog.to_char($1::numeric, $2)'
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End - OA-2752 */
+
 CREATE FUNCTION sys.to_yminterval(text)
 RETURNS sys.yminterval
 AS 'MODULE_PATHNAME','to_yminterval'
@@ -1555,3 +1562,12 @@ AS $$
   SELECT pg_catalog.translate($1,  $2,  $3);
 $$;
 /* End - ReqID: OA-2348 */
+
+/* Begin OA-2751 */
+CREATE FUNCTION sys.mod(double precision, integer)
+RETURNS numeric
+AS $$
+       select pg_catalog.mod($1::numeric, $2);
+$$
+LANGUAGE SQL IMMUTABLE PARALLEL SAFE STRICT;
+/* End OA-2751 */
