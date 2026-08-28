@@ -16,6 +16,7 @@
 #include "utils/syscache.h"
 #include "utils/varlena.h"
 
+#include "../charset/ctype.h"
 #include "../include/message.h"
 #include "../include/auth.h"
 #include "../include/printtup.h"
@@ -79,69 +80,69 @@ static ProtocolExtensionConfig mysql_pg_protocol_config = {
 };
 
 static TypeItem type_items[] = {
-	{"tinyint", 	MYSQL_TYPE_TINY, 		TINYINTOID, 	0, 				COLLATE_BINARY},
-    {"int2", 		MYSQL_TYPE_SHORT, 		INT2OID, 		0, 				COLLATE_BINARY},
-	{"mediumint", 	MYSQL_TYPE_INT24,		MEDIUMINTOID, 	0, 				COLLATE_BINARY},
-	{"int4", 		MYSQL_TYPE_LONG, 		INT4OID, 		0, 				COLLATE_BINARY},
-    {"int8", 		MYSQL_TYPE_LONGLONG, 	INT8OID, 		0, 				COLLATE_BINARY},
-	{"uint1", 		MYSQL_TYPE_TINY, 		UINT1OID, 		UNSIGNED_FLAG, 	COLLATE_BINARY},
-	{"uint2", 		MYSQL_TYPE_SHORT, 		UINT2OID, 		UNSIGNED_FLAG, 	COLLATE_BINARY},
-	{"uint3", 		MYSQL_TYPE_INT24, 		UINT3OID, 		UNSIGNED_FLAG, 	COLLATE_BINARY},
-	{"uint4", 		MYSQL_TYPE_LONG, 		UINT4OID, 		UNSIGNED_FLAG, 	COLLATE_BINARY},
-    {"uint8", 		MYSQL_TYPE_LONGLONG, 	UINT8OID, 		UNSIGNED_FLAG, 	COLLATE_BINARY},
-	{"oid", 		MYSQL_TYPE_LONG, 		OIDOID,			UNSIGNED_FLAG, 	COLLATE_BINARY},
-	{"bool", 		MYSQL_TYPE_TINY, 		BOOLOID, 		0, 				COLLATE_BINARY},
-    {"float4", 		MYSQL_TYPE_FLOAT, 		FLOAT4OID, 		0, 				COLLATE_BINARY},
-    {"float8", 		MYSQL_TYPE_DOUBLE, 		FLOAT8OID, 		0, 				COLLATE_BINARY},
-	{"numeric", 	MYSQL_TYPE_NEWDECIMAL, 	NUMERICOID, 	0, 				COLLATE_BINARY},
-    
-    {"char", 		MYSQL_TYPE_STRING, 		CHAROID, 		0, 				COLLATE_UTF8MB4_GENERAL_CI},
-	{"bpchar", 		MYSQL_TYPE_STRING, 		BPCHAROID, 		0, 				COLLATE_UTF8MB4_GENERAL_CI},
-    {"varchar", 	MYSQL_TYPE_VAR_STRING, 	VARCHAROID, 	0, 				COLLATE_UTF8MB4_GENERAL_CI},
-	{"text", 		MYSQL_TYPE_BLOB, 		TEXTOID, 		BLOB_FLAG, 		COLLATE_UTF8MB4_GENERAL_CI},
-	{"tinytext", 	MYSQL_TYPE_BLOB, 		TINYTEXTOID, 	BLOB_FLAG, 		COLLATE_UTF8MB4_GENERAL_CI},
-	{"mediumtext", 	MYSQL_TYPE_BLOB, 		MEDIUMTEXTOID, 	BLOB_FLAG, 		COLLATE_UTF8MB4_GENERAL_CI},
-	{"longtext", 	MYSQL_TYPE_BLOB, 		LONGTEXTOID, 	BLOB_FLAG, 		COLLATE_UTF8MB4_GENERAL_CI},
+	{"tinyint", 	MYSQL_TYPE_TINY, 		TINYINTOID, 	0, 				true},
+    {"int2", 		MYSQL_TYPE_SHORT, 		INT2OID, 		0, 				true},
+	{"mediumint", 	MYSQL_TYPE_INT24,		MEDIUMINTOID, 	0, 				true},
+	{"int4", 		MYSQL_TYPE_LONG, 		INT4OID, 		0, 				true},
+    {"int8", 		MYSQL_TYPE_LONGLONG, 	INT8OID, 		0, 				true},
+	{"uint1", 		MYSQL_TYPE_TINY, 		UINT1OID, 		UNSIGNED_FLAG, 	true},
+	{"uint2", 		MYSQL_TYPE_SHORT, 		UINT2OID, 		UNSIGNED_FLAG, 	true},
+	{"uint3", 		MYSQL_TYPE_INT24, 		UINT3OID, 		UNSIGNED_FLAG, 	true},
+	{"uint4", 		MYSQL_TYPE_LONG, 		UINT4OID, 		UNSIGNED_FLAG, 	true},
+    {"uint8", 		MYSQL_TYPE_LONGLONG, 	UINT8OID, 		UNSIGNED_FLAG, 	true},
+	{"oid", 		MYSQL_TYPE_LONG, 		OIDOID,			UNSIGNED_FLAG, 	true},
+	{"bool", 		MYSQL_TYPE_TINY, 		BOOLOID, 		0, 				true},
+    {"float4", 		MYSQL_TYPE_FLOAT, 		FLOAT4OID, 		0, 				true},
+    {"float8", 		MYSQL_TYPE_DOUBLE, 		FLOAT8OID, 		0, 				true},
+	{"numeric", 	MYSQL_TYPE_NEWDECIMAL, 	NUMERICOID, 	0, 				true},
 
-	{"mysbit", 		MYSQL_TYPE_BIT, 		MYSBITOID, 		BINARY_FLAG, 	COLLATE_BINARY},
-	{"binary", 		MYSQL_TYPE_STRING, 		BINARYOID, 		BINARY_FLAG, 	COLLATE_BINARY},
-	{"varbinary", 	MYSQL_TYPE_VAR_STRING, 	VARBINARYOID, 	BINARY_FLAG, 	COLLATE_BINARY},
-	{"ivy_hex", 	MYSQL_TYPE_STRING, 		IVY_HEXOID, 	BINARY_FLAG, 	COLLATE_BINARY},
-	{"blob", 		MYSQL_TYPE_BLOB, 		MYBLOBOID, 		BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
-	{"tinyblob", 	MYSQL_TYPE_BLOB, 		TINYBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
-	{"mediumblob",	MYSQL_TYPE_BLOB, 		MEDIUMBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
-	{"longblob", 	MYSQL_TYPE_BLOB, 		LONGBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		COLLATE_BINARY},
-	
-	{"year", 		MYSQL_TYPE_YEAR, 		YEAROID, 		UNSIGNED_FLAG | ZEROFILL_FLAG, 	COLLATE_BINARY},
-	{"mysdate", 	MYSQL_TYPE_DATE, 		MYSDATEOID, 	0, 					COLLATE_BINARY},
-	{"mystime", 	MYSQL_TYPE_TIME, 		MYSTIMEOID, 	0, 					COLLATE_BINARY},
-	{"mystimes", 	MYSQL_TYPE_TIME, 		MYSTIMESOID, 	0, 					COLLATE_BINARY},
-	{"mysdatetime", MYSQL_TYPE_DATETIME, 	MYSDATETIMEOID, 0, 					COLLATE_BINARY},
-	{"mysdatetimes", MYSQL_TYPE_DATETIME, 	MYSDATETIMESOID,  0, 				COLLATE_BINARY},
-	{"mystimestamp", MYSQL_TYPE_TIMESTAMP, 	MYSTIMESTAMPOID,  ZEROFILL_FLAG, 	COLLATE_BINARY},
-	{"mystimestamps", MYSQL_TYPE_TIMESTAMP, MYSTIMESTAMPSOID, ZEROFILL_FLAG, 	COLLATE_BINARY},
+    {"char", 		MYSQL_TYPE_STRING, 		CHAROID, 		0, 				false},
+	{"bpchar", 		MYSQL_TYPE_STRING, 		BPCHAROID, 		0, 				false},
+    {"varchar", 	MYSQL_TYPE_VAR_STRING, 	VARCHAROID, 	0, 				false},
+	{"text", 		MYSQL_TYPE_BLOB, 		TEXTOID, 		BLOB_FLAG, 		false},
+	{"tinytext", 	MYSQL_TYPE_BLOB, 		TINYTEXTOID, 	BLOB_FLAG, 		false},
+	{"mediumtext", 	MYSQL_TYPE_BLOB, 		MEDIUMTEXTOID, 	BLOB_FLAG, 		false},
+	{"longtext", 	MYSQL_TYPE_BLOB, 		LONGTEXTOID, 	BLOB_FLAG, 		false},
+
+	{"mysbit", 		MYSQL_TYPE_BIT, 		MYSBITOID, 		BINARY_FLAG, 	true},
+	{"binary", 		MYSQL_TYPE_STRING, 		BINARYOID, 		BINARY_FLAG, 	true},
+	{"varbinary", 	MYSQL_TYPE_VAR_STRING, 	VARBINARYOID, 	BINARY_FLAG, 	true},
+	{"ivy_hex", 	MYSQL_TYPE_STRING, 		IVY_HEXOID, 	BINARY_FLAG, 	true},
+	{"blob", 		MYSQL_TYPE_BLOB, 		MYBLOBOID, 		BLOB_FLAG | BINARY_FLAG, 		true},
+	{"tinyblob", 	MYSQL_TYPE_BLOB, 		TINYBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		true},
+	{"mediumblob",	MYSQL_TYPE_BLOB, 		MEDIUMBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		true},
+	{"longblob", 	MYSQL_TYPE_BLOB, 		LONGBLOBOID, 	BLOB_FLAG | BINARY_FLAG, 		true},
+
+	{"year", 		MYSQL_TYPE_YEAR, 		YEAROID, 		UNSIGNED_FLAG | ZEROFILL_FLAG, 	true},
+	{"mysdate", 	MYSQL_TYPE_DATE, 		MYSDATEOID, 	0, 					true},
+	{"mystime", 	MYSQL_TYPE_TIME, 		MYSTIMEOID, 	0, 					true},
+	{"mystimes", 	MYSQL_TYPE_TIME, 		MYSTIMESOID, 	0, 					true},
+	{"mysdatetime", MYSQL_TYPE_DATETIME, 	MYSDATETIMEOID, 0, 					true},
+	{"mysdatetimes", MYSQL_TYPE_DATETIME, 	MYSDATETIMESOID,  0, 				true},
+	{"mystimestamp", MYSQL_TYPE_TIMESTAMP, 	MYSTIMESTAMPOID,  ZEROFILL_FLAG, 	true},
+	{"mystimestamps", MYSQL_TYPE_TIMESTAMP, MYSTIMESTAMPSOID, ZEROFILL_FLAG, 	true},
 
 	// ONLY FOR PG
-    {"name", 		MYSQL_TYPE_STRING, 		NAMEOID, 		0, 				COLLATE_UTF8MB4_GENERAL_CI},
-	{"date", 		MYSQL_TYPE_STRING, 		DATEOID, 		0, 				COLLATE_BINARY},
-    {"time", 		MYSQL_TYPE_STRING, 		TIMEOID, 		0, 				COLLATE_BINARY},
-    {"timestamptz", MYSQL_TYPE_STRING, 		TIMESTAMPTZOID, 0, 				COLLATE_BINARY},
-    {"timestamp", 	MYSQL_TYPE_STRING, 		TIMESTAMPOID, 	0, 				COLLATE_BINARY},
-	{"bit", 		MYSQL_TYPE_VAR_STRING, 	BITOID, 		BINARY_FLAG, 	COLLATE_BINARY},
-    {"varbit", 		MYSQL_TYPE_VAR_STRING, 	VARBITOID, 		0, 				COLLATE_BINARY},
-	{"bytea", 		MYSQL_TYPE_VAR_STRING, 	BYTEAOID, 		0, 				COLLATE_BINARY},
+    {"name", 		MYSQL_TYPE_STRING, 		NAMEOID, 		0, 				false},
+	{"date", 		MYSQL_TYPE_STRING, 		DATEOID, 		0, 				true},
+    {"time", 		MYSQL_TYPE_STRING, 		TIMEOID, 		0, 				true},
+    {"timestamptz", MYSQL_TYPE_STRING, 		TIMESTAMPTZOID, 0, 				true},
+    {"timestamp", 	MYSQL_TYPE_STRING, 		TIMESTAMPOID, 	0, 				true},
+	{"bit", 		MYSQL_TYPE_VAR_STRING, 	BITOID, 		BINARY_FLAG, 	true},
+    {"varbit", 		MYSQL_TYPE_VAR_STRING, 	VARBITOID, 		0, 				true},
+	{"bytea", 		MYSQL_TYPE_VAR_STRING, 	BYTEAOID, 		0, 				true},
 
-	{"point", 		MYSQL_TYPE_GEOMETRY, 	POINTOID, 		0, 				COLLATE_BINARY},
-    {"line", 		MYSQL_TYPE_GEOMETRY, 	LINEOID, 		0, 				COLLATE_BINARY},
-    {"polygon", 	MYSQL_TYPE_GEOMETRY, 	POLYGONOID, 	0, 				COLLATE_BINARY},
+	{"point", 		MYSQL_TYPE_GEOMETRY, 	POINTOID, 		0, 				true},
+    {"line", 		MYSQL_TYPE_GEOMETRY, 	LINEOID, 		0, 				true},
+    {"polygon", 	MYSQL_TYPE_GEOMETRY, 	POLYGONOID, 	0, 				true},
     
-    {"json", 		MYSQL_TYPE_JSON, 		JSONOID, 		0, 				COLLATE_BINARY},
+    {"json", 		MYSQL_TYPE_JSON, 		JSONOID, 		0, 				true},
 
-	{"regproc", 	MYSQL_TYPE_STRING, 		REGPROCOID, 	0, 				COLLATE_BINARY},
-	{"pg_node_tree", MYSQL_TYPE_STRING, 	PG_NODE_TREEOID, 0, 			COLLATE_BINARY},
-	{"_aclitem", 	MYSQL_TYPE_STRING, 		0, 				 0, 			COLLATE_BINARY},
-	{"regtype",		MYSQL_TYPE_LONG,		REGTYPEOID,		0,				COLLATE_BINARY},
-	{"unknown",		MYSQL_TYPE_VAR_STRING,	UNKNOWNOID,		0,				COLLATE_UTF8MB4_GENERAL_CI},
+	{"regproc", 	MYSQL_TYPE_STRING, 		REGPROCOID, 	0, 				true},
+	{"pg_node_tree", MYSQL_TYPE_STRING, 	PG_NODE_TREEOID, 0, 			true},
+	{"_aclitem", 	MYSQL_TYPE_STRING, 		0, 				 0, 			true},
+	{"regtype",		MYSQL_TYPE_LONG,		REGTYPEOID,		0,				true},
+	{"unknown",		MYSQL_TYPE_VAR_STRING,	UNKNOWNOID,		0,				false},
 };
 
 static const int ntype_items = sizeof(type_items) / sizeof(TypeItem);
@@ -429,10 +430,11 @@ GetItemByTypeOid(Oid oid, bool report_warning)
 	}
 
 	typeForm = (Form_pg_type) GETSTRUCT(tuple);
-	result = (TypeItem *) palloc(sizeof(TypeItem));
+	result = (TypeItem *) palloc0(sizeof(TypeItem));
 	result->typname = NameStr(typeForm->typname);
 	result->oid = oid;
 	result->flags = 0;
+    result->is_binary_charset = false;
 
 	switch (typeForm->typtype)
 	{
@@ -649,3 +651,33 @@ unregister_mysql_listener(void)
 	/* End - bug#6805 */
 }
 /* End - Req: SRS-MYSQL-PROTOCOL */
+
+/* Begin - OA#2772 */
+uint32
+get_mysql_result_collation_id(const TypeItem *item)
+{
+    const char *encoding_name;
+
+    /*
+     * Binary types always use the MySQL binary charset/collation.
+     */
+    if (item->is_binary_charset)
+        return my_charset_bin.number;
+
+    /*
+     * character_set_results being NULL or empty means that result data is
+     * not converted, so the FIELD packet should describe the server
+     * encoding.
+     */
+    if (CHARACTER_SET_RESULTS_IS_VALIDY())
+        encoding_name = GetDatabaseEncodingName();
+    else
+        /*
+         * Result data is converted to character_set_results, so the
+         * FIELD packet charset must match the actual result encoding.
+         */
+        encoding_name = character_set_results;
+
+    return get_mysql_collation_id_by_encoding_name(encoding_name);
+}
+/* End - OA#2772 */

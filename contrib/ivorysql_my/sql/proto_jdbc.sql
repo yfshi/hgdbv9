@@ -99,6 +99,10 @@ ALTER USER proto_user WITH NOSUPERUSER;
 \! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MySQLJdbcBinaryConcatTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
 -- End : Bug#8554
 
+-- Begin : OA-2772
+\! java -cp proto_test/class/mysql-connector-java-5.1.47.jar:proto_test/class/. MysqlCharacterSetResultsTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+-- End : OA-2772
+
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

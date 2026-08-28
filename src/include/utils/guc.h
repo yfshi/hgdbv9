@@ -613,6 +613,10 @@ extern PGDLLIMPORT int sqlcpu_usage;
 extern PGDLLIMPORT int source_limit_mode;
 /* End- ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 
+/* Begin - OA#2772 */
+extern PGDLLIMPORT char     *character_set_results;
+/* End - OA#2772 */
+
 /* Begin - ReqID:SRS-SECURITY-ENHANCE-SESSION-LIMIT */
 #ifdef ENABLE_DKY_BETA_FEATURE
 extern PGDLLIMPORT int session_limit;

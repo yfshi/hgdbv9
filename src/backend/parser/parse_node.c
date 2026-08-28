@@ -724,11 +724,26 @@ make_introducer_const(ParseState *pstate, Value *value, Datum val, int location,
 		return NULL;
 	}
 
-	if (is_sonst)
-	{
-		constvalue = (Datum)make_introducer_string_bytea(strVal(value),
+    if (is_sonst)
+    {
+		/* Begin - OA#2772 */
+        char *str = strVal(value);
+		/*
+		 * SQL text has already been converted from client encoding
+		 * to server encoding in MySQL protocol processing.
+		 *
+		 * Restore the original client-encoded bytes before processing
+		 * the introducer string.
+		 */
+		char *converted_str = pg_server_to_client(str, strlen(str));
+		/* End - OA#2772 */
+
+		constvalue = (Datum)make_introducer_string_bytea(converted_str,
 														 !has_sql_mode(MODE_NO_BACKSLASH_ESCAPES));
-	}
+
+		if (converted_str != str)
+            pfree(converted_str);
+    }
 
 	con = makeConst(VARBINARYOID,
 					-1,			/* typmod -1 is OK for all cases */
