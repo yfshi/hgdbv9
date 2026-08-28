@@ -7,6 +7,22 @@
  *
  */
 
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+-- Table level index name from (index_name, table_name)
+CREATE FUNCTION ivymy.table_level_index_name(index_name text, table_name text)
+RETURNS text
+AS 'MODULE_PATHNAME', 'table_level_index_name'
+LANGUAGE C
+IMMUTABLE STRICT PARALLEL SAFE;
+
+-- MySQL Key_name for SHOW: logical_idxname when stored, else index relname.
+CREATE FUNCTION ivymy.logical_index_keyname(indexrelid oid)
+RETURNS text
+AS 'MODULE_PATHNAME', 'logical_index_keyname'
+LANGUAGE C
+STRICT STABLE PARALLEL SAFE;
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 --
 -- Function: mys_information_schema.mys_format_type (internal)
 -- Maps a PostgreSQL type OID to a MySQL-compatible COLUMN_TYPE string.
@@ -547,7 +563,9 @@ SELECT
 	t.relname::varchar(64) AS "TABLE_NAME",								  -- Table name
 	CASE WHEN i.indisunique THEN 0 ELSE 1 END::bigint(1) AS "NON_UNIQUE", -- Indicates if the index is non-unique (0 = unique, 1 = non-unique)
 	n.nspname::varchar(64) AS "INDEX_SCHEMA",							  -- Schema of the index, usually same as table schema
-	ci.relname::varchar(64) AS "INDEX_NAME",							  -- Index name
+	-- Begin - SRS-MYSQL-SQL-TableLEVELINDEX
+	ivymy.logical_index_keyname(ci.oid)::varchar(64) AS "INDEX_NAME",	-- MySQL Key_name, not mangled relname
+	-- End - SRS-MYSQL-SQL-TableLEVELINDEX
 	k.n AS "SEQ_IN_INDEX",												  -- Column sequence number within the index (starting from 1)
 	-- Begin - BUG#ZZ5974
 	CASE WHEN a.attname IS NOT NULL THEN

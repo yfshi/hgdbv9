@@ -43,6 +43,11 @@ typedef struct ReindexParams
 #define REINDEXOPT_MISSING_OK 	0x04	/* skip missing relations */
 #define REINDEXOPT_CONCURRENTLY	0x08	/* concurrent mode */
 
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+/* Reserved pg_class.reloptions key; not an AM storage parameter. */
+#define LOGICAL_IDXNAME_RELOPT		"logical_idxname"
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 /* state info for validate_index bulkdelete callback */
 typedef struct ValidateIndexState
 {
@@ -233,5 +238,57 @@ itemptr_decode(ItemPointer itemptr, int64 encoded)
 
 	ItemPointerSet(itemptr, block, offset);
 }
+
+
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+/*
+ * Deterministic schema-unique physical index name from (logical Key_name,
+ * table name).  Babelfish-compatible: index + table + md5(index), then
+ * prefix+md5(full) when over NAMEDATALEN-1.
+ */
+extern char *construct_unique_index_name(const char *index_name,
+										 const char *relation_name);
+
+/*
+ * Choose physical pg_class.relname for a Key_name:
+ * use the logical name as-is when free in the schema; otherwise
+ * construct_unique_index_name().  PRIMARY is always mangled.
+ * excludeRelid: treat that OID as not occupying the name (RENAME).
+ */
+extern char *choose_physical_index_name(const char *logical_name,
+										const char *relation_name,
+										Oid namespaceId,
+										Oid excludeRelid);
+
+/*
+ * Used for Rename index name
+ */
+extern void UpdateLogicalIndexName(Oid tableOid, Oid indexOid,
+								   const char *newLogicalName);
+/*
+ * Look up an index OID by table and logical Key_name
+ */
+extern Oid	GetLogicalIndexOid(Oid tableOid, const char *logicalName);
+
+/*
+ * Return logical Key_name from the index's reloptions
+ */
+extern char	*GetStoredLogicalIndexNameByIndex(Oid indexOid);
+
+/*
+ * Return logical Key_name from the index's reloptions, or relname
+ */
+extern char	*GetLogicalIndexNameByIndex(Oid indexOid);
+
+/*
+ * Return a palloc'd copy of WITH (Logical_idxname=...).  Used when create index with during pg_upgrade
+ */
+extern char *ExtractLogicalIdxnameFromOptions(List *defList);
+
+/*
+ * Remove logical_idxname DefElems from a WITH-options list.
+ */
+extern List *FilterLogicalIdxnameFromOptions(List *defList);
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 #endif							/* INDEX_H */

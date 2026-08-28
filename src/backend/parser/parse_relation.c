@@ -64,6 +64,7 @@
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 /* End - ReqID:SRS-MYSQL-CASE */
+#include "catalog/index.h"	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 
 /*
  * Support for fuzzily matching columns.
@@ -4827,7 +4828,22 @@ preCheckIndexHints(ParseState *pstate, List *indexhints, Relation relation)
 		foreach (lc_index, idef->indexnames)
 		{
 			IndexHintRelationData   *indexdata;
-			indexOid = get_relname_relid(strVal(lfirst(lc_index)), relationNsOid);
+
+			/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+			const char	*hintname = strVal(lfirst(lc_index));
+
+			/*
+			 * mysql.enable_indexhint path stores IndexHintRelationData by
+			 * indexOid.  MySQL FORCE/USE/IGNORE INDEX names are Key_name
+			 * (tablelevel_idxname); physical relname may be mangled.  Resolve
+			 * the same way as DROP/RENAME INDEX.
+			 */
+			if (compatible_mode == MYS_MODE)
+				indexOid = GetLogicalIndexOid(RelationGetRelid(relation), hintname);
+			else
+				indexOid = get_relname_relid(hintname, relationNsOid);
+			/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 			exist_indexs = false;
 			if (OidIsValid(indexOid))
 			{

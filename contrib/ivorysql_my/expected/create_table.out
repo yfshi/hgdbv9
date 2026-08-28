@@ -3424,8 +3424,8 @@ create table t1 (
  c2     | integer               |           |          |         | plain    |              | 
  c3     | integer               |           |          |         | plain    |              | 
 Indexes:
-    "t1_c1_idx" btree (c1)
-    "t1_c2_idx" btree (c2)
+    "i1" btree (c1)
+    "i2" btree (c2)
 
 drop table t1;
 create table t1 (
@@ -3472,7 +3472,7 @@ create table t1 (text1 varchar(32) not NULL, KEY key1 using BTREE (text1)) engin
 --------+-----------------------+-----------+----------+---------+----------+--------------+-------------
  text1  | character varying(32) |           | not null |         | extended |              | 
 Indexes:
-    "t1_text1_idx" btree (text1)
+    "key1" btree (text1)
 
 drop table t1;
 CREATE TABLE t1 (f1 VARCHAR(1024), f2 VARCHAR(10),INDEX test_idx USING BTREE (f2,f1));
@@ -3483,7 +3483,7 @@ CREATE TABLE t1 (f1 VARCHAR(1024), f2 VARCHAR(10),INDEX test_idx USING BTREE (f2
  f1     | character varying(1024) |           |          |         | extended |              | 
  f2     | character varying(10)   |           |          |         | extended |              | 
 Indexes:
-    "t1_f2_f1_idx" btree (f2, f1)
+    "test_idx" btree (f2, f1)
 
 drop table t1;
 CREATE TABLE t1 (f1 VARCHAR(1024), f2 VARCHAR(10),INDEX (f2,f1));
@@ -3513,7 +3513,7 @@ create table t2(f1 int , index idx_f2(f1));
 --------+---------+-----------+----------+---------+---------+--------------+-------------
  f1     | integer |           |          |         | plain   |              | 
 Indexes:
-    "t2_f1_idx" btree (f1)
+    "idx_f2" btree (f1)
 
 create table t3(f1 int , index idx_f3 using btree (f1));
 \d+ t3
@@ -3522,7 +3522,7 @@ create table t3(f1 int , index idx_f3 using btree (f1));
 --------+---------+-----------+----------+---------+---------+--------------+-------------
  f1     | integer |           |          |         | plain   |              | 
 Indexes:
-    "t3_f1_idx" btree (f1)
+    "idx_f3" btree (f1)
 
 create table t4(f1 int , index idx_f4 using btree (f1 desc));
 \d+ t4
@@ -3531,7 +3531,7 @@ create table t4(f1 int , index idx_f4 using btree (f1 desc));
 --------+---------+-----------+----------+---------+---------+--------------+-------------
  f1     | integer |           |          |         | plain   |              | 
 Indexes:
-    "t4_f1_idx" btree (f1 DESC)
+    "idx_f4" btree (f1 DESC)
 
 create table t5(f1 int , key idx_f5 using btree (f1 asc));
 \d+ t5
@@ -3540,7 +3540,7 @@ create table t5(f1 int , key idx_f5 using btree (f1 asc));
 --------+---------+-----------+----------+---------+---------+--------------+-------------
  f1     | integer |           |          |         | plain   |              | 
 Indexes:
-    "t5_f1_idx" btree (f1)
+    "idx_f5" btree (f1)
 
 drop table if exists t1;
 drop table if exists t2;
@@ -3556,7 +3556,7 @@ create table test_expr1(f1 int, f2 int, f3 int, index tbl_idx1 using btree(f1 de
  f2     | integer |           |          |         | plain   |              | 
  f3     | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_expr1_f1_f2_idx" btree (f1 DESC, f2)
+    "tbl_idx1" btree (f1 DESC, f2)
 
 create table test_expr2(f1 int, f2 int, f3 int, index tbl_idx2 using btree((abs(f1)) desc, f2 asc));
 \d+ test_expr2
@@ -3567,7 +3567,7 @@ create table test_expr2(f1 int, f2 int, f3 int, index tbl_idx2 using btree((abs(
  f2     | integer |           |          |         | plain   |              | 
  f3     | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_expr2_abs_f2_idx" btree (abs(f1) DESC, f2)
+    "tbl_idx2" btree (abs(f1) DESC, f2)
 
 create table test_expr3(f1 int, f2 int, f3 int, index tbl_idx3 using btree((abs(f1)+10) desc, f2 asc));
 \d+ test_expr3
@@ -3578,7 +3578,7 @@ create table test_expr3(f1 int, f2 int, f3 int, index tbl_idx3 using btree((abs(
  f2     | integer |           |          |         | plain   |              | 
  f3     | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_expr3_expr_f2_idx" btree ((abs(f1) + 10) DESC, f2)
+    "tbl_idx3" btree ((abs(f1) + 10) DESC, f2)
 
 drop table if exists test_expr1;
 drop table if exists test_expr2;
@@ -3591,12 +3591,12 @@ create table test_option1(a int, b int, index idx_op1 using btree(a) comment 'yy
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option1_a_idx" btree (a)
+    "idx_op1" btree (a)
 
 select * from pg_indexes where tablename = 'test_option1';
- schemaname |  tablename   |     indexname      | tablespace |                                indexdef                                
-------------+--------------+--------------------+------------+------------------------------------------------------------------------
- public     | test_option1 | test_option1_a_idx |            | CREATE INDEX test_option1_a_idx ON public.test_option1 USING btree (a)
+ schemaname |  tablename   | indexname | tablespace |                          indexdef                           
+------------+--------------+-----------+------------+-------------------------------------------------------------
+ public     | test_option1 | idx_op1   |            | CREATE INDEX idx_op1 ON public.test_option1 USING btree (a)
 (1 row)
 
 drop table if exists test_option1;
@@ -3608,12 +3608,12 @@ create table test_option2(a int, b int, index idx_op2 using hash(a) comment 'yy'
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option2_a_idx" hash (a)
+    "idx_op2" hash (a)
 
 select * from pg_indexes where tablename = 'test_option2';
- schemaname |  tablename   |     indexname      | tablespace |                               indexdef                                
-------------+--------------+--------------------+------------+-----------------------------------------------------------------------
- public     | test_option2 | test_option2_a_idx |            | CREATE INDEX test_option2_a_idx ON public.test_option2 USING hash (a)
+ schemaname |  tablename   | indexname | tablespace |                          indexdef                          
+------------+--------------+-----------+------------+------------------------------------------------------------
+ public     | test_option2 | idx_op2   |            | CREATE INDEX idx_op2 ON public.test_option2 USING hash (a)
 (1 row)
 
 drop table if exists test_option2;
@@ -3625,7 +3625,7 @@ create table test_option3(a int, b int, index idx_op3 (a) using btree);
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option3_a_idx" btree (a)
+    "idx_op3" btree (a)
 
 drop table if exists test_option3;
 create table test_option4(a int, b int, c int, key idx_op4 using hash(a) using btree using hash);
@@ -3637,7 +3637,7 @@ create table test_option4(a int, b int, c int, key idx_op4 using hash(a) using b
  b      | integer |           |          |         | plain   |              | 
  c      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option4_a_idx" hash (a)
+    "idx_op4" hash (a)
 
 drop table if exists test_option4;
 create table test_option4(a int, b int, c int, key idx_op4 using hash(a) using btree using hash using btree);
@@ -3649,7 +3649,7 @@ create table test_option4(a int, b int, c int, key idx_op4 using hash(a) using b
  b      | integer |           |          |         | plain   |              | 
  c      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option4_a_idx" btree (a)
+    "idx_op4" btree (a)
 
 drop table if exists test_option4;
 create table test_option5(a int, b int, c int, index idx_op5 (a) using btree comment 'yy' using hash);
@@ -3661,7 +3661,7 @@ create table test_option5(a int, b int, c int, index idx_op5 (a) using btree com
  b      | integer |           |          |         | plain   |              | 
  c      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option5_a_idx" hash (a)
+    "idx_op5" hash (a)
 
 drop table if exists test_option5;
 create table test_option6(a int, b int, key idx_op6 using hash(a) using btree comment 'yy' using hash comment 'xx');
@@ -3672,7 +3672,7 @@ create table test_option6(a int, b int, key idx_op6 using hash(a) using btree co
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option6_a_idx" hash (a)
+    "idx_op6" hash (a)
 
 drop table if exists test_option6;
 create table test_option7(a int, b int, index idx_op7 (a) using btree comment 'yy' using hash comment 'xx');
@@ -3683,7 +3683,7 @@ create table test_option7(a int, b int, index idx_op7 (a) using btree comment 'y
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option7_a_idx" hash (a)
+    "idx_op7" hash (a)
 
 drop table if exists test_option7;
 create table test_option8(a int, b int, c int, key idx_op8_a (a) using btree comment 'yy' using hash comment 'xx', index idx_op8_b (b) using btree comment 'yy' using hash comment 'xx');
@@ -3695,8 +3695,8 @@ create table test_option8(a int, b int, c int, key idx_op8_a (a) using btree com
  b      | integer |           |          |         | plain   |              | 
  c      | integer |           |          |         | plain   |              | 
 Indexes:
-    "test_option8_a_idx" hash (a)
-    "test_option8_b_idx" hash (b)
+    "idx_op8_a" hash (a)
+    "idx_op8_b" hash (b)
 
 drop table if exists test_option8;
 CREATE TABLE test_option9
@@ -3720,8 +3720,8 @@ create table P4 PARTITION of test_option9 for VALUES from(2451544) to(MAXVALUE);
  f3     | integer |           |          |         | plain   |              | 
 Partition key: RANGE (f1)
 Indexes:
-    "test_option9_f1_idx" btree (f1)
-    "test_option9_f2_idx" btree (f2)
+    "idx_op9" btree (f1)
+    "idx_op9_2" btree (f2)
 Partitions: "P1" FOR VALUES FROM (0) TO (2450815),
             "P2" FOR VALUES FROM (2450815) TO (2451179),
             "P3" FOR VALUES FROM (2451179) TO (2451544),
@@ -3749,8 +3749,8 @@ create table P4 PARTITION of test_option10 for VALUES from(2451544) to(MAXVALUE)
  f3     | integer |           |          |         | plain   |              | 
 Partition key: RANGE (f1)
 Indexes:
-    "test_option10_f1_idx" hash (f1)
-    "test_option10_f2_idx" btree (f2)
+    "idx_op10" hash (f1)
+    "idx_op10_2" btree (f2)
 Partitions: "P1" FOR VALUES FROM (0) TO (2450815),
             "P2" FOR VALUES FROM (2450815) TO (2451179),
             "P3" FOR VALUES FROM (2451179) TO (2451544),

@@ -1656,6 +1656,7 @@ static bool
 _equalIndexStmt(const IndexStmt *a, const IndexStmt *b)
 {
 	COMPARE_STRING_FIELD(idxname);
+	COMPARE_STRING_FIELD(logical_idxname);	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 	COMPARE_STRING_FIELD(idxschemaname); /* OA-REQ-2127 */
 	COMPARE_NODE_FIELD(relation);
 	COMPARE_STRING_FIELD(accessMethod);

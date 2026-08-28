@@ -2094,25 +2094,25 @@ value VARCHAR(50),
 INDEX idx_value (value) COMMENT 'This is a test index'
 );
 SHOW CREATE TABLE test_comment1;
-     Table     |                                      Create Table                                      
----------------+----------------------------------------------------------------------------------------
- test_comment1 | CREATE TABLE "test_comment1" (                                                        +
-               |     "id" integer,                                                                     +
-               |     "value" character varying(50),                                                    +
-               |     KEY "test_comment1_value_idx" ("value") USING BTREE COMMENT 'This is a test index'+
+     Table     |                               Create Table                               
+---------------+--------------------------------------------------------------------------
+ test_comment1 | CREATE TABLE "test_comment1" (                                          +
+               |     "id" integer,                                                       +
+               |     "value" character varying(50),                                      +
+               |     KEY "idx_value" ("value") USING BTREE COMMENT 'This is a test index'+
                | )
 (1 row)
 
 SHOW INDEX FROM test_comment1;
-     Table     | Non_unique |        Key_name         | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment     
----------------+------------+-------------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+----------------------
- test_comment1 |          1 | test_comment1_value_idx |            1 | value       | A         |           0 |          |        | YES  | btree      |         | This is a test index
+     Table     | Non_unique | Key_name  | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment     
+---------------+------------+-----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+----------------------
+ test_comment1 |          1 | idx_value |            1 | value       | A         |           0 |          |        | YES  | btree      |         | This is a test index
 (1 row)
 
 SELECT INDEX_NAME,INDEX_COMMENT FROM mys_information_schema.STATISTICS WHERE TABLE_NAME = 'test_comment1';
-       INDEX_NAME        |    INDEX_COMMENT     
--------------------------+----------------------
- test_comment1_value_idx | This is a test index
+ INDEX_NAME |    INDEX_COMMENT     
+------------+----------------------
+ idx_value  | This is a test index
 (1 row)
 
 drop TABLE test_comment1;

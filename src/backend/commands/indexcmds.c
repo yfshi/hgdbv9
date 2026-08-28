@@ -594,6 +594,7 @@ DefineIndex(Oid relationId,
 	int			root_save_sec_context;
 	int			root_save_nestlevel;
 	int			i;
+	bool		mys_store_logical_idxname = false;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	root_save_nestlevel = NewGUCNestLevel();
 
@@ -868,17 +869,84 @@ DefineIndex(Oid relationId,
 	 */
 	indexColNames = ChooseIndexColumnNames(allIndexParams);
 
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
 	/*
-	 * Select name for index if caller didn't specify
+	 * Partition index children must not inherit the parent's logical name
+	 * falls through to ChooseIndexName() on the partition table
 	 */
+	if (OidIsValid(parentIndexId) && compatible_mode == MYS_MODE)
+		stmt->logical_idxname = NULL;
+
+
+	/*
+	 * Select name for index if caller didn't specify.
+	 *
+	 * MySQL logical names (stmt->logical_idxname): use the Key_name as
+	 * physical pg_class.relname when free in the schema; otherwise
+	 * construct_unique_index_name(logical, table).  Store logical_idxname in
+	 * pg_class.reloptions only when the physical name is mangled.
+	 *
+	 * MySQL unnamed INDEX|KEY: Key_name and physical name are both
+	 * ChooseIndexName() (table_col_idx / _idx1); it already avoids
+	 * schema conflicts.  construct_unique_index_name() is only used
+	 * when the user specified a Key_name that is already taken.
+	 *
+	 * Non-MySQL unnamed indexes still use ChooseIndexName.
+	 *
+	 * PRIMARY KEY: physical name is always PostgreSQL
+	 * ChooseIndexName (table_pkey), never construct_unique_index_name().
+	 * Do not store logical_idxname=PRIMARY; SHOW CREATE TABLE prints
+	 * MySQL-style PRIMARY KEY (cols), and DROP INDEX `PRIMARY`
+	 * uses RelationGetPrimaryKeyIndex.
+ 	 */
 	indexRelationName = stmt->idxname;
-	if (indexRelationName == NULL)
-		indexRelationName = ChooseIndexName(RelationGetRelationName(rel),
-											namespaceId,
-											indexColNames,
-											stmt->excludeOpNames,
-											stmt->primary,
-											stmt->isconstraint);
+	if (stmt->primary)
+	{
+		if (indexRelationName == NULL)
+			indexRelationName = ChooseIndexName(RelationGetRelationName(rel),
+												namespaceId,
+												indexColNames,
+												stmt->excludeOpNames,
+												stmt->primary,
+												stmt->isconstraint);
+	}
+	else
+	{
+		/*
+		 * unnamed INDEX/UNIQUE: ChooseIndexName() (table_col_idx).
+		 * That function already suffixes _idx1 on conflict; do not mangle.
+		 */
+		if (compatible_mode == MYS_MODE)
+		{
+			if (stmt->logical_idxname == NULL && indexRelationName == NULL)
+			{
+				indexRelationName =
+					ChooseIndexName(RelationGetRelationName(rel),
+									namespaceId,
+									indexColNames,
+									stmt->excludeOpNames,
+									stmt->primary,
+									stmt->isconstraint);
+			}
+			else if (stmt->logical_idxname != NULL)
+			{
+				indexRelationName = choose_physical_index_name(stmt->logical_idxname,
+																	 RelationGetRelationName(rel),
+																	 namespaceId,
+																	 InvalidOid);
+				if (strcmp(stmt->logical_idxname, indexRelationName) != 0)
+					mys_store_logical_idxname = true;
+			}
+		}
+		else if (indexRelationName == NULL)
+			indexRelationName = ChooseIndexName(RelationGetRelationName(rel),
+												namespaceId,
+												indexColNames,
+												stmt->excludeOpNames,
+												stmt->primary,
+												stmt->isconstraint);
+	}
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	/*
 	 * look up the access method, verify it can handle the requested features
@@ -948,10 +1016,92 @@ DefineIndex(Oid relationId,
 	/*
 	 * Parse AM-specific options, convert to text array form, validate.
 	 */
+
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+	/*
+	 * Cloned IndexStmts may still carry logical_idxname in options (from
+	 * parent reloptions).  Strip before AM validation; bake from
+	 * stmt->logical_idxname after.
+	 */
+	if (stmt->logical_idxname == NULL && !stmt->primary &&
+		!OidIsValid(parentIndexId))
+	{
+		/*
+		 * create constraint/index ... with(logical_idxname=)
+		 */
+		char	*from_opts = ExtractLogicalIdxnameFromOptions(stmt->options);
+
+		if (from_opts != NULL && from_opts[0] != '\0')
+		{
+			stmt->logical_idxname = from_opts;
+
+			if (indexRelationName != NULL &&
+				strcmp(stmt->logical_idxname, indexRelationName) != 0)
+				mys_store_logical_idxname = true;
+			else
+				mys_store_logical_idxname = false;
+		}
+		else if (from_opts != NULL)
+			pfree(from_opts);
+	}
+
+	stmt->options = FilterLogicalIdxnameFromOptions(stmt->options);
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 	reloptions = transformRelOptions((Datum) 0, stmt->options,
 									 NULL, NULL, false, false);
 
 	(void) index_reloptions(amoptions, reloptions, true);
+
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+	/*
+	 * Key_name: store as table level index name in the initial pg_class
+	 * just transform, will used in following ora_index_create()
+	 */
+	if (mys_store_logical_idxname &&
+		stmt->logical_idxname != NULL &&
+		!stmt->primary)
+	{
+		List	*lopts;
+
+		Assert(indexRelationName != NULL);
+		Assert(strcmp(stmt->logical_idxname, indexRelationName) != 0);
+
+		lopts = list_make1(makeDefElem(pstrdup(LOGICAL_IDXNAME_RELOPT),
+									   (Node *) makeString(pstrdup(stmt->logical_idxname)),
+									   -1));
+		reloptions = transformRelOptions(reloptions, lopts, NULL, NULL,
+										 false, false);
+	}
+
+	/*
+	 * Reject duplicate logical name on the same table.
+	 *
+	 * Must run after reloption validation so regress/reloptions and similar
+	 * tests see option errors before duplicate-name rejection when reusing
+	 * the same index name for multiple invalid WITH clauses.
+	 *
+	 * Skip for PRIMARY KEY: a second PRIMARY is reported as "multiple
+	 * primary keys ..." by index_check_primary_key below.  The logical
+	 * name PRIMARY is 1:1 with having a primary key.
+	 */
+	if (stmt->logical_idxname != NULL && !stmt->primary &&
+		OidIsValid(GetLogicalIndexOid(RelationGetRelid(rel),
+									  stmt->logical_idxname)))
+	{
+		if (compatible_mode == MYS_MODE)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_TABLE),
+					 errmsg("Duplicate key name \"%s\"",
+							stmt->logical_idxname)));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_TABLE),
+					 errmsg("index \"%s\" of relation \"%s\" already exists",
+							stmt->logical_idxname,
+							RelationGetRelationName(rel))));
+	}
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	/*
 	 * Prepare arguments for index_create, primarily an IndexInfo structure.
@@ -1321,6 +1471,8 @@ DefineIndex(Oid relationId,
 			Relation	parentIndex;
 			TupleDesc	parentDesc;
 
+			CommandCounterIncrement();	/* SRS-MYSQL-SQL-TableLEVELINDEX */
+
 			pgstat_progress_update_param(PROGRESS_CREATEIDX_PARTITIONS_TOTAL,
 										 nparts);
 
@@ -1487,6 +1639,7 @@ DefineIndex(Oid relationId,
 					 * specified by the user. maybe change in the future.
 					 */
 					childStmt->idxname = NULL;
+					childStmt->logical_idxname = NULL;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 					childStmt->idxschemaname = NULL; /* OA-REQ-2127 */
 					childStmt->relation = NULL;
 					childStmt->indexOid = InvalidOid;
@@ -4614,6 +4767,7 @@ IndexSetParentIndex(Relation partitionIdx, Oid parentOid)
 	if (OidIsValid(parentOid))
 	{
 		LockRelationOid(parentOid, ShareUpdateExclusiveLock);
+		CommandCounterIncrement();	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 		SetRelationHasSubclass(parentOid, true);
 	}
 
