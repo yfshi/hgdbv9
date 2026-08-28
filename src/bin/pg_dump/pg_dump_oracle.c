@@ -15215,6 +15215,10 @@ dumpCollation(Archive *fout, const CollInfo *collinfo)
 	else if (collprovider[0] == 'd')
 		/* to allow dumping pg_catalog; not accepted on input */
 		appendPQExpBufferStr(q, "default");
+	/* Begin - BUG#9071 */
+	else if(collprovider[0] == 'o')
+		appendPQExpBufferStr(q, "oracle");
+	/* End - BUG#9071 */
 	else
 		fatal("unrecognized collation provider: %s",
 			  collprovider);

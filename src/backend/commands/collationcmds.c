@@ -184,6 +184,12 @@ DefineCollation(ParseState *pstate, List *names, List *parameters, bool if_not_e
 			collprovider = COLLPROVIDER_ICU;
 		else if (pg_strcasecmp(collproviderstr, "libc") == 0)
 			collprovider = COLLPROVIDER_LIBC;
+		/* Begin - BUG#9071 */
+		else if (pg_strcasecmp(collproviderstr, "oracle") == 0)
+			collprovider = COLLPROVIDER_ORACLE;
+		else if (pg_strcasecmp(collproviderstr, "mysql") == 0)
+			collprovider = COLLPROVIDER_MYSQL;
+		/* End - BUG#9071 */
 		else
 			ereport(ERROR,
 					(errcode(ERRCODE_INVALID_OBJECT_DEFINITION),

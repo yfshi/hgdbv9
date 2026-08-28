@@ -5,3 +5,23 @@ select 'a' = 'A' collate mysql_collation_copy;
  t
 (1 row)
 
+/* Begin - BUG#9071 */
+CREATE COLLATION utf8mb4_0900_ai_ci3 (provider = mysql, locale = 'utf8mb3_general_ci');
+SELECT
+    collname,
+    collnamespace::regnamespace,
+    collprovider,
+    collisdeterministic,
+    collencoding,
+    collcollate,
+    collctype,
+    collversion
+FROM pg_collation
+WHERE collname = 'utf8mb4_0900_ai_ci3';
+      collname       | collnamespace | collprovider | collisdeterministic | collencoding |    collcollate     |     collctype      | collversion 
+---------------------+---------------+--------------+---------------------+--------------+--------------------+--------------------+-------------
+ utf8mb4_0900_ai_ci3 | public        | m            | t                   |            6 | utf8mb3_general_ci | utf8mb3_general_ci | 
+(1 row)
+
+DROP COLLATION utf8mb4_0900_ai_ci3;
+/* End - BUG#9071 */
