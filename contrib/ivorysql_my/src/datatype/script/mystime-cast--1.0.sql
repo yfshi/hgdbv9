@@ -228,14 +228,23 @@ STRICT
 IMMUTABLE;
 CREATE CAST (ivymy.mystime AS ivymy.mysdate) WITH FUNCTION ivymy.mystime_mysdate(ivymy.mystime) AS ASSIGNMENT;
 
-CREATE FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime) 
-RETURNS ivymy.mystimestamp 
+CREATE FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime)
+RETURNS ivymy.mystimestamp
 AS 'MODULE_PATHNAME','mystime_mystimestamp'
 LANGUAGE C
 PARALLEL SAFE
 STRICT
 IMMUTABLE;
 CREATE CAST (ivymy.mystime AS ivymy.mystimestamp) WITH FUNCTION ivymy.mystime_mystimestamp(ivymy.mystime) AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.mystime_mysdatetime(ivymy.mystime)
+RETURNS ivymy.mysdatetime
+AS 'MODULE_PATHNAME','mystime_mysdatetime'
+LANGUAGE C
+PARALLEL SAFE
+STRICT
+IMMUTABLE;
+CREATE CAST (ivymy.mystime AS ivymy.mysdatetime) WITH FUNCTION ivymy.mystime_mysdatetime(ivymy.mystime) AS ASSIGNMENT;
 
 -- mystime to datetimes timestamps times year
 CREATE FUNCTION ivymy.mystime_mysdatetimes(ivymy.mystime, integer) 

@@ -3011,3 +3011,67 @@ drop table t;
 create table tb_time(a time, b time(0), c time(1), d time(4));
 desc tb_time;
 drop table tb_time;
+
+-- time timestamp
+create table t_t1(a time);
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b timestamp);
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:15' from t_t2;
+drop table t_t1,t_t2;
+
+-- time timestamps
+create table t_t1(a time);
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b timestamp(6));
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:15.000000' from t_t2;
+drop table t_t1,t_t2;
+
+-- times timestamp
+create table t_t1(a time(6));
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b timestamp);
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:15' from t_t2;
+drop table t_t1,t_t2;
+
+-- times timestamps
+create table t_t1(a time(6));
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b timestamp(6));
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:14.999877' from t_t2;
+drop table t_t1,t_t2;
+
+-- time datetime
+create table t_t1(a time);
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b datetime);
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:15' from t_t2;
+drop table t_t1,t_t2;
+
+-- time datetimes
+create table t_t1(a time);
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b datetime(6));
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:15.000000' from t_t2;
+drop table t_t1,t_t2;
+
+-- times datetime
+create table t_t1(a time(6));
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b datetime);
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:15' from t_t2;
+drop table t_t1,t_t2;
+
+-- times datetimes
+create table t_t1(a time(6));
+insert into t_t1 values ('-06:23:45.000123');
+create table t_t2(b datetime(6));
+insert into t_t2 select a from t_t1;
+select b::text like '%17:36:14.999877' from t_t2;
+drop table t_t1,t_t2;

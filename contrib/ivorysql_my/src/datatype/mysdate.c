@@ -126,6 +126,205 @@ isValidDatetimeFormat(const char *datetime)
 	return true;
 }
 
+/*
+ * Shared conversion helpers for MySQL-compatible TIME/TIME(fsp) and
+ * TIMESTAMP/TIMESTAMP(fsp) types.
+ *
+ * Internal formats:
+ *   TIME        int64   +/-HHMMSS
+ *   TIMES       Numeric +/-HHMMSS.ffffff
+ *   TIMESTAMP   int64   YYYYMMDDHHMMSS
+ *   TIMESTAMPS  Numeric YYYYMMDDHHMMSS.ffffff
+ *
+ */
+static int64
+decode_mystime_int64(int64 value)
+{
+	int64 absolute = value < 0 ? -value : value;
+	int64 second = absolute % 100;
+	int64 minute = (absolute / 100) % 100;
+	int64 hour = absolute / 10000;
+	int64 usecs;
+
+	if (hour > TIME_MAX_HOUR || minute > TIME_MAX_MINUTE || second > TIME_MAX_SECOND)
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				 errmsg("invalid time value")));
+
+	usecs = (hour * SECS_PER_HOUR + minute * SECS_PER_MINUTE + second) * USECS_PER_SEC;
+
+	return value < 0 ? -usecs : usecs;
+}
+
+static int64
+decode_mystime_numeric(Numeric value)
+{
+	int64 whole = 0;
+	int64 second = 0;
+	int64 minute = 0;
+	int64 hour = 0;
+	int64 fraction = 0;
+	int64 usecs = 0;
+	lldiv_t lld;
+	bool neg = false;
+
+	numeric_to_lldiv_t(DatumGetNumeric(value), &lld);
+	if (lld.quot < 0)
+	{
+		lld.quot *= -1;
+		lld.rem *= -1;
+		neg = true;
+	}
+
+	whole = lld.quot;
+	fraction = lld.rem / 1000; /* nanosec to micrisecond */
+
+	second = whole % 100;
+	minute = (whole / 100) % 100;
+	hour = whole / 10000;
+
+	if (hour > TIME_MAX_HOUR || minute > TIME_MAX_MINUTE || second > TIME_MAX_SECOND)
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				 errmsg("invalid times value")));
+
+	usecs = (hour * SECS_PER_HOUR + minute * SECS_PER_MINUTE + second) * USECS_PER_SEC + fraction;
+
+	/* mysql time type max |value| 838:59:59*/
+	if (usecs >
+		(TIME_MAX_HOUR * SECS_PER_HOUR * USECS_PER_SEC +
+		 TIME_MAX_MINUTE * SECS_PER_MINUTE * USECS_PER_SEC +
+		 TIME_MAX_SECOND * USECS_PER_SEC))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_FIELD_OVERFLOW),
+				 errmsg("times value is out of range")));
+	}
+	return neg ? -usecs : usecs;
+}
+
+static void
+mystime_usecs_to_current_datetime(int64 time_usecs, struct pg_tm *tm, int64 *fraction)
+{
+	int64 day_offset = time_usecs / USECS_PER_DAY;
+	int64 usecs_of_day = time_usecs % USECS_PER_DAY;
+	int64 seconds_of_day;
+	int64 target_day;
+
+	/* C division truncates toward zero; normalize a negative remainder. */
+	if (usecs_of_day < 0)
+	{
+		usecs_of_day += USECS_PER_DAY;
+		day_offset--;
+	}
+
+	GetCurrentDateTime(tm);
+
+	target_day = (int64)date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) + day_offset;
+
+	if (target_day < 0 || target_day > INT_MAX)
+		ereport(ERROR,
+				(errcode(ERRCODE_DATETIME_VALUE_OUT_OF_RANGE),
+				 errmsg("resulting timestamp is out of range")));
+
+	j2date((int)target_day, &tm->tm_year, &tm->tm_mon, &tm->tm_mday);
+
+	seconds_of_day = usecs_of_day / USECS_PER_SEC;
+	*fraction = usecs_of_day % USECS_PER_SEC;
+
+	tm->tm_hour = seconds_of_day / SECS_PER_HOUR;
+	seconds_of_day %= SECS_PER_HOUR;
+	tm->tm_min = seconds_of_day / SECS_PER_MINUTE;
+	tm->tm_sec = seconds_of_day % SECS_PER_MINUTE;
+}
+
+static void
+round_mydatetime(struct pg_tm *tm, int64 *fraction, int32 dec)
+{
+	int64 unit = USECS_PER_SEC;
+	int64 rounded;
+	int64 seconds_of_day;
+	int scale;
+
+	for (scale = 0; scale < dec; scale++)
+		unit /= 10;
+
+	rounded = ((*fraction + unit / 2) / unit) * unit;
+
+	if (rounded < USECS_PER_SEC)
+	{
+		*fraction = rounded;
+		return;
+	}
+
+	*fraction = 0;
+	seconds_of_day = (int64)tm->tm_hour * SECS_PER_HOUR +
+					 (int64)tm->tm_min * SECS_PER_MINUTE +
+					 tm->tm_sec + 1;
+
+	if (seconds_of_day >= SECS_PER_DAY)
+	{
+		int julian_day = date2j(tm->tm_year, tm->tm_mon, tm->tm_mday) + 1;
+
+		j2date(julian_day, &tm->tm_year, &tm->tm_mon, &tm->tm_mday);
+		seconds_of_day = 0;
+	}
+
+	tm->tm_hour = seconds_of_day / SECS_PER_HOUR;
+	seconds_of_day %= SECS_PER_HOUR;
+	tm->tm_min = seconds_of_day / SECS_PER_MINUTE;
+	tm->tm_sec = seconds_of_day % SECS_PER_MINUTE;
+}
+
+static int64
+encode_mytimestamp_int64(const struct pg_tm *value, int64 fraction)
+{
+	struct pg_tm tm = *value;
+
+	/* MySQL rounds a fractional datetime when the target precision is zero. */
+	round_mydatetime(&tm, &fraction, 0);
+
+	return (int64)tm.tm_year * INT64CONST(10000000000) +
+		   (int64)tm.tm_mon * INT64CONST(100000000) +
+		   (int64)tm.tm_mday * INT64CONST(1000000) +
+		   (int64)tm.tm_hour * INT64CONST(10000) +
+		   (int64)tm.tm_min * INT64CONST(100) +
+		   (int64)tm.tm_sec;
+}
+
+static Numeric
+encode_mytimestamps_numeric(const struct pg_tm *value, int64 fraction, int32 dec)
+{
+	struct pg_tm tm = *value;
+	char buf[MAXDATELEN + 1];
+	int scale;
+
+	/* function call set -1, set 6 */
+	if (dec < 0)
+		dec = 6;
+
+	/* Match MySQL rounding at the target fractional precision. */
+	round_mydatetime(&tm, &fraction, dec);
+
+	/* Reduce rounded microseconds to the requested decimal scale. */
+	for (scale = 6; scale > dec; scale--)
+		fraction /= 10;
+
+	if (dec == 0)
+		snprintf(buf, sizeof(buf),
+				 "%04d%02d%02d%02d%02d%02d",
+				 tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+	else
+		snprintf(buf, sizeof(buf),
+				 "%04d%02d%02d%02d%02d%02d.%0*lld",
+				 tm.tm_year, tm.tm_mon, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
+				 dec, (long long)fraction);
+
+	return DatumGetNumeric(
+		DirectFunctionCall3(numeric_in,	CStringGetDatum(buf), ObjectIdGetDatum(InvalidOid),
+							Int32GetDatum(((((14 + dec) << 16) | dec) + VARHDRSZ))));
+}
+
 PG_FUNCTION_INFO_V1(mysdate_int8);
 PG_FUNCTION_INFO_V1(mysdate_numeric);
 Datum
@@ -7000,6 +7199,7 @@ Datum mystimes_numeric_notlike(PG_FUNCTION_ARGS)
 PG_FUNCTION_INFO_V1(mysdate_mystime);
 /* mystime mystimes to date datetime timestamp */
 PG_FUNCTION_INFO_V1(mystime_mysdate);
+PG_FUNCTION_INFO_V1(mystime_mysdatetime);
 PG_FUNCTION_INFO_V1(mystime_mystimestamp);
 PG_FUNCTION_INFO_V1(mystimes_mysdate);
 PG_FUNCTION_INFO_V1(mystimes_mysdatetime);
@@ -7071,18 +7271,26 @@ Datum mystime_mysdate(PG_FUNCTION_ARGS)
 	PG_RETURN_DATEADT(date);
 }
 
+Datum mystime_mysdatetime(PG_FUNCTION_ARGS)
+{
+	struct pg_tm tm;
+	int64 fraction;
+
+	mystime_usecs_to_current_datetime(
+		decode_mystime_int64(PG_GETARG_TIMEADT(0)), &tm, &fraction);
+
+	PG_RETURN_TIMEADT(encode_mytimestamp_int64(&tm, fraction));
+}
+
 Datum mystime_mystimestamp(PG_FUNCTION_ARGS)
 {
-	TimeADT		datetime = MYSQL_INVAILD_DATE;
-	TimeADT		date = 0;
-	TimeADT		time = PG_GETARG_TIMEADT(0);
 	struct pg_tm tm;
+	int64 fraction;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	mystime_usecs_to_current_datetime(
+		decode_mystime_int64(PG_GETARG_TIMEADT(0)), &tm, &fraction);
 
-	datetime = date * 1000000 + time;
-	PG_RETURN_TIMEADT(datetime);
+	PG_RETURN_TIMEADT(encode_mytimestamp_int64(&tm, fraction));
 }
 
 Datum mystimes_mysdate(PG_FUNCTION_ARGS)
@@ -7154,18 +7362,13 @@ Datum mystimes_mysdatetime(PG_FUNCTION_ARGS)
 
 Datum mystimes_mystimestamp(PG_FUNCTION_ARGS)
 {
-	Numeric		times = PG_GETARG_NUMERIC(0);
-	TimeADT		datetime = MYSQL_INVAILD_DATE;
-	TimeADT		date = 0;
-	TimeADT		time = 0;
 	struct pg_tm tm;
+	int64 fraction;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	mystime_usecs_to_current_datetime(
+		decode_mystime_numeric(PG_GETARG_NUMERIC(0)), &tm, &fraction);
 
-	time = DatumGetInt64(DirectFunctionCall1(numeric_int8, NumericGetDatum(times)));
-	datetime = date*1000000 + time;
-	PG_RETURN_TIMEADT(datetime);
+	PG_RETURN_TIMEADT(encode_mytimestamp_int64(&tm, fraction));
 }
 
 Datum mysdate_mysdatetimes(PG_FUNCTION_ARGS)
@@ -7407,53 +7610,25 @@ Datum mystimestamps_mystimes(PG_FUNCTION_ARGS)
 }
 Datum mystime_mysdatetimes(PG_FUNCTION_ARGS)
 {
-	TimeADT		mystime = PG_GETARG_TIMEADT(0);
-	int32		dec = PG_GETARG_INT32(1);
-	char		buf[MAXDATELEN + 1] = {0};
-	Numeric		num;
-	fsec_t		fsec = 0;
-	TimeADT		date = 0;
 	struct pg_tm tm;
+	int64 fraction;
+	int32 dec = PG_GETARG_INT32(1);
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	mystime_usecs_to_current_datetime(
+		decode_mystime_int64(PG_GETARG_TIMEADT(0)), &tm, &fraction);
 
-	mystime = date*1000000+mystime;
-	
-	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mystime, fsec);
-
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
-
-
-	PG_RETURN_NUMERIC(num);
+	PG_RETURN_NUMERIC(encode_mytimestamps_numeric(&tm, fraction, dec));
 }
 Datum mystime_mystimestamps(PG_FUNCTION_ARGS)
 {
-	TimeADT		mystime = PG_GETARG_TIMEADT(0);
-	int32		dec = PG_GETARG_INT32(1);
-	char		buf[MAXDATELEN + 1] = {0};
-	Numeric		num;
-	fsec_t		fsec = 0;
-	TimeADT		date = 0;
 	struct pg_tm tm;
+	int64 fraction;
+	int32 dec = PG_GETARG_INT32(1);
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	mystime_usecs_to_current_datetime(
+		decode_mystime_int64(PG_GETARG_TIMEADT(0)), &tm, &fraction);
 
-	mystime = date*1000000+mystime;
-	
-	snprintf(buf, MAXDATELEN, "%lld.%06d", (long long) mystime, fsec);
-
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
-
-
-	PG_RETURN_NUMERIC(num);
+	PG_RETURN_NUMERIC(encode_mytimestamps_numeric(&tm, fraction, dec));
 }
 Datum mystime_mystimes(PG_FUNCTION_ARGS)
 {
@@ -7475,51 +7650,25 @@ Datum mystime_mystimes(PG_FUNCTION_ARGS)
 }
 Datum mystimes_mysdatetimes(PG_FUNCTION_ARGS)
 {
-	Numeric		mystimes = PG_GETARG_NUMERIC(0);
-	int32		dec = PG_GETARG_INT32(1);
-	Numeric		num;
-	char		*buf = NULL;
-	TimeADT		date = 0;
+	Numeric mystimes = PG_GETARG_NUMERIC(0);
+	int32 dec = PG_GETARG_INT32(1);
 	struct pg_tm tm;
+	int64 fraction;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	mystime_usecs_to_current_datetime(decode_mystime_numeric(mystimes), &tm, &fraction);
 
-	date = date*1000000;
-	mystimes = DatumGetNumeric(DirectFunctionCall2(numeric_add,  NumericGetDatum(int64_to_numeric(date)),
-																NumericGetDatum(mystimes)));
-	buf = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(mystimes)));
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
-
-
-	PG_RETURN_NUMERIC(num);
+	PG_RETURN_NUMERIC(encode_mytimestamps_numeric(&tm, fraction, dec));
 }
 Datum mystimes_mystimestamps(PG_FUNCTION_ARGS)
 {
-	Numeric		mystimes = PG_GETARG_NUMERIC(0);
-	int32		dec = PG_GETARG_INT32(1);
-	Numeric		num;
-	char		*buf = NULL;
-	TimeADT		date = 0;
+	Numeric mystimes = PG_GETARG_NUMERIC(0);
+	int32 dec = PG_GETARG_INT32(1);
 	struct pg_tm tm;
+	int64 fraction;
 
-	GetCurrentDateTime(&tm);
-	date = tm.tm_year * 10000 + tm.tm_mon * 100 + tm.tm_mday;
+	mystime_usecs_to_current_datetime(decode_mystime_numeric(mystimes), &tm, &fraction);
 
-	date = date*1000000;
-	mystimes = DatumGetNumeric(DirectFunctionCall2(numeric_add,  NumericGetDatum(int64_to_numeric(date)),
-																NumericGetDatum(mystimes)));
-	buf = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(mystimes)));
-	num = DatumGetNumeric(DirectFunctionCall3(numeric_in,
-												CStringGetDatum(buf),
-												ObjectIdGetDatum(InvalidOid),
-												Int32GetDatum((((14+dec) << 16)|dec) + VARHDRSZ)));
-
-
-	PG_RETURN_NUMERIC(num);
+	PG_RETURN_NUMERIC(encode_mytimestamps_numeric(&tm, fraction, dec));
 }
 
 /* Begin - ReqID: SRS-MYSQL-PROC */
