@@ -71,7 +71,8 @@ SUBDIRS = \
 		diskquota \
 		hg_flashback_tx \
 		hg_flashback_db \
-		hg_profiler
+		hg_profiler \
+		hg_wait_states
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo
