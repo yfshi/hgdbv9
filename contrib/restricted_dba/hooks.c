@@ -842,7 +842,13 @@ func_execute_check(Oid proc_oid)
 					 procForm->pronamespace != PG_CATALOG_NAMESPACE &&
 					 procForm->pronamespace != PG_PUBLIC_NAMESPACE &&
 					 procForm->pronamespace != PG_SYS_NAMESPACE &&
-					 procForm->pronamespace != PG_IVYMY_NAMESPACE) /* Bug#z8952: skip checking function under ivymy schema*/
+					 /* Begin - Bug#z8952: skip checking function under system schema */
+					 procForm->pronamespace != PG_TOAST_NAMESPACE &&
+					 procForm->pronamespace != PG_IVYMY_NAMESPACE &&
+					 procForm->pronamespace != PERFORMANCE_SCHEMA_NAMESPACE &&
+					 procForm->pronamespace != MYS_INFORMATION_SCHEMA_NAMESPACE
+					 /* End - Bug#z8952: skip checking function under system schema */
+					)
 					 /* Bug#z6190: we skip checking function under sys schema */
 			{
 				/*
