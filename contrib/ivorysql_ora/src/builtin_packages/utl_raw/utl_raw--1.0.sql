@@ -37,6 +37,15 @@ create or replace function sys.utl_raw_xrange(RAW, RAW) RETURN RAW
 	AS 'MODULE_PATHNAME', 'utl_raw_xrange' LANGUAGE C;
 
 CREATE OR REPLACE PACKAGE sys.utl_raw AS
+	-- Begin - BUG#9092
+	--------------
+	-- CONSTANTS
+	--------------
+	big_endian CONSTANT PLS_INTEGER := 1;
+	little_endian CONSTANT PLS_INTEGER := 2;
+	machine_endian CONSTANT PLS_INTEGER := 3;
+	-- End - BUG#9092
+
 	FUNCTION bit_and(r1 RAW, r2 RAW) RETURN RAW;
 	FUNCTION bit_complement(r RAW)  RETURN RAW;
 	FUNCTION bit_or(r1 RAW, r2 RAW)  RETURN RAW;

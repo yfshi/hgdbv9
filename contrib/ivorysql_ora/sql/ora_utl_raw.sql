@@ -1,5 +1,15 @@
 CREATE USER u_utl_raw PASSWORD 'highgo@123';
 SET SESSION AUTHORIZATION u_utl_raw;
+-- check constant
+set serveroutput ON;
+declare
+begin
+dbms_output.put_line('value of big_endian is ' || utl_raw.big_endian);
+dbms_output.put_line('value of little_endian is ' || utl_raw.little_endian);
+dbms_output.put_line('value of machine_endian is ' || utl_raw.machine_endian);
+end;
+/
+set serveroutput OFF;
 -- check bit operation func
 select utl_raw.bit_and(null, '');
 select utl_raw.bit_and(null, 'aabb');
