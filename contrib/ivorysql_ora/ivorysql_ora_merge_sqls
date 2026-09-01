@@ -18,3 +18,4 @@ src/ora_trigger_pred/ora_trigger_pred
 src/collection/collection
 src/builtin_packages/dbms_rowid/dbms_rowid
 src/builtin_packages/dbms_lock/dbms_lock
+src/builtin_packages/utl_raw/utl_raw
