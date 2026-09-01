@@ -189,6 +189,18 @@ sleep(2);
 my $phase2_begin = $node->safe_psql('postgres', 'SELECT now()');
 $phase2_begin =~ s/'/''/g;
 
+# Purge cutoff, frozen here: after the renamed files' rts (forced before
+# restart) and well before the new files' rts (created_at + 1h / 1d).
+# Use a UTC timestamptz literal from Postgres itself so the window does
+# not depend on Perl's PG-epoch conversion, OS/session TimeZone / DateStyle,
+# or now() at purge time (a later container clock jump of >= 1 hour
+# would otherwise make now() delete the still-active samples file).
+my $purge_end = $node->safe_psql(
+	'postgres', q{
+SELECT to_char(timezone('UTC', now()), 'YYYY-MM-DD HH24:MI:SS.US') || '+00'
+});
+$purge_end =~ s/'/''/g;
+
 # At this point the directory must contain *both* the renamed phase-1
 # files (which still have data) and freshly created phase-2 files (still
 # only carrying the 8-byte header).
@@ -334,6 +346,67 @@ unlike($log, qr/could not roll back partial write/,
 	'no partial-write rollback warning across rotation');
 unlike($log, qr/file ".*" already exists; truncating/,
 	'no rotation-time filename collision');
+
+# 7. Purge expired files.  end_ts is $purge_end (frozen at restart), not
+#    now() and not a reconstructed 2000-01-01 epoch.  Stop the phase-2
+#    sleeper first so the collector is not appending while we unlink
+#    sibling files.  Check filenames and sample counts, never
+#    directory_size equality.
+eval { $sleeper2->quit; };
+
+my $p2_samples_before_purge = $node->safe_psql(
+	'postgres', qq{
+SELECT count(*) FROM hg_wait_states_samples()
+WHERE wait_event = 'PgSleep'
+  AND sample_time >= '$phase2_begin'::timestamptz
+});
+
+$node->safe_psql(
+	'postgres', qq{
+SELECT hg_wait_states_purge(
+    '-infinity'::timestamptz,
+    '$purge_end'::timestamptz)
+});
+
+# Poll the same glob we assert on.  Mixing -e with glob can disagree
+# briefly on bind-mounted filesystems.  grep -f so a no-match glob that
+# returns the literal pattern is not treated as a leftover file.
+my %expired = map { $_ => 1 } @renamed;
+my @after_purge;
+my $expired_left;
+for (my $i = 0; $i < 50; $i++)
+{
+	@after_purge = grep { -f $_ } glob("$logdir/hg_ws_*");
+	$expired_left = grep { $expired{ basename($_) } } @after_purge;
+	last if $expired_left == 0;
+	sleep(0.1);
+}
+is($expired_left, 0,
+	'purge unlinks every file whose rotate timestamp is in the past');
+cmp_ok(scalar(grep { /\bhg_ws_samples_/ } @after_purge), '>=', 1,
+	'purge leaves the still-active samples file');
+cmp_ok(scalar(grep { /\bhg_ws_sessions_/ } @after_purge), '>=', 1,
+	'purge leaves the still-active sessions file');
+cmp_ok(scalar(grep { /\bhg_ws_queries_/ } @after_purge), '>=', 1,
+	'purge leaves the still-active queries file');
+
+my $p1_after_purge = $node->safe_psql(
+	'postgres', qq{
+SELECT count(*) FROM hg_wait_states_samples()
+WHERE wait_event = 'PgSleep'
+  AND sample_time < '$phase2_begin'::timestamptz
+});
+is($p1_after_purge, '0',
+	'purge drops samples that lived only in the expired files');
+
+my $p2_after_purge = $node->safe_psql(
+	'postgres', qq{
+SELECT count(*) FROM hg_wait_states_samples()
+WHERE wait_event = 'PgSleep'
+  AND sample_time >= '$phase2_begin'::timestamptz
+});
+cmp_ok($p2_after_purge, '>=', $p2_samples_before_purge,
+	'purge does not drop samples from the still-active file');
 
 eval { $sleeper2->quit; };
 $node->stop;
