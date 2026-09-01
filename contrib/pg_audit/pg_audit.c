@@ -556,7 +556,6 @@ static bool audit_early_morning_time(TimestampTz time);
 static bool audit_check_table_limit(Oid);
 static char get_audit_log_relkind(void);
 static void audit_drop_table_or_del_tuple(TimestampTz time_cur);
-static void insert_index_audit_log(Relation audit_log, HeapTuple tuple);
 /* End - SECURITY-AUTHENTICATION-METHOD */
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
@@ -15883,32 +15882,6 @@ static void judge_audit_pause(Oid db_oid)
 		*audit_GUC.audit_pause = false;
 
 	return;
-}
-
-static void insert_index_audit_log(Relation audit_log, HeapTuple tuple)
-{
-	TupleTableSlot *slot;
-	ResultRelInfo *resultRelInfo;
-	EState	   *estate;
-	TupleDesc	tupdesc;
-
-	tupdesc = RelationGetDescr(audit_log);
-
-	/* Update index entries for the newly inserted tuple. */
-	resultRelInfo = makeNode(ResultRelInfo);
-	InitResultRelInfo(resultRelInfo, audit_log, 1, NULL, 0);
-
-	ExecOpenIndices(resultRelInfo, false);
-
-	slot = MakeSingleTupleTableSlot(tupdesc, &TTSOpsHeapTuple);
-	ExecStoreHeapTuple(tuple, slot, false);
-
-	estate = CreateExecutorState();
-	ExecInsertIndexTuples(resultRelInfo, slot, estate, false, false, NULL, NIL);
-
-	ExecDropSingleTupleTableSlot(slot);
-	ExecCloseIndices(resultRelInfo);
-	FreeExecutorState(estate);
 }
 
 /* End - SECURITY-AUTHENTICATION-METHOD */

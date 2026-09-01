@@ -1124,6 +1124,12 @@ ExecInsert(ModifyTableContext *context,
 			return NULL;		/* "do nothing" */
 	}
 
+	/*Begin - SRS-SECURITY-SQL-SENTINEL */
+	/* Inspect the value after BEFORE triggers and before any physical write. */
+	if (ExecutorCheckWrite_hook)
+		(*ExecutorCheckWrite_hook) (resultRelationDesc, slot, CMD_INSERT);
+	/*End - SRS-SECURITY-SQL-SENTINEL */
+
 	/* INSTEAD OF ROW INSERT Triggers */
 	if (resultRelInfo->ri_TrigDesc &&
 		resultRelInfo->ri_TrigDesc->trig_insert_instead_row)
@@ -2654,6 +2660,12 @@ ExecUpdate(ModifyTableContext *context, ResultRelInfo *resultRelInfo,
 	 */
 	if (!ExecUpdatePrologue(context, resultRelInfo, tupleid, oldtuple, slot))
 		return NULL;
+
+	/*Begin - SRS-SECURITY-SQL-SENTINEL */
+	/* Inspect the value after BEFORE triggers and before any physical write. */
+	if (ExecutorCheckWrite_hook)
+		(*ExecutorCheckWrite_hook) (resultRelationDesc, slot, CMD_UPDATE);
+	/*End - SRS-SECURITY-SQL-SENTINEL */
 
 	/* INSTEAD OF ROW UPDATE Triggers */
 	if (resultRelInfo->ri_TrigDesc &&

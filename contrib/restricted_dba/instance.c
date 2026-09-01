@@ -54,6 +54,7 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		(pg_strncasecmp(name,"hg_sysmac.",strlen("hg_sysmac.")) == 0 && IS_SYSSSO(GetUserId())) ||
 		(pg_strncasecmp(name,"hg_wal_integrity.",strlen("hg_wal_integrity.")) == 0 && IS_SYSSSO(GetUserId())) ||
 		(pg_strncasecmp(name,"hg_rolstatus.",strlen("hg_rolstatus.")) == 0 && IS_SYSSSO(GetUserId())) || /* ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
+		(pg_strncasecmp(name,"sql_sentinel.",strlen("sql_sentinel.")) == 0 && IS_SYSSSO(GetUserId())) || /* ReqID: SRS-SECURITY-SQL-SENTINEL*/
 		(pg_strncasecmp(name,"conn_restrict.enable",strlen("conn_restrict.enable")) == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6238 */
 		(pg_strcasecmp(name,"count_idle_busy_time") == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6183 */
 		(pg_strcasecmp(name,"idle_session_timeout") == 0 && IS_SYSSSO(GetUserId())) ||
@@ -89,6 +90,7 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		(pg_strncasecmp(name,"credcheck.",strlen("credcheck.")) == 0 ) ||
 		(pg_strncasecmp(name,"hg_sysmac.",strlen("hg_sysmac.")) == 0 )||
 		(pg_strncasecmp(name,"hg_wal_integrity.",strlen("hg_wal_integrity.")) == 0 )||
+		(pg_strncasecmp(name,"sql_sentinel.",strlen("sql_sentinel.")) == 0)||
 		(pg_strncasecmp(name,"hg_rolstatus.",strlen("hg_rolstatus.")) == 0 )|| /* ReqID: SRS-SECURITY-EAL4-ROLSTATUS */
 		(pg_strncasecmp(name,"conn_restrict.enable",strlen("conn_restrict.enable")) == 0 )||	/* Bug #6238 */
 		(pg_strncasecmp(name,"se_feature.",strlen("se_feature.")) == 0 )) && IS_SYSDBA(GetUserId()))	
