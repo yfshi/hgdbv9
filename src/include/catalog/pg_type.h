@@ -304,6 +304,9 @@ DECLARE_UNIQUE_INDEX(pg_type_typname_nsp_index, 2704, on pg_type using btree(typ
 #define  TYPCATEGORY_USER		'U'
 #define  TYPCATEGORY_BITSTRING	'V' /* er ... "varbit"? */
 #define  TYPCATEGORY_UNKNOWN	'X'
+/* Begin - ReqID:SRS-SQL-Collection */
+#define  TYPCATEGORY_COLLECTION	'Y'	 /*collection type: nested-table, varray */
+/* End - ReqID:SRS-SQL-Collection */
 
 #define  TYPALIGN_CHAR			'c' /* char alignment (i.e. unaligned) */
 #define  TYPALIGN_SHORT			's' /* short alignment (typically 2 bytes) */
@@ -427,6 +430,42 @@ extern ObjectAddress TypeCreate(Oid newTypeOid,
 								int32 typNDims,
 								bool typeNotNull,
 								Oid typeCollation);
+
+/* Begin - ReqID:SRS-SQL-Collection */
+extern ObjectAddress TypeCreateInternal(Oid newTypeOid,
+								const char *typeName,
+								Oid typeNamespace,
+								Oid relationOid,
+								char relationKind,
+								Oid ownerId,
+								int16 internalSize,
+								char typeType,
+								char typeCategory,
+								bool typePreferred,
+								char typDelim,
+								Oid inputProcedure,
+								Oid outputProcedure,
+								Oid receiveProcedure,
+								Oid sendProcedure,
+								Oid typmodinProcedure,
+								Oid typmodoutProcedure,
+								Oid analyzeProcedure,
+								Oid subscriptProcedure,
+								Oid elementType,
+								bool isImplicitArray,
+								Oid arrayType,
+								Oid baseType,
+								const char *defaultTypeValue,
+								char *defaultTypeBin,
+								bool passedByValue,
+								char alignment,
+								char storage,
+								int32 typeMod,
+								int32 typNDims,
+								bool typeNotNull,
+								Oid typeCollation,
+								bool replace);
+/* End - ReqID:SRS-SQL-Collection */
 
 extern void GenerateTypeDependencies(HeapTuple typeTuple,
 									 Relation typeCatalog,

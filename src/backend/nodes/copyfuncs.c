@@ -4030,6 +4030,7 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 	COPY_NODE_FIELD(ora_partspec);
 	COPY_NODE_FIELD(ora_partsup);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	COPY_NODE_FIELD(nestdtableCols); /* ReqID:SRS-SQL-Collection */
 }
 
 static CreateStmt *
@@ -6066,6 +6067,44 @@ _copyPivotCall(const PivotCall *from)
 }
 /* End - ReqID:SRS-SQL-PIVOT */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * _copyCreateCollectionTypeStmt
+ */
+static CreateCollectionTypeStmt *
+_copyCreateCollectionTypeStmt(const CreateCollectionTypeStmt *from)
+{
+	CreateCollectionTypeStmt *newnode = makeNode(CreateCollectionTypeStmt);
+	COPY_SCALAR_FIELD(replace);
+	COPY_SCALAR_FIELD(editable);
+	COPY_SCALAR_FIELD(force);
+	COPY_NODE_FIELD(typeName);
+	COPY_SCALAR_FIELD(kind);
+	COPY_NODE_FIELD(elemType);
+	COPY_SCALAR_FIELD(limit);
+	COPY_SCALAR_FIELD(notNull);
+	COPY_SCALAR_FIELD(persistable);
+
+	return newnode;
+}
+
+/*
+ * _copyAlterCollectionTypeStmt
+ */
+static AlterCollectionTypeStmt *
+_copyAlterCollectionTypeStmt(const AlterCollectionTypeStmt *from)
+{
+	AlterCollectionTypeStmt *newnode = makeNode(AlterCollectionTypeStmt);
+	COPY_NODE_FIELD(typeName);
+	COPY_SCALAR_FIELD(subtype);
+	COPY_SCALAR_FIELD(limit);
+	COPY_NODE_FIELD(elemType);
+	COPY_SCALAR_FIELD(cascade);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-Collection */
+
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
  *
@@ -7220,6 +7259,14 @@ copyObjectImpl(const void *from)
 			retval = _copyPivotInItem(from);
 			break;
 		/* End - ReqID:SRS-SQL-PIVOT */
+		/* Begin - ReqID:SRS-SQL-Collection */
+		case T_CreateCollectionTypeStmt:
+			retval = _copyCreateCollectionTypeStmt(from);
+			break;
+		case T_AlterCollectionTypeStmt:
+			retval = _copyAlterCollectionTypeStmt(from);
+			break;
+		/* End - ReqID:SRS-SQL-Collection */
 		default:
 		{
 			/*

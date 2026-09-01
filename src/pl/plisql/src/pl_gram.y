@@ -182,7 +182,8 @@ static void check_package_oraparam_mode(PLiSQL_pkg_datum *pkg_datum, int locatio
 /* End - BUG#M0000376 */
 /* Begin - ReqID:SRS-PLSQL-Collection */
 static int read_collection_type_expr(int start_token, int startlocation,
-						StringInfo expr_ds, Oid *pkgoid, int *datum_dno);
+						StringInfo expr_ds, Oid *pkgoid, int *datum_dno,
+						bool in_execsql /* ReqID:SRS-SQL-Collection */);
 static bool is_collect_method(int token);
 static char *get_collect_method_name(int token);
 static int get_collect_method_tok(char *method_name);
@@ -1411,7 +1412,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 				| K_TYPE decl_varname K_IS K_TABLE K_OF decl_datatype decl_notnull K_INDEX K_BY decl_datatype ';'
 					{
 						plisql_build_ora_collection_type($2.name, $2.lineno, ASSOCIATIVE_ARRAYOID, TYPTYPE_ASSOCIATIVE_ARRAY,
-														$10, $6, 0, $7);
+														$10, $6, 0, $7, InvalidOid /* ReqID:SRS-SQL-Collection */);
 					}
 				| K_TYPE decl_varname K_IS K_TABLE K_OF decl_datatype decl_notnull ';'
 					{
@@ -1419,7 +1420,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 
 						keytype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
 						plisql_build_ora_collection_type($2.name, $2.lineno, NESTED_TABLEOID, TYPTYPE_NESTEDTABLE,
-														keytype, $6, 0, $7);
+														keytype, $6, 0, $7, InvalidOid /* ReqID:SRS-SQL-Collection */);
 					}
 				| K_TYPE decl_varname K_IS varray_or_varying_array '(' varray_limit ')' K_OF decl_datatype decl_notnull ';'
 					{
@@ -1427,7 +1428,7 @@ decl_statement	: decl_varname decl_const decl_datatype decl_collate decl_notnull
 
 						keytype = plisql_build_datatype(INT4OID, -1, InvalidOid, NULL);
 						plisql_build_ora_collection_type($2.name, $2.lineno, VARRAYOID, TYPTYPE_VARRAY,
-														keytype, $9, $6, $10);
+														keytype, $9, $6, $10, InvalidOid /* ReqID:SRS-SQL-Collection */);
 					}
 				/* End - ReqID:SRS-PLSQL-Collection */
 				;
@@ -3801,6 +3802,13 @@ stmt_execsql	: opt_stmt_label K_IMPORT
 									PLiSQL_expr 		*expr;
 									PLiSQL_stmt_perform *new;
 
+									/* Begin - ReqID:SRS-SQL-Collection */
+									if (collect_method_token == K_DELETE ||
+										collect_method_token == K_TRIM ||
+										collect_method_token == K_EXTEND)
+										check_assignable(datum, @1);
+									/* End - ReqID:SRS-SQL-Collection */
+
 									initStringInfo(&nameinfo);
 									i = 1;
 									foreach(lc, wdnames)
@@ -5333,7 +5341,8 @@ read_sql_construct(int until,
 
 			initStringInfo(&ds_tmp);
 			collect_start_loc = yylloc;
-			collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, &datum_dno);
+			collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, &datum_dno,
+														false /* ReqID:SRS-SQL-Collection */);
 			if (collect_end_loc > current_loc)
 			{
 				hascollect = true;
@@ -5358,7 +5367,8 @@ read_sql_construct(int until,
 			StringInfoData		ds_tmp;
 
 			initStringInfo(&ds_tmp);
-			tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, &datum_dno);
+			tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, &datum_dno,
+												false /* ReqID:SRS-SQL-Collection */);
 			if (tmp_loc > current_loc)
 			{
 				if (curAttr_start_loc >= collect_start_loc)
@@ -5797,7 +5807,8 @@ make_execsql_stmt(int firsttoken, int location)
 				int current_loc = yylloc;
 
 				collect_start_loc = yylloc;
-				collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_collect, &pkgoid, NULL);
+				collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_collect, &pkgoid, NULL,
+															true /* ReqID:SRS-SQL-Collection */);
 				if (collect_end_loc > current_loc)
 					have_collect = true;
 				else
@@ -5813,7 +5824,8 @@ make_execsql_stmt(int firsttoken, int location)
 				StringInfoData		ds_tmp;
 
 				initStringInfo(&ds_tmp);
-				tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL);
+				tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL,
+													true /* ReqID:SRS-SQL-Collection */);
 				if (tmp_loc > current_loc)
 				{
 					appendStringInfoSpaces(&ds_collect, 1);
@@ -7803,7 +7815,8 @@ build_call_expr(int firsttoken,const char *str, int location)
 
 					initStringInfo(&ds_tmp);
 					collect_start_loc = yylloc;
-					collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL);
+					collect_end_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL,
+																false /* ReqID:SRS-SQL-Collection */);
 					if (collect_end_loc > current_loc)
 					{
 						have_collect = true;
@@ -7829,7 +7842,8 @@ build_call_expr(int firsttoken,const char *str, int location)
 					StringInfoData		ds_tmp;
 
 					initStringInfo(&ds_tmp);
-					tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL);
+					tmp_loc = read_collection_type_expr(tok, yylloc, &ds_tmp, &pkgoid, NULL,
+														false /* ReqID:SRS-SQL-Collection */);
 					if (tmp_loc > current_loc)
 					{
 						/* Begin - ReqID:SRS-PLSQL-FORALL */
@@ -8272,7 +8286,8 @@ plisql_ns_lookup_exception(PLiSQL_nsitem *ns_cur,
  */
 static int
 read_collection_type_expr(int start_token, int startlocation,
-						StringInfo expr_ds, Oid *pkgoid, int *datum_dno)
+						StringInfo expr_ds, Oid *pkgoid, int *datum_dno,
+						bool in_execsql /* ReqID:SRS-SQL-Collection */)
 {
 	int tok = start_token;
 
@@ -8458,7 +8473,25 @@ read_collection_type_expr(int start_token, int startlocation,
 					}
 					else
 					{
-						appendBinaryStringInfo(expr_ds, var_ds.data, var_ds.len);
+						/* Begin - ReqID:SRS-SQL-Collection */
+						if (in_execsql &&
+							data_type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+							isSqlCollectionType(data_type->sqlcollectionoid))
+						{
+							/*
+							 * If a collection variable is referenced in DML,
+							 * call SYS.COLLECTION_TO_ARRAY to convert variable from
+							 * the CollectTypeData to ArrayType. Because the value of the
+							 * collection variable is CollectTypeData in plsql, but the
+							 * the value of the SQL collection is ArrayType.
+							 */
+							appendStringInfoString(expr_ds, "SYS.COLLECTION_TO_ARRAY(");
+							appendBinaryStringInfo(expr_ds, var_ds.data, var_ds.len);
+							appendStringInfo(expr_ds, ", ARRAY[NULL::%s])", data_type->typname);
+						}
+						else
+						/* End - ReqID:SRS-SQL-Collection */
+							appendBinaryStringInfo(expr_ds, var_ds.data, var_ds.len);
 						plisql_push_back_token(tok);
 						startlocation = yylloc;
 					}
@@ -8469,7 +8502,8 @@ read_collection_type_expr(int start_token, int startlocation,
 				/* It might be a collection constructor */
 				PLiSQL_datum_udt_type *type = (PLiSQL_datum_udt_type *)yyl_datum;
 
-				if (type->udt_type != NULL && type->udt_type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+				if (type->udt_type != NULL && type->udt_type->ttype == PLISQL_TTYPE_COLLECT_TYPE
+					&& !isSqlCollectionType(type->udt_type->sqlcollectionoid) /* ReqID:SRS-SQL-Collection */)
 				{
 					plisql_append_source_text(expr_ds, startlocation, yylloc);
 					read_collection_constructor((PLiSQL_ora_collection_type *)(type->udt_type),
@@ -8483,7 +8517,8 @@ read_collection_type_expr(int start_token, int startlocation,
 			/* It might be a collection constructor */
 			PLiSQL_type *type = (PLiSQL_type *)yylval.wdatum.collectype;
 
-			if (type != NULL && type->ttype == PLISQL_TTYPE_COLLECT_TYPE)
+			if (type != NULL && type->ttype == PLISQL_TTYPE_COLLECT_TYPE
+				&& !isSqlCollectionType(type->sqlcollectionoid) /* ReqID:SRS-SQL-Collection */)
 			{
 				plisql_append_source_text(expr_ds, startlocation, yylloc);
 				read_collection_constructor((PLiSQL_ora_collection_type *)type,

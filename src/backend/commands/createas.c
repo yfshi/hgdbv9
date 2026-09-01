@@ -161,6 +161,7 @@ create_ctas_internal(List *attrList, IntoClause *into)
 	create->tablespacename = into->tableSpaceName;
 	create->if_not_exists = false;
 	create->accessMethod = into->accessMethod;
+	create->nestdtableCols = NIL; /* ReqID:SRS-SQL-Collection */
 
 	/*
 	 * Create the relation.  (This will error out if there's an existing view,

@@ -36,6 +36,7 @@
 #include "catalog/pg_authid.h"
 #include "catalog/pg_cast.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_collection_type.h"	/* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_conversion.h"
 #include "catalog/pg_database.h"
@@ -436,6 +437,19 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		8
 	},
+	/* Begin - ReqID:SRS-SQL-Collection */
+	{CollectionTypeRelationId,	/* COLLECTIONTYPEOID */
+		CollectionPgTypeOidIndexId,
+		1,
+		{
+			Anum_pg_collection_type_pgtypoid,
+			0,
+			0,
+			0
+		},
+		8
+	},
+	/* End - ReqID:SRS-SQL-Collection */
 	{CollationRelationId,		/* COLLNAMEENCNSP */
 		CollationNameEncNspIndexId,
 		3,

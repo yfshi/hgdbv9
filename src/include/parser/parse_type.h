@@ -81,4 +81,8 @@ extern PGDLLIMPORT SynnameGettype_hook_type SynnameGettype_hook;
 /* Begin - SRS-MYSQL-HEX-LITERAL */
 extern Datum stringTypeDatum_mysql(Type tp, char *string, int32 atttypmod, int64 flag, bool *isnull);
 /* End - SRS-MYSQL-HEX-LITERAL */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+extern bool isSqlCollectionType(Oid pgtypeOid);
+/* End - ReqID:SRS-SQL-Collection */
 #endif							/* PARSE_TYPE_H */

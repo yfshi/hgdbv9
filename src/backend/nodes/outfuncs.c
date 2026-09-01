@@ -2963,6 +2963,7 @@ _outCreateStmtInfo(StringInfo str, const CreateStmt *node)
 	WRITE_NODE_FIELD(ora_partspec);
 	WRITE_NODE_FIELD(ora_partsup);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	WRITE_NODE_FIELD(nestdtableCols); /* ReqID:SRS-SQL-Collection */
 }
 
 static void

@@ -69,4 +69,9 @@ extern Oid DefineAnonymousEnum(TypeName* typname, Oid collation);
 extern void CreateEnumTypeForAlterTable(Form_pg_attribute attTup, char* relname, char *colname, TypeName* typname);
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+extern ObjectAddress DefineCollectionType(CreateCollectionTypeStmt *stmt);
+extern ObjectAddress AlterCollectionType(AlterCollectionTypeStmt *stmt);
+/* End - ReqID:SRS-SQL-Collection */
+
 #endif							/* TYPECMDS_H */

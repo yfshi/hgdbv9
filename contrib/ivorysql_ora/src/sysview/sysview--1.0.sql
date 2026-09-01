@@ -4542,6 +4542,8 @@ CREATE OR REPLACE VIEW SYS.DBA_DEPENDENCIES AS
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_constraint'::regclass THEN
@@ -4637,6 +4639,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -4716,6 +4720,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_constraint'::regclass THEN 'CONSTRAINT'
@@ -4747,6 +4753,8 @@ UNION ALL
             WHEN 'e' THEN 'ENUM'
             WHEN 'r' THEN 'RANGE TYPE'
             WHEN 'p' THEN 'PSEUDO TYPE'
+            WHEN 'n' THEN 'TYPE'
+			WHEN 'v' THEN 'TYPE'
             ELSE ty.typtype::text
         END::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -4795,6 +4803,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -4872,6 +4882,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             ELSE d.refclassid::regclass::text
@@ -4939,6 +4951,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -5010,6 +5024,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -5086,6 +5102,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE dep_type.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -5201,6 +5219,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -5274,6 +5294,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+					WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
@@ -5331,6 +5353,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
@@ -5385,6 +5409,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -5451,6 +5477,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
@@ -5834,6 +5862,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_object_type'::regclass THEN 'TYPE'
@@ -5911,6 +5941,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_object_type'::regclass THEN 'TYPE'
@@ -6007,6 +6039,8 @@ CREATE OR REPLACE VIEW SYS.ALL_DEPENDENCIES AS
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_constraint'::regclass THEN
@@ -6112,6 +6146,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -6193,6 +6229,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_constraint'::regclass THEN 'CONSTRAINT'
@@ -6234,6 +6272,8 @@ UNION ALL
             WHEN 'e' THEN 'ENUM'
             WHEN 'r' THEN 'RANGE TYPE'
             WHEN 'p' THEN 'PSEUDO TYPE'
+			WHEN 'n' THEN 'TYPE'
+			WHEN 'v' THEN 'TYPE'
             ELSE ty.typtype::text
         END::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -6282,6 +6322,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -6361,6 +6403,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             ELSE d.refclassid::regclass::text
@@ -6438,6 +6482,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -6510,6 +6556,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -6587,6 +6635,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE dep_type.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -6706,6 +6756,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -6780,6 +6832,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+					WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
@@ -6838,6 +6892,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
@@ -6893,6 +6949,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -6961,6 +7019,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
@@ -7362,6 +7422,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_object_type'::regclass THEN 'TYPE'
@@ -7439,6 +7501,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_object_type'::regclass THEN 'TYPE'
@@ -7534,6 +7598,8 @@ CREATE OR REPLACE VIEW SYS.USER_DEPENDENCIES AS
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_constraint'::regclass THEN
@@ -7630,6 +7696,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -7710,6 +7778,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_constraint'::regclass THEN 'CONSTRAINT'
@@ -7743,6 +7813,8 @@ UNION ALL
             WHEN 'e' THEN 'ENUM'
             WHEN 'r' THEN 'RANGE TYPE'
             WHEN 'p' THEN 'PSEUDO TYPE'
+			WHEN 'n' THEN 'TYPE'
+			WHEN 'v' THEN 'TYPE'
             ELSE ty.typtype::text
         END::varchar2(32) AS type,
         SYS.ORA_CASE_TRANS(CASE
@@ -7791,6 +7863,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -7869,6 +7943,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             ELSE d.refclassid::regclass::text
@@ -7938,6 +8014,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_namespace'::regclass THEN 'NAMESPACE'
@@ -8010,6 +8088,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -8084,6 +8164,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE dep_type.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -8201,6 +8283,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -8275,6 +8359,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+					WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
@@ -8333,6 +8419,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+					WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_opclass'::regclass THEN 'OPERATOR CLASS'
@@ -8388,6 +8476,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_extension'::regclass THEN 'EXTENSION'
@@ -8455,6 +8545,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty.typtype::text
                 END
             WHEN d.refclassid = 'pg_operator'::regclass THEN 'OPERATOR'
@@ -8845,6 +8937,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_object_type'::regclass THEN 'TYPE'
@@ -8922,6 +9016,8 @@ UNION ALL
                     WHEN 'e' THEN 'ENUM'
                     WHEN 'r' THEN 'RANGE TYPE'
                     WHEN 'p' THEN 'PSEUDO TYPE'
+                    WHEN 'n' THEN 'TYPE'
+					WHEN 'v' THEN 'TYPE'
                     ELSE ty_ref.typtype::text
                 END
             WHEN d.refclassid = 'pg_object_type'::regclass THEN 'TYPE'
@@ -11287,7 +11383,12 @@ CREATE OR REPLACE VIEW SYS.TYPES_INTERNAL AS
         SYS.ORA_CASE_TRANS(PG_GET_USERBYID(t.typowner)::VARCHAR2)::VARCHAR2(128) AS owner,
         SYS.ORA_CASE_TRANS(t.typname::varchar2)::varchar2(128) AS type_name,
         t.oid::text::raw(16) AS type_oid,
-        UPPER(t.typname)::varchar2(128) AS typecode,
+        CASE
+          WHEN t.typtype = 'v' OR t.typtype = 'n' THEN
+            'COLLECTION'
+          ELSE
+            UPPER(t.typname)::varchar2(128)
+        END AS typecode,
         CASE
             WHEN t.typtype = 'c' THEN (
                 SELECT count(a.attnum ORDER BY a.attnum)
@@ -14290,3 +14391,182 @@ SELECT
     0::NUMBER AS CON_ID
 FROM PG_CATALOG.PG_SETTINGS PS, PG_CATALOG.PG_GET_PARAMETER_MODIFY_STATUS(PS.NAME) AS PGPM(NAME, ISMODIFIED) ORDER BY PS.NAME;
 /* End - ReqID:SRS-SQL-SYSVIEW */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+CREATE OR REPLACE VIEW SYS.COLL_TYPES_INTERNAL AS
+  SELECT
+    t.oid AS coll_type_oid,
+    t.typowner AS owner_oid,
+    t.typnamespace AS type_namespace_oid,
+    SYS.ORA_CASE_TRANS(pg_get_userbyid(t.typowner)::VARCHAR2)::VARCHAR2(128) AS OWNER,
+	SYS.ORA_CASE_TRANS(t.typname::VARCHAR2)::VARCHAR2(128) AS TYPE_NAME,
+    CASE ct.kind
+        WHEN 'v' THEN 'VARYING ARRAY'
+        WHEN 'n' THEN 'TABLE'
+        ELSE NULL
+    END AS COLL_TYPE,
+    CASE WHEN ct.kind = 'v' THEN ct.climit ELSE NULL END AS UPPER_BOUND,
+    NULL::text AS ELEM_TYPE_MOD,
+    /*
+     * elem_type_owner is meaningful only when the element is itself a
+     * user-defined type; for built-in elements returns NULL.
+     */
+    CASE
+        WHEN et.typtype = 'n' OR et.typtype = 'v'
+        THEN pg_get_userbyid(et.typowner)
+        ELSE NULL
+    END AS ELEM_TYPE_OWNER,
+    CASE et.typname
+        WHEN 'oravarcharchar'    THEN 'VARCHAR2'
+        WHEN 'oravarcharbyte'    THEN 'VARCHAR2'
+		WHEN 'oracharchar'       THEN 'CHAR'
+		WHEN 'oracharbyte'       THEN 'CHAR'
+        WHEN 'bpchar'      THEN 'CHAR'
+        WHEN 'char'        THEN 'CHAR'
+        WHEN 'varchar'     THEN 'VARCHAR'
+        WHEN 'numeric'     THEN 'DECIMAL'
+        WHEN 'number'      THEN 'NUMBER'
+        WHEN 'int2'        THEN 'INTEGER'
+        WHEN 'int4'        THEN 'INTEGER'
+        WHEN 'int8'        THEN 'INTEGER'
+        WHEN 'float4'      THEN 'FLOAT'
+        WHEN 'float8'      THEN 'FLOAT'
+        WHEN 'text'          THEN 'TEXT'
+        WHEN 'date'          THEN 'DATE'
+		WHEN 'oradate'       THEN 'DATE'
+        WHEN 'timestamp'     THEN 'TIMESTAMP'
+		WHEN 'oratimestamp'  THEN 'TIMESTAMP'
+        WHEN 'timestamptz'   THEN 'TIMESTAMP WITH TZ'
+		WHEN 'oratimestamptz' THEN 'TIMESTAMP WITH TZ'
+		WHEN 'oratimestampltz' THEN 'TIMESTAMP WITH TZ'
+		WHEN 'yminterval'  THEN 'INTERVAL YEAR TO MONTH'
+		WHEN 'dsinterval'  THEN 'INTERVAL DAY TO SECOND'
+		WHEN 'raw'         THEN 'RAW'
+        ELSE et.typname
+    END AS ELEM_TYPE_NAME,
+    /*
+     * length is the character length of CHAR/VARCHAR.
+     * PostgreSQL stores typmod = (length + VARHDRSZ); VARHDRSZ == 4.
+     */
+    CASE
+        WHEN et.typname IN ('varchar', 'char', 'bpchar', 'oravarcharchar',
+		                    'oravarcharbyte', 'oracharchar','oracharbyte', 'raw')
+             AND ct.elemtypmod > 4
+        THEN ct.elemtypmod - 4
+        ELSE NULL
+    END AS LENGTH,
+
+    CASE
+        WHEN et.typname IN ('numeric', 'number')
+             AND ct.elemtypmod > 4
+        THEN (ct.elemtypmod - 4) >> 16
+		WHEN et.typname IN ('yminterval', 'dsinterval')
+		THEN 2
+        ELSE NULL
+    END AS PRECISION,
+
+    CASE
+        WHEN et.typname IN ('numeric', 'number')
+             AND ct.elemtypmod > 4
+        THEN (ct.elemtypmod - 4) & 65535
+		WHEN et.typname IN ('timestamptz', 'oratimestamptz', 'oratimestampltz', 'dsinterval')
+		THEN 6
+        ELSE NULL
+    END AS SCALE,
+
+    CASE
+        WHEN et.typname IN ('varchar', 'char', 'bpchar', 'oravarcharchar',
+		                    'oravarcharbyte', 'oracharchar','oracharbyte')
+            THEN 'CHAR_CS'
+        ELSE NULL
+    END AS CHARACTER_SET_NAME,
+
+    NULL::text AS ELEM_STORAGE,    -- obsolete
+    NULL::text AS NULLS_STORED,    -- obsolete
+    CASE
+        WHEN et.typname IN ('varchar', 'char', 'bpchar',
+							'oravarcharchar', 'oracharchar')
+            THEN 'C'
+        WHEN et.typname IN ('bytea', 'oravarcharbyte', 'oracharbyte')
+            THEN 'B'
+        ELSE 'B'
+    END AS CHAR_USED
+  FROM pg_type t
+  JOIN pg_collection_type ct ON ct.pgtypoid = t.oid
+  JOIN pg_type et ON et.oid = ct.elemtype
+  WHERE t.typtype = 'v' OR t.typtype = 'n'
+  ORDER BY coll_type_oid;
+
+/*
+ * DBA_COLL_TYPES - all named collection types in the database.
+ */
+CREATE OR REPLACE VIEW SYS.DBA_COLL_TYPES AS
+  SELECT
+    OWNER,
+    TYPE_NAME,
+    COLL_TYPE,
+    UPPER_BOUND,
+    ELEM_TYPE_MOD,
+    ELEM_TYPE_OWNER,
+    ELEM_TYPE_NAME,
+    LENGTH,
+    PRECISION,
+    SCALE,
+    CHARACTER_SET_NAME,
+    ELEM_STORAGE,
+    NULLS_STORED,
+    CHAR_USED
+  FROM SYS.COLL_TYPES_INTERNAL;
+
+GRANT SELECT ON SYS.DBA_COLL_TYPES TO PUBLIC;
+
+/*
+ * ALL_COLL_TYPES - all named collection types accessible to the current user.
+ */
+CREATE OR REPLACE VIEW SYS.ALL_COLL_TYPES AS
+  SELECT
+    OWNER,
+    TYPE_NAME,
+    COLL_TYPE,
+    UPPER_BOUND,
+    ELEM_TYPE_MOD,
+    ELEM_TYPE_OWNER,
+    ELEM_TYPE_NAME,
+    LENGTH,
+    PRECISION,
+    SCALE,
+    CHARACTER_SET_NAME,
+    ELEM_STORAGE,
+    NULLS_STORED,
+    CHAR_USED
+  FROM SYS.COLL_TYPES_INTERNAL
+  WHERE has_type_privilege(coll_type_oid, 'USAGE')
+  ORDER BY coll_type_oid;
+
+GRANT SELECT ON SYS.ALL_COLL_TYPES TO PUBLIC;
+
+/*
+ * USER_COLL_TYPES - all named collection types owned by the current user.
+ */
+CREATE OR REPLACE VIEW SYS.USER_COLL_TYPES AS
+  SELECT
+    OWNER,
+    TYPE_NAME,
+    COLL_TYPE,
+    UPPER_BOUND,
+    ELEM_TYPE_MOD,
+    ELEM_TYPE_OWNER,
+    ELEM_TYPE_NAME,
+    LENGTH,
+    PRECISION,
+    SCALE,
+    CHARACTER_SET_NAME,
+    ELEM_STORAGE,
+    NULLS_STORED,
+    CHAR_USED
+  FROM SYS.COLL_TYPES_INTERNAL
+  WHERE owner_oid::regrole = CURRENT_USER::regrole
+  ORDER BY coll_type_oid;
+
+GRANT SELECT ON SYS.USER_COLL_TYPES TO PUBLIC;
+/* End - ReqID:SRS-SQL-Collection */

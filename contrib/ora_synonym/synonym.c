@@ -774,6 +774,7 @@ LookupTypeNameFromSynonym(ParseState *pstate, const TypeName *typeName, int32 *t
 		if (tup == NULL)
 		{
 			table_close(pg_synonym_rel, NoLock);
+			ReleaseSysCache(tuple);
 			return NULL;
 		}
 

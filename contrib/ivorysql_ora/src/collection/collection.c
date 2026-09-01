@@ -20,6 +20,7 @@
 #include <ctype.h>
 #include "../tstl2cl/include/c_map.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_collection_type.h"	/* ReqID:SRS-SQL-Collection */
 #include "executor/execExpr.h"
 #include "executor/spi.h"
 #include <limits.h>
@@ -114,6 +115,11 @@ PG_FUNCTION_INFO_V1(collection_extend_ni);
 PG_FUNCTION_INFO_V1(collection_constructor);
 PG_FUNCTION_INFO_V1(nested_table_eq);
 PG_FUNCTION_INFO_V1(nested_table_ne);
+/* Begin - ReqID:SRS-SQL-Collection */
+PG_FUNCTION_INFO_V1(sql_collection_constructor);
+PG_FUNCTION_INFO_V1(collection_to_array);
+PG_FUNCTION_INFO_V1(array_to_collection);
+/* End - ReqID:SRS-SQL-Collection */
 
 /*
  * init collection function which will be used in plisql
@@ -153,6 +159,9 @@ collection_init_internal(void)
 	collection_funcs.GetCollectAllValues = get_collect_all_values;
 	collection_funcs.GetCollectAllKeyValues = get_collect_all_key_values;
 	/* End - ReqID:SRS-PLSQL-FORALL */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	collection_funcs.GetSqlCollectypeOid = get_sqlcollectype_oid;
+	/* End - ReqID:SRS-SQL-Collection */
 
 	collection_funcs.loadstate = LOADED;
 }
@@ -242,6 +251,7 @@ create_collectype_data(CollectTypeInfo *type, int32 limit_idx, int max_index)
 Datum
 create_collecttype_info(const char *typname,
 				   Oid typoid,
+				   Oid sqlcollectionoid, /* ReqID:SRS-SQL-Collection */
 				   int32 typmod,
 				   char typtype,
 				   bool typbyval,
@@ -255,6 +265,7 @@ create_collecttype_info(const char *typname,
 
 	collect->typname = pstrdup(typname);
 	collect->typoid = typoid;
+	collect->sqlcollectionoid = sqlcollectionoid; /* ReqID:SRS-SQL-Collection */
 	collect->typmod = typmod;
 	collect->typtype = typtype;
 	collect->typbyval = typbyval;
@@ -293,6 +304,7 @@ pl_type_to_collectinfo(PLiSQL_type *type)
 
 	collectinfo = create_collecttype_info(type->typname,
 								type->typoid,
+								type->sqlcollectionoid, /* ReqID:SRS-SQL-Collection */
 								type->atttypmod,
 								type->typtype,
 								type->typbyval,
@@ -463,6 +475,7 @@ copy_collectype_info(CollectTypeInfo *src_type)
 
 	dst_type->typname = pstrdup(src_type->typname);
 	dst_type->typoid = src_type->typoid;
+	dst_type->sqlcollectionoid = src_type->sqlcollectionoid; /* ReqID:SRS-SQL-Collection */
 	dst_type->typmod = src_type->typmod;
 	dst_type->typtype = src_type->typtype;
 	dst_type->typbyval = src_type->typbyval;
@@ -1625,7 +1638,7 @@ collection_constructor(PG_FUNCTION_ARGS)
 	CollectTypeData		*collect_data;
 	CollectTypeInfo	*collectype;
 	MemoryContext	old;
-	ArrayType		*array = (ArrayType*) PG_GETARG_POINTER(1);
+	ArrayType		*array = DatumGetArrayTypeP(PG_GETARG_POINTER(1)); /* ReqID:SRS-SQL-Collection */
 	int32			array_len = 0;
 
 	/* the first argument is the collect type */
@@ -1675,6 +1688,14 @@ collection_constructor(PG_FUNCTION_ARGS)
 				datatypoid == ORARECORDOID ||
 				get_typtype(datatypoid) == TYPTYPE_COMPOSITE))
 				ud_val = rowDatumCopy(tmp, isnull);
+			/* Begin - ReqID:SRS-SQL-Collection */
+			else if (isSqlCollectionType(array->elemtype) &&
+				IS_COLLECTOID(datatypoid) &&
+				array->elemtype == collectype->typdatatype->sqlcollectionoid)
+				ud_val = DirectFunctionCall2(collection_constructor,
+											PointerGetDatum(collectype->typdatatype),
+											tmp);
+			/* End - ReqID:SRS-SQL-Collection */
 			else
 				ud_val = doCastValue(tmp, array->elemtype, datatypoid, datatypemod);
 		}
@@ -4124,3 +4145,143 @@ check_extend(CollectTypeData *collect_data, int extend_num)
 	}
 }
 /* End - BUG#Z7715 */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * sql_collection_constructor
+ * the SQL collection constructor, returns ArrayType
+ */
+Datum
+sql_collection_constructor(PG_FUNCTION_ARGS)
+{
+	ArrayType	*array = (ArrayType *) PG_GETARG_POINTER(0);
+
+	PG_RETURN_POINTER(array);
+}
+
+/*
+ * collection_to_array
+ * convert CollectTypeData to ArrayType
+ */
+Datum
+collection_to_array(PG_FUNCTION_ARGS)
+{
+	CollectTypeData 	*collect_value = (CollectTypeData *)PointerGetDatum(PG_GETARG_DATUM(0));
+	ArrayType	*array = NULL;
+	CollectTypeInfo *type;
+	Datum		*datum;
+	int			i = 0;
+	int			nelems = 0;
+	Oid 		elemtypoid;
+	int 		elemlen;
+	bool 		elembyval;
+	char		elemtyptype;
+
+	CHECK_COLLECTION_IS_NULL(collect_value);
+	type = collect_value->type;
+	elemtypoid = type->typdatatype->typoid;
+	if (IS_COLLECTOID(elemtypoid))
+		elemtypoid = type->typdatatype->sqlcollectionoid;
+
+	elemlen = type->typdatatype->typlen;
+	elembyval = type->typdatatype->typbyval;
+	elemtyptype = type->typdatatype->typtype;
+
+	if (!IS_VARRAY(collect_value))
+	{
+		c_map			*map;
+		c_iterator		end;
+		c_iterator		iter;
+
+		map = (c_map *) DatumGetPointer(collect_value->values);
+
+		if (c_map_empty(map))
+			PG_RETURN_POINTER(construct_empty_array(elemtypoid));
+
+		iter = c_map_begin(map);
+		end = c_map_end(map);
+		nelems = c_map_size(map);
+
+		datum = (Datum *)palloc0(sizeof(Datum) * nelems);
+
+		/* loop each elements of the first nested table */
+		for(; !ITER_EQUAL(iter, end); ITER_INC(iter))
+		{
+			CollecTypeValue *elem_val = (CollecTypeValue *) PointerGetDatum(GET_COLLECT_ELEMENT_VALUE(iter));
+
+			if (elem_val != NULL && !elem_val->isnull)
+			{
+				if (IS_PLSQL_ASSOCIATIVE_ARRAY(elemtyptype))
+					ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_OBJECT),
+							errmsg("unsupported type")));
+
+				if (IS_PLSQL_NESTED_TABLE(elemtyptype) || IS_PLSQL_VARRAY(elemtyptype))
+					datum[i] = DirectFunctionCall1(collection_to_array, elem_val->value);
+				else
+					datum[i] = datumCopy(elem_val->value, elembyval,
+									elemlen);
+				i++;
+			}
+		}
+	}
+	else
+	{
+		CollectVarrayValue	*varray = (CollectVarrayValue*) DatumGetPointer(collect_value->values);
+
+		if (varray == NULL || varray->current_used == 0)
+			PG_RETURN_POINTER(construct_empty_array(elemtypoid));
+
+		nelems = varray->current_used;
+		datum = (Datum *)palloc0(sizeof(Datum) * nelems);
+
+		for (i = 0; i < varray->current_used; i++)
+		{
+			CollecTypeValue *elem_val = (CollecTypeValue *) DatumGetPointer(varray->value[i]);
+
+			if (elem_val != NULL && !elem_val->isnull)
+			{
+				if (IS_PLSQL_ASSOCIATIVE_ARRAY(elemtyptype))
+					ereport(ERROR,
+						(errcode(ERRCODE_UNDEFINED_OBJECT),
+							errmsg("unsupported type")));
+
+				if (IS_PLSQL_NESTED_TABLE(elemtyptype) || IS_PLSQL_VARRAY(elemtyptype))
+					datum[i] = DirectFunctionCall1(collection_to_array, elem_val->value);
+				else
+					datum[i] = datumCopy(elem_val->value, elembyval,
+									elemlen);
+			}
+		}
+	}
+
+	array = construct_array(datum, nelems, elemtypoid, elemlen, elembyval, 'i');
+	pfree(datum);
+
+	PG_RETURN_POINTER(array);
+}
+
+/*
+ * array_to_collection
+ * convert ArrayType to CollectTypeData
+ */
+Datum
+array_to_collection(PG_FUNCTION_ARGS)
+{
+	PG_RETURN_DATUM(DirectFunctionCall2(collection_constructor,
+										PG_GETARG_DATUM(0),
+										PG_GETARG_DATUM(1)));
+}
+
+/*
+ * get the collection type oid that in pg_type
+ */
+Oid
+get_sqlcollectype_oid(Datum collect_datum)
+{
+	CollectType 		collect_data;
+
+	collect_data = (CollectType)DatumGetPointer(collect_datum);
+	return collect_data->type->sqlcollectionoid;
+}
+/* End - ReqID:SRS-SQL-Collection */

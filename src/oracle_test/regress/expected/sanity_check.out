@@ -122,6 +122,7 @@ pg_authid|t
 pg_cast|t
 pg_class|t
 pg_collation|t
+pg_collection_type|t
 pg_constraint|t
 pg_conversion|t
 pg_database|t

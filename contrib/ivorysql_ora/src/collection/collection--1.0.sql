@@ -286,3 +286,29 @@ RETURNS varray
 AS 'MODULE_PATHNAME','collection_extend_ni'
 LANGUAGE C
 IMMUTABLE;
+
+/* Begin - ReqID:SRS-SQL-Collection */
+CREATE FUNCTION sys.sql_collection_constructor(anyarray)
+RETURNS anyarray
+AS 'MODULE_PATHNAME','sql_collection_constructor'
+LANGUAGE C
+IMMUTABLE;
+
+CREATE FUNCTION sys.collection_to_array(nested_table, anyarray)
+RETURNS anyarray
+AS 'MODULE_PATHNAME', 'collection_to_array'
+LANGUAGE C
+IMMUTABLE;
+
+CREATE FUNCTION sys.collection_to_array(varray, anyarray)
+RETURNS anyarray
+AS 'MODULE_PATHNAME', 'collection_to_array'
+LANGUAGE C
+IMMUTABLE;
+
+CREATE FUNCTION sys.array_to_collection(anyelement, anyarray)
+RETURNS anyelement
+AS 'MODULE_PATHNAME', 'array_to_collection'
+LANGUAGE C
+IMMUTABLE;
+/* End - ReqID:SRS-SQL-Collection */

@@ -194,7 +194,8 @@ extern PLiSQL_type * plisql_build_ora_collection_type(char *refname, int lineno,
 							  PLiSQL_type *keytype,
 							  PLiSQL_type *valuetype,
 							  int varraylimit,
-							  bool notnull);
+							  bool notnull,
+							  Oid sqlcollectionoid /* ReqID:SRS-SQL-Collection */);
 extern Datum plisql_type_to_collectinfo(PLiSQL_type *type);
 extern void exec_check_assign_collect_value(PLiSQL_var *target,
 									Datum value,
@@ -207,5 +208,9 @@ extern PLwdatum * plisql_get_ora_record_field(PLiSQL_datum *datum,
 					int nth,
 					int loc);
 /* End - ReqID:SRS-PLSQL-Collection */
+/* Begin - ReqID:SRS-SQL-Collection */
+Datum exec_array_to_collectdata(Datum value, PLiSQL_type *datatype);
+Datum exec_collection_to_array(Datum value, Oid typoid, Oid sqlcollectionoid);
+/* End - ReqID:SRS-SQL-Collection */
 #endif
 

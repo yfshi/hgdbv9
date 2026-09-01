@@ -321,3 +321,6 @@ test: ora_dynamic_view
 test: ora_pivot_unpivot
 #/*End - ReqID:SRS-SQL-PIVOT*/
 
+#/* Begin - ReqID:SRS-SQL-Collection */
+test: ora_collection_type
+#/* End - ReqID:SRS-SQL-Collection */

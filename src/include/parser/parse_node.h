@@ -174,6 +174,9 @@ extern PGDLLIMPORT SynnameGetPkgoid_recursive_hook_type SynnameGetPkgoid_recursi
 extern PGDLLIMPORT SynIdGetname_hook_type SynIdGetname_hook;
 /* End - ReqID:SRS-SQL-SYNONYM */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+typedef Oid (*GetCollecTypeValueTypeInfoHook)(ParseState *pstate, Node *basenode);
+/* End - ReqID:SRS-SQL-Collection */
 
 /*
  * State information used during parse analysis
@@ -425,6 +428,9 @@ struct ParseState
 	/* Begin - OA#00002227 */
 	char	*p_pkgname;		/* transform package function which has default value */
 	/* End - OA#00002227*/
+	/* Begin - ReqID:SRS-SQL-Collection */
+	GetCollecTypeValueTypeInfoHook p_collectype_valuetype_hook;
+	/* End - ReqID:SRS-SQL-Collection */
 };
 
 /*

@@ -231,6 +231,80 @@ TypeCreate(Oid newTypeOid,
 		   bool typeNotNull,
 		   Oid typeCollation)
 {
+	/* Begin - ReqID:SRS-SQL-Collection */
+	return TypeCreateInternal(newTypeOid,
+						   typeName,
+						   typeNamespace,
+						   relationOid,		/* only for relation rowtypes */
+						   relationKind,	/* ditto */
+						   ownerId,
+						   internalSize,
+						   typeType,
+						   typeCategory,
+						   typePreferred,
+						   typDelim,
+						   inputProcedure,
+						   outputProcedure,
+						   receiveProcedure,
+						   sendProcedure,
+						   typmodinProcedure,
+						   typmodoutProcedure,
+						   analyzeProcedure,
+						   subscriptProcedure,
+						   elementType,
+						   isImplicitArray,
+						   arrayType,
+						   baseType,
+						   defaultTypeValue,	/* human-readable rep */
+						   defaultTypeBin,	/* cooked rep */
+						   passedByValue,
+						   alignment,
+						   storage,
+						   typeMod,
+						   typNDims,		/* Array dimensions for baseType */
+						   typeNotNull,
+						   typeCollation,
+						   false);
+	/* End - ReqID:SRS-SQL-Collection */
+}
+
+/* Begin - ReqID:SRS-SQL-Collection */
+ObjectAddress
+TypeCreateInternal(Oid newTypeOid,
+				   const char *typeName,
+				   Oid typeNamespace,
+				   Oid relationOid, 	/* only for relation rowtypes */
+				   char relationKind,	/* ditto */
+				   Oid ownerId,
+				   int16 internalSize,
+				   char typeType,
+				   char typeCategory,
+				   bool typePreferred,
+				   char typDelim,
+				   Oid inputProcedure,
+				   Oid outputProcedure,
+				   Oid receiveProcedure,
+				   Oid sendProcedure,
+				   Oid typmodinProcedure,
+				   Oid typmodoutProcedure,
+				   Oid analyzeProcedure,
+				   Oid subscriptProcedure,
+				   Oid elementType,
+				   bool isImplicitArray,
+				   Oid arrayType,
+				   Oid baseType,
+				   const char *defaultTypeValue,	/* human-readable rep */
+				   char *defaultTypeBin,	/* cooked rep */
+				   bool passedByValue,
+				   char alignment,
+				   char storage,
+				   int32 typeMod,
+				   int32 typNDims,		/* Array dimensions for baseType */
+				   bool typeNotNull,
+				   Oid typeCollation,
+				   bool replace)
+{
+/* End - ReqID:SRS-SQL-Collection */
 	Relation	pg_type_desc;
 	Oid			typeObjectId;
 	bool		isDependentType;
@@ -433,7 +507,7 @@ TypeCreate(Oid newTypeOid,
 		 * check that the type is not already defined.  It may exist as a
 		 * shell type, however.
 		 */
-		if (typform->typisdefined)
+		if (typform->typisdefined && !replace /* ReqID:SRS-SQL-Collection */)
 			ereport(ERROR,
 					(errcode(ERRCODE_DUPLICATE_OBJECT),
 					 errmsg("type \"%s\" already exists", typeName)));

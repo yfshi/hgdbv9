@@ -5654,7 +5654,8 @@ _printTocEntry(ArchiveHandle *AH, TocEntry *te, bool isData)
 			/* Same for object types and triggers. */
 			if (database_mode != DB_MYSQL && (strcmp(te->desc, "PACKAGE") == 0  ||
 				 strcmp(te->desc, "SYNONYM") == 0 || strcmp(te->desc, "TRIGGER") == 0 ||	/* ReqID:SRS-SQL-SYNONYM */
-				 strcmp(te->desc, "OBJECT TYPE") == 0 || strcmp(te->desc, "OBJECT TYPE BODY") == 0)	/* ReqID:SRS-SQL-CustomObject */
+				 strcmp(te->desc, "OBJECT TYPE") == 0 || strcmp(te->desc, "OBJECT TYPE BODY") == 0 ||	/* ReqID:SRS-SQL-CustomObject */
+				  strcmp(te->desc, "TYPE") == 0 /* ReqID:SRS-SQL-Collection */)
 											&& compatible_mode != ORA_MODE)
 			{
 				ahprintf(AH, "set ivorysql.compatible_mode to oracle;\n");

@@ -304,6 +304,10 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		/* Begin - ReqID:SRS-SQL-TRIGGER */
 		case T_AlterOraTrigStmt:
 		/* End - ReqID:SRS-SQL-TRIGGER */
+		/* Begin - ReqID:SRS-SQL-Collection */
+		case T_CreateCollectionTypeStmt:
+		case T_AlterCollectionTypeStmt:
+		/* End - ReqID:SRS-SQL-Collection */
 			{
 				/* DDL is not read-only, and neither is TRUNCATE. */
 				return COMMAND_IS_NOT_READ_ONLY;
@@ -2252,6 +2256,14 @@ ProcessUtilitySlow(ParseState *pstate,
 				}
 				break;
 			/* End - BUG#Z6475 */
+			/* Begin - ReqID:SRS-SQL-Collection */
+			case T_CreateCollectionTypeStmt:
+				address = DefineCollectionType((CreateCollectionTypeStmt *) parsetree);
+				break;
+			case T_AlterCollectionTypeStmt:
+				address = AlterCollectionType((AlterCollectionTypeStmt *) parsetree);
+				break;
+			/* End - ReqID:SRS-SQL-Collection */
 
 			default:
 				elog(ERROR, "unrecognized node type: %d",
@@ -3753,6 +3765,14 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_COLUMN_REDACTION_POLICY;
 			break;
 		/* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
+		/* Begin - ReqID:SRS-SQL-Collection */
+		case T_CreateCollectionTypeStmt:
+			tag = CMDTAG_CREATE_TYPE;
+			break;
+		case T_AlterCollectionTypeStmt:
+			tag = CMDTAG_ALTER_TYPE;
+			break;
+		/* End - ReqID:SRS-SQL-Collection */
 		default:
 			elog(WARNING, "unrecognized node type: %d",
 				 (int) nodeTag(parsetree));
@@ -4322,6 +4342,12 @@ GetCommandLogLevel(Node *parsetree)
 			lev = LOGSTMT_DDL;
 			break;
 		/* End - Bug#Z7636 */
+		/* Begin - ReqID:SRS-SQL-Collection */
+		case T_CreateCollectionTypeStmt:
+		case T_AlterCollectionTypeStmt:
+			lev = LOGSTMT_DDL;
+			break;
+		/* End - ReqID:SRS-SQL-Collection */
 
 		default:
 			elog(WARNING, "unrecognized node type: %d",

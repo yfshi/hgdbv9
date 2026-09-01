@@ -279,6 +279,7 @@ DefineSequence(ParseState *pstate, CreateSeqStmt *seq)
 	stmt->tablespacename = NULL;
 	stmt->if_not_exists = seq->if_not_exists;
 	stmt->with_rowid_seq = seq->with_rowid;
+	stmt->nestdtableCols = NIL; /* ReqID:SRS-SQL-Collection */
 
 	address = DefineRelation(stmt, RELKIND_SEQUENCE, seq->ownerId, NULL, NULL);
 	seqoid = address.objectId;

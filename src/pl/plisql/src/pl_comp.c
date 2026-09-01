@@ -22,6 +22,7 @@
 #include "miscadmin.h" /* BUG#M0000227 */
 #include "access/htup_details.h"
 #include "catalog/namespace.h"
+#include "catalog/pg_collection_type.h"	/* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "funcapi.h"
@@ -176,6 +177,9 @@ static SubscriptingRef *transformCollectionSubscripts(ParseState *pstate,
 							 Node *rhs,
 							 int location);
 /* End - ReqID:SRS-PLSQL-Collection */
+/* Begin - ReqID:SRS-SQL-Collection */
+static Oid plisql_collectype_valuetype(ParseState *pstate, Node *basenode);
+/* End - ReqID:SRS-SQL-Collection */
 
 /* ----------
  * plisql_compile		Make an execution tree for a PL/iSQL function.
@@ -2167,6 +2171,9 @@ plisql_parser_setup(struct ParseState *pstate, PLiSQL_expr *expr)
 	/* Begin - ReqID:SRS-PLSQL-Collection */
 	pstate->p_indirection_hook = plisql_transform_indirection;
 	/* End - ReqID:SRS-PLSQL-Collection */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	pstate->p_collectype_valuetype_hook	 = plisql_collectype_valuetype;
+	/* End - ReqID:SRS-SQL-Collection */
 	/* no need to use p_coerce_param_hook */
 	pstate->p_ref_hook_state = (void *) expr;
 }
@@ -4489,8 +4496,19 @@ build_row_from_vars(PLiSQL_variable **vars, int numvars)
 		{
 			case PLISQL_DTYPE_VAR:
 			case PLISQL_DTYPE_PROMISE:
-				typoid = ((PLiSQL_var *) var)->datatype->typoid;
-				typmod = ((PLiSQL_var *) var)->datatype->atttypmod;
+				/* Begin - ReqID:SRS-SQL-Collection */
+				if (((PLiSQL_var *) var)->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+					isSqlCollectionType(((PLiSQL_var *) var)->datatype->sqlcollectionoid))
+				{
+					typoid = ((PLiSQL_var *) var)->datatype->sqlcollectionoid;
+					typmod = -1;
+				}
+				else
+				{
+				/* End - ReqID:SRS-SQL-Collection */
+					typoid = ((PLiSQL_var *) var)->datatype->typoid;
+					typmod = ((PLiSQL_var *) var)->datatype->atttypmod;
+				}
 				typcoll = ((PLiSQL_var *) var)->datatype->collation;
 				break;
 
@@ -4643,6 +4661,50 @@ build_datatype(HeapTuple typeTup, int32 typmod,
 				 errmsg("type \"%s\" is only a shell",
 						NameStr(typeStruct->typname))));
 
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (typeStruct->typtype == TYPTYPE_NESTEDTABLE ||
+		typeStruct->typtype == TYPTYPE_VARRAY)
+	{
+		PLiSQL_type			*keytype;
+		PLiSQL_type			*valuetype;
+		Oid					typOid;
+		HeapTuple			collectTypeTup;
+		Form_pg_collection_type colelctTypeStruct;
+
+		collectTypeTup = SearchSysCache1(COLLECTIONPGTYPEOID, ObjectIdGetDatum(typeStruct->oid));
+		if (!HeapTupleIsValid(collectTypeTup))
+			elog(ERROR, "cache lookup failed for type %u", typeStruct->oid);
+
+		colelctTypeStruct = (Form_pg_collection_type) GETSTRUCT(collectTypeTup);
+
+		keytype = plisql_build_datatype(INT4OID,
+									-1, collation,
+									NULL);
+
+		valuetype = plisql_build_datatype(colelctTypeStruct->elemtype,
+										colelctTypeStruct->elemtypmod,
+										collation,
+										NULL);
+		if (typeStruct->typtype == TYPTYPE_NESTEDTABLE)
+			typOid = NESTED_TABLEOID;
+		else
+			typOid = VARRAYOID;
+
+		typ = ((PLiSQL_datum_udt_type *)plisql_build_ora_collection_type(pstrdup(NameStr(typeStruct->typname)),
+													-1,
+													typOid,
+													typeStruct->typtype,
+													keytype,
+													valuetype,
+													colelctTypeStruct->climit,
+													typeStruct->typnotnull,
+													typeStruct->oid))->udt_type;
+
+		ReleaseSysCache(collectTypeTup);
+		return typ;
+	}	
+	/* End - ReqID:SRS-SQL-Collection */
+
 	typ = (PLiSQL_type *) palloc(sizeof(PLiSQL_type));
 
 	typ->typname = pstrdup(NameStr(typeStruct->typname));
@@ -4751,6 +4813,8 @@ build_datatype(HeapTuple typeTup, int32 typmod,
 	else
 		typ->pctrowtypname = NULL;
 	/* End - ReqID:SRS-PLSQL-TYPE */
+
+	typ->sqlcollectionoid = InvalidOid; /* ReqID:SRS-SQL-Collection */
 
 	return typ;
 }
@@ -6299,3 +6363,38 @@ get_row_field_type(PLiSQL_type *data_type, char *name)
 	return type;
 }
 /* End - ReqID:SRS-PLSQL-Collection */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * plisql_collectype_valuetype
+ * get the value datatype->sqlcollectionoid
+ */
+static Oid
+plisql_collectype_valuetype(ParseState *pstate, Node *basenode)
+{
+	PLiSQL_type			*datatype;
+
+	if (basenode->type != T_Param && basenode->type != T_SubscriptingRef)
+		return InvalidOid;
+
+	if (basenode->type == T_Param)
+		datatype = (PLiSQL_type *)(((Param *) basenode)->type);
+	else if (basenode->type == T_SubscriptingRef)
+	{
+		PLiSQL_execstate	*estate;
+		PLiSQL_expr 		*expr = (PLiSQL_expr *) pstate->p_ref_hook_state;
+		int32				typmod;
+
+		estate = expr->func->cur_estate;
+		typmod = ((SubscriptingRef *)basenode)->reftypmod;
+		datatype = ((PLiSQL_datum_udt_type *)(estate->datums[typmod]))->udt_type;
+	}
+
+	if (datatype == NULL)
+		return InvalidOid;
+	if (datatype->ttype != PLISQL_TTYPE_COLLECT_TYPE)
+		return InvalidOid;
+
+	return datatype->sqlcollectionoid;
+}
+/* End - ReqID:SRS-SQL-Collection */

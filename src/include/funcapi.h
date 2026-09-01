@@ -306,6 +306,7 @@ typedef struct
 	Datum (*InitCollectypeVar) (Datum udttype_info);
 	Datum (*CreateCollectInfo)(const char *typname,
 				   Oid typoid,
+				   Oid sqlcollectionoid, /* ReqID:SRS-SQL-Collection */
 				   int32 typmod,
 				   char typtype,
 				   bool typbyval,
@@ -347,6 +348,9 @@ typedef struct
 	List* (*GetCollectAllKeyValues)(Datum collect_value, bool has_between_and,
 						int lower_bound, int upper_bound);
 	/* End - ReqID:SRS-PLSQL-FORALL */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	Oid (*GetSqlCollectypeOid)(Datum value);
+	/* End - ReqID:SRS-SQL-Collection */
 
 	UdtExtensionLoadState loadstate;	/* collection type functions loading state */
 } collection_funcs_call;

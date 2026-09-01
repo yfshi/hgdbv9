@@ -65,6 +65,11 @@ typedef struct CollectTypeInfo
 {
 	char 					*typname;
 	Oid						typoid;
+	/* Begin - ReqID:SRS-SQL-Collection */
+	Oid 					sqlcollectionoid;	/* OID of the collection type
+												 * created by CREATE TYPE statement
+												 */
+	/* End - ReqID:SRS-SQL-Collection */
 	int32					typmod;
 	char					typtype;
 	bool					typbyval;
@@ -158,6 +163,7 @@ extern void collection_init_internal(void);
 extern Datum init_collectype_var(Datum collectype_info);
 extern Datum create_collecttype_info(const char *typname,
 				   Oid typoid,
+				   Oid sqlcollectionoid, /* ReqID:SRS-SQL-Collection */
 				   int32 typmod,
 				   char typtype,
 				   bool typbyval,
@@ -214,5 +220,7 @@ extern List *get_collect_all_values(Datum collect_value);
 extern List *get_collect_all_key_values(Datum collect_value, bool has_between_and,
 						int lower_bound, int upper_bound);
 /* End - ReqID:SRS-PLSQL-FORALL */
-
+/* Begin - ReqID:SRS-SQL-Collection */
+Oid get_sqlcollectype_oid(Datum collect_datum);
+/* End - ReqID:SRS-SQL-Collection */
 #endif

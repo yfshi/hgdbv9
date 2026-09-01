@@ -15,6 +15,7 @@
 #include "postgres.h"
 
 #include "access/htup_details.h"
+#include "catalog/pg_collection_type.h" /* ReqID:SRS-SQL-Collection */
 #include "catalog/namespace.h"
 #include "catalog/pg_type.h"
 #include "lib/stringinfo.h"
@@ -1162,3 +1163,22 @@ LookupOraTypeNameExtended(ParseState *pstate,
 	return (Type) tup;
 }
 /* End - ReqID:SRS-PLSQL-TYPE */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * check if the typeoid is the SQL collection type
+ */
+bool
+isSqlCollectionType(Oid pgtypeOid)
+{
+	HeapTuple	tup;
+
+	tup = SearchSysCache1(COLLECTIONPGTYPEOID, ObjectIdGetDatum(pgtypeOid));
+	if (!HeapTupleIsValid(tup))
+		return false;
+
+	ReleaseSysCache(tup);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-Collection */

@@ -20,6 +20,7 @@
 #include "plisql.h"
 #include "pl_udt_type.h"
 #include "pl_package.h"
+#include "catalog/pg_collection_type.h"	/* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_package.h"
 #include "catalog/pg_type.h"
 #include "utils/memutils.h"
@@ -40,7 +41,8 @@ plisql_build_ora_collection_type(char *refname, int lineno,
 							  PLiSQL_type *keytype,
 							  PLiSQL_type *valuetype,
 							  int varraylimit,
-							  bool notnull)
+							  bool notnull,
+							  Oid sqlcollectionoid /* ReqID:SRS-SQL-Collection */)
 {
 	PLiSQL_datum_udt_type *datum_type;
 	PLiSQL_ora_collection_type *ora_collect;
@@ -139,6 +141,7 @@ plisql_build_ora_collection_type(char *refname, int lineno,
 	ora_collect->typkey = keytype;
 	ora_collect->typdatatype = valuetype;
 	ora_collect->limit = varraylimit;
+	ora_collect->type.sqlcollectionoid = sqlcollectionoid; /* ReqID:SRS-SQL-Collection */
 
 	/* build a PLiSQL_datum_udt_type, and add it to plisql_Datums */
 	datum_type = palloc0(sizeof(PLiSQL_datum_udt_type));
@@ -183,6 +186,7 @@ plisql_type_to_collectinfo(PLiSQL_type *type)
 
 	collectinfo = collection_funcs.CreateCollectInfo(type->typname,
 								type->typoid,
+								type->sqlcollectionoid, /* ReqID:SRS-SQL-Collection */
 								type->atttypmod,
 								type->typtype,
 								type->typbyval,
@@ -214,10 +218,32 @@ exec_check_assign_collect_value(PLiSQL_var *target,
 	int32		value_typmod;
 	struct varlena *vl;
 
-	if (!IS_COLLECTOID(valtype))
+	/* Begin - ReqID:SRS-SQL-Collection */
+	bool		is_valtype_sqlcollection = false;
+	bool		is_target_sqlcollection = false;
+	Oid			value_sqlcollectoid;
+
+	is_valtype_sqlcollection = isSqlCollectionType(valtype);
+	is_target_sqlcollection = isSqlCollectionType(target->datatype->sqlcollectionoid);
+	/* End - ReqID:SRS-SQL-Collection */
+
+	if (!IS_COLLECTOID(valtype) &&
+		!is_valtype_sqlcollection /* ReqID:SRS-SQL-Collection */)
+
 		ereport(ERROR,
 			(errcode(ERRCODE_CANNOT_COERCE),
 			errmsg("expression is of wrong type")));
+
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (is_valtype_sqlcollection)
+	{
+		if (valtype != target->datatype->sqlcollectionoid)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANNOT_COERCE),
+				errmsg("expression is of wrong type")));
+		return;
+	}
+	/* End - ReqID:SRS-SQL-Collection */
 
 	/*
 	 * Check the datatype of the target and the value.
@@ -238,7 +264,18 @@ exec_check_assign_collect_value(PLiSQL_var *target,
 		elog(ERROR, "collection functions have not been loaded");
 
 	vl = (struct varlena *) DatumGetPointer(value);
-	if (!VARATT_IS_EXTERNAL_COLLECT(vl))
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (IS_COLLECTOID(valtype))
+	{
+		if (VARATT_IS_EXTERNAL_COLLECT(vl))
+			value_sqlcollectoid = collection_funcs.GetSqlCollectypeOid(value);
+		else if (VARATT_IS_EXTENDED(vl))
+			value_sqlcollectoid = InvalidOid;//change it
+		else if (VARATT_IS_EXTERNAL_EXPANDED_RW(vl))
+			value_sqlcollectoid = InvalidOid;//change it
+	}
+	/* End - ReqID:SRS-SQL-Collection */
+	else
 		ereport(ERROR,
 			(errcode(ERRCODE_CANNOT_COERCE),
 			errmsg("expression is of wrong type")));
@@ -263,10 +300,35 @@ exec_check_assign_collect_value(PLiSQL_var *target,
 					(errcode(ERRCODE_CANNOT_COERCE),
 					errmsg("expression is of wrong type")));
 		}
-		else if (target_pkgoid != InvalidOid || value_pkgoid != InvalidOid)
+		else if ((target_pkgoid != InvalidOid || value_pkgoid != InvalidOid)
+			/* Begin - ReqID:SRS-SQL-Collection */
+			&& !is_target_sqlcollection && !is_valtype_sqlcollection)
+			/* End - ReqID:SRS-SQL-Collection */
 			ereport(ERROR,
 				(errcode(ERRCODE_CANNOT_COERCE),
 				errmsg("expression is of wrong type")));
+		/* Begin - ReqID:SRS-SQL-Collection */
+		else if (is_target_sqlcollection && is_valtype_sqlcollection)
+		{
+			if (target->datatype->sqlcollectionoid != valtype)
+				ereport(ERROR,
+					(errcode(ERRCODE_CANNOT_COERCE),
+					errmsg("expression is of wrong type")));
+		}
+		else if ((is_target_sqlcollection || is_valtype_sqlcollection) &&
+			target->datatype->sqlcollectionoid != value_sqlcollectoid)
+			ereport(ERROR,
+				(errcode(ERRCODE_CANNOT_COERCE),
+				errmsg("expression is of wrong type")));
+		else if (value_sqlcollectoid != InvalidOid &&
+			target->datatype->sqlcollectionoid != InvalidOid)
+		{
+			if (value_sqlcollectoid != target->datatype->sqlcollectionoid)
+				ereport(ERROR,
+					(errcode(ERRCODE_CANNOT_COERCE),
+					errmsg("expression is of wrong type")));
+			}
+		/* End - ReqID:SRS-SQL-Collection */
 		else
 		{
 			target_typmod = target->datatype->atttypmod;
@@ -287,3 +349,65 @@ exec_check_assign_collect_value(PLiSQL_var *target,
 
 	return;
 }
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * convert the ArrayType to CollectTypeData
+ */
+Datum
+exec_array_to_collectdata(Datum value, PLiSQL_type *datatype)
+{
+	Datum 	result;
+	List	*funcname;
+	Oid 	funcoid;
+	Oid 	argList[2];
+	Datum	typinfo;
+
+	typinfo = plisql_type_to_collectinfo(datatype);
+
+	argList[0] = ANYELEMENTOID;
+	argList[1] = ANYARRAYOID;
+
+	funcname = list_make1(makeString("array_to_collection"));
+	funcoid = LookupFuncName(funcname, 2, argList, false);
+
+	result = OidFunctionCall2(funcoid, typinfo, value);
+
+	return result;
+}
+
+/*
+ * convert the CollectTypeData to ArrayType
+ */
+Datum
+exec_collection_to_array(Datum value, Oid typoid, Oid sqlcollectionoid)
+{
+	Datum	result;
+	List	*funcname;
+	Oid 	funcoid;
+	Oid 	argList[2];
+	Oid 	elmtype;
+	HeapTuple	collectTypeTup;
+	Form_pg_collection_type colelctTypeStruct;
+
+	collectTypeTup = SearchSysCache1(COLLECTIONPGTYPEOID,
+							ObjectIdGetDatum(sqlcollectionoid));
+	if (!HeapTupleIsValid(collectTypeTup))
+		elog(ERROR, "cache lookup failed for type %u", sqlcollectionoid);
+
+	colelctTypeStruct = (Form_pg_collection_type) GETSTRUCT(collectTypeTup);
+	elmtype = colelctTypeStruct->elemtype;
+	ReleaseSysCache(collectTypeTup);
+
+	argList[0] = typoid;
+	argList[1] = ANYARRAYOID;
+
+	funcname = list_make1(makeString("collection_to_array"));
+	funcoid = LookupFuncName(funcname, 2, argList, false);
+
+	result = OidFunctionCall2(funcoid, value,
+							PointerGetDatum(construct_empty_array(elmtype)));
+
+	return result;
+}
+/* End - ReqID:SRS-SQL-Collection */

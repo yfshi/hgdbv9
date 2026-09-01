@@ -595,6 +595,18 @@ static void set_bulk_rowcount_flag(PLiSQL_bulk_rowcount_flag flag);
 static void plisql_param_eval_forall_var(ExprState *state, ExprEvalStep *op,
 					   ExprContext *econtext);
 /* End - BUG#Z7822 */
+/* Begin - ReqID:SRS-SQL-Collection */
+static bool row_has_sqlcollect(PLiSQL_execstate *estate, PLiSQL_row *row);
+static void exec_eval_datum_has_sqlcolllect(PLiSQL_execstate *estate,
+								PLiSQL_datum *datum,
+								Oid *typeid,
+								int32 *typetypmod,
+								Datum *value,
+								bool *isnull);
+static HeapTuple make_tuple_from_row_has_sqlcolllect(PLiSQL_execstate *estate,
+									PLiSQL_row *row,
+									TupleDesc tupdesc);
+/* End - ReqID:SRS-SQL-Collection */
 
 /* ----------
  * plisql_exec_function	Called by the call handler for
@@ -760,6 +772,22 @@ plisql_exec_function(PLiSQL_function *func, FunctionCallInfo fcinfo,
 												  true);
 							}
 						}
+						/* Begin - ReqID:SRS-SQL-Collection */
+						else if (!var->isnull &&
+							var->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+							isSqlCollectionType(var->datatype->sqlcollectionoid))
+						{
+							if (VARATT_IS_EXTERNAL_COLLECT(DatumGetPointer(var->value)))
+							{
+								/*  keep it as-is until assigned to */
+							}
+							else
+								assign_simple_var(&estate, var,
+												  exec_array_to_collectdata(var->value, var->datatype),
+												  false,
+												  true);
+						}
+						/* End - ReqID:SRS-SQL-Collection */
 					/* Begin - ReqID:SRS-SQL-FUNCOUT */
 					}
 					/* End - ReqID:SRS-SQL-FUNCOUT */
@@ -4563,9 +4591,23 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 				{
 					PLiSQL_var *var = (PLiSQL_var *) retvar;
 
-					estate->retval = var->value;
 					estate->retisnull = var->isnull;
-					estate->rettype = var->datatype->typoid;
+
+					/* Begin - ReqID:SRS-SQL-Collection */
+					if (var->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+						isSqlCollectionType(var->datatype->sqlcollectionoid))
+					{
+						estate->retval = exec_collection_to_array(var->value,
+																var->datatype->typoid,
+																var->datatype->sqlcollectionoid);
+						estate->rettype = var->datatype->sqlcollectionoid;
+					}
+					else
+					/* End - ReqID:SRS-SQL-Collection */
+					{
+						estate->retval = var->value;
+						estate->rettype = var->datatype->typoid;
+					}
 
 					/*
 					 * A PLiSQL_var could not be of composite type, so
@@ -4604,13 +4646,29 @@ exec_stmt_return(PLiSQL_execstate *estate, PLiSQL_stmt_return *stmt)
 					PLiSQL_row *row = (PLiSQL_row *) retvar;
 					int32		rettypmod;
 
-					/* We get here if there are multiple OUT parameters */
-					exec_eval_datum(estate,
-									(PLiSQL_datum *) row,
-									&estate->rettype,
-									&rettypmod,
-									&estate->retval,
-									&estate->retisnull);
+					/* Begin - ReqID:SRS-SQL-Collection */
+					if (retvar->dtype == PLISQL_DTYPE_ROW &&
+						row_has_sqlcollect(estate, row))
+					{
+						/* We get here if there are multiple OUT parameters */
+						exec_eval_datum_has_sqlcolllect(estate,
+													(PLiSQL_datum *) row,
+													&estate->rettype,
+													&rettypmod,
+													&estate->retval,
+													&estate->retisnull);
+					}
+					else
+					/* End - ReqID:SRS-SQL-Collection */
+					{
+						/* We get here if there are multiple OUT parameters */
+						exec_eval_datum(estate,
+										(PLiSQL_datum *) row,
+										&estate->rettype,
+										&rettypmod,
+										&estate->retval,
+										&estate->retisnull);
+					}
 				}
 				break;
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -7118,9 +7176,15 @@ exec_assign_value(PLiSQL_execstate *estate,
 													value,
 													valtype,
 													valtypmod);
-					newvalue = datumCopy(value,
-										var->datatype->typbyval,
-										var->datatype->typlen);
+					/* Begin - ReqID:SRS-SQL-Collection */
+					if (isSqlCollectionType(valtype))
+						newvalue = exec_array_to_collectdata(value,
+															var->datatype);
+					else
+					/* End - ReqID:SRS-SQL-Collection */
+						newvalue = datumCopy(value,
+											var->datatype->typbyval,
+											var->datatype->typlen);
 				}
 				else
 				/* End - ReqID:SRS-PLSQL-Collection */
@@ -14537,3 +14601,137 @@ plisql_get_cursor_tupdesc_incompile(PLiSQL_expr *cursor_expr,
 }
 /* End - OA#2463 */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+static bool
+row_has_sqlcollect(PLiSQL_execstate *estate, PLiSQL_row *row)
+{
+	bool 	has_sqlcollect = false;
+	int		i;
+
+	for (i = 0; i < row->nfields; i++)
+	{
+		if (estate->datums[row->varnos[i]]->dtype == PLISQL_DTYPE_VAR)
+		{
+			PLiSQL_var *var = (PLiSQL_var *) estate->datums[row->varnos[i]];
+
+			if (var->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(var->datatype->sqlcollectionoid))
+			{
+				has_sqlcollect = true;
+				break;
+			}
+		}
+	}
+
+	return has_sqlcollect;
+}
+
+/*
+ * Get current value of a PLiSQL_row that is builded
+ * from the function OUT parameters and RETURN variable.
+ */
+static void
+exec_eval_datum_has_sqlcolllect(PLiSQL_execstate *estate,
+								PLiSQL_datum *datum,
+								Oid *typeid,
+								int32 *typetypmod,
+								Datum *value,
+								bool *isnull)
+{
+	MemoryContext oldcontext;
+	PLiSQL_row *row = (PLiSQL_row *) datum;
+	HeapTuple	tup;
+
+	/* We get here if there are multiple OUT parameters */
+	if (!row->rowtupdesc)	/* should not happen */
+		elog(ERROR, "row variable has no tupdesc");
+	/* Make sure we have a valid type/typmod setting */
+	BlessTupleDesc(row->rowtupdesc);
+	oldcontext = MemoryContextSwitchTo(get_eval_mcontext(estate));
+	tup = make_tuple_from_row_has_sqlcolllect(estate, row, row->rowtupdesc);
+	if (tup == NULL)	/* should not happen */
+		elog(ERROR, "row not compatible with its own tupdesc");
+	*typeid = row->rowtupdesc->tdtypeid;
+	*typetypmod = row->rowtupdesc->tdtypmod;
+	*value = HeapTupleGetDatum(tup);
+	*isnull = false;
+	MemoryContextSwitchTo(oldcontext);
+}
+
+/* ----------
+ * make_tuple_from_row_has_sqlcolllect		Make a tuple from the values of a row object
+ * that is builded from the function OUT parameters and RETURN variable.
+ * ----------
+ */
+static HeapTuple
+make_tuple_from_row_has_sqlcolllect(PLiSQL_execstate *estate,
+									PLiSQL_row *row,
+									TupleDesc tupdesc)
+{
+	int			natts = tupdesc->natts;
+	HeapTuple	tuple;
+	Datum	   *dvalues;
+	bool	   *nulls;
+	int			i;
+	bool		is_pkg_var = false;
+
+	if (natts != row->nfields)
+		return NULL;
+
+	dvalues = (Datum *) eval_mcontext_alloc0(estate, natts * sizeof(Datum));
+	nulls = (bool *) eval_mcontext_alloc(estate, natts * sizeof(bool));
+	i = 0;
+
+	/* if the row variable is a global variable in a package, set is_pkg_var to true */
+	if (is_package_global_var((PLiSQL_variable *)row))
+		is_pkg_var = true;
+
+	for (; i < natts; i++)
+	{
+		Oid			fieldtypeid;
+		int32		fieldtypmod;
+
+		if (TupleDescAttr(tupdesc, i)->attisdropped)
+		{
+			nulls[i] = true;	/* leave the column as null */
+			continue;
+		}
+
+		if (is_pkg_var)
+			exec_eval_datum(estate, get_package_datum_bydno(estate,
+														row->pkgoid,
+														row->varnos[i]),
+							&fieldtypeid, &fieldtypmod,
+							&dvalues[i], &nulls[i]);
+		else
+			exec_eval_datum(estate, estate->datums[row->varnos[i]],
+							&fieldtypeid, &fieldtypmod,
+							&dvalues[i], &nulls[i]);
+
+		if (estate->datums[row->varnos[i]]->dtype == PLISQL_DTYPE_VAR)
+		{
+			PLiSQL_var *var = (PLiSQL_var *) estate->datums[row->varnos[i]];
+
+			if (var->datatype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(var->datatype->sqlcollectionoid))
+			{
+				dvalues[i] = exec_collection_to_array(dvalues[i],
+													var->datatype->typoid,
+													var->datatype->sqlcollectionoid);
+				fieldtypeid = var->datatype->sqlcollectionoid;
+				fieldtypmod = var->datatype->atttypmod;
+			}
+		}
+
+		if (fieldtypeid != TupleDescAttr(tupdesc, i)->atttypid &&
+			!(fieldtypeid == ORARECORDOID &&
+			TupleDescAttr(tupdesc, i)->atttypid == ROWPOINTEROID))
+			return NULL;
+		/* XXX should we insist on typmod match, too? */
+	}
+
+	tuple = heap_form_tuple(tupdesc, dvalues, nulls);
+
+	return tuple;
+}
+/* End - ReqID:SRS-SQL-Collection */

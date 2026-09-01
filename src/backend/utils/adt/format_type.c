@@ -155,7 +155,8 @@ format_type_extended(Oid type_oid, int32 typemod, bits16 flags)
 	array_base_type = typeform->typelem;
 
 	if (IsTrueArrayType(typeform) &&
-		typeform->typstorage != TYPSTORAGE_PLAIN)
+		typeform->typstorage != TYPSTORAGE_PLAIN &&
+		!IS_PLSQL_COLLECTYPE(typeform->typtype) /* ReqID:SRS-SQL-Collection */)
 	{
 		/* Switch our attention to the array element type */
 		ReleaseSysCache(tuple);

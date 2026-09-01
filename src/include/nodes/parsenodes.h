@@ -2389,7 +2389,11 @@ typedef struct CreateSchemaStmt
 typedef enum DropBehavior
 {
 	DROP_RESTRICT,				/* drop fails if any dependent objects */
-	DROP_CASCADE				/* remove dependent objects too */
+	DROP_CASCADE,				/* remove dependent objects too */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	DROP_FROCE, 				/* remove dependent objects too */
+	DROP_VALIDATE,				/* drop fails if any dependent objects */
+	/* End - ReqID:SRS-SQL-Collection */
 } DropBehavior;
 
 /* ----------------------
@@ -2845,6 +2849,7 @@ typedef struct CreateStmt
 	OraPartitionSpec	*ora_partspec;	/* not null for partitioned table */
 	OraPartSup			*ora_partsup;	/* not null for (sub)partitions */
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	List		*nestdtableCols;/* ReqID:SRS-SQL-Collection, nested table columns properties */
 } CreateStmt;
 
 /* ----------
@@ -4934,5 +4939,51 @@ typedef struct PivotCall
 	Alias		*alias;		/* alias attached after the PIVOT/UNPIVOT clause */
 } PivotCall;
 /* End - ReqID:SRS-SQL-PIVOT */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/* ----------------------
+ *		Create Collection Type Statement (Oracle nested table, VARRAY)
+ * ----------------------
+ */
+typedef enum CollectionTypeKind
+{
+	COLLECTION_NESTED_TABLE = 'N',
+	COLLECTION_VARRAY = 'V'
+} CollectionTypeKind;
+
+typedef struct CreateCollectionTypeStmt
+{
+	NodeTag		type;
+	bool		replace;		/* OR REPLACE */
+	bool		editable;		/* EDITIONABLE (default true) */
+	bool		force;			/* FORCE */
+	List	   *typeName;		/* qualified name (list of String) */
+	CollectionTypeKind kind;	/* nested table or varray */
+	TypeName   *elemType;		/* element type */
+	int			limit;			/* varray limit size (0 for nested table) */
+	bool		notNull;		/* NOT NULL */
+	bool		persistable;	/* PERSISTABLE (default true) or NOT PERSISTABLE */
+} CreateCollectionTypeStmt;
+
+/* ----------------------
+ *		Alter Collection Type Statement (MODIFY LIMIT or ELEMENT TYPE)
+ * ----------------------
+ */
+typedef enum AlterCollectionTypeSubType
+{
+	ALTER_COLLECTION_MODIFY_LIMIT,
+	ALTER_COLLECTION_MODIFY_ELEM_TYPE
+} AlterCollectionTypeSubType;
+
+typedef struct AlterCollectionTypeStmt
+{
+	NodeTag		type;
+	List	   *typeName;		/* qualified name */
+	AlterCollectionTypeSubType subtype;
+	int			limit;			/* for MODIFY LIMIT */
+	TypeName   *elemType;		/* for MODIFY ELEMENT TYPE */
+	bool		cascade;		/* CASCADE option */
+} AlterCollectionTypeStmt;
+/* End - ReqID:SRS-SQL-Collection */
 
 #endif							/* PARSENODES_H */

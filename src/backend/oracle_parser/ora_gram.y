@@ -869,9 +869,9 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBDELI /* BUG#M0000414 */ DOUBLE_P DROP
 
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	EACH ELEMENT /* ReqID:SRS-SQL-Collection */ ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION EXTEND	/* ReqID:SRS-SQL-SEQ */
-	EXTENSION EXTERNAL
+	EXTENSION EXTERNAL EXTRACT
 
 	FALSE_P FAMILY FETCH FILENAME /* ReqID:SRS-MISC-BULKLOAD */ FILTER
 	FINAL_P /* ReqID:SRS-SQL-CustomObject */ FINALIZE FIRST_P 
@@ -901,7 +901,7 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 	METHOD MINUTE_P MINVALUE MODE /*MODIFY_P*/ /* ReqID:SRS-SECURITY-DATADESENSITIZATION */ MODIFY MONTH_P MOVE /* ReqID:SRS-SQL-IDENTCOL */
 	MINUS		/* OA#1682 */
 
-	NAME_P NAMES NATIONAL NATURAL NCHAR NEW NEXT NFC NFD NFKC NFKD NO NOCACHE NOCYCLE /* ReqID:SRS-SQL-IDENTCOL */
+	NAME_P NAMES NATIONAL NATURAL NCHAR NESTED /* ReqID:SRS-SQL-Collection */ NEW NEXT NFC NFD NFKC NFKD NO NOCACHE NOCYCLE /* ReqID:SRS-SQL-IDENTCOL */
 	NOMAXVALUE NOMINVALUE NONE NOORDER /* ReqID:SRS-SQL-IDENTCOL */
 	NOEXTEND NOFORCE NOKEEP NORMALIZE NORMALIZED NOSCALE NOSHARD	/* ReqID:SRS-SQL-SEQ */	/* BUG#Z930 */
 	NOT NOTHING NOTIFY NOTNULL NOWAIT NULL_P NULLIF
@@ -911,7 +911,7 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER PACKAGES /* ReqID:SRS-SQL-PACKAGE */
 
-	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD EXTRACT PIVOT PLACING PLANS POLICY
+	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD PERSISTABLE/* ReqID:SRS-SQL-Collection */ PIVOT PLACING PLANS POLICY
 	POSITION PRECEDES PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLIC PUBLICATION PURGE	/* BUG:M0000118 */
 
@@ -945,7 +945,7 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 	UNLISTEN UNLOGGED UNPIVOT UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
-	VERBOSE VERSION_P VERSIONS_P /* ReqID:SRS-SECURITY-FLASHBACK */ 
+	VERBOSE VARRAY /* ReqID:SRS-SQL-Collection */ VERSION_P VERSIONS_P /* ReqID:SRS-SECURITY-FLASHBACK */ 
 	VIEW VIEWS VIRTUAL VISIBLE VOLATILE	/* ReqID:SRS-SQL-VIRTUALCOL */	/* ReqID:SRS-SQL-INVISIBLECOL */
 
 	WAIT/* BUG#M0000470:FOR UPDATE WAIT integer */ WHEN WHERE WHITESPACE_P WINDOW WITH WITHIN WITHOUT WORK WRAPPED WRAPPER WRITE
@@ -1066,6 +1066,17 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 %token <keyword> ERRORS_P LOG_P REJECT_P UNLIMITED
 /* End - SRS-SQL-MULTITABLEINSERT */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+%type <node>	AlterCollectionTypeStmt
+%token NOT_PERSISTABLE
+%type <list>    opt_not_null_and_persistable
+%type <boolean> opt_force opt_not_null opt_persistable opt_cascade
+%type <keyword> is_or_as varray_or_varying_array
+%type <ival>	varray_limit
+%type <list> 	OptNestdTableColPropertiesList
+%type <value>	NestdTableColProperties
+%type <dbehavior>	opt_drop_type_behavior
+/* End - ReqID:SRS-SQL-Collection */
 
 /*
  * The grammar thinks these are keywords, but they are not in the kwlist.h
@@ -1208,6 +1219,7 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
  */
 %nonassoc	UNBOUNDED		/* ideally would have same precedence as IDENT */
 %nonassoc	BODY			/* prefer CREATE TYPE BODY <name> over type named body */
+%nonassoc	FORCE
 %nonassoc	IDENT PARTITION RANGE ROWS GROUPS PRECEDING FOLLOWING CUBE ROLLUP UNDER_P
 %left		Op OPERATOR		/* multi-character ops and user-defined operators */
 %left		'+' '-'
@@ -1509,6 +1521,7 @@ stmt:
 			/* Begin - SRS-SQL-MULTITABLEINSERT */
 			| MultiTableInsertStmt
 			/* End - SRS-SQL-MULTITABLEINSERT */
+			| AlterCollectionTypeStmt /* ReqID:SRS-SQL-Collection */
 			| /*EMPTY*/
 				{ $$ = NULL; }
 		;
@@ -3794,6 +3807,17 @@ opt_drop_behavior:
 			| /* EMPTY */				{ $$ = DROP_RESTRICT; /* default */ }
 		;
 
+/* Begin - ReqID:SRS-SQL-Collection */
+opt_drop_type_behavior:
+			CASCADE 					{ $$ = DROP_CASCADE; }
+			| RESTRICT					{ $$ = DROP_RESTRICT; }
+			| FORCE						{ $$ = DROP_CASCADE; }
+			| VALIDATE					{ $$ = DROP_RESTRICT; }
+			| /* EMPTY */				{ $$ = DROP_RESTRICT; /* default */ }
+
+		;
+/* End - ReqID:SRS-SQL-Collection */
+
 /* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 opt_purge:
 			PURGE						{ $$ = true; }
@@ -4683,6 +4707,7 @@ PurgeStmt:
 CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 			OptInherit OptPartitionSpec table_access_method_clause OptWith
 			default_collation_option OnCommitOption OptTableSpace OptResultCache
+			OptNestdTableColPropertiesList /* ReqID:SRS-SQL-Collection */
 				{
 					CreateStmt *n = makeNode(CreateStmt);
 					$4->relpersistence = $2;
@@ -4704,6 +4729,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $14;
 					n->if_not_exists = false;
+					n->nestdtableCols = $16;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name '('
@@ -4730,6 +4756,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $17;
 					n->if_not_exists = true;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE qualified_name OF any_name
@@ -4757,6 +4784,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $13;
 					n->if_not_exists = false;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name OF any_name
@@ -4784,6 +4812,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					/* End - ReqID:SRS-SQL-GTT */
 					n->tablespacename = $16;
 					n->if_not_exists = true;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE qualified_name PARTITION OF qualified_name
@@ -4807,6 +4836,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $14;
 					n->tablespacename = $15;
 					n->if_not_exists = false;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 		| CREATE OptTemp TABLE IF_P NOT EXISTS qualified_name PARTITION OF
@@ -4830,6 +4860,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 					n->oncommit = $17;
 					n->tablespacename = $18;
 					n->if_not_exists = true;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
@@ -4861,6 +4892,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					n->tablespacename = $14;
 					n->if_not_exists = false;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 				}
 		/* Begin - bug#7304 */
@@ -4885,6 +4917,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					n->tablespacename = $9;
 					n->if_not_exists = false;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 
 					/* ORA-02215: duplicate tablespace name clause */
@@ -4917,6 +4950,7 @@ CreateStmt:	CREATE OptTemp TABLE qualified_name '(' OptTableElementList ')'
 						n->oncommit = ONCOMMIT_DELETE_ROWS;
 					n->tablespacename = $14;
 					n->if_not_exists = false;
+					n->nestdtableCols = NIL;	/* ReqID:SRS-SQL-Collection */
 					$$ = (Node *)n;
 
 					if (!enable_multi_step_partition)
@@ -6662,6 +6696,24 @@ OptConsTableSpace:   USING INDEX TABLESPACE name	{ $$ = $4; }
 
 ExistingIndex:   USING INDEX qualified_name			{ $$ = $3; } /* OA-REQ-2127 */
 		;
+
+
+/* Begin - ReqID:SRS-SQL-Collection */
+OptNestdTableColPropertiesList:
+			OptNestdTableColPropertiesList	NestdTableColProperties		{ $$ = lappend($1, $2); }
+			| /* EMPTY */												{ $$ = NIL; }
+			;
+
+NestdTableColProperties: NESTED TABLE ColId opt_local_global STORE_P AS qualified_name
+				{
+					$$ = makeString($3);
+				}
+			;
+opt_local_global: GLOBAL
+			| LOCAL
+			| /*EMPTY*/
+			;
+/* End - ReqID:SRS-SQL-Collection */
 
 /*****************************************************************************
  *
@@ -9485,6 +9537,392 @@ DefineStmt:
 					n->if_not_exists = true;
 					$$ = (Node *)n;
 				}
+			/* Begin - ReqID:SRS-SQL-Collection */
+			/* create a nested table without parenthesized element type: TABLE OF datatype [NOT NULL] [[NOT] PERSISTABLE]*/
+			| CREATE opt_or_replace ora_editioned TYPE_P any_name opt_force
+			  is_or_as TABLE OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = $2;
+					n->editable = $3;
+					n->typeName = $5;
+					n->force = $6;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $10;
+					if ($11 != NIL)
+					{
+						n->notNull = linitial_int($11);
+						n->persistable = lsecond_int($11);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name
+			  is_or_as TABLE OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = false;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $7;
+					if ($8 != NIL)
+					{
+						n->notNull = linitial_int($8);
+						n->persistable = lsecond_int($8);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name FORCE
+			  is_or_as TABLE OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = true;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $8;
+					if ($9 != NIL)
+					{
+						n->notNull = linitial_int($9);
+						n->persistable = lsecond_int($9);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name
+			  is_or_as TABLE OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = false;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $9;
+					if ($10 != NIL)
+					{
+						n->notNull = linitial_int($10);
+						n->persistable = lsecond_int($10);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name FORCE
+			  is_or_as TABLE OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = true;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $10;
+					if ($11 != NIL)
+					{
+						n->notNull = linitial_int($11);
+						n->persistable = lsecond_int($11);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+            /* create a varray type without parenthesized element type: VARRAY(limit) OF datatype [NOT NULL] [[NOT] PERSISTABLE] */
+			| CREATE opt_or_replace ora_editioned TYPE_P any_name opt_force
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = $2;
+					n->editable = $3;
+					n->typeName = $5;
+					n->force = $6;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = 10;
+					n->elemType = $13;
+					if ($14 != NIL)
+					{
+						n->notNull = linitial_int($14);
+						n->persistable = lsecond_int($14);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = false;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $7;
+					n->elemType = $10;
+					if ($11 != NIL)
+					{
+						n->notNull = linitial_int($11);
+						n->persistable = lsecond_int($11);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name FORCE
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = true;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $8;
+					n->elemType = $11;
+					if ($12 != NIL)
+					{
+						n->notNull = linitial_int($12);
+						n->persistable = lsecond_int($12);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = false;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $9;
+					n->elemType = $12;
+					if ($13 != NIL)
+					{
+						n->notNull = linitial_int($13);
+						n->persistable = lsecond_int($13);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name FORCE
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF Typename opt_not_null_and_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = true;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $10;
+					n->elemType = $13;
+					if ($14 != NIL)
+					{
+						n->notNull = linitial_int($14);
+						n->persistable = lsecond_int($14);
+					}
+					else
+					{
+						n->notNull = false;
+						n->persistable = true;
+					}
+					$$ = (Node *) n;
+				}
+			/* create a nested table with parenthesized element type: TABLE OF ( datatype [NOT NULL] ) [[NOT] PERSISTABLE] */
+			| CREATE opt_or_replace ora_editioned TYPE_P any_name opt_force
+			  is_or_as TABLE OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = $2;
+					n->editable = $3;
+					n->typeName = $5;
+					n->force = $6;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $11;
+					n->notNull = $12;
+					n->persistable = $14;
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name
+			  is_or_as TABLE OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = false;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $8;
+					n->notNull = $9;
+					n->persistable = $11;
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name FORCE
+			  is_or_as TABLE OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = true;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $9;
+					n->notNull = $10;
+					n->persistable = $12;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name
+			  is_or_as TABLE OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = false;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $10;
+					n->notNull = $11;
+					n->persistable = $13;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name FORCE
+			  is_or_as TABLE OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = true;
+					n->kind = COLLECTION_NESTED_TABLE;
+					n->limit = 0;
+					n->elemType = $11;
+					n->notNull = $12;
+					n->persistable = $14;
+					$$ = (Node *) n;
+				}
+            /* create a varray type with parenthesized element type: VARRAY(limit) OF ( datatype [NOT NULL] ) [[NOT] PERSISTABLE] */
+			| CREATE opt_or_replace ora_editioned TYPE_P any_name opt_force
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = $2;
+					n->editable = $3;
+					n->typeName = $5;
+					n->force = $6;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = 10;
+					n->elemType = $14;
+					n->notNull = $15;
+					n->persistable = $17;
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = false;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $7;
+					n->elemType = $11;
+					n->notNull = $12;
+					n->persistable = $14;
+					$$ = (Node *) n;
+				}
+			| CREATE TYPE_P any_name FORCE
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = false;
+					n->editable = true;
+					n->typeName = $3;
+					n->force = true;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $8;
+					n->elemType = $12;
+					n->notNull = $13;
+					n->persistable = $15;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = false;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $9;
+					n->elemType = $13;
+					n->notNull = $14;
+					n->persistable = $16;
+					$$ = (Node *) n;
+				}
+			| CREATE OR REPLACE TYPE_P any_name FORCE
+			  is_or_as varray_or_varying_array '(' varray_limit ')' OF '(' Typename opt_not_null ')' opt_persistable
+				{
+					CreateCollectionTypeStmt *n = makeNode(CreateCollectionTypeStmt);
+					n->replace = true;
+					n->editable = true;
+					n->typeName = $5;
+					n->force = true;
+					n->kind = COLLECTION_VARRAY;
+					n->limit = $10;
+					n->elemType = $14;
+					n->notNull = $15;
+					n->persistable = $17;
+					$$ = (Node *) n;
+				}
+			/* End - ReqID:SRS-SQL-Collection */
 		;
 
 definition: '(' def_list ')'						{ $$ = $2; }
@@ -9541,6 +9979,110 @@ enum_val_list:	Sconst
 			| enum_val_list ',' Sconst
 				{ $$ = lappend($1, makeString($3)); }
 		;
+
+/* Begin - ReqID:SRS-SQL-Collection */
+is_or_as:
+			IS
+			| AS
+		;
+
+varray_or_varying_array: VARRAY
+			| VARYING ARRAY
+			;
+
+varray_limit	: ICONST
+					{
+						if ($1 == 0)
+							ereport(ERROR,
+									(errcode(ERRCODE_UNDEFINED_OBJECT),
+									 errmsg("A VARRAY must have a positive limit"),
+									 parser_errposition(@1)));
+						$$ = $1;
+					}
+				| '-' ICONST
+					{
+						ereport(ERROR,
+								(errcode(ERRCODE_UNDEFINED_OBJECT),
+								 errmsg("A VARRAY must have a positive limit"),
+								 parser_errposition(@1)));
+					}
+					;
+
+opt_force:
+			FORCE 					{ $$ = true; }
+			| /*EMPTY*/ 			{ $$ = false; }
+			;
+
+opt_not_null:
+			NOT NULL_P       		{ $$ = true; }
+			| /*EMPTY*/       		{ $$ = false; }
+			;
+
+opt_persistable:
+			PERSISTABLE 			 { $$ = true; }
+			| NOT_LA PERSISTABLE	 { $$ = false; }
+			| /*EMPTY*/ 			 { $$ = true; }
+		;
+
+opt_not_null_and_persistable:
+			NOT NULL_P NOT_LA PERSISTABLE
+				{
+					$$ = list_make2_int(true, false);
+				}
+			| NOT NULL_P PERSISTABLE
+				{
+					$$ = list_make2_int(true, true);
+				}
+			| NOT NULL_P
+				{
+					$$ = list_make2_int(true, true);
+				}
+			| NOT_LA PERSISTABLE
+				{
+					$$ = list_make2_int(false, false);
+				}
+			| PERSISTABLE
+				{
+					$$ = list_make2_int(false, true);
+				}
+			| /*EMPTY*/
+				{
+					$$ = list_make2_int(false, true);
+				}
+		;
+
+/*
+ * Oracle-compatible ALTER TYPE for collection type:
+ *
+ * ALTER TYPE type_name MODIFY LIMIT integer [CASCADE]
+ * ALTER TYPE type_name MODIFY ELEMENT TYPE datatype [CASCADE]
+ */
+AlterCollectionTypeStmt:
+			ALTER TYPE_P any_name MODIFY LIMIT varray_limit opt_cascade
+				{
+					AlterCollectionTypeStmt *n = makeNode(AlterCollectionTypeStmt);
+					n->typeName = $3;
+					n->subtype = ALTER_COLLECTION_MODIFY_LIMIT;
+					n->limit = $6;
+					n->cascade = $7;
+					$$ = (Node *) n;
+				}
+			| ALTER TYPE_P any_name MODIFY ELEMENT TYPE_P Typename opt_cascade
+				{
+					AlterCollectionTypeStmt *n = makeNode(AlterCollectionTypeStmt);
+					n->typeName = $3;
+					n->subtype = ALTER_COLLECTION_MODIFY_ELEM_TYPE;
+					n->elemType = $7;
+					n->cascade = $8;
+					$$ = (Node *) n;
+				}
+		;
+
+opt_cascade:
+			CASCADE 		{ $$ = true; }
+			| /*EMPTY*/ 	{ $$ = false; }
+		;
+/* End - ReqID:SRS-SQL-Collection */
 
 /*****************************************************************************
  *
@@ -10011,7 +10553,7 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior 
 					n->is_purge = $9;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP TYPE_P type_name_list opt_drop_behavior opt_purge
+			| DROP TYPE_P type_name_list opt_drop_type_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_TYPE;
@@ -10022,7 +10564,7 @@ DropStmt:	DROP object_type_any_name IF_P EXISTS any_name_list opt_drop_behavior 
 					n->is_purge = $5;	/* ReqID:SRS-RECOVERY-FLASHBACK */
 					$$ = (Node *) n;
 				}
-			| DROP TYPE_P IF_P EXISTS type_name_list opt_drop_behavior opt_purge
+			| DROP TYPE_P IF_P EXISTS type_name_list opt_drop_type_behavior opt_purge
 				{
 					DropStmt *n = makeNode(DropStmt);
 					n->removeType = OBJECT_TYPE;
@@ -23929,6 +24471,7 @@ unreserved_keyword:
 			| DROP
 			| EACH
 			| EDITIONABLE /* ReqID:SRS-SQL-PROC */
+			| ELEMENT /* ReqID:SRS-SQL-Collection */
 			| ENABLE_P
 			| ENCODING
 			| ENCRYPTED
@@ -24032,6 +24575,7 @@ unreserved_keyword:
 			| MOVE
 			| NAME_P
 			| NAMES
+			| NESTED 		/* ReqID:SRS-SQL-Collection */
 			| NEW
 			| NEXT
 			| NFC
@@ -24082,6 +24626,7 @@ unreserved_keyword:
 			| PARTITIONING	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| PASSING
 			| PASSWORD
+			| PERSISTABLE	/* ReqID:SRS-SQL-Collection */
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
 			| PLANS
 			| POLICY
@@ -24223,6 +24768,7 @@ unreserved_keyword:
 			| VALIDATE
 			| VALIDATOR
 			| VALUE_P
+			| VARRAY /* ReqID:SRS-SQL-Collection */
 			| VARYING
 			| VERSION_P
 			| VERSIONS_P
@@ -24633,6 +25179,7 @@ bare_label_keyword:
 			| DROP
 			| EACH
 			| EDITIONABLE /* ReqID:SRS-SQL-PROC */
+			| ELEMENT /* ReqID:SRS-SQL-Collection */
 			| ELSE
 			| ENABLE_P
 			| ENCODING
@@ -24771,6 +25318,7 @@ bare_label_keyword:
 			| NATIONAL
 			| NATURAL
 			| NCHAR
+			| NESTED 		/* ReqID:SRS-SQL-Collection */
 			| NEW
 			| NEXT
 			| NFC
@@ -24837,6 +25385,7 @@ bare_label_keyword:
 			| PARTITIONS	/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| PASSING
 			| PASSWORD
+			| PERSISTABLE	/* ReqID:SRS-SQL-Collection */
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
 			| PIVOT		/* ReqID:SRS-SQL-PIVOT */
 			| PLACING
@@ -25019,6 +25568,7 @@ bare_label_keyword:
 			| VARCHAR
 			| VARCHAR2		/* ReqID:SRS-GKC-DATATYPE_001 */
 			| VARIADIC
+			| VARRAY /* ReqID:SRS-SQL-Collection */
 			| VERBOSE
 			| VERSION_P
 			| VERSIONS_P

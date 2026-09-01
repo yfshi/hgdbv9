@@ -280,6 +280,7 @@ DefineVirtualRelation(RangeVar *relation, List *tlist, bool replace,
 		createStmt->oncommit = ONCOMMIT_NOOP;
 		createStmt->tablespacename = NULL;
 		createStmt->if_not_exists = false;
+		createStmt->nestdtableCols = NIL; /* ReqID:SRS-SQL-Collection */
 
 		/*
 		 * Create the relation (this will error out if there's an existing
@@ -384,6 +385,7 @@ CreateForceVirtualPlaceholder(RangeVar *relation, bool replace, List *options, b
 		createStmt->oncommit = ONCOMMIT_NOOP;
 		createStmt->tablespacename = NULL;
 		createStmt->if_not_exists = false;
+		createStmt->nestdtableCols = NIL; /* ReqID:SRS-SQL-Collection */
 
 		address = DefineRelation(createStmt, RELKIND_VIEW, InvalidOid, NULL, NULL);
 		Assert(address.objectId != InvalidOid);

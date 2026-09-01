@@ -260,6 +260,9 @@ typedef struct PLiSQL_type
 								 * isnull is notnull of the variable */
 	TypeName   *pctrowtypname;	/* type name only for the type specifies %TYPE or %ROWTYPE */
 	/* End - ReqID:SRS-PLSQL-TYPE */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	Oid			sqlcollectionoid;/* OID of the collection type created by CREATE TYPE statement */
+	/* End - ReqID:SRS-SQL-Collection */
 	/* Remaining fields are used only for named composite types (not RECORD) */
 	TypeName   *origtypname;	/* type name as written by user */
 	TypeCacheEntry *tcache;		/* typcache entry for composite type */

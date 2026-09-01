@@ -739,7 +739,12 @@ no_argument:
 	 * has out paramster procedure, change its rettypeid to
 	 * RECORDOID
 	 */
-	origrettypeid = subprocfunc->rettype == NULL ? VOIDOID : subprocfunc->rettype->typoid;
+	origrettypeid = subprocfunc->rettype == NULL ? VOIDOID :
+				/* Begin - ReqID:SRS-SQL-Collection */
+				((subprocfunc->rettype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(subprocfunc->rettype->sqlcollectionoid)) ?
+				subprocfunc->rettype->sqlcollectionoid : subprocfunc->rettype->typoid);
+				/* End - ReqID:SRS-SQL-Collection */
 	if (norigoutargs > 0)
 		rettypeid = RECORDOID;
 	else
@@ -1918,7 +1923,15 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 		*true_typeids = best_candidate->args;
 		/* get origin typeoid */
 		if (subprocfunc->rettype != NULL)
-			*rettype = subprocfunc->rettype->typoid;
+		{
+			/* Begin - ReqID:SRS-SQL-Collection */
+			if (subprocfunc->rettype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(subprocfunc->rettype->sqlcollectionoid))
+				*rettype = subprocfunc->rettype->sqlcollectionoid;
+			else
+			/* End - ReqID:SRS-SQL-Collection */
+				*rettype = subprocfunc->rettype->typoid;
+		}
 		else
 		{
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -1981,8 +1994,13 @@ plisql_get_subprocfunc_detail(ParseState *pstate,
 			foreach(lc, subprocfunc->arg)
 			{
 				PLiSQL_function_argitem *argitem = lfirst(lc);
-
-				newoid[i++] = argitem->type->typoid;
+				/* Begin - ReqID:SRS-SQL-Collection */
+				if (argitem->type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+					isSqlCollectionType(argitem->type->sqlcollectionoid))
+					newoid[i++] = argitem->type->sqlcollectionoid;
+				else
+				/* End - ReqID:SRS-SQL-Collection */
+					newoid[i++] = argitem->type->typoid;
 			}
 			*true_typeids = newoid;
 			/* End - BUG#M0000307 */
@@ -2474,7 +2492,13 @@ plisql_getFuncCandidateListFromFunname(char *funcname, PLiSQL_function *pfunc,
 			{
 				PLiSQL_function_argitem *argitem = lfirst(l);
 
-				argoids[i] = argitem->type->typoid;
+				/* Begin - ReqID:SRS-SQL-Collection */
+				if (argitem->type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+					isSqlCollectionType(argitem->type->sqlcollectionoid))
+					argoids[i] = argitem->type->sqlcollectionoid;
+				else
+				/* End - ReqID:SRS-SQL-Collection */
+					argoids[i] = argitem->type->typoid;
 				if (argitem->argmode == ARGMODE_IN)
 					argmode[i++] =  FUNC_PARAM_IN;
 				else if (argitem->argmode == ARGMODE_OUT)
@@ -2629,7 +2653,15 @@ plisql_func_select_candidate_forudttype(PLiSQL_function *pfunc,
 					/* Begin - ReqID:SRS-PLSQL-Collection */
 					case PLISQL_TTYPE_COLLECT_TYPE:
 						{
-							if (argitem->type != type[i])
+							/* Begin - ReqID:SRS-SQL-Collection */
+							if (isSqlCollectionType(argitem->type->sqlcollectionoid) &&
+								isSqlCollectionType(((PLiSQL_type *)type[i])->sqlcollectionoid))
+							{
+								if (argitem->type->sqlcollectionoid != ((PLiSQL_type *)type[i])->sqlcollectionoid)
+									match = false;
+							}
+							/* End - ReqID:SRS-SQL-Collection */
+							else if (argitem->type != type[i])
 								match = false;
 						}
 						break;
@@ -3166,7 +3198,13 @@ internal_get_subprocfunc_result_type(PLiSQL_subproc_function *subprocfunc,
 		{
 			PLiSQL_function_argitem *argitem = (PLiSQL_function_argitem *) lfirst(lc);
 
-			argtypes[i++] = argitem->type->typoid;
+			/* Begin - ReqID:SRS-SQL-Collection */
+			if (argitem->type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(argitem->type->sqlcollectionoid))
+				argtypes[i++] = argitem->type->sqlcollectionoid;
+			else
+			/* End - ReqID:SRS-SQL-Collection */
+				argtypes[i++] = argitem->type->typoid;
 		}
 		Assert(i == subprocfunc->function->fn_nargs);
 		oidvec = buildoidvector(argtypes, i);
@@ -3279,13 +3317,30 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 	int			i;
 	int			j;
 	ListCell	*lc;
-	Oid			rettype = (subprocfunc->rettype != NULL ? subprocfunc->rettype->typoid : VOIDOID);
+	Oid			rettype;
 	/* Begin - ReqID:SRS-PLSQL-Collection */
 	int32		*outargtypmod;
 	int32		rettypmod;
-
-	rettypmod = (subprocfunc->rettype != NULL ? subprocfunc->rettype->atttypmod : -1);
 	/* End - ReqID:SRS-PLSQL-Collection */
+
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (subprocfunc->rettype == NULL)
+	{
+		rettype = VOIDOID;
+		rettypmod = -1;
+	}
+	else if (subprocfunc->rettype->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+		isSqlCollectionType(subprocfunc->rettype->sqlcollectionoid))
+	{
+		rettype = subprocfunc->rettype->sqlcollectionoid;
+		rettypmod = -1;
+	}
+	else
+	{
+		rettype = subprocfunc->rettype->typoid;
+		rettypmod = subprocfunc->rettype->atttypmod;
+	}
+	/* End - ReqID:SRS-SQL-Collection */
 
 	/* function no out arguments */
 	if (numoutargs < 1)
@@ -3304,7 +3359,13 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 
 		if (argitem->argmode != ARGMODE_IN)
 		{
-			outargtypes[i] = argitem->type->typoid;
+			/* Begin - ReqID:SRS-SQL-Collection */
+			if (argitem->type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(argitem->type->sqlcollectionoid))
+				outargtypes[i] = argitem->type->sqlcollectionoid;
+			else
+			/* End - ReqID:SRS-SQL-Collection */
+				outargtypes[i] = argitem->type->typoid;
 			/* Begin - ReqID:SRS-SQL-PACKAGE */
 			/*
 			 * If the guc pararmeter out_parameter_column_position is set to true,
@@ -3316,9 +3377,17 @@ build_subprocfunction_result_tupdesc_t(PLiSQL_subproc_function *subprocfunc)
 			else
 				outargnames[i] = argitem->argname;
 
-			/* Begin - ReqID:SRS-PLSQL-Collection */
-			outargtypmod[i] = argitem->type->atttypmod;
-			/* End - ReqID:SRS-PLSQL-Collection */
+			/* Begin - ReqID:SRS-SQL-Collection */
+			if (argitem->type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+				isSqlCollectionType(argitem->type->sqlcollectionoid))
+				outargtypmod[i] = -1;
+			else
+			/* End - ReqID:SRS-SQL-Collection */
+			{
+				/* Begin - ReqID:SRS-PLSQL-Collection */
+				outargtypmod[i] = argitem->type->atttypmod;
+				/* End - ReqID:SRS-PLSQL-Collection */
+			}
 
 			i++;
 			/* End - ReqID:SRS-SQL-PACKAGE */
@@ -3411,7 +3480,13 @@ get_subprocfunc_arg_info_from_arguments(List *args, Oid **p_argtypes,
 
 		argitem = (PLiSQL_function_argitem *) lfirst(lc);
 
-		(*p_argtypes)[i] = argitem->type->typoid;
+		/* Begin - ReqID:SRS-SQL-Collection */
+		if (argitem->type->ttype == PLISQL_TTYPE_COLLECT_TYPE &&
+			isSqlCollectionType(argitem->type->sqlcollectionoid))
+			(*p_argtypes)[i] = argitem->type->sqlcollectionoid;
+		else
+		/* End - ReqID:SRS-SQL-Collection */
+			(*p_argtypes)[i] = argitem->type->typoid;
 		(*p_argnames)[i] = argitem->argname;
 		if (argitem->argmode == ARGMODE_IN)
 			(*p_argmodes)[i] = PROARGMODE_IN;

@@ -46,6 +46,7 @@
 #include "catalog/pg_authid.h"
 #include "catalog/pg_cast.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_collection_type.h"		/* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_depend.h"
 #include "catalog/pg_enum.h"
@@ -72,6 +73,7 @@
 #include "utils/inval.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/numeric.h"	/* ReqID:SRS-SQL-Collection */
 #include "utils/ora_compatible.h"
 #include "utils/rel.h"
 #include "utils/ruleutils.h"
@@ -148,6 +150,24 @@ static void AlterTypeRecurse(Oid typeOid, bool isImplicitArray,
 							 AlterTypeRecurseParams *atparams);
 
 static List *add_enum_type_list(Oid typeOid, List *typlist); /* ReqID:SRS-MYSQL-ENUMTYPE */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+static int get_numeric_typmod_precision(int32 typmod);
+static int get_numeric_typmod_scale(int32 typmod);
+static void CreateOrUpdatePgCollect(bool isReplace,
+									bool cttypeUnchanged,
+									Oid pgtypeOid,
+									Oid elemTypeOid,
+									int32 elemTypmod,
+									char typtype,
+									bool elemtypnotnull,
+									int32 limit,
+									int16 flags);
+static void DeleteCollectionTypeByPgTypeId(Oid pgtypeOid);
+static void CheckCollectionTypeDependencies(Oid typeOid, const char *typeName, bool cascade);
+static void CheckElemTypeCompatibility(Oid oldElemType, int32 oldElemTypmod,
+						   Oid newElemType, int32 newElemTypmod);
+/* End - ReqID:SRS-SQL-Collection */
 
 /*
  * DefineType
@@ -698,6 +718,16 @@ RemoveTypeById(Oid typeOid)
 	 */
 	if (((Form_pg_type) GETSTRUCT(tup))->typtype == TYPTYPE_RANGE)
 		RangeDelete(typeOid);
+
+	/* Begin - ReqID:SRS-SQL-Collection */
+	/*
+	 * If it is a collection type, delete the pg_collection_type entry too;
+	 * like enum and range, we don't bother with a dependency entry for that,
+	 * so it has to be done "by hand" here.
+	 */
+	if (IS_PLSQL_COLLECTYPE(((Form_pg_type) GETSTRUCT(tup))->typtype))
+		DeleteCollectionTypeByPgTypeId(typeOid);
+	/* End - ReqID:SRS-SQL-Collection */
 
 	ReleaseSysCache(tup);
 
@@ -2659,6 +2689,7 @@ DefineCompositeType(RangeVar *typevar, List *coldeflist)
 	createStmt->oncommit = ONCOMMIT_NOOP;
 	createStmt->tablespacename = NULL;
 	createStmt->if_not_exists = false;
+	createStmt->nestdtableCols = NIL; /* ReqID:SRS-SQL-Collection */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	if (compatible_mode == MYS_MODE)
@@ -3799,7 +3830,7 @@ RenameType(RenameStmt *stmt)
 				 errhint("Use ALTER TABLE instead.")));
 
 	/* don't allow direct alteration of array types, either */
-	if (IsTrueArrayType(typTup))
+	if (IsTrueArrayType(typTup) && !IS_PLSQL_COLLECTYPE(typTup->typtype) /* ReqID:SRS-SQL-Collection */)
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 				 errmsg("cannot alter array type %s",
@@ -3880,7 +3911,7 @@ AlterTypeOwner(List *names, Oid newOwnerId, ObjectType objecttype)
 				 errhint("Use ALTER TABLE instead.")));
 
 	/* don't allow direct alteration of array types, either */
-	if (IsTrueArrayType(typTup))
+	if (IsTrueArrayType(typTup) && !IS_PLSQL_COLLECTYPE(typTup->typtype) /* ReqID:SRS-SQL-Collection */)
 		ereport(ERROR,
 				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
 				 errmsg("cannot alter array type %s",
@@ -4882,3 +4913,796 @@ DefineAnonymousEnum(TypeName *typname, Oid collation)
 	return address.objectId;
 }
 /* End - ReqID:SRS-MYSQL-ENUMTYPE */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ *  get_numeric_typmod_precision
+ *
+ *	Extract the precision from a numeric typmod.
+ */
+static int
+get_numeric_typmod_precision(int32 typmod)
+{
+	return ((typmod - VARHDRSZ) >> 16) & 0xffff;
+}
+
+/*
+ * get_numeric_typmod_scale
+ *
+ *	Extract the scale from a numeric typmod.
+ *
+ *	Note that the scale may be negative, so we must do sign extension when
+ *	unpacking it.  We do this using the bit hack (x^1024)-1024, which sign
+ *	extends an 11-bit two's complement number x.
+ */
+static int
+get_numeric_typmod_scale(int32 typmod)
+{
+	return ((((typmod - VARHDRSZ) & 0x7ff) ^ 1024) - 1024);
+}
+
+/*
+ * DeleteCollectionTypeByPgTypeId
+ *
+ * Delete a pg_collection_type entry by pg type OID.
+ */
+static void
+DeleteCollectionTypeByPgTypeId(Oid pgtypeOid)
+{
+	Relation	rel;
+	HeapTuple	tup;
+
+	rel = table_open(CollectionTypeRelationId, RowExclusiveLock);
+
+	tup = SearchSysCache1(COLLECTIONPGTYPEOID, ObjectIdGetDatum(pgtypeOid));
+	if (HeapTupleIsValid(tup))
+	{
+		CatalogTupleDelete(rel, &tup->t_self);
+		ReleaseSysCache(tup);
+	}
+
+	table_close(rel, RowExclusiveLock);
+}
+
+/*
+ * Create or update the pg_collection_type entry
+ */
+static void
+CreateOrUpdatePgCollect(bool isReplace,
+						bool cttypeUnchanged,
+						Oid pgtypeOid,
+						Oid elemTypeOid,
+						int32 elemTypmod,
+						char typtype,
+						bool elemtypnotnull,
+						int32 limit,
+						int16 flags)
+{
+	Relation	collect_rel;
+	HeapTuple	collect_tup;
+	Datum		values[Natts_pg_collection_type];
+	bool		nulls[Natts_pg_collection_type];
+
+	collect_rel = table_open(CollectionTypeRelationId, RowExclusiveLock);
+
+	memset(values, 0, sizeof(values));
+	memset(nulls, false, sizeof(nulls));
+
+	values[Anum_pg_collection_type_pgtypoid - 1] = ObjectIdGetDatum(pgtypeOid);
+	values[Anum_pg_collection_type_elemtype - 1] = ObjectIdGetDatum(elemTypeOid);
+	values[Anum_pg_collection_type_elemtypmod - 1] = ObjectIdGetDatum(elemTypmod);
+	values[Anum_pg_collection_type_elemtypnotnull -1] = BoolGetDatum(elemtypnotnull);
+	values[Anum_pg_collection_type_climit - 1] = Int32GetDatum(limit);
+	values[Anum_pg_collection_type_kind - 1] = typtype;
+	values[Anum_pg_collection_type_flags - 1] = flags;
+
+	if (isReplace)
+	{
+		if (!cttypeUnchanged)
+		{
+			/* In-place update path */
+			HeapTuple	oldCollTup;
+			HeapTuple	newCollTup;
+			bool		replaces[Natts_pg_collection_type];
+
+			oldCollTup = SearchSysCache1(COLLECTIONPGTYPEOID,
+										 ObjectIdGetDatum(pgtypeOid));
+			if (!HeapTupleIsValid(oldCollTup))
+				elog(ERROR, "cache lookup failed for collection type %u",
+					 pgtypeOid);
+
+			memset(replaces, true, sizeof(replaces));
+			replaces[Anum_pg_collection_type_pgtypoid - 1] = false;
+
+			newCollTup = heap_modify_tuple(oldCollTup,
+										   RelationGetDescr(collect_rel),
+										   values, nulls, replaces);
+			CatalogTupleUpdate(collect_rel, &newCollTup->t_self, newCollTup);
+			heap_freetuple(newCollTup);
+			ReleaseSysCache(oldCollTup);
+		}
+	}
+	else
+	{
+		/*
+		 * Create the pg_collection_type entry
+		 */
+		collect_tup = heap_form_tuple(RelationGetDescr(collect_rel), values, nulls);
+		CatalogTupleInsert(collect_rel, collect_tup);
+		heap_freetuple(collect_tup);
+	}
+
+	table_close(collect_rel, RowExclusiveLock);
+}
+
+/*
+ * DefineCollectionType
+ *
+ * Create an Oracle-compatible SQL collection type (nested table or VARRAY).
+ *
+ * This creates a pg_type entry with typtype = TYPTYPE_NESTEDTABLE or
+ * TYPTYPE_VARRAY and a corresponding entry in pg_collection_type for metadata.
+ *
+ * The collection data is stored internally as a PostgreSQL ArrayType,
+ * with custom I/O functions for Oracle-compatible text representation.
+ */
+ObjectAddress
+DefineCollectionType(CreateCollectionTypeStmt *stmt)
+{
+	Oid			pgtypeOid = InvalidOid;
+	Oid			arrayOid;
+	char	   *arrayName;
+	Oid			typeNamespace;
+	AclResult	aclresult;
+	Oid			elemTypeOid;
+	int32		elemTypmod;
+	Oid			ownerOid;
+	char	   *typeName;
+	HeapTuple	existingTup;
+	ObjectAddress address;
+	ObjectAddress referenced;
+	Relation	depRel;
+	ScanKeyData key[2];
+	SysScanDesc depScan;
+	HeapTuple	depTup;
+	char 		typtype;
+	bool		isReplace = false;
+	Oid			oldElemTypeOid = InvalidOid;
+	char		oldtyptype;
+	bool		typeUnchanged = false;
+	bool		cttypeUnchanged = false;
+	int16		flags = 0;
+
+	/* Convert list of typeName to a name and namespace */
+	typeNamespace = QualifiedNameGetCreationNamespace(stmt->typeName, &typeName);
+
+	/* Get owner OID */
+	ownerOid = GetUserId();
+
+	/* Check we have creation rights in target namespace */
+	aclresult = pg_namespace_aclcheck(typeNamespace, ownerOid, ACL_CREATE);
+	if (aclresult != ACLCHECK_OK)
+		aclcheck_error(aclresult, OBJECT_SCHEMA,
+					   get_namespace_name(typeNamespace));
+
+	(void) fit_namespace_owner(typeNamespace, &ownerOid); /* ReqID:SRS-SQL-SCHEMA */
+
+	/*
+	 * Look to see if type already exists.
+	 */
+	existingTup = SearchSysCache2(TYPENAMENSP,
+						  CStringGetDatum(typeName),
+						  ObjectIdGetDatum(typeNamespace));
+
+	if (HeapTupleIsValid(existingTup))
+	{
+		Form_pg_type typForm = (Form_pg_type) GETSTRUCT(existingTup);
+		Oid existingOid;
+
+		if (!stmt->replace)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_OBJECT),
+					 errmsg("type \"%s\" already exists", typeName)));
+
+		/* OR REPLACE: check that it is a collection type */
+		if (typForm->typtype != TYPTYPE_NESTEDTABLE &&
+			typForm->typtype != TYPTYPE_VARRAY)
+			ereport(ERROR,
+					(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+					 errmsg("\"%s\" is not a collection type", typeName)));
+
+		existingOid = typForm->oid;
+		arrayOid = typForm->typarray;
+
+		if (!pg_type_ownercheck(existingOid, ownerOid))
+			aclcheck_error_type(ACLCHECK_NOT_OWNER, existingOid);
+
+		depRel = table_open(DependRelationId, AccessShareLock);
+		ScanKeyInit(&key[0],
+					Anum_pg_depend_refclassid,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(TypeRelationId));
+		ScanKeyInit(&key[1],
+					Anum_pg_depend_refobjid,
+					BTEqualStrategyNumber, F_OIDEQ,
+					ObjectIdGetDatum(existingOid));
+		depScan = systable_beginscan(depRel, DependReferenceIndexId,
+									true, NULL, 2, key);
+
+		while (HeapTupleIsValid(depTup = systable_getnext(depScan)))
+		{
+			Form_pg_depend depForm = (Form_pg_depend) GETSTRUCT(depTup);
+
+			if (depForm->classid == RelationRelationId &&
+				depForm->objsubid > 0)
+			{
+				/*
+				 * Check for table dependencies: if any table column references
+				 * this type, CREATE OR REPLACE fails regardless of FORCE.
+				 */
+				ereport(ERROR,
+						(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+						 errmsg("cannot replace type \"%s\" because it is referenced by table columns",
+								typeName)));
+
+			}
+			else if (depForm->classid == TypeRelationId)
+			{
+				/*
+				 * Check for type dependencies. Without FORCE, fail if any other
+				 * type depends on this collection type. With FORCE, proceed replace.
+				 */
+				/* Skip the array type - it's auto-generated */
+				if (depForm->objid != existingOid &&
+					get_typtype(depForm->objid) != TYPTYPE_BASE &&
+					!stmt->force)
+					ereport(ERROR,
+							(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+							 errmsg("cannot replace type \"%s\" because other types depend on it",
+									typeName),
+							 errhint("Use FORCE option to replace anyway.")));
+			}
+		}
+		systable_endscan(depScan);
+		relation_close(depRel, AccessShareLock);
+
+		isReplace = true;
+		pgtypeOid = existingOid;
+		oldElemTypeOid = typForm->typelem;
+		oldtyptype = typForm->typtype;
+
+		ReleaseSysCache(existingTup);
+	}
+
+	/* Resolve element type OID and typmod */
+	typenameTypeIdAndMod(NULL, stmt->elemType,
+						&elemTypeOid, &elemTypmod);
+	if (!OidIsValid(elemTypeOid))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("type \"%s\" does not exist",
+						TypeNameToString(stmt->elemType))));
+	if (stmt->kind == COLLECTION_VARRAY)
+		typtype = TYPTYPE_VARRAY;
+	else if (stmt->kind == COLLECTION_NESTED_TABLE)
+		typtype = TYPTYPE_NESTEDTABLE;
+	else
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("not supported type \"%s\"",
+						typeName)));
+
+	/* Validate VARRAY limit */
+	if (stmt->kind == COLLECTION_VARRAY && stmt->limit <= 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("VARRAY size limit must be positive")));
+
+	/*
+	 * If the new definition is identical to the existing one,
+	 * skip all catalog writes (pg_type, pg_collection_type, array type).
+	 */
+	if (isReplace)
+	{
+		HeapTuple	oldCollTup;
+		Form_pg_collection_type oldColl;
+		int16		expectedFlags = 0;
+
+		typeUnchanged = (oldtyptype == typtype) &&
+			(oldElemTypeOid == elemTypeOid);
+
+		if (stmt->persistable)
+			expectedFlags |= COLLECTION_FLAG_PERSISTABLE;
+		else
+			expectedFlags |= COLLECTION_FLAG_NOT_PERSISTABLE;
+
+		/* Compare pg_collection_type fields */
+		oldCollTup = SearchSysCache1(COLLECTIONPGTYPEOID,
+									 ObjectIdGetDatum(pgtypeOid));
+		if (!HeapTupleIsValid(oldCollTup))
+		{
+			/* Should not happen for an existing collection type */
+			cttypeUnchanged = false;
+		}
+		else
+		{
+			oldColl = (Form_pg_collection_type) GETSTRUCT(oldCollTup);
+			if (oldColl->elemtype != elemTypeOid ||
+				oldColl->elemtypmod != elemTypmod ||
+				oldColl->climit != stmt->limit ||
+				oldColl->elemtypnotnull != stmt->notNull ||
+				oldColl->kind != typtype ||
+				oldColl->flags != expectedFlags)
+				cttypeUnchanged = false;
+			else
+				cttypeUnchanged = true;
+
+			ReleaseSysCache(oldCollTup);
+		}
+
+		if (typeUnchanged && cttypeUnchanged)
+		{
+			/*
+			 * Nothing to do in pg_type and pg_collection_type,
+			 * jump straight to the post-alter hook + return path.
+			 */
+			ObjectAddressSet(address, TypeRelationId, pgtypeOid);
+			InvokeObjectPostAlterHook(TypeRelationId, pgtypeOid, 0);
+			CommandCounterIncrement();
+			return address;
+		}
+	}
+
+	if (!isReplace || !typeUnchanged)
+	{
+		if (!isReplace)
+		{
+			/* Pre-assign the array type OID */
+			arrayOid = AssignTypeArrayOid();
+		}
+
+		/*
+		 * Create or replace the pg_type entry
+		 */
+		address =
+			TypeCreateInternal(InvalidOid,	/* no predetermined type OID */
+					   typeName,	/* type name */
+					   typeNamespace,	/* namespace */
+					   InvalidOid,	/* relation oid (n/a here) */
+					   0,			/* relation kind (ditto) */
+					   ownerOid, 	/* owner's ID */
+					   -1,			/* internal size */
+					   typtype,		/* typeType */
+					   TYPCATEGORY_COLLECTION, /* type-category (collection type) */
+					   false,		/* is it a preferred type? */
+					   DEFAULT_TYPDELIM,/* array element delimiter */
+					   F_ARRAY_IN,	/* input procedure */
+					   F_ARRAY_OUT, /* output procedure */
+					   InvalidOid,	/* receive procedure */
+					   InvalidOid,	/* send procedure */
+					   InvalidOid,	/* typmodin procedure */
+					   InvalidOid,	/* typmodout procedure */
+					   F_ARRAY_TYPANALYZE,	/* analyze procedure */
+					   F_ARRAY_SUBSCRIPT_HANDLER,/* subscript procedure */
+					   elemTypeOid,	/* element type ID */
+					   false,		/* this is not an implicit array type */
+					   arrayOid,	/* array type we are about to create */
+					   InvalidOid,	/* base type ID (only for domains) */
+					   NULL,		/* default type value */
+					   NULL,		/* no binary form available */
+					   false,		/* passed by value */
+					   TYPALIGN_DOUBLE,	/* required alignment */
+					   TYPSTORAGE_EXTENDED,		/* TOAST strategy */
+					   -1,			/* typMod (Domains only) */
+					   0,			/* Array Dimensions of typbasetype */
+					   false,		/* Type NOT NULL */
+					   DEFAULT_COLLATION_OID, /* type's collation */
+					   isReplace);
+
+		pgtypeOid = address.objectId;
+
+		if (!isReplace)
+		{
+			/*
+			 * Create the array type for this collection.  Follow the same pattern as
+			 * range types: pre-assign an array OID, pass it as typarray when creating
+			 * the collection type (above), then create the array type with it.
+			 *
+			 * Since we already inserted the collection type, update its typarray.
+			 */
+			arrayName = makeArrayTypeName(typeName, typeNamespace);
+
+			/* Now create the array type with the pre-assigned OID */
+			TypeCreateInternal(arrayOid,	/* use pre-assigned OID */
+					   arrayName,	/* type name */
+					   typeNamespace,	/* namespace */
+					   InvalidOid,	/* relation oid (n/a here) */
+					   0,			/* relation kind (ditto) */
+					   ownerOid,	/* owner's ID */
+					   -1,			/* internal size (always varlena) */
+					   TYPTYPE_BASE,	/* type-type (base type) */
+					   TYPCATEGORY_ARRAY,	/* type-category (array) */
+					   false,		/* array types are never preferred */
+					   DEFAULT_TYPDELIM,	/* array element delimiter */
+					   F_ARRAY_IN,	/* input procedure */
+					   F_ARRAY_OUT,	/* output procedure */
+					   F_ARRAY_RECV,	/* receive procedure */
+					   F_ARRAY_SEND,	/* send procedure */
+					   InvalidOid,	/* typmodin procedure - none */
+					   InvalidOid,	/* typmodout procedure - none */
+					   F_ARRAY_TYPANALYZE,	/* analyze procedure */
+					   F_ARRAY_SUBSCRIPT_HANDLER,	/* array subscript procedure */
+					   pgtypeOid,		/* element type ID (the collection itself) */
+					   true,		/* yes this is an array type */
+					   InvalidOid,	/* no further array type */
+					   InvalidOid,	/* base type ID */
+					   NULL,		/* never a default type value */
+					   NULL,		/* binary default isn't sent either */
+					   false,		/* never passed by value */
+					   TYPALIGN_DOUBLE,/* alignment */
+					   TYPSTORAGE_EXTENDED,	/* ARRAY is always toastable */
+					   -1,			/* typMod (Domains only) */
+					   0,			/* Array dimensions of typbasetype */
+					   false,		/* Type NOT NULL */
+					   InvalidOid,	/* typcollation */
+					   isReplace);
+
+			pfree(arrayName);
+		}
+	}
+
+	if (stmt->persistable)
+		flags |= COLLECTION_FLAG_PERSISTABLE;
+	else
+		flags |= COLLECTION_FLAG_NOT_PERSISTABLE;
+
+	/*
+	 * Create or update the pg_collection_type entry
+	 */
+	CreateOrUpdatePgCollect(isReplace,
+							cttypeUnchanged,
+							pgtypeOid,
+							elemTypeOid,
+							elemTypmod,
+							typtype,
+							stmt->notNull,
+							stmt->limit,
+							flags);
+
+	if (isReplace)
+		InvokeObjectPostAlterHook(TypeRelationId, pgtypeOid, 0);
+	else
+	{
+		/* Record dependency on namespace */
+		ObjectAddressSet(referenced, NamespaceRelationId, typeNamespace);
+		recordDependencyOn(&address, &referenced, DEPENDENCY_NORMAL);
+		ObjectAddressSet(address, TypeRelationId, pgtypeOid);
+
+		/* Post creation hook */
+		InvokeObjectPostCreateHook(TypeRelationId, pgtypeOid, 0);
+	}
+
+	/* Make the changes visible */
+	CommandCounterIncrement();
+
+	return address;
+}
+
+/*
+ * AlterCollectionType
+ *
+ * ALTER TYPE type_name MODIFY LIMIT integer [CASCADE]
+ * ALTER TYPE type_name MODIFY ELEMENT TYPE datatype [CASCADE]
+ */
+ObjectAddress
+AlterCollectionType(AlterCollectionTypeStmt *stmt)
+{
+	ObjectAddress address;
+	Relation	rel;
+	TypeName   *typename;
+	HeapTuple	pg_type_tup;
+	HeapTuple	tup;
+	Oid			typeOid;
+	Form_pg_type typForm;
+	Form_pg_collection_type collForm;
+	Datum		values[Natts_pg_collection_type];
+	bool		nulls[Natts_pg_collection_type];
+	bool		replaces[Natts_pg_collection_type];
+
+	/* Make a TypeName so we can use standard type lookup machinery */
+	typename = makeTypeNameFromNameList(stmt->typeName);
+	pg_type_tup = typenameType(NULL, typename, NULL);
+
+	typeOid = typeTypeId(pg_type_tup);
+	typForm = (Form_pg_type) GETSTRUCT(pg_type_tup);
+
+	/*
+	 * Permissions check.
+	 */
+	if (!pg_type_ownercheck(typeOid, GetUserId()))
+		aclcheck_error_type(ACLCHECK_NOT_OWNER, typeOid);
+
+	/* Verify it's a nested table or varray */
+	if (typForm->typtype != TYPTYPE_NESTEDTABLE &&
+		typForm->typtype != TYPTYPE_VARRAY)
+		ereport(ERROR,
+				(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+				 errmsg("\"%s\" is not a collection type",
+				 NameListToString(stmt->typeName))));
+
+	/* Now look up the pg_collection_type entry */
+	rel = table_open(CollectionTypeRelationId, RowExclusiveLock);
+
+	tup = SearchSysCache1(COLLECTIONPGTYPEOID, ObjectIdGetDatum(typeOid));
+	if (!HeapTupleIsValid(tup))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("collection type metadata not found for type %u", typeOid)));
+
+	collForm = (Form_pg_collection_type) GETSTRUCT(tup);
+
+	switch (stmt->subtype)
+	{
+		case ALTER_COLLECTION_MODIFY_LIMIT:
+			{
+				HeapTuple	newtup;
+
+				/* Only VARRAY can modify limit */
+				if (typForm->typtype != TYPTYPE_VARRAY)
+					ereport(ERROR,
+							(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+							 errmsg("MODIFY LIMIT is supported only on schema-level varray types")));
+
+				/* New limit value must be greater than current limit value */
+				if (stmt->limit <= collForm->climit)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							 errmsg("the limit of a VARRAY can only be increased")));
+
+				/* Without CASCADE, fail if other objects depend on this type */
+				CheckCollectionTypeDependencies(typeOid,
+												NameListToString(stmt->typeName),
+												stmt->cascade);
+
+				/* Update the pg_collection_type tuple */
+				memset(values, 0, sizeof(values));
+				memset(nulls, false, sizeof(nulls));
+				memset(replaces, false, sizeof(replaces));
+
+				replaces[Anum_pg_collection_type_climit - 1] = true;
+				values[Anum_pg_collection_type_climit - 1] = Int32GetDatum(stmt->limit);
+
+				newtup = heap_modify_tuple(tup, RelationGetDescr(rel),
+										   values, nulls, replaces);
+				CatalogTupleUpdate(rel, &newtup->t_self, newtup);
+				heap_freetuple(newtup);
+			}
+			break;
+
+		case ALTER_COLLECTION_MODIFY_ELEM_TYPE:
+			{
+				Oid 		oldElemType;
+				int32		oldElemTypmod;
+				Oid 		newElemType;
+				int32		newElemTypmod;
+				Type 		newElemTup;
+				HeapTuple	newtup;
+
+				oldElemType = collForm->elemtype;
+				oldElemTypmod = collForm->elemtypmod;
+
+				newElemTup = LookupTypeName(NULL, stmt->elemType,
+											&newElemTypmod, false);
+
+				if (!HeapTupleIsValid(newElemTup))
+					ereport(ERROR,
+							(errcode(ERRCODE_UNDEFINED_OBJECT),
+							 errmsg("type \"%s\" does not exist",
+									TypeNameToString(stmt->elemType))));
+				newElemType = typeTypeId(newElemTup);
+				ReleaseSysCache(newElemTup);
+
+				/* New element type must be upward compatible with the old one */
+				CheckElemTypeCompatibility(oldElemType, oldElemTypmod,
+										   newElemType, newElemTypmod);
+
+				/* Without CASCADE, fail if other objects depend on this type */
+				CheckCollectionTypeDependencies(typeOid,
+												NameListToString(stmt->typeName),
+												stmt->cascade);
+
+				/* Update pg_collection_type with new element type and typmod */
+				memset(values, 0, sizeof(values));
+				memset(nulls, false, sizeof(nulls));
+				memset(replaces, false, sizeof(replaces));
+
+				replaces[Anum_pg_collection_type_elemtype - 1] = true;
+				values[Anum_pg_collection_type_elemtype - 1] = ObjectIdGetDatum(newElemType);
+				replaces[Anum_pg_collection_type_elemtypmod - 1] = true;
+				values[Anum_pg_collection_type_elemtypmod - 1] = Int32GetDatum(newElemTypmod);
+
+				newtup = heap_modify_tuple(tup, RelationGetDescr(rel),
+										   values, nulls, replaces);
+				CatalogTupleUpdate(rel, &newtup->t_self, newtup);
+				heap_freetuple(newtup);
+			}
+			break;
+		default:
+			break;
+	}
+
+	ReleaseSysCache(pg_type_tup);
+	ReleaseSysCache(tup);
+	table_close(rel, RowExclusiveLock);
+
+	CommandCounterIncrement();
+
+	ObjectAddressSet(address, TypeRelationId, typeOid);
+	return address;
+}
+
+/*
+ * CheckCollectionTypeDependencies
+ *
+ * Check whether any table columns or other types depend on the given
+ * collection type. If there are dependencies and CASCADE was not
+ * specified, raise an error. The auto-generated array type is skipped.
+ */
+static void
+CheckCollectionTypeDependencies(Oid typeOid, const char *typeName, bool cascade)
+{
+	Relation	depRel;
+	ScanKeyData key[2];
+	SysScanDesc depScan;
+	HeapTuple	depTup;
+	bool		hasDep = false;
+
+	depRel = table_open(DependRelationId, AccessShareLock);
+	ScanKeyInit(&key[0],
+				Anum_pg_depend_refclassid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(TypeRelationId));
+	ScanKeyInit(&key[1],
+				Anum_pg_depend_refobjid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(typeOid));
+	depScan = systable_beginscan(depRel, DependReferenceIndexId,
+								true, NULL, 2, key);
+
+	while (HeapTupleIsValid(depTup = systable_getnext(depScan)))
+	{
+		Form_pg_depend depForm = (Form_pg_depend) GETSTRUCT(depTup);
+
+		if (depForm->classid == RelationRelationId &&
+			depForm->objsubid > 0)
+		{
+			hasDep = true;
+			break;
+		}
+		else if (depForm->classid == TypeRelationId)
+		{
+			/* Skip the array type - it's auto-generated */
+			if (depForm->objid != typeOid &&
+				get_typtype(depForm->objid) != TYPTYPE_BASE)
+			{
+				hasDep = true;
+				break;
+			}
+		}
+	}
+	systable_endscan(depScan);
+	relation_close(depRel, AccessShareLock);
+
+	if (hasDep && !cascade)
+		ereport(ERROR,
+				(errcode(ERRCODE_DEPENDENT_OBJECTS_STILL_EXIST),
+				 errmsg("cannot alter type \"%s\" because other objects depend on it",
+						typeName),
+				 errhint("must specify CASCADE option.")));
+}
+
+/*
+ * CheckElemTypeCompatibility
+ *
+ * Verify that the new element type is upward compatible with the old one.
+ * Per Oracle semantics the base element type must not change, and only
+ * increases of precision (NUMBER), size (RAW) or max length
+ * (VARCHAR2/NVARCHAR2) are allowed. Any decrease raises an error.
+ */
+static void
+CheckElemTypeCompatibility(Oid oldElemType, int32 oldElemTypmod,
+						   Oid newElemType, int32 newElemTypmod)
+{
+	if (oldElemType != newElemType &&
+		oldElemType != NUMERICOID &&
+		oldElemType != NUMBEROID &&
+		newElemType != NUMERICOID &&
+		newElemType != NUMBEROID)
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("cannot change element type from \"%s\" to \"%s\"",
+						format_type_be(oldElemType),
+						format_type_be(newElemType)),
+						errhint("only widening of the collection element type is allowed.")));
+
+	switch (oldElemType)
+	{
+		case NUMERICOID:
+		case NUMBEROID:
+			{
+				int			oldPrecision;
+				int			oldScale;
+				int			newPrecision;
+				int			newScale;
+
+				if (oldElemTypmod < 0)
+				{
+					if (newElemTypmod >= 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("only widening of the collection element type is allowed")));
+				}
+				else
+				{
+					/*
+					 * Get the precision and scale out of the typmod value
+					 */
+					oldPrecision = get_numeric_typmod_precision(oldElemTypmod);
+					oldScale = get_numeric_typmod_scale(oldElemTypmod);
+
+					if (newElemTypmod < 0)
+					{
+						newPrecision = NUMERIC_MAX_PRECISION;
+						if (oldElemType == NUMBEROID)
+							newScale = NUMERIC_MAX_RESULT_SCALE;
+						else
+							newScale = 0;
+					}
+					else
+					{
+						newPrecision = get_numeric_typmod_precision(newElemTypmod);
+						newScale = get_numeric_typmod_scale(newElemTypmod);
+					}
+
+					if (newPrecision <= oldPrecision ||
+						(newPrecision > oldPrecision && newScale < oldScale))
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("only widening of the collection element type is allowed")));
+				}
+			}
+			break;
+
+		case RAWOID:
+		case ORAVARCHARCHAROID:
+		case ORAVARCHARBYTEOID:
+			{
+				/*
+				 * A negative typmod denotes an unconstrained type, which can
+				 * hold up to the maximum allowed length, so any constrained
+				 * new type is a decrease. For constrained types the typmod
+				 * stores VARHDRSZ plus the declared length.
+				 */
+				if (oldElemTypmod < 0)
+				{
+					if (newElemTypmod >= 0)
+						ereport(ERROR,
+								(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+								 errmsg("cannot decrease size of element type")));
+				}
+				else if (newElemTypmod >= 0 &&
+						 newElemTypmod - VARHDRSZ < oldElemTypmod - VARHDRSZ)
+					ereport(ERROR,
+							(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+							 errmsg("cannot decrease size of element type")));
+			}
+			break;
+
+		default:
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+						 errmsg("collection element type does not allow modifications")));
+			break;
+	}
+}
+/* End - ReqID:SRS-SQL-Collection */

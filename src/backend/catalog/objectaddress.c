@@ -29,6 +29,7 @@
 #include "catalog/pg_authid.h"
 #include "catalog/pg_cast.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_collection_type.h"	/* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_constraint.h"
 #include "catalog/pg_conversion.h"
 #include "catalog/pg_database.h"
@@ -717,6 +718,22 @@ static const ObjectPropertyType ObjectProperty[] =
 		true
 	},
 	/* End - ReqID:SRS-SQL-SYNONYM */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	{
+		"pg_collection_type",
+		CollectionTypeRelationId,
+		CollectionPgTypeOidIndexId,
+		COLLECTIONPGTYPEOID,
+		-1,
+		Anum_pg_collection_type_pgtypoid,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		InvalidAttrNumber,
+		OBJECT_TYPE,
+		true
+	},
+	/* End - ReqID:SRS-SQL-Collection */
 };
 
 /*

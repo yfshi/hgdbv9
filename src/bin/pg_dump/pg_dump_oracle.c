@@ -52,6 +52,7 @@
 #include "catalog/pg_cast_d.h"
 #include "catalog/pg_class_d.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_collection_type.h" /* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_default_acl_d.h"
 #include "catalog/pg_largeobject_d.h"
 #include "catalog/pg_largeobject_metadata_d.h"
@@ -173,6 +174,9 @@ static void dumpDomain(Archive *fout, const TypeInfo *tyinfo);
 static void dumpCompositeType(Archive *fout, const TypeInfo *tyinfo);
 static void dumpCompositeTypeColComments(Archive *fout, const TypeInfo *tyinfo);
 static void dumpShellType(Archive *fout, const ShellTypeInfo *stinfo);
+/* Begin - ReqID:SRS-SQL-Collection */
+static void dumpCollectionType(Archive *fout, const TypeInfo *tyinfo);
+/* End - ReqID:SRS-SQL-Collection */
 static void dumpProcLang(Archive *fout, const ProcLangInfo *plang);
 static void dumpFunc(Archive *fout, const FuncInfo *finfo);
 /* Begin - ReqID:SRS-SQL-PACKAGE */
@@ -11563,6 +11567,10 @@ dumpType(Archive *fout, const TypeInfo *tyinfo)
 		dumpRangeType(fout, tyinfo);
 	else if (tyinfo->typtype == TYPTYPE_PSEUDO && !tyinfo->isDefined)
 		dumpUndefinedType(fout, tyinfo);
+	/* Begin - ReqID:SRS-SQL-Collection */
+	else if (tyinfo->typtype == TYPTYPE_NESTEDTABLE || tyinfo->typtype == TYPTYPE_VARRAY)
+		dumpCollectionType(fout, tyinfo);
+	/* End - ReqID:SRS-SQL-Collection */
 	else
 		pg_log_warning("typtype of data type \"%s\" appears to be invalid",
 					   tyinfo->dobj.name);
@@ -12167,6 +12175,132 @@ dumpBaseType(Archive *fout, const TypeInfo *tyinfo)
 	free(qtypname);
 	free(qualtypname);
 }
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * dumpCollectionType
+ *	  writes out to fout the queries to recreate a user-defined collection
+ *	  type (nested table or VARRAY).
+ */
+static void
+dumpCollectionType(Archive *fout, const TypeInfo *tyinfo)
+{
+	DumpOptions *dopt = fout->dopt;
+	PQExpBuffer q;
+	PQExpBuffer delq;
+	PQExpBuffer query;
+	PGresult   *res;
+	char	   *qtypname;
+	char	   *qualtypname;
+	char	   *elemtype;
+	char 		typtype;
+	char 		elemtypnotnull;
+	int32 		limit;
+	int16		flags;
+
+	/* Skip if not to be dumped */
+	if (!tyinfo->dobj.dump || dopt->dataOnly)
+		return;
+
+	q = createPQExpBuffer();
+	delq = createPQExpBuffer();
+	query = createPQExpBuffer();
+
+	/* Fetch type-specific details */
+	appendPQExpBuffer(query, "SELECT "
+					"pg_catalog.format_type(elemtype, elemtypmod) AS elemtype, "
+					"elemtypnotnull, "
+					"climit, "
+					"kind, "
+					"flags "
+					"FROM pg_catalog.pg_collection_type "
+					"WHERE pgtypoid = '%u'::pg_catalog.oid",
+					tyinfo->dobj.catId.oid);
+
+	res = ExecuteSqlQueryForSingleRow(fout, query->data);
+
+	elemtype = PQgetvalue(res, 0, PQfnumber(res, "elemtype"));
+	elemtypnotnull = PQgetvalue(res, 0, PQfnumber(res, "elemtypnotnull"))[0];
+	typtype = PQgetvalue(res, 0, PQfnumber(res, "kind"))[0];
+	limit = atoi(PQgetvalue(res, 0, PQfnumber(res, "climit")));
+	flags = (int16) atoi(PQgetvalue(res, 0, PQfnumber(res, "flags")));
+
+	qtypname = pg_strdup(fmtId(tyinfo->dobj.name));
+	qualtypname = pg_strdup(fmtQualifiedDumpable(tyinfo));
+
+	/*
+	 * The reason we include CASCADE is that the circular dependency between
+	 * the type and its I/O functions makes it impossible to drop the type any
+	 * other way.
+	 */
+	appendPQExpBuffer(delq, "DROP TYPE %s CASCADE;\n", qualtypname);
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_set_type_oids_by_type_oid(fout, q,
+												 tyinfo->dobj.catId.oid,
+												 false, false);
+
+	if (typtype == TYPTYPE_VARRAY)
+		appendPQExpBuffer(q, "CREATE TYPE %s AS VARRAY(%d) OF ",
+						  qualtypname, limit);
+	else
+		appendPQExpBuffer(q, "CREATE TYPE %s AS TABLE OF ",
+								  qualtypname);
+	appendPQExpBuffer(q, "(%s", elemtype);
+
+	if (elemtypnotnull == 't')
+		appendPQExpBufferStr(q, " NOT NULL) ");
+	else
+		appendPQExpBufferStr(q, ") ");
+
+	if (flags & COLLECTION_FLAG_NOT_PERSISTABLE)
+		appendPQExpBufferStr(q, "NOT PERSISTABLE");
+	else if (flags & COLLECTION_FLAG_PERSISTABLE)
+		appendPQExpBufferStr(q, " PERSISTABLE");
+
+	appendPQExpBufferStr(q, ";\n");
+
+	if (dopt->binary_upgrade)
+		binary_upgrade_extension_member(q, &tyinfo->dobj,
+										"TYPE", qtypname,
+										tyinfo->dobj.namespace->dobj.name);
+
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_DEFINITION)
+		ArchiveEntry(fout, tyinfo->dobj.catId, tyinfo->dobj.dumpId,
+					 ARCHIVE_OPTS(.tag = tyinfo->dobj.name,
+								  .namespace = tyinfo->dobj.namespace->dobj.name,
+								  .owner = tyinfo->rolname,
+								  .description = "TYPE",
+								  .section = SECTION_PRE_DATA,
+								  .createStmt = q->data,
+								  .dropStmt = delq->data));
+
+	/* Dump Type Comments and Security Labels */
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_COMMENT)
+		dumpComment(fout, "TYPE", qtypname,
+					tyinfo->dobj.namespace->dobj.name, tyinfo->rolname,
+					tyinfo->dobj.catId, 0, tyinfo->dobj.dumpId);
+
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_SECLABEL)
+		dumpSecLabel(fout, "TYPE", qtypname,
+					 tyinfo->dobj.namespace->dobj.name, tyinfo->rolname,
+					 tyinfo->dobj.catId, 0, tyinfo->dobj.dumpId);
+
+	if (tyinfo->dobj.dump & DUMP_COMPONENT_ACL)
+		dumpACL(fout, tyinfo->dobj.dumpId, InvalidDumpId, "TYPE",
+				qtypname, NULL,
+				tyinfo->dobj.namespace->dobj.name,
+				tyinfo->rolname, tyinfo->typacl, tyinfo->rtypacl,
+				tyinfo->inittypacl, tyinfo->initrtypacl);
+
+	PQclear(res);
+	destroyPQExpBuffer(q);
+	destroyPQExpBuffer(delq);
+	destroyPQExpBuffer(query);
+	free(qtypname);
+	free(qualtypname);
+}
+/* End - ReqID:SRS-SQL-Collection */
 
 /*
  * dumpDomain

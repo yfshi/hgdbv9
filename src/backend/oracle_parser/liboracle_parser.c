@@ -984,6 +984,9 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 				case LIKE:
 				case ILIKE:
 				case SIMILAR:
+				/* Begin - ReqID:SRS-SQL-Collection */
+				case PERSISTABLE:
+				/* End - ReqID:SRS-SQL-Collection */
 					cur_token = NOT_LA;
 					break;
 			}

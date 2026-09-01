@@ -511,6 +511,10 @@ typedef enum NodeTag
 	T_PivotClause,
 	T_PivotInItem,
 	/* End - ReqID:SRS-SQL-PIVOT */
+	/* Begin - ReqID:SRS-SQL-Collection */
+	T_CreateCollectionTypeStmt,
+	T_AlterCollectionTypeStmt,
+	/* End - ReqID:SRS-SQL-Collection */
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)
 	 */

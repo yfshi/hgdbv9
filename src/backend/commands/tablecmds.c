@@ -750,6 +750,11 @@ static void ATCheckExpectedConstraintType(Relation rel, const char *constrName,
 										  bool missing_ok, char expected_contype);
 /* End - ReqID:SRS-MYSQL-SQL-Alter */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+static void check_nested_table_columns(char *relname, List *tableElts,
+									   List *nested_table_colums);
+/* End - ReqID:SRS-SQL-Collection */
+
 /* ----------------------------------------------------------------
  *		DefineRelation
  *				Creates a new relation.
@@ -1125,6 +1130,23 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 		attnum++;
 		attr = TupleDescAttr(descriptor, attnum - 1);
 
+		/* Begin - ReqID:SRS-SQL-Collection */
+		if (ORA_MODE == compatible_mode && isSqlCollectionType(attr->atttypid))
+		{
+			/*
+			 * disallowed Nested Table or Varray column in a Temporary table or a Partitioned table
+			 */
+			if (stmt->relation->relpersistence == RELPERSISTENCE_GLOBAL_TEMP)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("disallowed Nested Table or Varray column in a Temporary table")));
+			if (stmt->partspec != NULL)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("disallowed Nested Table or Varray column in a Partitioned table")));
+		}
+		/* End - ReqID:SRS-SQL-Collection */
+
 		if (colDef->raw_default != NULL)
 		{
 			RawColumnDefault *rawEnt;
@@ -1193,6 +1215,11 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	/* look up the access method, verify it is for a table */
 	if (accessMethod != NULL)
 		accessMethodId = get_table_am_oid(accessMethod, false);
+
+	/* Begin - ReqID:SRS-SQL-Collection */
+	/* check if the table have nested table columns */
+	check_nested_table_columns(relname, stmt->tableElts, stmt->nestdtableCols);
+	/* End - ReqID:SRS-SQL-Collection */
 
 	/*
 	 * Create the relation.  Inherited defaults and constraints are passed in
@@ -24621,3 +24648,58 @@ ATCheckExpectedConstraintType(Relation rel, const char *constrName,
 	table_close(conrel, AccessShareLock);
 }
 /* End - ReqID:SRS-MYSQL-SQL-Alter */
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * check_nested_table_columns
+ * if the table have nested table columns, check the columns names
+ */
+static void
+check_nested_table_columns(char *relname, List *tableElts, List *nested_table_colums)
+{
+   if (nested_table_colums != NIL)
+   {
+	   ListCell *lc;
+
+	   foreach(lc, nested_table_colums)
+	   {
+		   char		*nestedcolname = strVal(lfirst(lc));
+		   bool		match = false;
+		   ListCell *lc_tabelt;
+
+		   foreach(lc_tabelt, tableElts)
+		   {
+			   ColumnDef		*colDef = lfirst(lc_tabelt);
+			   HeapTuple   		tup;
+			   Oid 				typeOid;
+
+			   if (colDef->type == T_ColumnDef	&&
+				   colDef->typeName != NULL)
+			   {
+				   tup = LookupTypeName(NULL, colDef->typeName, NULL, false);
+				   if (tup != NULL)
+				   {
+					   typeOid = typeTypeId(tup);
+					   ReleaseSysCache(tup);
+					   if (pg_strcasecmp(nestedcolname, colDef->colname) == 0)
+					   {
+						   /* the column type must be a nested table type */
+						   if (IS_PLSQL_NESTED_TABLE(get_typtype(typeOid)))
+						   {
+							   match = true;
+							   break;
+						   }
+						   else
+							   elog(ERROR, "specified column or attribute is not a nested table type");
+					   }
+				   }
+			   }
+		   }
+		   if (!match)
+			   elog(ERROR, "must specify table name for nested table column or attribute");
+	   }
+   }
+
+	return;
+}
+/* End - ReqID:SRS-SQL-Collection */

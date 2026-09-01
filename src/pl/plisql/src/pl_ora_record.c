@@ -91,6 +91,7 @@ plisql_build_ora_rec_type(char *refname, int lineno, List *args)
 	ora_rec->type.origtypname = NULL;
 	ora_rec->type.tcache = NULL;
 	ora_rec->type.tupdesc_id = 0;
+	ora_rec->type.sqlcollectionoid = InvalidOid; /* ReqID:SRS-SQL-Collection */
 
 	ora_rec->args = args;
 
@@ -480,6 +481,11 @@ plisql_ora_record_construct_ref(ParseState *pstate, List *recname, List *fargs,
 		PLiSQL_datum_udt_type *datum_type = NULL;
 
 		datum_type = (PLiSQL_datum_udt_type *) expr->func->datums[nse->itemno];
+		/* Begin - ReqID:SRS-SQL-Collection */
+		if (datum_type->udt_type->ttype != PLISQL_TTYPE_ORARECORD_TYPE)
+			return NULL;
+		/* End - ReqID:SRS-SQL-Collection */
+
 		ora_rec_type = (PLiSQL_ora_record_type *)(datum_type->udt_type);
 	}
 	else

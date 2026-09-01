@@ -267,6 +267,11 @@ sql_fn_parser_setup(struct ParseState *pstate, SQLFunctionParseInfoPtr pinfo)
 	pstate->p_pre_columnref_hook = NULL;
 	pstate->p_post_columnref_hook = sql_fn_post_column_ref;
 	pstate->p_paramref_hook = sql_fn_param_ref;
+	/* Begin - ReqID:SRS-SQL-Collection */
+	pstate->p_collectype_valuetype_hook = NULL;
+	pstate->p_indirection_hook = NULL;
+	/* End - ReqID:SRS-SQL-Collection */
+
 	/* no need to use p_coerce_param_hook */
 	pstate->p_ref_hook_state = (void *) pinfo;
 }

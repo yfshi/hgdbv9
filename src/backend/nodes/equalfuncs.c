@@ -1564,6 +1564,7 @@ _equalCreateStmt(const CreateStmt *a, const CreateStmt *b)
 	COMPARE_NODE_FIELD(ora_partspec);
 	COMPARE_NODE_FIELD(ora_partsup);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	COMPARE_NODE_FIELD(nestdtableCols); /* ReqID:SRS-SQL-Collection */
 
 	return true;
 }
@@ -3989,6 +3990,36 @@ _equalPivotCall(const PivotCall *a, const PivotCall *b)
 }
 /* End - ReqID:SRS-SQL-PIVOT */
 
+/* Begin - ReqID:SRS-SQL-Collection */
+static bool
+_equalCreateCollectionTypeStmt(const CreateCollectionTypeStmt * a, const CreateCollectionTypeStmt *b)
+{
+	COMPARE_SCALAR_FIELD(replace);
+	COMPARE_SCALAR_FIELD(editable);
+	COMPARE_SCALAR_FIELD(force);
+	COMPARE_NODE_FIELD(typeName);
+	COMPARE_SCALAR_FIELD(kind);
+	COMPARE_NODE_FIELD(elemType);
+	COMPARE_SCALAR_FIELD(limit);
+	COMPARE_SCALAR_FIELD(notNull);
+	COMPARE_SCALAR_FIELD(persistable);
+
+	return true;
+}
+
+static bool
+_equalAlterCollectionTypeStmt(const AlterCollectionTypeStmt * a, const AlterCollectionTypeStmt *b)
+{
+	COMPARE_NODE_FIELD(typeName);
+	COMPARE_SCALAR_FIELD(subtype);
+	COMPARE_SCALAR_FIELD(limit);
+	COMPARE_NODE_FIELD(elemType);
+	COMPARE_SCALAR_FIELD(cascade);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-Collection */
+
 /*
  * equal
  *	  returns whether two nodes are equal
@@ -4961,6 +4992,14 @@ equal(const void *a, const void *b)
 			retval = _equalPivotInItem(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-PIVOT */
+		/* Begin - ReqID:SRS-SQL-Collection */
+		case T_CreateCollectionTypeStmt:
+			retval = _equalCreateCollectionTypeStmt(a, b);
+			break;
+		case T_AlterCollectionTypeStmt:
+			retval = _equalAlterCollectionTypeStmt(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-Collection */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

@@ -24,6 +24,7 @@
 
 #include "access/attmap.h"
 #include "access/htup_details.h"
+#include "parser/parse_type.h" /* ReqID:SRS-SQL-Collection */
 #include "utils/builtins.h"
 #include "utils/lsyscache.h"	/* SRS-PLSQL-RECORD */
 
@@ -134,6 +135,25 @@ build_attrmap_by_position(TupleDesc indesc,
 						 errdetail("Returned type does not match expected type")));
 			}
 			/* End - ReqID:SRS-PLSQL-RECORD */
+			/* Begin - ReqID:SRS-SQL-Collection */
+			else if (isSqlCollectionType(atttypid))
+			{
+				if (!isSqlCollectionType(att->atttypid) &&
+					(!(att->atttypid == NESTED_TABLEOID &&
+					IS_PLSQL_NESTED_TABLE(get_typtype(atttypid))) &&
+					!(att->atttypid == VARRAYOID &&
+					IS_PLSQL_VARRAY(get_typtype(atttypid)))))
+					ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							 errmsg_internal("%s", _(msg)),
+							 errdetail("Returned type %s does not match expected type %s in column %d.",
+									   format_type_with_typemod(att->atttypid,
+																att->atttypmod),
+									   format_type_with_typemod(atttypid,
+																atttypmod),
+									   noutcols)));
+			}
+			/* End - ReqID:SRS-SQL-Collection */
 			else if (atttypid != att->atttypid ||
 				(atttypmod != att->atttypmod && atttypmod >= 0))
 				ereport(ERROR,

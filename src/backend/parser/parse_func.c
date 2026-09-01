@@ -16,6 +16,7 @@
 
 #include "access/htup_details.h"
 #include "catalog/pg_aggregate.h"
+#include "catalog/pg_collection_type.h"	/* ReqID:SRS-SQL-Collection */
 #include "catalog/pg_proc.h"
 #include "catalog/pg_type.h"
 #include "funcapi.h"
@@ -118,6 +119,15 @@ static Oid	LookupFuncNameInternal(ObjectType objtype, List *funcname,
 								   int nargs, const Oid *argtypes,
 								   bool include_out_arguments, bool missing_ok,
 								   FuncLookupError *lookupError);
+/* Begin - ReqID:SRS-SQL-Collection */
+static FuncDetailCode LookupCollectTypeConstructor(ParseState *pstate, List *funcname,
+					Oid typOid,
+					char typtype,
+					List *fargs,
+					int nargs,
+					Node **funcexpr,	/* return value */
+					int	location);
+/* End - ReqID:SRS-SQL-Collection */
 
 
 /*
@@ -531,6 +541,42 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 			function_from = FUNC_FROM_PACKAGE;
 	}
 	/* End - ReqID:SRS-SQL-PACKAGE */
+
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (fdresult == FUNCDETAIL_NOTFOUND)
+	{
+		/*
+		 * check if the function name matches a collection type,
+		 * and if so treat it as a collection constructor.
+		 */
+			if (ORA_MODE == compatible_mode && !proc_call &&
+				agg_order == NIL && agg_filter == NULL &&
+				!agg_star && !agg_distinct && over == NULL &&
+				!func_variadic)
+			{
+				Oid 		typOid = FuncNameAsType(funcname);
+				char		typtype;
+
+				typtype = get_typtype(typOid);
+				if (OidIsValid(typOid) &&
+					(typtype == TYPTYPE_NESTEDTABLE ||
+					typtype == TYPTYPE_VARRAY))
+				{
+					Node		*funcExpr = NULL;
+
+					fdresult = LookupCollectTypeConstructor(pstate, funcname,
+														typOid,
+														typtype,
+														fargs,
+														nargs,
+														&funcExpr,
+														location);
+					if (fdresult != FUNCDETAIL_NOTFOUND && funcExpr != NULL)
+						return funcExpr;
+				}
+			}
+	}
+	/* End - ReqID:SRS-SQL-Collection */
 	if (fdresult == FUNCDETAIL_NOTFOUND)
 		fdresult = func_get_detail(funcname, fargs, argnames, nargs,
 							   actual_arg_types,
@@ -2726,6 +2772,7 @@ FuncNameAsType(List *funcname)
 {
 	Oid			result;
 	Type		typtup;
+	List		*synoids = NIL; /* ReqID:SRS-SQL-Collection */
 
 	/*
 	 * temp_ok=false protects the <refsect1 id="sql-createfunction-security">
@@ -2733,6 +2780,12 @@ FuncNameAsType(List *funcname)
 	 */
 	typtup = LookupTypeNameExtended(NULL, makeTypeNameFromNameList(funcname),
 									NULL, false, false);
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (ORA_MODE == compatible_mode && typtup == NULL && SynnameGettype_hook)
+		typtup = SynnameGettype_hook(NULL, makeTypeNameFromNameList(funcname), NULL, &synoids, true);
+	list_free(synoids);
+	/* End - ReqID:SRS-SQL-Collection */
+
 	if (typtup == NULL)
 		return InvalidOid;
 
@@ -3984,3 +4037,171 @@ check_srf_call_placement(ParseState *pstate, Node *last_srf, int location)
 						ParseExprKindName(pstate->p_expr_kind)),
 				 parser_errposition(pstate, location)));
 }
+
+/* Begin - ReqID:SRS-SQL-Collection */
+/*
+ * lookup a collection constructor
+ */
+static FuncDetailCode
+LookupCollectTypeConstructor(ParseState *pstate, List *funcname,
+					Oid typOid,
+					char typtype,
+					List *fargs,
+					int nargs,
+					Node **funcexpr,	/* return value */
+					int location)
+{
+	FuncDetailCode fdresult = FUNCDETAIL_NOTFOUND;
+	HeapTuple	tup;
+	Oid 		elemType;
+	int32		elemTypmod;
+	List	   *coerced_args = NIL;
+	ListCell   *lc;
+	ArrayExpr  *argsArray;
+	Oid 		arrayType = InvalidOid;
+	List		*newArgs = NIL;
+	Oid 		funcid;
+	Oid 		functypeId[1];
+	bool		elemIsSqlCollect;
+
+	tup = SearchSysCache1(COLLECTIONPGTYPEOID,
+							  ObjectIdGetDatum(typOid));
+	if (!HeapTupleIsValid(tup))
+		elog(ERROR, "cache lookup failed for collection type %u",
+			 typOid);
+
+	elemType = ((Form_pg_collection_type) GETSTRUCT(tup))->elemtype;
+	elemTypmod = ((Form_pg_collection_type) GETSTRUCT(tup))->elemtypmod;
+
+	if (typtype == TYPTYPE_VARRAY &&
+		nargs > ((Form_pg_collection_type) GETSTRUCT(tup))->climit)
+		ereport(ERROR,
+			(errcode(ERRCODE_SUBSCRIPT_OUTSIDE_LIMIT),
+			errmsg("subscript outside limit")));
+
+	ReleaseSysCache(tup);
+
+	elemIsSqlCollect = isSqlCollectionType(elemType);
+
+	/* Coerce each argument to the element type with typmod */
+	foreach(lc, fargs)
+	{
+		Node	   *arg = (Node *) lfirst(lc);
+		Oid 		argtype = exprType(arg);
+
+		if (argtype != elemType)
+		{
+			Node	   *coerced;
+
+			if (elemIsSqlCollect)
+			{
+				if (isSqlCollectionType(argtype) && argtype != elemType)
+					ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							 errmsg("%s and %s are incompatible datatype",
+									   format_type_be(argtype),
+									   format_type_be(elemType))));
+
+				if (!IS_COLLECTOID(argtype))
+					ereport(ERROR,
+							(errcode(ERRCODE_DATATYPE_MISMATCH),
+							 errmsg("%s and %s are incompatible datatype",
+									   format_type_be(argtype),
+									   format_type_be(elemType))));
+
+				if (IsA(arg, Param) || IsA(arg, SubscriptingRef))
+				{
+					List	*toArrayfuncname;
+					Oid 	toArrayfuncoid;
+					Oid 	toArrayargList[2];
+					ArrayExpr *toArrayarg;
+
+					if (pstate->p_collectype_valuetype_hook == NULL ||
+						(pstate->p_collectype_valuetype_hook != NULL &&
+						pstate->p_collectype_valuetype_hook(pstate, arg) != elemType))
+						ereport(ERROR,
+								(errcode(ERRCODE_DATATYPE_MISMATCH),
+								 errmsg("can't get the datatype of the argument")));
+
+					toArrayargList[0] = argtype;
+					toArrayargList[1] = ANYARRAYOID;
+
+					toArrayfuncname = list_make1(makeString("collection_to_array"));
+					toArrayfuncoid = LookupFuncName(toArrayfuncname, 2, toArrayargList, false);
+
+					/* make a new ArrayType as the collection_to_array second argument */
+					toArrayarg = makeNode(ArrayExpr);
+					toArrayarg->multidims = false;
+					toArrayarg->array_typeid = get_array_type(elemType);
+
+					/* array_collid will be set by parse_collate.c */
+					toArrayarg->element_typeid = elemType;
+					toArrayarg->elements = NULL;
+					toArrayarg->location = location;
+
+					coerced = (Node *) makeFuncExpr(toArrayfuncoid,
+										 elemType,
+										 list_make2(arg, toArrayarg),
+										 InvalidOid,
+										 InvalidOid,
+										 COERCE_EXPLICIT_CALL);
+				}
+				else
+					coerced = arg;
+			}
+			else
+			{
+				coerced = coerce_to_target_type(pstate, arg,
+												argtype, elemType, elemTypmod,
+												COERCION_EXPLICIT,
+												COERCE_EXPLICIT_CALL,
+												location);
+				if (coerced == NULL)
+					ereport(ERROR,
+							(errcode(ERRCODE_CANNOT_COERCE),
+							 errmsg("argument type %s does not match element type %s of collection type %s",
+									format_type_be(argtype),
+									format_type_be(elemType),
+									format_type_be(typOid)),
+							 parser_errposition(pstate, location)));
+			}
+
+			coerced_args = lappend(coerced_args, coerced);
+		}
+		else
+			coerced_args = lappend(coerced_args, arg);
+	}
+
+	/* make a new ArrayType as the COLLECTION_CONSTRUCTOR argument */
+	argsArray = makeNode(ArrayExpr);
+	argsArray->multidims = false;
+	arrayType = get_array_type(elemType);
+	if (!OidIsValid(arrayType))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("could not find array type for data type %s",
+					 format_type_be(elemType))));
+
+	argsArray->array_typeid = arrayType;
+
+	/* array_collid will be set by parse_collate.c */
+	argsArray->element_typeid = elemType;
+	argsArray->elements = coerced_args;
+	argsArray->location = location;
+
+	newArgs = lappend(newArgs, argsArray);
+
+	functypeId[0] = ANYARRAYOID;
+	funcid = LookupFuncName(list_make1(makeString("sql_collection_constructor")), 1, functypeId, false);
+
+	*funcexpr = (Node *) makeFuncExpr(funcid,
+						 typOid,
+						 newArgs,
+						 InvalidOid,
+						 InvalidOid,
+						 COERCE_EXPLICIT_CALL);
+	fdresult = FUNCDETAIL_NORMAL;
+
+	return fdresult;
+}
+/* End - ReqID:SRS-SQL-Collection */

@@ -3145,6 +3145,17 @@ coerce_type(ParseState *pstate, Node *node,
 		/* NB: we do NOT want a RelabelType here */
 		return node;
 	}
+	/* Begin - ReqID:SRS-SQL-Collection */
+	if (DB_ORACLE == database_mode &&
+		(inputTypeId == NESTED_TABLEOID ||
+		inputTypeId == VARRAYOID) &&
+		(IS_PLSQL_NESTED_TABLE(get_typtype(targetTypeId)) ||
+		IS_PLSQL_VARRAY(get_typtype(targetTypeId))))
+	{
+		return node;
+	}
+	/* End - ReqID:SRS-SQL-Collection */
+
 	if (typeInheritsFrom(inputTypeId, targetTypeId)
 		|| typeIsOfTypedTable(inputTypeId, targetTypeId))
 	{
@@ -3295,7 +3306,16 @@ can_coerce_type(int nargs, const Oid *input_typeids, const Oid *target_typeids,
 		if (typeInheritsFrom(inputTypeId, targetTypeId)
 			|| typeIsOfTypedTable(inputTypeId, targetTypeId))
 			continue;
-		
+
+		/* Begin - ReqID:SRS-SQL-Collection */
+		if (DB_ORACLE == database_mode &&
+			((inputTypeId == NESTED_TABLEOID && IS_PLSQL_NESTED_TABLE(get_typtype(targetTypeId))) ||
+			(inputTypeId == VARRAYOID && IS_PLSQL_VARRAY(get_typtype(targetTypeId))) ||
+			(IS_PLSQL_NESTED_TABLE(get_typtype(inputTypeId)) && targetTypeId == NESTED_TABLEOID) ||
+			(IS_PLSQL_VARRAY(get_typtype(inputTypeId)) && targetTypeId == VARRAYOID)))
+			continue;
+		/* End - ReqID:SRS-SQL-Collection */
+
 		if (MYS_MODE == compatible_mode)
 		{
 			/*
