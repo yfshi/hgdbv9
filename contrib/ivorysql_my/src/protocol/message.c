@@ -3,6 +3,7 @@
 #include "commands/copy.h"
 #include "commands/copyfrom_internal.h"
 #include "commands/prepare.h"
+#include "executor/execExpr.h"
 #include "executor/spi.h"
 #include "fmgr.h"
 #include "libpq/libpq.h"
@@ -350,11 +351,12 @@ send_column_definition41_packet(mysql_column_definition_t *field)
 
 /* Begin - Bug#6356 */
 static Datum
-mys_evaluate_param(Datum value, Oid src_type, Oid dst_type)
+mys_evaluate_param(Datum value, Oid src_type, Oid dst_type, int32 dst_typmod)
 {
     Type    type = typeidType(src_type);
     bool    typebyval = typeByVal(type);
     int16   typlen = typeLen(type);
+    Datum   ret;
 
     Const *con = makeConst(src_type,
                            -1,         /* typmod -1 is OK for all cases */
@@ -364,15 +366,11 @@ mys_evaluate_param(Datum value, Oid src_type, Oid dst_type)
                            false,
                            typebyval);
 
-    Node *node = coerce_type(NULL, (Node *) con, src_type, dst_type, -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST, -1);
-
-    node = eval_const_expressions(NULL, node);
-
-    Assert(IsA(node, Const));
+    ret = mys_convert_current_const_to_target_const(con, dst_type, dst_typmod);
 
     ReleaseSysCache(type);
 
-    return ((Const *) node)->constvalue;
+    return ret;
 }
 /* End - Bug#6356 */
 
@@ -385,6 +383,7 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
     int     is_unsigned = flag & SIGNED_BIT;
     enum    enum_field_types type = flag & ~SIGNED_BIT;
     Oid     param_type = param->ptype;
+    int32	param_typmod = param->ptypmod;
     Oid     src_type = InvalidOid;
 
     switch(type)
@@ -645,16 +644,27 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
 
             data = mq_get_string_lenenc(buf, &length, NULL);
 
-            bc = VARHDRSZ + length;
-            ret = palloc(bc);
-            
-            memcpy(VARDATA(ret), data, length);
+            /* Begin - bug#9103 */
+            if (type_is_enum(param_type))
+            {
+                value = CStringGetDatum(data);
 
-            SET_VARSIZE(ret, bc);
+                src_type = UNKNOWNOID;
+            }
+            /* End - bug#9103 */
+            else
+            {
+                bc = VARHDRSZ + length;
+                ret = palloc(bc);
+                
+                memcpy(VARDATA(ret), data, length);
 
-            value = PointerGetDatum(ret);
+                SET_VARSIZE(ret, bc);
 
-            src_type = VARBINARYOID;
+                value = PointerGetDatum(ret);
+
+                src_type = VARBINARYOID;
+            }
             break;
         }
         /* End - bug#7873 */
@@ -680,13 +690,18 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
         }
     }
 
+    /* Begin - bug#9103 */
+    if (param_type == MYSBITOID)
+        param_typmod = 64;
+    /* End - bug#9103 */
+
     /**
      * Begin - Bug#6356
      * evaluate current parameter
      */
     if (OidIsValid(src_type) && OidIsValid(param_type) && src_type != param_type)
     {
-        value = mys_evaluate_param(value, src_type, param_type);
+        value = mys_evaluate_param(value, src_type, param_type, param_typmod);
     }
     /* End - Bug#6356 */
 

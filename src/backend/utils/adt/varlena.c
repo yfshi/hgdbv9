@@ -6478,7 +6478,8 @@ concat_internal(const char *sepstr, int argidx,
 
 					result =
 						mys_convert_current_const_to_target_const(currentconst,
-																  VARBINARYOID);
+																  VARBINARYOID,
+																  -1);
 
 					bytes = DatumGetByteaPP(result);
 

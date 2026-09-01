@@ -77,9 +77,11 @@ extern bool extract_leading_integer_str(const char *str, char *out_buf, size_t s
 extern Datum uint2_in(PG_FUNCTION_ARGS);
 extern Datum uint4_in(PG_FUNCTION_ARGS);
 extern Datum uint8_in(PG_FUNCTION_ARGS);
+extern Datum year_out(PG_FUNCTION_ARGS);
 extern Datum mysdate_in(PG_FUNCTION_ARGS);
 extern Datum mysdate_out(PG_FUNCTION_ARGS);
 extern Datum mystime_in(PG_FUNCTION_ARGS);
+extern Datum mystimes_in(PG_FUNCTION_ARGS);
 extern Datum mystime_out(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_in(PG_FUNCTION_ARGS);
 extern Datum mysdatetime_out(PG_FUNCTION_ARGS);

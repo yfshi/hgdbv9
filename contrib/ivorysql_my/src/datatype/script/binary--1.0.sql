@@ -235,6 +235,19 @@ CREATE CAST (ivymy.binary AS datetime)
 WITH FUNCTION ivymy.binary2datetime(ivymy.binary, integer, boolean)
 AS ASSIGNMENT;
 
+-- cast binary to datetimes
+CREATE FUNCTION ivymy.varbinary2datetimes(ivymy.varbinary, integer, boolean)
+RETURNS ivymy.mysdatetimes
+AS 'ivorysql_my','anybinary2datetimes'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS ivymy.mysdatetimes)
+WITH FUNCTION ivymy.varbinary2datetimes(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
 -- cast binary to int8
 CREATE FUNCTION ivymy.binary2int8(ivymy.binary, integer, boolean, int8)
 RETURNS pg_catalog.int8
@@ -1209,6 +1222,18 @@ IMMUTABLE;
 
 CREATE CAST (ivymy.varbinary AS time)
 WITH FUNCTION ivymy.varbinary2time(ivymy.varbinary, integer, boolean)
+AS ASSIGNMENT;
+
+CREATE FUNCTION ivymy.varbinary2times(ivymy.varbinary, integer, boolean)
+RETURNS ivymy.mystimes
+AS 'MODULE_PATHNAME','anybinary2times'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
+CREATE CAST (ivymy.varbinary AS ivymy.mystimes)
+WITH FUNCTION ivymy.varbinary2times(ivymy.varbinary, integer, boolean)
 AS ASSIGNMENT;
 
 -- cast varbinary to datetime

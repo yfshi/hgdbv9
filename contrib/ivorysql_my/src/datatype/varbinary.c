@@ -45,7 +45,9 @@ PG_FUNCTION_INFO_V1(varbinary2bpchar);
 PG_FUNCTION_INFO_V1(varbinary2varchar);
 PG_FUNCTION_INFO_V1(anybinary2date);
 PG_FUNCTION_INFO_V1(anybinary2time);
+PG_FUNCTION_INFO_V1(anybinary2times);
 PG_FUNCTION_INFO_V1(anybinary2datetime);
+PG_FUNCTION_INFO_V1(anybinary2datetimes);
 /* End BUG#5048 5070 */
 PG_FUNCTION_INFO_V1(varbinary_in);
 PG_FUNCTION_INFO_V1(varbinary_recv);
@@ -507,6 +509,28 @@ anybinary2time(PG_FUNCTION_ARGS)
 	return result;
 }
 
+/* Begin - bug#9103 */
+Datum 
+anybinary2times(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	char 	*data = palloc0(len + 1);
+	Datum 	result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall3(mystimes_in,
+								 CStringGetDatum(data),
+								 ObjectIdGetDatum(InvalidOid),
+								 Int32GetDatum(-1));
+
+	pfree(data);
+	
+	return result;
+}
+/* End - bug#9103 */
+
 Datum 
 anybinary2datetime(PG_FUNCTION_ARGS)
 {
@@ -528,6 +552,33 @@ anybinary2datetime(PG_FUNCTION_ARGS)
 	
 	return result;
 }
+
+/* Begin - bug#9103 */
+Datum 
+anybinary2datetimes(PG_FUNCTION_ARGS)
+{
+	bytea 	*arg = PG_GETARG_BYTEA_PP(0);
+	int 	len = VARSIZE_ANY_EXHDR(arg);
+	char 	*data = palloc0(len + 1);
+	Datum 	result;
+
+	memcpy(data, VARDATA_ANY(arg), len);
+	
+	result = DirectFunctionCall3(mysdatetimes_in,
+								 CStringGetDatum(data),
+								 ObjectIdGetDatum(InvalidOid),
+								 Int32GetDatum(-1));
+
+	if (result == MYSQL_ZERO_DATE)
+	{
+		PG_RETURN_NULL();
+	}
+
+	pfree(data);
+	
+	return result;
+}
+/* End - bug#9103 */
 
 Datum 
 varbinary2text(PG_FUNCTION_ARGS)
