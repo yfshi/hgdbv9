@@ -181,6 +181,27 @@ select pg_read_file('@abs_builddir@/results/test_select_into_8452_2.csv');
 drop table test_8452;
 \! rm -rf @abs_builddir@/results/test_select_into_8452*
 
+-- bug#9089
+CREATE TABLE `setting`  (
+  `Id` int unsigned NOT NULL,
+  `Config` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin,
+  `created_by` bigint unsigned,
+  `updated_by` bigint unsigned,
+  `updated_at` datetime(0) DEFAULT NULL,
+  `deleted_at` datetime(0) DEFAULT NULL,
+  PRIMARY KEY (`Id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_bin ROW_FORMAT = Dynamic;
+
+INSERT INTO `setting` VALUES (1, '{\"mapPath\":\"pub_upload/2022-04-22/cjgltrg9zfocco4whq.svg\",\"backupPath\":\"\"}', NULL, 1, '2026-08-04 10:38:19', NULL);
+
+SELECT Id,Config, created_by, updated_by, updated_at,deleted_at FROM setting INTO OUTFILE '@abs_builddir@/results/test_select_into_9089.csv' FIELDS TERMINATED BY ',' ENCLOSED BY '"';
+delete from setting;
+select * from setting;
+load data infile '@abs_builddir@/results/test_select_into_9089.csv' into table setting FIELDS TERMINATED BY ',' ENCLOSED BY '"';
+select * from setting;
+select isnull(created_by), isnull(deleted_at) from setting;
+drop table setting;
+
 -- clean up
 \c contrib_regression
 drop database select_into_gbk;
