@@ -666,7 +666,7 @@ CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
 show create table drop_idx_t1;
 show index from drop_idx_t1;
 \d+ drop_idx_t1
-ALTER TABLE drop_idx_t1 DROP INDEX drop_idx_t1_b_idx;
+ALTER TABLE drop_idx_t1 DROP INDEX idx_drop_t1_b;
 show create table drop_idx_t1;
 show index from drop_idx_t1;
 \d+ drop_idx_t1
@@ -675,7 +675,7 @@ drop table drop_idx_t1;
 -- drop key
 CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
 \d+ drop_idx_t1
-ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
+ALTER TABLE drop_idx_t1 DROP KEY idx_drop_t1_b;
 \d+ drop_idx_t1
 drop table drop_idx_t1;
 
@@ -686,8 +686,8 @@ drop table drop_idx_t1;
 
 -- drop twice
 CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
-ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
-ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
+ALTER TABLE drop_idx_t1 DROP KEY idx_drop_t1_b;
+ALTER TABLE drop_idx_t1 DROP KEY idx_drop_t1_b;
 drop table drop_idx_t1;
 
 -- index did not belong to the table
@@ -710,7 +710,7 @@ drop table drop_idx_pk_t;
 CREATE TABLE drop_idx_uk_t (a int, b int);
 ALTER TABLE drop_idx_uk_t ADD UNIQUE KEY idx_uniq_key_b (b);
 \d+ drop_idx_uk_t
-ALTER TABLE drop_idx_uk_t DROP INDEX drop_idx_uk_t_b_key;
+ALTER TABLE drop_idx_uk_t DROP INDEX idx_uniq_key_b;
 \d+ drop_idx_uk_t
 drop table drop_idx_uk_t;
 
@@ -811,7 +811,7 @@ drop table drop_fk_parent;
 -- its uk, could not drop by fk
 CREATE TABLE drop_fk_parent (id int, b int, unique key idx_b(b));
 \d+ drop_fk_parent
-ALTER TABLE drop_fk_parent DROP FOREIGN KEY drop_fk_parent_b_key;
+ALTER TABLE drop_fk_parent DROP FOREIGN KEY idx_b;
 \d+ drop_fk_parent;
 drop table drop_fk_parent;
 
@@ -907,7 +907,7 @@ drop table t_par;
 CREATE TABLE drop_idx_on_t (a int, b int, INDEX idx_drop_on_b (b));
 \d+ drop_idx_on_t
 show create table drop_idx_on_t;
-DROP INDEX drop_idx_on_t_b_idx ON drop_idx_on_t;
+DROP INDEX idx_drop_on_b ON drop_idx_on_t;
 \d+ drop_idx_on_t
 show create table drop_idx_on_t;
 drop table drop_idx_on_t;

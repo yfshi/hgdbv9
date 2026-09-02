@@ -58,6 +58,7 @@
 #include "utils/rel.h"
 #include "lib/stringinfo.h"
 #include "access/skey.h"
+#include "catalog/index.h"	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 #include "catalog/pg_inherits.h"
 #include "utils/fmgroids.h"
 #include "access/genam.h"
@@ -126,10 +127,42 @@ PG_FUNCTION_INFO_V1(mys_show_privileges);
 PG_FUNCTION_INFO_V1(mys_show_warnings);
 PG_FUNCTION_INFO_V1(show_next_autoinc);
 PG_FUNCTION_INFO_V1(mysql_get_indexdef_columns); /* BUG#Z6420*/
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+PG_FUNCTION_INFO_V1(table_level_index_name);
+PG_FUNCTION_INFO_V1(logical_index_keyname);
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 static void get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf);
 static void get_inherits(Oid tableoid, Form_pg_class pgclass, StringInfo inheritsbuf);
 static text *ivy_JsonbValueAsText(JsonbValue *v);
+
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+/*
+ * SQL-callable wrapper: return physical name from (index_name, table_name)
+ */
+Datum
+table_level_index_name(PG_FUNCTION_ARGS)
+{
+	char	   *index_name = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	char	   *table_name = text_to_cstring(PG_GETARG_TEXT_PP(1));
+
+	PG_RETURN_TEXT_P(cstring_to_text(construct_unique_index_name(index_name, table_name)));
+}
+
+/*
+ * SQL-callable wrapper: return logical name for indexrelid
+ */
+Datum
+logical_index_keyname(PG_FUNCTION_ARGS)
+{
+	Oid		indexrelid = PG_GETARG_OID(0);
+	char	*name;
+	name = GetLogicalIndexNameByIndex(indexrelid);
+	if (name == NULL)
+		PG_RETURN_NULL();
+	PG_RETURN_TEXT_P(cstring_to_text(name));
+}
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 /* Begin - #Z6036 */
 /*
@@ -706,22 +739,33 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 		elog(ERROR, "SPI_finish failed");
 
 	/*Begin BUG#Z6281 BUG#Z6420 */
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
 	resetStringInfo(&query_attribute_str);
 	appendStringInfo(&query_attribute_str,
-	"select distinct cs.INDEX_NAME, cs.NON_UNIQUE, cs.INDEX_COMMENT, cs.INDEX_TYPE,"
-	"mys_information_schema.mysql_get_indexdef_columns(ix.indexrelid) AS indexed_columns,"
-	"CASE WHEN ix.indexprs IS NOT NULL "
-	"THEN 1 ELSE 0 END::integer AS is_expr "
-	"from mys_information_schema.showstatistics cs "
-	"JOIN pg_class t ON  t.relname= cs.INDEX_NAME "
-	"JOIN pg_index ix on t.oid = ix.indexrelid "
-	"LEFT JOIN pg_attribute a on a.attrelid = t.oid "
-	"where t.relname IN (select relname from pg_class where oid in "
-	"(select indexrelid from pg_index where indrelid = %u)) "
-	"and t.relname NOT IN (select ct.conname from pg_constraint ct "
-	"where conrelid = %u order by oid)"
-	" GROUP BY cs.INDEX_NAME, cs.COLUMN_NAME,  ix.indexprs, ix.indrelid, "
-	"cs.NON_UNIQUE, cs.INDEX_COMMENT, ix.indexrelid, cs.INDEX_TYPE; ", tableoid, tableoid);
+					 "SELECT COALESCE("
+					 "(SELECT opt.option_value "
+					 " FROM pg_catalog.pg_options_to_table(ci.reloptions) "
+					 " AS opt(option_name, option_value) "
+					 " WHERE opt.option_name = 'logical_idxname' LIMIT 1), "
+					 "ci.relname) AS \"INDEX_NAME\", "
+					 "CASE WHEN ix.indisunique THEN 0 ELSE 1 END AS \"NON_UNIQUE\", "
+					 "d.description AS \"INDEX_COMMENT\", "
+					 "am.amname AS \"INDEX_TYPE\", "
+					 "mys_information_schema.mysql_get_indexdef_columns(ix.indexrelid) "
+					 "AS indexed_columns, "
+					 "CASE WHEN ix.indexprs IS NOT NULL "
+					 "THEN 1 ELSE 0 END::integer AS is_expr "
+					 "FROM pg_catalog.pg_index ix "
+					 "JOIN pg_catalog.pg_class ci ON ci.oid = ix.indexrelid "
+					 "JOIN pg_catalog.pg_am am ON am.oid = ci.relam "
+					 "LEFT JOIN pg_catalog.pg_description d ON d.objoid = ci.oid "
+					 "WHERE ix.indrelid = %u "
+					 "AND NOT ix.indisprimary "
+					 "AND NOT EXISTS (SELECT 1 FROM pg_catalog.pg_constraint ct "
+					 "WHERE ct.conindid = ix.indexrelid AND ct.contype = 'u') "
+					 "ORDER BY 1, ix.indexrelid",
+					 tableoid);
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	if (SPI_connect() != SPI_OK_CONNECT)
 		elog(ERROR, "SPI_connect failed");

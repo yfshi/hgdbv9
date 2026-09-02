@@ -3707,6 +3707,7 @@ typedef struct IndexStmt
 	NodeTag		type;
 	char	   *idxname;		/* name of new index, or NULL for default */
 	char	   *idxschemaname;	/* OA-REQ-2127: schema name for index, or NULL for default */
+	char	   *logical_idxname;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 	RangeVar   *relation;		/* relation to build index on */
 	char	   *accessMethod;	/* name of access method (eg. btree) */
 	char	   *tableSpace;		/* tablespace, or NULL for default */

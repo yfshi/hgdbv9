@@ -5332,7 +5332,7 @@ ConstraintElem:
 
 					n->contype = CONSTR_UNIQUE;
 					n->location = @1;
-					n->indexname = NULL;
+					n->indexname = $2;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 					n->keys = $4;
 					n->including = NIL;
 					n->options = $7;
@@ -5350,7 +5350,7 @@ ConstraintElem:
 
 					n->contype = CONSTR_UNIQUE;
 					n->location = @1;
-					n->indexname = NULL;
+					n->indexname = $2;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 					n->keys = $5;
 					n->including = NIL;
 					n->options = $8;
@@ -5368,7 +5368,7 @@ ConstraintElem:
 
 					n->contype = CONSTR_UNIQUE;
 					n->location = @1;
-					n->indexname = NULL;
+					n->indexname = $3;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 					n->keys = $6;
 					n->including = NIL;
 					n->options = $9;
@@ -5497,7 +5497,7 @@ ConstraintElem:
 
 					n->contype = CONSTR_INDEX;
 					n->location = @1;
-					n->indexname = NULL;
+					n->indexname = $2;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 					n->idx_key_parts = $5;
 					ApplyAlterTableIndexKeyOptions(n, $3, $7);
 					processCASbits($8, @8, "INDEX/KEY",
@@ -5512,7 +5512,7 @@ ConstraintElem:
 
 					n->contype = CONSTR_INDEX;
 					n->location = @1;
-					n->indexname = NULL;
+					n->indexname = $3;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 					n->idx_key_parts = $5;
 					ApplyAlterTableIndexKeyOptions(n, NULL, $7);
 					processCASbits($8, @8, "INDEX/KEY",

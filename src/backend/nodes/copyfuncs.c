@@ -4147,6 +4147,7 @@ _copyIndexStmt(const IndexStmt *from)
 
 	COPY_STRING_FIELD(idxname);
 	COPY_STRING_FIELD(idxschemaname); /* OA-REQ-2127 */
+	COPY_STRING_FIELD(logical_idxname); /* SRS-MYSQL-SQL-TableLEVELINDEX */
 	COPY_NODE_FIELD(relation);
 	COPY_STRING_FIELD(accessMethod);
 	COPY_STRING_FIELD(tableSpace);

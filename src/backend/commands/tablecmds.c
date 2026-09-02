@@ -4859,6 +4859,7 @@ RenameRelation(RenameStmt *stmt)
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	char	   *oriname;
 	/* End - ReqID:SRS-MYSQL-CASE */
+	Oid		reloid = InvalidOid;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	/* Begin - ReqID:SRS-MYSQL-CASE */
 	oriname = pstrdup(stmt->newname);
@@ -4876,12 +4877,26 @@ RenameRelation(RenameStmt *stmt)
 	/* Begin - BUG#Z5992 */
 	if (compatible_mode == MYS_MODE && is_index_stmt && stmt->realrelation != NULL)
 	{
-		Oid			reloid = InvalidOid;
-		char	   *indexname = stmt->relation->relname;
+		/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+		char	*mys_oldkey = NULL;
+		mys_oldkey = stmt->relation->relname;
+
+		/*
+		 * did not allowed to rename PRIMARY index to a new name
+		 * did not allowed to rename an index name to PRIMARY
+		 */
+		if (mys_oldkey != NULL &&
+			(pg_strcasecmp(mys_oldkey, "PRIMARY") == 0 || pg_strcasecmp(stmt->newname, "PRIMARY") == 0))
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR_OR_ACCESS_RULE_VIOLATION),
+					 errmsg("Incorrect index name `PRIMARY`")));
+		}
+		/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 		reloid = RangeVarGetRelid(stmt->realrelation, NoLock, false);
 
-		modify_judge_or_modify_name(reloid, indexname, is_index_stmt, MYS_IDX_FIND_INDEX_REAL_NAME, stmt);
+		modify_judge_or_modify_name(reloid, mys_oldkey, is_index_stmt, MYS_IDX_FIND_INDEX_REAL_NAME, stmt);	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 	}
 	/* End - BUG#Z5992 */
 
@@ -4932,7 +4947,46 @@ RenameRelation(RenameStmt *stmt)
 	}
 
 	/* Do the work */
-	RenameRelationInternal(relid, stmt->newname, false, is_index_stmt);
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+	if (compatible_mode == MYS_MODE && is_index_stmt &&
+		stmt->realrelation != NULL && OidIsValid(reloid))
+	{
+		char	   *newPhysname;
+		char	   *curPhysname;
+
+		/*
+		 * RenameRelationInternal() now:
+		 *   1) MYS_IDX_RENAME_CHECK (table-scoped Key_name)
+		 *   2) skips schema-level "relation already exists" for MySQL indexes
+		 *   3) writes pg_class.relname = newrelname
+		 *
+		 * Check Key_name uniqueness with the logical new name first; then
+		 * pass a schema-unique physical name so step 2/3 do not store a
+		 * colliding relname.
+		 */
+		modify_judge_or_modify_name(relid, stmt->newname, true,
+									MYS_IDX_RENAME_CHECK, NULL);
+
+		/* Always refresh logical_idxname (free or mangled physical name). */
+		UpdateLogicalIndexName(reloid, relid, stmt->newname);
+
+		newPhysname = choose_physical_index_name(stmt->newname,
+												 get_rel_name(reloid),
+												 get_rel_namespace(reloid),
+												 relid);
+
+		curPhysname = get_rel_name(relid);
+		if (curPhysname == NULL || strcmp(curPhysname, newPhysname) != 0)
+		{
+			CommandCounterIncrement();
+			RenameRelationInternal(relid, newPhysname, false, true);
+		}
+	}
+	else
+	{
+		RenameRelationInternal(relid, stmt->newname, false, is_index_stmt);
+	}
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	ObjectAddressSet(address, RelationRelationId, relid);
 
@@ -23079,7 +23133,7 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 	if (compatible_mode == MYS_MODE && is_index)
 	{
 		HeapTuple	indextup;
-		Oid			reloid = InvalidOid;
+		Oid			reloid = InvalidOid;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 		Relation	indexRelation;
 		ScanKeyData skey;
 		SysScanDesc scan;
@@ -23098,7 +23152,19 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 				Form_pg_index indexform = (Form_pg_index) GETSTRUCT(indextup);
 
 				reloid = indexform->indrelid;
-				oldindexname = get_rel_name(myrelid);
+
+				/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+				/*
+				 * Compare against Key_name (logical_idxname), not physical
+				 * relname, so mangled names still match RENAME INDEX.
+				 */
+				oldindexname = GetLogicalIndexNameByIndex(myrelid);
+				if (oldindexname == NULL)
+				{
+					oldindexname = get_rel_name(myrelid);
+				}
+				/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 				ReleaseSysCache(indextup);
 			}
 		}
@@ -23140,6 +23206,14 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 					result = get_rel_name(perindexoid);
 					if (result != NULL)
 					{
+						/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+						char		*logical;
+						const char	*cmpname;
+
+						logical = GetLogicalIndexNameByIndex(perindexoid);
+						cmpname = (logical != NULL) ? logical : result;
+						/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 						/* When renaming or creating an index,
 						 * case-insensitive name conflicts must
 						 * be considered; if an index with the
@@ -23156,8 +23230,8 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 							 * export an error.
 							 */
 							if (modifytyp == MYS_IDX_RENAME_CHECK && 
-								newrelname != NULL && pg_strcasecmp(result, newrelname) == 0 &&
-								oldindexname != NULL && pg_strcasecmp(newrelname, oldindexname))
+								newrelname != NULL && pg_strcasecmp(cmpname, newrelname) == 0 &&
+								oldindexname != NULL && pg_strcasecmp(newrelname, oldindexname))  /* SRS-MYSQL-SQL-TableLEVELINDEX */
 							{
 								errflg = true;
 							}
@@ -23166,7 +23240,7 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 							 * name alreadu exists, an error must be reported
 							 */
 							if (!errflg && modifytyp == MYS_IDX_CREATE_DIFFERENT_NAME &&
-								newrelname != NULL && pg_strcasecmp(result, newrelname) == 0)
+								newrelname != NULL && pg_strcasecmp(cmpname, newrelname) == 0)  /* SRS-MYSQL-SQL-TableLEVELINDEX */
 							{
 								errflg = true;
 							}
@@ -23183,11 +23257,18 @@ modify_judge_or_modify_name(Oid myrelid, char *newrelname, bool is_index,
 						else if (modifytyp == MYS_IDX_FIND_INDEX_REAL_NAME)
 						{
 							/* Assign the actual index name to it */
-							if (pg_strcasecmp(result, newrelname) == 0)
+							if (pg_strcasecmp(cmpname, newrelname) == 0)  /* SRS-MYSQL-SQL-TableLEVELINDEX */
 							{
 								stmt->relation->relname = result;
 							}
 						}
+
+						/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+						if (logical != NULL)
+						{
+							pfree(logical);
+						}
+						/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 					}
 				}
 			}
@@ -24354,7 +24435,7 @@ ATExecDropIndex(Relation rel, const char *indexName,
 	 */
 	if (pg_strcasecmp(indexName, "PRIMARY") == 0)
 	{
-		Oid			pkIndexOid = RelationGetPrimaryKeyIndex(rel);
+		Oid				pkIndexOid = RelationGetPrimaryKeyIndex(rel);
 
 		if (!OidIsValid(pkIndexOid))
 		{
@@ -24371,14 +24452,14 @@ ATExecDropIndex(Relation rel, const char *indexName,
 							RelationGetRelationName(rel))));
 		}
 		indexName = get_rel_name(pkIndexOid);
+		indexOid = pkIndexOid;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 	}
-
-	/*
-	 * Resolve the index name in the same schema as the target table.
-	 * PostgreSQL indexes share the relation namespace with tables, so a
-	 * one-part identifier is sufficient.
-	 */
-	indexOid = get_relname_relid(indexName, rel->rd_rel->relnamespace);
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+	else
+	{
+		indexOid = GetLogicalIndexOid(RelationGetRelid(rel), indexName);
+	}
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 
 	if (!OidIsValid(indexOid))
 	{

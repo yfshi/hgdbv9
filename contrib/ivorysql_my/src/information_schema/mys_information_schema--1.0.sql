@@ -711,6 +711,7 @@ SELECT
 	-- Name of the constraint (if primary key, value is `PRIMARY`)
 	CASE
 		WHEN ss.contype = 'p'::"char" THEN 'PRIMARY'
+		WHEN ss.contype = 'u'::"char" THEN COALESCE(ivymy.logical_index_keyname(ss.conindid), ss.conname)  -- SRS-MYSQL-SQL-TableLEVELINDEX
 		ELSE ss.conname
 	END::varchar(64) AS "CONSTRAINT_NAME",
 
@@ -1693,11 +1694,14 @@ SELECT
 	-- Schema of the referenced unique/primary key constraint
 	nr.nspname::varchar(64) AS "UNIQUE_CONSTRAINT_SCHEMA",
 
-	-- Name of the referenced constraint: 'PRIMARY' for primary keys, else the constraint name
-	CASE uc.contype
-		WHEN 'p'::"char" THEN 'PRIMARY'
-		ELSE uc.conname
-	END::varchar(64) AS "UNIQUE_CONSTRAINT_NAME",
+	-- Begin - SRS-MYSQL-SQL-TableLEVELINDEX 
+    -- Referenced constraint: 'PRIMARY' for PK; UNIQUE uses MySQL Key_name
+    -- (logical_idxname when mangled, else index relname / conname)
+    CASE uc.contype
+        WHEN 'p'::"char" THEN 'PRIMARY'
+        ELSE COALESCE(ivymy.logical_index_keyname(c.conindid), uc.conname)
+    END::varchar(64) AS "UNIQUE_CONSTRAINT_NAME",
+	-- END - SRS-MYSQL-SQL-TableLEVELINDEX
 
 	-- Match strategy: FULL, PARTIAL, or NONE
 	CASE c.confmatchtype

@@ -26,20 +26,20 @@ drop table test_index;
 CREATE TABLE test_index(a int, b int, c varchar(20));
 ALTER TABLE test_index add index b_idx (b);
 show create table test_index;
-   Table    |                 Create Table                 
-------------+----------------------------------------------
- test_index | CREATE TABLE "test_index" (                 +
-            |     "a" integer,                            +
-            |     "b" integer,                            +
-            |     "c" character varying(20),              +
-            |     KEY "test_index_b_idx" ("b") USING BTREE+
+   Table    |           Create Table            
+------------+-----------------------------------
+ test_index | CREATE TABLE "test_index" (      +
+            |     "a" integer,                 +
+            |     "b" integer,                 +
+            |     "c" character varying(20),   +
+            |     KEY "b_idx" ("b") USING BTREE+
             | )
 (1 row)
 
 show index from test_index;
-   Table    | Non_unique |     Key_name     | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
-------------+------------+------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
- test_index |          1 | test_index_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+   Table    | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_index |          1 | b_idx    |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
 (1 row)
 
 drop table test_index;
@@ -733,12 +733,12 @@ ALTER TABLE test_fullindex add FULLTEXT idx_name(a) ;
  b      | integer               |           |          |         | plain    |              | 
  c      | character varying(20) |           |          |         | extended |              | 
 Indexes:
-    "test_fullindex_a_idx" btree (a)
+    "idx_name" btree (a)
 
 show index from test_fullindex;
-     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
-----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
- test_fullindex |          1 | test_fullindex_a_idx |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
+     Table      | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | idx_name |            1 | a           | A         |           0 |          |        | YES  | btree      |         | 
 (1 row)
 
 drop table test_fullindex;
@@ -753,12 +753,12 @@ ALTER TABLE test_fullindex add SPATIAL idx_name(b) ;
  b      | integer               |           |          |         | plain    |              | 
  c      | character varying(20) |           |          |         | extended |              | 
 Indexes:
-    "test_fullindex_b_idx" btree (b)
+    "idx_name" btree (b)
 
 show index from test_fullindex;
-     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
-----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
- test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+     Table      | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | idx_name |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
 (1 row)
 
 drop table test_fullindex;
@@ -795,12 +795,12 @@ ALTER TABLE test_fullindex add FULLTEXT idx_name(b ASC) ;
  b      | integer               |           |          |         | plain    |              | 
  c      | character varying(20) |           |          |         | extended |              | 
 Indexes:
-    "test_fullindex_b_idx" btree (b)
+    "idx_name" btree (b)
 
 show index from test_fullindex;
-     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
-----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
- test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+     Table      | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | idx_name |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
 (1 row)
 
 drop table test_fullindex;
@@ -815,12 +815,12 @@ ALTER TABLE test_fullindex add SPATIAL idx_name(c DESC) ;
  b      | integer               |           |          |         | plain    |              | 
  c      | character varying(20) |           |          |         | extended |              | 
 Indexes:
-    "test_fullindex_c_idx" btree (c DESC)
+    "idx_name" btree (c DESC)
 
 show index from test_fullindex;
-     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
-----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
- test_fullindex |          1 | test_fullindex_c_idx |            1 | c           | D         |           0 |          |        | YES  | btree      |         | 
+     Table      | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+----------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ test_fullindex |          1 | idx_name |            1 | c           | D         |           0 |          |        | YES  | btree      |         | 
 (1 row)
 
 drop table test_fullindex;
@@ -836,12 +836,12 @@ ALTER TABLE test_fullindex add FULLTEXT idx_name(b ASC) using btree KEY_BLOCK_SI
  b      | integer               |           |          |         | plain    |              | 
  c      | character varying(20) |           |          |         | extended |              | 
 Indexes:
-    "test_fullindex_b_idx" btree (b)
+    "idx_name" btree (b)
 
 show index from test_fullindex;
-     Table      | Non_unique |       Key_name       | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment    
-----------------+------------+----------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------------
- test_fullindex |          1 | test_fullindex_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | test add full index
+     Table      | Non_unique | Key_name | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment |    Index_comment    
+----------------+------------+----------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------------
+ test_fullindex |          1 | idx_name |            1 | b           | A         |           0 |          |        | YES  | btree      |         | test add full index
 (1 row)
 
 drop table test_fullindex;
@@ -926,7 +926,7 @@ ALTER TABLE add_uk_t3 ADD UNIQUE KEY uk_3 (a);
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+    "uk_3" UNIQUE CONSTRAINT, btree (a)
 
 drop table add_uk_t3;
 -- ADD UNIQUE, ignore the index_name
@@ -939,7 +939,7 @@ ALTER TABLE add_uk_t3 ADD UNIQUE uk_3 (a);
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "add_uk_t3_a_key" UNIQUE CONSTRAINT, btree (a)
+    "uk_3" UNIQUE CONSTRAINT, btree (a)
 
 drop table add_uk_t3;
 ------ [index_type]
@@ -1698,19 +1698,19 @@ drop table fk_idx_parent_2;
 -- drop index
 CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
 show create table drop_idx_t1;
-    Table    |                 Create Table                  
--------------+-----------------------------------------------
- drop_idx_t1 | CREATE TABLE "drop_idx_t1" (                 +
-             |     "a" integer,                             +
-             |     "b" integer,                             +
-             |     KEY "drop_idx_t1_b_idx" ("b") USING BTREE+
+    Table    |               Create Table                
+-------------+-------------------------------------------
+ drop_idx_t1 | CREATE TABLE "drop_idx_t1" (             +
+             |     "a" integer,                         +
+             |     "b" integer,                         +
+             |     KEY "idx_drop_t1_b" ("b") USING BTREE+
              | )
 (1 row)
 
 show index from drop_idx_t1;
-    Table    | Non_unique |     Key_name      | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
--------------+------------+-------------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
- drop_idx_t1 |          1 | drop_idx_t1_b_idx |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
+    Table    | Non_unique |   Key_name    | Seq_in_index | Column_name | Collation | Cardinality | Sub_part | Packed | Null | Index_type | Comment | Index_comment 
+-------------+------------+---------------+--------------+-------------+-----------+-------------+----------+--------+------+------------+---------+---------------
+ drop_idx_t1 |          1 | idx_drop_t1_b |            1 | b           | A         |           0 |          |        | YES  | btree      |         | 
 (1 row)
 
 \d+ drop_idx_t1
@@ -1720,9 +1720,9 @@ show index from drop_idx_t1;
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_idx_t1_b_idx" btree (b)
+    "idx_drop_t1_b" btree (b)
 
-ALTER TABLE drop_idx_t1 DROP INDEX drop_idx_t1_b_idx;
+ALTER TABLE drop_idx_t1 DROP INDEX idx_drop_t1_b;
 show create table drop_idx_t1;
     Table    |         Create Table         
 -------------+------------------------------
@@ -1754,9 +1754,9 @@ CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_idx_t1_b_idx" btree (b)
+    "idx_drop_t1_b" btree (b)
 
-ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
+ALTER TABLE drop_idx_t1 DROP KEY idx_drop_t1_b;
 \d+ drop_idx_t1
                                 Table "public.drop_idx_t1"
  Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
@@ -1772,9 +1772,9 @@ ERROR:  index "drop_idx_t1_b" of relation "drop_idx_t1" does not exist
 drop table drop_idx_t1;
 -- drop twice
 CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
-ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
-ALTER TABLE drop_idx_t1 DROP KEY drop_idx_t1_b_idx;
-ERROR:  index "drop_idx_t1_b_idx" of relation "drop_idx_t1" does not exist
+ALTER TABLE drop_idx_t1 DROP KEY idx_drop_t1_b;
+ALTER TABLE drop_idx_t1 DROP KEY idx_drop_t1_b;
+ERROR:  index "idx_drop_t1_b" of relation "drop_idx_t1" does not exist
 drop table drop_idx_t1;
 -- index did not belong to the table
 CREATE TABLE drop_idx_t1 (a int, b int, INDEX idx_drop_t1_b (b));
@@ -1786,7 +1786,7 @@ CREATE TABLE drop_idx_t2 (a int, b int, INDEX idx_drop_t2_b (b));
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_idx_t1_b_idx" btree (b)
+    "idx_drop_t1_b" btree (b)
 
 \d+ drop_idx_t2
                                 Table "public.drop_idx_t2"
@@ -1795,7 +1795,7 @@ Indexes:
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_idx_t2_b_idx" btree (b)
+    "idx_drop_t2_b" btree (b)
 
 ALTER TABLE drop_idx_t1 DROP key drop_idx_t2_b_idx;
 ERROR:  index "drop_idx_t2_b_idx" of relation "drop_idx_t1" does not exist
@@ -1831,9 +1831,9 @@ ALTER TABLE drop_idx_uk_t ADD UNIQUE KEY idx_uniq_key_b (b);
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_idx_uk_t_b_key" UNIQUE CONSTRAINT, btree (b)
+    "idx_uniq_key_b" UNIQUE CONSTRAINT, btree (b)
 
-ALTER TABLE drop_idx_uk_t DROP INDEX drop_idx_uk_t_b_key;
+ALTER TABLE drop_idx_uk_t DROP INDEX idx_uniq_key_b;
 \d+ drop_idx_uk_t
                                Table "public.drop_idx_uk_t"
  Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
@@ -2089,10 +2089,10 @@ CREATE TABLE drop_fk_parent (id int, b int, unique key idx_b(b));
  id     | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_fk_parent_b_key" UNIQUE CONSTRAINT, btree (b)
+    "idx_b" UNIQUE CONSTRAINT, btree (b)
 
-ALTER TABLE drop_fk_parent DROP FOREIGN KEY drop_fk_parent_b_key;
-ERROR:  constraint "drop_fk_parent_b_key" of relation "drop_fk_parent" is not a foreign key constraint
+ALTER TABLE drop_fk_parent DROP FOREIGN KEY idx_b;
+ERROR:  constraint "idx_b" of relation "drop_fk_parent" is not a foreign key constraint
 \d+ drop_fk_parent;
                               Table "public.drop_fk_parent"
  Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
@@ -2100,7 +2100,7 @@ ERROR:  constraint "drop_fk_parent_b_key" of relation "drop_fk_parent" is not a 
  id     | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_fk_parent_b_key" UNIQUE CONSTRAINT, btree (b)
+    "idx_b" UNIQUE CONSTRAINT, btree (b)
 
 drop table drop_fk_parent;
 -- its check, could not drop by fk
@@ -2143,12 +2143,13 @@ drop table pk_uk_idx_merge;
 -- merge pk + index to pk
 CREATE TABLE pk_uk_idx_merge (a int, b int, primary key (a), index(a));
 show create table pk_uk_idx_merge;
-      Table      |                     Create Table                      
------------------+-------------------------------------------------------
- pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                     +
-                 |     "a" integer NOT NULL,                            +
-                 |     "b" integer,                                     +
-                 |     CONSTRAINT "pk_uk_idx_merge_pkey" PRIMARY KEY (a)+
+      Table      |                      Create Table                      
+-----------------+--------------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                      +
+                 |     "a" integer NOT NULL,                             +
+                 |     "b" integer,                                      +
+                 |     CONSTRAINT "pk_uk_idx_merge_pkey" PRIMARY KEY (a),+
+                 |     KEY "pk_uk_idx_merge_a_idx" ("a") USING BTREE     +
                  | )
 (1 row)
 
@@ -2156,12 +2157,13 @@ drop table pk_uk_idx_merge;
 -- merge uk + index to uk
 CREATE TABLE pk_uk_idx_merge (a int, b int,  unique key(a), index (a));
 show create table pk_uk_idx_merge;
-      Table      |                   Create Table                    
------------------+---------------------------------------------------
- pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                 +
-                 |     "a" integer,                                 +
-                 |     "b" integer,                                 +
-                 |     CONSTRAINT "pk_uk_idx_merge_a_key" UNIQUE (a)+
+      Table      |                    Create Table                    
+-----------------+----------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                  +
+                 |     "a" integer,                                  +
+                 |     "b" integer,                                  +
+                 |     CONSTRAINT "pk_uk_idx_merge_a_key" UNIQUE (a),+
+                 |     KEY "pk_uk_idx_merge_a_idx" ("a") USING BTREE +
                  | )
 (1 row)
 
@@ -2169,12 +2171,13 @@ drop table pk_uk_idx_merge;
 -- merge index + index to index
 CREATE TABLE pk_uk_idx_merge (a int, b int,  index(a), index (a));
 show create table pk_uk_idx_merge;
-      Table      |                   Create Table                    
------------------+---------------------------------------------------
- pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                 +
-                 |     "a" integer,                                 +
-                 |     "b" integer,                                 +
-                 |     KEY "pk_uk_idx_merge_a_idx" ("a") USING BTREE+
+      Table      |                    Create Table                    
+-----------------+----------------------------------------------------
+ pk_uk_idx_merge | CREATE TABLE "pk_uk_idx_merge" (                  +
+                 |     "a" integer,                                  +
+                 |     "b" integer,                                  +
+                 |     KEY "pk_uk_idx_merge_a_idx" ("a") USING BTREE,+
+                 |     KEY "pk_uk_idx_merge_a_idx1" ("a") USING BTREE+
                  | )
 (1 row)
 
@@ -2397,19 +2400,19 @@ CREATE TABLE drop_idx_on_t (a int, b int, INDEX idx_drop_on_b (b));
  a      | integer |           |          |         | plain   |              | 
  b      | integer |           |          |         | plain   |              | 
 Indexes:
-    "drop_idx_on_t_b_idx" btree (b)
+    "idx_drop_on_b" btree (b)
 
 show create table drop_idx_on_t;
-     Table     |                  Create Table                   
----------------+-------------------------------------------------
- drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (                 +
-               |     "a" integer,                               +
-               |     "b" integer,                               +
-               |     KEY "drop_idx_on_t_b_idx" ("b") USING BTREE+
+     Table     |               Create Table                
+---------------+-------------------------------------------
+ drop_idx_on_t | CREATE TABLE "drop_idx_on_t" (           +
+               |     "a" integer,                         +
+               |     "b" integer,                         +
+               |     KEY "idx_drop_on_b" ("b") USING BTREE+
                | )
 (1 row)
 
-DROP INDEX drop_idx_on_t_b_idx ON drop_idx_on_t;
+DROP INDEX idx_drop_on_b ON drop_idx_on_t;
 \d+ drop_idx_on_t
                                Table "public.drop_idx_on_t"
  Column |  Type   | Collation | Nullable | Default | Storage | Stats target | Description 
@@ -3012,12 +3015,12 @@ LINE 1: ...e table t_create_uk(a int, b int, c varchar(20),  unique key...
 ------------------ test case: not accpet sch.idx
 create table sch_idx(a int, b int, index idx_b(b));
 show create table sch_idx;
-  Table  |               Create Table                
----------+-------------------------------------------
- sch_idx | CREATE TABLE "sch_idx" (                 +
-         |     "a" integer,                         +
-         |     "b" integer,                         +
-         |     KEY "sch_idx_b_idx" ("b") USING BTREE+
+  Table  |           Create Table            
+---------+-----------------------------------
+ sch_idx | CREATE TABLE "sch_idx" (         +
+         |     "a" integer,                 +
+         |     "b" integer,                 +
+         |     KEY "idx_b" ("b") USING BTREE+
          | )
 (1 row)
 
@@ -3025,12 +3028,12 @@ drop index public.sch_idx_b_key on sch_idx;
 ERROR:  DROP INDEX ... ON table does not support qualified index names
 HINT:  Use an unqualified index name for the table.
 show create table sch_idx;
-  Table  |               Create Table                
----------+-------------------------------------------
- sch_idx | CREATE TABLE "sch_idx" (                 +
-         |     "a" integer,                         +
-         |     "b" integer,                         +
-         |     KEY "sch_idx_b_idx" ("b") USING BTREE+
+  Table  |           Create Table            
+---------+-----------------------------------
+ sch_idx | CREATE TABLE "sch_idx" (         +
+         |     "a" integer,                 +
+         |     "b" integer,                 +
+         |     KEY "idx_b" ("b") USING BTREE+
          | )
 (1 row)
 

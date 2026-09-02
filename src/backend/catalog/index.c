@@ -92,6 +92,17 @@
 #include "catalog/objectaddress.h"
 #include "utils/ora_compatible.h"
 /* END - ReqID:SRS-CMD-PGDUMP */
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+#include "commands/defrem.h"
+#include "common/md5.h"
+#include "mb/pg_wchar.h"
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+/* Hex MD5 digest length (pg_md5_hash writes 32 chars + NUL). */
+#define MD5_HASH_LEN		32
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 /* Potentially set by pg_upgrade_support functions */
 Oid			binary_upgrade_next_index_pg_class_oid = InvalidOid;
 
@@ -1137,6 +1148,7 @@ ora_index_create(Relation heapRelation,
 	{
 		StoreSingleInheritance(indexRelationId, parentIndexRelid, 1);
 		LockRelationOid(parentIndexRelid, ShareUpdateExclusiveLock);
+		CommandCounterIncrement();	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 		SetRelationHasSubclass(parentIndexRelid, true);
 	}
 
@@ -4403,3 +4415,512 @@ RestoreReindexState(void *reindexstate)
 	/* Note the worker has its own transaction nesting level */
 	reindexingNestLevel = GetCurrentTransactionNestLevel();
 }
+
+/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+/*
+ * ExtractLogicalIdxnameFromOptions
+ *
+ * Return a palloc'd copy of WITH (logical_idxname=...).  Used when
+ * pg_upgrade / pg_dump --binary-upgrade restore that internal key via
+ * CREATE INDEX / ADD CONSTRAINT ... WITH, rather than IndexStmt.logical_idxname.
+ */
+char *
+ExtractLogicalIdxnameFromOptions(List *defList)
+{
+	ListCell   *cell;
+
+	foreach(cell, defList)
+	{
+		DefElem    *def = (DefElem *) lfirst(cell);
+
+		if (def->defname != NULL &&
+			strcmp(def->defname, LOGICAL_IDXNAME_RELOPT) == 0)
+		{
+			if (def->arg == NULL)
+				return NULL;
+			return pstrdup(defGetString(def));
+		}
+	}
+	return NULL;
+}
+
+/*
+ * FilterLogicalIdxnameFromOptions
+ *
+ * Remove logical_idxname DefElems from a WITH-options list.
+ * That key is not an AM storage parameter;
+ * callers keep Key_name in IndexStmt.logical_idxname
+ * (or bake it into reloptions after AM validation).
+ */
+List *
+FilterLogicalIdxnameFromOptions(List *defList)
+{
+	List		*result = NIL;
+	ListCell	*cell;
+
+	foreach(cell, defList)
+	{
+		DefElem		*def = (DefElem *) lfirst(cell);
+
+		if (def->defname != NULL &&
+			strcmp(def->defname, LOGICAL_IDXNAME_RELOPT) == 0)
+			continue;
+		result = lappend(result, def);
+	}
+	return result;
+}
+
+/*
+ * construct_unique_index_name
+ *
+ * Build a schema-unique physical index name from the MySQL logical Key_name
+ * and the table name (Babelfish construct_unique_index_name compatible):
+ *
+ *	  physical = index_name || relation_name || md5(index_name)
+ *
+ * If that exceeds NAMEDATALEN-1, compress with:
+ *
+ *	  physical = prefix || md5(full_string)
+ *
+ * so uniqueness is preserved under PostgreSQL's 63-byte Name limit.
+ * The original logical name is stored separately in pg_class.reloptions
+ * (logical_idxname) for SHOW / DROP / RENAME by Key_name.
+ */
+char *
+construct_unique_index_name(const char *index_name, const char *relation_name)
+{
+	char	md5[MD5_HASH_LEN + 1];
+	char	*buf;
+	char	*name;
+	bool	success;
+	int	full_len;
+	int	index_len;
+	int	relation_len;
+
+	if (index_name == NULL || relation_name == NULL)
+		return index_name != NULL ? pstrdup(index_name) : NULL;
+
+	index_len = strlen(index_name);
+	relation_len = strlen(relation_name);
+
+	success = pg_md5_hash(index_name, (size_t) index_len, md5);
+	if (unlikely(!success))
+		ereport(ERROR,
+				(errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("constructing unique index name failed: index = \"%s\", relation = \"%s\"",
+						index_name, relation_name)));
+
+	/* Multibyte identifiers can exceed NAMEDATALEN in bytes; allocate. */
+	full_len = index_len + relation_len + MD5_HASH_LEN;
+	buf = palloc(full_len + 1);
+
+	memcpy(buf, index_name, index_len);
+	memcpy(buf + index_len, relation_name, relation_len);
+	memcpy(buf + index_len + relation_len, md5, MD5_HASH_LEN + 1);
+
+	if (full_len >= NAMEDATALEN)
+	{
+		char	full_md5[MD5_HASH_LEN + 1];
+		int		prefix_len;
+
+		success = pg_md5_hash(buf, (size_t) full_len, full_md5);
+		if (unlikely(!success))
+			ereport(ERROR,
+					(errcode(ERRCODE_INTERNAL_ERROR),
+					 errmsg("constructing unique index name failed: index = \"%s\", relation = \"%s\"",
+							index_name, relation_name)));
+
+		prefix_len = pg_mbcliplen(buf, full_len,
+								  NAMEDATALEN - MD5_HASH_LEN - 1);
+		Assert(prefix_len + MD5_HASH_LEN < NAMEDATALEN);
+		memcpy(buf + prefix_len, full_md5, MD5_HASH_LEN);
+		buf[prefix_len + MD5_HASH_LEN] = '\0';
+		full_len = prefix_len + MD5_HASH_LEN;
+	}
+
+	Assert(full_len < NAMEDATALEN);
+
+	name = palloc(full_len + 1);
+	memcpy(name, buf, full_len + 1);
+	pfree(buf);
+
+	return name;
+}
+
+/*
+ * choose_physical_index_name
+ *
+ * Prefer the logical Key_name as the physical relname when it is unused
+ * in the namespace (or only used by excludeRelid, e.g. RENAME of self).
+ * If already taken, fall back to construct_unique_index_name().
+ * PRIMARY is always mangled (Key_name PRIMARY is not a free physical name).
+ */
+char *
+choose_physical_index_name(const char *logical_name,
+						   const char *relation_name,
+						   Oid namespaceId,
+						   Oid excludeRelid)
+{
+	Oid	existing;
+
+	if (logical_name == NULL || logical_name[0] == '\0')
+		return NULL;
+
+	existing = get_relname_relid(logical_name, namespaceId);
+	if (!OidIsValid(existing) || existing == excludeRelid)
+		return pstrdup(logical_name);
+
+	return construct_unique_index_name(logical_name, relation_name);
+}
+
+/*
+ * Write logical_idxname into pg_class.reloptions for indexOid.
+ *
+ * Updating an index's pg_class row requires 
+ * ShareUpdateExclusiveLock (or stronger) on the parent heap,
+ * matching inplace-update / catalog-write lock rules used by forks that check this
+ * (otherwise: "missing lock for relation ... relkind i").
+ */
+static void
+StoreTLIdxnameReloption(Oid indexOid, const char *logicalName)
+{
+	Relation	pg_class;
+	HeapTuple	tuple;
+	HeapTuple	newtuple;
+
+	Datum	datum;
+	bool	isnull;
+	Datum	newOptions;
+	Datum	values[Natts_pg_class];
+	bool	nulls[Natts_pg_class];
+	bool	repl[Natts_pg_class];
+	List	*defList;
+	Oid		heapOid;
+	char	*existing;
+
+	Assert(OidIsValid(indexOid));
+	Assert(logicalName != NULL && logicalName[0] != '\0');
+
+	/*
+	 * Skip if already stored (e.g. baked into InsertPgClassTuple).  A no-op
+	 * CatalogTupleUpdate would still consume the command ID and can collide
+	 * with SetRelationHasSubclass on partitioned indexes.
+	 */
+	existing = GetStoredLogicalIndexNameByIndex(indexOid);
+	if (existing != NULL)
+	{
+		bool	same = (strcmp(existing, logicalName) == 0);
+		pfree(existing);
+		if (same)
+			return;
+	}
+
+	heapOid = IndexGetRelation(indexOid, false);
+	LockRelationOid(heapOid, ShareUpdateExclusiveLock);
+
+	defList = list_make1(makeDefElem(LOGICAL_IDXNAME_RELOPT,
+									 (Node *) makeString(pstrdup(logicalName)),
+									 -1));
+
+	pg_class = table_open(RelationRelationId, RowExclusiveLock);
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(indexOid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", indexOid);
+
+	datum = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_reloptions, &isnull);
+	newOptions = transformRelOptions(isnull ? (Datum) 0 : datum,
+									 defList, NULL, NULL, false, false);
+
+	MemSet(values, 0, sizeof(values));
+	MemSet(nulls, false, sizeof(nulls));
+	MemSet(repl, false, sizeof(repl));
+	if (newOptions != (Datum) 0)
+	{
+		values[Anum_pg_class_reloptions - 1] = newOptions;
+		nulls[Anum_pg_class_reloptions - 1] = false;
+	}
+	else
+		nulls[Anum_pg_class_reloptions - 1] = true;
+	repl[Anum_pg_class_reloptions - 1] = true;
+
+	newtuple = heap_modify_tuple(tuple, RelationGetDescr(pg_class),
+								 values, nulls, repl);
+	ReleaseSysCache(tuple);
+
+	CatalogTupleUpdate(pg_class, &newtuple->t_self, newtuple);
+	heap_freetuple(newtuple);
+	table_close(pg_class, RowExclusiveLock);
+
+	/* Ensure relcache picks up the new reloptions. */
+	CacheInvalidateRelcacheByRelid(indexOid);
+}
+
+/*
+ * Remove logical_idxname from pg_class.reloptions.
+ */
+static void
+RemoveTLIdxnameReloption(Oid indexOid)
+{
+	Relation	pg_class;
+	HeapTuple	tuple;
+	HeapTuple	newtuple;
+	Datum		datum;
+	bool		isnull;
+	Datum		newOptions;
+	Datum		values[Natts_pg_class];
+	bool		nulls[Natts_pg_class];
+	bool		repl[Natts_pg_class];
+	List		*defList;
+	Oid			heapOid;
+	char		*existing;
+
+	Assert(OidIsValid(indexOid));
+
+	existing = GetStoredLogicalIndexNameByIndex(indexOid);
+
+	if (existing == NULL)
+		return;
+	pfree(existing);
+
+	heapOid = IndexGetRelation(indexOid, false);
+	LockRelationOid(heapOid, ShareUpdateExclusiveLock);
+
+	defList = list_make1(makeDefElem(LOGICAL_IDXNAME_RELOPT, NULL, -1));
+
+	pg_class = table_open(RelationRelationId, RowExclusiveLock);
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(indexOid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for relation %u", indexOid);
+
+	datum = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_reloptions, &isnull);
+	newOptions = transformRelOptions(isnull ? (Datum) 0 : datum,
+									 defList, NULL, NULL, false, true);
+
+	MemSet(values, 0, sizeof(values));
+	MemSet(nulls, false, sizeof(nulls));
+	MemSet(repl, false, sizeof(repl));
+	if (newOptions != (Datum) 0)
+	{
+		values[Anum_pg_class_reloptions - 1] = newOptions;
+		nulls[Anum_pg_class_reloptions - 1] = false;
+	}
+	else
+		nulls[Anum_pg_class_reloptions - 1] = true;
+	repl[Anum_pg_class_reloptions - 1] = true;
+
+	newtuple = heap_modify_tuple(tuple, RelationGetDescr(pg_class),
+								 values, nulls, repl);
+	ReleaseSysCache(tuple);
+
+	CatalogTupleUpdate(pg_class, &newtuple->t_self, newtuple);
+	heap_freetuple(newtuple);
+	table_close(pg_class, RowExclusiveLock);
+
+	CacheInvalidateRelcacheByRelid(indexOid);
+}
+
+/*
+ * UpdateLogicalIndexName
+ *
+ * Store or clear logical_idxname=<Key_name> on the index's pg_class.reloptions
+ * after verifying (table, logical name) is unique among that table's indexes.
+ * logical_idxname is stored only when the physical relname is mangled.
+ */
+void
+UpdateLogicalIndexName(Oid tableOid, Oid indexOid, const char *newLogicalName)
+{
+	HeapTuple	tuple;
+	Form_pg_index indexForm;
+	Oid			existing;
+	char	   *newPhysname;
+	Oid			namespaceId;
+
+	Assert(OidIsValid(tableOid));
+	Assert(OidIsValid(indexOid));
+	Assert(newLogicalName != NULL && newLogicalName[0] != '\0');
+
+	existing = GetLogicalIndexOid(tableOid, newLogicalName);
+	if (OidIsValid(existing) && existing != indexOid)
+	{
+		if (compatible_mode == MYS_MODE)
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_TABLE),
+					 errmsg("Duplicate key name \"%s\"", newLogicalName)));
+		else
+			ereport(ERROR,
+					(errcode(ERRCODE_DUPLICATE_TABLE),
+					 errmsg("index \"%s\" of relation \"%s\" already exists",
+							newLogicalName, get_rel_name(tableOid))));
+	}
+
+	tuple = SearchSysCache1(INDEXRELID, ObjectIdGetDatum(indexOid));
+	if (!HeapTupleIsValid(tuple))
+		elog(ERROR, "cache lookup failed for index %u", indexOid);
+
+	indexForm = (Form_pg_index) GETSTRUCT(tuple);
+	if (indexForm->indrelid != tableOid)
+		elog(ERROR, "index %u does not belong to table %u",
+			 indexOid, tableOid);
+	ReleaseSysCache(tuple);
+
+	namespaceId = get_rel_namespace(tableOid);
+	newPhysname = choose_physical_index_name(newLogicalName,
+											 get_rel_name(tableOid),
+											 namespaceId,
+											 indexOid);
+	if (strcmp(newLogicalName, newPhysname) == 0)
+		RemoveTLIdxnameReloption(indexOid);
+	else
+		StoreTLIdxnameReloption(indexOid, newLogicalName);
+	pfree(newPhysname);
+}
+
+/*
+ * GetLogicalIndexOid
+ *
+ * Look up an index OID by table and MySQL Key_name.  "PRIMARY" is resolved
+ * via RelationGetPrimaryKeyIndex.  For other names, match physical relname
+ * first, then logical_idxname in reloptions (mangled indexes only).
+ */
+Oid
+GetLogicalIndexOid(Oid tableOid, const char *logicalName)
+{
+	Relation	indRel;
+	SysScanDesc scan;
+	ScanKeyData skey;
+	HeapTuple	tuple;
+	Oid			found = InvalidOid;
+
+	if (!OidIsValid(tableOid) || logicalName == NULL || logicalName[0] == '\0')
+		return InvalidOid;
+
+	/*
+	 * MySQL PRIMARY KEY: physical name is table_pkey (ChooseIndexName), not
+	 * construct_unique_index_name().  Resolve via indisprimary.
+	 */
+	if (pg_strcasecmp(logicalName, "PRIMARY") == 0)
+	{
+		Relation	heapRel = relation_open(tableOid, AccessShareLock);
+		Oid			pkindex = RelationGetPrimaryKeyIndex(heapRel);
+
+		if (!OidIsValid(pkindex))
+		{
+			char	   *pkey = psprintf("%s_pkey", RelationGetRelationName(heapRel));
+
+			pkindex = get_relname_relid(pkey, heapRel->rd_rel->relnamespace);
+			pfree(pkey);
+			if (OidIsValid(pkindex) &&
+				IndexGetRelation(pkindex, true) != tableOid)
+				pkindex = InvalidOid;
+		}
+
+		relation_close(heapRel, AccessShareLock);
+		return pkindex;
+	}
+
+	indRel = table_open(IndexRelationId, AccessShareLock);
+	ScanKeyInit(&skey,
+				Anum_pg_index_indrelid,
+				BTEqualStrategyNumber, F_OIDEQ,
+				ObjectIdGetDatum(tableOid));
+	scan = systable_beginscan(indRel, InvalidOid, false,
+							  NULL, 1, &skey);
+
+	while (HeapTupleIsValid(tuple = systable_getnext(scan)))
+	{
+		Form_pg_index form = (Form_pg_index) GETSTRUCT(tuple);
+		char	   *phys;
+
+		if (!form->indislive)
+			continue;
+
+		/* Prefer matching physical pg_class.relname first. */
+		phys = get_rel_name(form->indexrelid);
+		if (phys != NULL && strcmp(phys, logicalName) == 0)
+		{
+			found = form->indexrelid;
+			break;
+		}
+	}
+
+	if (!OidIsValid(found))
+	{
+		systable_endscan(scan);
+		scan = systable_beginscan(indRel, InvalidOid, false,
+								  NULL, 1, &skey);
+
+		while (HeapTupleIsValid(tuple = systable_getnext(scan)))
+		{
+			Form_pg_index form = (Form_pg_index) GETSTRUCT(tuple);
+			char	   *tlname;
+
+			if (!form->indislive)
+				continue;
+
+			tlname = GetStoredLogicalIndexNameByIndex(form->indexrelid);
+			if (tlname != NULL)
+			{
+				if (strcmp(tlname, logicalName) == 0)
+					found = form->indexrelid;
+				pfree(tlname);
+				if (OidIsValid(found))
+					break;
+			}
+		}
+	}
+
+	systable_endscan(scan);
+	table_close(indRel, AccessShareLock);
+
+	return found;
+}
+
+/*
+ * GetStoredLogicalIndexNameByIndex
+ *
+ * Return a palloc'd copy of logical_idxname= from index reloptions, or NULL
+ * if the key is absent. 
+ * Does not fall back to pg_class.relname.
+ */
+char *
+GetStoredLogicalIndexNameByIndex(Oid indexOid)
+{
+	HeapTuple	tuple;
+	Datum		datum;
+	bool		isnull;
+	char	   *name;
+
+	if (!OidIsValid(indexOid))
+		return NULL;
+
+	tuple = SearchSysCache1(RELOID, ObjectIdGetDatum(indexOid));
+	if (!HeapTupleIsValid(tuple))
+		return NULL;
+
+	datum = SysCacheGetAttr(RELOID, tuple, Anum_pg_class_reloptions, &isnull);
+	name = isnull ? NULL :
+		ExtractLogicalIdxnameFromOptions(untransformRelOptions(datum));
+	ReleaseSysCache(tuple);
+
+	return name;
+}
+
+/*
+ * GetLogicalIndexNameByIndex
+ *
+ * Return a palloc'd MySQL Key_name for the index: 
+ * stored logical_idxname when the physical relname was mangled,
+ * otherwise pg_class.relname.
+ */
+char *
+GetLogicalIndexNameByIndex(Oid indexOid)
+{
+	char	   *name;
+
+	name = GetStoredLogicalIndexNameByIndex(indexOid);
+	if (name != NULL)
+		return name;
+
+	return get_rel_name(indexOid);
+}
+/* End - SRS-MYSQL-SQL-TableLEVELINDEX */

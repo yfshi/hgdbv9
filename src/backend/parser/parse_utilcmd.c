@@ -2563,6 +2563,8 @@ generateClonedIndexStmt(RangeVar *heapRel, Relation source_idx,
 	index->idxname = NULL;
 	index->idxschemaname = NULL; /* OA-REQ-2127 */
 
+	index->logical_idxname = GetStoredLogicalIndexNameByIndex(source_relid);	/* SRS-MYSQL-SQL-TableLEVELINDEX */
+
 	/*
 	 * If the index is marked PRIMARY or has an exclusion condition, it's
 	 * certainly from a constraint; else, if it's not marked UNIQUE, it
@@ -2789,7 +2791,19 @@ generateClonedIndexStmt(RangeVar *heapRel, Relation source_idx,
 	datum = SysCacheGetAttr(RELOID, ht_idxrel,
 							Anum_pg_class_reloptions, &isnull);
 	if (!isnull)
+	{
 		index->options = untransformRelOptions(datum);
+
+		/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+		/*
+		 * Parent may store Key_name as tablelevel_idxname in reloptions.
+		 * That is not an AM WITH parameter; keep it only via logical_idxname
+		 * (set above) so DefineIndex AM validation does not reject it.
+		 */
+		index->options = FilterLogicalIdxnameFromOptions(index->options);
+		/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
+	}
 
 	/* If it's a partial index, decompile and append the predicate */
 	datum = SysCacheGetAttr(INDEXRELID, ht_idx,
@@ -3091,6 +3105,11 @@ transformIndexConstraints(CreateStmtContext *cxt)
 		{
 			IndexStmt  *priorindex = lfirst(k);
 
+			/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+			if (!index->isconstraint || !priorindex->isconstraint)
+				continue;
+			/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
+
 			if (equal(index->indexParams, priorindex->indexParams) &&
 				equal(index->indexIncludingParams, priorindex->indexIncludingParams) &&
 				equal(index->whereClause, priorindex->whereClause) &&
@@ -3185,6 +3204,13 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 	if (constraint->contype == CONSTR_INDEX)
 	{
 		index->idxname = NULL;
+		/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+		if (constraint->indexname != NULL)
+		{
+			index->logical_idxname = pstrdup(constraint->indexname);
+			constraint->indexname = NULL;
+		}
+		/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 	}
 	else if (constraint->indexname != NULL &&
 			 constraint->keys == NIL)
@@ -3193,12 +3219,34 @@ transformIndexConstraint(Constraint *constraint, CreateStmtContext *cxt)
 			index->idxname = pstrdup(constraint->conname);
 		else
 			index->idxname = NULL;
+		index->logical_idxname= NULL; /* SRS-MYSQL-SQL-TableLEVELINDEX */
 	}
+	/* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+	else if (constraint->contype == CONSTR_UNIQUE &&
+			 constraint->indexname != NULL &&
+			 constraint->keys != NIL)
+	{
+		index->idxname = NULL;
+		index->logical_idxname = pstrdup(constraint->indexname);
+		constraint->indexname = NULL;
+	}
+	else if (constraint->indexname != NULL)
+	{
+		index->idxname = pstrdup(constraint->indexname);
+		index->logical_idxname= NULL;
+	}
+	/* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 	else if (constraint->conname != NULL)
+	{
 		index->idxname = pstrdup(constraint->conname);
+		index->logical_idxname= NULL;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
+	}
 	/* End - ReqID:SRS-MYSQL-SQL-Alter */
 	else
+	{
 		index->idxname = NULL;	/* DefineIndex will choose name */
+		index->logical_idxname= NULL;	/* SRS-MYSQL-SQL-TableLEVELINDEX */
+	}
 
 	index->idxschemaname = NULL; /* OA-REQ-2127 */
 	index->relation = cxt->relation;
