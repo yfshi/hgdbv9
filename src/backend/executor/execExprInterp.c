@@ -4749,7 +4749,7 @@ ExecAggPlainTransByRef(AggState *aggstate, AggStatePerTrans pertrans,
  *	the value of target type.
  */
 Datum
-mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
+mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid, int32 typmod)
 {
 	Datum			retdatum;
 
@@ -4764,7 +4764,7 @@ mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid)
 
 		result = coerce_type(NULL, (Node *) currentconst, currentconst->consttype,
 							 targetoid,
-							 -1, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST,
+							 typmod, COERCION_EXPLICIT, COERCE_EXPLICIT_CAST,
 							 -1);
 
 		/* Begin - BUG#Z6861 */
@@ -4865,7 +4865,7 @@ ExecEvalVarRefExec(ExprState *state, ExprEvalStep *op)
 		 */
 		if (OidIsValid(op->d.varref.rettype))
 		{
-			*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype);
+			*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype, -1);
 		}
 		else
 		{

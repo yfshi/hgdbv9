@@ -585,145 +585,85 @@ mystimestamps2tm(Numeric val, struct pg_tm *tm, fsec_t *fsec)
 static void
 append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, PrinttupAttrInfo *thisState)
 {
-    switch (item->mysql_type_id)
-    {
-        case MYSQL_TYPE_LONG:
-        case MYSQL_TYPE_INT24:
-            {
-                int32 val = DatumGetInt32(binval);
-                mq_append_int4(buf, val);
-                break;
-            }
-        case MYSQL_TYPE_LONGLONG:
-            {
-                int64 val = DatumGetInt64(binval);
-                mq_append_int8(buf, val);
-                break;
-            }
-        case MYSQL_TYPE_SHORT:
-            {
-                int16 val = DatumGetInt16(binval);
-                mq_append_int2(buf, val);
-                break;
-            }
-        case MYSQL_TYPE_YEAR:
-            {
-                #define MIN_YEAR_NUM 1901
-                #define YearADT_to_Year(x) ((x) == 0 ? 0 : (int32)(x) + MIN_YEAR_NUM - 1)
+    Oid typoid = item->oid;
 
-                int16 year = DatumGetInt16(binval);
-                int16 val = year >= 0 ? YearADT_to_Year(year) : YearADT_to_Year(-year) % 100;
-                mq_append_int2(buf, val);
-                break;
-            }
-        case MYSQL_TYPE_TINY:
+    switch (typoid)
+    {
+        case TINYINTOID:
+        case UINT1OID:
+        case BOOLOID:
             {
                 int8 val = DatumGetInt8(binval);
                 mq_append_int1(buf, val);
                 break;
             }
-        case MYSQL_TYPE_DOUBLE:
+        case INT2OID:
+        case UINT2OID:
             {
-                int64 num = DatumGetInt64(binval);
-                mq_append_int8(buf, num);
+                int16 val = DatumGetInt16(binval);
+                mq_append_int2(buf, val);
                 break;
             }
-        case MYSQL_TYPE_FLOAT:
+        case OIDOID:
+        case MEDIUMINTOID:
+        case INT4OID:
+        case UINT3OID:
+        case UINT4OID:
+            {
+                int32 val = DatumGetInt32(binval);
+                mq_append_int4(buf, val);
+                break;
+            }
+        case INT8OID:
+        case UINT8OID:
+            {
+                int64 val = DatumGetInt64(binval);
+                mq_append_int8(buf, val);
+                break;
+            }
+        case FLOAT4OID:
             {
                 int32 num = DatumGetInt32(binval);
                 mq_append_int4(buf, num);
                 break;
             }
-        case MYSQL_TYPE_STRING:
+        case FLOAT8OID:
             {
-                char *val;
-
-                /* since all MySQL unknown type are map to MYSQL_TYPE_STRING, we use type out func here */
-                if (thisState == NULL)
-                {
-                    /* should not happen */
-                    ereport(ERROR,
-                            (errcode(ERRCODE_PROTOCOL_VIOLATION),
-                             errmsg("There is no output function for type: %s(%u)", item->typname, item->oid)));
-                }
-
-                val = OutputFunctionCall(&thisState->finfo, binval);
-                mq_append_string_lenenc(buf, val, -1);
-                pfree(val);
+                int64 num = DatumGetInt64(binval);
+                mq_append_int8(buf, num);
                 break;
             }
-        case MYSQL_TYPE_VARCHAR:
-        case MYSQL_TYPE_VAR_STRING:
-        case MYSQL_TYPE_JSON:
+        case NUMERICOID:
             {
-                char *val = TextDatumGetCString(binval);
-                mq_append_string_lenenc(buf, val, -1);
-                pfree(val);
-                break;
-            }
-        case MYSQL_TYPE_LONG_BLOB:
-        case MYSQL_TYPE_MEDIUM_BLOB:
-        case MYSQL_TYPE_BLOB:
-        case MYSQL_TYPE_TINY_BLOB:
-            {
-                char *val;
-                bytea_output = BYTEA_OUTPUT_ESCAPE;
-                val = DatumGetCString(DirectFunctionCall1(byteaout, binval));
-                mq_append_string_lenenc(buf, val, -1);
-                pfree(val);
-                break;
-            }
-        case MYSQL_TYPE_BIT:
-            {
-                char *val = DatumGetCString(DirectFunctionCall1(bit_out, binval));
-                mq_append_string_lenenc(buf, val, -1);
-                pfree(val);
-                break;
-            }
-        case MYSQL_TYPE_GEOMETRY:
-            {
-                char *val;
-                if (item->oid == POINTOID)
-                    val = DatumGetCString(DirectFunctionCall1(point_out, binval));
-                else if (item->oid == LINEOID)
-                    val = DatumGetCString(DirectFunctionCall1(line_out, binval));
-                else if (item->oid == POLYGONOID)
-                    val = DatumGetCString(DirectFunctionCall1(poly_out, binval));
-                else
-                {
-                    assert(0);
-                    break;
-                }
-
-                mq_append_string_lenenc(buf, val, -1);
-                pfree(val);
-                break;
-            }
-        case MYSQL_TYPE_DECIMAL:
-        case MYSQL_TYPE_NEWDECIMAL:
-            {
+                // output as string
                 char *val = DatumGetCString(DirectFunctionCall1(numeric_out, binval));
                 mq_append_string_lenenc(buf, val, -1);
                 pfree(val);
                 break;
             }
-        case MYSQL_TYPE_ENUM:
+        case MYSBITOID:
+                binval = DirectFunctionCall1(bittobinary, binval); /* fallthrough */
+        case BINARYOID:
+        case VARBINARYOID:
+        case IVY_HEXOID:
+        case MYBLOBOID:
+        case TINYBLOBOID:
+        case MEDIUMBLOBOID:
+        case LONGBLOBOID:
             {
-                char *val = DatumGetCString(DirectFunctionCall1(enum_out, binval));
-                mq_append_string_lenenc(buf, val, -1);
+                bytea   *val = DatumGetByteaPP(binval);
+                mq_append_string_lenenc(buf, VARDATA_ANY(val), VARSIZE_ANY_EXHDR(val));
+                break;
+            }
+        case YEAROID:
+            {
+                char *val = DatumGetCString(DirectFunctionCall1(year_out, binval));
+                int16  y = pg_atoi(val, sizeof(int), ' ');
+                mq_append_int2(buf, y);
                 pfree(val);
                 break;
             }
-        case MYSQL_TYPE_SET:
-            {
-                /* TO DO
-                char *val = DatumGetCString(DirectFunctionCall1(set_out, binval));
-                mq_append_string_lenenc(buf, val, -1);
-                pfree(val);
-                */
-                break;
-            }
-        case MYSQL_TYPE_DATE:
+        case MYSDATEOID:
             {
                 struct pg_tm tt, *tm = &tt;
                 DateADT date = DatumGetDateADT(binval);
@@ -737,57 +677,8 @@ append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, Pr
                 
                 break;
             }
-        case MYSQL_TYPE_TIMESTAMP:
-            {
-                struct pg_tm tt, *tm = &tt;
-                fsec_t fsec;
-
-                if (item->oid == MYSTIMESTAMPSOID)
-                {
-                    mystimestamps2tm(DatumGetNumeric(binval), tm, &fsec);
-                }
-                else
-                {
-                    mystimestamp2tm(DatumGetTimeADT(binval), tm);
-                    fsec = 0;
-                }
-
-                mq_append_int1(buf, 0x0b);
-                mq_append_int2(buf, tm->tm_year);
-                mq_append_int1(buf, tm->tm_mon);
-                mq_append_int1(buf, tm->tm_mday);
-                mq_append_int1(buf, tm->tm_hour);
-                mq_append_int1(buf, tm->tm_min);
-                mq_append_int1(buf, tm->tm_sec);
-                mq_append_int4(buf, fsec);
-                break;
-            }
-        case MYSQL_TYPE_DATETIME:
-            {
-                struct pg_tm tt, *tm = &tt;
-                fsec_t fsec;
-
-                if (item->oid == MYSDATETIMESOID)
-                {
-                    mysdatetimes2tm(DatumGetNumeric(binval), tm, &fsec);
-                }
-                else
-                {
-                    mysdatetime2tm(DatumGetTimeADT(binval), tm);
-                    fsec = 0;
-                }
-
-                mq_append_int1(buf, 0x0b);
-                mq_append_int2(buf, tm->tm_year);
-                mq_append_int1(buf, tm->tm_mon);
-                mq_append_int1(buf, tm->tm_mday);
-                mq_append_int1(buf, tm->tm_hour);
-                mq_append_int1(buf, tm->tm_min);
-                mq_append_int1(buf, tm->tm_sec);
-                mq_append_int4(buf, fsec);
-                break;
-            }
-        case MYSQL_TYPE_TIME:
+        case MYSTIMEOID:
+        case MYSTIMESOID:
             {
                 struct pg_tm tt, *tm = &tt;
                 fsec_t fsec;
@@ -817,10 +708,112 @@ append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, Pr
                 mq_append_int4(buf, fsec);
                 break;
             }
-        case MYSQL_TYPE_NULL:
-            break;
+        case MYSDATETIMEOID:
+        case MYSDATETIMESOID:
+            {
+                struct pg_tm tt, *tm = &tt;
+                fsec_t fsec;
+
+                if (typoid == MYSDATETIMESOID)
+                {
+                    mysdatetimes2tm(DatumGetNumeric(binval), tm, &fsec);
+                }
+                else
+                {
+                    mysdatetime2tm(DatumGetTimeADT(binval), tm);
+                    fsec = 0;
+                }
+
+                mq_append_int1(buf, 0x0b);
+                mq_append_int2(buf, tm->tm_year);
+                mq_append_int1(buf, tm->tm_mon);
+                mq_append_int1(buf, tm->tm_mday);
+                mq_append_int1(buf, tm->tm_hour);
+                mq_append_int1(buf, tm->tm_min);
+                mq_append_int1(buf, tm->tm_sec);
+                mq_append_int4(buf, fsec);
+                break;
+            }
+        case MYSTIMESTAMPOID:
+        case MYSTIMESTAMPSOID:
+            {
+                struct pg_tm tt, *tm = &tt;
+                fsec_t fsec;
+
+                if (item->oid == MYSTIMESTAMPSOID)
+                {
+                    mystimestamps2tm(DatumGetNumeric(binval), tm, &fsec);
+                }
+                else
+                {
+                    mystimestamp2tm(DatumGetTimeADT(binval), tm);
+                    fsec = 0;
+                }
+
+                mq_append_int1(buf, 0x0b);
+                mq_append_int2(buf, tm->tm_year);
+                mq_append_int1(buf, tm->tm_mon);
+                mq_append_int1(buf, tm->tm_mday);
+                mq_append_int1(buf, tm->tm_hour);
+                mq_append_int1(buf, tm->tm_min);
+                mq_append_int1(buf, tm->tm_sec);
+                mq_append_int4(buf, fsec);
+                break;
+            }
+        case POINTOID:
+        case LINEOID:
+        case POLYGONOID:
+            {
+                char *val;
+                if (item->oid == POINTOID)
+                    val = DatumGetCString(DirectFunctionCall1(point_out, binval));
+                else if (item->oid == LINEOID)
+                    val = DatumGetCString(DirectFunctionCall1(line_out, binval));
+                else if (item->oid == POLYGONOID)
+                    val = DatumGetCString(DirectFunctionCall1(poly_out, binval));
+                else
+                {
+                    assert(0);
+                    break;
+                }
+
+                mq_append_string_lenenc(buf, val, -1);
+                pfree(val);
+                break;
+            }
+
+        case CHAROID:
+        case BPCHAROID:
+        case VARCHAROID:
+        case TEXTOID:
+        case TINYTEXTOID:
+        case MEDIUMTEXTOID:
+        case LONGTEXTOID:
+        case JSONOID:
+        case JSONBOID:
         default:
-            break;
+            {
+                bool		isvarlena;
+                Oid			outfunc;
+	            FmgrInfo	fmgrinfo;
+                char        *raw;
+                char        *str;
+
+                getTypeOutputInfo(typoid, &outfunc, &isvarlena);
+	            fmgr_info(outfunc, &fmgrinfo);
+                
+                raw = OutputFunctionCall(&fmgrinfo, binval);
+                str = pg_server_to_client(raw, strlen(raw));
+
+                mq_append_string_lenenc(buf, str, -1);
+
+                if (str != raw)
+                    pfree(str);
+
+                pfree(raw);
+
+                break;
+            }
     }
 }
 
