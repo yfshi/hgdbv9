@@ -3210,6 +3210,18 @@ ResolvePartitionExtenedName(Relation rel, List *forexpr)
 					 */
 					part_index = boundinfo->indexes[bound_offset + 1];
 				}
+				else
+				{
+					bound_offset = partition_range_datum_bsearch_nullable(key->partsupfunc,
+																		  key->partcollation,
+																		  boundinfo,
+																		  key->partnatts,
+																		  values,
+																		  isnull,
+																		  &equal);
+
+					part_index = boundinfo->indexes[bound_offset + 1];
+				}
 			}
 			break;
 

@@ -4222,6 +4222,13 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 			   *upper_or_start_datum;
 	bool		need_next_lower_arm,
 				need_next_upper_arm;
+	bool		is_oracle_part = false;	/* ReqID:SRS-SQL-PARTITION-TABLE */
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (is_oracle_partitioned_table(RelationGetRelid(parent)) ||
+		is_oracle_partition(RelationGetRelid(parent)))
+		is_oracle_part = true;
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	if (spec->is_default)
 	{
@@ -4305,7 +4312,7 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 	 * If it is the recursive call for default, we skip the get_range_nulltest
 	 * to avoid accumulating the NullTest on the same keys for each partition.
 	 */
-	if (!for_default)
+	if (!for_default && !is_oracle_part) /* ReqID:SRS-SQL-PARTITION-TABLE */
 		result = get_range_nulltest(key);
 
 	/*
@@ -4378,10 +4385,38 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 		if (i == key->partnatts - 1)
 			elog(ERROR, "invalid range bound specification");
 
-		/* Equal, so generate keyCol = lower_val expression */
-		result = lappend(result,
-						 make_partition_op_expr(key, i, BTEqualStrategyNumber,
-												keyCol, (Expr *) lower_val));
+		/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+		if (is_oracle_part)
+		{
+			/*
+			 * For oracle partitioned table, Equal, we generate
+			 * keyCol = lower_val expression AND keyCol IS NOT NULL.
+			 */
+			Expr		*eq_expr;
+			NullTest 	*nulltest;
+
+			eq_expr = make_partition_op_expr(key, i, BTEqualStrategyNumber,
+											 keyCol, (Expr *) lower_val);
+
+			nulltest = makeNode(NullTest);
+			nulltest->arg = (Expr *) copyObject(keyCol);
+			nulltest->nulltesttype = IS_NOT_NULL;
+			nulltest->argisrow = false;
+			nulltest->location = -1;
+			eq_expr = makeBoolExpr(AND_EXPR,
+								   list_make2(eq_expr, nulltest),
+								   -1);
+
+			result = lappend(result, eq_expr);
+		}
+		else
+		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		{
+			/* Equal, so generate keyCol = lower_val expression */
+			result = lappend(result,
+							 make_partition_op_expr(key, i, BTEqualStrategyNumber,
+													keyCol, (Expr *) lower_val));
+		}
 
 		i++;
 	}
@@ -4442,11 +4477,73 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 				else
 					strategy = BTGreaterStrategyNumber;
 
-				lower_or_arm_args = lappend(lower_or_arm_args,
-											make_partition_op_expr(key, j,
-																   strategy,
-																   keyCol,
-																   (Expr *) lower_val));
+				/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+				if (is_oracle_part)
+				{
+					Expr	*lower_expr;
+
+					lower_expr = make_partition_op_expr(key, j,
+														strategy,
+														keyCol,
+														(Expr *) lower_val);
+					/*
+					 * RANGE partition uses a ROW comparison strategy, and the partition
+					 * constraints we generate here must satisfy the condition:
+					 * ROW (lower bound val list) < tuple < ROW (higher bound val list).
+					 * However, according to Oracle's compatible ROW comparison semantics:
+					 * MINVALUE < VALUE < NULL < MAXVALUE, we must add an IS NULL condition
+					 * in the appropriate place because NULL is greater than any value except
+					 * MAXVALUE.
+					 */
+					if (strategy != BTEqualStrategyNumber &&
+						(current_or_arm > 0 ||
+						 udatum->kind == PARTITION_RANGE_DATUM_MAXVALUE))
+					{
+						NullTest	*nulltest = makeNode(NullTest);
+
+						/*
+						 * For lower bound, there won't be cases where less than is always equal
+						 * or greater. Therefore, if it's equal to, then it's must be IS NOT NULL,
+						 * if it's greater, then according to the comparison semantics in the comments
+						 * above, NULL is always greater than a datum value, so IS NULL must be added.
+						 */
+						nulltest->arg = (Expr *) copyObject(keyCol);
+						nulltest->nulltesttype = IS_NULL;
+						nulltest->argisrow = false;
+						nulltest->location = -1;
+
+						lower_expr = makeBoolExpr(OR_EXPR,
+												  list_make2(lower_expr, nulltest),
+												  -1);
+					}
+					else
+					{
+						/*
+						 * NULL > datum value, so equal must be add IS NO NULL comparison semantics.
+						 */
+						NullTest	*nulltest = makeNode(NullTest);
+
+						nulltest->arg = (Expr *) copyObject(keyCol);
+						nulltest->nulltesttype = IS_NOT_NULL;
+						nulltest->argisrow = false;
+						nulltest->location = -1;
+
+						lower_expr = makeBoolExpr(AND_EXPR,
+												  list_make2(lower_expr, nulltest),
+												  -1);
+					}
+
+					lower_or_arm_args = lappend(lower_or_arm_args, lower_expr);
+				}
+				else
+				/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+				{
+					lower_or_arm_args = lappend(lower_or_arm_args,
+												make_partition_op_expr(key, j,
+																	   strategy,
+																	   keyCol,
+																	   (Expr *) lower_val));
+				}
 			}
 
 			if (need_next_upper_arm && upper_val)
@@ -4466,11 +4563,44 @@ get_qual_for_range(Relation parent, PartitionBoundSpec *spec,
 				else
 					strategy = BTLessStrategyNumber;
 
-				upper_or_arm_args = lappend(upper_or_arm_args,
-											make_partition_op_expr(key, j,
-																   strategy,
-																   keyCol,
-																   (Expr *) upper_val));
+				/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+				if (is_oracle_part)
+				{
+					Expr		*upper_expr;
+					NullTest	*nulltest;
+
+					upper_expr = make_partition_op_expr(key, j,
+														strategy,
+														keyCol,
+														(Expr *) upper_val);
+
+					/*
+					 * Similarly, for upper bound, the required constraint semantics are
+					 * less than or equal to. Since NULL is greater than any datum value,
+					 * NULL does not satisfy the less than or equal to comparison semantics,
+					 * so IS NOT NULL must be added to exclude NULL value.
+					 */
+					nulltest = makeNode(NullTest);
+					nulltest->arg = (Expr *) copyObject(keyCol);
+					nulltest->nulltesttype = IS_NOT_NULL;
+					nulltest->argisrow = false;
+					nulltest->location = -1;
+
+					upper_expr = makeBoolExpr(AND_EXPR,
+											  list_make2(upper_expr, nulltest),
+											  -1);
+
+					upper_or_arm_args = lappend(upper_or_arm_args, upper_expr);
+				}
+				else
+				/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+				{
+					upper_or_arm_args = lappend(upper_or_arm_args,
+												make_partition_op_expr(key, j,
+																	   strategy,
+																	   keyCol,
+																	   (Expr *) upper_val));
+				}
 			}
 
 			/*
@@ -5528,5 +5658,90 @@ transformOraclePartitionedTableTemplate(PartitionKey subpartkey, OraSubPartition
 		hash_destroy(listboundcheck);
 
 	return result;
+}
+
+/*
+ * partition_rbound_datum_cmp_nullable
+ *
+ * A variant version of partition_rbound_datum_cmp that supports null datums.
+ * Comparison rule: DATUM_MINVALUE < DATUM_VALUE < NULL < MAXVALUE.
+ */
+int32
+partition_rbound_datum_cmp_nullable(FmgrInfo *partsupfunc,
+													Oid *partcollation,
+													Datum *rb_datums,
+													PartitionRangeDatumKind *rb_kind,
+													Datum *tuple_datums,
+													bool *tuple_isnull,
+													int n_tuple_datums)
+{
+	int			i;
+	int32		cmpval = -1;
+
+	for (i = 0; i < n_tuple_datums; i++)
+	{
+		if (rb_kind[i] == PARTITION_RANGE_DATUM_MINVALUE)
+			return -1;
+		else if (rb_kind[i] == PARTITION_RANGE_DATUM_MAXVALUE)
+			return 1;
+		else if (tuple_isnull[i])
+			return -1;
+
+		cmpval = DatumGetInt32(FunctionCall2Coll(&partsupfunc[i],
+												 partcollation[i],
+												 rb_datums[i],
+												 tuple_datums[i]));
+		if (cmpval != 0)
+			break;
+	}
+
+	return cmpval;
+}
+
+/*
+ * partition_range_datum_bsearch_nullable
+ *
+ * A variant version of partition_range_datum_bsearch that supports null datums.
+ */
+int
+partition_range_datum_bsearch_nullable(FmgrInfo *partsupfunc,
+														Oid *partcollation,
+														PartitionBoundInfo boundinfo,
+														int nvalues,
+														Datum *values,
+														bool *isnull,
+														bool *is_equal)
+{
+	int			lo,
+				hi,
+				mid;
+
+	lo = -1;
+	hi = boundinfo->ndatums - 1;
+	while (lo < hi)
+	{
+		int32		cmpval;
+
+		mid = (lo + hi + 1) / 2;
+		cmpval = partition_rbound_datum_cmp_nullable(partsupfunc,
+													 partcollation,
+													 boundinfo->datums[mid],
+													 boundinfo->kind[mid],
+													 values,
+													 isnull,
+													 nvalues);
+		if (cmpval <= 0)
+		{
+			lo = mid;
+			*is_equal = (cmpval == 0);
+
+			if (*is_equal)
+				break;
+		}
+		else
+			hi = mid - 1;
+	}
+
+	return lo;
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
