@@ -1112,3 +1112,71 @@ SELECT insertchildxmlafter(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'b[1]', 
 (1 row)
 
 /* End - BUG#Z7411, BUG#Z7412 */
+/* Begin - BUG#Z9075 */
+-- Empty XML elements must not dereference a missing child node.
+SELECT extractvalue(XMLTYPE('<a/>'), '/a') from dual;
+ extractvalue 
+--------------
+ 
+(1 row)
+
+-- A long namespace URI must not overflow the namespace parser's buffer.
+SELECT extractvalue(
+    XMLTYPE('<a/>'),
+    '/a',
+    'xmlns:x=' || chr(34) || rpad('B', 2000, 'B') || chr(34)
+) from dual;
+ extractvalue 
+--------------
+ 
+(1 row)
+
+-- Exercise the other empty-result and empty-child code paths.
+SELECT extract(XMLTYPE('<a/>'), '/a/text()') from dual;
+ extract 
+---------
+ 
+(1 row)
+
+SELECT deletexml(XMLTYPE('<a/>'), '/a') from dual;
+ deletexml 
+-----------
+ 
+(1 row)
+
+SELECT updatexml(XMLTYPE('<a/>'), '/a', '') from dual;
+ updatexml 
+-----------
+ <a/>
+(1 row)
+
+-- End empty XML element tests.
+-- Guard against dangling XPath entries when ancestors and descendants match.
+SELECT deletexml(XMLTYPE('<a><b><c/></b><d/></a>'), '//*') from dual;
+ deletexml 
+-----------
+ 
+(1 row)
+
+SELECT updatexml(XMLTYPE('<a><b><c/></b><d/></a>'), '//*', '') from dual;
+ updatexml 
+-----------
+ <a/>
+(1 row)
+
+-- A NULL namespace argument must not be dereferenced.
+SELECT updatexml(XMLTYPE('<a/>'), '/a', '', NULL) from dual;
+ updatexml 
+-----------
+ <a/>
+(1 row)
+
+-- XPath expressions selecting the document or namespace nodes are rejected.
+SELECT insertxmlbefore(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<b/>')) from dual;
+ERROR:  invalid XPath expression
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'),'(//namespace::*)[1]') from dual;
+ERROR:  namespace nodes cannot be converted to XML
+-- Trimming an all-whitespace XPath must stay within the input buffer.
+SELECT deletexml(XMLTYPE('<a/>'), '   ') from dual;
+ERROR:  invalid XPath expression
+/* End - BUG#Z9075 */
