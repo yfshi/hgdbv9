@@ -1,0 +1,898 @@
+-- Exercise every SQL-callable function, table, and view.
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+ALTER SYSTEM SET sql_firewall.firewall TO 'disabled';
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_reset();
+ sql_firewall_stat_reset 
+-------------------------
+ 
+(1 row)
+
+ CREATE USER sql_firewall_coverage_role with SUPERUSER;
+-- White-list management functions.
+SELECT hg_security.import_white_list('SELECT 101;');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+ import_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_white_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_white_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white.csv');
+ export_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white-user.csv');
+ export_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white.sql');
+ export_white_list_sql 
+-----------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white-user.sql');
+ export_white_list_sql_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_statements(true);
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_white_list(false);
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_black_list(true);
+ count 
+-------
+     0
+(1 row)
+
+SELECT count(*) FROM hg_security.dispaly_single_sql(
+    (SELECT queryid FROM hg_security.sql_firewall_rec
+     WHERE statement_type = 'white' LIMIT 1));
+ count 
+-------
+     2
+(1 row)
+
+SELECT hg_security.delete_white_list('SELECT 101;');
+ delete_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+ delete_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_white_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_white_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_white_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_white_list_for_user(
+    'sql_firewall_coverage_role'::name);
+ delete_all_white_list_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_white_list();
+ delete_all_white_list 
+-----------------------
+ t
+(1 row)
+
+-- Black-list management functions.
+SELECT hg_security.import_black_list('SELECT 201;');
+ import_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+ import_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_black_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_black_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black.csv');
+ export_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black-user.csv');
+ export_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black.sql');
+ export_black_list_sql 
+-----------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black-user.sql');
+ export_black_list_sql_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_all_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-all.sql');
+ export_all_sql 
+----------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list('SELECT 201;');
+ delete_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+ delete_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_black_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_black_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_black_list_for_user(
+    'sql_firewall_coverage_role'::name);
+ delete_all_black_list_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_black_list();
+ delete_all_black_list 
+-----------------------
+ t
+(1 row)
+
+-- Generic CSV rule export/import.
+SELECT hg_security.import_white_list('SELECT 301;');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list('SELECT 302;');
+ import_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.sql_firewall_export_rule(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-rules.csv');
+ sql_firewall_export_rule 
+--------------------------
+ t
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_import_rule(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-rules.csv');
+ sql_firewall_import_rule 
+--------------------------
+ t
+(1 row)
+
+-- High-risk and statistics functions.
+SELECT hg_security.import_high_risk_statement('unsafetruncate');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.remove_high_risk_statement('unsafetruncate');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_warning_count();
+ sql_firewall_stat_warning_count 
+---------------------------------
+                               0
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_error_count();
+ sql_firewall_stat_error_count 
+-------------------------------
+                             0
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_reset();
+ sql_firewall_stat_reset 
+-------------------------
+ 
+(1 row)
+
+-- Direct access to every catalog table and convenience view.
+SELECT count(*) FROM hg_security.sql_firewall_rec;
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_stat_rec;
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_high_risk_rec;
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_statements;
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_white_list;
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_black_list;
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_stat;
+ count 
+-------
+     1
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+--DROP user sql_firewall_coverage_role;
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+alter system set se_feature.mode to on;
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+--all error
+SELECT hg_security.import_white_list('SELECT 101;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_white_list.
+SELECT hg_security.import_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_white_list_for_user.
+SELECT hg_security.import_white_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_white_list_batch.
+SELECT hg_security.import_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_white_list_batch_for_user.
+SELECT hg_security.export_white_list(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white.csv');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_white_list.
+SELECT hg_security.export_white_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white-user.csv');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_white_list_for_user.
+SELECT hg_security.export_white_list_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_white_list_sql.
+SELECT hg_security.export_white_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white-user.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_white_list_sql_for_user.
+SELECT count(*) FROM hg_security.sql_firewall_statements(true);
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_statements.
+SELECT count(*) FROM hg_security.sql_firewall_white_list(false);
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_white_list.
+SELECT count(*) FROM hg_security.sql_firewall_black_list(true);
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_black_list.
+SELECT count(*) FROM hg_security.dispaly_single_sql(
+    (SELECT queryid FROM hg_security.sql_firewall_rec
+     WHERE statement_type = 'white' LIMIT 1));
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_rec.
+SELECT hg_security.delete_white_list('SELECT 101;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_white_list.
+SELECT hg_security.delete_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_white_list_for_user.
+SELECT hg_security.delete_white_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_white_list_batch.
+SELECT hg_security.delete_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_white_list_batch_for_user.
+SELECT hg_security.delete_all_white_list_for_user(
+    'sql_firewall_coverage_role'::name);
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_all_white_list_for_user.
+SELECT hg_security.delete_all_white_list();
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_white_list.
+-- Black-list management functions.
+SELECT hg_security.import_black_list('SELECT 201;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_black_list.
+SELECT hg_security.import_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_black_list_for_user.
+SELECT hg_security.import_black_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_black_list_batch.
+SELECT hg_security.import_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_black_list_batch_for_user.
+SELECT hg_security.export_black_list(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black.csv');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_black_list.
+SELECT hg_security.export_black_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black-user.csv');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_black_list_for_user.
+SELECT hg_security.export_black_list_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_black_list_sql.
+SELECT hg_security.export_black_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black-user.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_black_list_sql_for_user.
+SELECT hg_security.export_all_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-all.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function export_all_sql.
+SELECT hg_security.delete_black_list('SELECT 201;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_black_list.
+SELECT hg_security.delete_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_black_list_for_user.
+SELECT hg_security.delete_black_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_black_list_batch.
+SELECT hg_security.delete_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_black_list_batch_for_user.
+SELECT hg_security.delete_all_black_list_for_user(
+    'sql_firewall_coverage_role'::name);
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_all_black_list_for_user.
+SELECT hg_security.delete_all_black_list();
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function delete_all_black_list.
+-- Generic CSV rule export/import.
+SELECT hg_security.import_white_list('SELECT 301;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_white_list.
+SELECT hg_security.import_black_list('SELECT 302;');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_black_list.
+SELECT hg_security.sql_firewall_export_rule(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-rules.csv');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_export_rule.
+SELECT hg_security.sql_firewall_reset();
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_reset.
+SELECT hg_security.sql_firewall_import_rule(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-rules.csv');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_import_rule.
+-- High-risk and statistics functions.
+SELECT hg_security.import_high_risk_statement('unsafetruncate');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function import_high_risk_statement.
+SELECT hg_security.remove_high_risk_statement('unsafetruncate');
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function remove_high_risk_statement.
+SELECT hg_security.sql_firewall_stat_warning_count();
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_stat_warning_count.
+SELECT hg_security.sql_firewall_stat_error_count();
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_stat_error_count.
+SELECT hg_security.sql_firewall_stat_reset();
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can use function sql_firewall_stat_reset.
+-- Direct access to every catalog table and convenience view.
+SELECT count(*) FROM hg_security.sql_firewall_rec;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_rec.
+SELECT count(*) FROM hg_security.sql_firewall_stat_rec;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_stat_rec.
+SELECT count(*) FROM hg_security.sql_high_risk_rec;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_high_risk_rec.
+SELECT count(*) FROM hg_security.sql_firewall_statements;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_statements.
+SELECT count(*) FROM hg_security.sql_firewall_white_list;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_white_list.
+SELECT count(*) FROM hg_security.sql_firewall_black_list;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_black_list.
+SELECT count(*) FROM hg_security.sql_firewall_stat;
+ERROR:  When the se_feature_mode are enabled, only the syssso user group can access sql_firewall_stat.
+\c - syssso
+-- all success
+SELECT hg_security.import_white_list('SELECT 101;');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+ import_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_white_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_white_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white.csv');
+ export_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white-user.csv');
+ export_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white.sql');
+ export_white_list_sql 
+-----------------------
+ t
+(1 row)
+
+SELECT hg_security.export_white_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-white-user.sql');
+ export_white_list_sql_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_statements(true);
+ count 
+-------
+     4
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_white_list(false);
+ count 
+-------
+     4
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_black_list(true);
+ count 
+-------
+     0
+(1 row)
+
+SELECT count(*) FROM hg_security.dispaly_single_sql(
+    (SELECT queryid FROM hg_security.sql_firewall_rec
+     WHERE statement_type = 'white' LIMIT 1));
+ count 
+-------
+     1
+(1 row)
+
+SELECT hg_security.delete_white_list('SELECT 101;');
+ delete_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+ delete_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_white_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_white_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_white_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_white_list_for_user(
+    'sql_firewall_coverage_role'::name);
+ delete_all_white_list_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_white_list();
+ delete_all_white_list 
+-----------------------
+ t
+(1 row)
+
+-- Black-list management functions.
+SELECT hg_security.import_black_list('SELECT 201;');
+ import_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+ import_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_black_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ import_black_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black.csv');
+ export_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black-user.csv');
+ export_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black.sql');
+ export_black_list_sql 
+-----------------------
+ t
+(1 row)
+
+SELECT hg_security.export_black_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-black-user.sql');
+ export_black_list_sql_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT hg_security.export_all_sql(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-all.sql');
+ export_all_sql 
+----------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list('SELECT 201;');
+ delete_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+ delete_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list_batch(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_black_list_batch 
+-------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/sql/function-coverage-rules.sql');
+ delete_black_list_batch_for_user 
+----------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_black_list_for_user(
+    'sql_firewall_coverage_role'::name);
+ delete_all_black_list_for_user 
+--------------------------------
+ t
+(1 row)
+
+SELECT hg_security.delete_all_black_list();
+ delete_all_black_list 
+-----------------------
+ t
+(1 row)
+
+-- Generic CSV rule export/import.
+SELECT hg_security.import_white_list('SELECT 301;');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_black_list('SELECT 302;');
+ import_black_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.sql_firewall_export_rule(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-rules.csv');
+ sql_firewall_export_rule 
+--------------------------
+ t
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_import_rule(
+    '/home/markbo/sourcecode/Develop/hgv9/gerrit/v9-main/ivorysql-pro/contrib/sql_firewall/temp/function-coverage-rules.csv');
+ sql_firewall_import_rule 
+--------------------------
+ t
+(1 row)
+
+-- High-risk and statistics functions.
+SELECT hg_security.import_high_risk_statement('unsafetruncate');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.remove_high_risk_statement('unsafetruncate');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_warning_count();
+ sql_firewall_stat_warning_count 
+---------------------------------
+                               0
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_error_count();
+ sql_firewall_stat_error_count 
+-------------------------------
+                             0
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_reset();
+ sql_firewall_stat_reset 
+-------------------------
+ 
+(1 row)
+
+-- Direct access to every catalog table and convenience view.
+SELECT count(*) FROM hg_security.sql_firewall_rec;
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_stat_rec;
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_high_risk_rec;
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_statements;
+ count 
+-------
+     2
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_white_list;
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_black_list;
+ count 
+-------
+     1
+(1 row)
+
+SELECT count(*) FROM hg_security.sql_firewall_stat;
+ count 
+-------
+     1
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+

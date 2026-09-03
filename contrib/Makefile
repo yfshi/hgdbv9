@@ -73,7 +73,8 @@ SUBDIRS = \
 		hg_flashback_tx \
 		hg_flashback_db \
 		hg_profiler \
-		hg_wait_states
+		hg_wait_states \
+		sql_firewall
 
 ifeq ($(with_ssl),openssl)
 SUBDIRS += sslinfo

@@ -1,0 +1,6 @@
+# sql_firewall extension
+comment = 'Prevent query execution which is not allowd by the rules'
+default_version = '1.0'
+module_pathname = '$libdir/sql_firewall'
+relocatable = false
+schema = hg_security

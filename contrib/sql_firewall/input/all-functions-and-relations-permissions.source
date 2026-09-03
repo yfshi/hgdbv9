@@ -1,0 +1,320 @@
+-- Exercise every SQL-callable function, table, and view.
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ALTER SYSTEM SET sql_firewall.firewall TO 'disabled';
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+SELECT hg_security.sql_firewall_reset();
+SELECT hg_security.sql_firewall_stat_reset();
+
+ CREATE USER sql_firewall_coverage_role with SUPERUSER;
+
+-- White-list management functions.
+SELECT hg_security.import_white_list('SELECT 101;');
+SELECT hg_security.import_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+SELECT hg_security.import_white_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.import_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.export_white_list(
+    '@abs_builddir@/temp/function-coverage-white.csv');
+SELECT hg_security.export_white_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-white-user.csv');
+SELECT hg_security.export_white_list_sql(
+    '@abs_builddir@/temp/function-coverage-white.sql');
+SELECT hg_security.export_white_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-white-user.sql');
+
+SELECT count(*) FROM hg_security.sql_firewall_statements(true);
+SELECT count(*) FROM hg_security.sql_firewall_white_list(false);
+SELECT count(*) FROM hg_security.sql_firewall_black_list(true);
+SELECT count(*) FROM hg_security.dispaly_single_sql(
+    (SELECT queryid FROM hg_security.sql_firewall_rec
+     WHERE statement_type = 'white' LIMIT 1));
+
+SELECT hg_security.delete_white_list('SELECT 101;');
+SELECT hg_security.delete_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+SELECT hg_security.delete_white_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_all_white_list_for_user(
+    'sql_firewall_coverage_role'::name);
+SELECT hg_security.delete_all_white_list();
+
+-- Black-list management functions.
+SELECT hg_security.import_black_list('SELECT 201;');
+SELECT hg_security.import_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+SELECT hg_security.import_black_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.import_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.export_black_list(
+    '@abs_builddir@/temp/function-coverage-black.csv');
+SELECT hg_security.export_black_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-black-user.csv');
+SELECT hg_security.export_black_list_sql(
+    '@abs_builddir@/temp/function-coverage-black.sql');
+SELECT hg_security.export_black_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-black-user.sql');
+SELECT hg_security.export_all_sql(
+    '@abs_builddir@/temp/function-coverage-all.sql');
+
+SELECT hg_security.delete_black_list('SELECT 201;');
+SELECT hg_security.delete_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+SELECT hg_security.delete_black_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_all_black_list_for_user(
+    'sql_firewall_coverage_role'::name);
+SELECT hg_security.delete_all_black_list();
+
+-- Generic CSV rule export/import.
+SELECT hg_security.import_white_list('SELECT 301;');
+SELECT hg_security.import_black_list('SELECT 302;');
+SELECT hg_security.sql_firewall_export_rule(
+    '@abs_builddir@/temp/function-coverage-rules.csv');
+SELECT hg_security.sql_firewall_reset();
+SELECT hg_security.sql_firewall_import_rule(
+    '@abs_builddir@/temp/function-coverage-rules.csv');
+
+-- High-risk and statistics functions.
+SELECT hg_security.import_high_risk_statement('unsafetruncate');
+SELECT hg_security.remove_high_risk_statement('unsafetruncate');
+SELECT hg_security.sql_firewall_stat_warning_count();
+SELECT hg_security.sql_firewall_stat_error_count();
+SELECT hg_security.sql_firewall_stat_reset();
+
+-- Direct access to every catalog table and convenience view.
+SELECT count(*) FROM hg_security.sql_firewall_rec;
+SELECT count(*) FROM hg_security.sql_firewall_stat_rec;
+SELECT count(*) FROM hg_security.sql_high_risk_rec;
+SELECT count(*) FROM hg_security.sql_firewall_statements;
+SELECT count(*) FROM hg_security.sql_firewall_white_list;
+SELECT count(*) FROM hg_security.sql_firewall_black_list;
+SELECT count(*) FROM hg_security.sql_firewall_stat;
+
+SELECT hg_security.sql_firewall_reset();
+--DROP user sql_firewall_coverage_role;
+
+
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+
+alter system set se_feature.mode to on;
+SELECT pg_reload_conf();
+SELECT pg_sleep(1);
+
+--all error
+SELECT hg_security.import_white_list('SELECT 101;');
+SELECT hg_security.import_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+SELECT hg_security.import_white_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.import_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.export_white_list(
+    '@abs_builddir@/temp/function-coverage-white.csv');
+SELECT hg_security.export_white_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-white-user.csv');
+SELECT hg_security.export_white_list_sql(
+    '@abs_builddir@/temp/function-coverage-white.sql');
+SELECT hg_security.export_white_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-white-user.sql');
+
+SELECT count(*) FROM hg_security.sql_firewall_statements(true);
+SELECT count(*) FROM hg_security.sql_firewall_white_list(false);
+SELECT count(*) FROM hg_security.sql_firewall_black_list(true);
+SELECT count(*) FROM hg_security.dispaly_single_sql(
+    (SELECT queryid FROM hg_security.sql_firewall_rec
+     WHERE statement_type = 'white' LIMIT 1));
+
+SELECT hg_security.delete_white_list('SELECT 101;');
+SELECT hg_security.delete_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+SELECT hg_security.delete_white_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_all_white_list_for_user(
+    'sql_firewall_coverage_role'::name);
+SELECT hg_security.delete_all_white_list();
+
+-- Black-list management functions.
+SELECT hg_security.import_black_list('SELECT 201;');
+SELECT hg_security.import_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+SELECT hg_security.import_black_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.import_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.export_black_list(
+    '@abs_builddir@/temp/function-coverage-black.csv');
+SELECT hg_security.export_black_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-black-user.csv');
+SELECT hg_security.export_black_list_sql(
+    '@abs_builddir@/temp/function-coverage-black.sql');
+SELECT hg_security.export_black_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-black-user.sql');
+SELECT hg_security.export_all_sql(
+    '@abs_builddir@/temp/function-coverage-all.sql');
+
+SELECT hg_security.delete_black_list('SELECT 201;');
+SELECT hg_security.delete_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+SELECT hg_security.delete_black_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_all_black_list_for_user(
+    'sql_firewall_coverage_role'::name);
+SELECT hg_security.delete_all_black_list();
+
+-- Generic CSV rule export/import.
+SELECT hg_security.import_white_list('SELECT 301;');
+SELECT hg_security.import_black_list('SELECT 302;');
+SELECT hg_security.sql_firewall_export_rule(
+    '@abs_builddir@/temp/function-coverage-rules.csv');
+SELECT hg_security.sql_firewall_reset();
+SELECT hg_security.sql_firewall_import_rule(
+    '@abs_builddir@/temp/function-coverage-rules.csv');
+
+-- High-risk and statistics functions.
+SELECT hg_security.import_high_risk_statement('unsafetruncate');
+SELECT hg_security.remove_high_risk_statement('unsafetruncate');
+SELECT hg_security.sql_firewall_stat_warning_count();
+SELECT hg_security.sql_firewall_stat_error_count();
+SELECT hg_security.sql_firewall_stat_reset();
+
+-- Direct access to every catalog table and convenience view.
+SELECT count(*) FROM hg_security.sql_firewall_rec;
+SELECT count(*) FROM hg_security.sql_firewall_stat_rec;
+SELECT count(*) FROM hg_security.sql_high_risk_rec;
+SELECT count(*) FROM hg_security.sql_firewall_statements;
+SELECT count(*) FROM hg_security.sql_firewall_white_list;
+SELECT count(*) FROM hg_security.sql_firewall_black_list;
+SELECT count(*) FROM hg_security.sql_firewall_stat;
+
+\c - syssso
+
+-- all success
+
+SELECT hg_security.import_white_list('SELECT 101;');
+SELECT hg_security.import_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+SELECT hg_security.import_white_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.import_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.export_white_list(
+    '@abs_builddir@/temp/function-coverage-white.csv');
+SELECT hg_security.export_white_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-white-user.csv');
+SELECT hg_security.export_white_list_sql(
+    '@abs_builddir@/temp/function-coverage-white.sql');
+SELECT hg_security.export_white_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-white-user.sql');
+
+SELECT count(*) FROM hg_security.sql_firewall_statements(true);
+SELECT count(*) FROM hg_security.sql_firewall_white_list(false);
+SELECT count(*) FROM hg_security.sql_firewall_black_list(true);
+SELECT count(*) FROM hg_security.dispaly_single_sql(
+    (SELECT queryid FROM hg_security.sql_firewall_rec
+     WHERE statement_type = 'white' LIMIT 1));
+
+SELECT hg_security.delete_white_list('SELECT 101;');
+SELECT hg_security.delete_white_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 102;');
+SELECT hg_security.delete_white_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_white_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_all_white_list_for_user(
+    'sql_firewall_coverage_role'::name);
+SELECT hg_security.delete_all_white_list();
+
+-- Black-list management functions.
+SELECT hg_security.import_black_list('SELECT 201;');
+SELECT hg_security.import_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+SELECT hg_security.import_black_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.import_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.export_black_list(
+    '@abs_builddir@/temp/function-coverage-black.csv');
+SELECT hg_security.export_black_list_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-black-user.csv');
+SELECT hg_security.export_black_list_sql(
+    '@abs_builddir@/temp/function-coverage-black.sql');
+SELECT hg_security.export_black_list_sql_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_builddir@/temp/function-coverage-black-user.sql');
+SELECT hg_security.export_all_sql(
+    '@abs_builddir@/temp/function-coverage-all.sql');
+
+SELECT hg_security.delete_black_list('SELECT 201;');
+SELECT hg_security.delete_black_list_for_user(
+    'sql_firewall_coverage_role'::name, 'SELECT 202;');
+SELECT hg_security.delete_black_list_batch(
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_black_list_batch_for_user(
+    'sql_firewall_coverage_role'::name,
+    '@abs_srcdir@/sql/function-coverage-rules.sql');
+SELECT hg_security.delete_all_black_list_for_user(
+    'sql_firewall_coverage_role'::name);
+SELECT hg_security.delete_all_black_list();
+
+-- Generic CSV rule export/import.
+SELECT hg_security.import_white_list('SELECT 301;');
+SELECT hg_security.import_black_list('SELECT 302;');
+SELECT hg_security.sql_firewall_export_rule(
+    '@abs_builddir@/temp/function-coverage-rules.csv');
+SELECT hg_security.sql_firewall_reset();
+SELECT hg_security.sql_firewall_import_rule(
+    '@abs_builddir@/temp/function-coverage-rules.csv');
+
+-- High-risk and statistics functions.
+SELECT hg_security.import_high_risk_statement('unsafetruncate');
+SELECT hg_security.remove_high_risk_statement('unsafetruncate');
+SELECT hg_security.sql_firewall_stat_warning_count();
+SELECT hg_security.sql_firewall_stat_error_count();
+SELECT hg_security.sql_firewall_stat_reset();
+
+-- Direct access to every catalog table and convenience view.
+SELECT count(*) FROM hg_security.sql_firewall_rec;
+SELECT count(*) FROM hg_security.sql_firewall_stat_rec;
+SELECT count(*) FROM hg_security.sql_high_risk_rec;
+SELECT count(*) FROM hg_security.sql_firewall_statements;
+SELECT count(*) FROM hg_security.sql_firewall_white_list;
+SELECT count(*) FROM hg_security.sql_firewall_black_list;
+SELECT count(*) FROM hg_security.sql_firewall_stat;
+
+SELECT hg_security.sql_firewall_reset();
