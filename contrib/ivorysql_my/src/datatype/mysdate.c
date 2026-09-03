@@ -2260,6 +2260,11 @@ numeric_mysdatetimes(PG_FUNCTION_ARGS)
 	char		buf[MAXDATELEN + 1] = {0};
 	Numeric		num;
 
+	/* Begin - bug#9004 */
+	if (dec == -1)
+		dec = MAX_TIME_PRECISION;
+	/* End - bug#9004 */
+
 	/* Calculate the length of the input data and return NULL if the integer part exceeds 14 digits. */
 	str = DatumGetCString(DirectFunctionCall1(numeric_out, NumericGetDatum(numvalue)));
 	tmpstr = pstrdup(str);

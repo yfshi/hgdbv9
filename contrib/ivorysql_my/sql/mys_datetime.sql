@@ -2743,3 +2743,18 @@ SELECT to_char('2026-05-15 10:30:45'::datetime, 'YYYY-MM-DD HH24:MI:SS');
 SELECT to_char('2026-05-15 10:30:45.123456'::datetime(6), 'YYYY--MM');
 SELECT to_char('2026-05-15 10:30:45.123456'::datetime(6), 'YYYY-MM-DD HH24:MI:SS');
 -- End - BUG#7487 
+
+-- BUG#9004
+SELECT 20200925121014.123456::numeric::mysdatetimes;
+SELECT 20200925121014.000123::numeric::mysdatetimes;
+SELECT 20200925121014.789000::numeric::mysdatetimes;
+SELECT CAST(20200925121014.123456::numeric AS mysdatetimes);
+CREATE TABLE t(a numeric(63, 20));
+INSERT INTO t VALUES (20201010121212.123456);
+CREATE TABLE tt(a datetime(6));
+INSERT INTO tt SELECT a FROM t;
+SELECT * FROM tt;
+SELECT CAST(a AS datetime(5)) FROM t;
+DROP TABLE t;
+DROP TABLE tt;
+

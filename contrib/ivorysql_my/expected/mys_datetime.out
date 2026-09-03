@@ -12597,3 +12597,47 @@ SELECT to_char('2026-05-15 10:30:45.123456'::datetime(6), 'YYYY-MM-DD HH24:MI:SS
 (1 row)
 
 -- End - BUG#7487 
+-- BUG#9004
+SELECT 20200925121014.123456::numeric::mysdatetimes;
+        mysdatetimes        
+----------------------------
+ 2020-09-25 12:10:14.123456
+(1 row)
+
+SELECT 20200925121014.000123::numeric::mysdatetimes;
+        mysdatetimes        
+----------------------------
+ 2020-09-25 12:10:14.000123
+(1 row)
+
+SELECT 20200925121014.789000::numeric::mysdatetimes;
+        mysdatetimes        
+----------------------------
+ 2020-09-25 12:10:14.789000
+(1 row)
+
+SELECT CAST(20200925121014.123456::numeric AS mysdatetimes);
+        mysdatetimes        
+----------------------------
+ 2020-09-25 12:10:14.123456
+(1 row)
+
+CREATE TABLE t(a numeric(63, 20));
+INSERT INTO t VALUES (20201010121212.123456);
+CREATE TABLE tt(a datetime(6));
+INSERT INTO tt SELECT a FROM t;
+WARNING:  Incorrect datetime value:'20201010121212.12345600000000000000'
+SELECT * FROM tt;
+             a              
+----------------------------
+ 2020-10-10 12:12:12.123456
+(1 row)
+
+SELECT CAST(a AS datetime(5)) FROM t;
+             a             
+---------------------------
+ 2020-10-10 12:12:12.12346
+(1 row)
+
+DROP TABLE t;
+DROP TABLE tt;

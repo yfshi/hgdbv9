@@ -12568,7 +12568,7 @@ numeric_to_lldiv_t(Numeric num, lldiv_t *to)
 	if (tmp.dscale > 0 && tmp.weight >= -2)
 	{
 		/* Begin - bug#z5590 */
-		if (frac_group == 0)
+		if (frac_group <= 0)			/* bug#9003 */
 		{
 			to->rem = 0;
 		}

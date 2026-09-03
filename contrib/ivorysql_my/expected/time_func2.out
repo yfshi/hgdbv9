@@ -1190,7 +1190,7 @@ insert into extract_date values ('2025-04-20');
 select extract(microsecond from d) from extract_date;
  extract 
 ---------
- 3264226
+       0
 (1 row)
 
 select extract(second from d) from extract_date;
@@ -1244,13 +1244,13 @@ select extract(year from d) from extract_date;
 select extract(second_microsecond from d) from extract_date;
  extract 
 ---------
- 3264226
+       0
 (1 row)
 
 select extract(minute_microsecond from d) from extract_date;
  extract 
 ---------
- 3264226
+       0
 (1 row)
 
 select extract(minute_second from d) from extract_date;
@@ -1262,7 +1262,7 @@ select extract(minute_second from d) from extract_date;
 select extract(hour_microsecond from d) from extract_date;
  extract 
 ---------
- 3264226
+       0
 (1 row)
 
 select extract(hour_second from d) from extract_date;
@@ -1280,7 +1280,7 @@ select extract(hour_minute from d) from extract_date;
 select extract(day_microsecond from d) from extract_date;
     extract     
 ----------------
- 20000003264226
+ 20000000000000
 (1 row)
 
 select extract(day_second from d) from extract_date;
@@ -2257,13 +2257,13 @@ select extract(quarter from 20200925121014), extract(year_month from 20200925121
 select extract(microsecond from 20200925121014.123456), extract(second from 20200925121014.1234);
  extract | extract 
 ---------+---------
-       0 |      14
+  123456 |      14
 (1 row)
 
 select extract(year_month from 20200925121014.101010), extract(day_microsecond from 20200925121014.000012);
  extract |    extract     
 ---------+----------------
-  202009 | 25121014000000
+  202009 | 25121014000012
 (1 row)
 
 /* Begin OA#2701 */
