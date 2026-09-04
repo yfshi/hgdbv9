@@ -71,10 +71,6 @@
 /*
  * Local definitions
  */
-#define IS_STR_XMLNS(str) ((str != NULL) && (str[0] == 'x') && \
-	(str[1] == 'm') && (str[2] == 'l') && (str[3] == 'n') && \
-	(str[4] == 's') && (str[5] == ':'))
-
 #define NO_XML_SUPPORT() \
 	ereport(ERROR, \
 			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED), \
@@ -298,6 +294,17 @@ ivy_xml_xpath2(xpath_ws *ws, text *xpath_expr_text, xmlDocPtr doc, char *namespa
 				 errmsg("empty XPath expression")));
 	xpath_expr = ivy_xmlCharStrndup(VARDATA_ANY(xpath_expr_text), xpath_len);
 
+	/* updatexml can evaluate several XPath expressions against one document. */
+	if (ws->xpathobj)
+		xmlXPathFreeObject(ws->xpathobj);
+	ws->xpathobj = NULL;
+	if (ws->xpathcomp)
+		xmlXPathFreeCompExpr(ws->xpathcomp);
+	ws->xpathcomp = NULL;
+	if (ws->xpathctx)
+		xmlXPathFreeContext(ws->xpathctx);
+	ws->xpathctx = NULL;
+
 	xmlerrcxt = ivy_xml_parser_init(PG_XML_STRICTNESS_LEGACY);
 
 	PG_TRY();
@@ -385,7 +392,7 @@ rv_newline(text *tv)
 
 	tmp = text_to_cstring(tv);
 	len = strlen(tmp);
-	if (tmp[len-1] == '\n')
+	if (len > 0 && tmp[len-1] == '\n')
 		tmp[len-1] = '\0';
 	ret = cstring_to_text(tmp);
 
@@ -402,7 +409,7 @@ left_trim(char *str)
 	char	*start = str;
 	char	*tmp = str;
 
-	while (isspace(*start)) start++;
+	while (isspace((unsigned char) *start)) start++;
 	while ((*tmp++ = *start++));
 
 	return str;
@@ -415,15 +422,11 @@ left_trim(char *str)
 static char *
 right_trim(char *str)
 {
-	char	*end;
 	size_t	len = strlen(str);
 
-	if(len == 0)
-		return str;
-
-	end = str + strlen(str) - 1;
-	while (isspace(*end)) end--;
-	*(end + 1) = '\0';
+	while (len > 0 && isspace((unsigned char) str[len - 1]))
+		len--;
+	str[len] = '\0';
 
 	return str;
 }
@@ -488,70 +491,51 @@ ivy_stringinfo_to_xmltype(StringInfo buf)
 static void
 register_ns_from_csting(xmlXPathContextPtr xpathCtx, char* nsList)
 {
-	char	*nslist = NULL;
-	char	*p1 = NULL;
-	char	*sub = NULL;
-	char	*start = NULL;
-	char	*end = NULL;
-	char	*f = NULL;
-	int 	l1 = 0;
+	char	*p = nsList;
 
-	StringInfoData tmp;
-	StringInfoData prefix;
-	StringInfoData url;
-
-	initStringInfo(&tmp);
-	initStringInfo(&prefix);
-	initStringInfo(&url);
-
-	/* process the original string, removing leading and trailing spaces */
-	nslist = ivy_trim(nsList);
-
-	f = strchr(nslist, (int)'=');
-	while (f != NULL)
+	while (*p != '\0')
 	{
-		if ((*(f - 1) == ' ') || (*(f + 1) != '"') || (*(f + 2) == ' '))
+		char   *prefix_start;
+		char   *url_start;
+		char   *prefix;
+		char   *url;
+
+		while (isspace((unsigned char) *p))
+			p++;
+		if (*p == '\0')
+			break;
+
+		if (strncmp(p, "xmlns:", 6) != 0)
 			elog(ERROR, "Invalid namespace");
-		f = strchr(f + 1, (int)'=');
-	}
-
-	sub = strtok(nslist, " ");
-	while (sub != NULL)
-	{
-		if (!IS_STR_XMLNS(sub))
+		p += 6;
+		prefix_start = p;
+		while (*p != '\0' && *p != '=' &&
+			   !isspace((unsigned char) *p))
+			p++;
+		if (p == prefix_start || *p != '=' || p[1] != '"')
 			elog(ERROR, "Invalid namespace");
 
-		appendStringInfoString(&tmp, sub);
-		appendStringInfoString(&prefix, "");
-		appendStringInfoString(&url, "");
+		prefix = pnstrdup(prefix_start, p - prefix_start);
+		p += 2;
+		url_start = p;
+		while (*p != '\0' && *p != '"')
+			p++;
+		if (*p != '"')
+			elog(ERROR, "Invalid namespace");
+		url = pnstrdup(url_start, p - url_start);
+		p++;
 
-		/* get the prefix */
-		start = strchr(tmp.data, (int)':');
-		end = strchr(tmp.data, (int)'=');
-		memcpy(prefix.data, start + 1, end - start);
-		prefix.data[end - start -1] = '\0';
+		if (*p != '\0' && !isspace((unsigned char) *p))
+			elog(ERROR, "Invalid namespace");
 
-		/* get the url */
-		p1 = strstr(tmp.data, "=");
-		l1 = strlen(p1);
-		memcpy(url.data, p1 + 2, l1 - 3);
-		url.data[l1 - 3] = '\0';
+		if (xmlXPathRegisterNs(xpathCtx, (xmlChar *) prefix,
+							   (xmlChar *) url) != 0)
+			elog(ERROR, "unable to register NS with prefix=%s and url=%s",
+				 prefix, url);
 
-		/* do register namespace */
-		if (xmlXPathRegisterNs(xpathCtx, (xmlChar *)prefix.data, (xmlChar *)url.data) != 0)
-			elog(ERROR, "unable to register NS with prefix=%s and url=%s", prefix.data, url.data);
-
-		/* handle the next sub string */
-		sub = strtok(NULL, " ");
-
-		resetStringInfo(&tmp);
-		resetStringInfo(&prefix);
-		resetStringInfo(&url);
+		pfree(prefix);
+		pfree(url);
 	}
-
-	pfree(tmp.data);
-	pfree(prefix.data);
-	pfree(url.data);
 }
 
 static int
@@ -561,7 +545,8 @@ ivy_xpathobjnode_nr(xmlXPathObjectPtr xpathobj)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 			result = xpathobj->nodesetval->nodeNr;
 	}
 
@@ -573,7 +558,7 @@ ivy_xmlnode_getcontent(xmlNodePtr cur)
 {
 	char    	*result = NULL;
 
-	if (cur->type == XML_ELEMENT_NODE)
+	if (cur != NULL && cur->type == XML_ELEMENT_NODE)
 	{
 		if (cur->children && cur->children->type == XML_TEXT_NODE)
 			result = (char *)xmlNodeGetContent(cur->children);
@@ -593,7 +578,8 @@ ivy_xml_xpathobjtostring(xmlXPathObjectPtr xpathobj)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
 			initStringInfo(&buf);
@@ -602,7 +588,10 @@ ivy_xml_xpathobjtostring(xmlXPathObjectPtr xpathobj)
 			{
 				res = ivy_xmlnode_getcontent(xpathobj->nodesetval->nodeTab[i]);
 				if (res)
+				{
 					appendStringInfoString(&buf, res);
+					xmlFree(res);
+				}
 				else
 					appendStringInfoString(&buf, "");
 			}
@@ -617,6 +606,13 @@ static text *
 ivy_xml_xmlnode2xmltype(xmlNodePtr cur)
 {
 	xmltype    *result = NULL;
+
+	if (cur == NULL)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("XML node is null")));
+	if (cur->type == XML_NAMESPACE_DECL)
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("namespace nodes cannot be converted to XML")));
 
 	if (cur->type != XML_ATTRIBUTE_NODE && cur->type != XML_TEXT_NODE)
 	{
@@ -663,6 +659,9 @@ ivy_xml_xmlnode2xmltype(xmlNodePtr cur)
 		xmlChar    *str;
 
 		str = xmlXPathCastNodeToString(cur);
+		if (str == NULL)
+			ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
+					errmsg("could not convert XML node to string")));
 		PG_TRY();
 		{
 			/* Here we rely on XML having the same representation as TEXT */
@@ -693,16 +692,23 @@ ivy_xml_xpathobjtoxmltype(xmlXPathObjectPtr xpathobj)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
 			for (i = 0; i < num; i++)
 			{
 				cur = xpathobj->nodesetval->nodeTab[i];
+				if (cur == NULL)
+					continue;
 				if (cur->type == XML_TEXT_NODE)
 				{
 					str = (char *)xmlNodeGetContent(cur);
+					if (str == NULL)
+						ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
+								errmsg("could not get XML node content")));
 					appendStringInfoString(&buf, str);
+					xmlFree(str);
 				}
 				else
 				{
@@ -727,16 +733,25 @@ ivy_xml_setnodecontent(xmlXPathObjectPtr xpathobj, xmlChar *var)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
 			for (i = 0; i < num; i++)
 			{
 				cur = xpathobj->nodesetval->nodeTab[i];
+				if (cur == NULL)
+					continue;
 				if (strcmp((char *)var, "") == 0 && cur->type == XML_ELEMENT_NODE)
 				{
-					xmlUnlinkNode(cur->children);
-					xmlFreeNode(cur->children);
+					if (cur->children != NULL)
+					{
+						xmlNodePtr child = cur->children;
+
+						cur->children = NULL;
+						cur->last = NULL;
+						xmlFreeNodeList(child);
+					}
 				}
 				else
 				{
@@ -755,13 +770,33 @@ ivy_xml_delenode(xmlXPathObjectPtr xpathobj)
 	int			num = 0;
 	int			i;
 
-	if (xpathobj->type == XPATH_NODESET)
+	if (xpathobj->type == XPATH_NODESET &&
+		xpathobj->nodesetval != NULL &&
+		xpathobj->nodesetval->nodeTab != NULL)
 	{
 		num = xpathobj->nodesetval->nodeNr;
-		for (i = 0; i < num; i++)
+		/*
+		 * XPath node sets are in document order.  Delete in reverse order so
+		 * that deleting an ancestor cannot leave later entries dangling.
+		 */
+		for (i = num - 1; i >= 0; i--)
 		{
-			xmlUnlinkNode(xpathobj->nodesetval->nodeTab[i]);
-			xmlFreeNode(xpathobj->nodesetval->nodeTab[i]);
+			xmlNodePtr cur = xpathobj->nodesetval->nodeTab[i];
+
+			if (cur != NULL)
+			{
+				if (cur->type == XML_DOCUMENT_NODE ||
+					cur->type == XML_NAMESPACE_DECL)
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("invalid XPath expression")));
+				if (cur->type == XML_ATTRIBUTE_NODE)
+					xmlRemoveProp((xmlAttrPtr) cur);
+				else
+				{
+					xmlUnlinkNode(cur);
+					xmlFreeNode(cur);
+				}
+			}
 		}
 	}
 }
@@ -771,30 +806,43 @@ ivy_xml_addchildnode(xmlXPathObjectPtr xpathobj, xmlNodePtr cnode)
 {
 	int			num = 0;
 	int			i;
-	xmlNodePtr		cnode_copy = NULL;
-	xmlNodePtr		ret_node = NULL;
+	xmlNodePtr	source = NULL;
+
+	if (cnode != NULL && cnode->type == XML_DOCUMENT_NODE)
+		source = xmlDocGetRootElement((xmlDocPtr) cnode);
+	else
+		source = cnode;
+
+	if (source == NULL)
+		ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
+				errmsg("XML new node has no root element")));
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
 			for (i = 0; i < num; i++)
 			{
-				/* Begin - BUG#Z815 */
-				cnode_copy = xmlCopyNode(cnode, 1);
+				xmlNodePtr target = xpathobj->nodesetval->nodeTab[i];
+				xmlNodePtr copy;
 
-				ret_node = xmlAddChild(xpathobj->nodesetval->nodeTab[i], cnode_copy->children);
-
-				/* 
-				 * do not free the cnode_copy->children if it is successfully inserted.
-				 */
-				if(NULL != ret_node)
+				if (target == NULL)
+					continue;
+				if (target->type != XML_ELEMENT_NODE)
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("invalid XPath expression")));
+				copy = xmlDocCopyNode(source, target->doc, 1);
+				if (copy == NULL)
+					ereport(ERROR, (errcode(ERRCODE_OUT_OF_MEMORY),
+							errmsg("could not copy XML new node")));
+				if (xmlAddChild(target, copy) == NULL)
 				{
-					cnode_copy->children = NULL;
+					xmlFreeNode(copy);
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("could not append XML child node")));
 				}
-				xmlFreeNode(cnode_copy);
-				/* End - BUG#Z815 */
 			}
 		}
 	}
@@ -809,16 +857,43 @@ ivy_xml_addprevsiblingnode(xmlXPathObjectPtr xpathobj, const xmlChar* new_node)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
 			for (i = 0; i < num; i++)
 			{
+				xmlNodePtr root;
+				xmlNodePtr target = xpathobj->nodesetval->nodeTab[i];
+
+				if (target == NULL)
+					continue;
+				if (target->type == XML_DOCUMENT_NODE ||
+					target->type == XML_ATTRIBUTE_NODE ||
+					target->type == XML_NAMESPACE_DECL ||
+					target->parent == NULL)
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("invalid XPath expression")));
+
 				n_node = xmlParseDoc(new_node);
 				if (n_node == NULL)
 					ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
 							 errmsg("could not parse XML new node")));
-				xmlAddPrevSibling(xpathobj->nodesetval->nodeTab[i], (xmlNodePtr)n_node->children);
+				root = xmlDocGetRootElement(n_node);
+				if (root == NULL)
+				{
+					xmlFreeDoc(n_node);
+					ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
+							errmsg("XML new node has no root element")));
+				}
+				xmlUnlinkNode(root);
+				if (xmlAddPrevSibling(target, root) == NULL)
+				{
+					xmlFreeNode(root);
+					xmlFreeDoc(n_node);
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("could not insert XML sibling node")));
+				}
 				xmlFreeDoc(n_node);
 			}
 		}
@@ -835,16 +910,43 @@ ivy_xml_addnextsiblingnode(xmlXPathObjectPtr xpathobj, const xmlChar* new_node)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
 			for (i = 0; i < num; i++)
 			{
+				xmlNodePtr root;
+				xmlNodePtr target = xpathobj->nodesetval->nodeTab[i];
+
+				if (target == NULL)
+					continue;
+				if (target->type == XML_DOCUMENT_NODE ||
+					target->type == XML_ATTRIBUTE_NODE ||
+					target->type == XML_NAMESPACE_DECL ||
+					target->parent == NULL)
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("invalid XPath expression")));
+
 				n_node = xmlParseDoc(new_node);
 				if (n_node == NULL)
 					ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
 							 errmsg("could not parse XML new node")));
-				xmlAddNextSibling(xpathobj->nodesetval->nodeTab[i], (xmlNodePtr)n_node->children);
+				root = xmlDocGetRootElement(n_node);
+				if (root == NULL)
+				{
+					xmlFreeDoc(n_node);
+					ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
+							errmsg("XML new node has no root element")));
+				}
+				xmlUnlinkNode(root);
+				if (xmlAddNextSibling(target, root) == NULL)
+				{
+					xmlFreeNode(root);
+					xmlFreeDoc(n_node);
+					ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+							errmsg("could not insert XML sibling node")));
+				}
 				xmlFreeDoc(n_node);
 			}
 		}
@@ -862,24 +964,62 @@ ivy_xml_replacenode(xmlXPathObjectPtr xpathobj, const xmlChar* new_node)
 
 	if (xpathobj->type == XPATH_NODESET)
 	{
-		if (xpathobj->nodesetval != NULL)
+		if (xpathobj->nodesetval != NULL &&
+			xpathobj->nodesetval->nodeTab != NULL)
 		{
 			num = xpathobj->nodesetval->nodeNr;
-			for (i = 0; i < num; i++)
+			/* See ivy_xml_delenode: descendants must be processed first. */
+			for (i = num - 1; i >= 0; i--)
 			{
 				cur = xpathobj->nodesetval->nodeTab[i];
+				if (cur == NULL)
+					continue;
 				if (strcmp((char *)new_node, "") == 0)
 				{
-						xmlUnlinkNode(cur->children);
-						xmlFreeNode(cur->children);
+					if (cur->type != XML_ELEMENT_NODE)
+						ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+								errmsg("invalid XPath expression")));
+					if (cur->children != NULL)
+					{
+						xmlNodePtr child = cur->children;
+
+						cur->children = NULL;
+						cur->last = NULL;
+						xmlFreeNodeList(child);
+					}
 				}
 				else
 				{
+					xmlNodePtr root;
+					xmlNodePtr old;
+
 					n_node = xmlParseDoc(new_node);
 					if (n_node == NULL)
 						ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
-								errmsg("could not parse XML new node")));
-					xmlReplaceNode(cur, (xmlNodePtr)n_node->children);
+							errmsg("could not parse XML new node")));
+					root = xmlDocGetRootElement(n_node);
+					if (root == NULL)
+					{
+						xmlFreeDoc(n_node);
+						ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
+								errmsg("XML new node has no root element")));
+					}
+					if (cur->type != XML_ELEMENT_NODE)
+					{
+						xmlFreeDoc(n_node);
+						ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+								errmsg("invalid XPath expression")));
+					}
+					xmlUnlinkNode(root);
+					old = xmlReplaceNode(cur, root);
+					if (old == NULL)
+					{
+						xmlFreeNode(root);
+						xmlFreeDoc(n_node);
+						ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+								errmsg("could not replace XML node")));
+					}
+					xmlFreeNode(old);
 					xmlFreeDoc(n_node);
 				}
 			}
@@ -1046,8 +1186,20 @@ ivy_extractvalue(PG_FUNCTION_ARGS)
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
 
-	/* Begin - Bug#Z203, Bug#Z214 */
-	if (res->nodesetval && res->nodesetval->nodeTab &&
+	/* Begin - Bug#Z203, Bug#Z214, Bug#z9075 */
+	if (res->nodesetval && res->nodesetval->nodeNr > 0 &&
+		res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0] &&
+		res->nodesetval->nodeTab[0]->type == XML_NAMESPACE_DECL)
+	{
+		cleanup_ws(&ws);
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("invalid XPath expression")));
+	}
+
+	if (res->nodesetval && res->nodesetval->nodeNr > 0 &&
+		res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0] &&
 		res->nodesetval->nodeTab[0]->parent == NULL)	/* BUG#Z7411, BUG#Z7412 */
 	{
 		cleanup_ws(&ws);
@@ -1055,18 +1207,22 @@ ivy_extractvalue(PG_FUNCTION_ARGS)
 				errmsg("EXTRACTVALUE can only retrieve value of leaf node")));
 	}
 
-	if (res->nodesetval && res->nodesetval->nodeTab &&
+	if (res->nodesetval && res->nodesetval->nodeNr > 0 &&
+		res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0] &&
+		res->nodesetval->nodeTab[0]->children &&
 		res->nodesetval->nodeTab[0]->children->type == XML_ELEMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
-	/* End - Bug#Z203, Bug#Z214 */
+	/* End - Bug#Z203, Bug#Z214, bug#9075 */
 
 	ret = ivy_xml_xpathobjtostring(res);
 
-	appendStringInfoString(&result, ret);
+	if (ret != NULL)
+		appendStringInfoString(&result, ret);
 	rval = cstring_to_text_with_len(result.data, result.len);
 	pfree(result.data);
 
@@ -1121,8 +1277,20 @@ ivy_extractvalue2(PG_FUNCTION_ARGS)
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
 
-	/* Begin - Bug#Z203, Bug#Z214 */
-	if (res->nodesetval && res->nodesetval->nodeTab &&
+	/* Begin - Bug#Z203, Bug#Z214, bug#9075 */
+	if (res->nodesetval && res->nodesetval->nodeNr > 0 &&
+		res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0] &&
+		res->nodesetval->nodeTab[0]->type == XML_NAMESPACE_DECL)
+	{
+		cleanup_ws(&ws);
+		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
+				errmsg("invalid XPath expression")));
+	}
+
+	if (res->nodesetval && res->nodesetval->nodeNr > 0 &&
+		res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0] &&
 		res->nodesetval->nodeTab[0]->parent == NULL)	/* BUG#Z7411, BUG#Z7412 */
 	{
 		cleanup_ws(&ws);
@@ -1130,18 +1298,22 @@ ivy_extractvalue2(PG_FUNCTION_ARGS)
 				errmsg("EXTRACTVALUE can only retrieve value of leaf node")));
 	}
 
-	if (res->nodesetval && res->nodesetval->nodeTab &&
+	if (res->nodesetval && res->nodesetval->nodeNr > 0 &&
+		res->nodesetval->nodeTab &&
+		res->nodesetval->nodeTab[0] &&
+		res->nodesetval->nodeTab[0]->children &&
 		res->nodesetval->nodeTab[0]->children->type == XML_ELEMENT_NODE)
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 				errmsg("EXTRACTVALUE returns value of only one node")));
 	}
-	/* End - Bug#Z203, Bug#Z214 */
+	/* End - Bug#Z203, Bug#Z214, bug#9075*/
 
 	ret = ivy_xml_xpathobjtostring(res);
 
-	appendStringInfoString(&result, ret);
+	if (ret != NULL)
+		appendStringInfoString(&result, ret);
 	rval = cstring_to_text_with_len(result.data, result.len);
 	pfree(result.data);
 
@@ -1303,14 +1475,7 @@ ivy_deletexml(PG_FUNCTION_ARGS)
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 	ret = (xmltype *)rv_newline((text *)ret);
 
-	/* Begin - BUG#M0000280 */
-	if (ws.xpathcomp)
-		xmlXPathFreeCompExpr(ws.xpathcomp);
-	if (ws.xpathctx)
-		xmlXPathFreeContext(ws.xpathctx);
-	if (ws.doc)
-		xmlFreeDoc(ws.doc);
-	/* End - BUG#M0000280 */
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
@@ -1364,14 +1529,7 @@ ivy_deletexml2(PG_FUNCTION_ARGS)
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 	ret = (xmltype *)rv_newline((text *)ret);
 
-	/* Begin - BUG#M0000280 */
-	if (ws.xpathcomp)
-		xmlXPathFreeCompExpr(ws.xpathcomp);
-	if (ws.xpathctx)
-		xmlXPathFreeContext(ws.xpathctx);
-	if (ws.doc)
-		xmlFreeDoc(ws.doc);
-	/* End - BUG#M0000280 */
+	cleanup_ws(&ws);
 
 	PG_RETURN_XML_P(ret);
 #else
@@ -1440,8 +1598,6 @@ ivy_appendchildxml(PG_FUNCTION_ARGS)
 
 	ivy_xml_addchildnode(res, (xmlNodePtr)new_node);
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
-	xmlUnlinkNode((xmlNodePtr)ws.xpathctx->node->children);
-	xmlFreeNode((xmlNodePtr)ws.xpathctx->node->children);
 
 	ret = (xmltype *)rv_newline((text *)ret);
 
@@ -1522,8 +1678,6 @@ ivy_appendchildxml2(PG_FUNCTION_ARGS)
 
 	ivy_xml_addchildnode(res, (xmlNodePtr)new_node);
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
-	xmlUnlinkNode((xmlNodePtr)ws.xpathctx->node->children);
-	xmlFreeNode((xmlNodePtr)ws.xpathctx->node->children);
 
 	ret = (xmltype *)rv_newline((text *)ret);
 
@@ -1589,7 +1743,10 @@ ivy_insertxmlbefore(PG_FUNCTION_ARGS)
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, NULL);
 
 	if (res->nodesetval && res->nodesetval->nodeNr == 1 && /* Bug#Z205 */
-		res->nodesetval->nodeTab && res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+		res->nodesetval->nodeTab && res->nodesetval->nodeTab[0] &&
+		(res->nodesetval->nodeTab[0]->type == XML_NAMESPACE_DECL ||
+		 res->nodesetval->nodeTab[0]->parent == NULL ||
+		 res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE))
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -1664,7 +1821,10 @@ ivy_insertxmlbefore2(PG_FUNCTION_ARGS)
 	res = ivy_xml_xpath(&ws, xpath_expr_text, data, cns);
 
 	if (res->nodesetval && res->nodesetval->nodeNr == 1 && /* Bug#Z205 */
-		res->nodesetval->nodeTab && res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE)
+		res->nodesetval->nodeTab && res->nodesetval->nodeTab[0] &&
+		(res->nodesetval->nodeTab[0]->type == XML_NAMESPACE_DECL ||
+		 res->nodesetval->nodeTab[0]->parent == NULL ||
+		 res->nodesetval->nodeTab[0]->parent->type == XML_DOCUMENT_NODE))
 	{
 		cleanup_ws(&ws);
 		ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -1831,6 +1991,7 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	int 		len;
 	xpath_ws	ws;
 	xmlDocPtr 	new_node = NULL;
+	xmlNodePtr	new_root = NULL;
 	xmlChar	   *nodestring = NULL;
 	xmlXPathObjectPtr res;
 
@@ -1881,8 +2042,15 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	}
 	else
 	{
+		new_root = xmlDocGetRootElement(new_node);
+		if (new_root == NULL)
+		{
+			xmlFreeDoc(new_node);
+			ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
+					errmsg("XML new node has no root element")));
+		}
 		/* Begin - Bug#Z204 */
-		if (strcmp(cname, (char *)((xmlNodePtr)new_node->children->name)) != 0)
+		if (strcmp(cname, (char *)new_root->name) != 0)
 		{
 			xmlFreeDoc(new_node);
 			ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -1895,8 +2063,6 @@ ivy_insertchildxml(PG_FUNCTION_ARGS)
 	ivy_xml_addchildnode(res, (xmlNodePtr)new_node);
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 	ret = (xmltype *)rv_newline((text *)ret);
-	xmlUnlinkNode((xmlNodePtr)ws.xpathctx->node->children);
-	xmlFreeNode((xmlNodePtr)ws.xpathctx->node->children);
 
 	if (new_node)
 		xmlFreeDoc(new_node);
@@ -1927,6 +2093,7 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	int 		len;
 	xpath_ws	ws;
 	xmlDocPtr 	new_node = NULL;
+	xmlNodePtr	new_root = NULL;
 	xmlChar	   *nodestring = NULL;
 	xmlXPathObjectPtr res;
 
@@ -1985,6 +2152,13 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	}
 	else
 	{
+		new_root = xmlDocGetRootElement(new_node);
+		if (new_root == NULL)
+		{
+			xmlFreeDoc(new_node);
+			ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
+					errmsg("XML new node has no root element")));
+		}
 		/* Begin - Bug#Z204, Bug#Z215 */
 		initStringInfo(&r);
 		appendStringInfoString(&r, "<");
@@ -1992,7 +2166,7 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 
 		if (strstr((char *)nodestring, r.data))
 		{
-			if (!strstr(cname, (char *)((xmlNodePtr)new_node->children->name)))
+			if (!strstr(cname, (char *)new_root->name))
 			{
 				xmlFreeDoc(new_node);
 				ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
@@ -2012,8 +2186,6 @@ ivy_insertchildxml2(PG_FUNCTION_ARGS)
 	ivy_xml_addchildnode(res, (xmlNodePtr)new_node);
 	ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 	ret = (xmltype *)rv_newline((text *)ret);
-	xmlUnlinkNode((xmlNodePtr)ws.xpathctx->node->children);
-	xmlFreeNode((xmlNodePtr)ws.xpathctx->node->children);
 
 	if (new_node)
 		xmlFreeDoc(new_node);
@@ -2367,6 +2539,10 @@ updatexml(List *args)
 
 	StringInfoData result;
 
+	if (args == NIL)
+		ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
+				errmsg("invalid XPath expression")));
+
 	/* get the xml data */
 	f = list_head(args);
 	if (f->ptr_value != NULL)
@@ -2394,14 +2570,17 @@ updatexml(List *args)
 	{
 		l = list_tail(args);
 		nsp= lfirst(l);
-		ns = text_to_cstring(DatumGetTextP(PointerGetDatum(nsp)));
-		has_namespace = true;
+		if (nsp != NULL)
+		{
+			ns = text_to_cstring(DatumGetTextP(PointerGetDatum(nsp)));
+			has_namespace = true;
+		}
 
-		tmp = list_delete_last(args);
+		args = list_delete_last(args);
 	}
 
 	tmp = list_delete_first(args);
-	if (tmp->length % 2 != 0)
+	if (tmp == NIL || tmp->length % 2 != 0)
 		ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
 				errmsg("invalid XPath expression")));
 
@@ -2415,6 +2594,10 @@ updatexml(List *args)
 		text	   *xpath = NULL;
 		text	   *var = NULL;
 		int			len2 = 0;
+
+		if (v == NULL)
+			ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("invalid XPath expression")));
 
 		/* get xpath_string */
 		if (v->ptr_value != NULL)
@@ -2432,6 +2615,9 @@ updatexml(List *args)
 		}
 
 		v = lnext(tmp, v);
+		if (v == NULL)
+			ereport(ERROR, (errcode(ERRCODE_INTERNAL_ERROR),
+					errmsg("invalid XPath expression")));
 		if (v->ptr_value != NULL)
 		{
 			/* get value_expr */
@@ -2458,12 +2644,10 @@ updatexml(List *args)
 		if (vdoc == NULL && strstr(cxpath, "text()"))
 		{
 			ivy_xml_setnodecontent(res, string);
-			ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 		}
 		else /* replace a node */
 		{
 			ivy_xml_replacenode(res, string);
-			ret = (xmltype *)ivy_xml_xmlnode2xmltype((xmlNodePtr)ws.doc);
 			xmlFreeDoc(vdoc);
 		}
 
