@@ -216,9 +216,9 @@ sysmac_utility_command(PlannedStmt *pstmt,
 					else if (action->objtype == OBJECT_FUNCTION)
 					{
 						/*
-						 * Security Restriction - Granting EXECUTE privilege on security‑critical functions is strictly prohibited.
+						 * Security Restriction - Granting EXECUTE privilege on security-critical functions is strictly prohibited.
 						 * - Do NOT grant EXECUTE on ALL FUNCTIONS IN SCHEMA hg_security to any ordinary user.
-						 * - Do NOT grant EXECUTE on any individual “hg_sysmac” functions within the hg_security
+						 * - Do NOT grant EXECUTE on any individual "hg_sysmac" functions within the hg_security
 						 *   schema to any ordinary user.
 						 */
 						if (action->targtype == ACL_TARGET_OBJECT)
