@@ -5553,11 +5553,30 @@ ora_replace_text_regexp(text *src_text, regex_t *regexp,
 	bool	   have_escape = false;
 	int        replace_occur_posn = 1;
 
-	initStringInfo(&buf);
 
 	/* Convert data string to wide characters. */
 	data = (pg_wchar *) palloc((src_text_len + 1) * sizeof(pg_wchar));
 	data_len = pg_mb2wchar_with_len(VARDATA_ANY(src_text), data, src_text_len);
+
+	/* Begin - bug#00008827 */
+	/*
+	 * In Oracle, when the starting replacement position exceeds the length of the source string,
+	 * no replacement occurs. However, in PG, the decision for the next match is made based on the
+	 * state of the character before search_start. For zero-width matches such as ^, $, a*, etc.,
+	 * if the last character of the source string is a newline, an extra replacement will be performed.
+	 *
+	 * there, we only check start_posn > data_len
+	 */
+	if (start_posn > data_len)
+	{
+		/* zero data_len return NULL */
+		if (enable_emptystring_to_NULL && data_len == 0)
+			return NULL;
+		else
+			return src_text;
+	}
+	initStringInfo(&buf);
+	/* End - bug#00008827 */
 
 	/* Check whether replace_text has escape char. */
 	if(replace_text != NULL)
@@ -5599,6 +5618,19 @@ ora_replace_text_regexp(text *src_text, regex_t *regexp,
 					(errcode(ERRCODE_INVALID_REGULAR_EXPRESSION),
 					 errmsg("regular expression failed: %s", errMsg)));
 		}
+
+		/* Begin - bug#00008827 */
+		/*
+		 * In this case, the last character of the search string
+		 * is a newline, which does not match eighter '^' or '$' or a.*
+		 * the final match should be excluded
+		 */
+		if (pmatch[0].rm_eo == data_len &&
+			pmatch[0].rm_so == pmatch[0].rm_eo &&
+			data[data_len - 1] == '\n' &&
+			data_pos > 0)
+			break;
+		/* End - bug#00008827 */
 
 		if (occur_posn >= 1)
 		{

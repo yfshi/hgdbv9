@@ -1227,3 +1227,128 @@ select REPLACE(('21.23.25.98'), '''', '');
 select REPLACE(('21.23.25.98')::varchar, '''', '');
 select REPLACE(('21.23.25.98')::char(100), '''', '');
 /* End - BUG#5603 */
+
+
+--bug#Z8827
+--oracle return 0 0 1 0
+--we return 0 0 1 1
+--maybe oracle handle m with ^ has a bug(Bug 16707134)
+select regexp_count('x' || chr(10) || 'b' || chr(10) || 'y','^b$', 1, 'c') as c_mode,
+regexp_count('x' || chr(10) || 'b' || chr(10) || 'y','^b$', 1, 'n') as n_mode,
+regexp_count('x' || chr(10) || 'b' || chr(10) || 'y','^b$', 1, 'm') as m_mode,
+regexp_count('x' || chr(10) || 'b' || chr(10) || 'y','^b$', 1, 'mn') as mn_mode
+from dual;
+
+
+select regexp_count(chr(10),'^',1, 'mn') from dual;
+select regexp_count(chr(10),'$',1, 'mn') from dual;
+select regexp_count(chr(10) || chr(10),'^',1, 'mn') from dual;
+select regexp_count(chr(10) || chr(10),'$',1, 'mn') from dual;
+select regexp_count(chr(10) || 'ABC','^',1, 'mn') from dual;
+select regexp_count(chr(10) || 'ABC','$',1, 'mn') from dual;
+select regexp_count(chr(10) || 'ABC' || chr(10),'^',1, 'mn') from dual;
+select regexp_count(chr(10) || 'ABC' || chr(10),'$',1, 'mn') from dual;
+
+select regexp_count('x' || chr(10) || 'b' || chr(10) || 'y', '^b$',1,'m'),
+regexp_count('x' || chr(10) || 'b' || chr(10) || 'y', '^b$',1,'mn'),
+regexp_count('x' || chr(10) || 'b' || chr(10) || 'y', 'b$',1,'mn') from dual;
+
+
+select regexp_count('abcda' || chr(10) || 'acmdefa', 'a', 1, 'n') from dual;
+select regexp_count('abcda' || chr(10) || 'abcmdefa', 'a',1,'mn') from dual;
+
+select regexp_count('abcda' || chr(10) || 'abcmdefa' || 'a', 'a$',1,'mn') from dual;
+
+select regexp_count('abcda' || chr(10) || 'abcmdefa' || 'a', '^a',1,'mn') from dual;
+select regexp_count('abcda' || chr(10) || 'abcmdefa' || 'a', '^a',1,'m') from dual;
+
+select regexp_count(chr(10), '^',1,'n') from dual;
+select regexp_count(chr(10), '$',1,'n') from dual;
+select regexp_count(chr(10),'^', 1, 'mn') from dual;
+select regexp_count(chr(10),'$',1, 'mn') from dual;
+
+
+
+select regexp_count(chr(10) || chr(10), '^',1,'n') from dual;
+select regexp_count(chr(10) || chr(10), '$',1,'n') from dual;
+select regexp_count(chr(10) || chr(10),'^', 1, 'mn') from dual;
+select regexp_count(chr(10) || chr(10),'$',1, 'mn') from dual;
+
+
+select regexp_count(chr(10), '^',2,'n') from dual;
+select regexp_count(chr(10),'$',2,'n') from dual;
+
+select regexp_count(chr(10),'^',2,'mn') from dual;
+select regexp_count(chr(10),'$',2, 'mn') from dual;
+
+
+select regexp_count(chr(10) || chr(10),'^',2,'mn') from dual;
+select regexp_count(chr(10) || chr(10),'$',2, 'mn') from dual;
+
+
+select regexp_count(chr(10) || chr(10),'^',2) from dual;
+select regexp_count(chr(10) || chr(10),'$',2) from dual;
+
+--1
+select regexp_count(chr(10),'a*',1) from dual;
+--0
+select regexp_count(chr(10),'a*',2) from dual;
+select regexp_count(chr(10),'a*',1,'n') from dual;
+
+select regexp_count(chr(10),'a*',2,'n') from dual;
+
+
+select regexp_count(chr(10),'a*',1,'m') from dual;
+select regexp_count(chr(10),'a*',2,'m') from dual;
+select regexp_count(chr(10),'a*',1,'mn') from dual;
+select regexp_count(chr(10),'a*',2,'mn') from dual;
+
+select regexp_count(chr(10) || chr(10),'a*',1) from dual;
+select regexp_count(chr(10)|| chr(10),'a*',2) from dual;
+
+
+select regexp_count(chr(10)|| chr(10),'a*',1,'n') from dual;
+select regexp_count(chr(10) || chr(10),'a*',2,'n') from dual;
+select regexp_count(chr(10) || chr(10),'a*',1,'m') from dual;
+select regexp_count(chr(10) || chr(10),'a*',2,'m') from dual;
+
+
+select regexp_count(chr(10) || chr(10),'a*',1,'mn') from dual;
+select regexp_count(chr(10) || chr(10),'a*',2,'mn') from dual;
+
+select regexp_count(chr(10) || 'a' || chr(10),'a*',1) from dual;
+
+select regexp_count(chr(10)|| 'a' || chr(10),'a*',2) from dual;
+select regexp_count(chr(10)|| 'a' || chr(10),'a*',1,'n') from dual;
+select regexp_count(chr(10) || 'a' || chr(10),'a*',2,'n') from dual;
+select regexp_count(chr(10) || 'a' || chr(10),'a*',1,'m') from dual;
+
+select regexp_count(chr(10) || 'a' || chr(10),'a*',2,'m') from dual;
+select regexp_count(chr(10) || 'a' || chr(10),'a*',1,'mn') from dual;
+
+
+select regexp_count(chr(10) || 'a' || chr(10),'a*',2,'mn') from dual;
+---null
+select regexp_count(chr(10) || 'a' || chr(10),'',2,'mn') from dual;
+
+
+select regexp_replace(chr(10),'^','b',1,1,'n') from dual;
+select regexp_replace(chr(10),'$','b',1,1,'n') from dual;
+
+select regexp_replace(chr(10) ||chr(10),'$','b',1,0,'n') from dual;
+
+select regexp_replace(chr(10) ||chr(10),'$','b',1,0,'nm') from dual;
+
+select regexp_replace(chr(10) ||chr(10),'^','b',1,0,'nm') from dual;
+
+select regexp_replace(chr(10) ||chr(10),'^','b',1,0,'n') from dual;
+
+select regexp_replace(chr(10) ||chr(10),'^','b',1,0,'m') from dual;
+
+select regexp_replace(chr(10) ||chr(10),'a*','b',1,0,'m') from dual;
+select regexp_replace(chr(10) ||chr(10),'a*','b',1,0,'mn') from dual;
+
+
+select regexp_replace(chr(10) ||chr(10),'a*','b',1,0,'n') from dual;
+select regexp_replace(chr(10) ||chr(10),'','b',1,0,'n') from dual;
+select length(regexp_replace(chr(10) ||chr(10),'','b',1,0,'n')) from dual;

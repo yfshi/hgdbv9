@@ -986,13 +986,13 @@ SELECT REGEXP_LIKE(
          'z'
        )
 FROM dual;
-ERROR:  invalid option of regexp_like: z
+ERROR:  illegal argument for function
 SELECT 1 FROM dual WHERE REGEXP_LIKE(
          'abc',
          'a',
          'z'
        );
-ERROR:  invalid option of regexp_like: z
+ERROR:  illegal argument for function
 SELECT
   CASE
     WHEN REGEXP_LIKE(
@@ -1181,7 +1181,7 @@ SELECT REGEXP_COUNT(
          'z'
        )
 FROM dual;
-ERROR:  the 4th argument is illegal parameter for function. the parameter can be one of x, m, i, c, n.
+ERROR:  illegal argument for function
 SELECT REGEXP_COUNT(
          'one two  three   four',
          '\S+'
