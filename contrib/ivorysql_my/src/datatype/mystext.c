@@ -27,6 +27,13 @@
 #include <stdlib.h>
 
 PG_FUNCTION_INFO_V1(mystextfloat8_pl);
+PG_FUNCTION_INFO_V1(mystextfloat8_mi);
+PG_FUNCTION_INFO_V1(mystextfloat8_mul);
+PG_FUNCTION_INFO_V1(mystextfloat8_div);
+PG_FUNCTION_INFO_V1(mysfloat8text_pl);
+PG_FUNCTION_INFO_V1(mysfloat8text_mi);
+PG_FUNCTION_INFO_V1(mysfloat8text_mul);
+PG_FUNCTION_INFO_V1(mysfloat8text_div);
 PG_FUNCTION_INFO_V1(mystext_pl);
 PG_FUNCTION_INFO_V1(mystext_mi);
 PG_FUNCTION_INFO_V1(mystext_mul);
@@ -49,6 +56,15 @@ PG_FUNCTION_INFO_V1(mys_isnull);
 PG_FUNCTION_INFO_V1(varlena_float4);
 PG_FUNCTION_INFO_V1(varlena_float8);
 PG_FUNCTION_INFO_V1(varlena_numeric);
+PG_FUNCTION_INFO_V1(varlena_eq_float8);
+PG_FUNCTION_INFO_V1(varlena_ne_float8);
+PG_FUNCTION_INFO_V1(varlena_lt_float8);
+PG_FUNCTION_INFO_V1(varlena_le_float8);
+PG_FUNCTION_INFO_V1(varlena_gt_float8);
+PG_FUNCTION_INFO_V1(varlena_ge_float8);
+PG_FUNCTION_INFO_V1(float8_ge_varlena);
+PG_FUNCTION_INFO_V1(float8_lt_varlena);
+PG_FUNCTION_INFO_V1(varlena_sum);
 
 /*
  * extract_leading_number_str:
@@ -309,6 +325,125 @@ mystextfloat8_pl(PG_FUNCTION_ARGS)
 	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
 
 	PG_RETURN_DATUM(DirectFunctionCall2(float8pl,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mystextfloat8_mi(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(0);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(1);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8mi,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mystextfloat8_mul(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(0);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(1);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8mul,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mystextfloat8_div(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(0);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(1);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8div,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mysfloat8text_pl(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(1);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(0);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8pl,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mysfloat8text_mi(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(1);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(0);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8mi,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mysfloat8text_mul(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(1);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(0);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8mul,
+							   Float8GetDatum(f_arg1),
+							   Float8GetDatum(f_arg2)));
+}
+
+Datum
+mysfloat8text_div(PG_FUNCTION_ARGS)
+{
+	char	   num1[64];
+	float8	   f_arg1 = 0;
+	text	  *arg1 = PG_GETARG_TEXT_PP(1);
+	float8	   f_arg2 = PG_GETARG_FLOAT8(0);
+
+	extract_leading_number_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	f_arg1 = float8in_internal(num1, NULL, "double precision", num1);
+
+	PG_RETURN_DATUM(DirectFunctionCall2(float8div,
 							   Float8GetDatum(f_arg1),
 							   Float8GetDatum(f_arg2)));
 }
@@ -720,3 +855,133 @@ mystextsafeeq(PG_FUNCTION_ARGS)
 											   PG_GETARG_DATUM(0), PG_GETARG_DATUM(1)));
 	PG_RETURN_BOOL(res);
 }
+
+/* Begin OA#2701 */
+Datum
+varlena_eq_float8(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	double		left;
+	double		right = PG_GETARG_FLOAT8(1);
+	bool		is_insert = CALL_IN_INSERT();
+
+	left = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_eq(left, right));
+}
+
+Datum
+varlena_ne_float8(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	double		left;
+	double		right = PG_GETARG_FLOAT8(1);
+	bool		is_insert = CALL_IN_INSERT();
+
+	left = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_ne(left, right));
+}
+
+Datum
+varlena_lt_float8(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	double		left;
+	double		right = PG_GETARG_FLOAT8(1);
+	bool		is_insert = CALL_IN_INSERT();
+
+	left = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_lt(left, right));
+}
+
+Datum
+varlena_le_float8(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	double		left;
+	double		right = PG_GETARG_FLOAT8(1);
+	bool		is_insert = CALL_IN_INSERT();
+
+	left = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_le(left, right));
+}
+
+Datum
+varlena_gt_float8(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	double		left;
+	double		right = PG_GETARG_FLOAT8(1);
+	bool		is_insert = CALL_IN_INSERT();
+
+	left = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_gt(left, right));
+}
+
+Datum
+varlena_ge_float8(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(0));
+	double		left;
+	double		right = PG_GETARG_FLOAT8(1);
+	bool		is_insert = CALL_IN_INSERT();
+
+	left = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_ge(left, right));
+}
+
+Datum
+float8_lt_varlena(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	double		right;
+	double		left = PG_GETARG_FLOAT8(0);
+	bool		is_insert = CALL_IN_INSERT();
+
+	right = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_lt(left, right));
+}
+
+Datum
+float8_ge_varlena(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	double		right;
+	double		left = PG_GETARG_FLOAT8(0);
+	bool		is_insert = CALL_IN_INSERT();
+
+	right = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_ge(left, right));
+}
+
+Datum
+varlena_sum(PG_FUNCTION_ARGS)
+{
+	float8		arg1 = 0;
+	float8		arg2 = 0;
+	bool		is_insert = CALL_IN_INSERT();
+
+	if (PG_ARGISNULL(0) && PG_ARGISNULL(1))
+		PG_RETURN_NULL();
+
+	if (!PG_ARGISNULL(0))
+		arg1 = PG_GETARG_FLOAT8(0);
+
+	if (!PG_ARGISNULL(1))
+	{
+		text		*arg = PG_GETARG_TEXT_PP(1);
+		char		*src = (char *) text_to_cstring(arg);
+
+		arg2 = my_atod(src, is_insert);
+	}
+
+	PG_RETURN_FLOAT8(float8_pl(arg1, arg2));
+}
+/* End OA#2701 */

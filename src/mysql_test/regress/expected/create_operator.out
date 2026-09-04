@@ -61,12 +61,10 @@ CREATE OPERATOR !=- (
    rightarg = int8,
    procedure = factorial
 );
-SELECT !=- 10;
- ?column? 
-----------
-  3628800
-(1 row)
-
+ERROR:  syntax error at or near "-"
+LINE 1: CREATE OPERATOR !=- (
+                          ^
+-- SELECT !=- 10;
 -- postfix operators don't work anymore
 SELECT 10 !=-;
 ERROR:  syntax error at or near ";"

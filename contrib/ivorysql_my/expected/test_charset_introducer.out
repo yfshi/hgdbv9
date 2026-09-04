@@ -1663,6 +1663,8 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.find_in_set(uint8, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.find_in_set(varbinary, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.find_in_set(varbinary, varbinary) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.float8_ge_text(double precision, text) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.float8_lt_text(double precision, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, bigint, bigint, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, bigint, text, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.insert(text, text, bigint, text) EXPAND "convert_encoding";
@@ -1710,6 +1712,12 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.substring_index(text, varbinary, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.substring_index(varbinary, text, integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.substring_index(varbinary, varbinary, integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_eq_float8(text, double precision) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_ge_float8(text, double precision) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_gt_float8(text, double precision) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_le_float8(text, double precision) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_lt_float8(text, double precision) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.text_ne_float8(text, double precision) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.text_seq(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.ucase(integer) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.ucase(ivy_hex) EXPAND "convert_encoding";
@@ -1745,7 +1753,7 @@ ORDER BY alter_sql;
  ALTER FUNCTION pg_catalog.textltname(text, name) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.textne(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.textnename(text, name) EXPAND "convert_encoding";
-(137 rows)
+(145 rows)
 
 -- SELECT *
 -- FROM pg_catalog.pg_object

@@ -4416,10 +4416,9 @@ get_format(PG_FUNCTION_ARGS)
 }
 
 static bool
-adddate_interval(char **str, Timestamp timestamp, Interval *span, bool is_add, int dec)
+adddate_interval(Datum *result, Timestamp timestamp, Interval *span, bool is_add, int dec)
 {
 	Timestamp tsResult;
-	Numeric		num;
 	MemoryContext ccxt = CurrentMemoryContext;
 	bool	out_of_range = false;
 
@@ -4470,12 +4469,19 @@ adddate_interval(char **str, Timestamp timestamp, Interval *span, bool is_add, i
 	}
 	/* End - bug#z8089 #z8084*/
 
-	num = DatumGetNumeric(DirectFunctionCall2(pgtimestamp_mysdatetimes,
-											  TimestampGetDatum(tsResult),
-											  Int32GetDatum(dec)));
+	if (dec == 0)
+	{
+		struct pg_tm tt, *tm = &tt;
+		fsec_t	fsec = 0;
+		int		warn = 0;
 
-	*str = DatumGetCString(DirectFunctionCall1(mysdatetimes_out,
-											  NumericGetDatum(num)));
+		timestamp2tm(tsResult, NULL, tm, &fsec, NULL, NULL);
+		*result = TimeADTGetDatum(mys_tm2datetime(tm));
+	}
+	else
+		*result = DirectFunctionCall2(pgtimestamp_mysdatetimes,
+									  TimestampGetDatum(tsResult),
+									  Int32GetDatum(dec));
 
 	return true;
 }
@@ -4485,14 +4491,14 @@ timestamp_adddate_interval(PG_FUNCTION_ARGS)
 {
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	Interval *span = PG_GETARG_INTERVAL_P(1);
-	char *str = NULL;
+	Datum result;
 
-	if (!adddate_interval(&str, timestamp, span, true, 0))
+	if (!adddate_interval(&result, timestamp, span, true, 0))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4502,7 +4508,7 @@ datetimes_adddate_interval(PG_FUNCTION_ARGS)
 	Timestamp timestamp;
 	struct pg_tm tt, *tm = &tt;
 	fsec_t fsec = 0;
-	char *str = NULL;
+	Datum result;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
@@ -4510,50 +4516,30 @@ datetimes_adddate_interval(PG_FUNCTION_ARGS)
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	if (!adddate_interval(&str, timestamp, span, true, 6))
+	if (!adddate_interval(&result, timestamp, span, true, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
 date_adddate_interval(PG_FUNCTION_ARGS)
 {
 	Interval *span = PG_GETARG_INTERVAL_P(1);
-	Timestamp timestamp, tsResult;
-	DateADT dateResult;
+	Timestamp timestamp;
 	struct pg_tm tt, *tm = &tt;
-	fsec_t fsec;
-	char *str = NULL;
+	Datum result;
 
 	MYS_ZERO_tm(tm);
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, 0, NULL, &timestamp);
 
-	if (span->time == 0)
-	{
-		tsResult = DirectFunctionCall2(timestamp_pl_interval,
-									   TimestampGetDatum(timestamp),
-									   PointerGetDatum(span));
+	if (!adddate_interval(&result, timestamp, span, true, 6))
+		PG_RETURN_NULL();
 
-		timestamp2tm(tsResult, NULL, tm, &fsec, NULL, NULL);
-
-		dateResult = mys_tm2date(tm);
-
-		str = DatumGetCString(DirectFunctionCall1(mysdate_out,
-											  TimestampGetDatum(dateResult)));
-	}
-	else
-	{
-		if (!adddate_interval(&str, timestamp, span, true, 6))
-		{
-			PG_RETURN_NULL();
-		}
-	}
-
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4562,7 +4548,7 @@ timestamp_adddate_days(PG_FUNCTION_ARGS)
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	int32 days = PG_GETARG_INT32(1);
 	Interval *span;
-	char *str = NULL;
+	Datum result;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 		PG_RETURN_NULL();
@@ -4570,12 +4556,12 @@ timestamp_adddate_days(PG_FUNCTION_ARGS)
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
 
-	if (!adddate_interval(&str, timestamp, span, true, 0))
+	if (!adddate_interval(&result, timestamp, span, true, 0))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4586,7 +4572,7 @@ datetimes_adddate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str = NULL;
+	Datum result;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4596,18 +4582,18 @@ datetimes_adddate_days(PG_FUNCTION_ARGS)
 	/* Begin - bug#8084 */
 	if (tm->tm_year == 0)
 	{
-		PG_RETURN_TEXT_P(cstring_to_text("0000-00-00"));
+		PG_RETURN_NUMERIC(int64_to_numeric(MYSQL_ZERO_DATE));
 	}
 	/* End - bug#8084 */
 
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	if (!adddate_interval(&str, timestamp, span, true, 6))
+	if (!adddate_interval(&result, timestamp, span, true, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4618,7 +4604,7 @@ date_adddate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str = NULL;
+	Datum result;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4626,12 +4612,12 @@ date_adddate_days(PG_FUNCTION_ARGS)
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	if (!adddate_interval(&str, timestamp, span, true, 0))
+	if (!adddate_interval(&result, timestamp, span, true, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4639,14 +4625,14 @@ timestamp_subdate_interval(PG_FUNCTION_ARGS)
 {
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	Interval *span = PG_GETARG_INTERVAL_P(1);
-	char *str = NULL;
+	Datum result;
 
-	if (!adddate_interval(&str, timestamp, span, false, 6))
+	if (!adddate_interval(&result, timestamp, span, false, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4656,53 +4642,37 @@ datetimes_subdate_interval(PG_FUNCTION_ARGS)
 	Timestamp timestamp;
 	struct pg_tm tt, *tm = &tt;
 	fsec_t fsec = 0;
-	char *str = NULL;
+	Datum result;
 
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	if (!adddate_interval(&str, timestamp, span, false, 6))
+	if (!adddate_interval(&result, timestamp, span, false, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
 date_subdate_interval(PG_FUNCTION_ARGS)
 {
 	Interval *span = PG_GETARG_INTERVAL_P(1);
-	Timestamp timestamp, tsResult;
-	DateADT dateResult;
+	Timestamp timestamp;
 	struct pg_tm tt, *tm = &tt;
-	char *str = NULL;
+	Datum result;
 
 	MYS_ZERO_tm(tm);
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, 0, NULL, &timestamp);
 
-	if (span->time == 0)
+	if (!adddate_interval(&result, timestamp, span, false, 6))
 	{
-		tsResult = DirectFunctionCall2(timestamp_mi_interval,
-									   TimestampGetDatum(timestamp),
-									   PointerGetDatum(span));
-
-		dateResult = DatumGetDateADT(DirectFunctionCall1(timestamp_date,
-									   TimestampGetDatum(tsResult)));
-
-		str = DatumGetCString(DirectFunctionCall1(date_out,
-											  TimestampGetDatum(dateResult)));
-	}
-	else
-	{
-		if (!adddate_interval(&str, timestamp, span, false, 6))
-		{
-			PG_RETURN_NULL();
-		}
+		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4711,17 +4681,17 @@ timestamp_subdate_days(PG_FUNCTION_ARGS)
 	Timestamp timestamp = PG_GETARG_TIMESTAMP(0);
 	int32 days = PG_GETARG_INT32(1);
 	Interval *span;
-	char *str = NULL;
+	Datum result;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
 
-	if (!adddate_interval(&str, timestamp, span, false, 0))
+	if (!adddate_interval(&result, timestamp, span, false, 0))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4732,7 +4702,7 @@ datetimes_subdate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str = NULL;
+	Datum result;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4740,12 +4710,12 @@ datetimes_subdate_days(PG_FUNCTION_ARGS)
 	mys_datetimes2tm(PG_GETARG_NUMERIC(0), tm, &fsec);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	if (!adddate_interval(&str, timestamp, span, false, 6))
+	if (!adddate_interval(&result, timestamp, span, false, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 Datum
@@ -4756,7 +4726,7 @@ date_subdate_days(PG_FUNCTION_ARGS)
 	struct pg_tm tt, *tm = &tt;
 	Interval *span;
 	fsec_t fsec = 0;
-	char *str = NULL;
+	Datum result;
 
 	span = (Interval *) palloc0(sizeof(Interval));
 	span->day = days;
@@ -4764,12 +4734,12 @@ date_subdate_days(PG_FUNCTION_ARGS)
 	mys_date2tm(PG_GETARG_DATEADT(0), tm);
 	tm2timestamp(tm, fsec, NULL, &timestamp);
 
-	if (!adddate_interval(&str, timestamp, span, false, 0))
+	if (!adddate_interval(&result, timestamp, span, false, 6))
 	{
 		PG_RETURN_NULL();
 	}
 
-	PG_RETURN_TEXT_P(cstring_to_text(str));
+	PG_RETURN_DATUM(result);
 }
 
 /* Begin - SRS-MYSQL-BUILDINFUNCTION */

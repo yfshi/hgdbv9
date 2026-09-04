@@ -905,7 +905,7 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %token <str>	IDENT UIDENT FCONST SCONST USCONST BCONST XCONST Op
 %token <ival>	ICONST PARAM
 %token			TYPECAST DOT_DOT COLON_EQUALS EQUALS_GREATER
-%token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS AND_AND /* bug#8556 */
+%token			LESS_EQUALS GREATER_EQUALS NOT_EQUALS AND_AND OR_OR /* bug#8556 */
 %token <str>	HCONST /* Begin BUG#5048 5070 */
 %token <str>    USER_VARIABLE_NAME SYSTEM_OR_SESSION_VARIABLE	/* ReqID:SRS-MYSQL-SET */
 %token <str> 	IDENT_SCONST /* bug#6888 */
@@ -1104,7 +1104,7 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 /* End - bug#8563 */
 %left		UNION EXCEPT
 %left		INTERSECT
-%left		OR
+%left		OR OR_OR
 %left		AND AND_AND /* bug#8556 */
 %left		XOR
 %left		MOD
@@ -17582,22 +17582,10 @@ a_expr:		c_expr									{ $$ = $1; }
 			| a_expr AND_AND a_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "&&", $1, $3, @2); }
 			/* End - bug#8556 */
+			| a_expr OR_OR a_expr
+				{ $$ = makeOrExpr($1, $3, @2); }			/* OA#2701 */
 			| a_expr qual_Op a_expr				%prec Op
-				{
-					/* Begin - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
-					if (strcmp(strVal(lfirst(list_head($2))), "||") == 0)
-					{
-						if (has_sql_mode(MODE_PIPES_AS_CONCAT))
-						{
-							$$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2);
-						}
-						else
-							$$ = makeOrExpr($1, $3, @2);
-					}
-					else
-					/* End - ReqID: SRS-MYSQL-CHARACTERTYPE-TEXT */
-						$$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2);
-				}
+				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2); }
 			| qual_Op a_expr					%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $1, NULL, $2, @1); }
 
@@ -18131,6 +18119,8 @@ b_expr:		c_expr
 			| b_expr AND_AND b_expr
 				{ $$ = (Node *) makeSimpleA_Expr(AEXPR_OP, "&&", $1, $3, @2); }
 			/* End - bug#8556 */
+			| b_expr OR_OR b_expr
+				{ $$ = makeOrExpr($1, $3, @2); }			/* OA#2701 */
 			| b_expr qual_Op b_expr				%prec Op
 				{ $$ = (Node *) makeA_Expr(AEXPR_OP, $2, $1, $3, @2); }
 			| qual_Op b_expr					%prec Op
@@ -19167,7 +19157,7 @@ func_expr_common_subexpr:
 			/* End - ReqID:SRS-MYSQL-BUILDINFUNCTION */
 			| DATE_ADD '(' a_expr ',' INTERVAL a_expr interval_unit ')'
 				{
-					FuncCall *func = makeFuncCall(MysqlSystemFuncName("date_add"),
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("adddate"),
 												  list_make2($3, makeIntervalExpr($6, $7, @6)),
 												  COERCE_EXPLICIT_CALL,
 												  @1);
@@ -19175,7 +19165,7 @@ func_expr_common_subexpr:
 				}
 			| DATE_SUB '(' a_expr ',' INTERVAL a_expr interval_unit ')'
 				{
-					FuncCall *func = makeFuncCall(MysqlSystemFuncName("date_sub"),
+					FuncCall *func = makeFuncCall(MysqlSystemFuncName("subdate"),
 												  list_make2($3, makeIntervalExpr($6, $7, @6)),
 												  COERCE_EXPLICIT_CALL,
 												  @1);
@@ -19664,6 +19654,7 @@ MathOp:		 '+'									{ $$ = "+"; }
 			| GREATER_EQUALS						{ $$ = ">="; }
 			| NOT_EQUALS							{ $$ = "<>"; }
 			| AND_AND								{ $$ = "&&"; }	/* bug#8556 */
+			| OR_OR									{ $$ = "||"; }	/* OA#2701 */
 		;
 
 qual_Op:	Op

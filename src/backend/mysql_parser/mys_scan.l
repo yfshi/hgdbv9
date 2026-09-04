@@ -386,6 +386,7 @@ greater_equals	">="
 less_greater	"<>"
 not_equals		"!="
 and_and			"&&"
+or_or			"||"
 
 /*
  * "self" is the set of chars that should be returned as single-character
@@ -1091,6 +1092,16 @@ other			.
 					return AND_AND;
 				}
 
+{or_or}			{
+					SET_YYLLOC();
+					if (!has_sql_mode(MODE_PIPES_AS_CONCAT))
+					{
+						return OR_OR;
+					}
+					yylval->str = pstrdup(yytext);
+					return Op;
+				}
+
 {self}			{
 					SET_YYLLOC();
 					return yytext[0];
@@ -1153,6 +1164,12 @@ other			.
 						for (ic = nchars - 2; ic >= 0; ic--)
 						{
 							char c = yytext[ic];
+
+							/* Begin OA#2701: Support the use of != (+/-) syntax, So continue this case. */
+							if (c == '!' && ic + 1 < nchars && yytext[ic + 1] == '=')
+								continue;
+							/* End OA#2701 */
+
 							if (c == '~' || c == '!' || c == '@' ||
 								c == '#' || c == '^' || c == '&' ||
 								c == '|' || c == '?' ||
@@ -1190,6 +1207,7 @@ other			.
 							return PARAM;
 						}
 					}
+
 					/* End - ReqID:SRS-MYSQL-SQL-PREPARE */
 
 					SET_YYLLOC();
@@ -1229,6 +1247,10 @@ other			.
 							if (yytext[0] == '&' && yytext[1] == '&')
 								return AND_AND;
 							/* End - bug#8556 */
+							/* Begin OA#2701 */
+							if (yytext[0] == '|' && yytext[1] == '|' && !has_sql_mode(MODE_PIPES_AS_CONCAT))		/* OA#2701 */
+								return OR_OR;
+							/* End OA#2701 */
 						}
 					}
 

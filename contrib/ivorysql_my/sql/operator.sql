@@ -12,3 +12,9 @@ select (a << 1) | (b >> 1) & c from t_precedence; -- 10
 select (a << 1) | ((b >> 1) & c) from t_precedence; -- 10
 drop table t_precedence;
 /* End - bug#z5412 */
+
+/*Begin OA#2701 */
+SELECT 1 AS result WHERE -1!=+1;
+SELECT 1 AS result WHERE -1!=1;
+SELECT 1 AS result WHERE 1!=-1;
+/*End OA#2701 */

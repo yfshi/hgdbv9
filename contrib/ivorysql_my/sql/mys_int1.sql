@@ -394,3 +394,24 @@ show create table `f_gerxx`;
 ALTER TABLE `f_gerxx` MODIFY COLUMN `lianxfslx_daim` int(6) DEFAULT NULL COMMENT 'contact code' AFTER `jiatcf_mingc`;
 show create table `f_gerxx`;
 drop table `f_gerxx`;
+
+
+/* Begin OA#2701 */
+CREATE TABLE biz_apply_sample (
+    smear_count ivymy.tinyint,
+    is_deleted int
+);
+
+INSERT INTO biz_apply_sample VALUES
+(5, 0);
+
+SELECT CASE
+           WHEN 1 = 1 THEN smear_count
+           ELSE 1
+       END AS smear_count_result
+FROM biz_apply_sample
+WHERE is_deleted = 0
+LIMIT 1;
+
+DROP TABLE IF EXISTS biz_apply_sample;
+/* End OA#2701 */

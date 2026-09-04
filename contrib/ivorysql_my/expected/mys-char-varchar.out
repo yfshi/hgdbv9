@@ -2181,3 +2181,88 @@ create table tb7(col char(10));
 create table tb8(col char(255));
 create table tb9(col char);
 drop table tb5, tb6, tb7, tb8, tb9;
+/* Begin OA#2701 */
+CREATE TABLE biz_case_extra_charge_detail (
+    charge_result varchar(64),
+    charge_count varchar(64),
+    charge_sum_money varchar(64)
+);
+INSERT INTO
+	biz_case_extra_charge_detail
+VALUES
+('已收费',   '1',   '100.00'),
+('退费中',   '2',   '50.00'),
+('发送失败', '3',   '20.00'),
+('已收费',   'Y',   '200.00'),
+('退费中',   'Z',   '300.00'),
+('已收费',   '*',   '400.00'),
+('退费中',   'X',   '500.00'),
+('已收费',   '(',   '600.00'),
+('退费中',   ')',   '700.00'),
+('已收费',   'ABC', '800.00');
+SELECT COUNT(
+           CASE
+               WHEN charge_result = '发送失败'
+                    AND charge_count > 0
+               THEN 1
+           END
+       ) AS failed_count
+FROM biz_case_extra_charge_detail
+WHERE charge_count NOT REGEXP '[YZ*X()]';
+ failed_count 
+--------------
+            1
+(1 row)
+
+SELECT COUNT(
+           CASE
+               WHEN charge_result = '发送失败'
+                    AND charge_count > 0.5
+               THEN 1
+           END
+       ) AS failed_count
+FROM biz_case_extra_charge_detail
+WHERE charge_count NOT REGEXP '[YZ*X()]';
+ failed_count 
+--------------
+            1
+(1 row)
+
+SELECT SUM(
+           CASE
+               WHEN charge_result IN ('已收费', '退费中')
+               THEN charge_sum_money
+               ELSE 0
+           END
+       ) AS total_money
+FROM biz_case_extra_charge_detail
+WHERE charge_count NOT REGEXP '[YZ*X()]';
+ total_money 
+-------------
+         950
+(1 row)
+
+CREATE TABLE biz_apply_fat (
+    old_apply_id char(64),
+    apply_type varchar(32)
+);
+INSERT INTO biz_apply_fat VALUES
+('3a22c4a4-4ea2-19a2-c3f5-645fdd256aa7', '特检'),
+('3a22e6d0-2a17-2e75-168f-f272754def70', '特检'),
+('0', '特检'),
+(NULL, '特检'),
+('3a22c4a4-4ea2-19a2-c3f5-645fdd256aa8', '普通');
+SELECT COUNT(*) AS row_count
+FROM biz_apply_fat
+WHERE old_apply_id != 0
+  AND apply_type = '特检';
+WARNING:  Truncated incorrect DOUBLE value: '3a22c4a4-4ea2-19a2-c3f5-645fdd256aa7'
+WARNING:  Truncated incorrect DOUBLE value: '3a22e6d0-2a17-2e75-168f-f272754def70'
+ row_count 
+-----------
+         2
+(1 row)
+
+DROP TABLE biz_case_extra_charge_detail;
+DROP TABLE biz_apply_fat;
+/* End OA#2701 */

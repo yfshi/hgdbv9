@@ -101,3 +101,11 @@ select a || b from t_times;
 set sql_mode = 'pipes_as_concat';
 select a || b from t_times;
 select pg_typeof(a || b) from t_times;
+
+/* Begin OA#2701 */
+set sql_mode = '';
+select 1 as or_result where 1=1 || 2=2;
+select 1 as or_result where 1=0 || 2=3;
+select 1 as or_result where 1=1 ||/* comment */2=2;
+reset sql_mode;
+/* End OA#2701 */

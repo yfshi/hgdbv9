@@ -113,10 +113,11 @@ ERROR:  table "t1" does not exist
 create table t1 (c1 double, c2 varchar(20));
 insert t1 values (121,"16");
 select c1 + c1 * (c2 / 100) as col from t1;
-ERROR:  operator does not exist: character varying / integer
-LINE 1: select c1 + c1 * (c2 / 100) as col from t1;
-                             ^
-HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+  col   
+--------
+ 140.36
+(1 row)
+
 create table t2 select c1 + c1 * (c2 / 100) as col1, round(c1, 5) as col2, round(c1, 35) as col3, sqrt(c1*1e-15) col4 from t1;
 ERROR:  syntax error at or near "select"
 LINE 1: create table t2 select c1 + c1 * (c2 / 100) as col1, round(c...

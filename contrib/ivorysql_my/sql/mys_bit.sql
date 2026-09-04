@@ -330,3 +330,39 @@ create table t_bit_operator(b1 BIT(8), b2 bit(17), b3 BIT(32), b4 BIT(63), b5 BI
 insert into t_bit_operator values ('A', 1234, b'101010',0x1234,true);
 select mod(b4,3) from t_bit_operator;
 drop table t_bit_operator;
+
+/* Begin OA#2701 */
+CREATE TABLE biz_case_molecule_extend (
+	is_enriched_white mysbit(1),
+	is_enriched       mysbit(1),
+	is_deleted        int
+);
+
+INSERT INTO biz_case_molecule_extend VALUES (b'0', b'1', 0);
+
+SELECT is_enriched_white
+	FROM biz_case_molecule_extend
+	WHERE is_deleted = 0;
+
+SELECT pg_typeof(is_enriched_white)
+	FROM biz_case_molecule_extend
+	WHERE is_deleted = 0;
+
+SELECT CASE
+			WHEN 1 = 1 THEN is_enriched_white
+			ELSE is_enriched
+		END AS isEnriched
+	FROM biz_case_molecule_extend
+	LIMIT 1;
+
+SELECT pg_typeof(
+		CASE
+			WHEN 0 THEN is_enriched_white
+			ELSE is_enriched
+		END
+	)
+	FROM biz_case_molecule_extend
+	LIMIT 1;
+
+DROP TABLE IF EXISTS biz_case_molecule_extend;
+/* Begin OA#2701 */

@@ -1571,6 +1571,8 @@ select * from t2 where id1 between 'aa' and '1';
 
 select * from t2 where id1 between 'aa' and 1;
 WARNING:  Truncated incorrect DOUBLE value: 'aa'
+WARNING:  Truncated incorrect DOUBLE value: 'aa'
+WARNING:  Truncated incorrect DOUBLE value: 'aa'
  id1 | id2 
 -----+-----
  aa  | cc
