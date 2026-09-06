@@ -2662,14 +2662,14 @@ load_pg_audit(FILE *cmdfd)
 static void
 load_sqlite_fdw(FILE *cmdfd)
 {
-	PG_CMD_PUTS("CREATE EXTENSION sqlite_fdw WITH SCHEMA public;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION sqlite_fdw WITH SCHEMA hg_security;\n\n");
 }
 #endif
 
-static void 
+static void
 load_pg_track_settings(FILE *cmdfd)
 {
-	PG_CMD_PUTS("CREATE EXTENSION pg_track_settings WITH SCHEMA public;\n\n");
+	PG_CMD_PUTS("CREATE EXTENSION pg_track_settings WITH SCHEMA hg_security;\n\n");
 }
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
