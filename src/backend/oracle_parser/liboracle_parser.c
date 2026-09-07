@@ -696,8 +696,9 @@ ora_base_yylex(YYSTYPE *lvalp, YYLTYPE *llocp, ora_core_yyscan_t yyscanner)
 			 cur_token != SCONST)
 	{
 		int beginpos = yyextra->body_start;
-		int parenlevel = 0;
-		bool seen_open = false;
+		/* UNDER has already consumed the opening parenthesis in the grammar. */
+		int parenlevel = yyextra->body_level;
+		bool seen_open = (parenlevel > 0);
 
 		while (cur_token != 0)
 		{

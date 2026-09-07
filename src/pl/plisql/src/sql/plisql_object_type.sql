@@ -632,7 +632,7 @@ create type body ot_inherit_base as
 end;
 /
 
-create type ot_inherit_child under ot_inherit_base as object (
+create type ot_inherit_child under ot_inherit_base (
   empno integer,
   overriding member function describe return varchar2(60)
 ) not final;
@@ -660,7 +660,7 @@ end;
 select (ot_inherit_child('Bob', 11) as ot_inherit_base).describe();
 select ot_inherit_base.describe((ot_inherit_child('Cara', 12) as ot_inherit_base));
 
-create type ot_inherit_grandchild under ot_inherit_child as object (
+create type ot_inherit_grandchild under ot_inherit_child (
   deptno integer
 );
 
@@ -683,7 +683,7 @@ create type ot_final_root as object (
   name varchar2(30)
 ) final;
 
-create type ot_bad_child under ot_final_root as object (
+create type ot_bad_child under ot_final_root (
   empno integer
 );
 
@@ -697,7 +697,7 @@ create type body ot_override_missing as
 end;
 /
 
-create type ot_override_missing_child under ot_override_missing as object (
+create type ot_override_missing_child under ot_override_missing (
   overriding member function describe return varchar2(30)
 );
 
@@ -716,7 +716,7 @@ create type body ot_override_final_base as
 end;
 /
 
-create type ot_override_final_child under ot_override_final_base as object (
+create type ot_override_final_child under ot_override_final_base (
   overriding member function describe return varchar2(30)
 );
 
@@ -735,7 +735,7 @@ create type body ot_override_required_base as
 end;
 /
 
-create type ot_override_required_child under ot_override_required_base as object (
+create type ot_override_required_child under ot_override_required_base (
   member function describe return varchar2(30)
 );
 
@@ -745,7 +745,7 @@ create type ot_kind_conflict_member_base as object (
   member function label return integer
 ) not final;
 
-create type ot_kind_conflict_static_child under ot_kind_conflict_member_base as object (
+create type ot_kind_conflict_static_child under ot_kind_conflict_member_base (
   static function label return integer
 );
 
@@ -755,7 +755,7 @@ create type ot_kind_conflict_static_base as object (
   static function label return integer
 ) not final;
 
-create type ot_kind_conflict_member_child under ot_kind_conflict_static_base as object (
+create type ot_kind_conflict_member_child under ot_kind_conflict_static_base (
   member function label return integer
 );
 
@@ -783,7 +783,7 @@ create type body ot_over_combo_base as
 end;
 /
 
-create type ot_over_combo_child under ot_over_combo_base as object (
+create type ot_over_combo_child under ot_over_combo_base (
   overriding member function pick(x integer) return varchar2(40)
 );
 
@@ -837,7 +837,7 @@ create type body ot_chain_base as
 end;
 /
 
-create type ot_chain_child under ot_chain_base as object (
+create type ot_chain_child under ot_chain_base (
   team varchar2(30),
   overriding member function describe return varchar2(80),
   member function child_only return varchar2(80)
@@ -856,7 +856,7 @@ create type body ot_chain_child as
 end;
 /
 
-create type ot_chain_grandchild under ot_chain_child as object (
+create type ot_chain_grandchild under ot_chain_child (
   seqno integer,
   overriding member function describe return varchar2(80),
   member function grand_only return varchar2(80)
@@ -893,15 +893,15 @@ begin
 end;
 /
 
-create type ot_chain_final_mid under ot_chain_base as object (
+create type ot_chain_final_mid under ot_chain_base (
   code integer
 ) final;
 
-create type ot_chain_bad_type under ot_chain_final_mid as object (
+create type ot_chain_bad_type under ot_chain_final_mid (
   flag integer
 );
 
-create type ot_chain_bad_final_grand under ot_chain_child as object (
+create type ot_chain_bad_final_grand under ot_chain_child (
   overriding member function root_final return varchar2(80)
 );
 
@@ -924,7 +924,7 @@ create type body ot_ctor_parent as
 end;
 /
 
-create type ot_ctor_child under ot_ctor_parent as object (
+create type ot_ctor_child under ot_ctor_parent (
   age integer,
   member function child_desc return varchar2(80)
 );
@@ -953,7 +953,7 @@ end;
 
 select ot_ctor_child('TooFew', 1);
 
-create type ot_ctor_decl_child under ot_ctor_parent as object (
+create type ot_ctor_decl_child under ot_ctor_parent (
   age integer,
   constructor function ot_ctor_decl_child(p_name varchar2(30), p_code integer, p_age integer) return self as result,
   member function child_desc return varchar2(80)
@@ -1015,7 +1015,7 @@ create type body ot_gen_base as
 end;
 /
 
-create type ot_gen_child under ot_gen_base as object (
+create type ot_gen_child under ot_gen_base (
   age integer
 );
 
@@ -1067,15 +1067,15 @@ create type body ot_name_parent as
 end;
 /
 
-create type ot_name_dup_attr under ot_name_parent as object (
+create type ot_name_dup_attr under ot_name_parent (
   id integer
 );
 
-create type ot_name_attr_method under ot_name_parent as object (
+create type ot_name_attr_method under ot_name_parent (
   label integer
 );
 
-create type ot_name_method_attr under ot_name_parent as object (
+create type ot_name_method_attr under ot_name_parent (
   member function id return integer
 );
 
@@ -1096,7 +1096,7 @@ create type body ot_static_hide_parent as
 end;
 /
 
-create type ot_static_hide_child under ot_static_hide_parent as object (
+create type ot_static_hide_child under ot_static_hide_parent (
   static function label(p_value integer) return varchar2(40)
 );
 
@@ -1118,7 +1118,7 @@ begin
 end;
 /
 
-create type ot_static_hide_bad under ot_static_hide_parent as object (
+create type ot_static_hide_bad under ot_static_hide_parent (
   overriding static function label(p_value integer) return varchar2(40)
 );
 
@@ -1135,17 +1135,17 @@ create type ot_default_arg_object as object (
 );
 
 create type body ot_default_arg_object as
-  member function greet(prefix varchar2(20) default 'hi', times integer default 1) return varchar2(80) is
+  member function greet(prefix varchar2(20), times integer) return varchar2(80) is
   begin
     return prefix || ':' || self.name || ':' || times;
   end;
 
-  static function build_label(base varchar2(30), tag integer default 7) return varchar2(40) is
+  static function build_label(base varchar2(30), tag integer) return varchar2(40) is
   begin
     return base || ':' || tag;
   end;
 
-  constructor function ot_default_arg_object(p_name varchar2(30) default 'CtorDefault') return self as result is
+  constructor function ot_default_arg_object(p_name varchar2(30)) return self as result is
   begin
     self.name := p_name;
     return;
@@ -1265,7 +1265,7 @@ end;
 /
 
 -- Object type with UNDER inheritance and overriding
-create type ot_dump_child under ot_dump_base as object (
+create type ot_dump_child under ot_dump_base (
   extra varchar2(30),
   overriding member function describe return varchar2(100)
 );
@@ -1326,3 +1326,110 @@ end;
 drop type ot_dump_child cascade;
 drop type ot_dump_base cascade;
 drop type ot_dump_final cascade;
+
+-- ============================================================================
+-- [definition-time/runtime] Oracle creation syntax and method contracts
+-- ============================================================================
+create type ot_compat_base is object (
+  id integer,
+  member function add_value(p_value integer default 7) return integer,
+  member function add_value(p_value varchar2) return varchar2,
+  member function inherited_value(p_value integer default 9) return integer,
+  final static function locked(p_value integer) return integer
+) not final;
+
+-- Reverse the overload order in the body; defaults come from the matching spec.
+create type body ot_compat_base as
+  member function add_value(p_value varchar2) return varchar2 is
+  begin
+    return 'text=' || p_value;
+  end;
+  member function add_value(p_value integer) return integer is
+  begin
+    return self.id + p_value;
+  end;
+  member function inherited_value(p_value integer) return integer is
+  begin
+    return self.id + p_value;
+  end;
+  final static function locked(p_value integer) return integer is
+  begin
+    return p_value;
+  end;
+end;
+/
+
+-- OR REPLACE and a schema-qualified parent must use the same UNDER syntax.
+create or replace type ot_compat_child under public.ot_compat_base (
+  tag varchar2(10),
+  overriding member function add_value(p_value integer default 7) return integer,
+  static function locked(p_value varchar2) return varchar2
+) not final;
+
+create type body ot_compat_child as
+  overriding member function add_value(p_value integer) return integer is
+  begin
+    return self.id + p_value + 100;
+  end;
+  static function locked(p_value varchar2) return varchar2 is
+  begin
+    return p_value;
+  end;
+end;
+/
+
+select ot_compat_base(1).add_value();
+select ot_compat_base(1).add_value('abc');
+select ot_compat_child(2, 'child').add_value();
+select ot_compat_child(2, 'child').add_value(p_value => 3);
+select ot_compat_child(2, 'child').inherited_value();
+select ot_compat_child.locked('overload');
+
+-- A subtype can inherit all attributes and methods without declaring new ones.
+create type ot_compat_empty under public.ot_compat_base();
+create type body ot_compat_empty as
+end;
+/
+select ot_compat_empty(4).add_value();
+
+declare
+  c ot_compat_child := ot_compat_child(3, 'pl');
+begin
+  raise notice 'compat_defaults=%,%', c.add_value(), c.inherited_value();
+end;
+/
+
+-- Root declarations cannot override, and STATIC cannot be OVERRIDING.
+create type ot_compat_bad_root as object (
+  id integer, overriding member function f return integer
+);
+create type ot_compat_bad_static as object (
+  id integer, overriding static procedure p
+);
+create type ot_compat_bad_static_child under ot_compat_base (
+  overriding static function locked(p_value integer) return integer
+);
+
+-- An override must preserve the inherited parameter names.
+create type ot_compat_bad_names under ot_compat_base (
+  overriding member function add_value(renamed integer) return integer
+);
+
+-- FINAL prevents static hiding, including through an intermediate subtype.
+create type ot_compat_bad_final under ot_compat_base (
+  static function locked(p_value integer) return integer
+);
+create type ot_compat_bad_final_chain under ot_compat_child (
+  static function locked(p_value integer) return integer
+);
+
+-- Reject the old subtype spelling for CREATE and CREATE OR REPLACE.
+create type ot_compat_bad_syntax under ot_compat_base as object (n integer);
+create or replace type ot_compat_bad_syntax under ot_compat_base as object (n integer);
+
+-- OR REPLACE also accepts IS OBJECT; default type finality remains FINAL.
+create or replace type ot_compat_final is object (n integer);
+create type ot_compat_bad_subtype under ot_compat_final (m integer);
+
+drop type ot_compat_final;
+drop type ot_compat_base cascade;

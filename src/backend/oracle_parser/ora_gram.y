@@ -9005,7 +9005,7 @@ DefineStmt:
 					$$ = (Node *)n;
 				}
 			/* Begin - ReqID:SRS-SQL-CustomObject */
-			| CREATE TYPE_P any_name AS OBJECT_P
+			| CREATE TYPE_P any_name object_type_as_or_is OBJECT_P
 				{
 					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
 					set_oracle_plsql_bodystart(yyscanner, @5 + 6, 0);
@@ -9020,7 +9020,7 @@ DefineStmt:
 					n->objsrc = $8 ? psprintf("%s %s", $7, $8) : $7;
 					$$ = (Node *) n;
 				}
-			| CREATE OR REPLACE TYPE_P any_name AS OBJECT_P
+			| CREATE OR REPLACE TYPE_P any_name object_type_as_or_is OBJECT_P
 				{
 					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
 					set_oracle_plsql_bodystart(yyscanner, @7 + 6, 0);
@@ -9035,10 +9035,10 @@ DefineStmt:
 					n->objsrc = $10 ? psprintf("%s %s", $9, $10) : $9;
 					$$ = (Node *) n;
 				}
-			| CREATE TYPE_P any_name UNDER_P any_name AS OBJECT_P
+			| CREATE TYPE_P any_name UNDER_P any_name '('
 				{
 					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
-					set_oracle_plsql_bodystart(yyscanner, @7 + 6, 0);
+					set_oracle_plsql_bodystart(yyscanner, @6, 1);
 				}
 			object_type_src opt_object_type_finality
 				{
@@ -9047,13 +9047,13 @@ DefineStmt:
 					n->replace = false;
 					n->objname = $3;
 					n->parentname = $5;
-					n->objsrc = $10 ? psprintf("%s %s", $9, $10) : $9;
+					n->objsrc = $9 ? psprintf("%s %s", $8, $9) : $8;
 					$$ = (Node *) n;
 				}
-			| CREATE OR REPLACE TYPE_P any_name UNDER_P any_name AS OBJECT_P
+			| CREATE OR REPLACE TYPE_P any_name UNDER_P any_name '('
 				{
 					set_oracle_plsql_body(yyscanner, OraBody_OBJECTTYPE);
-					set_oracle_plsql_bodystart(yyscanner, @9 + 6, 0);
+					set_oracle_plsql_bodystart(yyscanner, @8, 1);
 				}
 			object_type_src opt_object_type_finality
 				{
@@ -9062,7 +9062,7 @@ DefineStmt:
 					n->replace = true;
 					n->objname = $5;
 					n->parentname = $7;
-					n->objsrc = $12 ? psprintf("%s %s", $11, $12) : $11;
+					n->objsrc = $11 ? psprintf("%s %s", $10, $11) : $10;
 					$$ = (Node *) n;
 				}
 			/* End - ReqID:SRS-SQL-CustomObject */
@@ -12518,6 +12518,11 @@ operator_with_argtypes:
  *
  *****************************************************************************/
 /* Begin - ReqID:SRS-SQL-CustomObject */
+object_type_as_or_is:
+			AS
+			| IS
+		;
+
 object_type_src:	Sconst	{ $$ = $1; }
 		;
 
