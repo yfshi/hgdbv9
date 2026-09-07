@@ -4731,15 +4731,15 @@ PARALLEL SAFE;
 
 /* Begin - SRS-MYSQL-BUILDINFUNCTION */
 CREATE OR REPLACE FUNCTION ivymy.crc32(varbinary)
-RETURNS int8
+RETURNS uint4
 AS 'MODULE_PATHNAME','crc32'
 LANGUAGE C
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
 
-CREATE FUNCTION ivymy.crc32(bytea)
-RETURNS int8
+CREATE OR REPLACE FUNCTION ivymy.crc32(bytea)
+RETURNS uint4
 AS 'MODULE_PATHNAME','crc32'
 LANGUAGE C
 STRICT
@@ -4747,7 +4747,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.crc32(text)
-RETURNS int8
+RETURNS uint4
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
 STRICT
@@ -4755,7 +4755,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.crc32(int8)
-RETURNS int8
+RETURNS uint4
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
 STRICT
@@ -4763,7 +4763,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.crc32(int4)
-RETURNS int8
+RETURNS uint4
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
 STRICT
@@ -4771,7 +4771,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.crc32(numeric)
-RETURNS int8
+RETURNS uint4
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
 STRICT
@@ -4779,7 +4779,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.crc32(ivy_hex)
-RETURNS int8
+RETURNS uint4
 AS 'SELECT ivymy.crc32($1::ivymy.varbinary)'
 LANGUAGE SQL
 STRICT
@@ -4787,7 +4787,7 @@ IMMUTABLE
 PARALLEL SAFE;
 
 CREATE OR REPLACE FUNCTION ivymy.crc32(boolean)
-RETURNS int8
+RETURNS uint4
 AS 'SELECT ivymy.crc32($1::int8::ivymy.varbinary)'
 LANGUAGE SQL
 STRICT
@@ -4873,6 +4873,64 @@ LANGUAGE SQL
 STRICT
 IMMUTABLE
 PARALLEL SAFE;
+
+/* Begin - bug#9163 */
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mystimes, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mystime, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mysdatetimes, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mysdatetime, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mystimestamps, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mystimestamp, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::mystimestamps, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.truncate(ivymy.mysdate, int4)
+RETURNS double
+AS 'SELECT ivymy.truncate($1::double, $2)'
+LANGUAGE SQL
+STRICT
+IMMUTABLE
+PARALLEL SAFE;
+/* End - bug#9163 */
 
 CREATE OR REPLACE FUNCTION ivymy.sqrt(double)
 RETURNS double

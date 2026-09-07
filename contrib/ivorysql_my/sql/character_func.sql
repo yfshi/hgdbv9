@@ -1035,6 +1035,10 @@ insert into t values (1, 'A'),(2, 'B'),(3, 'C'),(4, 'D');
 select a, b, crc32(a) from t group by a, b having crc32(max(a)) = 450215437;
 drop table t;
 
+create table type_crc32 as select crc32(99999999999999999999999999);
+desc type_crc32;
+drop table type_crc32;
+
 -- TRUNCATE
 select truncate(0, 0);
 select truncate(6666, 3);
@@ -1155,6 +1159,57 @@ select truncate(1.7976931348623157E+308::double, -12);
 select truncate(-1.7976931348623157E+308::double, -7);
 select truncate(-1.7976931348623157E+308::double, -12);
 select truncate('1.7976931348623157E+308', -12);
+
+/* Begin - bug#9163 */
+create table t_1(a datetime(6));
+insert into t_1 values('2020-06-18 10:05:36.111222');
+select truncate(a, 4) from t_1;
+create table tru_1 as select truncate(a, 4) from t_1;
+desc tru_1;
+drop table t_1,tru_1;
+
+create table t_2(a time(6));
+insert into t_2 values('10:05:36.111222');
+select truncate(a, 5) from t_2;
+create table tru_2 as select truncate(a, 5) from t_2;
+desc tru_2;
+drop table t_2,tru_2;
+
+create table t_3(a datetime);
+insert into t_3 values('2020-06-18 10:05:36');
+select truncate(a, 2) from t_3;
+create table tru_3 as select truncate(a, 2) from t_3;
+desc tru_3;
+drop table t_3,tru_3;
+
+create table t_4(a time);
+insert into t_4 values('10:05:36');
+select truncate(a, 2) from t_4;
+create table tru_4 as select truncate(a, 2) from t_4;
+desc tru_4;
+drop table t_4,tru_4;
+
+create table t_5(a timestamp(4));
+insert into t_5 values('2020-06-18 10:05:36.1234');
+select truncate(a, 3) from t_5;
+create table tru_5 as select truncate(a, 3) from t_5;
+desc tru_5;
+drop table t_5,tru_5;
+
+create table t_6(a timestamp);
+insert into t_6 values('2020-06-18 10:05:36');
+select truncate(a, 2) from t_6;
+create table tru_6 as select truncate(a, 2) from t_6;
+desc tru_6;
+drop table t_6,tru_6;
+
+create table t_7(a date);
+insert into t_7 values('2020-06-18');
+select truncate(a, -2) from t_7;
+create table tru_7 as select truncate(a, -2) from t_7;
+desc tru_7;
+drop table t_7,tru_7;
+/* End - bug#9163 */
 
 -- SQRT
 select sqrt(0);
