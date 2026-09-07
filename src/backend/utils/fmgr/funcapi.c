@@ -1774,7 +1774,8 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 											   proargnames,
 											   rettype, /* ReqID:SRS-SQL-PACKAGE */
 											   procform->prointisnumber,
-											   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+											   proargtypenames, /* ReqID:SRS-SQL-PACKAGE */
+											   procform->oid /* BUG#Z9039 */);
 	else
 	/* End - ReqID:SRS-SQL-FUNCOUT */
 		return build_function_result_tupdesc_d_ext(procform->prokind,
@@ -1782,7 +1783,8 @@ build_function_result_tupdesc_t(HeapTuple procTuple)
 												   proargmodes,
 												   proargnames,
 												   procform->prointisnumber,
-												   proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+												   proargtypenames, /* ReqID:SRS-SQL-PACKAGE */
+												   procform->oid /* BUG#Z9039 */);
 }
 
 
@@ -2013,7 +2015,8 @@ build_function_result_tupdesc_d(char prokind,
 								Datum proargmodes,
 								Datum proargnames)
 {
-	return build_function_result_tupdesc_d_ext(prokind, proallargtypes, proargmodes, proargnames, false, PointerGetDatum(NULL));
+	return build_function_result_tupdesc_d_ext(prokind, proallargtypes, proargmodes, proargnames, false, PointerGetDatum(NULL),
+											InvalidOid /* BUG#Z9039 */);
 }
 
 TupleDesc
@@ -2022,7 +2025,8 @@ build_function_result_tupdesc_d_ext(char prokind,
 									Datum proargmodes,
 									Datum proargnames,
 									bool intisnumber, /* BUG:M0000068 */
-									Datum proargtypenames) /* ReqID:SRS-SQL-PACKAGE */
+									Datum proargtypenames, /* ReqID:SRS-SQL-PACKAGE */
+									Oid funcid /* BUG#Z9039 */)
 {
 	TupleDesc	desc;
 	ArrayType  *arr;
@@ -2163,9 +2167,15 @@ build_function_result_tupdesc_d_ext(char prokind,
 		/*
 		 * If the guc pararmeter out_parameter_column_position is set to true,
 		 * make out parameter column name to special,
-		 * so we can distinguish it from the return value
+		 * so we can distinguish it from the return value.
+		 * Skip system functions (OID < FirstNormalObjectId) to avoid
+		 * renaming OUT parameter columns of built-in functions.
 		 */
-		if (out_parameter_column_position)
+		if (out_parameter_column_position
+			/* Begin - BUG#Z9039 */
+			&& ORA_MODE == compatible_mode
+			&& funcid >= FirstNormalObjectId)
+			/* End - BUG#Z9039 */
 			pname = psprintf("_column_%d", i + 1);
 		else if (argnames)
 		/* End - ReqID:SRS-CMD-PSQL */
@@ -2220,7 +2230,8 @@ build_plisql_function_result_tupdesc_d(char prokind,
 								Datum proargnames,
 								Oid prorettype,
 								bool intisnumber, /* BUG:M0000068 */
-								Datum proargtypenames) /* ReqID:SRS-SQL-PACKAGE */
+								Datum proargtypenames, /* ReqID:SRS-SQL-PACKAGE */
+								Oid funcid /* BUG#Z9039 */)
 {
 	TupleDesc	desc;
 	ArrayType  *arr;
@@ -2361,9 +2372,14 @@ build_plisql_function_result_tupdesc_d(char prokind,
 		/*
 		 * If the guc pararmeter out_parameter_column_position is set to true,
 		 * make out parameter column name to special,
-		 * so we can distinguish it from the return value
+		 * so we can distinguish it from the return value.
+		 * Skip system functions (OID < FirstNormalObjectId) to avoid
+		 * renaming OUT parameter columns of built-in functions.
 		 */
-		if (out_parameter_column_position)
+		if (out_parameter_column_position
+			/* Begin - BUG#Z9039 */
+			&& funcid >= FirstNormalObjectId)
+			/* End - BUG#Z9039 */
 			pname = psprintf("_column_%d", i + 1);
 		else if (argnames)
 			pname = TextDatumGetCString(argnames[i]);

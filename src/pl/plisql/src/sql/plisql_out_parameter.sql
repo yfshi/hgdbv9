@@ -1656,3 +1656,14 @@ drop table test_tb;
 --bug#8192
 --error,shoud not change
 set ivorysql.result_first = false;
+
+--/* Begin - BUG#Z9039 */
+set ivorysql.out_parameter_column_position = false;
+select name, position from get_parameter_descr('insert into tab values(1)');
+
+set ivorysql.out_parameter_column_position = true;
+select name, position from get_parameter_descr('insert into tab values(1)');
+
+reset ivorysql.allow_out_parameter_const;
+reset ivorysql.out_parameter_column_position;
+--/* End - BUG#Z9039 */
