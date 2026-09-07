@@ -5382,6 +5382,12 @@ PostgresMain(int argc, char *argv[],
 			ProcessConfigFile(PGC_SIGHUP);
 		}
 
+			
+/* Begin - ReqID:SRS-SECURITY-AUDIT */
+		if (audit_CommandStart_hook)
+			(*audit_CommandStart_hook)();
+/* End - ReqID:SRS-SECURITY-AUDIT */
+
 		/*
 		 * Begin - Req: SRS-MYSQL-PROTOCOL
 		 * If firstchar is EOF, then we need to disconnect, ortherwise
@@ -5402,11 +5408,6 @@ PostgresMain(int argc, char *argv[],
 		 */
 		if (ignore_till_sync && firstchar != EOF)
 			continue;
-
-/* Begin - ReqID:SRS-SECURITY-AUDIT */
-		if (audit_CommandStart_hook)
-			(*audit_CommandStart_hook)();
-/* End - ReqID:SRS-SECURITY-AUDIT */
 
 		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 		sql_resource_limit_start();

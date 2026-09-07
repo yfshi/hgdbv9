@@ -37,6 +37,7 @@ sm3_password_check(Port *port, char *rolpassword)
 
 mysql_auth_plugin_t sm3_password = {
     .type = PASSWORD_TYPE_SM3,
+	.method = uaSM3,
     .password_generate = NULL,
     .passwd_check = sm3_password_check,
 };

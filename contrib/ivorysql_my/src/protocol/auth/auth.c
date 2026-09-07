@@ -10,6 +10,7 @@
 #include "libpq/crypt.h"
 #include "libpq/libpq.h"
 #include "miscadmin.h"
+#include "pg_contrib_audit.h"
 #include "replication/walsender.h"
 #include "utils/builtins.h"
 #include "utils/guc.h"
@@ -446,6 +447,11 @@ mysql_conn_handshake(Port *port)
 
     MemoryContextSwitchTo(oldcontext);
 
+	/* begin oa#2754: mysql get audit get conninfo */
+	if (audit_SaveConnectInfo_hook)
+		(*audit_SaveConnectInfo_hook)(port);
+    /* end oa#2754 */
+
     // Set default scheam value and check && set search_path in mysql_client_authentication_finish()
     if (handshakeResp->database)
         mysql_conn_info.schema = pstrdup(handshakeResp->database);
@@ -482,6 +488,14 @@ exec_mysql_password_auth(Port *port)
                 errmsg("Mysql compatition mode unsupport this auth method"));
     }
 
+    /* begin oa#2754 */
+    if (auth_plugin->method != port->hba->auth_method)
+    {
+        ereport(ERROR,
+                errmsg("auth method and password_encryption do not match!"));
+    }
+    /* end oa#2754 */
+
     // parse shadow password stored in pg_authid and do password check
     ret = auth_plugin->passwd_check(port, rolpassword);
 
@@ -498,6 +512,7 @@ exec_mysql_password_auth(Port *port)
 void
 mysql_client_authentication(Port *port)
 {
+	int			status = STATUS_OK;
 	/*
 	 * Get the authentication method to use for this frontend/database
 	 * combination.  Note: we do not parse the file at this point; this has
@@ -658,12 +673,7 @@ mysql_client_authentication(Port *port)
 #ifdef USE_GMSSL
         case uaSM3:
 #endif
-            if (exec_mysql_password_auth(port) != STATUS_OK)
-            {
-                ereport(ERROR,
-                        (errcode(ERRCODE_INVALID_PASSWORD),
-                         errmsg("Access denied for user '%s'@'%s' (using password: YES)", port->user_name, port->remote_host)));
-            }
+            status = exec_mysql_password_auth(port);
             break;
 #ifdef USE_GMSSL
         case uaMD5SM3:
@@ -704,6 +714,22 @@ mysql_client_authentication(Port *port)
 			// auth success
 			break;
 	}
+	
+    /* begin oa#2754 */
+	if (audit_Save_ConnectAuthMethod_hook)
+		(*audit_Save_ConnectAuthMethod_hook)(port);
+
+	if (ClientAuthentication_hook)
+		(*ClientAuthentication_hook) (port, status);
+
+	
+	if (status != STATUS_OK)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PASSWORD),
+				 errmsg("Access denied for user '%s'@'%s' (using password: YES)", port->user_name, port->remote_host)));
+	}
+    /* end oa#2754 */
 }
 
 void

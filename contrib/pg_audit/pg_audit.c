@@ -393,7 +393,6 @@ static void audit_write_record_list(void);
 static void audit_secmon_threshold_check(void);
 static void audit_write_record_system(AuditEvent *event);
 static char *audit_get_privilege_from_type(char *type);
-static char *get_auth_method(UserAuth method);
 static char *get_remote_mac(Port *port_m);
 static AuditEvent *generateSystemEvent(AuditSystemEvent event, AuditResult result);
 static void audit_cmd(void);
@@ -4582,83 +4581,6 @@ audit_getobject(Oid relOid_in, Relation rel_in)
 
 }
 
-/*
- * obtain authentication method
- */
-static char *
-get_auth_method(UserAuth method)
-{
-	char	*result = NULL;
-
-	result = (char *)malloc(AUTHMETHOD_LEN);
-
-	if (result == NULL)
-		return NULL;
-
-	switch (method)
-	{
-		case uaReject:
-			strcpy(result, "reject");
-			break;
-		case uaTrust:
-			strcpy(result, "trust");
-			break;
-		case uaIdent:
-			strcpy(result, "ident");
-			break;
-		case uaPassword:
-			strcpy(result, "password");
-			break;
-		case uaMD5:
-			strcpy(result, "md5");
-			break;
-#ifdef USE_GMSSL
-		case uaSM3:
-			strcpy(result, "sm3");
-			break;
-		case uaSCRAMsha256:
-			strcpy(result, "scram-sha-256");
-			break;
-		case uaSCRAMsm3:
-			strcpy(result, "scram-sm3");
-			break;
-#else
-		case uaSCRAMsha256:
-			strcpy(result, "scram-sha-256");
-			break;
-#endif
-		case uaGSS:
-			strcpy(result, "gss");
-			break;
-		case uaSSPI:
-			strcpy(result, "sspi");
-			break;
-		case uaPAM:
-			strcpy(result, "pam");
-			break;
-		case uaBSD:
-			strcpy(result, "bsd");
-			break;
-		case uaLDAP:
-			strcpy(result, "ldap");
-			break;
-		case uaCert:
-			strcpy(result, "cert");
-			break;
-		case uaRADIUS:
-			strcpy(result, "radius");
-			break;
-		case uaPeer:
-			strcpy(result, "peer");
-			break;
-		default:
-			break;
-	}
-
-	return result;
-}
-
-
 /* 
  * obtain the mac address of the client
  */
@@ -4747,14 +4669,12 @@ get_remote_mac(Port *port_m)
 static void
 audit_Save_ConnectAuthMethod(Port *port)
 {
-	char	*auth_method = NULL;
-
 	if (audit_GUC.audit_enable != AUDIT_ON)
 		return;
 
-	auth_method = get_auth_method(port->hba->auth_method);
-	if (auth_method != NULL)
-		memcpy(&(clientInfo.authmethod), auth_method, strlen(auth_method) + 1);
+	/* begin oa#2754 */
+	strlcpy(clientInfo.authmethod, hba_authname(port->hba->auth_method), AUTHMETHOD_LEN);
+	/* end oa#2754 */
 }
 
 
