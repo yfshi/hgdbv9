@@ -832,3 +832,77 @@ SELECT id, status
 
 DROP TABLE hg_force_index_a;
 DROP TABLE hg_force_index_b;
+
+------ bug#9175
+---- case 1: create index on table
+CREATE TABLE tab_1(a_1 int, b_1 varchar(20));
+CREATE TABLE tab_2(a_2 int, b_2 varchar(20));
+CREATE TABLE tab_3(a_3 int, b_3 varchar(20));
+CREATE INDEX idx_name ON tab_1(b_1);
+CREATE INDEX idx_name ON tab_2(a_2);
+CREATE INDEX idx_name ON tab_3(b_3);
+
+SHOW CREATE TABLE tab_1;
+SHOW CREATE TABLE tab_2;
+SHOW CREATE TABLE tab_3;
+\d tab_1;
+\d tab_2;
+\d tab_3;
+
+DROP TABLE tab_1,tab_2,tab_3;
+
+---- case 2: create unique index on table
+CREATE TABLE tab_u1(a_1 int, b_1 varchar(20));
+CREATE TABLE tab_u2(a_2 int, b_2 varchar(20));
+CREATE UNIQUE INDEX idx_u_name ON tab_u1(b_1);
+CREATE UNIQUE INDEX idx_u_name ON tab_u2(a_2);
+
+SHOW CREATE TABLE tab_u1;
+SHOW CREATE TABLE tab_u2;
+\d tab_u1;
+\d tab_u2;
+
+DROP TABLE tab_u1,tab_u2;
+
+---- case 3: create FULLTEXT| SPATIAL index on table
+-- create fulltext index
+CREATE TABLE tab_fs1(a_1 int, b_1 varchar(20));
+CREATE TABLE tab_fs2(a_2 int, b_2 varchar(20));
+CREATE FULLTEXT INDEX idx_fs_name ON tab_fs1(b_1);
+CREATE SPATIAL INDEX idx_fs_name ON tab_fs2(a_2);
+
+SHOW CREATE TABLE tab_fs1;
+SHOW CREATE TABLE tab_fs2;
+\d tab_fs1;
+\d tab_fs2;
+
+DROP TABLE tab_fs1,tab_fs2;
+
+-- create table(fulltext index)
+CREATE TABLE tab_fs1(a_1 int, b_1 varchar(20), FULLTEXT INDEX idx_fs_name(b_1));
+CREATE TABLE tab_fs2(a_2 int, b_2 varchar(20), SPATIAL INDEX idx_fs_name(a_2));
+
+SHOW CREATE TABLE tab_fs1;
+SHOW CREATE TABLE tab_fs2;
+\d tab_fs1;
+\d tab_fs2;
+
+DROP TABLE tab_fs1,tab_fs2;
+
+---- bug#9176
+-- SHOW CREATE TABLE: UNIQUE CONSTRAINT uses logical name, never mangled physical
+CREATE TABLE t_key1(a int, KEY uk_meta(a));
+CREATE TABLE t_ukey2(a int, UNIQUE KEY uk_meta(a));
+SHOW CREATE TABLE t_key1;
+SHOW CREATE TABLE t_ukey2;
+\d t_key1;
+\d t_ukey2;
+DROP TABLE t_key1, t_ukey2;
+
+CREATE TABLE t_ukey1(a int, UNIQUE KEY uk_meta(a));
+CREATE TABLE t_ukey2(a int, UNIQUE KEY uk_meta(a));
+\d t_ukey1;
+\d t_ukey2;
+SHOW CREATE TABLE t_ukey1;
+SHOW CREATE TABLE t_ukey2;
+DROP TABLE t_ukey1, t_ukey2;

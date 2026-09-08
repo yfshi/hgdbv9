@@ -14,6 +14,7 @@
 #include "postgres.h"
 
 #include "access/xact.h"
+#include "catalog/index.h"	/* bug#9177 */
 #include "catalog/pg_type.h"
 #include "commands/createas.h"
 #include "commands/defrem.h"
@@ -3550,8 +3551,13 @@ explain_get_index_name(Oid indexId)
 		result = NULL;
 	if (result == NULL)
 	{
-		/* default behavior: look it up in the catalogs */
-		result = get_rel_name(indexId);
+		/* Begin - bug#9177 */
+		if (compatible_mode == MYS_MODE)
+			result = GetLogicalIndexNameByIndex(indexId);
+		/* End - bug#9177 */
+		else
+			/* default behavior: look it up in the catalogs */
+			result = get_rel_name(indexId);
 		if (result == NULL)
 			elog(ERROR, "cache lookup failed for index %u", indexId);
 	}
