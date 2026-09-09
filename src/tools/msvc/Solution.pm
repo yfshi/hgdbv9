@@ -305,6 +305,7 @@ sub GenerateFiles
 		DEF_ORAPORT_STR             => qq{"$oraport"},
 		DEF_MYSPORT                 => $mysport,
 		DEF_MYSPORT_STR             => qq{"$mysport"},
+		ENABLE_AUDIT_PARTITION_TABLE		=> undef,
 		ENABLE_DKY_BETA_FEATURE		=> undef,
 		ENABLE_GSS                 => $self->{options}->{gss} ? 1 : undef,
 		ENABLE_NLS                 => $self->{options}->{nls} ? 1 : undef,

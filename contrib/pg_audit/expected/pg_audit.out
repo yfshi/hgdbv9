@@ -1421,7 +1421,9 @@ select * from hg_security.show_audit_param();
  audit.ignore_sync_lsn   | on
  audit.ignore_no_data    | off
  audit.nested_statements | off
-(23 rows)
+ audit.interval_time     | 24
+ audit.del_log_count     | 100
+(25 rows)
 
 /* audit.app */
 truncate hg_security.pg_audit_log;

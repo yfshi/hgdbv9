@@ -2645,7 +2645,7 @@ static void
 load_pg_audit(FILE *cmdfd)
 {
 #ifdef USE_SQLITE
-#ifndef ENABLE_DKY_BETA_FEATURE
+#ifndef ENABLE_AUDIT_PARTITION_TABLE
 	PG_CMD_PUTS("CREATE EXTENSION pg_audit WITH SCHEMA hg_security;\n\n");
 #else
 	PG_CMD_PUTS("CREATE EXTENSION pg_audit VERSION '1.2' SCHEMA hg_security;\n\n");

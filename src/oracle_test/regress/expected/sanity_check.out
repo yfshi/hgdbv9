@@ -10,6 +10,7 @@ VACUUM;
 SELECT relname, relhasindex
    FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = relnamespace
    WHERE relkind IN ('r', 'p') AND (nspname ~ '^pg_temp_') IS NOT TRUE
+   AND relname NOT LIKE 'pg_audit_log%'
    ORDER BY relname;
 _ivorysql_ora_exception_map|t
 a|f
@@ -116,7 +117,6 @@ pg_amproc|t
 pg_attrdef|t
 pg_attribute|t
 pg_audit_config|t
-pg_audit_log|f
 pg_auth_members|t
 pg_authid|t
 pg_cast|t

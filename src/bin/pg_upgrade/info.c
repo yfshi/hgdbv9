@@ -468,6 +468,19 @@ get_rel_infos(ClusterInfo *cluster, DbInfo *dbinfo, bool skip_gtt)
 			 "     (n.nspname = 'pg_catalog' AND "
 			 "      relname IN ('pg_largeobject') ))), ",
 			 FirstNormalObjectId);
+/* Begin - SECURITY-AUTHENTICATION-METHOD */
+#elif defined(USE_SQLITE) && defined(ENABLE_AUDIT_PARTITION_TABLE)
+snprintf(query + strlen(query), sizeof(query) - strlen(query),
+		 "	  ((n.nspname !~ '^pg_temp_' AND n.nspname !~ '^hg_security' AND "
+		 "		n.nspname !~ '^pg_toast_temp_' AND "
+		 "		n.nspname NOT IN ('pg_catalog', 'information_schema', "
+		 "						  'binary_upgrade', 'pg_toast') AND "
+		 "		c.oid >= %u::pg_catalog.oid) OR "
+		 "	   (n.nspname = 'pg_catalog' AND "
+		 "		relname IN ('pg_largeobject') ))), ",
+		 FirstNormalObjectId);
+/* End - SECURITY-AUTHENTICATION-METHOD */
+
 #else
 	snprintf(query + strlen(query), sizeof(query) - strlen(query),
 			 "	  ((n.nspname !~ '^pg_temp_' AND "

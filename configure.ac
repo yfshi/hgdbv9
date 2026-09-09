@@ -1149,6 +1149,16 @@ AC_MSG_RESULT([$enable_dky_beta_feature])
 AC_SUBST(enable_dky_beta_feature)
 
 #
+# audit partition table
+#
+AC_MSG_CHECKING([whether to build with audit partition table support])
+PGAC_ARG_BOOL(enable, audit-partition-table, no,
+             [enable audit partition table],
+              [AC_DEFINE([ENABLE_AUDIT_PARTITION_TABLE], 1, [Define to 1 to build with audit partition table. (--enable-audit-partition-table)])])
+AC_MSG_RESULT([$enable_audit_partition_table])
+AC_SUBST(enable_audit_partition_table)
+
+#
 # PAM
 #
 AC_MSG_CHECKING([whether to build with PAM support])

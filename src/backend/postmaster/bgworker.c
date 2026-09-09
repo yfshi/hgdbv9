@@ -1381,3 +1381,34 @@ GetBackgroundWorkerTypeByPid(pid_t pid)
 
 	return result;
 }
+
+/* Begin - SECURITY-AUTHENTICATION-METHOD */
+const pid_t
+GetBackgroundWorkerPidByBgwName(const char *bgwork_name)
+{
+	int			slotno;
+	pid_t pid = 0;
+	pid_t cur_pid = getpid();
+
+	if (bgwork_name == NULL)
+		return pid;
+
+	LWLockAcquire(BackgroundWorkerLock, LW_SHARED);
+
+	for (slotno = 0; slotno < BackgroundWorkerData->total_slots; slotno++)
+	{
+		BackgroundWorkerSlot *slot = &BackgroundWorkerData->slot[slotno];
+
+		if (slot->pid > 0 && slot->pid != cur_pid &&
+			strncmp(slot->worker.bgw_name, bgwork_name, strlen(bgwork_name) + 1) == 0)
+		{
+			pid = slot->pid;
+			break;
+		}
+	}
+
+	LWLockRelease(BackgroundWorkerLock);
+
+	return pid;
+}
+/* End - SECURITY-AUTHENTICATION-METHOD */

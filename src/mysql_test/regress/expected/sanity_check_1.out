@@ -10,6 +10,7 @@ VACUUM;
 SELECT relname, relhasindex
    FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = relnamespace
    WHERE relkind IN ('r', 'p') AND (nspname ~ '^pg_temp_') IS NOT TRUE
+   AND relname NOT LIKE 'pg_audit_log%'
    ORDER BY relname;
 a|f
 a_star|f
