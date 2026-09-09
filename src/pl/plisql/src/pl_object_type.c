@@ -1456,10 +1456,15 @@ collect_effective_object_type_methods(Oid current_objectid,
 									  List **methods)
 {
 	Oid			parentobjoid;
+	HeapTuple	objtup;
 	HeapTuple	bodytup;
+	Form_pg_object_type objform;
 	Datum		datum;
 	bool		isnull;
+	char	   *typname;
+	char	   *objsrc;
 	char	   *bodysrc;
+	ObjectTypeSpec *spec;
 	ObjectTypeBody *body;
 	ListCell   *lc;
 
@@ -1486,18 +1491,55 @@ collect_effective_object_type_methods(Oid current_objectid,
 		return;
 	}
 
-	body = plisql_parse_object_type_body(get_object_type_name(current_objectid),
-										 bodysrc);
+	objtup = SearchSysCache1(OBJTYPEOID, ObjectIdGetDatum(current_objectid));
+	if (!HeapTupleIsValid(objtup))
+		elog(ERROR, "cache lookup failed for object type %u", current_objectid);
+	objform = (Form_pg_object_type) GETSTRUCT(objtup);
+	typname = get_object_type_name(current_objectid);
+	datum = SysCacheGetAttr(OBJTYPEOID, objtup,
+							Anum_pg_object_type_objsrc, &isnull);
+	objsrc = isnull ? NULL : TextDatumGetCString(datum);
+	spec = plisql_parse_object_type_spec(typname, objsrc);
+	body = plisql_parse_object_type_body(typname, bodysrc);
 
 	foreach(lc, body->methods)
 	{
 		ObjectTypeMethodDecl *method;
+		ListCell   *spec_lc;
 		ListCell   *existing_lc;
 
 		method = ((ObjectTypeMethodDecl *) lfirst(lc));
 		if (current_objectid != root_objectid &&
 			method->kind == OBJECT_TYPE_METHOD_CONSTRUCTOR)
 			continue;
+
+		/*
+		 * Defaults belong to the public declaration and need not be repeated
+		 * in the body.  Match against this type's spec before merging inherited
+		 * methods, so overloads and constructors get their own defaults.
+		 */
+		foreach(spec_lc, spec->methods)
+		{
+			ObjectTypeMethodDecl *spec_method = lfirst(spec_lc);
+			ListCell   *spec_param_lc;
+			ListCell   *body_param_lc;
+
+			if (!object_type_method_signature_equals(spec_method, method,
+													objform->typid,
+													objform->objnamespace, typname))
+				continue;
+
+			forboth(spec_param_lc, spec_method->parameters,
+					body_param_lc, method->parameters)
+			{
+				FunctionParameter *spec_param = lfirst(spec_param_lc);
+				FunctionParameter *body_param = lfirst(body_param_lc);
+
+				if (spec_param->defexpr != NULL)
+					body_param->defexpr = spec_param->defexpr;
+			}
+			break;
+		}
 
 		existing_lc = NULL;
 		foreach(existing_lc, *methods)
@@ -1520,6 +1562,7 @@ collect_effective_object_type_methods(Oid current_objectid,
 			*methods = lappend(*methods, method);
 	}
 
+	ReleaseSysCache(objtup);
 	ReleaseSysCache(bodytup);
 }
 

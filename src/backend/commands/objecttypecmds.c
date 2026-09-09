@@ -664,9 +664,6 @@ ValidateObjectTypeInheritance(const char *typname, const char *schemaName,
 {
 	ListCell   *lc;
 
-	if (!OidIsValid(parentobjoid))
-		return;
-
 	foreach(lc, spec->methods)
 	{
 		ObjectTypeMethodDecl *child_method = ((ObjectTypeMethodDecl *) lfirst(lc));
@@ -674,6 +671,7 @@ ValidateObjectTypeInheritance(const char *typname, const char *schemaName,
 		bool		same_name_seen = false;
 		bool		exact_match_seen = false;
 		bool		final_match_seen = false;
+		bool		parameter_names_match = true;
 		bool		cross_kind_seen = false;
 		const char *conflict_kind = NULL;
 
@@ -740,8 +738,24 @@ ValidateObjectTypeInheritance(const char *typname, const char *schemaName,
 													   schemaName,
 													   typoid))
 					{
+						ListCell   *ancestor_param_lc;
+						ListCell   *child_param_lc;
+
 						exact_match_seen = true;
 						final_match_seen = ancestor_method->is_final;
+						/* Parameter names are part of the overriding contract. */
+						forboth(ancestor_param_lc, ancestor_method->parameters,
+								child_param_lc, child_method->parameters)
+						{
+							FunctionParameter *ancestor_param = lfirst(ancestor_param_lc);
+							FunctionParameter *child_param = lfirst(child_param_lc);
+
+							if (strcmp(ancestor_param->name, child_param->name) != 0)
+							{
+								parameter_names_match = false;
+								break;
+							}
+						}
 						break;
 					}
 				}
@@ -762,11 +776,18 @@ ValidateObjectTypeInheritance(const char *typname, const char *schemaName,
 							conflict_kind)));
 
 		if (child_method->kind == OBJECT_TYPE_METHOD_STATIC && exact_match_seen)
+		{
+			if (final_match_seen)
+				ereport(ERROR,
+						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
+						 errmsg("method %s in object type \"%s\" cannot hide a FINAL inherited method",
+								GetObjectTypeMethodDisplayName(child_method), typname)));
 			continue;
+		}
 
 		if (child_method->is_override)
 		{
-			if (!exact_match_seen)
+			if (!exact_match_seen || !parameter_names_match)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_FUNCTION_DEFINITION),
 						 errmsg("method %s in object type \"%s\" is declared OVERRIDING but no compatible inherited method exists",

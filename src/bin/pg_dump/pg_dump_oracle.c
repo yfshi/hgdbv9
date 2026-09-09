@@ -5978,6 +5978,7 @@ getObjectTypes(Archive *fout, int *numObjTypes, int *numObjTypeBodies)
 	int			i_objtypoid;
 	int			i_bodysrc;
 
+	/* Like packages, object types are not filtered separately by DumpM. */
 	/* Query object type specifications */
 	query = createPQExpBuffer();
 
@@ -6018,6 +6019,7 @@ getObjectTypes(Archive *fout, int *numObjTypes, int *numObjTypeBodies)
 	for (i = 0; i < ntups; i++)
 	{
 		objtypeinfo[i].dobj.objType = DO_OBJECT_TYPE_SPEC;
+		objtypeinfo[i].dobj.compatible_mode = "o";
 		objtypeinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
 		objtypeinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
 		AssignDumpId(&objtypeinfo[i].dobj);
@@ -6077,6 +6079,7 @@ getObjectTypes(Archive *fout, int *numObjTypes, int *numObjTypeBodies)
 		char		namebuf[NAMEDATALEN + 8];
 
 		objtypebodyinfo[i].dobj.objType = DO_OBJECT_TYPE_BODY;
+		objtypebodyinfo[i].dobj.compatible_mode = "o";
 		objtypebodyinfo[i].dobj.catId.tableoid = atooid(PQgetvalue(res, i, i_tableoid));
 		objtypebodyinfo[i].dobj.catId.oid = atooid(PQgetvalue(res, i, i_oid));
 		AssignDumpId(&objtypebodyinfo[i].dobj);
@@ -13127,7 +13130,7 @@ dumpPackage(Archive *fout, const PkgInfo *pkginfo)
  * dumpObjectType
  *    Dump an Oracle object type specification.
  *    Generates CREATE TYPE ... AS OBJECT ( ... ) [NOT] FINAL;
- *    with optional UNDER clause for inheritance.
+ *    Subtypes use CREATE TYPE ... UNDER parent ( ... ) [NOT] FINAL.
  */
 static void
 dumpObjectType(Archive *fout, const ObjTypeInfo *objtypeinfo)
@@ -13155,7 +13158,7 @@ dumpObjectType(Archive *fout, const ObjTypeInfo *objtypeinfo)
 	 * and the optional FINAL/NOT FINAL clause.  Preserve it verbatim.
 	 */
 	if (parentname != NULL)
-		appendPQExpBuffer(q, "CREATE TYPE %s UNDER %s AS OBJECT%s;\n",
+		appendPQExpBuffer(q, "CREATE TYPE %s UNDER %s %s;\n",
 						  qualtypname, parentname, objtypeinfo->objsrc);
 	else
 		appendPQExpBuffer(q, "CREATE TYPE %s AS OBJECT%s;\n",
@@ -13179,6 +13182,7 @@ dumpObjectType(Archive *fout, const ObjTypeInfo *objtypeinfo)
 								  .namespace = objtypeinfo->dobj.namespace->dobj.name,
 								  .owner = objtypeinfo->rolname,
 								  .description = "OBJECT TYPE",
+								  .compatible_mode = objtypeinfo->dobj.compatible_mode,
 								  .section = SECTION_PRE_DATA,
 								  .createStmt = q->data,
 								  .dropStmt = delq->data));
@@ -13241,6 +13245,7 @@ dumpObjectTypeBody(Archive *fout, const ObjTypeBodyInfo *objtypebodyinfo)
 								  .namespace = objtypebodyinfo->dobj.namespace->dobj.name,
 								  .owner = objtypebodyinfo->rolname,
 								  .description = "OBJECT TYPE BODY",
+								  .compatible_mode = objtypebodyinfo->dobj.compatible_mode,
 								  .section = SECTION_PRE_DATA,
 								  .createStmt = q->data));
 
