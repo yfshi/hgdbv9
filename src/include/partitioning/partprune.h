@@ -57,6 +57,7 @@ typedef struct PartitionPruneContext
 	MemoryContext ppccontext;
 	PlanState  *planstate;
 	ExprState **exprstates;
+	bool		is_oracle_part;	/* ReqID:SRS-SQL-PARTITION-TABLE */
 } PartitionPruneContext;
 
 /*
@@ -73,6 +74,8 @@ extern PartitionPruneInfo *make_partition_pruneinfo(struct PlannerInfo *root,
 													List *subpaths,
 													List *prunequal);
 extern Bitmapset *prune_append_rel_partitions(struct RelOptInfo *rel);
+extern Bitmapset *ora_prune_append_rel_partitions(struct PlannerInfo *root,
+													struct RelOptInfo *rel); /* ReqID:SRS-SQL-PARTITION-TABLE */
 extern Bitmapset *get_matching_partitions(PartitionPruneContext *context,
 										  List *pruning_steps);
 

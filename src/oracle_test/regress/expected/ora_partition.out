@@ -9034,3 +9034,716 @@ ORDER BY table_name, partition_position;
 (3 rows)
 
 DROP TABLE PAR_TEST_INTERVAL;
+-- Native PG partitioned table.
+create table par_test(a int, b int) partition by range(a);
+create table p1 partition of par_test for values from(minvalue) to (100);
+create table p2 partition of par_test for values from(100) to (maxvalue);
+insert into par_test values(10, 1);		-- ok
+insert into par_test values(null, 1);	-- error
+ERROR:  no partition of relation "par_test" found for row
+DETAIL:  Partition key of the failing row contains (a) = (null).
+select pg_get_partition_constraintdef('p1'::regclass);
+ pg_get_partition_constraintdef  
+---------------------------------
+ ((a IS NOT NULL) AND (a < 100))
+(1 row)
+
+select pg_get_partition_constraintdef('p2'::regclass);
+  pg_get_partition_constraintdef  
+----------------------------------
+ ((a IS NOT NULL) AND (a >= 100))
+(1 row)
+
+drop table par_test;
+-- Oracle partitioned table.
+create table par_test(a int, b int)
+partition by range(a)
+(
+ partition p1 values less than(100),
+ partition p2 values less than(maxvalue)
+);
+insert into par_test values(10, 1);		-- into p1
+insert into par_test values(null, 1);	-- into p2
+-- each partition contains one tuple
+select * from par_test_p1;
+ a  | b 
+----+---
+ 10 | 1
+(1 row)
+
+select * from par_test_p2;
+ a | b 
+---+---
+   | 1
+(1 row)
+
+UPDATE par_test SET a = NULL WHERE a IS NOT NULL;
+-- both tuples from the UPDATE statement are located in partition P2
+select * from par_test_p1;
+ a | b 
+---+---
+(0 rows)
+
+select * from par_test_p2 order by a,b;
+ a | b 
+---+---
+   | 1
+   | 1
+(2 rows)
+
+-- check partition constraint
+select pg_get_partition_constraintdef('par_test_p1'::regclass);
+ pg_get_partition_constraintdef  
+---------------------------------
+ ((a < 100) AND (a IS NOT NULL))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p2'::regclass);
+ pg_get_partition_constraintdef 
+--------------------------------
+ ((a >= 100) OR (a IS NULL))
+(1 row)
+
+-- direct insert child table
+delete from par_test;
+-- ERROR:  new row for relation "par_test_p1" violates partition constraint
+insert into par_test_p1 values(null, 1);
+ERROR:  new row for relation "par_test_p1" violates partition constraint
+DETAIL:  Failing row contains (null, 1).
+-- OK
+insert into par_test_p1 values(1, null);
+-- ERROR:  new row for relation "par_test_p2" violates partition constraint
+insert into par_test_p2 values(99, 1);
+ERROR:  new row for relation "par_test_p2" violates partition constraint
+DETAIL:  Failing row contains (99, 1).
+-- OK
+insert into par_test_p2 values(null, 1);
+select * from par_test_p1;
+ a | b 
+---+---
+ 1 |  
+(1 row)
+
+select * from par_test_p2;
+ a | b 
+---+---
+   | 1
+(1 row)
+
+drop table par_test;
+-- Oracle partitioned table with multi part keys.
+create table par_test(a int, b int, c int, d int)
+partition by range(a,b,c,d)
+(
+ partition p1 values less than(100,200,300,400),
+ partition p2 values less than(100,200,400,500),
+ partition p3 values less than(500,200,maxvalue,maxvalue)
+);
+-- into partition p1
+insert into par_test values(99, 199, 299, null);	-- ok
+insert into par_test values(99, 199, 399, null);	-- ok
+insert into par_test values(99, 199, null, 10);		-- ok
+insert into par_test values(99, 199, null, null);	-- ok
+insert into par_test values(null, 10, 10, 10);		-- error, ORA-14400
+ERROR:  no partition of relation "par_test" found for row
+DETAIL:  Partition key of the failing row contains (a, b, c, d) = (null, 10, 10, 10).
+insert into par_test values(10, null, 10, 10);		-- ok
+insert into par_test values(10, 10, null, 10);		-- ok
+insert into par_test values(10, 10, 10, null);		-- ok
+-- into partition p2
+insert into par_test values(100, 200, 399, null);	-- ok
+-- into partition p3
+insert into par_test values(100, 200, 666, null);	-- ok
+insert into par_test values(100, 200, null, null);	-- ok
+insert into par_test values(300, null, null, null);	-- ok
+insert into par_test values(500, 200, null, null);	-- ok
+insert into par_test values(500, 200, null, 9999);	-- ok
+insert into par_test values(500, 200, 999, null);	-- ok
+insert into par_test values(500, null, null, null);	-- error, ORA-14400
+ERROR:  no partition of relation "par_test" found for row
+DETAIL:  Partition key of the failing row contains (a, b, c, d) = (500, null, null, null).
+insert into par_test values(666, null, null, null);	-- error, ORA-14400
+ERROR:  no partition of relation "par_test" found for row
+DETAIL:  Partition key of the failing row contains (a, b, c, d) = (666, null, null, null).
+select count(*) from par_test;		-- 14
+ count 
+-------
+    14
+(1 row)
+
+select count(*) from par_test_p1;	-- 7
+ count 
+-------
+     7
+(1 row)
+
+select count(*) from par_test_p2;	-- 1
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from par_test_p3;	-- 6
+ count 
+-------
+     6
+(1 row)
+
+-- check partition constraint
+select pg_get_partition_constraintdef('par_test_p1'::regclass);
+                                                                                                                                                                      pg_get_partition_constraintdef                                                                                                                                                                      
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a < 100) AND (a IS NOT NULL)) OR (((a = 100) AND (a IS NOT NULL)) AND ((b < 200) AND (b IS NOT NULL))) OR (((a = 100) AND (a IS NOT NULL)) AND ((b = 200) AND (b IS NOT NULL)) AND ((c < 300) AND (c IS NOT NULL))) OR (((a = 100) AND (a IS NOT NULL)) AND ((b = 200) AND (b IS NOT NULL)) AND ((c = 300) AND (c IS NOT NULL)) AND ((d < 400) AND (d IS NOT NULL))))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p2'::regclass);
+                                                                                                                                 pg_get_partition_constraintdef                                                                                                                                  
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a = 100) AND (a IS NOT NULL)) AND ((b = 200) AND (b IS NOT NULL)) AND (((c > 300) AND (c IS NOT NULL)) OR (((c = 300) AND (c IS NOT NULL)) AND ((d >= 400) OR (d IS NULL)))) AND (((c < 400) AND (c IS NOT NULL)) OR (((c = 400) AND (c IS NOT NULL)) AND ((d < 500) AND (d IS NOT NULL)))))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p3'::regclass);
+                                                                                                                                                                                                                        pg_get_partition_constraintdef                                                                                                                                                                                                                        
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ ((((a > 100) AND (a IS NOT NULL)) OR (((a = 100) AND (a IS NOT NULL)) AND ((b > 200) OR (b IS NULL))) OR (((a = 100) AND (a IS NOT NULL)) AND ((b = 200) AND (b IS NOT NULL)) AND ((c > 400) OR (c IS NULL))) OR (((a = 100) AND (a IS NOT NULL)) AND ((b = 200) AND (b IS NOT NULL)) AND ((c = 400) AND (c IS NOT NULL)) AND ((d >= 500) OR (d IS NULL)))) AND (((a < 500) AND (a IS NOT NULL)) OR (((a = 500) AND (a IS NOT NULL)) AND ((b <= 200) AND (b IS NOT NULL)))))
+(1 row)
+
+ 
+-- direct insert child table
+delete from par_test;
+-- into partition p1
+insert into par_test_p1 values(99, 199, 299, null);	-- ok
+insert into par_test_p1 values(99, 199, 399, null);	-- ok
+insert into par_test_p1 values(99, 199, null, 10);		-- ok
+insert into par_test_p1 values(99, 199, null, null);	-- ok
+insert into par_test_p1 values(null, 10, 10, 10);		-- error, ORA-14400
+ERROR:  new row for relation "par_test_p1" violates partition constraint
+DETAIL:  Failing row contains (null, 10, 10, 10).
+insert into par_test_p1 values(10, null, 10, 10);		-- ok
+insert into par_test_p1 values(10, 10, null, 10);		-- ok
+insert into par_test_p1 values(10, 10, 10, null);		-- ok
+-- into partition p2
+insert into par_test_p2 values(100, 200, 399, null);	-- ok
+-- into partition p3
+insert into par_test_p3 values(100, 200, 666, null);	-- ok
+insert into par_test_p3 values(100, 200, null, null);	-- ok
+insert into par_test_p3 values(300, null, null, null);	-- ok
+insert into par_test_p3 values(500, 200, null, null);	-- ok
+insert into par_test_p3 values(500, 200, null, 9999);	-- ok
+insert into par_test_p3 values(500, 200, 999, null);	-- ok
+insert into par_test_p3 values(500, null, null, null);	-- error, ORA-14400
+ERROR:  new row for relation "par_test_p3" violates partition constraint
+DETAIL:  Failing row contains (500, null, null, null).
+insert into par_test_p3 values(666, null, null, null);	-- error, ORA-14400
+ERROR:  new row for relation "par_test_p3" violates partition constraint
+DETAIL:  Failing row contains (666, null, null, null).
+-- result no change
+select count(*) from par_test;		-- 14
+ count 
+-------
+    14
+(1 row)
+
+select count(*) from par_test_p1;	-- 7
+ count 
+-------
+     7
+(1 row)
+
+select count(*) from par_test_p2;	-- 1
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from par_test_p3;	-- 6
+ count 
+-------
+     6
+(1 row)
+
+drop table par_test;
+-- Oracle composite partitioned table.
+create table par_test(a int, b int, c int, d int)
+partition by range(a)
+subpartition by range(b,c,d)
+(
+ partition p1 values less than(100)(subpartition s1 values less than(100, 200, 300), subpartition s2 values less than(100, 200, maxvalue)),
+ partition p2 values less than(200)(subpartition s3 values less than(100, 200, 300), subpartition s4 values less than(100, maxvalue, maxvalue)),
+ partition p3 values less than(maxvalue)(subpartition s5 values less than(100, 200, 300), subpartition s6 values less than(maxvalue, maxvalue, maxvalue))
+);
+-- into subpartition s1
+insert into par_test values(99, 99, null, null);	-- ok
+insert into par_test values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test values(99, 100, 200, 300);		-- ok
+insert into par_test values(99, 100, 200, null);	-- ok
+insert into par_test values(99, 100, null, null);	-- error, ORA-14400
+ERROR:  no partition of relation "par_test_p1" found for row
+DETAIL:  Partition key of the failing row contains (b, c, d) = (100, null, null).
+insert into par_test values(99, null, 99, 99);		-- error, ORA-14400
+ERROR:  no partition of relation "par_test_p1" found for row
+DETAIL:  Partition key of the failing row contains (b, c, d) = (null, 99, 99).
+select count(*) from par_test;			-- 4
+ count 
+-------
+     4
+(1 row)
+
+select count(*) from par_test_p1_s1;	-- 2
+ count 
+-------
+     2
+(1 row)
+
+select count(*) from par_test_p1_s2;	-- 2
+ count 
+-------
+     2
+(1 row)
+
+-- direct insert partition p1 (par_test_p1)
+delete from par_test;
+-- into subpartition s1
+insert into par_test_p1 values(99, 99, null, null);	-- ok
+insert into par_test_p1 values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test_p1 values(99, 100, 200, 300);	-- ok
+insert into par_test_p1 values(99, 100, 200, null);	-- ok
+insert into par_test_p1 values(99, 100, null, null);	-- error, ORA-14400
+ERROR:  no partition of relation "par_test_p1" found for row
+DETAIL:  Partition key of the failing row contains (b, c, d) = (100, null, null).
+insert into par_test_p1 values(99, null, 99, 99);		-- error, ORA-14400
+ERROR:  no partition of relation "par_test_p1" found for row
+DETAIL:  Partition key of the failing row contains (b, c, d) = (null, 99, 99).
+select count(*) from par_test;			-- 4
+ count 
+-------
+     4
+(1 row)
+
+select count(*) from par_test_p1_s1;	-- 2
+ count 
+-------
+     2
+(1 row)
+
+select count(*) from par_test_p1_s2;	-- 2
+ count 
+-------
+     2
+(1 row)
+
+-- direct insert subpartition table
+delete from par_test;
+-- into subpartition s1
+insert into par_test_p1_s1 values(99, 99, null, null);	-- ok
+insert into par_test_p1_s1 values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test_p1_s2 values(99, 100, 200, 300);	-- ok
+insert into par_test_p1_s2 values(99, 100, 200, null);	-- ok
+insert into par_test_p1_s1 values(99, 100, null, null);	-- error, ORA-14400
+ERROR:  new row for relation "par_test_p1_s1" violates partition constraint
+DETAIL:  Failing row contains (99, 100, null, null).
+insert into par_test_p1_s1 values(99, null, 99, 99);	-- error, ORA-14400
+ERROR:  new row for relation "par_test_p1_s1" violates partition constraint
+DETAIL:  Failing row contains (99, null, 99, 99).
+insert into par_test_p1_s2 values(99, 100, null, null);	-- error, ORA-14400
+ERROR:  new row for relation "par_test_p1_s2" violates partition constraint
+DETAIL:  Failing row contains (99, 100, null, null).
+insert into par_test_p1_s2 values(99, null, 99, 99);	-- error, ORA-14400
+ERROR:  new row for relation "par_test_p1_s2" violates partition constraint
+DETAIL:  Failing row contains (99, null, 99, 99).
+select count(*) from par_test;			-- 4
+ count 
+-------
+     4
+(1 row)
+
+select count(*) from par_test_p1_s1;	-- 2
+ count 
+-------
+     2
+(1 row)
+
+select count(*) from par_test_p1_s2;	-- 2
+ count 
+-------
+     2
+(1 row)
+
+-- check partition constraint
+select pg_get_partition_constraintdef('par_test_p1'::regclass);
+ pg_get_partition_constraintdef  
+---------------------------------
+ ((a < 100) AND (a IS NOT NULL))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p2'::regclass);
+                     pg_get_partition_constraintdef                     
+------------------------------------------------------------------------
+ (((a >= 100) AND (a IS NOT NULL)) AND ((a < 200) AND (a IS NOT NULL)))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p3'::regclass);
+ pg_get_partition_constraintdef 
+--------------------------------
+ ((a >= 200) OR (a IS NULL))
+(1 row)
+
+-- check subpartition constraint
+select pg_get_partition_constraintdef('par_test_p1_s1'::regclass);
+                                                                                                                pg_get_partition_constraintdef                                                                                                                 
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a < 100) AND (a IS NOT NULL)) AND (((b < 100) AND (b IS NOT NULL)) OR (((b = 100) AND (b IS NOT NULL)) AND ((c < 200) AND (c IS NOT NULL))) OR (((b = 100) AND (b IS NOT NULL)) AND ((c = 200) AND (c IS NOT NULL)) AND ((d < 300) AND (d IS NOT NULL)))))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p1_s2'::regclass);
+                                                      pg_get_partition_constraintdef                                                       
+-------------------------------------------------------------------------------------------------------------------------------------------
+ (((a < 100) AND (a IS NOT NULL)) AND ((b = 100) AND (b IS NOT NULL)) AND ((c = 200) AND (c IS NOT NULL)) AND ((d >= 300) OR (d IS NULL)))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p2_s3'::regclass);
+                                                                                                                                   pg_get_partition_constraintdef                                                                                                                                   
+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a >= 100) AND (a IS NOT NULL)) AND ((a < 200) AND (a IS NOT NULL)) AND (((b < 100) AND (b IS NOT NULL)) OR (((b = 100) AND (b IS NOT NULL)) AND ((c < 200) AND (c IS NOT NULL))) OR (((b = 100) AND (b IS NOT NULL)) AND ((c = 200) AND (c IS NOT NULL)) AND ((d < 300) AND (d IS NOT NULL)))))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p2_s4'::regclass);
+                                                                                          pg_get_partition_constraintdef                                                                                          
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a >= 100) AND (a IS NOT NULL)) AND ((a < 200) AND (a IS NOT NULL)) AND ((b = 100) AND (b IS NOT NULL)) AND (((c > 200) OR (c IS NULL)) OR (((c = 200) AND (c IS NOT NULL)) AND ((d >= 300) OR (d IS NULL)))))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p3_s5'::regclass);
+                                                                                                              pg_get_partition_constraintdef                                                                                                               
+-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a >= 200) OR (a IS NULL)) AND (((b < 100) AND (b IS NOT NULL)) OR (((b = 100) AND (b IS NOT NULL)) AND ((c < 200) AND (c IS NOT NULL))) OR (((b = 100) AND (b IS NOT NULL)) AND ((c = 200) AND (c IS NOT NULL)) AND ((d < 300) AND (d IS NOT NULL)))))
+(1 row)
+
+select pg_get_partition_constraintdef('par_test_p3_s6'::regclass);
+                                                                                                       pg_get_partition_constraintdef                                                                                                        
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ (((a >= 200) OR (a IS NULL)) AND (((b > 100) OR (b IS NULL)) OR (((b = 100) AND (b IS NOT NULL)) AND ((c > 200) OR (c IS NULL))) OR (((b = 100) AND (b IS NOT NULL)) AND ((c = 200) AND (c IS NOT NULL)) AND ((d >= 300) OR (d IS NULL)))))
+(1 row)
+
+-- partition or subpartition expand name sytax, that is FOR clause
+-- of ALTER TABLE must be also support deal with NULL value.
+alter table par_test drop subpartition for(null,888,888,888);	-- ok
+alter table par_test drop partition for(null);					-- ok
+drop table par_test;
+-- prune
+create table par_test(a int, b int, c int, d int)
+partition by range(a,b,c,d)
+(
+ partition p1 values less than(100,200,300,400),
+ partition p2 values less than(100,200,400,500),
+ partition p3 values less than(500,200,maxvalue,maxvalue)
+);
+-- into partition p1
+insert into par_test values(99, 199, 299, null);	-- ok
+insert into par_test values(99, 199, 399, null);	-- ok
+insert into par_test values(99, 199, null, 10);		-- ok
+insert into par_test values(99, 199, null, null);	-- ok
+insert into par_test values(10, null, 10, 10);		-- ok
+insert into par_test values(10, 10, null, 10);		-- ok
+insert into par_test values(10, 10, 10, null);		-- ok
+-- into partition p2
+insert into par_test values(100, 200, 399, null);	-- ok
+-- into partition p3
+insert into par_test values(100, 200, 666, null);	-- ok
+insert into par_test values(100, 200, null, null);	-- ok
+insert into par_test values(300, null, null, null);	-- ok
+insert into par_test values(500, 200, null, null);	-- ok
+insert into par_test values(500, 200, null, 9999);	-- ok
+insert into par_test values(500, 200, 999, null);	-- ok
+select count(*) from par_test;		-- 14
+ count 
+-------
+    14
+(1 row)
+
+-- only scan partition p1
+explain (costs off) select * from par_test where a = 88;
+            QUERY PLAN            
+----------------------------------
+ Seq Scan on par_test_p1 par_test
+   Filter: (a = 88)
+(2 rows)
+
+-- only scan partition p1
+explain (costs off) select * from par_test where a = 100 and b < 200;
+             QUERY PLAN              
+-------------------------------------
+ Seq Scan on par_test_p1 par_test
+   Filter: ((b < 200) AND (a = 100))
+(2 rows)
+
+-- only scan partition p2
+explain (costs off) select * from par_test where a = 100 and b = 200 and c > 300 and c < 400;
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Seq Scan on par_test_p2 par_test
+   Filter: ((c > 300) AND (c < 400) AND (a = 100) AND (b = 200))
+(2 rows)
+
+-- scan partition p2 + p3
+explain (costs off) select * from par_test where a = 100 and b = 200 and c > 300;
+                       QUERY PLAN                        
+---------------------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p2 par_test_1
+         Filter: ((c > 300) AND (a = 100) AND (b = 200))
+   ->  Seq Scan on par_test_p3 par_test_2
+         Filter: ((c > 300) AND (a = 100) AND (b = 200))
+(5 rows)
+
+-- only scan partition p3
+explain (costs off) select * from par_test where a = 100 and b = 200 and c > 400;
+                    QUERY PLAN                     
+---------------------------------------------------
+ Seq Scan on par_test_p3 par_test
+   Filter: ((c > 400) AND (a = 100) AND (b = 200))
+(2 rows)
+
+-- scan partition p1 + p2 + p3
+explain (costs off) select * from par_test where a = 100 and b = 200;
+                QUERY PLAN                 
+-------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1 par_test_1
+         Filter: ((a = 100) AND (b = 200))
+   ->  Seq Scan on par_test_p2 par_test_2
+         Filter: ((a = 100) AND (b = 200))
+   ->  Seq Scan on par_test_p3 par_test_3
+         Filter: ((a = 100) AND (b = 200))
+(7 rows)
+
+-- all partitions be pruned, because no partition of all bound vlaue is maxvalue.
+explain (costs off) select * from par_test where a is null;
+        QUERY PLAN        
+--------------------------
+ Result
+   One-Time Filter: false
+(2 rows)
+
+-- IS NOT NULL no prune, so scan all partitions
+explain (costs off) select * from par_test where a is not null;
+                QUERY PLAN                
+------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1 par_test_1
+         Filter: (a IS NOT NULL)
+   ->  Seq Scan on par_test_p2 par_test_2
+         Filter: (a IS NOT NULL)
+   ->  Seq Scan on par_test_p3 par_test_3
+         Filter: (a IS NOT NULL)
+(7 rows)
+
+-- the result of prune is ORed of a,b,c,d. a is null pruned all part but other key no prune, so scan all parts.
+explain (costs off) select * from par_test where a is null or b is null or c is null or d is null;
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1 par_test_1
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p2 par_test_2
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p3 par_test_3
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+(7 rows)
+
+select count(*) from par_test where a is null or b is null or c is null or d is null;	-- 14
+ count 
+-------
+    14
+(1 row)
+
+drop table par_test;
+create table par_test(a int, b int, c int, d int)
+partition by range(a)
+subpartition by range(b,c,d)
+(
+ partition p1 values less than(100)(subpartition s1 values less than(100, 200, 300), subpartition s2 values less than(100, 200, maxvalue)),
+ partition p2 values less than(200)(subpartition s3 values less than(100, 200, 300), subpartition s4 values less than(100, maxvalue, maxvalue)),
+ partition p3 values less than(maxvalue)(subpartition s5 values less than(100, 200, 300), subpartition s6 values less than(maxvalue, maxvalue, maxvalue))
+);
+-- into subpartition s1
+insert into par_test values(99, 99, null, null);	-- ok
+insert into par_test values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test values(99, 100, 200, 300);		-- ok
+insert into par_test values(99, 100, 200, null);	-- ok
+select count(*) from par_test;		-- 4
+ count 
+-------
+     4
+(1 row)
+
+-- only scan the subpartitions of p3, since only p3 has first MAXVLAUE key.
+explain (costs off) select * from par_test where a is null;
+                 QUERY PLAN                  
+---------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p3_s5 par_test_1
+         Filter: (a IS NULL)
+   ->  Seq Scan on par_test_p3_s6 par_test_2
+         Filter: (a IS NULL)
+(5 rows)
+
+-- only scan the subpartitions of p1
+explain (costs off) select * from par_test where a < 100;
+                 QUERY PLAN                  
+---------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1_s1 par_test_1
+         Filter: (a < 100)
+   ->  Seq Scan on par_test_p1_s2 par_test_2
+         Filter: (a < 100)
+(5 rows)
+
+-- only scan subpartition s1
+explain (costs off) select * from par_test where a < 100 and b = 100 and c = 200 and d < 300;
+                           QUERY PLAN                            
+-----------------------------------------------------------------
+ Seq Scan on par_test_p1_s1 par_test
+   Filter: ((a < 100) AND (d < 300) AND (b = 100) AND (c = 200))
+(2 rows)
+
+-- only scan subpartition s2
+explain (costs off) select * from par_test where a < 100 and b = 100 and c = 200 and d >= 300;
+                            QUERY PLAN                            
+------------------------------------------------------------------
+ Seq Scan on par_test_p1_s2 par_test
+   Filter: ((a < 100) AND (d >= 300) AND (b = 100) AND (c = 200))
+(2 rows)
+
+-- scan subpartition s5 + s6 of partition p3
+explain (costs off) select * from par_test where a > 666;
+                 QUERY PLAN                  
+---------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p3_s5 par_test_1
+         Filter: (a > 666)
+   ->  Seq Scan on par_test_p3_s6 par_test_2
+         Filter: (a > 666)
+(5 rows)
+
+-- only scan s5
+explain (costs off) select * from par_test where a > 666 and b < 100;
+             QUERY PLAN              
+-------------------------------------
+ Seq Scan on par_test_p3_s5 par_test
+   Filter: ((a > 666) AND (b < 100))
+(2 rows)
+
+-- only scan s6
+explain (costs off) select * from par_test where a > 666 and b is null;
+              QUERY PLAN               
+---------------------------------------
+ Seq Scan on par_test_p3_s6 par_test
+   Filter: ((b IS NULL) AND (a > 666))
+(2 rows)
+
+-- scan s5 + s6
+explain (costs off) select * from par_test where a > 666 and b is not null;
+                   QUERY PLAN                    
+-------------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p3_s5 par_test_1
+         Filter: ((b IS NOT NULL) AND (a > 666))
+   ->  Seq Scan on par_test_p3_s6 par_test_2
+         Filter: ((b IS NOT NULL) AND (a > 666))
+(5 rows)
+
+-- scan all subpartitions
+explain (costs off) select * from par_test where a is null or b is null or c is null or d is null;
+                                 QUERY PLAN                                 
+----------------------------------------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1_s1 par_test_1
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p1_s2 par_test_2
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p2_s3 par_test_3
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p2_s4 par_test_4
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p3_s5 par_test_5
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+   ->  Seq Scan on par_test_p3_s6 par_test_6
+         Filter: ((a IS NULL) OR (b IS NULL) OR (c IS NULL) OR (d IS NULL))
+(13 rows)
+
+select count(*) from par_test where a is null or b is null or c is null or d is null;	-- 3
+ count 
+-------
+     3
+(1 row)
+
+-- only scan s6
+explain (costs off) select * from par_test where b is null;
+             QUERY PLAN              
+-------------------------------------
+ Seq Scan on par_test_p3_s6 par_test
+   Filter: (b IS NULL)
+(2 rows)
+
+select count(*) from par_test where b is null;		-- 0
+ count 
+-------
+     0
+(1 row)
+
+-- scan all subpartitions
+explain (costs off) select * from par_test where c is null;
+                 QUERY PLAN                  
+---------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1_s1 par_test_1
+         Filter: (c IS NULL)
+   ->  Seq Scan on par_test_p1_s2 par_test_2
+         Filter: (c IS NULL)
+   ->  Seq Scan on par_test_p2_s3 par_test_3
+         Filter: (c IS NULL)
+   ->  Seq Scan on par_test_p2_s4 par_test_4
+         Filter: (c IS NULL)
+   ->  Seq Scan on par_test_p3_s5 par_test_5
+         Filter: (c IS NULL)
+   ->  Seq Scan on par_test_p3_s6 par_test_6
+         Filter: (c IS NULL)
+(13 rows)
+
+select count(*) from par_test where c is null;		-- 1
+ count 
+-------
+     1
+(1 row)
+
+-- scan all subpartitions
+explain (costs off) select * from par_test where d is null;
+                 QUERY PLAN                  
+---------------------------------------------
+ Append
+   ->  Seq Scan on par_test_p1_s1 par_test_1
+         Filter: (d IS NULL)
+   ->  Seq Scan on par_test_p1_s2 par_test_2
+         Filter: (d IS NULL)
+   ->  Seq Scan on par_test_p2_s3 par_test_3
+         Filter: (d IS NULL)
+   ->  Seq Scan on par_test_p2_s4 par_test_4
+         Filter: (d IS NULL)
+   ->  Seq Scan on par_test_p3_s5 par_test_5
+         Filter: (d IS NULL)
+   ->  Seq Scan on par_test_p3_s6 par_test_6
+         Filter: (d IS NULL)
+(13 rows)
+
+select count(*) from par_test where d is null;		-- 3
+ count 
+-------
+     3
+(1 row)
+
+drop table par_test;

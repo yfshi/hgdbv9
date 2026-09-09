@@ -38,6 +38,7 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"
 /* End - ReqID:SRS-MYSQL-UPDATE */
+#include "utils/lsyscache.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 
 static void expand_partitioned_rtentry(PlannerInfo *root, RelOptInfo *relinfo,
 									   RangeTblEntry *parentrte,
@@ -351,7 +352,19 @@ expand_partitioned_rtentry(PlannerInfo *root, RelOptInfo *relinfo,
 	 * that survive pruning.  Below, we will initialize child objects for the
 	 * surviving partitions.
 	 */
-	live_parts = prune_append_rel_partitions(relinfo);
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	/*
+	 * if extern extension using prune_append_rel_partitions directly
+	 * in oracle mode, perhaps you should suing ora_prune_append_rel_partitions,
+	 * because this interface will auto check whether the partitioned table
+	 * is PG or Oracle compatible.
+	 */
+	if (is_oracle_partitioned_table(root->simple_rte_array[relinfo->relid]->relid) ||
+		is_oracle_partition(root->simple_rte_array[relinfo->relid]->relid))
+		live_parts = ora_prune_append_rel_partitions(root, relinfo);
+	else
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		live_parts = prune_append_rel_partitions(relinfo);
 
 	/* Expand simple_rel_array and friends to hold child objects. */
 	num_live_parts = bms_num_members(live_parts);

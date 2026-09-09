@@ -123,6 +123,7 @@ typedef struct GeneratePruningStepsContext
 	bool		contradictory;	/* clauses were proven self-contradictory */
 	/* Working state: */
 	int			next_step_id;
+	bool		is_oracle_part;	/* ReqID:SRS-SQL-PARTITION-TABLE */
 } GeneratePruningStepsContext;
 
 /* The result of performing one PartitionPruneStep */
@@ -146,7 +147,8 @@ static List *make_partitionedrel_pruneinfo(PlannerInfo *root,
 										   Bitmapset *partrelids,
 										   int *relid_subplan_map,
 										   Bitmapset **matchedsubplans);
-static void gen_partprune_steps(RelOptInfo *rel, List *clauses,
+static void gen_partprune_steps(PlannerInfo *root, /* ReqID:SRS-SQL-PARTITION-TABLE */
+								RelOptInfo *rel, List *clauses,
 								PartClauseTarget target,
 								GeneratePruningStepsContext *context);
 static List *gen_partprune_steps_internal(GeneratePruningStepsContext *context,
@@ -540,7 +542,8 @@ make_partitionedrel_pruneinfo(PlannerInfo *root, RelOptInfo *parentrel,
 		 * pruning steps and detects whether there's any possibly-useful quals
 		 * that would require per-scan pruning.
 		 */
-		gen_partprune_steps(subpart, partprunequal, PARTTARGET_INITIAL,
+		gen_partprune_steps(root, /* ReqID:SRS-SQL-PARTITION-TABLE */
+							subpart, partprunequal, PARTTARGET_INITIAL,
 							&context);
 
 		if (context.contradictory)
@@ -574,7 +577,8 @@ make_partitionedrel_pruneinfo(PlannerInfo *root, RelOptInfo *parentrel,
 		if (context.has_exec_param)
 		{
 			/* ... OK, we'd better think about it */
-			gen_partprune_steps(subpart, partprunequal, PARTTARGET_EXEC,
+			gen_partprune_steps(root, /* ReqID:SRS-SQL-PARTITION-TABLE */
+								subpart, partprunequal, PARTTARGET_EXEC,
 								&context);
 
 			if (context.contradictory)
@@ -714,13 +718,27 @@ make_partitionedrel_pruneinfo(PlannerInfo *root, RelOptInfo *parentrel,
  * some subsidiary flags; see the GeneratePruningStepsContext typedef.
  */
 static void
-gen_partprune_steps(RelOptInfo *rel, List *clauses, PartClauseTarget target,
+gen_partprune_steps(PlannerInfo *root, /* ReqID:SRS-SQL-PARTITION-TABLE */
+					RelOptInfo *rel, List *clauses,
+					PartClauseTarget target,
 					GeneratePruningStepsContext *context)
 {
 	/* Initialize all output values to zero/false/NULL */
 	memset(context, 0, sizeof(GeneratePruningStepsContext));
 	context->rel = rel;
 	context->target = target;
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (root && compatible_mode == ORA_MODE)
+	{
+		Oid	partid = InvalidOid;
+
+		partid = root->simple_rte_array[rel->relid]->relid;
+		if (is_oracle_partitioned_table(partid) ||
+			is_oracle_partition(partid))
+			context->is_oracle_part = true;
+	}
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 	/*
 	 * If this partitioned table is in turn a partition, and it shares any
@@ -775,7 +793,8 @@ prune_append_rel_partitions(RelOptInfo *rel)
 	 * If the clauses are found to be contradictory, we can return the empty
 	 * set.
 	 */
-	gen_partprune_steps(rel, clauses, PARTTARGET_PLANNER,
+	gen_partprune_steps(NULL, /* ReqID:SRS-SQL-PARTITION-TABLE */
+						rel, clauses, PARTTARGET_PLANNER,
 						&gcontext);
 	if (gcontext.contradictory)
 		return NULL;
@@ -801,9 +820,80 @@ prune_append_rel_partitions(RelOptInfo *rel)
 	context.planstate = NULL;
 	context.exprstates = NULL;
 
+	context.is_oracle_part = false; /* ReqID:SRS-SQL-PARTITION-TABLE */
+
 	/* Actual pruning happens here. */
 	return get_matching_partitions(&context, pruning_steps);
 }
+
+/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+/*
+ * ora_prune_append_rel_partitions
+ *	A variant version of prune_append_rel_partitions that pass root to it.
+ */
+Bitmapset *
+ora_prune_append_rel_partitions(PlannerInfo *root, RelOptInfo *rel)
+{
+	List	   *clauses = rel->baserestrictinfo;
+	List	   *pruning_steps;
+	GeneratePruningStepsContext gcontext;
+	PartitionPruneContext context;
+
+	Assert(rel->part_scheme != NULL);
+
+	/* If there are no partitions, return the empty set */
+	if (rel->nparts == 0)
+		return NULL;
+
+	/*
+	 * If pruning is disabled or if there are no clauses to prune with, return
+	 * all partitions.
+	 */
+	if (!enable_partition_pruning || clauses == NIL)
+		return bms_add_range(NULL, 0, rel->nparts - 1);
+
+	/*
+	 * Process clauses to extract pruning steps that are usable at plan time.
+	 * If the clauses are found to be contradictory, we can return the empty
+	 * set.
+	 */
+	gen_partprune_steps(root,
+						rel, clauses, PARTTARGET_PLANNER,
+						&gcontext);
+	if (gcontext.contradictory)
+		return NULL;
+	pruning_steps = gcontext.steps;
+
+	/* If there's nothing usable, return all partitions */
+	if (pruning_steps == NIL)
+		return bms_add_range(NULL, 0, rel->nparts - 1);
+
+	/* Set up PartitionPruneContext */
+	context.strategy = rel->part_scheme->strategy;
+	context.partnatts = rel->part_scheme->partnatts;
+	context.nparts = rel->nparts;
+	context.boundinfo = rel->boundinfo;
+	context.partcollation = rel->part_scheme->partcollation;
+	context.partsupfunc = rel->part_scheme->partsupfunc;
+	context.stepcmpfuncs = (FmgrInfo *) palloc0(sizeof(FmgrInfo) *
+												context.partnatts *
+												list_length(pruning_steps));
+	context.ppccontext = CurrentMemoryContext;
+
+	/* These are not valid when being called from the planner */
+	context.planstate = NULL;
+	context.exprstates = NULL;
+
+	if (is_oracle_partitioned_table(root->simple_rte_array[rel->relid]->relid) ||
+		is_oracle_partition(root->simple_rte_array[rel->relid]->relid))
+		context.is_oracle_part = true;
+	else
+		context.is_oracle_part = false;
+
+	/* Actual pruning happens here. */
+	return get_matching_partitions(&context, pruning_steps);
+}
+/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 /*
  * get_matching_partitions
@@ -1250,7 +1340,11 @@ gen_partprune_steps_internal(GeneratePruningStepsContext *context,
 	 */
 	if (!bms_is_empty(nullkeys) &&
 		(part_scheme->strategy == PARTITION_STRATEGY_LIST ||
-		 part_scheme->strategy == PARTITION_STRATEGY_RANGE ||
+		 (part_scheme->strategy == PARTITION_STRATEGY_RANGE &&
+		  !context->is_oracle_part) ||
+		 (part_scheme->strategy == PARTITION_STRATEGY_RANGE &&
+		  context->is_oracle_part &&
+		  bms_is_member(0, nullkeys)) /* ReqID:SRS-SQL-PARTITION-TABLE */ ||
 		 (part_scheme->strategy == PARTITION_STRATEGY_HASH &&
 		  bms_num_members(nullkeys) == part_scheme->partnatts)))
 	{
@@ -2959,14 +3053,47 @@ get_matching_range_bounds(PartitionPruneContext *context,
 
 	result->scan_null = result->scan_default = false;
 
-	/*
-	 * If there are no datums to compare keys with, or if we got an IS NULL
-	 * clause just return the default partition, if it exists.
-	 */
-	if (boundinfo->ndatums == 0 || !bms_is_empty(nullkeys))
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (context->is_oracle_part)
 	{
-		result->scan_default = partition_bound_has_default(boundinfo);
-		return result;
+		/*
+		 * According to Oracle's partitioning rules for null values ​​in a range,
+		 * the value of any partition key other than the first partition key can
+		 * be null in any partition. Therefore, we can only prune partitions where
+		 * the first partition key IS NULL, because it must be located in a partition
+		 * where the first partition key is MAXVALUE. Since PG restricts all partition
+		 * keys following the MAXVALUE bound value to also be MAXVALUE, there is only
+		 * one such partition. However, Oracle may have multiple such partitions, so
+		 * this may change in the future.
+		 */
+		if (bms_is_member(0, nullkeys))
+		{
+			int		i;
+
+			for (i = 0; i < boundinfo->ndatums; i++)
+				if (boundinfo->kind[i][0] == PARTITION_RANGE_DATUM_MAXVALUE)
+					break;
+
+			if (i < boundinfo->ndatums && boundinfo->indexes[i] >= 0)
+					result->bound_offsets = bms_make_singleton(i);
+			else
+				result->scan_default = partition_bound_has_default(boundinfo);
+
+			return result;
+		}
+	}
+	else
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	{
+		/*
+		 * If there are no datums to compare keys with, or if we got an IS NULL
+		 * clause just return the default partition, if it exists.
+		 */
+		if (boundinfo->ndatums == 0 || !bms_is_empty(nullkeys))
+		{
+			result->scan_default = partition_bound_has_default(boundinfo);
+			return result;
+		}
 	}
 
 	minoff = 0;

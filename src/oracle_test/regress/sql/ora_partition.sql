@@ -5212,3 +5212,328 @@ WHERE table_name = 'par_test_interval'
 ORDER BY table_name, partition_position;
 
 DROP TABLE PAR_TEST_INTERVAL;
+
+-- Native PG partitioned table.
+create table par_test(a int, b int) partition by range(a);
+create table p1 partition of par_test for values from(minvalue) to (100);
+create table p2 partition of par_test for values from(100) to (maxvalue);
+
+insert into par_test values(10, 1);		-- ok
+insert into par_test values(null, 1);	-- error
+
+select pg_get_partition_constraintdef('p1'::regclass);
+select pg_get_partition_constraintdef('p2'::regclass);
+drop table par_test;
+
+-- Oracle partitioned table.
+create table par_test(a int, b int)
+partition by range(a)
+(
+ partition p1 values less than(100),
+ partition p2 values less than(maxvalue)
+);
+
+insert into par_test values(10, 1);		-- into p1
+insert into par_test values(null, 1);	-- into p2
+
+-- each partition contains one tuple
+select * from par_test_p1;
+select * from par_test_p2;
+
+UPDATE par_test SET a = NULL WHERE a IS NOT NULL;
+
+-- both tuples from the UPDATE statement are located in partition P2
+select * from par_test_p1;
+select * from par_test_p2 order by a,b;
+
+-- check partition constraint
+select pg_get_partition_constraintdef('par_test_p1'::regclass);
+select pg_get_partition_constraintdef('par_test_p2'::regclass);
+
+-- direct insert child table
+delete from par_test;
+
+-- ERROR:  new row for relation "par_test_p1" violates partition constraint
+insert into par_test_p1 values(null, 1);
+-- OK
+insert into par_test_p1 values(1, null);
+
+-- ERROR:  new row for relation "par_test_p2" violates partition constraint
+insert into par_test_p2 values(99, 1);
+-- OK
+insert into par_test_p2 values(null, 1);
+
+select * from par_test_p1;
+select * from par_test_p2;
+drop table par_test;
+
+-- Oracle partitioned table with multi part keys.
+create table par_test(a int, b int, c int, d int)
+partition by range(a,b,c,d)
+(
+ partition p1 values less than(100,200,300,400),
+ partition p2 values less than(100,200,400,500),
+ partition p3 values less than(500,200,maxvalue,maxvalue)
+);
+
+-- into partition p1
+insert into par_test values(99, 199, 299, null);	-- ok
+insert into par_test values(99, 199, 399, null);	-- ok
+insert into par_test values(99, 199, null, 10);		-- ok
+insert into par_test values(99, 199, null, null);	-- ok
+insert into par_test values(null, 10, 10, 10);		-- error, ORA-14400
+insert into par_test values(10, null, 10, 10);		-- ok
+insert into par_test values(10, 10, null, 10);		-- ok
+insert into par_test values(10, 10, 10, null);		-- ok
+
+-- into partition p2
+insert into par_test values(100, 200, 399, null);	-- ok
+
+-- into partition p3
+insert into par_test values(100, 200, 666, null);	-- ok
+insert into par_test values(100, 200, null, null);	-- ok
+insert into par_test values(300, null, null, null);	-- ok
+insert into par_test values(500, 200, null, null);	-- ok
+insert into par_test values(500, 200, null, 9999);	-- ok
+insert into par_test values(500, 200, 999, null);	-- ok
+insert into par_test values(500, null, null, null);	-- error, ORA-14400
+insert into par_test values(666, null, null, null);	-- error, ORA-14400
+
+select count(*) from par_test;		-- 14
+select count(*) from par_test_p1;	-- 7
+select count(*) from par_test_p2;	-- 1
+select count(*) from par_test_p3;	-- 6
+
+-- check partition constraint
+select pg_get_partition_constraintdef('par_test_p1'::regclass);
+select pg_get_partition_constraintdef('par_test_p2'::regclass);
+select pg_get_partition_constraintdef('par_test_p3'::regclass);
+ 
+-- direct insert child table
+delete from par_test;
+-- into partition p1
+insert into par_test_p1 values(99, 199, 299, null);	-- ok
+insert into par_test_p1 values(99, 199, 399, null);	-- ok
+insert into par_test_p1 values(99, 199, null, 10);		-- ok
+insert into par_test_p1 values(99, 199, null, null);	-- ok
+insert into par_test_p1 values(null, 10, 10, 10);		-- error, ORA-14400
+insert into par_test_p1 values(10, null, 10, 10);		-- ok
+insert into par_test_p1 values(10, 10, null, 10);		-- ok
+insert into par_test_p1 values(10, 10, 10, null);		-- ok
+
+-- into partition p2
+insert into par_test_p2 values(100, 200, 399, null);	-- ok
+
+-- into partition p3
+insert into par_test_p3 values(100, 200, 666, null);	-- ok
+insert into par_test_p3 values(100, 200, null, null);	-- ok
+insert into par_test_p3 values(300, null, null, null);	-- ok
+insert into par_test_p3 values(500, 200, null, null);	-- ok
+insert into par_test_p3 values(500, 200, null, 9999);	-- ok
+insert into par_test_p3 values(500, 200, 999, null);	-- ok
+insert into par_test_p3 values(500, null, null, null);	-- error, ORA-14400
+insert into par_test_p3 values(666, null, null, null);	-- error, ORA-14400
+
+-- result no change
+select count(*) from par_test;		-- 14
+select count(*) from par_test_p1;	-- 7
+select count(*) from par_test_p2;	-- 1
+select count(*) from par_test_p3;	-- 6
+drop table par_test;
+
+-- Oracle composite partitioned table.
+create table par_test(a int, b int, c int, d int)
+partition by range(a)
+subpartition by range(b,c,d)
+(
+ partition p1 values less than(100)(subpartition s1 values less than(100, 200, 300), subpartition s2 values less than(100, 200, maxvalue)),
+ partition p2 values less than(200)(subpartition s3 values less than(100, 200, 300), subpartition s4 values less than(100, maxvalue, maxvalue)),
+ partition p3 values less than(maxvalue)(subpartition s5 values less than(100, 200, 300), subpartition s6 values less than(maxvalue, maxvalue, maxvalue))
+);
+
+-- into subpartition s1
+insert into par_test values(99, 99, null, null);	-- ok
+insert into par_test values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test values(99, 100, 200, 300);		-- ok
+insert into par_test values(99, 100, 200, null);	-- ok
+
+insert into par_test values(99, 100, null, null);	-- error, ORA-14400
+insert into par_test values(99, null, 99, 99);		-- error, ORA-14400
+
+select count(*) from par_test;			-- 4
+select count(*) from par_test_p1_s1;	-- 2
+select count(*) from par_test_p1_s2;	-- 2
+
+-- direct insert partition p1 (par_test_p1)
+delete from par_test;
+-- into subpartition s1
+insert into par_test_p1 values(99, 99, null, null);	-- ok
+insert into par_test_p1 values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test_p1 values(99, 100, 200, 300);	-- ok
+insert into par_test_p1 values(99, 100, 200, null);	-- ok
+insert into par_test_p1 values(99, 100, null, null);	-- error, ORA-14400
+insert into par_test_p1 values(99, null, 99, 99);		-- error, ORA-14400
+
+select count(*) from par_test;			-- 4
+select count(*) from par_test_p1_s1;	-- 2
+select count(*) from par_test_p1_s2;	-- 2
+
+-- direct insert subpartition table
+delete from par_test;
+-- into subpartition s1
+insert into par_test_p1_s1 values(99, 99, null, null);	-- ok
+insert into par_test_p1_s1 values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test_p1_s2 values(99, 100, 200, 300);	-- ok
+insert into par_test_p1_s2 values(99, 100, 200, null);	-- ok
+
+insert into par_test_p1_s1 values(99, 100, null, null);	-- error, ORA-14400
+insert into par_test_p1_s1 values(99, null, 99, 99);	-- error, ORA-14400
+insert into par_test_p1_s2 values(99, 100, null, null);	-- error, ORA-14400
+insert into par_test_p1_s2 values(99, null, 99, 99);	-- error, ORA-14400
+
+select count(*) from par_test;			-- 4
+select count(*) from par_test_p1_s1;	-- 2
+select count(*) from par_test_p1_s2;	-- 2
+
+-- check partition constraint
+select pg_get_partition_constraintdef('par_test_p1'::regclass);
+select pg_get_partition_constraintdef('par_test_p2'::regclass);
+select pg_get_partition_constraintdef('par_test_p3'::regclass);
+
+-- check subpartition constraint
+select pg_get_partition_constraintdef('par_test_p1_s1'::regclass);
+select pg_get_partition_constraintdef('par_test_p1_s2'::regclass);
+select pg_get_partition_constraintdef('par_test_p2_s3'::regclass);
+select pg_get_partition_constraintdef('par_test_p2_s4'::regclass);
+select pg_get_partition_constraintdef('par_test_p3_s5'::regclass);
+select pg_get_partition_constraintdef('par_test_p3_s6'::regclass);
+
+-- partition or subpartition expand name sytax, that is FOR clause
+-- of ALTER TABLE must be also support deal with NULL value.
+alter table par_test drop subpartition for(null,888,888,888);	-- ok
+alter table par_test drop partition for(null);					-- ok
+drop table par_test;
+
+-- prune
+create table par_test(a int, b int, c int, d int)
+partition by range(a,b,c,d)
+(
+ partition p1 values less than(100,200,300,400),
+ partition p2 values less than(100,200,400,500),
+ partition p3 values less than(500,200,maxvalue,maxvalue)
+);
+
+-- into partition p1
+insert into par_test values(99, 199, 299, null);	-- ok
+insert into par_test values(99, 199, 399, null);	-- ok
+insert into par_test values(99, 199, null, 10);		-- ok
+insert into par_test values(99, 199, null, null);	-- ok
+insert into par_test values(10, null, 10, 10);		-- ok
+insert into par_test values(10, 10, null, 10);		-- ok
+insert into par_test values(10, 10, 10, null);		-- ok
+
+-- into partition p2
+insert into par_test values(100, 200, 399, null);	-- ok
+
+-- into partition p3
+insert into par_test values(100, 200, 666, null);	-- ok
+insert into par_test values(100, 200, null, null);	-- ok
+insert into par_test values(300, null, null, null);	-- ok
+insert into par_test values(500, 200, null, null);	-- ok
+insert into par_test values(500, 200, null, 9999);	-- ok
+insert into par_test values(500, 200, 999, null);	-- ok
+
+select count(*) from par_test;		-- 14
+
+-- only scan partition p1
+explain (costs off) select * from par_test where a = 88;
+
+-- only scan partition p1
+explain (costs off) select * from par_test where a = 100 and b < 200;
+
+-- only scan partition p2
+explain (costs off) select * from par_test where a = 100 and b = 200 and c > 300 and c < 400;
+
+-- scan partition p2 + p3
+explain (costs off) select * from par_test where a = 100 and b = 200 and c > 300;
+
+-- only scan partition p3
+explain (costs off) select * from par_test where a = 100 and b = 200 and c > 400;
+
+-- scan partition p1 + p2 + p3
+explain (costs off) select * from par_test where a = 100 and b = 200;
+
+-- all partitions be pruned, because no partition of all bound vlaue is maxvalue.
+explain (costs off) select * from par_test where a is null;
+
+-- IS NOT NULL no prune, so scan all partitions
+explain (costs off) select * from par_test where a is not null;
+
+-- the result of prune is ORed of a,b,c,d. a is null pruned all part but other key no prune, so scan all parts.
+explain (costs off) select * from par_test where a is null or b is null or c is null or d is null;
+select count(*) from par_test where a is null or b is null or c is null or d is null;	-- 14
+
+drop table par_test;
+
+create table par_test(a int, b int, c int, d int)
+partition by range(a)
+subpartition by range(b,c,d)
+(
+ partition p1 values less than(100)(subpartition s1 values less than(100, 200, 300), subpartition s2 values less than(100, 200, maxvalue)),
+ partition p2 values less than(200)(subpartition s3 values less than(100, 200, 300), subpartition s4 values less than(100, maxvalue, maxvalue)),
+ partition p3 values less than(maxvalue)(subpartition s5 values less than(100, 200, 300), subpartition s6 values less than(maxvalue, maxvalue, maxvalue))
+);
+
+-- into subpartition s1
+insert into par_test values(99, 99, null, null);	-- ok
+insert into par_test values(99, 100, 199, null);	-- ok
+-- into subpartition s2
+insert into par_test values(99, 100, 200, 300);		-- ok
+insert into par_test values(99, 100, 200, null);	-- ok
+
+select count(*) from par_test;		-- 4
+
+-- only scan the subpartitions of p3, since only p3 has first MAXVLAUE key.
+explain (costs off) select * from par_test where a is null;
+
+-- only scan the subpartitions of p1
+explain (costs off) select * from par_test where a < 100;
+
+-- only scan subpartition s1
+explain (costs off) select * from par_test where a < 100 and b = 100 and c = 200 and d < 300;
+
+-- only scan subpartition s2
+explain (costs off) select * from par_test where a < 100 and b = 100 and c = 200 and d >= 300;
+
+-- scan subpartition s5 + s6 of partition p3
+explain (costs off) select * from par_test where a > 666;
+
+-- only scan s5
+explain (costs off) select * from par_test where a > 666 and b < 100;
+
+-- only scan s6
+explain (costs off) select * from par_test where a > 666 and b is null;
+
+-- scan s5 + s6
+explain (costs off) select * from par_test where a > 666 and b is not null;
+
+-- scan all subpartitions
+explain (costs off) select * from par_test where a is null or b is null or c is null or d is null;
+select count(*) from par_test where a is null or b is null or c is null or d is null;	-- 3
+
+-- only scan s6
+explain (costs off) select * from par_test where b is null;
+select count(*) from par_test where b is null;		-- 0
+
+-- scan all subpartitions
+explain (costs off) select * from par_test where c is null;
+select count(*) from par_test where c is null;		-- 1
+
+-- scan all subpartitions
+explain (costs off) select * from par_test where d is null;
+select count(*) from par_test where d is null;		-- 3
+
+drop table par_test;

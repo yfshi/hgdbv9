@@ -133,6 +133,21 @@ extern List *calc_new_interval_partition_rbound(ParseState *pstate, PartitionKey
 /* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
 extern OraSubPartitionTemplateSpec *transformOraclePartitionedTableTemplate(PartitionKey subpartkey,
 																		OraSubPartitionTemplateSpec *subp_template);
+extern int partition_range_datum_bsearch_nullable(FmgrInfo *partsupfunc,
+														Oid *partcollation,
+														PartitionBoundInfo boundinfo,
+														int nvalues,
+														Datum *values,
+														bool *isnull,
+														bool *is_equal);
+
+extern int32 partition_rbound_datum_cmp_nullable(FmgrInfo *partsupfunc,
+													Oid *partcollation,
+													Datum *rb_datums,
+													PartitionRangeDatumKind *rb_kind,
+													Datum *tuple_datums,
+													bool *tuple_isnull,
+													int n_tuple_datums);
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
 #endif							/* PARTBOUNDS_H */

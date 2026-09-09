@@ -1781,6 +1781,31 @@ get_partition_for_tuple(PartitionDispatch pd, Datum *values, bool *isnull)
 					 */
 					part_index = boundinfo->indexes[bound_offset + 1];
 				}
+				/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+				else
+				{
+					Oid		partOid = RelationGetRelid(pd->reldesc);
+
+					/*
+					 * Oracle range partitioned table do not have a DEFAULT partition,
+					 * therefore, if the partition bound corresponding to NULL values
+					 * ​​is MAXVALUE, the NULL value tuple ​​fall into the MAXVALUE partition.
+					 */
+					if (is_oracle_partitioned_table(partOid) ||
+						is_oracle_partition(partOid))
+					{
+						bound_offset = partition_range_datum_bsearch_nullable(key->partsupfunc,
+																		key->partcollation,
+																		boundinfo,
+																		key->partnatts,
+																		values,
+																		isnull,
+																		&equal);
+
+						part_index = boundinfo->indexes[bound_offset + 1];
+					}
+				}
+				/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 			}
 			break;
 
@@ -2253,6 +2278,16 @@ ExecInitPruningContext(PartitionPruneContext *context,
 	/* Initialize expression state for each expression we need */
 	context->exprstates = (ExprState **)
 		palloc0(sizeof(ExprState *) * n_steps * partnatts);
+
+	/* Begin - ReqID:SRS-SQL-PARTITION-TABLE */
+	if (partdesc->nparts > 0 &&
+		(is_oracle_subpartition(partdesc->oids[0]) ||
+		 is_oracle_partition(partdesc->oids[0])))
+		context->is_oracle_part = true;
+	else
+		context->is_oracle_part = false;
+	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+
 	foreach(lc, pruning_steps)
 	{
 		PartitionPruneStepOp *step = (PartitionPruneStepOp *) lfirst(lc);
