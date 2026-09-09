@@ -801,7 +801,15 @@ ProcessCopyOptions(ParseState *pstate,
 		opts_out->delim = opts_out->csv_mode ? "," : "\t";
 
 	if (!opts_out->null_print)
-		opts_out->null_print = opts_out->csv_mode ? "" : "\\N";
+	{
+		/* Begin - bug#9089 */
+		/* pstate == 0 for contrib/file_fdw, so need skip it */
+		if (compatible_mode == MYS_MODE && pstate && (pstate->is_load_data || pstate->select_into))
+			opts_out->null_print = "\\N";
+		/* End - bug#9089 */
+		else
+			opts_out->null_print = opts_out->csv_mode ? "" : "\\N";
+	}
 	opts_out->null_print_len = strlen(opts_out->null_print);
 
 	if (opts_out->csv_mode)
