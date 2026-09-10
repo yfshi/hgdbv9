@@ -389,7 +389,8 @@ extern TupleDesc build_function_result_tupdesc_d_ext(char prokind,
 													 Datum proargmodes,
 													 Datum proargnames,
 													 bool intisnumber,		 /* BUG:M0000068 */
-													 Datum proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+													 Datum proargtypenames, /* ReqID:SRS-SQL-PACKAGE */
+													 Oid funcid /* BUG#Z9039 */);
 /* End - ReqID:SRS-SQL-PACKAGE */
 extern TupleDesc build_function_result_tupdesc_t(HeapTuple procTuple);
 /* Begin - ReqID:SRS-SQL-FUNCOUT */
@@ -399,7 +400,8 @@ extern TupleDesc build_plisql_function_result_tupdesc_d(char prokind,
 								Datum proargnames,
 								Oid prorettype,
 								bool intisnumber, /* BUG:M0000068 */
-								Datum proargtypenames); /* ReqID:SRS-SQL-PACKAGE */
+								Datum proargtypenames, /* ReqID:SRS-SQL-PACKAGE */
+								Oid funcid /* BUG#Z9039 */);
 /* End - ReqID:SRS-SQL-FUNCOUT */
 
 /* Begin - SRS-PLSQL-SUBPROC */

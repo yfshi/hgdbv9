@@ -549,7 +549,8 @@ ProcedureCreateExt(const char *procedureName,
 														  parameterModes,
 														  parameterNames,
 														  intisnumber,		   /* BUG:M0000068 */
-														  parametertypeNames); /* ReqID:SRS-SQL-PACKAGE */
+														  parametertypeNames, /* ReqID:SRS-SQL-PACKAGE */
+														  oldproc->oid /* BUG#Z9039 */);
 
 			if (olddesc == NULL && newdesc == NULL)
 				 /* ok, both are runtime-defined RECORDs */ ;
