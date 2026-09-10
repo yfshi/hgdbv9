@@ -9182,6 +9182,7 @@ IndexStmt:	CREATE opt_unique INDEX opt_concurrently opt_index_name mys_access_me
 					n->unique = $2;
 					n->concurrent = $4;
 					n->idxname = $5;
+					n->logical_idxname = $5; /* SRS-MYSQL-SQL-TableLEVELINDEX */
 
 					/* Begin - ReqID:SRS-MYSQL-CREATE-INDEX */
 					n->relation = $8;

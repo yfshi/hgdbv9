@@ -59,6 +59,7 @@
 #include "lib/stringinfo.h"
 #include "access/skey.h"
 #include "catalog/index.h"	/* SRS-MYSQL-SQL-TableLEVELINDEX */
+#include "catalog/pg_constraint.h"	/* SRS-MYSQL-SQL-TableLEVELINDEX */
 #include "catalog/pg_inherits.h"
 #include "utils/fmgroids.h"
 #include "access/genam.h"
@@ -679,7 +680,13 @@ get_table_attribute(Oid tableoid, Form_pg_class pgclass, StringInfo attrbuf)
 
 	/* Get all the constraint information */
 	appendStringInfo(&query_constraint_str,
-					 "select conname, pg_get_constraintdef(oid) as constraintdef from pg_constraint where conrelid = %u order by oid;",
+					 /* Begin - SRS-MYSQL-SQL-TableLEVELINDEX */
+					 "select CASE WHEN contype = 'u' "
+					 "THEN COALESCE(ivymy.logical_index_keyname(conindid), conname) "
+					 "ELSE conname END as conname, "
+					 "pg_get_constraintdef(oid) as constraintdef "
+					 "from pg_constraint where conrelid = %u order by oid;",
+					 /* End - SRS-MYSQL-SQL-TableLEVELINDEX */
 					 pgclass->oid);
 
 	if (SPI_connect() != SPI_OK_CONNECT)

@@ -785,9 +785,9 @@ SET enable_bitmapscan = off;
 -- (4) Key_name via logical_idxname when physical is mangled
 EXPLAIN (COSTS OFF)
 SELECT * FROM t_plan2 FORCE INDEX (idx_k) WHERE b = 1;
-                                QUERY PLAN                                
---------------------------------------------------------------------------
- Index Scan using idx_kt_plan256d30bec2e8353bf0ab55dc1c7fbd3d1 on t_plan2
+            QUERY PLAN             
+-----------------------------------
+ Index Scan using idx_k on t_plan2
    Index Cond: (b = 1)
 (2 rows)
 
@@ -795,9 +795,9 @@ SELECT * FROM t_plan2 FORCE INDEX (idx_k) WHERE b = 1;
 EXPLAIN (COSTS OFF)
 SELECT * FROM t_plan2
   FORCE INDEX (idx_kt_plan256d30bec2e8353bf0ab55dc1c7fbd3d1) WHERE b = 1;
-                                QUERY PLAN                                
---------------------------------------------------------------------------
- Index Scan using idx_kt_plan256d30bec2e8353bf0ab55dc1c7fbd3d1 on t_plan2
+            QUERY PLAN             
+-----------------------------------
+ Index Scan using idx_k on t_plan2
    Index Cond: (b = 1)
 (2 rows)
 
@@ -858,18 +858,18 @@ SET enable_bitmapscan = off;
 -- USE INDEX by logical Key_name
 EXPLAIN (COSTS OFF)
 SELECT * FROM t_hint2 USE INDEX (idx_h) WHERE b = 1;
-                                QUERY PLAN                                
---------------------------------------------------------------------------
- Index Scan using idx_ht_hint28e8bb216cfc0b9f2d6a25c469703650e on t_hint2
+            QUERY PLAN             
+-----------------------------------
+ Index Scan using idx_h on t_hint2
    Index Cond: (b = 1)
 (2 rows)
 
 -- FORCE INDEX FOR JOIN by logical Key_name (same resolve path as FORCE INDEX)
 EXPLAIN (COSTS OFF)
 SELECT * FROM t_hint2 FORCE INDEX FOR JOIN (idx_h) WHERE b = 1;
-                                QUERY PLAN                                
---------------------------------------------------------------------------
- Index Scan using idx_ht_hint28e8bb216cfc0b9f2d6a25c469703650e on t_hint2
+            QUERY PLAN             
+-----------------------------------
+ Index Scan using idx_h on t_hint2
    Index Cond: (b = 1)
 (2 rows)
 
@@ -885,10 +885,10 @@ SELECT * FROM t_hint1 FORCE INDEX (idx_h) WHERE b = 1;
 -- UPDATE / DELETE target with FORCE INDEX (logical Key_name)
 EXPLAIN (COSTS OFF)
 UPDATE t_hint2 FORCE INDEX (idx_h) SET a = a WHERE b = 1;
-                                   QUERY PLAN                                   
---------------------------------------------------------------------------------
+               QUERY PLAN                
+-----------------------------------------
  Update on t_hint2
-   ->  Index Scan using idx_ht_hint28e8bb216cfc0b9f2d6a25c469703650e on t_hint2
+   ->  Index Scan using idx_h on t_hint2
          Index Cond: (b = 1)
 (3 rows)
 
@@ -1115,13 +1115,13 @@ EXPLAIN (COSTS OFF)
 SELECT * FROM t_join1 FORCE INDEX (idx_j)
   INNER JOIN t_join2 FORCE INDEX (idx_j) ON t_join1.b = t_join2.b
  WHERE t_join1.b = 1;
-                                      QUERY PLAN                                      
---------------------------------------------------------------------------------------
+                  QUERY PLAN                   
+-----------------------------------------------
  Nested Loop
    ->  Index Scan using idx_j on t_join1
          Index Cond: (b = 1)
    ->  Materialize
-         ->  Index Scan using idx_jt_join2c9258dacdef353866c9e3625ce4dd14c on t_join2
+         ->  Index Scan using idx_j on t_join2
                Index Cond: (b = 1)
 (6 rows)
 
@@ -1129,13 +1129,13 @@ EXPLAIN (COSTS OFF)
 SELECT * FROM t_join1 j1 USE INDEX (idx_j)
   INNER JOIN t_join2 j2 USE INDEX (idx_j) ON j1.b = j2.b
  WHERE j1.b = 1;
-                                       QUERY PLAN                                        
------------------------------------------------------------------------------------------
+                    QUERY PLAN                    
+--------------------------------------------------
  Nested Loop
    ->  Index Scan using idx_j on t_join1 j1
          Index Cond: (b = 1)
    ->  Materialize
-         ->  Index Scan using idx_jt_join2c9258dacdef353866c9e3625ce4dd14c on t_join2 j2
+         ->  Index Scan using idx_j on t_join2 j2
                Index Cond: (b = 1)
 (6 rows)
 
@@ -1419,3 +1419,276 @@ SELECT id, status
 
 DROP TABLE hg_force_index_a;
 DROP TABLE hg_force_index_b;
+------ bug#9175
+---- case 1: create index on table
+CREATE TABLE tab_1(a_1 int, b_1 varchar(20));
+CREATE TABLE tab_2(a_2 int, b_2 varchar(20));
+CREATE TABLE tab_3(a_3 int, b_3 varchar(20));
+CREATE INDEX idx_name ON tab_1(b_1);
+CREATE INDEX idx_name ON tab_2(a_2);
+CREATE INDEX idx_name ON tab_3(b_3);
+SHOW CREATE TABLE tab_1;
+ Table |              Create Table              
+-------+----------------------------------------
+ tab_1 | CREATE TABLE "tab_1" (                +
+       |     "a_1" integer,                    +
+       |     "b_1" character varying(20),      +
+       |     KEY "idx_name" ("b_1") USING BTREE+
+       | )
+(1 row)
+
+SHOW CREATE TABLE tab_2;
+ Table |              Create Table              
+-------+----------------------------------------
+ tab_2 | CREATE TABLE "tab_2" (                +
+       |     "a_2" integer,                    +
+       |     "b_2" character varying(20),      +
+       |     KEY "idx_name" ("a_2") USING BTREE+
+       | )
+(1 row)
+
+SHOW CREATE TABLE tab_3;
+ Table |              Create Table              
+-------+----------------------------------------
+ tab_3 | CREATE TABLE "tab_3" (                +
+       |     "a_3" integer,                    +
+       |     "b_3" character varying(20),      +
+       |     KEY "idx_name" ("b_3") USING BTREE+
+       | )
+(1 row)
+
+\d tab_1;
+                      Table "public.tab_1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_1    | integer               |           |          | 
+ b_1    | character varying(20) |           |          | 
+Indexes:
+    "idx_name" btree (b_1)
+
+\d tab_2;
+                      Table "public.tab_2"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_2    | integer               |           |          | 
+ b_2    | character varying(20) |           |          | 
+Indexes:
+    "idx_nametab_2fd839c94a4f6ef41e8e662081ccf0054" btree (a_2) WITH (logical_idxname=idx_name)
+
+\d tab_3;
+                      Table "public.tab_3"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_3    | integer               |           |          | 
+ b_3    | character varying(20) |           |          | 
+Indexes:
+    "idx_nametab_3fd839c94a4f6ef41e8e662081ccf0054" btree (b_3) WITH (logical_idxname=idx_name)
+
+DROP TABLE tab_1,tab_2,tab_3;
+---- case 2: create unique index on table
+CREATE TABLE tab_u1(a_1 int, b_1 varchar(20));
+CREATE TABLE tab_u2(a_2 int, b_2 varchar(20));
+CREATE UNIQUE INDEX idx_u_name ON tab_u1(b_1);
+CREATE UNIQUE INDEX idx_u_name ON tab_u2(a_2);
+SHOW CREATE TABLE tab_u1;
+ Table  |                  Create Table                   
+--------+-------------------------------------------------
+ tab_u1 | CREATE TABLE "tab_u1" (                        +
+        |     "a_1" integer,                             +
+        |     "b_1" character varying(20),               +
+        |     UNIQUE KEY "idx_u_name" ("b_1") USING BTREE+
+        | )
+(1 row)
+
+SHOW CREATE TABLE tab_u2;
+ Table  |                  Create Table                   
+--------+-------------------------------------------------
+ tab_u2 | CREATE TABLE "tab_u2" (                        +
+        |     "a_2" integer,                             +
+        |     "b_2" character varying(20),               +
+        |     UNIQUE KEY "idx_u_name" ("a_2") USING BTREE+
+        | )
+(1 row)
+
+\d tab_u1;
+                      Table "public.tab_u1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_1    | integer               |           |          | 
+ b_1    | character varying(20) |           |          | 
+Indexes:
+    "idx_u_name" UNIQUE, btree (b_1)
+
+\d tab_u2;
+                      Table "public.tab_u2"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_2    | integer               |           |          | 
+ b_2    | character varying(20) |           |          | 
+Indexes:
+    "idx_u_nametab_u2b91bcd74241c76fca96a73945c89ba6c" UNIQUE, btree (a_2) WITH (logical_idxname=idx_u_name)
+
+DROP TABLE tab_u1,tab_u2;
+---- case 3: create FULLTEXT| SPATIAL index on table
+-- create fulltext index
+CREATE TABLE tab_fs1(a_1 int, b_1 varchar(20));
+CREATE TABLE tab_fs2(a_2 int, b_2 varchar(20));
+CREATE FULLTEXT INDEX idx_fs_name ON tab_fs1(b_1);
+CREATE SPATIAL INDEX idx_fs_name ON tab_fs2(a_2);
+SHOW CREATE TABLE tab_fs1;
+  Table  |               Create Table                
+---------+-------------------------------------------
+ tab_fs1 | CREATE TABLE "tab_fs1" (                 +
+         |     "a_1" integer,                       +
+         |     "b_1" character varying(20),         +
+         |     KEY "idx_fs_name" ("b_1") USING BTREE+
+         | )
+(1 row)
+
+SHOW CREATE TABLE tab_fs2;
+  Table  |               Create Table                
+---------+-------------------------------------------
+ tab_fs2 | CREATE TABLE "tab_fs2" (                 +
+         |     "a_2" integer,                       +
+         |     "b_2" character varying(20),         +
+         |     KEY "idx_fs_name" ("a_2") USING BTREE+
+         | )
+(1 row)
+
+\d tab_fs1;
+                     Table "public.tab_fs1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_1    | integer               |           |          | 
+ b_1    | character varying(20) |           |          | 
+Indexes:
+    "idx_fs_name" btree (b_1)
+
+\d tab_fs2;
+                     Table "public.tab_fs2"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_2    | integer               |           |          | 
+ b_2    | character varying(20) |           |          | 
+Indexes:
+    "idx_fs_nametab_fs2d935ca862c8ead0950fc04e755ae19f5" btree (a_2) WITH (logical_idxname=idx_fs_name)
+
+DROP TABLE tab_fs1,tab_fs2;
+-- create table(fulltext index)
+CREATE TABLE tab_fs1(a_1 int, b_1 varchar(20), FULLTEXT INDEX idx_fs_name(b_1));
+CREATE TABLE tab_fs2(a_2 int, b_2 varchar(20), SPATIAL INDEX idx_fs_name(a_2));
+SHOW CREATE TABLE tab_fs1;
+  Table  |               Create Table                
+---------+-------------------------------------------
+ tab_fs1 | CREATE TABLE "tab_fs1" (                 +
+         |     "a_1" integer,                       +
+         |     "b_1" character varying(20),         +
+         |     KEY "idx_fs_name" ("b_1") USING BTREE+
+         | )
+(1 row)
+
+SHOW CREATE TABLE tab_fs2;
+  Table  |               Create Table                
+---------+-------------------------------------------
+ tab_fs2 | CREATE TABLE "tab_fs2" (                 +
+         |     "a_2" integer,                       +
+         |     "b_2" character varying(20),         +
+         |     KEY "idx_fs_name" ("a_2") USING BTREE+
+         | )
+(1 row)
+
+\d tab_fs1;
+                     Table "public.tab_fs1"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_1    | integer               |           |          | 
+ b_1    | character varying(20) |           |          | 
+Indexes:
+    "idx_fs_name" btree (b_1)
+
+\d tab_fs2;
+                     Table "public.tab_fs2"
+ Column |         Type          | Collation | Nullable | Default 
+--------+-----------------------+-----------+----------+---------
+ a_2    | integer               |           |          | 
+ b_2    | character varying(20) |           |          | 
+Indexes:
+    "idx_fs_nametab_fs2d935ca862c8ead0950fc04e755ae19f5" btree (a_2) WITH (logical_idxname=idx_fs_name)
+
+DROP TABLE tab_fs1,tab_fs2;
+---- bug#9176
+-- SHOW CREATE TABLE: UNIQUE CONSTRAINT uses logical name, never mangled physical
+CREATE TABLE t_key1(a int, KEY uk_meta(a));
+CREATE TABLE t_ukey2(a int, UNIQUE KEY uk_meta(a));
+SHOW CREATE TABLE t_key1;
+ Table  |            Create Table             
+--------+-------------------------------------
+ t_key1 | CREATE TABLE "t_key1" (            +
+        |     "a" integer,                   +
+        |     KEY "uk_meta" ("a") USING BTREE+
+        | )
+(1 row)
+
+SHOW CREATE TABLE t_ukey2;
+  Table  |            Create Table             
+---------+-------------------------------------
+ t_ukey2 | CREATE TABLE "t_ukey2" (           +
+         |     "a" integer,                   +
+         |     CONSTRAINT "uk_meta" UNIQUE (a)+
+         | )
+(1 row)
+
+\d t_key1;
+               Table "public.t_key1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+Indexes:
+    "uk_meta" btree (a)
+
+\d t_ukey2;
+              Table "public.t_ukey2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+Indexes:
+    "uk_metat_ukey2f925d6ada894d390f54c70b6a080ef56" UNIQUE CONSTRAINT, btree (a) WITH (logical_idxname=uk_meta)
+
+DROP TABLE t_key1, t_ukey2;
+CREATE TABLE t_ukey1(a int, UNIQUE KEY uk_meta(a));
+CREATE TABLE t_ukey2(a int, UNIQUE KEY uk_meta(a));
+\d t_ukey1;
+              Table "public.t_ukey1"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+Indexes:
+    "uk_meta" UNIQUE CONSTRAINT, btree (a)
+
+\d t_ukey2;
+              Table "public.t_ukey2"
+ Column |  Type   | Collation | Nullable | Default 
+--------+---------+-----------+----------+---------
+ a      | integer |           |          | 
+Indexes:
+    "uk_metat_ukey2f925d6ada894d390f54c70b6a080ef56" UNIQUE CONSTRAINT, btree (a) WITH (logical_idxname=uk_meta)
+
+SHOW CREATE TABLE t_ukey1;
+  Table  |            Create Table             
+---------+-------------------------------------
+ t_ukey1 | CREATE TABLE "t_ukey1" (           +
+         |     "a" integer,                   +
+         |     CONSTRAINT "uk_meta" UNIQUE (a)+
+         | )
+(1 row)
+
+SHOW CREATE TABLE t_ukey2;
+  Table  |            Create Table             
+---------+-------------------------------------
+ t_ukey2 | CREATE TABLE "t_ukey2" (           +
+         |     "a" integer,                   +
+         |     CONSTRAINT "uk_meta" UNIQUE (a)+
+         | )
+(1 row)
+
+DROP TABLE t_ukey1, t_ukey2;
