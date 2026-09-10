@@ -6,7 +6,7 @@
  * 	  licchk tool checks and displays the content of the license.dat file..
  *
  * Copyright:
- * Copyright (c) 2025, HighGo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
  *		src/bin/licchk/licchk.c
@@ -18,6 +18,7 @@
  *		ReqID:SRS-MISC-LICENSE-TECC
  *		ReqID:SRS-MISC-LICENSE-STYLECONFIG
  *		ReqID:SRS-MISC-LICENSE-MultiMode
+ *		ReqID:SRS-MISC-LICENSE-MysqlDatabases
  *------------------------------------------------------------------
  */
 #include <stdio.h>
@@ -99,6 +100,12 @@ static void  usage(const char *progname);
 static void  commands_specified_language_or_encoding(void);	/* Whether to specify encoding and language parameters on the command line */
 /* End - ReqID:SRS-MISC-LICENSE-ENCODING */
 
+/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+static bool  is_get_extended_fields_all = false;
+static bool  is_get_extended_fields_offset = false;
+static int   extended_fields_offset = 0;
+/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+
 #ifdef WIN32
 static char *lic_win32_langinfo(const char *ctype);
 #endif
@@ -154,6 +161,10 @@ int main(int argc, char **argv)
 		{ "dbname", no_argument, NULL, 'D' },
 		{ "hardware-code", no_argument, NULL, 'W' },
 		/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+		/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+		{ "extended-fields-all", no_argument, NULL, 'E' },
+		{ "extended-fields", required_argument, NULL, 'F' },
+		/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
 		{ "version" , no_argument      , NULL, 'V' },
 		{ "help"    , no_argument      , NULL, '?' },
 		{  NULL     , 0                , NULL,  0  }
@@ -220,12 +231,12 @@ int main(int argc, char **argv)
 		}
 		if (strcmp(argv[1], "--version") == 0 || strcmp(argv[1], "-V") == 0)
 		{
-			puts("licchk DB V1.5.7");
+			printf("licchk DB V%s\n", LICENSE_VERSION);
 			exit(0);
 		}
 	}
 
-	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:TtHDMW", long_options, &option_index)) != -1)
+	while ((c = getopt_long(argc, argv, "lavf:c:UPiICSdms:e:TtHDMWEF:", long_options, &option_index)) != -1)
 	{
 		switch (c)
 		{
@@ -291,6 +302,16 @@ int main(int argc, char **argv)
 				cli_language = strdup(optarg);
 				break;
 			/* End - ReqID:SRS-MISC-LICENSE-ENCODING */
+			/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+			case 'E':
+				is_get_extended_fields_all = true;
+				break;
+
+			case 'F':
+				is_get_extended_fields_offset = true;
+				extended_fields_offset = atoi(optarg);
+				break;
+			/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
 
 			/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
 			case 't':
@@ -456,6 +477,22 @@ int main(int argc, char **argv)
 			printf("%s\n", hg_get_hardware_code());
 		}
 		/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+		/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+		else if (is_get_extended_fields_all && !is_get_extended_fields_offset)
+		{
+			bool old_state;
+
+			old_state = hg_set_is_with_title(true);
+			if (hg_get_extended_fields(LICENSE_VERSION, 0))
+				printf("%s\n", hg_get_extended_fields(LICENSE_VERSION, 0));
+			hg_set_is_with_title(old_state);
+		}
+		else if (is_get_extended_fields_all && is_get_extended_fields_offset)
+		{
+			if (hg_get_extended_fields(LICENSE_VERSION, extended_fields_offset))
+			printf("%s\n", hg_get_extended_fields(LICENSE_VERSION, extended_fields_offset));
+		}
+		/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
 		else
 		{
 			printLicenseData();
@@ -548,6 +585,22 @@ int main(int argc, char **argv)
 			printf("%s\n", hg_get_hardware_code());
 		}
 		/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+		/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+		else if (is_get_extended_fields_all && !is_get_extended_fields_offset)
+		{
+			bool old_state;
+
+			old_state = hg_set_is_with_title(true);
+			if (hg_get_extended_fields(LICENSE_VERSION, 0))
+				printf("%s\n", hg_get_extended_fields(LICENSE_VERSION, 0));
+			hg_set_is_with_title(old_state);
+		}
+		else if (is_get_extended_fields_all && is_get_extended_fields_offset)
+		{
+			if (hg_get_extended_fields(LICENSE_VERSION, extended_fields_offset))
+				printf("%s\n", hg_get_extended_fields(LICENSE_VERSION, extended_fields_offset));
+		}
+		/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
 		else
 		{
 			printLicenseData();
@@ -687,6 +740,10 @@ usage(const char *progname)
 	printf(_("      --used-type             get used type.\n"));
 	printf(_("      --project-info          get project information.\n"));
 	/* End - ReqID:SRS-MISC-LICENSE-STYLECONFIG */
+	/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+	printf(_("  -E, --extend-fields-all     output all extended parameters, then exit\n"));
+	printf(_("  -F, --extend-fields-offset  output extended parameter values by offset, then exit\n"));
+	/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
 	printf(_("  -V, --version               output version information, then exit\n"));
 	printf(_("  -?, --help                  show this help, then exit\n"));
 }

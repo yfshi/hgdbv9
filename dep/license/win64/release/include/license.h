@@ -5,12 +5,13 @@
  *
  * Copyright (c) 2026, Highgo Software Co.,Ltd. All rights reserved.
  *
- * src/libsrc/interface/license.h
+ * src/liba/interface/license.h
  * 
  * Requirement description:
  * 		ReqID:SRS-MISC-LICENSE
  * 		ReqID:SRS-MISC-LICENSE-TECC
  * 		ReqID:SRS-MISC-LICENSE-MultiMode
+ * 		ReqID:SRS-MISC-LICENSE-MySQLDatabases
  *-------------------------------------------------------------------------
  */
 
@@ -26,6 +27,8 @@
 #else
     #define LICENSEEXPORT
 #endif
+
+#define LICENSE_VERSION		"1.6.0"
 
 extern LICENSEEXPORT const char * hg_get_productName(void);		// Product name
 extern LICENSEEXPORT const char * hg_get_majorVersion(void);	// Major version
@@ -94,6 +97,8 @@ extern LICENSEEXPORT int		  hg_load_server_license(const char *);	    // Load se
 
 extern LICENSEEXPORT bool 		  hg_set_is_command_specified(bool flag);	// Set this flag when the user specifies language or encoding parameters using the command line
 extern LICENSEEXPORT void 		  hg_set_is_chinese_err_desc(bool flag);	// Set error prompt in Chinese or English
-//Check if the user has set language or coding parameter flags
+																			//Check if the user has set language or coding parameter flags
+extern LICENSEEXPORT const char * hg_get_extended_fields(const char *, uint32_t);
+extern LICENSEEXPORT uint32_t     hg_get_instance_num(void);
 
 #endif // end __LICENSE_H__
