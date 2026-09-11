@@ -497,7 +497,6 @@ ora_parse_re_flags(pg_re_flags *flags, text *opts)
 				 */
 				case 'm':
 					/* do Not touch dot behavior */
-					flags->cflags |= REG_NEWLINE;   /* enable newline-sensitive anchors */
 					flags->cflags |= REG_NLANCH;    /* allow ^/$ to anchor at newlines */
 					break;
 				/*
@@ -512,9 +511,7 @@ ora_parse_re_flags(pg_re_flags *flags, text *opts)
 				 */
 				case 'n':
 					/* DOTALL: '.' should match newline */
-					flags->cflags &= ~REG_NEWLINE;  /* remove newline-sensitive mode */
 					flags->cflags &= ~REG_NLSTOP;   /* do not stop '.' at newline */
-					flags->cflags &= ~REG_NLANCH;   /* do not alter ^/$ with newline */
 					break;
 				case 'p':		/* ~Perl, \n affects . [^ */
 					flags->cflags |= REG_NLSTOP;

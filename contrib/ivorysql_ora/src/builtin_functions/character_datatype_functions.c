@@ -108,6 +108,11 @@ static text *ora_substr(Datum str, int start, int len);
 static int ora_instr(text *txt, text *pattern, int start, int nth, Oid coll /* BUG#Z1463 */);
 /* End - BUG:M0000084 */
 
+/* Begin - bug#00008827 */
+static void ora_check_regex_options(text *flags, bool check_g);
+/* End - bug#00008827 */
+
+
 /* Begin - OA-REQ-2451 */
 static int32
 ora_number_arg_to_int32(Datum arg)
@@ -392,10 +397,9 @@ ora_regexp_replace(PG_FUNCTION_ARGS)
 	int         start_posn = 1;        /* position */
 	int  	    occur_posn = 0;        /* occurrence */
 	text       *match_para = NULL;     /* match_parameter */
-	char       *match_pa_to_str = NULL;
 	text       *tem = NULL;
 	regex_t    *re;
-	pg_re_flags flags;
+	pg_re_flags flags; /* bug#00008827 */
 	
 	/*
  	 *When there is only one parameter, error processing is performed 	 
@@ -467,14 +471,9 @@ ora_regexp_replace(PG_FUNCTION_ARGS)
 	if (PG_NARGS() >= 6 && !PG_ARGISNULL(5))
 	{
 		match_para = PG_GETARG_TEXT_PP(5);
-		match_pa_to_str = text_to_cstring(match_para);
-		for (; *match_pa_to_str != '\0'; match_pa_to_str++)
-		{
-			if (!MATCHPARAM(*match_pa_to_str))
-				ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("illegal argument for function")));
-		}
+		/* Begin - bug#00008827 */
+		ora_check_regex_options(match_para, false);
+		/* End - bug#00008827 */
 	}
 	
 	if (PG_NARGS() > 6 )
@@ -510,7 +509,6 @@ ora_regexp_substr(PG_FUNCTION_ARGS)
 	int  	    occur_posn = 1;        /* occurrence */
 	text       *match_para = NULL;     /* match_parameter */
 	int	    	subexpr_pos = 0;	   /* subexpr for pattern */
-	char 	   *match_pa_to_str = NULL;
 	bool	   find_subpattern = false;
 	Datum      substr;
 
@@ -585,14 +583,9 @@ ora_regexp_substr(PG_FUNCTION_ARGS)
 	if (PG_NARGS() >= 5 && !PG_ARGISNULL(4))
 	{
 		match_para = PG_GETARG_TEXT_PP(4);
-		match_pa_to_str = text_to_cstring(match_para);
-		for (; *match_pa_to_str != '\0'; match_pa_to_str++)
-		{
-			if (!MATCHPARAM(*match_pa_to_str))
-				ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("illegal argument for function")));
-		}
+		/* Begin - bug#00008827 */
+		ora_check_regex_options(match_para, false);
+		/* End - bug#00008827 */
 	}
 
 	if (PG_NARGS() >= 6)
@@ -636,7 +629,6 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 	int	     ret_opt = 0;           /* return_opt*/
 	text	*match_para = NULL;     /* match_parameter */
 	int	     subexpr_pos = 0;	    /* subexpr for pattern */
-	char	*match_pa_to_str = NULL;
 	bool	 find_subpattern = false;
 	Datum	 substr;
 
@@ -707,14 +699,9 @@ ora_regexp_instr(PG_FUNCTION_ARGS)
 	if (PG_NARGS() >= 6 && !PG_ARGISNULL(5))
 	{
 		match_para = PG_GETARG_TEXT_PP(5);
-		match_pa_to_str = text_to_cstring(match_para);
-		for (; *match_pa_to_str != '\0'; match_pa_to_str++)
-		{
-			if (!MATCHPARAM(*match_pa_to_str))
-				ereport(ERROR,
-				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-				 errmsg("illegal argument for function")));
-		}
+		/* Begin - bug#00008827 */
+		ora_check_regex_options(match_para, false);
+		/* End - bug#00008827 */
 	}
 
 	if (PG_NARGS() >= 7)
@@ -762,81 +749,20 @@ ora_regexp_like(PG_FUNCTION_ARGS)
 	text		*s = PG_ARGISNULL(0) ? NULL :PG_GETARG_TEXT_P(0);
 	text		*p = PG_ARGISNULL(1) ? NULL :PG_GETARG_TEXT_P(1);
 	text		*in_flag = PG_ARGISNULL(2) ? PG_STR_GET_TEXT("") : PG_GETARG_TEXT_P(2);
-	char		*in_flag_p = NULL;
-	int			in_flag_len, i, out_flag;
 	bool		match;
 	regmatch_t	pmatch[2];
+	pg_re_flags flags; /* bug#00008827 */
 
 	if ((NULL == s) || (NULL == p))
 	{
 		PG_RETURN_BOOL(false);
 	}
 
-	in_flag_p = VARDATA(in_flag);
-	in_flag_len = (VARSIZE(in_flag) - VARHDRSZ);
 
-	/*
-	 * Oracle default (NO FLAGS):
-	 *	- '.' does NOT match newline  (no dotall)
-	 *	- '^' and '$' match ONLY start/end of entire string (no multiline)
-	 *
-	 * PostgreSQL equivalent:
-	 *	- DO NOT set REG_NEWLINE
-	 */
-	out_flag = REG_ADVANCED;
-
-	for (i = 0; i <in_flag_len; i++)
-	{
-		switch (in_flag_p[i])
-		{
-			case 'i':	/* Case-insensitive matching */
-				out_flag  |= REG_ICASE;
-				break;
-			case 'n':	/* Dot matches newline - Oracle 'n' = REG_DOTALL */
-				/*
-				 * Compatible Oracle 'n' semantics (DOTALL):
-				 *		- '.' matches newline
-				 *		- newline does NOT change ^ or $
-				 *
-				 * In PostgreSQL:
-				 *
-				 *		- '.' matches newline when REG_NEWLINE is NOT set
-				 *		- so we must REMOVE REG_NEWLINE and REMOVE NLSTOP/NLANCH
-				 */
-				/* DOTALL: '.' should match newline */
-				out_flag &= ~REG_NEWLINE;	/* remove newline-sensitive mode */
-				out_flag &= ~REG_NLSTOP;	/* do not stop '.' at newline */
-				out_flag &= ~REG_NLANCH;	/* do not alter ^/$ with newline */
-				break;
-			/*
-			 * Compatible Oracle 'm' semantics:
-			 *		- Multi-line mode
-			 *		- ^ matches start of string OR after newline
-			 *		- $ matches end of string OR before newline
-			 *		- DOES NOT change '.' behavior
-			 *
-			 * PostgreSQL:
-			 *		REG_NEWLINE + REG_NLANCH enable ^/$ to respect newline
-			 */
-			case 'm':
-				/* do Not touch dot behavior */
-				out_flag |= REG_NEWLINE;   /* enable newline-sensitive anchors */
-				out_flag |= REG_NLANCH;    /* allow ^/$ to anchor at newlines */
-				break;
-			case 'c':	/* Case-sensitive matching (Oracle-specific) */
-				out_flag  &= ~REG_ICASE;
-				break;
-			case 'x':
-				out_flag |= REG_EXPANDED;
-				break;
-			default:
-				ereport(ERROR,
-						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-						errmsg("invalid option of regexp_like: %c",
-						in_flag_p[i])));
-				break;
-		}
-	}
+	/* Begin - bug#00008827 */
+	ora_check_regex_options(in_flag, false);
+	ora_parse_re_flags(&flags, in_flag);
+	/* End - bug#00008827 */
 
 	/*
 	 * We pass two regmatch_t structs to get info about the overall match and
@@ -847,7 +773,7 @@ ora_regexp_like(PG_FUNCTION_ARGS)
 	match = RE_compile_and_execute(p,
 								   VARDATA(s),
 								   VARSIZE(s) - VARHDRSZ,
-								   out_flag,
+								   flags.cflags, /* bug#00008827 */
 								   PG_GET_COLLATION(),
 								   2,
 								   pmatch);
@@ -927,20 +853,13 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 	int32		position = 0;
 	text	   *match_param = NULL;
 	regex_t    *re;
-	regmatch_t	pmatch[10];
+	regmatch_t	pmatch[REGEXP_REPLACE_BACKREF_CNT]; /* bug#00008827 */
 	int			src_text_len;
 	int			search_start;
 	int			occurrence_cnt = 0;
 	pg_wchar   *data;
 	size_t		data_len;
 	pg_re_flags flags;
-	/* Begin - ReqID:SRS-SQL-SYSFUNC: */
-	int			num_newlines = 0;
-	bool		is_caret_pattern = false;
-	bool		is_multiline = false;
-	bool		has_n_flag = false;
-	bool		has_m_flag = false;
-
 
 	if (PG_ARGISNULL(2))
 		PG_RETURN_NULL();
@@ -962,122 +881,40 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 	}
 	else
 	{
-		/* Begin - ReqID:SRS-SQL-SYSFUNC: */
-		char	*paramstr = NULL;
-		/* End - ReqID: SRS-SQL-SYSFUNC: */
-		
 		match_param = PG_GETARG_TEXT_PP(3);
-		/* Begin - ReqID:SRS-SQL-SYSFUNC: Judge the fourth parameter, if the first character
-		 * is not one of the following, an error will be reported.
+		/* Begin - bug#00008827 */
+		/*
+		 * 'true' is passwd here due to historical reasons;
+		 * the function's default value was set to 'g'
 		 */
-		paramstr = text_to_cstring(match_param);
-		if (paramstr)
-		{
-			if (paramstr[0] != 'x' && paramstr[0] != 'm' && paramstr[0] != 'i' && 
-				paramstr[0] != 'c' && paramstr[0] != 'n' && paramstr[0] != 'g')
-					ereport(ERROR,
-							 (errcode(ERRCODE_INVALID_PARAMETER_VALUE),
-								 errmsg("the 4th argument is illegal parameter for function. the parameter can be one of x, m, i, c, n.")));
-		}
-		/* End - ReqID: SRS-SQL-SYSFUNC. */
+		ora_check_regex_options(match_param, true);
+		/* End - bug#00008827 */
 		
 		ora_parse_re_flags(&flags, match_param);
 	}
 
-	/* Begin - ReqID:SRS-SQL-SYSFUNC: check parameters and count newlines. */
-	if (PG_ARGISNULL(0) || 
+	if (PG_ARGISNULL(0) ||
 		PG_ARGISNULL(1))
 		PG_RETURN_NULL();
 
 	s = PG_GETARG_TEXT_PP(0);
 	p = PG_GETARG_TEXT_PP(1);
 	src_text_len = VARSIZE_ANY_EXHDR(s);
-	
-	if(PG_NARGS() == 4 && !PG_ARGISNULL(0))
-	{
-		char	*str = text_to_cstring(s);
-		int 	 len = strlen(str);
-		int 	 i = 0;
-		for(i = 0;i < len; i++)
-		{
-			if(str[i] == '\n')
-				num_newlines++;
-		}
-		pfree(str);
-	}
-	/* End - ReqID:SRS-SQL-SYSFUNC. */
-	
+
 	/* Compile RE */
 	re = RE_compile_and_cache(p, flags.cflags, PG_GET_COLLATION());
 
 	/* Convert data string to wide characters. */
 	data = (pg_wchar *) palloc((src_text_len + 1) * sizeof(pg_wchar));
 	data_len = pg_mb2wchar_with_len(VARDATA_ANY(s), data, src_text_len);
-	
 
-	/*
-	 * Oracle 'm' mode special handling for patterns starting with '^'
-	 *
-	 * In Oracle:
-	 *	 - '^' matches the start of the string
-	 *	 - '^' also matches immediately after each newline
-	 *
-	 * PostgreSQL REG_NEWLINE + REG_NLANCH does not automatically
-	 * re-evaluate the regex at line start positions, so we must
-	 * manually scan all line-start locations.
-	 */
-	is_caret_pattern =
-		(VARSIZE_ANY_EXHDR(p) > 0 &&
-		 VARDATA_ANY(p)[0] == '^');
-
-	is_multiline = ((flags.cflags & REG_NLANCH) != 0);
-
-	if (is_caret_pattern && is_multiline)
+	/* Begin - bug#00008827 */
+	if (position > data_len)
 	{
-		int 		i;
-		int 		regexec_result;
-
-		occurrence_cnt = 0;
-
-		/*
-		 * Match at the start of the whole string.
-		 */
-		regexec_result = pg_regexec(re,
-									data,
-									data_len,
-									0,				/* start at beginning */
-									NULL,
-									REGEXP_REPLACE_BACKREF_CNT,
-									pmatch,
-									0);
-
-		if (regexec_result == REG_OKAY)
-			occurrence_cnt++;
-
-		/*
-		 * Match after every newline, i.e., at pos = (newline index + 1)
-		 */
-		for (i = 0; i < data_len; i++)
-		{
-			if (data[i] == (pg_wchar)'\n' && (i + 1) < data_len)
-			{
-				regexec_result = pg_regexec(re,
-											data,
-											data_len,
-											i + 1,
-											NULL,
-											REGEXP_REPLACE_BACKREF_CNT,
-											pmatch,
-											0);
-
-				if (regexec_result == REG_OKAY)
-					occurrence_cnt++;
-			}
-		}
-
 		pfree(data);
 		PG_RETURN_INT32(occurrence_cnt);
 	}
+	/* End - bug#00008827 */
 
 	search_start = position - 1;
 
@@ -1115,32 +952,23 @@ ora_regexp_count(PG_FUNCTION_ARGS)
 		/* Advance by length or 1 if zero-length match */
 		search_start = pmatch[0].rm_eo;
 		if (pmatch[0].rm_so == pmatch[0].rm_eo)
-			search_start++;
-	}
-
-	/* Begin - ReqID:SRS-SQL-SYSFUNC: count newlines. */
-	if (match_param)
-	{
-		char	*paramstr = text_to_cstring(match_param);
-		has_n_flag = (strchr(paramstr, 'n') != NULL);
-		has_m_flag = (strchr(paramstr, 'm') != NULL);
-		pfree(paramstr);
-	}
-
-	if (!strncmp(VARDATA_ANY(p), ".", 1))
-	{
-		if (!has_n_flag)
 		{
-			if (occurrence_cnt > (data_len - num_newlines))
-				occurrence_cnt -= num_newlines;
+			search_start++;
+
+			/* Begin - bug#00008827 */
+			/*
+			 * In this case, the last character of the search string
+			 * is a newline, which does not match eighter '^' or '$' or a.*
+			 * the final match should be excluded
+			 */
+			if (pmatch[0].rm_eo == data_len &&
+				data[data_len - 1] == '\n' &&
+				occurrence_cnt > 1)
+				occurrence_cnt--;
+			/* End - bug#00008827 */
 		}
 	}
-	else if (!strncmp(VARDATA_ANY(p), "^", 1))
-	{
-		if (has_m_flag)
-			occurrence_cnt = num_newlines + 1;
-	}
-	/* End - ReqID:SRS-SQL-SYSFUNC. */
+
 	
 	pfree(data);
 
@@ -2891,3 +2719,30 @@ ora_convert(PG_FUNCTION_ARGS)
 	PG_RETURN_DATUM(result);
 }
 /* End - BUG#M0000194 */
+
+
+/* Begin - bug#00008827 */
+static void
+ora_check_regex_options(text *flags, bool check_g)
+{
+	char	*paramstr = NULL;
+	char *b;
+
+	if (flags == NULL)
+		return;
+
+	paramstr = text_to_cstring(flags);
+
+	for (b = paramstr; *b != '\0'; b++)
+		if (!MATCHPARAM(*b) &&
+		 (!check_g ||
+		 (check_g && *b != 'g')))
+			ereport(ERROR,
+				(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
+				 errmsg("illegal argument for function")));
+	pfree(paramstr);
+
+	return;
+}
+/* End - bug#00008827 */
+
