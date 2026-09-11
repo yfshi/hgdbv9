@@ -866,6 +866,7 @@ create_mysql_auth_cache()
 
 mysql_auth_plugin_t caching_sha2_password = {
     .type = PASSWORD_TYPE_MYS_CACHING_SHA2,
+	.method = uaCachingSha256,
     .password_generate = caching_sha2_password_generate,
     .passwd_check = caching_sha2_password_check,
 };

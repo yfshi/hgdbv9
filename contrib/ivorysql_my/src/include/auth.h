@@ -6,6 +6,7 @@
 
 typedef struct {
     PasswordType type;
+    UserAuth method;		/* oa#2754 */
     char *(*password_generate)(const char *plain_password, int len);
     int   (*passwd_check)(Port *port, char *rolpassword);
 } mysql_auth_plugin_t;

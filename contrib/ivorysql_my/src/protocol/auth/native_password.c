@@ -177,6 +177,7 @@ native_password_check(Port *port, char *rolpassword)
 
 mysql_auth_plugin_t mysql_native_password = {
     .type = PASSWORD_TYPE_MYS_NATIVE,
+	.method = uaNative,
     .password_generate = native_password_generate,
     .passwd_check = native_password_check,
 };
