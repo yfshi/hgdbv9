@@ -17,6 +17,13 @@
  * IVY_MY_GUC_VAR_DEFINE, IVY_MY_GUC_INT_PARAMS and IVY_MY_GUC_STRING_PARAMS
  *-------------------------------------pg_resetwal.c------------------------------------
  */
+
+/* Begin - bug#9212 */
+#ifdef USE_LICENSE
+#include "license.h"
+#endif
+/* End - bug#9212 */
+
 #ifdef IVY_MY_GUC_FUNC_DEFINE
 	static void assign_sql_mode(const char *newval, void *extra);
 	static bool check_sql_mode(char **newval, void **extra, GucSource source);
@@ -50,6 +57,9 @@
 	static bool check_time_zone(char **newval, void **extra, GucSource source);
 	static void assign_time_zone(const char *newval, void *extra);
 	/* End - bug#z8081 */
+	/* Begin - bug#9212 */
+	static bool check_default_database(char **newval, void **extra, GucSource source);
+	/* End - bug#9212 */
 #endif
 
 #ifdef IVY_MY_GUC_VAR_DEFINE
@@ -614,7 +624,7 @@ int			max_execution_time;
 		},
 		&default_database,
 		"highgo",
-		NULL, NULL, NULL
+		check_default_database, NULL, NULL  /* bug#9212 */
 	},
 	/* Begin - Req: SRS-MYSQL-PROTOCOL */
 	{
@@ -1545,4 +1555,57 @@ assign_time_zone(const char *newval, void *extra)
 	return;
 }
 /* End - bug#z8081  */
+
+/* Begin - bug#9212 */
+static uint32_t
+get_instance_limit(void)
+{
+#ifdef USE_LICENSE
+	return hg_get_instance_num();
+#else
+	/* No instance limit when license support is disabled. */
+	return 0;
+#endif
+}
+
+static bool
+check_default_database(char **newval, void **extra, GucSource source)
+{
+	char *raw;
+	List *database_list = NULL;
+	uint32_t instance_count;
+	uint32_t max_instances;
+
+	/* Allow an unset default during GUC initialization. */
+	if (*newval == NULL)
+		return true;
+
+	/* SplitGUCList modifies its input, so use a copy. */
+	raw = pstrdup(*newval);
+	if (!SplitGUCList(raw, ',', &database_list))
+	{
+		list_free(database_list);
+		pfree(raw);
+		GUC_check_errdetail("Invalid database list.");
+		return false;
+	}
+
+	instance_count = (uint32_t) list_length(database_list);
+
+	/* List elements reference raw; free the list nodes, then the buffer. */
+	list_free(database_list);
+	pfree(raw);
+
+	max_instances = get_instance_limit();
+
+	/* A limit of zero means unlimited. */
+	if (max_instances != 0 && instance_count > max_instances)
+	{
+		GUC_check_errdetail("Configured instance count %u exceeds licensed maximum %u.", (unsigned int)instance_count, (unsigned int)max_instances);
+		return false;
+	}
+
+	return true;
+}
+/* End - bug#9212 */
 #endif
