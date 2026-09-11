@@ -7,7 +7,7 @@
  *		Display the version of the Highgo database.
  *
  * Copyright:
- * Copyright (c) 2022, HighGo Software Co.,Ltd. All rights reserved.
+ * Copyright (c) 2026, HighGo Software Co.,Ltd. All rights reserved.
  *
  * Identification:
  *		contrib/hg_misc/src/license/lic_views.c
@@ -40,12 +40,16 @@
  */
 #define LIC_FUNC_VIEWS_COLS  4
 
-/*---- Function declarations ----*/
+#define LIC_VERSION_16		16
 
+/*---- Function declarations ----*/
 
 PG_FUNCTION_INFO_V1(get_lic_baseinfo);
 PG_FUNCTION_INFO_V1(get_lic_funcinfo);
 PG_FUNCTION_INFO_V1(highgo_version);
+/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+PG_FUNCTION_INFO_V1(get_lic_extinfo); 
+/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
 
 
 Datum highgo_version(PG_FUNCTION_ARGS)
@@ -230,3 +234,47 @@ get_lic_funcinfo(PG_FUNCTION_ARGS)
 	return (Datum)0;
 }
 /* End - Reqid:SRS-MISC-LICENSE-TEMPLATE*/
+
+/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+/*
+ * Get license extended info from license module. Depends on encoding show
+ * Chinese version or English version.
+ */
+Datum
+get_lic_extinfo(PG_FUNCTION_ARGS)
+{
+	bool is_chinese = false;
+	char result_info[1024];
+	char *encoding = "UTF8";
+	char *utf8_region = NULL;
+	char *curr_encoding = NULL;
+
+	if (!hg_get_extended_fields(LICENSE_VERSION, 0))
+		PG_RETURN_NULL();
+
+	encoding = GetConfigOptionByName("client_encoding", NULL, true);
+	/* output the Chinese version if specified*/
+	if (pg_strncasecmp(encoding, "GBK", strlen("GBK")) == 0 ||
+		pg_strncasecmp(encoding, "EUC_CN", strlen("EUC_CN")) == 0 ||
+		pg_strncasecmp(encoding, "GB18030", strlen("GB18030")) == 0 ||
+		(pg_strncasecmp(encoding, "UTF8", strlen("UTF8")) == 0 && \
+			(utf8_region = getenv("LANG")) && \
+			pg_strncasecmp(utf8_region, "zh_CN", strlen("zh_CN")) == 0))
+	{
+		is_chinese = true;
+	}
+
+	/* Build result string here, output the Chinese version if specified */
+	hg_set_is_with_title(true);
+	hg_set_is_chinese_title(is_chinese);
+	curr_encoding = (char *)hg_get_encoding();
+	hg_set_encoding(GetConfigOptionByName("server_encoding", NULL, true));
+
+	sprintf(result_info, "%s\n", hg_get_extended_fields(LICENSE_VERSION, 0));
+
+	hg_set_encoding(curr_encoding);
+	free(curr_encoding);
+
+	return CStringGetTextDatum(result_info);
+}
+/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */

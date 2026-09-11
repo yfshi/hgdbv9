@@ -35,3 +35,17 @@ CREATE VIEW pg_catalog.v_lic_funcinfo AS
 
 GRANT SELECT ON pg_catalog.v_lic_funcinfo TO PUBLIC;
 /* End - ReqID:SRS-MISC-LICENSE-TEMPLATE */
+
+/* Begin - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
+-- Register functions.
+CREATE FUNCTION pg_catalog.get_lic_extinfo()
+RETURNS text
+AS 'MODULE_PATHNAME', 'get_lic_extinfo'
+LANGUAGE C PARALLEL SAFE;
+
+-- Register views on the function for ease of use.
+CREATE VIEW pg_catalog.v_lic_extinfo AS
+	SELECT * FROM get_lic_extinfo();
+
+GRANT SELECT ON pg_catalog.v_lic_extinfo TO PUBLIC;
+/* End - ReqID:SRS-MISC-LICENSE-MysqlDatabases */
