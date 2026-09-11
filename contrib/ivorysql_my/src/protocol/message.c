@@ -22,6 +22,7 @@
 #include "utils/snapmgr.h"
 #include "utils/syscache.h"
 
+#include "../charset/ctype.h"
 #include "../include/message.h"
 #include "../include/mqformat.h"
 
@@ -647,6 +648,10 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
             /* Begin - bug#9103 */
             if (type_is_enum(param_type))
             {
+                /* Begin - OA#2772 */
+                data = pg_client_to_server(data, length);
+                /* End - OA#2772 */
+
                 value = CStringGetDatum(data);
 
                 src_type = UNKNOWNOID;
@@ -672,19 +677,26 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
         {
             Oid		typinput;
             Oid		typioparam;
-            char    *str = mq_get_string_lenenc(buf, NULL, NULL);
+            uint32  len;
+            char    *converted_str;
+            char    *str = mq_get_string_lenenc(buf, &len, NULL);
 
             /* Begin - bug#8955 */
             if (str == NULL)
             {
                 str = "";
+                len = 0;
             }
             /* End - bug#8955 */
 
+            /* Begin - OA#2772 */
+            converted_str = pg_client_to_server(str, len);
+            /* End - OA#2772 */
+
             getTypeInputInfo(param_type, &typinput, &typioparam);
-                    
-            value = OidInputFunctionCall(typinput, str, typioparam, -1);
-            
+
+            value = OidInputFunctionCall(typinput, converted_str, typioparam, -1);
+
             src_type = param_type;
             break;
         }
@@ -1027,10 +1039,15 @@ execute_com_stmt_prepare(char *client_sql)
     for (int i = 0; i < param_count; i++)
     {
         const TypeItem *item;
+
         mysql_column_definition_t *param_field = make_column_definition_with_name("?", NULL, NULL);
         item = GetItemByTypeOid(entry->plansource->param_types[i], false);
         param_field->type = item->mysql_type_id;
-        param_field->charset = item->charset_flag;
+
+        /* Begin - OA#2772 */
+        param_field->charset = get_mysql_result_collation_id(item);
+        /* End - OA#2772 */
+
         send_column_definition41_packet(param_field);
     }
 
@@ -1283,48 +1300,84 @@ mysql_process_command(StringInfo buf)
             proc_exit(0);
             break;
         case COM_INIT_DB:
-            {
-                char *schema = mq_get_string_eof(buf, NULL);
-                StringInfo sql = makeStringInfo();
-                
-                appendStringInfo(sql, "use %s", schema);
+        {
+            char *schema = mq_get_string_eof(buf, NULL); 
+            StringInfo sql = makeStringInfo();
 
-                /* Set statement_timestamp() */
-                SetCurrentStatementStartTimestamp();
+            /* Begin - OA#2772 */
+            char *converted_schema = pg_client_to_server(schema, strlen(schema));
+            /* End - OA#2772 */
 
-                exec_simple_query(sql->data);
-                
-                DestroyStringInfo(sql);
-                pfree(schema);
+            appendStringInfo(sql, "use %s", converted_schema);
 
-                break;
-            }
+            /* Set statement_timestamp() */
+            SetCurrentStatementStartTimestamp();
+
+            exec_simple_query(sql->data);
+
+            DestroyStringInfo(sql);
+
+            if (converted_schema != schema)
+                pfree(converted_schema);
+
+            pfree(schema);
+
+            break;
+        }
         case COM_QUERY:
-            {
-                char *sql = parse_com_query_request(buf);
+        {
+            char *sql = parse_com_query_request(buf);
 
-                /* Set statement_timestamp() */
-                SetCurrentStatementStartTimestamp();
+            /* Begin - OA#2772 */
+            char *converted_sql = pg_client_to_server(sql, strlen(sql));
+            /* End - OA#2772 */
 
-                exec_simple_query(sql);
-                pfree(sql);
+            /* Set statement_timestamp() */
+            SetCurrentStatementStartTimestamp();
 
-                break;
-            }
+            exec_simple_query(converted_sql);
+
+            if (converted_sql != sql)
+                pfree(converted_sql);
+
+            pfree(sql);
+
+            break;
+        }
         case COM_FIELD_LIST:
-            {
-                char *table_name = mq_get_string_null(buf);
-                execute_com_field_list(table_name);
-                pfree(table_name);
-                break;
-            }
+        {
+            char *table_name = mq_get_string_null(buf);
+
+            /* Begin - OA#2772 */
+            char *converted_table_name = pg_client_to_server(table_name, strlen(table_name));
+            /* End - OA#2772 */
+
+            execute_com_field_list(converted_table_name);
+
+            if (converted_table_name != table_name)
+                pfree(converted_table_name);
+
+            pfree(table_name);
+
+            break;
+        }
         case COM_STMT_PREPARE:
-            {
-                char *sql = mq_get_string_eof(buf, NULL);
-                execute_com_stmt_prepare(sql);
-                pfree(sql);
-                break;
-            }
+        {
+            char *sql = mq_get_string_eof(buf, NULL);
+
+            /* Begin - OA#2772 */
+            char *converted_sql = pg_client_to_server(sql, strlen(sql));
+            /* End - OA#2772 */
+
+            execute_com_stmt_prepare(converted_sql);
+
+            if (converted_sql != sql)
+                pfree(converted_sql);
+
+            pfree(sql);
+
+            break;
+        }
         case COM_STMT_EXECUTE:
             {
                 com_stmt_exec_t *req;

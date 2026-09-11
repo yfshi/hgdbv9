@@ -488,3 +488,47 @@ mysql_text_regexne(PG_FUNCTION_ARGS)
                                            0, NULL));
 }
 /* End - BUG#7845 */
+
+/* Begin - OA#2772 */
+uint32
+get_mysql_collation_id_by_encoding_name(const char *encoding_name)
+{
+    const char *default_collation = NULL;
+    int i;
+
+    /*
+     * Find MySQL default collation corresponding to
+     * PostgreSQL encoding name.
+     */
+    for (i = 0; i < pg_encname_tbl_size; i++)
+    {
+        const pg_encname *enc = &pg_encname_tbl[i];
+
+        if (enc->name != NULL &&
+            enc->default_collation != NULL &&
+            pg_strcasecmp(enc->name, encoding_name) == 0)
+        {
+            default_collation = enc->default_collation;
+            break;
+        }
+    }
+
+    if (default_collation == NULL)
+        return my_charset_bin.number;
+
+    /*
+     * Find MySQL collation id.
+     */
+    for (i = 0; i < lengthof(all_cs); i++)
+    {
+        CHARSET_INFO *cs = all_cs[i];
+
+        if (cs != NULL &&
+            cs->coll_name != NULL &&
+            strcmp(cs->coll_name, default_collation) == 0)
+            return cs->number;
+    }
+
+    return my_charset_bin.number;
+}
+/* End - OA#2772 */

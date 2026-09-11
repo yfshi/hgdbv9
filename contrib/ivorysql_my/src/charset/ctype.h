@@ -272,4 +272,8 @@ void my_strxfrm_desc_and_reverse(uchar *str, uchar *strend,
 /* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
 extern CHARSET_INFO *search_charset_info_by_cs_number(int cs_number);
 /* End - SRS-MYSQL-CHARSET-INTRODUCER */
+
+/* Begin - OA#2772 */
+extern uint32 get_mysql_collation_id_by_encoding_name(const char *encoding_name);
+/* End - OA#2772 */
 #endif

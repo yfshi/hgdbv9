@@ -81,19 +81,19 @@ a:BIT
 name:VARCHAR
 size:CHAR
 \! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MySQLJdbcPrepareTest 127.0.0.1 $MYSPORT public proto_user ivorysql@123
-Tables_in_public:VARCHAR:test_fetch
-Tables_in_public:VARCHAR:test_long_sql
+Tables_in_public:VARCHAR:t3
+Tables_in_public:VARCHAR:t4
+Tables_in_public:VARCHAR:t_binary_concat
 Tables_in_public:VARCHAR:test_1
 Tables_in_public:VARCHAR:test_2
 Tables_in_public:VARCHAR:test_3
 Tables_in_public:VARCHAR:test_4
+Tables_in_public:VARCHAR:test_binary_temporal
+Tables_in_public:VARCHAR:test_fetch
+Tables_in_public:VARCHAR:test_long_sql
+Tables_in_public:VARCHAR:test_multi_queries
 Tables_in_public:VARCHAR:t_load
 Tables_in_public:VARCHAR:t_select_into
-Tables_in_public:VARCHAR:test_multi_queries
-Tables_in_public:VARCHAR:test_binary_temporal
-Tables_in_public:VARCHAR:t_binary_concat
-Tables_in_public:VARCHAR:t4
-Tables_in_public:VARCHAR:t3
 Database:VARCHAR:public
 Field:VARCHAR:c1
 Type:LONGTEXT:int(11)
@@ -640,6 +640,57 @@ id | BINARY | BINARY_LEN | BINARY_CONCAT | BINARY_CONCAT_LEN | BINARY3 | BINARY3
 6 | 42 | 1 | 4279 | 2 | 420000 | 3 | 42000079 | 4 | 41005CFF0A4279 | 7 | 41005CFF0A4279 | 7 | 41005CFF0A4279 | 7 | 41005CFF0A4279 | 7 | 41005CFF0A4279 | 7 | 1 | 1 | 0179 | 2 | 1000 | 2 | 100079 | 3
 7 | 43 | 1 | 4379 | 2 | 430000 | 3 | 43000079 | 4 | E4B8AD00FF79 | 6 | E4B8AD00FF79 | 6 | E4B8AD00FF79 | 6 | E4B8AD00FF79 | 6 | E4B8AD00FF79 | 6 | 1 | 1 | 0179 | 2 | 2A | 2 | 002A79 | 3
 -- End : Bug#8554
+-- Begin : OA-2772
+\! java -cp proto_test/class/mysql-connector-j-9.4.0.jar:proto_test/class/. MysqlCharacterSetResultsTest 127.0.0.1 $MYSPORT public proto_user wrong_pass@123
+========== Encoding ==========
+server_encoding = UTF8
+client_encoding = GBK
+
+========== Prepare Data ==========
+Server data:
+id=1, utf8_hex=E4B8AD, gbk_hex=D6D0
+id=2, utf8_hex=E6B58BE8AF95E4BDA0E5A5BD313233, gbk_hex=B2E2CAD4C4E3BAC3313233
+
+========== Test 1: character_set_results = NULL ==========
+character_set_results = 
+------------------------------
+id               = 1
+server UTF8 hex  = E4B8AD
+expected GBK hex = D6D0
+expected UTF8 hex = E4B8AD
+actual JDBC hex  = E4B8AD
+decoded as UTF8 = 中
+PASS: actual JDBC bytes match UTF8
+------------------------------
+id               = 2
+server UTF8 hex  = E6B58BE8AF95E4BDA0E5A5BD313233
+expected GBK hex = B2E2CAD4C4E3BAC3313233
+expected UTF8 hex = E6B58BE8AF95E4BDA0E5A5BD313233
+actual JDBC hex  = E6B58BE8AF95E4BDA0E5A5BD313233
+decoded as UTF8 = 测试你好123
+PASS: actual JDBC bytes match UTF8
+
+========== Test 2: character_set_results = GBK ==========
+character_set_results = GBK
+------------------------------
+id               = 1
+server UTF8 hex  = E4B8AD
+expected GBK hex = D6D0
+expected GBK hex = D6D0
+actual JDBC hex  = D6D0
+decoded as GBK = 中
+PASS: actual JDBC bytes match GBK
+------------------------------
+id               = 2
+server UTF8 hex  = E6B58BE8AF95E4BDA0E5A5BD313233
+expected GBK hex = B2E2CAD4C4E3BAC3313233
+expected GBK hex = B2E2CAD4C4E3BAC3313233
+actual JDBC hex  = B2E2CAD4C4E3BAC3313233
+decoded as GBK = 测试你好123
+PASS: actual JDBC bytes match GBK
+
+========== ALL TESTS PASSED ==========
+-- End : OA-2772
 -- final clean
 RESET ROLE;
 DROP USER IF EXISTS proto_user CASCADE;

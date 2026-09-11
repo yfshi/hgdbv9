@@ -9,6 +9,7 @@
 #include "utils/bytea.h"
 #include "utils/date.h"
 #include "utils/datetime.h"
+#include "utils/guc.h"
 #include "utils/lsyscache.h"
 #include "utils/memdebug.h"
 #include "utils/memutils.h"
@@ -211,7 +212,16 @@ make_column_definition_with_attr(FormData_pg_attribute *attr)
 
     const TypeItem *item = GetItemByTypeOid(attr->atttypid, false);
 
-    field->name = attr->attname.data;
+    /* Begin - OA#2772 */
+    /**
+     * Column names are result metadata and should follow character_set_results
+     * rather than always being converted to UTF8
+     */
+    field->name = pg_server_to_any(attr->attname.data,
+                                   strlen(attr->attname.data),
+                                   PG_UTF8);
+    /* End - OA#2772 */
+
     field->type = item->mysql_type_id;
 
     /* Begin - bug#9024 */
@@ -219,7 +229,10 @@ make_column_definition_with_attr(FormData_pg_attribute *attr)
     /* End - bug#9024 */
 
     field->flags = item->flags;
-    field->charset = item->charset_flag;
+
+    /* Begin - OA#2772 */
+    field->charset = get_mysql_result_collation_id(item);
+    /* End - OA#2772 */
 
     return field;
 }
@@ -409,6 +422,36 @@ printtup_prepare_info(DR_printtup *myState, TupleDesc typeinfo, int numAttrs)
     }
 }
 
+/* Begin - OA#2772 */
+static char *
+mysql_convert_result_encoding(const char *str, int len)
+{
+    int result_encoding;
+
+    if (str == NULL)
+        return NULL;
+
+    /*
+     * character_set_results = NULL or empty means no conversion.
+     */
+    if (CHARACTER_SET_RESULTS_IS_VALIDY())
+        return unconstify(char *, str);
+
+    /*
+     * MySQL binary charset means no character set conversion.
+     */
+    if (pg_strcasecmp(character_set_results, "binary") == 0)
+        return unconstify(char *, str);
+
+    result_encoding = pg_char_to_encoding(character_set_results);
+
+    if (!PG_VALID_ENCODING(result_encoding))
+        return unconstify(char *, str);
+
+    return pg_server_to_any(str, len, result_encoding);
+}
+/* End - OA#2772 */
+
 static void
 send_textproto(TupleTableSlot *slot, DR_printtup *myState, int natts, StringInfo buf)
 {
@@ -461,8 +504,15 @@ send_textproto(TupleTableSlot *slot, DR_printtup *myState, int natts, StringInfo
         }
         else
         {
+            char *clientstr;
             outputstr = OutputFunctionCall(&thisState->finfo, attr);
-            mq_append_string_lenenc(buf, outputstr, -1);
+            /* Begin - OA#2772 */
+            clientstr = mysql_convert_result_encoding(outputstr, strlen(outputstr));
+            /* End - OA#2772 */
+            mq_append_string_lenenc(buf, clientstr, strlen(clientstr));
+
+            if (clientstr != outputstr)
+                pfree(clientstr);
         }
     }
 }
@@ -803,7 +853,9 @@ append_data_by_mysql_type(const TypeItem *item, Datum binval, StringInfo buf, Pr
 	            fmgr_info(outfunc, &fmgrinfo);
                 
                 raw = OutputFunctionCall(&fmgrinfo, binval);
-                str = pg_server_to_client(raw, strlen(raw));
+                /* Begin - OA#2772 */
+                str = mysql_convert_result_encoding(raw, strlen(raw));
+                /* End - OA#2772 */
 
                 mq_append_string_lenenc(buf, str, -1);
 

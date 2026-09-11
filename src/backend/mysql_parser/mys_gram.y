@@ -364,7 +364,6 @@ static Node *makeIntervalExpr(Node *value, char *unit, int location);
 /* End - bug#8084 */
 
 /* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
-static char *text_string_convert_encoding(char *str);
 static int make_expand_properties(char *str, int location, mys_core_yyscan_t yyscanner);
 /* End:SRS-MYSQL-CHARSET-INTRODUCER */
 %}
@@ -782,7 +781,6 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 
 %type <ival>	Iconst SignedIconst
 %type <str>		Sconst comment_text notify_payload opt_sconst
-%type <str>		literal_sconst filesys_sconst sys_sconst  /* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
 %type <str>		ColId ColLabel BareColLabel name_const_label /* ReqID:SRS-MYSQL-BUILDINFUNCTION */
@@ -2254,7 +2252,7 @@ multi_charset:
 		;
 
 multi_encoding:
-			literal_sconst							{ $$ = $1; }	/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+			Sconst									{ $$ = $1; }
 			| BINARY								{ $$ = (char *) $1; } /* ReqID:SRS-MYSQL-BINARYTYPE */
 			| IDENT 								{ $$ = $1; }	/* ReqID:SRS-MYSQL-SET */
 			| DEFAULT								{ $$ = NULL; }
@@ -2412,7 +2410,7 @@ show_filter:
 						filter->node = $2;
 						$$ = filter;
 					}
-			| LIKE literal_sconst
+			| LIKE SCONST
 					{
 						ShowFilter *filter = (ShowFilter *)palloc(sizeof(ShowFilter));
 						filter->is_like = true;
@@ -13524,7 +13522,7 @@ ExplainableStmt:
  *****************************************************************************/
 /* Begin - ReqID:SRS-MYSQL-SQL-PREPARE */
 M_PreparableStmt:
-		sys_sconst							/* ReqID:SRS-MYSQL-CHARSET-INTRODUCER */
+		SCONST
 			{
 				$$ = (Node *) makeString($1);
 			}
@@ -20292,7 +20290,7 @@ name:		ColId									{ $$ = $1; };
 
 attr_name:	ColLabel								{ $$ = $1; };
 
-file_name:	filesys_sconst							{ $$ = $1; };
+file_name:	Sconst									{ $$ = $1; };
 
 /*
  * The production for a qualified func_name has to exactly match the
@@ -20313,11 +20311,11 @@ func_name:	type_function_name
 
 /* Begin: Req:SRS-MYSQL-SQL-Select */
 sconst_list:
-			literal_sconst
+			Sconst
 				{
 					$$ = list_make1($1);
 				}
-			| sconst_list literal_sconst
+			| sconst_list Sconst
 				{
 					$$ = lappend($1, $2);
 				}
@@ -20416,7 +20414,7 @@ AexprConst: Iconst
 				}
 			/* End: Req:SRS-MYSQL-SQL-Select */
 		
-			| ConstTypename literal_sconst
+			| ConstTypename Sconst
 				{
 					/* ReqID:SRS-MYSQL-DATETYPE */
 					if (MYS_MODE == compatible_mode)
@@ -20488,33 +20486,6 @@ opt_sconst:
 
 Iconst:		ICONST									{ $$ = $1; };
 Sconst:		SCONST									{ $$ = $1; };
-
-/* Begin - SRS-MYSQL-CHARSET-INTRODUCER */
-literal_sconst:
-			Sconst			{ 
-								if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
-									$$ = text_string_convert_encoding($1);
-								else 
-									$$ = $1;
-							}
-
-sys_sconst:
-			Sconst			{ 
-								if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
-									$$ = text_string_convert_encoding($1);
-								else 
-									$$ = $1;
-							}
-
-filesys_sconst:
-			Sconst			{ 
-								if (MyProcPort && IsA(MyProcPort->protocol_config, ProtocolMysql))
-									$$ = text_string_convert_encoding($1);
-								else 
-									$$ = $1;
-							}
-			;
-/* End - SRS-MYSQL-CHARSET-INTRODUCER */
 
 SignedIconst: Iconst								{ $$ = $1; }
 			| '+' Iconst							{ $$ = + $2; }
@@ -23416,6 +23387,22 @@ makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
 							   makeShowFilter("Name", filter));
 }
 
+/* Begin - OA#2772 */
+static SortBy *
+makeSortBy(char *col_name)
+{
+    SortBy *sortby = makeNode(SortBy);
+
+    sortby->node = (Node *) makeColumnRef(col_name, NIL, -1, 0);
+    sortby->sortby_dir = SORTBY_ASC;
+    sortby->sortby_nulls = SORTBY_NULLS_DEFAULT;
+    sortby->useOp = NIL;
+    sortby->location = -1;
+
+    return sortby;
+}
+/* End - OA#2772 */
+
 /* makeShowTablesStmt
  *
  * Construct a SelectStmt statement that
@@ -23455,6 +23442,10 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 	stmt = makeRangeFuncSelect("show_tables", 
 							   db_name ? list_make1(db_name) : NIL,
 							   makeShowFilter(pstrdup(col_name), filter));
+
+	/* Begin - OA#2772 */
+	stmt->sortClause = list_make1(makeSortBy(pstrdup(col_name)));
+	/* End - OA#2772 */
 
 	// Change column's name
 	rf = linitial(stmt->fromClause);
@@ -24189,18 +24180,6 @@ makeIntervalExpr(Node *value, char *unit, int location)
 /* End - ReqID:SRS-MYSQL-SQL-PROC */
 
 /* Begin:SRS-MYSQL-CHARSET-INTRODUCER */
-static char *
-text_string_convert_encoding(char *str)
-{
-	if (str == NULL)
-		return NULL;
-
-	return (char *) pg_do_encoding_conversion((unsigned char *) str,
-											  strlen(str),
-											  pg_get_client_encoding(),
-											  GetDatabaseEncoding());
-}
-
 static int
 make_expand_properties(char *str, int location, mys_core_yyscan_t yyscanner)
 {

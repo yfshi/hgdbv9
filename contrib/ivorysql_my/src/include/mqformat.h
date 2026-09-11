@@ -106,13 +106,13 @@ mq_append_int_lenenc(StringInfo buf, uint64 i)
 static inline void
 mq_append_string_null(StringInfo buf, const char *data)
 {
-    pq_sendstring(buf, data);
+    appendBinaryStringInfoNT(buf, data, strlen(data) + 1);
 }
 
 static inline void
 mq_append_string_len(StringInfo buf, const char *data, uint32 len)
 {
-    pq_sendtext(buf, data, len);
+    appendBinaryStringInfo(buf, data, len);
 }
 
 static inline void
@@ -141,10 +141,7 @@ mq_append_string_lenenc(StringInfo buf, const char *data, int dataLen)
 static inline void
 mq_append_string_eof(StringInfo buf, const char *data)
 {
-    if (data == NULL)
-        return;
-
-    pq_sendtext(buf, data, strlen(data));
+    appendBinaryStringInfo(buf, data, strlen(data));
 }
 
 static inline void

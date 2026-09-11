@@ -180,6 +180,11 @@ enum SERVER_STATUS_flags_enum {
 
 #define DEFAULLT_DATA_FIELD_LEN     65535
 
+/* Begin - OA#2772 */
+#define CHARACTER_SET_RESULTS_IS_VALIDY() \
+    (character_set_results == NULL || character_set_results[0] == '\0')
+/* End - OA#2772 */
+
 typedef struct {
     uint32 client_capabilities;
     uint32 max_packet_size;
@@ -243,7 +248,7 @@ typedef struct {
     uint32  mysql_type_id;        // defined in enum_field_types from MySQL source code
     Oid     oid;                  // oid of pg type's, this is hash key
     uint32  flags;                // type flag, such as unsigned flag or others
-    uint32  charset_flag;         // charset
+    bool    is_binary_charset;    // whether type uses binary charset
 } TypeItem;
 
 typedef struct {
@@ -365,6 +370,10 @@ extern void register_mysql_listener(void);
 extern void unregister_mysql_listener(void);
 extern const TypeItem *GetItemByTypeOid(Oid oid, bool report_warning); /* Bug - #z6172 */
 extern bool type_is_blob(Oid oid);
+
+/* Begin - OA#2772 */
+extern uint32 get_mysql_result_collation_id(const TypeItem *item);
+/* End - OA#2772 */
 
 static inline uint32
 get_client_capabilities()
