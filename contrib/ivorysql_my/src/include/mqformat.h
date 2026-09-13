@@ -214,6 +214,7 @@ mq_get_int4(StringInfo buf, uint32 *num)
 static inline void
 mq_get_int8(StringInfo buf, uint64 *num)
 {
+    *num = 0; /* bug#9241 */
     mq_get_int_len(buf, (void *) num, BYTE_8_LEN);
 }
 
