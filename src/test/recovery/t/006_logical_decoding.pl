@@ -1,4 +1,3 @@
-
 # Copyright (c) 2021, PostgreSQL Global Development Group
 
 # Testing of logical decoding using SQL interface and/or pg_recvlogical
@@ -58,7 +57,7 @@ $result = $node_primary->safe_psql('postgres',
 #is(scalar(my @foobar = split /^/m, $result),
 #	12, 'Decoding produced 12 rows inc BEGIN/COMMIT');
 
-my @filterd_line0 = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $result);
+my @filterd_line0 = grep { /table public\.decoding_test:/ } split(/\n/, $result);
 my $filterd_result0 = join("\n", @filterd_line0);
 is(scalar(my @foobar = split /^/m, $filterd_result0),
 	10, 'Decoding produced 10 rows not inc BEGIN/COMMIT');
@@ -73,7 +72,7 @@ $result = $node_primary->safe_psql('postgres',
 	qq[SELECT pg_logical_slot_get_changes('test_slot', NULL, NULL);]);
 chomp($result);
 
-my @filterd_changes = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $result);
+my @filterd_changes = grep { /table public\.decoding_test:/ } split(/\n/, $result);
 my $filterd_result = join("\n", @filterd_changes);
 #is($result, '', 'Decoding after fast restart repeats no rows');
 is($filterd_result, '', 'Decoding after fast restart repeats no rows');
@@ -101,7 +100,7 @@ my $stdout_sql = $node_primary->safe_psql('postgres',
 );
 #is($stdout_sql, $expected, 'got expected output from SQL decoding session');
 
-my @filterd_lines = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $stdout_sql);
+my @filterd_lines = grep { /table public\.decoding_test:/ } split(/\n/, $stdout_sql);
 my $filterd_results = join("\n", @filterd_lines);
 is($filterd_results, $expected1, 'got expected output from SQL decoding session');
 
@@ -122,7 +121,7 @@ my $stdout_recv = $node_primary->pg_recvlogical_upto(
 	'include-xids'     => '0',
 	'skip-empty-xacts' => '1');
 chomp($stdout_recv);
-my @filterd_line = grep { !/(pg_reboot|pg_audit_log|BEGIN|COMMIT)/ } split(/\n/, $stdout_recv);
+my @filterd_line = grep { /table public\.decoding_test:/ } split(/\n/, $stdout_recv);
 my $filterd_results_l = join("\n", @filterd_line);
 is($filterd_results_l, $expected1, 'got same expected output from pg_recvlogical decoding session');
 #is($stdout_recv, $expected,

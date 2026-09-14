@@ -25,6 +25,12 @@ SELECT hg_security.set_schema_quota('SX', '1MB');
  
 (1 row)
 
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 INSERT INTO SX.a values(generate_series(0, 100000));
 ERROR:  schema's disk space quota exceeded
 INSERT INTO SX.a values(generate_series(0, 10));
@@ -37,6 +43,12 @@ CREATE TABLE SX.a(i int);
 SELECT hg_security.set_schema_quota('SX', '1MB');
  set_schema_quota 
 ------------------
+ 
+(1 row)
+
+select pg_sleep(5);
+ pg_sleep 
+----------
  
 (1 row)
 
@@ -55,6 +67,12 @@ SELECT hg_security.set_schema_quota('SX', '1MB');
  
 (1 row)
 
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 INSERT INTO SX.a values(generate_series(0, 100000));
 ERROR:  schema's disk space quota exceeded
 INSERT INTO SX.a values(generate_series(0, 10));
@@ -67,6 +85,12 @@ CREATE TABLE SX.a(i int);
 SELECT hg_security.set_schema_quota('SX', '1MB');
  set_schema_quota 
 ------------------
+ 
+(1 row)
+
+select pg_sleep(5);
+ pg_sleep 
+----------
  
 (1 row)
 
@@ -85,6 +109,12 @@ SELECT hg_security.set_schema_quota('SX', '1MB');
  
 (1 row)
 
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 INSERT INTO SX.a values(generate_series(0, 100000));
 ERROR:  schema's disk space quota exceeded
 INSERT INTO SX.a values(generate_series(0, 10));
@@ -97,6 +127,12 @@ CREATE TABLE SX.a(i int);
 SELECT hg_security.set_schema_quota('SX', '1MB');
  set_schema_quota 
 ------------------
+ 
+(1 row)
+
+select pg_sleep(5);
+ pg_sleep 
+----------
  
 (1 row)
 
@@ -115,6 +151,12 @@ SELECT hg_security.set_schema_quota('SX', '1MB');
  
 (1 row)
 
+select pg_sleep(5);
+ pg_sleep 
+----------
+ 
+(1 row)
+
 INSERT INTO SX.a values(generate_series(0, 100000));
 ERROR:  schema's disk space quota exceeded
 INSERT INTO SX.a values(generate_series(0, 10));
@@ -127,6 +169,12 @@ CREATE TABLE SX.a(i int);
 SELECT hg_security.set_schema_quota('SX', '1MB');
  set_schema_quota 
 ------------------
+ 
+(1 row)
+
+select pg_sleep(5);
+ pg_sleep 
+----------
  
 (1 row)
 

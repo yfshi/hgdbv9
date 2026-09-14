@@ -67,8 +67,7 @@ endif
 
 # /* Begin - ReqID:SRS-SECURITY-POWERS */		
 # build se_features and compile it into postgres
-$(top_builddir)/src/se_features/libse_features.a:
-	$(MAKE) -C $(top_builddir)/src/se_features/ libse_features.a
+$(top_builddir)/src/se_features/libse_features.a: $(top_builddir)/src/se_features-recursive ;
 OBJS += $(top_builddir)/src/se_features/libse_features.a
 # LDFLAGS_INTERNAL += -L$(top_builddir)/src/se_features/ -lse_features
 # /* End - ReqID:SRS-SECURITY-POWERS */
