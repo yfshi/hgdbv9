@@ -4222,6 +4222,7 @@ ExecEvalXmlExpr(ExprState *state, ExprEvalStep *op)
 		case IS_UPDATEXML:
 			{
 				Datum	   *argvalue = op->d.xmlexpr.argvalue;
+				bool	   *argnull = op->d.xmlexpr.argnull;	/* BUG#Z9218 */
 				List	   *values = NIL;
 
 				if (list_length(xexpr->args) < 3)
@@ -4230,7 +4231,11 @@ ExecEvalXmlExpr(ExprState *state, ExprEvalStep *op)
 
 				for (int i = 0; i < list_length(xexpr->args); i++)
 				{
-					values = lappend(values, DatumGetPointer(argvalue[i]));
+					/* A NULL argument's Datum may still contain an earlier value. */
+					/* Begin - BUG#Z9218 */
+					values = lappend(values, argnull[i] ? NULL :
+										 DatumGetPointer(argvalue[i]));
+					/* End - BUG#Z9218 */
 				}
 
 				if (values != NIL)
@@ -4239,7 +4244,10 @@ ExecEvalXmlExpr(ExprState *state, ExprEvalStep *op)
 						*op->resvalue = PointerGetDatum((*ora_updatexml_hook)(values));
 					else
 						*op->resvalue = (Datum) 0;
-					*op->resnull = false;
+					/* Begin - BUG#Z9218 */
+					/* The hook returns NULL for SQL NULL, not an empty XML datum. */
+					*op->resnull = DatumGetPointer(*op->resvalue) == NULL;
+					/* End - BUG#Z9218 */
 				}
 			}
 			break;
