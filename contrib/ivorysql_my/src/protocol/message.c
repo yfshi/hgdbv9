@@ -468,17 +468,25 @@ parse_one_param_value(StringInfo buf, uint32 flag, ParamExternData *param)
         case MYSQL_TYPE_FLOAT:
         {
             uint32 v;
+            float4 f;
+
             mq_get_int4(buf, &v);
+            f = *((float4 *) &v); /* bug#9241 */
+
             src_type = FLOAT4OID;
-            value = Float4GetDatum((float4) v);
+            value = Float4GetDatum(f);
             break;
         }
         case MYSQL_TYPE_DOUBLE:
         {
             uint64 v;
+            float8 d;
+
             mq_get_int8(buf, &v);
+            d = *((float8 *) &v); /* bug#9241 */
+            
             src_type = FLOAT8OID;
-            value = Float8GetDatum((float8) v);
+            value = Float8GetDatum(d);
             break;
         }
         case MYSQL_TYPE_DECIMAL:

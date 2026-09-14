@@ -73,6 +73,7 @@
 #include "utils/expandedrecord.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
+#include "utils/snapmgr.h"
 #include "utils/timestamp.h"
 #include "utils/typcache.h"
 #include "utils/xml.h"
@@ -4768,13 +4769,29 @@ mys_convert_current_const_to_target_const(Const *currentconst, Oid targetoid, in
 							 -1);
 
 		/* Begin - BUG#Z6861 */
-		result = (Node *) evaluate_expr((Expr *) (result),
-										exprType((Node *) (result)),
-										exprTypmod((Node *) (result)),
-										exprCollation((Node *) (result)));
+		/*
+ 		 * evaluate_expr() does not set up an active snapshot or Portal.
+ 		 * That is normally fine for immutable C functions, but a PL/pgSQL
+ 		 * cast function runs through SPI, which requires one of them.
+ 		 * Push a transaction snapshot for the duration of evaluation.
+ 		 */
+		PushActiveSnapshot(GetTransactionSnapshot()); /* bug#9241 */
+		PG_TRY();
+		{
+			result = (Node *) evaluate_expr((Expr *) (result),
+							exprType((Node *) (result)),
+							exprTypmod((Node *) (result)),
+							exprCollation((Node *) (result)));
+		}
+		PG_FINALLY();
+		{
+			PopActiveSnapshot();
+		}
+		PG_END_TRY();
 		/* End - BUG#Z6861 */
 
-		Assert(IsA(result, Const));
+		if (!IsA(result, Const))
+			elog(ERROR, "could not coerce constant to type %u", targetoid);
 
 		newconst = (Const *) result;
 		retdatum = newconst->constvalue;
