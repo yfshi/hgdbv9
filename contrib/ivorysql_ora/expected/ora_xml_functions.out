@@ -100,7 +100,7 @@ SELECT extractvalue(XMLType('<a><b>100</b></a>'),'/a/b') from dual;
 (1 row)
 
 SELECT extractvalue(XMLType('<a><b>100</b></a>'),'/a') from dual;
-ERROR:  EXTRACTVALUE returns value of only one node
+ERROR:  EXTRACTVALUE can only retrieve value of leaf node
 SELECT extractvalue(b, '/a/b') from inaf where a = 2;
  extractvalue 
 --------------
@@ -1043,7 +1043,7 @@ ERROR:  The document being inserted does not conform to specified child name
 -- error
 select INSERTCHILDXML(warehouse_spec, 'soapenv:Envelope/soapenv:Body/web:AAA/web:BBB/typ:DDD/typ:DDDs/typ:DDD','typ:TTT', xmltype ('<typ::TTT xmlns:typ="http://www.def.com">test</typ::TTT>'), 'xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:typ="http://www.def.com" xmlns:web="http://www.abc.com"') 
  from warehouse_2 where warehouse_id = 4;
-ERROR:  The document being inserted does not conform to specified child name
+ERROR:  could not parse XML new node
 -- error
 select INSERTCHILDXML(warehouse_spec, 'soapenv:Envelope/soapenv:Body/web:AAA/web:BBB/typ:DDD/typ:DDDs/typ:DDD',':', xmltype ('<typ:TTT xmlns:typ="http://www.def.com">typ:TTT</typ:TTT>'), 'xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:typ="http://www.def.com" xmlns:web="http://www.abc.com"') 
  from warehouse_2 where warehouse_id = 4;
@@ -1059,8 +1059,7 @@ SELECT extract(XMLType('<AA><ID>1</ID></AA>'), '/') from dual;
 --------------
  <AA>        +
    <ID>1</ID>+
- </AA>       +
- 
+ </AA>
 (1 row)
 
 select extractvalue('<root>TEST</root>', '/');
@@ -1080,17 +1079,29 @@ SELECT existsnode(XMLType('<a><b>d</b></a>'), '/') from dual;
 (1 row)
 
 SELECT deletexml(XMLType('<a><b></b><b></b></a>'), '/') from dual;
-ERROR:  Invalid XPATH expression
+ERROR:  XML node '' (type=document) does not support this operation
 SELECT appendchildxml(XMLType('<a><b></b></a>'), '/', XMLtype('<name>1000</name>')) from dual;
 ERROR:  Invalid XPATH expression
 SELECT updatexml(XMLTYPE('<a><b>b1</b><b>b2</b></a>'), '/', '1000') FROM dual;
-ERROR:  could not parse XML new node
+ updatexml 
+-----------
+ 1000
+(1 row)
+
 SELECT insertxmlbefore(XMLType('<a><b></b></a>'),'/', XMLType('<c></c>')) from dual;
 ERROR:  Invalid XPATH expression
 SELECT insertxmlafter(XMLType('<a>200<b>100</b><b>300</b></a>'),'/',XMLType('<c>88</c>')) from dual;
 ERROR:  Invalid XPATH expression
 SELECT insertchildxml(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'c', XMLType('<c>88</c>')) from dual;
-ERROR:  Invalid XPATH expression
+ insertchildxml 
+----------------
+ <a>           +
+   <b>100</b>  +
+   <b>200</b>  +
+ </a>          +
+ <c>88</c>
+(1 row)
+
 SELECT insertchildxmlbefore(XMLType('<a><b>100</b><b>200</b></a>'), '/', 'b[1]', XMLType('<c>88</c>')) from dual;
  insertchildxmlbefore 
 ----------------------
@@ -1171,12 +1182,571 @@ SELECT updatexml(XMLTYPE('<a/>'), '/a', '', NULL) from dual;
  <a/>
 (1 row)
 
--- XPath expressions selecting the document or namespace nodes are rejected.
+--  Sibling insertion rejects the document; EXTRACT accepts namespace nodes.
 SELECT insertxmlbefore(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<b/>')) from dual;
 ERROR:  invalid XPath expression
 SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'),'(//namespace::*)[1]') from dual;
-ERROR:  namespace nodes cannot be converted to XML
+ extract 
+---------
+ urn:x
+(1 row)
+
 -- Trimming an all-whitespace XPath must stay within the input buffer.
 SELECT deletexml(XMLTYPE('<a/>'), '   ') from dual;
-ERROR:  invalid XPath expression
+ERROR:  XML parsing failed
 /* End - BUG#Z9075 */
+/* Begin - BUG#Z9218 */
+-- Oracle 21c confirmed: the implicit xml namespace is absent from the axis.
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'), '//namespace::*') from dual;
+ extract 
+---------
+ urn:x
+(1 row)
+
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'), '(//namespace::*)[2]') from dual;
+ extract 
+---------
+ 
+(1 row)
+
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'), '//namespace::xml') from dual;
+ extract 
+---------
+ 
+(1 row)
+
+create table tb_9218(id number, spec xmltype);
+insert into tb_9218 values (1, '<Envelope><EEE>test</EEE></Envelope>');
+select UPDATEXML(spec, '/', xmltype('<FFF>test</FFF>')) from tb_9218;
+    updatexml    
+-----------------
+ <FFF>test</FFF>
+(1 row)
+
+drop table tb_9218;
+-- Whole-document replacement, equivalent document XPath, and sequential pairs.
+select updatexml(XMLTYPE('<a/>'), ' / ', XMLTYPE('<b/>')) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<b/>')) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select updatexml(XMLTYPE('<a><c/></a>'), '/ | /a/c', XMLTYPE('<b/>')) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b>first</b>'), '/b/text()', 'second') from dual;
+   updatexml   
+---------------
+ <b>second</b>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/>'), '/', XMLTYPE('<c/>')) from dual;
+ updatexml 
+-----------
+ <c/>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/>'), '/a', XMLTYPE('<c/>')) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select updatexml(XMLTYPE('<!--old--><?old x?><a/>'), '/', XMLTYPE('<!--new--><?new y?><b/>')) from dual;
+ updatexml 
+-----------
+ 
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', NULL) from dual;
+ updatexml 
+-----------
+ <a/>
+(1 row)
+
+select updatexml(XMLTYPE('<a>test</a>'), '/ | /a/text()', NULL) from dual;
+ updatexml 
+-----------
+ <a/>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', NULL, '/', XMLTYPE('<b/>')) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<broken>')) from dual;
+ERROR:  could not parse XML new node
+select updatexml(XMLTYPE('<a/>'), '/', 'not XML') from dual;
+ updatexml 
+-----------
+ not XML
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/>'), NULL) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select updatexml(XMLTYPE('<p:a xmlns:p="urn:old"/>'), '/', XMLTYPE('<q:b xmlns:q="urn:new">first</q:b>'), '/q:b/text()', 'second', 'xmlns:q="urn:new"') from dual;
+              updatexml              
+-------------------------------------
+ <q:b xmlns:q="urn:new">second</q:b>
+(1 row)
+
+-- Read-only functions distinguish the document from a leaf element.
+select existsnode(XMLTYPE('<a>test</a>'), '/') from dual;
+ existsnode 
+------------
+          1
+(1 row)
+
+select extract(XMLTYPE('<a>test</a>'), '/') from dual;
+   extract   
+-------------
+ <a>test</a>
+(1 row)
+
+select extractvalue(XMLTYPE('<a>test</a>'), '/') from dual;
+ERROR:  EXTRACTVALUE can only retrieve value of leaf node
+select extractvalue(XMLTYPE('<a>test</a>'), '/a') from dual;
+ extractvalue 
+--------------
+ test
+(1 row)
+
+select deletexml(XMLTYPE('<a><b/></a>'), '/') from dual;
+ERROR:  XML node '' (type=document) does not support this operation
+select appendchildxml(XMLTYPE('<a><b/></a>'), '/', XMLTYPE('<b/>')) from dual;
+ERROR:  Invalid XPATH expression
+select insertxmlbefore(XMLTYPE('<a><b/></a>'), '/', XMLTYPE('<b/>')) from dual;
+ERROR:  Invalid XPATH expression
+select insertxmlafter(XMLTYPE('<a><b/></a>'), '/', XMLTYPE('<b/>')) from dual;
+ERROR:  Invalid XPATH expression
+select insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxml 
+----------------
+ <a>           +
+   <b/>        +
+ </a>          +
+ <b/>
+(1 row)
+
+select insertchildxmlbefore(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlbefore 
+----------------------
+ <a>                 +
+   <b/>              +
+   <b/>              +
+ </a>
+(1 row)
+
+select insertchildxmlafter(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlafter 
+---------------------
+ <a>                +
+   <b/>             +
+   <b/>             +
+ </a>
+(1 row)
+
+select existsnode(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+ existsnode 
+------------
+          1
+(1 row)
+
+select extract(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+         extract          
+--------------------------
+ <p:a xmlns:p="urn:test">+
+   <p:b/>                +
+ </p:a>
+(1 row)
+
+select extractvalue(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+ERROR:  EXTRACTVALUE can only retrieve value of leaf node
+select deletexml(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+ERROR:  XML node '' (type=document) does not support this operation
+select appendchildxml(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+ERROR:  Invalid XPATH expression
+select insertxmlbefore(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+ERROR:  Invalid XPATH expression
+select insertxmlafter(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+ERROR:  Invalid XPATH expression
+select insertchildxml(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+ERROR:  The document being inserted does not conform to specified child name
+select insertchildxmlbefore(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+   insertchildxmlbefore   
+--------------------------
+ <p:a xmlns:p="urn:test">+
+   <b/>                  +
+   <p:b/>                +
+ </p:a>
+(1 row)
+
+select insertchildxmlafter(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+   insertchildxmlafter    
+--------------------------
+ <p:a xmlns:p="urn:test">+
+   <p:b/>                +
+   <b/>                  +
+ </p:a>
+(1 row)
+
+-- Oracle 21c child-path composition distinguishes these document expressions.
+select insertchildxmlbefore(XMLTYPE('<a><b/></a>'), '/*/..', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlbefore 
+----------------------
+ <a>                 +
+   <b/>              +
+ </a>
+(1 row)
+
+select insertchildxmlafter(XMLTYPE('<a><b/></a>'), ' / ', 'b', XMLTYPE('<b/>')) from dual;
+ERROR:  XML parsing failed
+-- Valid element parents and absent parents still work.
+select insertchildxmlbefore(XMLTYPE('<a><b>old</b></a>'), '/a', 'b', XMLTYPE('<b>new</b>')) from dual;
+ insertchildxmlbefore 
+----------------------
+ <a>                 +
+   <b>new</b>        +
+   <b>old</b>        +
+ </a>
+(1 row)
+
+select insertchildxmlafter(XMLTYPE('<a><b>old</b></a>'), '/a', 'b', XMLTYPE('<b>new</b>')) from dual;
+ insertchildxmlafter 
+---------------------
+ <a>                +
+   <b>old</b>       +
+   <b>new</b>       +
+ </a>
+(1 row)
+
+select insertchildxmlbefore(XMLTYPE('<a/>'), '/missing', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlbefore 
+----------------------
+ <a/>
+(1 row)
+
+select insertchildxmlafter(XMLTYPE('<a/>'), '/missing', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlafter 
+---------------------
+ <a/>
+(1 row)
+
+-- NULL XML inputs short-circuit without trying to modify a document.
+select existsnode(CAST(NULL AS XMLTYPE), '/') from dual;
+ existsnode 
+------------
+           
+(1 row)
+
+select extract(CAST(NULL AS XMLTYPE), '/') from dual;
+ extract 
+---------
+ 
+(1 row)
+
+select extractvalue(CAST(NULL AS XMLTYPE), '/') from dual;
+ extractvalue 
+--------------
+ 
+(1 row)
+
+select deletexml(CAST(NULL AS XMLTYPE), '/') from dual;
+ deletexml 
+-----------
+ 
+(1 row)
+
+select appendchildxml(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+ appendchildxml 
+----------------
+ 
+(1 row)
+
+select insertxmlbefore(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+ insertxmlbefore 
+-----------------
+ 
+(1 row)
+
+select insertxmlafter(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+ insertxmlafter 
+----------------
+ 
+(1 row)
+
+select insertchildxml(CAST(NULL AS XMLTYPE), '/', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxml 
+----------------
+ 
+(1 row)
+
+select insertchildxmlbefore(CAST(NULL AS XMLTYPE), '/', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlbefore 
+----------------------
+ 
+(1 row)
+
+select insertchildxmlafter(CAST(NULL AS XMLTYPE), '/', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlafter 
+---------------------
+ 
+(1 row)
+
+select updatexml(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+ updatexml 
+-----------
+ 
+(1 row)
+
+-- Additional fragment and NULL-update checks (Oracle results pending).
+select updatexml(XMLTYPE('<a>keep</a>'), '/', NULL) from dual;
+  updatexml  
+-------------
+ <a>keep</a>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', 'not XML', '/text()', 'changed') from dual;
+ updatexml 
+-----------
+ changed
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', 'not XML', '/', XMLTYPE('<b/>')) from dual;
+ updatexml 
+-----------
+ <b/>
+(1 row)
+
+select extract(updatexml(XMLTYPE('<a/>'), '/', 'not XML'), '/') from dual;
+ extract 
+---------
+ not XML
+(1 row)
+
+select existsnode(updatexml(XMLTYPE('<a/>'), '/', 'not XML'), '/text()') from dual;
+ existsnode 
+------------
+          1
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><c/>')) from dual;
+ updatexml 
+-----------
+ <b/>     +
+ <c/>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><c/>'), '/c', XMLTYPE('<d/>')) from dual;
+ updatexml 
+-----------
+ <b/>     +
+ <d/>
+(1 row)
+
+select extract(insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')), '/') from dual;
+ extract 
+---------
+ <a>    +
+   <b/> +
+ </a>   +
+ <b/>
+(1 row)
+
+select existsnode(insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')), '/b') from dual;
+ existsnode 
+------------
+          1
+(1 row)
+
+select extract(insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')), '/a') from dual;
+ extract 
+---------
+ <a>    +
+   <b/> +
+ </a>
+(1 row)
+
+select insertchildxml(XMLTYPE('<p:a xmlns:p="urn:test"/>'), '/', 'p:b', XMLTYPE('<p:b xmlns:p="urn:test"/>'), 'xmlns:p="urn:test"') from dual;
+      insertchildxml       
+---------------------------
+ <p:a xmlns:p="urn:test"/>+
+ <p:b xmlns:p="urn:test"/>
+(1 row)
+
+select extract(XMLTYPE('before<a/>after'), '/') from dual;
+     extract     
+-----------------
+ before<a/>after
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', 'one &amp; two') from dual;
+   updatexml   
+---------------
+ one &amp; two
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><broken>')) from dual;
+ERROR:  could not parse XML new node
+select deletexml(XMLTYPE('<a/>'), '/*/..') from dual;
+ERROR:  XML node '' (type=document) does not support this operation
+-- Both overloads and insertion directions retain literal path composition.
+select insertchildxmlbefore(XMLTYPE('<a><b/></a>'), ' / ', 'b', XMLTYPE('<b/>')) from dual;
+ERROR:  XML parsing failed
+select insertchildxmlafter(XMLTYPE('<a><b/></a>'), '/*/..', 'b', XMLTYPE('<b/>')) from dual;
+ insertchildxmlafter 
+---------------------
+ <a>                +
+   <b/>             +
+ </a>
+(1 row)
+
+select insertchildxmlbefore(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), ' / ', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+ERROR:  XML parsing failed
+select insertchildxmlafter(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/*/..', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+   insertchildxmlafter    
+--------------------------
+ <p:a xmlns:p="urn:test">+
+   <p:b/>                +
+ </p:a>
+(1 row)
+
+-- Serialization must preserve text content, including mixed-content spacing.
+select case when cast(extract(XMLTYPE('before<a/>after'), '/') as varchar2(100)) = 'before<a/>after' then 'ok' else 'mismatch' end from dual;
+ case 
+------
+ ok
+(1 row)
+
+select case when cast(extract(updatexml(XMLTYPE('<a/>'), '/', 'not XML'), '/') as varchar2(100)) = 'not XML' then 'ok' else 'mismatch' end from dual;
+ case 
+------
+ ok
+(1 row)
+
+-- SQL NULL must remain distinguishable from an empty XML value.
+select case when updatexml(cast(NULL as XMLTYPE), '/', XMLTYPE('<b/>')) is null
+            then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status from dual;
+ null_status 
+-------------
+ SQL_NULL
+(1 row)
+
+select case when updatexml(XMLTYPE('<a/>'), '/', NULL) is null
+            then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status from dual;
+ null_status  
+--------------
+ NOT_SQL_NULL
+(1 row)
+
+-- Reuse the same expression across NULL and non-NULL input rows.
+create table xml_root_null_rows(id number, spec xmltype);
+insert into xml_root_null_rows values (1, XMLTYPE('<a/>'));
+insert into xml_root_null_rows values (2, NULL);
+insert into xml_root_null_rows values (3, XMLTYPE('<a/>'));
+select id, case when updatexml(spec, '/', XMLTYPE('<b/>')) is null
+                then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status
+from xml_root_null_rows order by id;
+ id | null_status  
+----+--------------
+ 1  | NOT_SQL_NULL
+ 2  | SQL_NULL
+ 3  | NOT_SQL_NULL
+(3 rows)
+
+drop table xml_root_null_rows;
+-- Oracle 21c: replacement-side leading comments/PIs produce SQL NULL.
+select case when x is null then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status
+from (select updatexml(XMLTYPE('<!--old--><?old x?><a/>'), '/',
+                      XMLTYPE('<!--new--><?new y?><b/>')) x from dual);
+ null_status 
+-------------
+ SQL_NULL
+(1 row)
+
+select case when updatexml(xmltype('<a/>'), '/', xmltype('<!--new--><?new y?><b/>')) is null then 'NULL' else 'NOT_NULL' end as c1 from dual;
+  c1  
+------
+ NULL
+(1 row)
+
+select case when updatexml(xmltype('<!--old--><?old x?><a/>'), '/', xmltype('<b/>')) is null then 'NULL' else 'NOT_NULL' end as c2 from dual;
+    c2    
+----------
+ NOT_NULL
+(1 row)
+
+select case when updatexml(xmltype('<a/>'), '/', xmltype('<!--new--><b/>')) is null then 'NULL' else 'NOT_NULL' end as c3 from dual;
+  c3  
+------
+ NULL
+(1 row)
+
+select case when updatexml(xmltype('<a/>'), '/', xmltype('<?new y?><b/>')) is null then 'NULL' else 'NOT_NULL' end as c4 from dual;
+  c4  
+------
+ NULL
+(1 row)
+
+-- Additional boundaries: Oracle results pending.
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b><!--inside--><?inside y?></b>')) from dual;
+    updatexml    
+-----------------
+ <b>            +
+   <!--inside-->+
+   <?inside y?> +
+ </b>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><!--after--><?after y?>')) from dual;
+  updatexml   
+--------------
+ <b/>        +
+ <!--after-->+
+ <?after y?>
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<!--new--><b/>'), '/', XMLTYPE('<c/>')) from dual;
+ updatexml 
+-----------
+ 
+(1 row)
+
+select updatexml(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<?new y?><b/>')) from dual;
+ updatexml 
+-----------
+ 
+(1 row)
+
+-- Repeated evaluation must not keep either NULL or a previous XML result.
+create table xml_root_replacement_rows(id number, replacement xmltype);
+insert into xml_root_replacement_rows values (1, XMLTYPE('<b/>'));
+insert into xml_root_replacement_rows values (2, XMLTYPE('<!--new--><b/>'));
+insert into xml_root_replacement_rows values (3, XMLTYPE('<b/>'));
+select id, case when updatexml(XMLTYPE('<a/>'), '/', replacement) is null
+                then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status
+from xml_root_replacement_rows order by id;
+ id | null_status  
+----+--------------
+ 1  | NOT_SQL_NULL
+ 2  | SQL_NULL
+ 3  | NOT_SQL_NULL
+(3 rows)
+
+drop table xml_root_replacement_rows;
+/* End - BUG#Z9218 */

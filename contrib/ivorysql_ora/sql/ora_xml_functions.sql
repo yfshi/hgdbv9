@@ -460,7 +460,7 @@ SELECT updatexml(XMLTYPE('<a><b><c/></b><d/></a>'), '//*', '') from dual;
 -- A NULL namespace argument must not be dereferenced.
 SELECT updatexml(XMLTYPE('<a/>'), '/a', '', NULL) from dual;
 
--- XPath expressions selecting the document or namespace nodes are rejected.
+--  Sibling insertion rejects the document; EXTRACT accepts namespace nodes.
 SELECT insertxmlbefore(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<b/>')) from dual;
 
 SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'),'(//namespace::*)[1]') from dual;
@@ -468,3 +468,145 @@ SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'),'(//namespace::*)[1]') from dual;
 -- Trimming an all-whitespace XPath must stay within the input buffer.
 SELECT deletexml(XMLTYPE('<a/>'), '   ') from dual;
 /* End - BUG#Z9075 */
+
+/* Begin - BUG#Z9218 */
+-- Oracle 21c confirmed: the implicit xml namespace is absent from the axis.
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'), '//namespace::*') from dual;
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'), '(//namespace::*)[2]') from dual;
+SELECT extract(XMLTYPE('<a xmlns:x="urn:x"/>'), '//namespace::xml') from dual;
+
+create table tb_9218(id number, spec xmltype);
+insert into tb_9218 values (1, '<Envelope><EEE>test</EEE></Envelope>');
+select UPDATEXML(spec, '/', xmltype('<FFF>test</FFF>')) from tb_9218;
+drop table tb_9218;
+
+-- Whole-document replacement, equivalent document XPath, and sequential pairs.
+select updatexml(XMLTYPE('<a/>'), ' / ', XMLTYPE('<b/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<b/>')) from dual;
+select updatexml(XMLTYPE('<a><c/></a>'), '/ | /a/c', XMLTYPE('<b/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b>first</b>'), '/b/text()', 'second') from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/>'), '/', XMLTYPE('<c/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/>'), '/a', XMLTYPE('<c/>')) from dual;
+select updatexml(XMLTYPE('<!--old--><?old x?><a/>'), '/', XMLTYPE('<!--new--><?new y?><b/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', NULL) from dual;
+select updatexml(XMLTYPE('<a>test</a>'), '/ | /a/text()', NULL) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', NULL, '/', XMLTYPE('<b/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<broken>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', 'not XML') from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/>'), NULL) from dual;
+select updatexml(XMLTYPE('<p:a xmlns:p="urn:old"/>'), '/', XMLTYPE('<q:b xmlns:q="urn:new">first</q:b>'), '/q:b/text()', 'second', 'xmlns:q="urn:new"') from dual;
+
+-- Read-only functions distinguish the document from a leaf element.
+select existsnode(XMLTYPE('<a>test</a>'), '/') from dual;
+select extract(XMLTYPE('<a>test</a>'), '/') from dual;
+select extractvalue(XMLTYPE('<a>test</a>'), '/') from dual;
+select extractvalue(XMLTYPE('<a>test</a>'), '/a') from dual;
+select deletexml(XMLTYPE('<a><b/></a>'), '/') from dual;
+select appendchildxml(XMLTYPE('<a><b/></a>'), '/', XMLTYPE('<b/>')) from dual;
+select insertxmlbefore(XMLTYPE('<a><b/></a>'), '/', XMLTYPE('<b/>')) from dual;
+select insertxmlafter(XMLTYPE('<a><b/></a>'), '/', XMLTYPE('<b/>')) from dual;
+select insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlbefore(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlafter(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')) from dual;
+select existsnode(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+select extract(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+select extractvalue(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+select deletexml(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'xmlns:p="urn:test"') from dual;
+select appendchildxml(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+select insertxmlbefore(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+select insertxmlafter(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+select insertchildxml(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+select insertchildxmlbefore(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+select insertchildxmlafter(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+
+-- Oracle 21c child-path composition distinguishes these document expressions.
+select insertchildxmlbefore(XMLTYPE('<a><b/></a>'), '/*/..', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlafter(XMLTYPE('<a><b/></a>'), ' / ', 'b', XMLTYPE('<b/>')) from dual;
+
+-- Valid element parents and absent parents still work.
+select insertchildxmlbefore(XMLTYPE('<a><b>old</b></a>'), '/a', 'b', XMLTYPE('<b>new</b>')) from dual;
+select insertchildxmlafter(XMLTYPE('<a><b>old</b></a>'), '/a', 'b', XMLTYPE('<b>new</b>')) from dual;
+select insertchildxmlbefore(XMLTYPE('<a/>'), '/missing', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlafter(XMLTYPE('<a/>'), '/missing', 'b', XMLTYPE('<b/>')) from dual;
+
+-- NULL XML inputs short-circuit without trying to modify a document.
+select existsnode(CAST(NULL AS XMLTYPE), '/') from dual;
+select extract(CAST(NULL AS XMLTYPE), '/') from dual;
+select extractvalue(CAST(NULL AS XMLTYPE), '/') from dual;
+select deletexml(CAST(NULL AS XMLTYPE), '/') from dual;
+select appendchildxml(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+select insertxmlbefore(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+select insertxmlafter(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+select insertchildxml(CAST(NULL AS XMLTYPE), '/', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlbefore(CAST(NULL AS XMLTYPE), '/', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlafter(CAST(NULL AS XMLTYPE), '/', 'b', XMLTYPE('<b/>')) from dual;
+select updatexml(CAST(NULL AS XMLTYPE), '/', XMLTYPE('<b/>')) from dual;
+
+-- Additional fragment and NULL-update checks (Oracle results pending).
+select updatexml(XMLTYPE('<a>keep</a>'), '/', NULL) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', 'not XML', '/text()', 'changed') from dual;
+select updatexml(XMLTYPE('<a/>'), '/', 'not XML', '/', XMLTYPE('<b/>')) from dual;
+select extract(updatexml(XMLTYPE('<a/>'), '/', 'not XML'), '/') from dual;
+select existsnode(updatexml(XMLTYPE('<a/>'), '/', 'not XML'), '/text()') from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><c/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><c/>'), '/c', XMLTYPE('<d/>')) from dual;
+select extract(insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')), '/') from dual;
+select existsnode(insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')), '/b') from dual;
+select extract(insertchildxml(XMLTYPE('<a><b/></a>'), '/', 'b', XMLTYPE('<b/>')), '/a') from dual;
+select insertchildxml(XMLTYPE('<p:a xmlns:p="urn:test"/>'), '/', 'p:b', XMLTYPE('<p:b xmlns:p="urn:test"/>'), 'xmlns:p="urn:test"') from dual;
+select extract(XMLTYPE('before<a/>after'), '/') from dual;
+select updatexml(XMLTYPE('<a/>'), '/', 'one &amp; two') from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><broken>')) from dual;
+select deletexml(XMLTYPE('<a/>'), '/*/..') from dual;
+
+-- Both overloads and insertion directions retain literal path composition.
+select insertchildxmlbefore(XMLTYPE('<a><b/></a>'), ' / ', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlafter(XMLTYPE('<a><b/></a>'), '/*/..', 'b', XMLTYPE('<b/>')) from dual;
+select insertchildxmlbefore(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), ' / ', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+select insertchildxmlafter(XMLTYPE('<p:a xmlns:p="urn:test"><p:b/></p:a>'), '/*/..', 'p:b', XMLTYPE('<b/>'), 'xmlns:p="urn:test"') from dual;
+
+-- Serialization must preserve text content, including mixed-content spacing.
+select case when cast(extract(XMLTYPE('before<a/>after'), '/') as varchar2(100)) = 'before<a/>after' then 'ok' else 'mismatch' end from dual;
+select case when cast(extract(updatexml(XMLTYPE('<a/>'), '/', 'not XML'), '/') as varchar2(100)) = 'not XML' then 'ok' else 'mismatch' end from dual;
+
+-- SQL NULL must remain distinguishable from an empty XML value.
+select case when updatexml(cast(NULL as XMLTYPE), '/', XMLTYPE('<b/>')) is null
+            then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status from dual;
+select case when updatexml(XMLTYPE('<a/>'), '/', NULL) is null
+            then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status from dual;
+
+-- Reuse the same expression across NULL and non-NULL input rows.
+create table xml_root_null_rows(id number, spec xmltype);
+insert into xml_root_null_rows values (1, XMLTYPE('<a/>'));
+insert into xml_root_null_rows values (2, NULL);
+insert into xml_root_null_rows values (3, XMLTYPE('<a/>'));
+select id, case when updatexml(spec, '/', XMLTYPE('<b/>')) is null
+                then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status
+from xml_root_null_rows order by id;
+drop table xml_root_null_rows;
+
+-- Oracle 21c: replacement-side leading comments/PIs produce SQL NULL.
+select case when x is null then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status
+from (select updatexml(XMLTYPE('<!--old--><?old x?><a/>'), '/',
+                      XMLTYPE('<!--new--><?new y?><b/>')) x from dual);
+select case when updatexml(xmltype('<a/>'), '/', xmltype('<!--new--><?new y?><b/>')) is null then 'NULL' else 'NOT_NULL' end as c1 from dual;
+select case when updatexml(xmltype('<!--old--><?old x?><a/>'), '/', xmltype('<b/>')) is null then 'NULL' else 'NOT_NULL' end as c2 from dual;
+select case when updatexml(xmltype('<a/>'), '/', xmltype('<!--new--><b/>')) is null then 'NULL' else 'NOT_NULL' end as c3 from dual;
+select case when updatexml(xmltype('<a/>'), '/', xmltype('<?new y?><b/>')) is null then 'NULL' else 'NOT_NULL' end as c4 from dual;
+
+-- Additional boundaries: Oracle results pending.
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b><!--inside--><?inside y?></b>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<b/><!--after--><?after y?>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/', XMLTYPE('<!--new--><b/>'), '/', XMLTYPE('<c/>')) from dual;
+select updatexml(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<?new y?><b/>')) from dual;
+
+-- Repeated evaluation must not keep either NULL or a previous XML result.
+create table xml_root_replacement_rows(id number, replacement xmltype);
+insert into xml_root_replacement_rows values (1, XMLTYPE('<b/>'));
+insert into xml_root_replacement_rows values (2, XMLTYPE('<!--new--><b/>'));
+insert into xml_root_replacement_rows values (3, XMLTYPE('<b/>'));
+select id, case when updatexml(XMLTYPE('<a/>'), '/', replacement) is null
+                then 'SQL_NULL' else 'NOT_SQL_NULL' end as null_status
+from xml_root_replacement_rows order by id;
+drop table xml_root_replacement_rows;
+/* End - BUG#Z9218 */
