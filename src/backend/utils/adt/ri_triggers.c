@@ -1831,38 +1831,69 @@ RI_PartitionRemove_Check(Trigger *trigger, Relation fk_rel, Relation pk_rel)
  *
  * buffer must be MAX_QUOTED_NAME_LEN long (includes room for \0)
  */
+/* begin OA#2799 */
 static void
-quoteOneName(char *buffer, const char *name)
+stardand_quoteOneName(char *buffer, const char *name)
 {
-	char *new_name = NULL, *prev;
-
 	/* Rather than trying to be smart, just always quote it. */
 	*buffer++ = '"';
-
-	/* BEGIN - case sensitive indentify */
-	if (compatible_mode == ORA_MODE && enable_case_switch
-		 && identifier_case_switch == INTERCHANGE)
-		new_name = identifier_case_transform(name, strlen(name));
-	else
+	while (*name)
 	{
-		int	len = strlen(name) + 1;
-		new_name = palloc0(len);
-		memcpy(new_name, name, len);
-	}
-	/* END - case sensitive indentify */
-
-	prev = new_name;
-	while (*new_name)
-	{
-		if (*new_name == '"')
+		if (*name == '"')
 			*buffer++ = '"';
-		*buffer++ = *new_name++;
+		*buffer++ = *name++;
 	}
 	*buffer++ = '"';
 	*buffer = '\0';
-
-	pfree(prev);	/* case sensitive indentify */
 }
+
+static void
+mys_quoteOneName(char *buffer, const char *name)
+{
+	/* Rather than trying to be smart, just always quote it. */
+	*buffer++ = '`';
+	while (*name)
+	{
+		if (*name == '`')
+			*buffer++ = '`';
+		*buffer++ = *name++;
+	}
+	*buffer++ = '`';
+	*buffer = '\0';
+}
+
+static void
+ora_quoteOneName(char *buffer, const char *name)
+{
+	if (enable_case_switch && identifier_case_switch == INTERCHANGE)
+	{
+		char *new_name = identifier_case_transform(name, strlen(name));
+		stardand_quoteOneName(buffer, new_name);
+		pfree(new_name);
+	}
+	else
+	{
+		stardand_quoteOneName(buffer, name);
+	}
+}
+
+static void
+quoteOneName(char *buffer, const char *name)
+{
+    switch (compatible_mode)
+    {
+        case ORA_MODE:
+            ora_quoteOneName(buffer, name);
+            return;
+        case MYS_MODE:
+            mys_quoteOneName(buffer, name);
+            return;
+        default:
+            stardand_quoteOneName(buffer, name);
+            return;
+    }
+}
+/* end OA#2799 */
 
 /*
  * quoteRelationName --- safely quote a fully qualified relation name

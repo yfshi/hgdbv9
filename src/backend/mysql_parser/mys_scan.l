@@ -327,6 +327,7 @@ xbqinside		[^`]+
 bquote			\`
 xbqstart		{bquote}
 xbqstop			{bquote}
+xbqdouble		{bquote}{bquote}
 /* End - ReqID:SRS-MISC-MYSQL-FRAME */
 
 /* Quoted identifier with Unicode escapes */
@@ -988,6 +989,9 @@ other			.
 				}
 <xd,xui>{xddouble}	{
 					addlitchar('"', yyscanner);
+				}
+<xbq>{xbqdouble}	{
+					addlitchar('`', yyscanner);
 				}
 <xd,xui>{xdinside}	{
 					addlit(yytext, yyleng, yyscanner);
