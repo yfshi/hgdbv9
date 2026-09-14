@@ -2541,6 +2541,14 @@ transformSelectStmt(ParseState *pstate, SelectStmt *stmt)
 	}
 	/* End - SRS-SQL-MULTITABLEINSERT */
 
+	/* Begin - bug#9228 */
+	/*
+	 * copy index hints into Query, will used to generate the path
+	 */
+	if (MYS_MODE == compatible_mode && pstate->p_indexhintLists)
+		qry->indexhintList = pstate->p_indexhintLists;
+	/* End - bug#9228 */
+
 	/* transform targetlist */
 	qry->targetList = transformTargetList(pstate, stmt->targetList,
 										  EXPR_KIND_SELECT_TARGET);
@@ -5706,6 +5714,14 @@ transformPLAssignStmt(ParseState *pstate, PLAssignStmt *stmt)
 
 	/* process the FROM clause */
 	transformFromClause(pstate, sstmt->fromClause);
+
+	/* Begin - bug#9228 */
+	/*
+	 * copy index hints into Query, will used to generate the path
+	 */
+	if (MYS_MODE == compatible_mode && pstate->p_indexhintLists)
+		qry->indexhintList = pstate->p_indexhintLists;
+	/* End - bug#9228 */
 
 	/* initially transform the targetlist as if in SELECT */
 	tlist = transformTargetList(pstate, sstmt->targetList,

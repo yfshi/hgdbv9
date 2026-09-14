@@ -149,11 +149,6 @@ static void recurse_push_qual(Node *setOp, Query *topquery,
 							  RangeTblEntry *rte, Index rti, Node *qual);
 static void remove_unused_subquery_outputs(Query *subquery, RelOptInfo *rel);
 
-/* Begin - ReqID:SRS-MYSQL-UPDATE */
-static bool IsUseOrForceIndexhint(List *indexhintList, List *indexlist);
-/* End - ReqID:SRS-MYSQL-UPDATE */
-
-
 /*
  * make_one_rel
  *	  Finds all possible access paths for executing a query, returning a
@@ -770,34 +765,6 @@ set_rel_consider_parallel(PlannerInfo *root, RelOptInfo *rel,
 	rel->consider_parallel = true;
 }
 
-/* Begin - ReqID:SRS-MYSQL-UPDATE */
-/*
- * IsUseOrForceIndexhint - Determine whether the index of indexhint is use or force.
- */
-static bool
-IsUseOrForceIndexhint(List *indexhintList, List *indexlist)
-{
-	ListCell	   *lc = NULL;
-	ListCell	   *lc1 = NULL;
-	foreach(lc, indexhintList)
-	{
-		IndexHintRelationData   *indexdata = (IndexHintRelationData *)lfirst(lc);
-		if (indexdata->index_type == INDEX_HINT_USE ||
-			indexdata->index_type == INDEX_HINT_FORCE)
-		{
-			foreach(lc1, indexlist)
-			{
-				IndexOptInfo *index = (IndexOptInfo *) lfirst(lc1);
-				if (indexdata->indexOid == index->indexoid)
-					return true;
-			}
-		}
-	}
-	return false;
-}
-/* End - ReqID:SRS-MYSQL-UPDATE */
-
-
 /*
  * set_plain_rel_pathlist
  *	  Build access paths for a plain relation (no subquery, no inheritance)
@@ -806,6 +773,7 @@ static void
 set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 {
 	Relids		required_outer;
+	bool		skip_seqscan = false;	/* bug#9228 */
 
 	/*
 	 * We don't support pushing join clauses into the quals of a seqscan, but
@@ -815,20 +783,39 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 	required_outer = rel->lateral_relids;
 
 	/* Begin - ReqID:SRS-MYSQL-UPDATE */
+	/* Begin - bug#9228 */
 	if (enable_indexhint && compatible_mode == MYS_MODE &&
 		root->parse->indexhintList && rel->indexlist) /* BUG#Z5121 */
 	{
 		/* If the index hint is use or force, skip seqscan. */
-		if (!IsUseOrForceIndexhint(root->parse->indexhintList, rel->indexlist))
-			add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
+		ListCell   *lc;
+		Oid			relationOid = rte->relid;
+
+		foreach(lc, root->parse->indexhintList)
+		{
+			IndexHintRelationData *indexdata =
+				(IndexHintRelationData *) lfirst(lc);
+
+			if (indexdata->relationOid != relationOid)
+				continue;
+
+			if (indexdata->index_type == INDEX_HINT_USE ||
+				indexdata->index_type == INDEX_HINT_FORCE)
+			{
+				skip_seqscan = true;
+				break;
+			}
+		}
 	}
-	/* End - ReqID:SRS-MYSQL-UPDATE */
-	else
-		/* Consider sequential scan */
+
+	/* Consider sequential scan */
+	if (!skip_seqscan)
 		add_path(rel, create_seqscan_path(root, rel, required_outer, 0));
+	/* End - bug#9228 */
+	/* End - ReqID:SRS-MYSQL-UPDATE */
 
 	/* If appropriate, consider parallel sequential scan */
-	if (rel->consider_parallel && required_outer == NULL)
+	if (rel->consider_parallel && required_outer == NULL && !skip_seqscan)	/* bug#9228 */
 		create_plain_partial_paths(root, rel);
 
 	/* Consider index scans */

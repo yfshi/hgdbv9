@@ -203,25 +203,58 @@ static bool ec_member_matches_indexcol(PlannerInfo *root, RelOptInfo *rel,
 									   EquivalenceClass *ec, EquivalenceMember *em,
 									   void *arg);
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
-static IndexHintType CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index);
+static IndexHintType CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index, Oid relationOid);
 
 /* Get indexhint type */
 static IndexHintType
-CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index)
+CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index, Oid relationOid)
 {
-	IndexHintType	itype;
-	ListCell	   *lc = NULL;
+	/* Begin - bug#9228 */
+	IndexHintType			itype = INDEX_HINT_USE;
+	IndexHintRelationData  *indexdata;
+	bool					has_use_or_force = false;
+	bool					this_use_or_force = false;
+	ListCell			   *lc;
 
-	itype = ((IndexHintRelationData*)lfirst(list_head(indexhintlist)))->index_type;
-	foreach (lc, indexhintlist)
-	{
-		IndexHintRelationData   *indexdata = (IndexHintRelationData *)lfirst(lc);
-		if (indexdata->indexOid == index->indexoid)
-		{
-			itype = (IndexHintType)(indexdata->index_type & itype);
+	foreach(lc, indexhintlist)
+ 	{
+		indexdata = (IndexHintRelationData *) lfirst(lc);
+
+		/* Ignore hints for other relations in this query. */
+		if (indexdata->relationOid != relationOid)
+			continue;
+
+		/* Hint names this index. */
+ 		if (indexdata->indexOid == index->indexoid)
+ 		{
+			if (indexdata->index_type == INDEX_HINT_IGNORE)
+				return INDEX_HINT_IGNORE;
+
+			if (indexdata->index_type == INDEX_HINT_USE ||
+				indexdata->index_type == INDEX_HINT_FORCE)
+			{
+				has_use_or_force = true;
+				this_use_or_force = true;
+				itype = indexdata->index_type;
+			}
+			continue;
 		}
-	}
-	return itype;
+
+		if (indexdata->index_type == INDEX_HINT_USE ||
+			indexdata->index_type == INDEX_HINT_FORCE)
+			has_use_or_force = true;
+ 	}
+
+	/*
+	 * Caller skips the index only when we return INDEX_HINT_IGNORE.
+	 * USE/FORCE on this table: skip indexes not named in the hint.
+	 * IGNORE of some other index, or no hint for this index: keep it.
+	 */
+	if (has_use_or_force && !this_use_or_force)
+		return INDEX_HINT_IGNORE;
+
+ 	return itype;
+	/* End - bug#9228 */
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 
@@ -275,6 +308,13 @@ create_index_paths(PlannerInfo *root, RelOptInfo *rel)
 	IndexClauseSet eclauseset;
 	ListCell   *lc;
 
+	/* Begin - bug#9228 */
+	Oid		relationOid = InvalidOid;
+
+	if (rel->relid > 0 && rel->relid < root->simple_rel_array_size)
+		relationOid = planner_rt_fetch(rel->relid, root)->relid;
+	/* End - bug#9228 */
+
 	/* Skip the whole mess if no indexes */
 	if (rel->indexlist == NIL)
 		return;
@@ -303,7 +343,7 @@ create_index_paths(PlannerInfo *root, RelOptInfo *rel)
 			root->parse->indexhintList) /* BUG#Z5121 */
 		{
 			/* If the index hint is ignore, then skip. */
-			if (CheckRelindexInHint(root->parse->indexhintList, index) == INDEX_HINT_IGNORE)
+			if (CheckRelindexInHint(root->parse->indexhintList, index, relationOid) == INDEX_HINT_IGNORE)	/* bug#9228 */
 				continue;
 		}
 		/* End - ReqID:SRS-MYSQL-UPDATE */

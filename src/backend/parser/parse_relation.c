@@ -4866,7 +4866,16 @@ preCheckIndexHints(ParseState *pstate, List *indexhints, Relation relation)
 		}
 	}
 
-	pstate->p_indexhintLists = list_copy(indexOidList);
+	/* Begin - bug#9228 */
+	/*
+	 * Concatenate so multi-table FROM (t1 FORCE INDEX (...), t2 FORCE INDEX (...))
+	 * keeps hints for every relation, not only the last one.
+	 */
+	pstate->p_indexhintLists = list_concat(pstate->p_indexhintLists,
+										   indexOidList);
+	return retType;
+	/* End - bug#9228 */
+
 err:
 	if (indexOidList != NIL)
 		list_free(indexOidList);
