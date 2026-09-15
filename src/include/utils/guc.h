@@ -941,6 +941,10 @@ static const char * const audit_parameters[] = {
 	"audit.ignore_sync_lsn",
 	"audit.ignore_no_data",
 	"audit.nested_statements",
+	/* Begin - SECURITY-AUTHENTICATION-METHOD */
+	"audit.interval_time",
+	"audit.del_log_count",
+	/* End - SECURITY-AUTHENTICATION-METHOD */
 	NULL
 };
 /* End - BUG#Z6092 */

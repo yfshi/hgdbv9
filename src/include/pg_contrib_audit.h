@@ -94,9 +94,9 @@
 /* End - BUG#00004718 */
 
 #define AUDIT_LAUNCHER_S "pg_audit launcher"
-#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
+//#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
 #define AUDIT_LAUNCHER_DB_S "pg_audit launcher %u"
-#endif
+//#endif
 
 typedef enum AuditSystemEvent
 {
@@ -446,7 +446,8 @@ typedef struct AuditEventStackItem
 typedef enum AduitRetenSwitch
 {
 	RETEN_TIME,
-	RETEN_SPACE
+	RETEN_SPACE,
+	RETEN_ALL    // SECURITY-AUTHENTICATION-METHOD
 }AduitRetenSwitch;
 
 typedef enum AuditOpresSwitch
@@ -505,6 +506,10 @@ typedef struct AduitSwitchGUC
 	AuditSwitch ignore_sync_lsn;
 	AuditSwitch poc;
 	AuditSwitch nested_statements;  //BUG - Z9033
+	/* Begin - SECURITY-AUTHENTICATION-METHOD */
+	int audit_interval_time;
+	int audit_del_log_count;
+	/* end - SECURITY-AUTHENTICATION-METHOD */
 }AduitSwitchGUC;
 
 extern bool receive_sighup;

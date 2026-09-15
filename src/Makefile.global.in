@@ -218,6 +218,9 @@ enable_internal_guc = @enable_internal_guc@
 with_gmssl = @with_gmssl@
 with_sqlite = @with_sqlite@
 enable_dky_beta_feature = @enable_dky_beta_feature@
+# BEGIN - SECURITY-AUTHENTICATION-METHOD
+enable_audit_partition_table = @enable_audit_partition_table@
+# END - SECURITY-AUTHENTICATION-METHOD
 
 python_includespec	= @python_includespec@
 python_libdir		= @python_libdir@

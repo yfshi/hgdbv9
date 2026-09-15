@@ -38,9 +38,6 @@
 #define FUNCTION_S "FUNCTION"
 #define SYNONYM_S	"SYNONYM"	/* BUG#Z5807 */
 
-/*
-	审计语句类型对应的字符串
- */
 #define	CREATE_ROLE_S	"CREATE ROLE"
 #define	CREATE_DOMAIN_S	"CREATE DOMAIN"
 #define CREATE_RESOURCE_GROUP_S "CREATE RESOURCE GROUP"	/* BUG#Z6075 */
@@ -179,13 +176,12 @@ typedef enum Auditcheck
 	AUDIT_NOT_SUCC_CAS
 }Auditcheck;
 
-#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
 typedef enum AuditTable
 {
 	AUDIT_CREATE = 0,
-	AUDIT_DROP = 1
+	AUDIT_DROP_PER_SPACE = 1,
+	AUDIT_DROP_PER_TIME = 2
 }AuditTable;
-#endif
 
 typedef struct AuditObjects
 {
@@ -193,9 +189,6 @@ typedef struct AuditObjects
 	List		*objlist;
 }AuditObjects;
 
-/*
-审计对象信息
-*/
 typedef struct ObjectInfo
 {
 	char* 			schema;
@@ -222,36 +215,38 @@ typedef enum AduitTupleType
 	OBJ_TUPLE
 }AduitTupleType;
 
-
-
-
-/* 审计用户与被审计用户关系链表 */
 typedef struct AuditUser
 {
-	Oid roleoid;		//审计用户角色oid
-	char *auditrolename;//审计用户角色名
-	List *auditedrole;	//被审计用户名
-	struct AuditUser *next;//下一个节点
+	Oid roleoid;
+	char *auditrolename;
+	List *auditedrole;
+	struct AuditUser *next;
 }AuditUser;
 
-/* 审计用户与被审计用户关系链表 */
 typedef struct AuditedOid
 {
 	bool is_common;
-	Oid roledoid;		//审计用户角色oid
+	Oid roledoid;
 	Oid auditoid[3];
-	struct AuditedOid *next;//下一个节点
+	struct AuditedOid *next;
 }AuditedOid;
 
-#if defined(USE_SQLITE) && defined(ENABLE_DKY_BETA_FEATURE)
 typedef struct db_info
 {
 	Oid			dbid;			/* Oid of the database which subscription is
 								 * in */
 	bool		 datistemplate;
 	bool		 datallowconn;
+	int32		datconnlimit;
 	AuditTable flag;
 } dbinfo;
-#endif
+
+typedef struct db_limit
+{
+	Oid			dbid;
+	bool		 is_limited;
+	bool		 is_alarmed;
+	bool		 is_pause;
+} db_limit;
 
 #endif

@@ -12,12 +12,20 @@
 -- **************** pg_depend ****************
 -- Look for illegal values in pg_depend fields.
 -- classid/objid can be zero, but only in 'p' entries
+WITH target_tables AS (
+	SELECT oid
+	FROM pg_class
+	WHERE relname LIKE 'pg_audit_log%'
+)
 SELECT *
 FROM pg_depend as d1
-WHERE refclassid = 0 OR refobjid = 0 OR
+WHERE (refclassid = 0 OR refobjid = 0 OR
       deptype NOT IN ('a', 'e', 'i', 'n', 'p') OR
       (deptype != 'p' AND (classid = 0 OR objid = 0)) OR
-      (deptype = 'p' AND (classid != 0 OR objid != 0 OR objsubid != 0));
+      (deptype = 'p' AND (classid != 0 OR objid != 0 OR objsubid != 0)))
+   AND NOT ((classid = 'pg_class'::regclass AND objid IN (SELECT oid FROM target_tables))
+   OR (refclassid = 'pg_class'::regclass AND refobjid IN (SELECT oid FROM target_tables))
+   );
  classid | objid | objsubid | refclassid | refobjid | refobjsubid | deptype 
 ---------+-------+----------+------------+----------+-------------+---------
 (0 rows)

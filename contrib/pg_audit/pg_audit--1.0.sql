@@ -73,6 +73,7 @@ BEGIN
         ';
     END IF;
 END $$;
+CREATE INDEX pg_audit_log_index ON hg_security.pg_audit_log USING BRIN (audittime);
 
 
 DO $$ 

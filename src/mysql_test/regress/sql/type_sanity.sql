@@ -394,15 +394,16 @@ ORDER BY 1;
 
 SELECT p1.oid, p1.relname
 FROM pg_class as p1
-WHERE relkind NOT IN ('r', 'i', 'S', 't', 'v', 'm', 'c', 'f', 'p') OR
+WHERE (relkind NOT IN ('r', 'i', 'S', 't', 'v', 'm', 'c', 'f', 'p') OR
     relpersistence NOT IN ('p', 'u', 't') OR
-    relreplident NOT IN ('d', 'n', 'f', 'i');
+    relreplident NOT IN ('d', 'n', 'f', 'i'))
+    AND relname NOT LIKE 'pg_audit_log_%';
 
 -- All tables and indexes should have an access method.
 SELECT p1.oid, p1.relname
 FROM pg_class as p1
-WHERE p1.relkind NOT IN ('S', 'v', 'f', 'c') and
-    p1.relam = 0;
+WHERE (p1.relkind NOT IN ('S', 'v', 'f', 'c') and
+    p1.relam = 0) AND p1.relname !='pg_audit_log';
 
 -- Conversely, sequences, views, types shouldn't have them
 SELECT p1.oid, p1.relname

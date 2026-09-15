@@ -716,6 +716,7 @@ with_systemd
 with_selinux
 with_license
 with_ldap
+enable_audit_partition_table
 enable_dky_beta_feature
 with_sqlite
 with_swsds
@@ -880,6 +881,7 @@ with_gmssl
 with_swsds
 with_sqlite
 enable_dky_beta_feature
+enable_audit_partition_table
 with_pam
 with_bsd_auth
 with_ldap
@@ -1566,6 +1568,8 @@ Optional Features:
   --enable-internal-guc   enable internal GUC performance
   --enable-dky_beta_feature
                           enable some audit event
+  --enable-audit-partition-table
+                          enable audit partition table
   --disable-largefile     omit support for large files
 
 Optional Packages:
@@ -9389,6 +9393,40 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_dky_beta_feature" >&5
 $as_echo "$enable_dky_beta_feature" >&6; }
+
+
+#
+# audit partition table
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with audit partition table support" >&5
+$as_echo_n "checking whether to build with audit partition table support... " >&6; }
+
+
+# Check whether --enable-audit-partition-table was given.
+if test "${enable_audit_partition_table+set}" = set; then :
+  enableval=$enable_audit_partition_table;
+  case $enableval in
+    yes)
+
+$as_echo "#define ENABLE_AUDIT_PARTITION_TABLE 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-audit-partition-table option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_audit_partition_table=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_audit_partition_table" >&5
+$as_echo "$enable_audit_partition_table" >&6; }
 
 
 #

@@ -89,6 +89,9 @@
 /* Define to 1 to build with audit event. (--enable-audit-event) */
 #undef ENABLE_DKY_BETA_FEATURE
 
+
+/* Define to 1 to build with audit partition table. (--enable-audit-partition-table) */
+#undef ENABLE_AUDIT_PARTITION_TABLE
 /* Define to build with GSSAPI support. (--with-gssapi) */
 #undef ENABLE_GSS
 
