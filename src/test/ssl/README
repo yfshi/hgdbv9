@@ -49,6 +49,10 @@ server-cn-and-alt-names
 server-single-alt-name
 server-multiple-alt-names
 server-no-names
+server-cn-and-ip-alt-names
+server-ip-alt-names
+server-ip-cn-and-alt-names
+server-ip-cn-and-dns-alt-names
 	server certificates, with small variations in the hostnames present
         in the certificate. Signed by server_ca.
 

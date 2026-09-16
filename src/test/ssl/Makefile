@@ -16,6 +16,8 @@ include $(top_builddir)/src/Makefile.global
 export with_ssl
 
 CERTIFICATES := server_ca server-cn-and-alt-names \
+	server-cn-and-ip-alt-names server-ip-alt-names \
+	server-ip-cn-and-alt-names server-ip-cn-and-dns-alt-names \
 	server-cn-only server-single-alt-name server-multiple-alt-names \
 	server-no-names server-revoked server-ss \
 	client_ca client client-dn client-revoked \
