@@ -21,7 +21,7 @@ insert into b select generate_series(1,100);
 -- expect insert fail
 insert into b2 select generate_series(1,100);
 alter table b owner to u2;
-select pg_sleep(2);
+select pg_sleep(5);
 --expect insert succeed
 insert into b select generate_series(1,100);
 -- expect insert success
@@ -54,7 +54,7 @@ insert into b select generate_series(1,100);
 -- expect insert fail
 insert into b2 select generate_series(1,100);
 drop table b ;
-select pg_sleep(2);
+select pg_sleep(5);
 -- expect insert success
 insert into b2 select generate_series(1,100);
 

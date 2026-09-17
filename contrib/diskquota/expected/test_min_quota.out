@@ -19,7 +19,7 @@ select hg_security.set_role_quota('rminq', '1 MB', true);
  
 (1 row)
 
-select pg_sleep(3);
+select pg_sleep(5);
  pg_sleep 
 ----------
  
@@ -51,7 +51,7 @@ select hg_security.delete_role_quota('rminq');
  
 (1 row)
 
-select pg_sleep(1);
+select pg_sleep(5);
  pg_sleep 
 ----------
  

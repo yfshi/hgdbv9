@@ -29,6 +29,7 @@
 #if USE_OPENSSL
 #include <openssl/err.h>
 #include <openssl/evp.h>
+#include <openssl/kdf.h>
 #endif /* USE_OPENSSL */
 
 PG_FUNCTION_INFO_V1(ivymy_aes_encrypt);

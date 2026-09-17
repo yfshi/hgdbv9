@@ -13,7 +13,7 @@ select oid as rmin_oid from pg_roles where rolname = 'rminq' \gset
 select hg_security.set_schema_quota('smin', '1 MB', true);
 select hg_security.set_role_quota('rminq', '1 MB', true);
 
-select pg_sleep(3);
+select pg_sleep(5);
 
 select size
 from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
@@ -24,7 +24,7 @@ from pg_stat_file(format('diskquota_min_reserve/rol_%s_%s.reserve', :'dbid', :'r
 select hg_security.delete_schema_quota('smin');
 select hg_security.delete_role_quota('rminq');
 
-select pg_sleep(1);
+select pg_sleep(5);
 
 select size
 from pg_stat_file(format('diskquota_min_reserve/nsp_%s_%s.reserve', :'dbid', :'smin_oid'));
