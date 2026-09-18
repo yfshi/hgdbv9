@@ -59,6 +59,7 @@
 	/* End - bug#z8081 */
 	/* Begin - bug#9212 */
 	static bool check_default_database(char **newval, void **extra, GucSource source);
+	static bool get_instance_count(const char *database_list_str, uint32 *instance_count);
 	/* End - bug#9212 */
 #endif
 
@@ -1557,7 +1558,7 @@ assign_time_zone(const char *newval, void *extra)
 /* End - bug#z8081  */
 
 /* Begin - bug#9212 */
-static uint32_t
+static uint32
 get_instance_limit(void)
 {
 #ifdef USE_LICENSE
@@ -1569,34 +1570,84 @@ get_instance_limit(void)
 }
 
 static bool
-check_default_database(char **newval, void **extra, GucSource source)
+get_instance_count(const char *database_list_str, uint32 *instance_count)
 {
 	char *raw;
-	List *database_list = NULL;
-	uint32_t instance_count;
-	uint32_t max_instances;
+	List *database_list = NIL;
+	bool valid;
 
-	/* Allow an unset default during GUC initialization. */
-	if (*newval == NULL)
-		return true;
+	*instance_count = 0;
 
-	/* SplitGUCList modifies its input, so use a copy. */
-	raw = pstrdup(*newval);
-	if (!SplitGUCList(raw, ',', &database_list))
+	if (database_list_str == NULL)
 	{
-		list_free(database_list);
-		pfree(raw);
-		GUC_check_errdetail("Invalid database list.");
-		return false;
+		return true;
 	}
 
-	instance_count = (uint32_t) list_length(database_list);
+	/* SplitGUCList modifies its input, so use a copy. */
+	raw = pstrdup(database_list_str);
+	valid = SplitGUCList(raw, ',', &database_list);
+
+	if (valid)
+	{
+		*instance_count = (uint32) list_length(database_list);
+	}
 
 	/* List elements reference raw; free the list nodes, then the buffer. */
 	list_free(database_list);
 	pfree(raw);
 
+	return valid;
+}
+
+static bool
+check_default_database(char **newval, void **extra, GucSource source)
+{
+	uint32 instance_count;
+	uint32 max_instances;
 	max_instances = get_instance_limit();
+
+	/* Begin - bug#9286 */
+#ifdef USE_LICENSE
+	/*
+	 * Check the currently active instance list in the postmaster after a license reload.
+	 * default_database must reflect the instances that are actually running.
+	 */
+	if (!IsUnderPostmaster)
+	{
+		uint32 running_count;
+
+		/* A limit of zero means unlimited. */
+		if (max_instances != 0)
+		{
+			if (!get_instance_count(default_database, &running_count))
+			{
+				GUC_check_errdetail("Invlid current databse list.");
+				return false;
+			}
+		}
+
+			if (running_count > max_instances)
+			{
+				/* Warn without stopping the running server. */
+				ereport(WARNING,
+						(errmsg("running MySQL instance count exceeds the licensed maximum. "),
+						 errdetail("Running instances: %u; licensed maximum: %u.", (unsigned int)running_count, (unsigned int)max_instances),
+						 errhint("The server cannot restart with this instance count under the current license. "
+								 "Reduce the configured instance count or update the license before restarting.")));
+			}
+	}
+#endif
+/* End - bug#9286 */
+
+	/* Allow an unset default during GUC initialization. */
+	if (*newval == NULL)
+		return true;
+
+	if (!get_instance_count(*newval, &instance_count))
+	{
+		GUC_check_errdetail("Invalid database list.");
+		return false;
+	}
 
 	/* A limit of zero means unlimited. */
 	if (max_instances != 0 && instance_count > max_instances)
