@@ -209,7 +209,8 @@ MYS_REGRESS = numeric_to_times \
 			  create_collation_from \
 			  test_charset_introducer \
 			  mys_alter_index \
-			  mys_table_level_index
+			  mys_table_level_index \
+			  mys_force_index_hint
 
 MYS_JDBC_REGRESS =	proto_jdbc \
 					proto_jdbc_8_0_28 \
