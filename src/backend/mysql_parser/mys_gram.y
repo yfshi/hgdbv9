@@ -306,12 +306,12 @@ static Node *makeVarRef(char *varname, VarKind kind, int location);
 
 /* Begin - ReqID:SRS-MYSQL-SHOW */
 static SelectStmt *makeShowTriggersStmt(Node *db_name, ShowFilter *filter);
-static SelectStmt *makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter);
-static SelectStmt *makeShowTableStatusStmt(Node *db_name, ShowFilter *filter);
-static SelectStmt *makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full);
+static SelectStmt *makeShowIndexStmt(RangeVar *tb_name, char *db_name, ShowFilter *filter);
+static SelectStmt *makeShowTableStatusStmt(char *db_name, ShowFilter *filter);
+static SelectStmt *makeShowTablesStmt(char *db_name, ShowFilter *filter, bool full);
 static SelectStmt *makeShowCreateViewStmt(RangeVar *var);
 static SelectStmt *makeShowSchemasStmt(ShowFilter *filter);
-static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full);
+static SelectStmt *makeShowColumnsStmt(RangeVar *tb_name, char *db_name, ShowFilter *filter, bool full);
 static SelectStmt *makeShowCreateDatabaseStmt(const char *showname, bool existflg);
 static Node *makeShowVariableStmt(int status, ShowFilter *filter);
 static Node *makeShowStatusStmt(int status, ShowFilter *filter);
@@ -868,7 +868,7 @@ static int make_expand_properties(char *str, int location, mys_core_yyscan_t yys
 %type <list>		rename_user_clause rename_list rename_table_list rename_table_clause
 
 /* Begin - ReqID:SRS-MYSQL-SHOW */
-%type <node>		opt_db
+%type <str>			opt_db
 %type <node>		mys_show_table
 %type <node>		enum_val
 /* End - ReqID:SRS-MYSQL-SHOW */
@@ -2465,11 +2465,8 @@ opt_show_filter:
 
 /* Begin - Req: SRS-MYSQL-SHOW */
 opt_db:
-			from_in IDENT
-					{
-							$$ = makeStringConst($2, @2);
-					}
-			|/* empty */  { $$ = NULL; }
+			from_in IDENT	{ $$ = $2; }
+			| /* empty */  	{ $$ = NULL; }
 			;
 
 mys_show_table:
@@ -23351,13 +23348,17 @@ makeShowTriggersStmt(Node *db_name, ShowFilter *filter)
 							   makeShowFilter("Table", filter));
 }
 
+/* Begin - bug#9242 */
+#define CASE_SENSITIVE(S) ((lower_case_table_names == 1 ? str_tolower(S, strlen(S), DEFAULT_COLLATION_OID) : S))
+/* End - bug#9242 */
+
 /* makeShowIndexStmt
  *
  * Construct a SelectStmt statement that
  * returns the index of table.
  */
 static SelectStmt *
-makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
+makeShowIndexStmt(RangeVar *tb_name, char *db_name, ShowFilter *filter)
 {
 	char	*relname = tb_name->relname;
 	char 	*schemaname = tb_name->schemaname;
@@ -23365,9 +23366,9 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
 	List 	*args = list_make1(makeStringConst(relname, -1));
 	
 	if (db_name)
-		args = lappend(args, db_name);
+		args = lappend(args, makeStringConst(CASE_SENSITIVE(db_name), -1));
 	else if (schemaname)
-		args = lappend(args, makeStringConst(schemaname, -1));
+		args = lappend(args, makeStringConst(CASE_SENSITIVE(schemaname), -1));
 
 	return makeRangeFuncSelect(funcname, 
 							   args, 
@@ -23380,10 +23381,10 @@ makeShowIndexStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter)
  * returns the table status.
  */
 static SelectStmt *
-makeShowTableStatusStmt(Node *db_name, ShowFilter *filter)
+makeShowTableStatusStmt(char *db_name, ShowFilter *filter)
 {
 	return makeRangeFuncSelect("show_table_status", 
-							   db_name ? list_make1(db_name) : NIL, 
+							   db_name ? list_make1(makeStringConst(CASE_SENSITIVE(db_name), -1)) : NIL, 
 							   makeShowFilter("Name", filter));
 }
 
@@ -23409,7 +23410,7 @@ makeSortBy(char *col_name)
  * returns all tables.
  */
 static SelectStmt *
-makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
+makeShowTablesStmt(char *db_name, ShowFilter *filter, bool full)
 {
 	char col_name[64], *schema_name = "";
 	SelectStmt *stmt;
@@ -23417,13 +23418,7 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 
 	if (db_name)
 	{
-		A_Const *con;
-
-		Assert(nodeTag(db_name) == T_A_Const);
-		
-		con = (A_Const *) db_name;
-
-		schema_name = strVal(&con->val);
+		schema_name = db_name;
 	}
 	else
 	{
@@ -23440,7 +23435,7 @@ makeShowTablesStmt(Node *db_name, ShowFilter *filter, bool full)
 	snprintf(col_name, sizeof(col_name), "Tables_in_%s", schema_name);
 
 	stmt = makeRangeFuncSelect("show_tables", 
-							   db_name ? list_make1(db_name) : NIL,
+							   db_name ? list_make1(makeStringConst(CASE_SENSITIVE(db_name), -1)) : NIL,
 							   makeShowFilter(pstrdup(col_name), filter));
 
 	/* Begin - OA#2772 */
@@ -23489,17 +23484,17 @@ makeShowSchemasStmt(ShowFilter *filter)
  * returns all cloumns of a table.
  */
 static SelectStmt *
-makeShowColumnsStmt(RangeVar *tb_name, Node *db_name, ShowFilter *filter, bool full)
+makeShowColumnsStmt(RangeVar *tb_name, char *db_name, ShowFilter *filter, bool full)
 {
 	char	*relname = tb_name->relname;
 	char 	*schemaname = tb_name->schemaname;
 	char 	*funcname = full ? "show_columns_full" : "show_columns_normal";
-	List 	*args = list_make1(makeStringConst(relname, -1));
+	List 	*args = list_make1(makeStringConst(CASE_SENSITIVE(relname), -1));
 	
 	if (db_name)
-		args = lappend(args, db_name);
+		args = lappend(args, makeStringConst(CASE_SENSITIVE(db_name), -1));
 	else if (schemaname)
-		args = lappend(args, makeStringConst(schemaname, -1));
+		args = lappend(args, makeStringConst(CASE_SENSITIVE(schemaname), -1));
 
 	return makeRangeFuncSelect(funcname, 
 							   args, 
