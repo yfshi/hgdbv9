@@ -46,6 +46,8 @@
 #include "utils/ora_compatible.h"
 /* End - BUG#M0000414 */
 
+#include "se_features_interface.h" /* Bug#z9293 */
+
 /*
  *	 DoCopy executes the SQL COPY statement
  *
@@ -104,6 +106,21 @@ DoCopy(ParseState *pstate, const CopyStmt *stmt,
 	/* not allow to show superuser in log info */
 	if (!pipe)
 	{
+		/* Begin - Bug#z9293 */
+		if (se_feature_mode)
+		{
+			/*
+			 * When se_feature.mode is enabled, syssso and syssao may be treated
+			 * as superusers by is_member_of_role(), which could allow them to
+			 * execute COPY commands. Reject these users explicitly before checking
+			 * role membership.
+			 */
+			if (IS_SYSSSO(GetUserId()) || IS_SYSSAO(GetUserId()))
+				ereport(ERROR,
+						(errcode(ERRCODE_INSUFFICIENT_PRIVILEGE),
+						 errmsg("permission denied")));
+		}
+		/* End - Bug#z9293 */
 		if (stmt->is_program)
 		{
 			if (!is_member_of_role(GetUserId(), ROLE_PG_EXECUTE_SERVER_PROGRAM))

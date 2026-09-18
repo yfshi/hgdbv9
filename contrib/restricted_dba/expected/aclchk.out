@@ -578,6 +578,29 @@ truncate table tb1_sao_u1;
 ERROR:  permission denied for table tb1_sao_u1
 truncate table tb1_u1;
 ERROR:  permission denied for table tb1_u1
+-- Begin - Bug#z9293
+\c testdb syssso_u1
+set se_feature.mode to on;
+SHOW se_feature.mode;
+ se_feature.mode 
+-----------------
+ on
+(1 row)
+
+-- syssso must not be allowed to execute COPY PROGRAM.
+COPY (SELECT 'test') TO PROGRAM 'cat > /dev/null';
+ERROR:  permission denied
+\c testdb syssao_u1
+SHOW se_feature.mode;
+ se_feature.mode 
+-----------------
+ on
+(1 row)
+
+-- syssao must not be allowed to execute COPY PROGRAM.
+COPY (SELECT 'test') TO PROGRAM 'cat > /dev/null';
+ERROR:  permission denied
+-- End - Bug#z9293
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;

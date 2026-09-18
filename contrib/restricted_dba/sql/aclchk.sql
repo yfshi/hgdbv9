@@ -385,6 +385,19 @@ truncate table tb1_dba_u1;
 truncate table tb1_sao_u1;
 truncate table tb1_u1;
 
+-- Begin - Bug#z9293
+\c testdb syssso_u1
+set se_feature.mode to on;
+SHOW se_feature.mode;
+-- syssso must not be allowed to execute COPY PROGRAM.
+COPY (SELECT 'test') TO PROGRAM 'cat > /dev/null';
+
+\c testdb syssao_u1
+SHOW se_feature.mode;
+-- syssao must not be allowed to execute COPY PROGRAM.
+COPY (SELECT 'test') TO PROGRAM 'cat > /dev/null';
+-- End - Bug#z9293
+
 -- Clean test object
 \c testdb syssso_u1
 set se_feature.mode to on;
