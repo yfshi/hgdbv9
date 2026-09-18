@@ -18,3 +18,50 @@ SELECT 1 AS result WHERE -1!=+1;
 SELECT 1 AS result WHERE -1!=1;
 SELECT 1 AS result WHERE 1!=-1;
 /*End OA#2701 */
+
+/*Begin Bug#9148 */
+create table t_enum_operator (
+                col_1 enum('a','b','','测试数据'),
+                col_2 enum('测试','开发'),
+                col_3 enum('特殊字符@#!','aBC大小写混合')
+            );	
+
+insert into t_enum_operator values (1, '开发', 2),('2', '测试', 1),(3, 2, 1),(4, '1', 2);
+
+select * from t_enum_operator where col_2 between 1 and '2';
+select * from t_enum_operator where col_2 not between 1 and '2';
+
+CREATE TABLE tb1 (
+    t  text,
+    tt tinytext,
+    mt mediumtext,
+    lt longtext
+);
+
+INSERT INTO tb1 VALUES ('a', 'a', 'a', 'a');
+
+SELECT
+    NOT t, !t, t AND t, t && t, t OR 1, t || 0, t XOR 1, t ^ 0,
+    NOT tt, !tt, tt AND tt, tt && tt, tt OR 1, tt || 0, tt XOR 1, tt ^ 0,
+    NOT mt, !mt, mt AND mt, mt && mt, mt OR 1, mt || 0, mt XOR 1, mt ^ 0,
+    NOT lt, !lt, lt AND lt, lt && lt, lt OR 1, lt || 0, lt XOR 1, lt ^ 0
+FROM tb1;
+
+SELECT
+    NOT t, !t, t AND t, t && t, 1 OR t, 0 || t, 1 XOR t, 0 ^ t,
+    NOT tt, !tt, tt AND tt, tt && tt, 1 OR tt, 0 || tt, 1 XOR tt, 0 ^ tt,
+    NOT mt, !mt, mt AND mt, mt && mt, 1 OR mt, 0 || mt, 1 XOR mt, 0 ^ mt,
+    NOT lt, !lt, lt AND lt, lt && lt, 1 OR lt, 0 || lt, 1 XOR lt, 0 ^ lt
+FROM tb1;
+
+CREATE TABLE th1 (s1 VARCHAR(20));
+CREATE TABLE th2 (id INT);
+INSERT INTO th1 VALUES ('hello'), ('mysql');
+INSERT INTO th2 VALUES (1), (2);
+SELECT * FROM th2 WHERE id > (SELECT MIN(s1) FROM th1); 
+
+DROP TABLE IF EXISTS th1;
+DROP TABLE IF EXISTS th2;
+DROP TABLE IF EXISTS t_enum_operator;
+DROP TABLE IF EXISTS tb1;
+/*End Bug#9148 */

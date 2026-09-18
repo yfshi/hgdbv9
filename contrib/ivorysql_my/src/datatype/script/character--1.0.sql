@@ -244,6 +244,36 @@ CREATE OPERATOR ivymy.^ (
 	RIGHTARG = text
 );
 
+/* Begin Bug#9146 */
+--
+-- text ^ bigint
+--
+CREATE OR REPLACE FUNCTION mystext_xor_int(text, bigint)
+		RETURNS pg_catalog.int8
+		AS 'MODULE_PATHNAME', 'mystext_xor_int'
+		LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.^ (
+	FUNCTION = mystext_xor_int,
+	LEFTARG = text,
+	RIGHTARG = bigint
+);
+
+--
+-- bigint ^ text
+--
+CREATE OR REPLACE FUNCTION mysint_xor_text(bigint, text)
+		RETURNS pg_catalog.int8
+		AS 'MODULE_PATHNAME', 'mysint_xor_text'
+		LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.^ (
+	FUNCTION = mysint_xor_text,
+	LEFTARG = bigint,
+	RIGHTARG = text
+);
+/* End Bug#9146 */
+
 -- /* Begin - BUG#7845 */
 --
 -- text ~** text
@@ -439,6 +469,30 @@ CREATE OPERATOR ivymy.< (
 	leftarg = float8,
 	rightarg = text
 );
+
+/* Begin Bug#9146 */
+CREATE FUNCTION ivymy.float8_le_text(float8, text)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'float8_le_varlena'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.<= (
+	procedure = ivymy.float8_le_text,
+	leftarg = float8,
+	rightarg = text
+);
+
+CREATE FUNCTION ivymy.float8_gt_text(float8, text)
+RETURNS bool
+AS 'MODULE_PATHNAME', 'float8_gt_varlena'
+LANGUAGE C STRICT PARALLEL SAFE IMMUTABLE;
+
+CREATE OPERATOR ivymy.> (
+	procedure = ivymy.float8_gt_text,
+	leftarg = float8,
+	rightarg = text
+);
+/* End Bug#9146 */
 
 CREATE FUNCTION ivymy.float8_ge_text(float8, text)
 RETURNS bool
