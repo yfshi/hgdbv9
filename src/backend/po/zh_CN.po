@@ -27017,3 +27017,36 @@ msgstr "这是瀚高 %s 版 %s 数据库, 有效日期至 %s. 过期后不能正
 
 #~ msgid "%s: could not open file \"%s\" for reading: %s\n"
 #~ msgstr "%s: 为了读取, 无法打开文件 \"%s\": %s\n"
+
+# Begin - bug#9284
+#: utils/misc/ivy_mysql_guc.c:1597
+#, c-format
+msgid "Invlid current databse list."
+msgstr "当前数据库列表格式无效。"
+
+#: utils/misc/ivy_mysql_guc.c:1631
+#, fuzzy, c-format
+#| msgid "invalid data type"
+msgid "Invalid database list."
+msgstr "无效数据类型"
+
+#: utils/misc/ivy_mysql_guc.c:1646
+#, c-format
+msgid "Configured instance count %u exceeds licensed maximum %u."
+msgstr "配置的实例数 %u 超过授权允许的最大实例数 %u。"
+
+#: utils/misc/ivy_mysql_guc.c:1611
+#, c-format
+msgid "running MySQL instance count exceeds the licensed maximum. "
+msgstr "当前运行的 MySQL 实例数超过授权允许的最大实例数。"
+
+#: utils/misc/ivy_mysql_guc.c:1612
+#, c-format
+msgid "Running instances: %u; licensed maximum: %u."
+msgstr "当前运行实例数：%u；授权允许的最大实例数：%u。"
+
+#: utils/misc/ivy_mysql_guc.c:1613
+#, c-format
+msgid "The server cannot restart with this instance count under the current license. Reduce the configured instance count or update the license before restarting."
+msgstr "在当前授权下，服务器无法以此实例数重新启动。请在重启前减少配置的实例数或更新授权。"
+# End - bug#9284

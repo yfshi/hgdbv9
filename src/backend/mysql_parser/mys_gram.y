@@ -13036,6 +13036,12 @@ AlterSystemStmt:
 				{
 					AlterSystemStmt *n = makeNode(AlterSystemStmt);
 					n->setstmt = trans_MysVariable_to_VariableSet(NULL, (MysDoStmt *)$3);
+					/* Begin - bug#9285 */
+					if (n->setstmt == NULL)
+					{
+						ereport(ERROR, (errcode(ERRCODE_SYNTAX_ERROR), errmsg("invalid ALTER SYSTEM SET statement")));
+					}
+					/* End - bug#9285 */
 					$$ = (Node *)n;
 				}
 			/* End - ReqID:SRS-MYSQL-SET */

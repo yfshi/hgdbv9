@@ -3100,9 +3100,23 @@ SIGHUP_handler(SIGNAL_ARGS)
 	{
 #ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
 		if (pdbg_log_hook != NULL && pdbg_log_hook())
+		{
 #endif /* End - ReqID:SRS-Performance-GUC */
+
 		ereport(LOG,
 				(errmsg("received SIGHUP, reloading configuration files")));
+
+#ifdef MISC_INTERNAL /* Begin - ReqID:SRS-Performance-GUC */
+		}
+#endif /* End - ReqID:SRS-Performance-GUC */
+
+/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
+#ifdef USE_LICENSE
+		/* Load the license before validating configuration values. */
+		hg_load_license(NULL);
+#endif
+/* End - ReqID:SRS-MISC-LICENSE-TECC */
+
 		ProcessConfigFile(PGC_SIGHUP);
 		SignalChildren(SIGHUP);
 		if (StartupPID != 0)
@@ -3199,12 +3213,6 @@ SIGHUP_handler(SIGNAL_ARGS)
 #ifdef WIN32
 	PG_SETMASK(&UnBlockSig);
 #endif
-
-/* Begin - ReqID:SRS-MISC-LICENSE-TECC */
-#ifdef USE_LICENSE
-	hg_load_license(NULL);
-#endif
-/* End - ReqID:SRS-MISC-LICENSE-TECC */
 
 	errno = save_errno;
 }
