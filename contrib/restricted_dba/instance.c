@@ -58,7 +58,8 @@ alter_system_set_check(AlterSystemStmt *altersysstmt)
 		(pg_strncasecmp(name,"conn_restrict.enable",strlen("conn_restrict.enable")) == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6238 */
 		(pg_strcasecmp(name,"count_idle_busy_time") == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6183 */
 		(pg_strcasecmp(name,"idle_session_timeout") == 0 && IS_SYSSSO(GetUserId())) ||
-		(pg_strcasecmp(name,"hg_session_locking_timeout") == 0 && IS_SYSSSO(GetUserId()))) /* Bug #6046*/
+		(pg_strcasecmp(name,"hg_session_locking_timeout") == 0 && IS_SYSSSO(GetUserId())) ||	/* Bug #6046*/
+		(pg_strncasecmp(name,"ddos.",strlen("ddos.")) == 0 && IS_SYSSSO(GetUserId())))
 	{
 
 		PG_TRY();

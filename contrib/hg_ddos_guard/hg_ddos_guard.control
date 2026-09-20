@@ -1,0 +1,5 @@
+comment = 'client IP and username login/SQL rate limiting'
+default_version = '1.0'
+module_pathname = '$libdir/hg_ddos_guard'
+relocatable = false
+schema = 'hg_security'

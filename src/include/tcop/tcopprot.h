@@ -44,6 +44,11 @@ typedef enum
 
 extern PGDLLIMPORT int log_statement;
 
+typedef void (*ClientQueryPreParse_hook_type) (const char *query_string);
+typedef void (*ClientQueryPostParse_hook_type) (const char *query_string, List *raw_parsetree_list);
+extern PGDLLIMPORT ClientQueryPreParse_hook_type ClientQueryPreParse_hook;
+extern PGDLLIMPORT ClientQueryPostParse_hook_type ClientQueryPostParse_hook;
+
 /* Flags for restrict_nonsystem_relation_kind value */
 #define RESTRICT_RELKIND_VIEW			0x01
 #define RESTRICT_RELKIND_FOREIGN_TABLE	0x02

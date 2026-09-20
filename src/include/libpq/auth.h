@@ -22,6 +22,10 @@ extern char *pg_krb_realm;
 
 extern void ClientAuthentication(Port *port);
 
+/* Hook for extensions that must reject a connection before authentication. */
+typedef void (*ClientPreAuthentication_hook_type) (Port *port);
+extern PGDLLIMPORT ClientPreAuthentication_hook_type ClientPreAuthentication_hook;
+
 /* Hook for plugins to get control in ClientAuthentication() */
 typedef void (*ClientAuthentication_hook_type) (Port *, int);
 extern PGDLLIMPORT ClientAuthentication_hook_type ClientAuthentication_hook;

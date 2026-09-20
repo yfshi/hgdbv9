@@ -693,6 +693,9 @@ ProcessClientWriteInterrupt(bool blocked)
  * we've seen a COMMIT or ABORT command; when we are in abort state, other
  * commands are not processed any further than the raw parse stage.
  */
+ClientQueryPreParse_hook_type ClientQueryPreParse_hook = NULL;
+ClientQueryPostParse_hook_type ClientQueryPostParse_hook = NULL;
+
 List *
 pg_parse_query(const char *query_string)
 {
@@ -1129,7 +1132,11 @@ exec_simple_query(const char *query_string)
 	 * Do basic parsing of the query or queries (this should be safe even if
 	 * we are in aborted transaction state!)
 	 */
+	if (ClientQueryPreParse_hook)
+		(*ClientQueryPreParse_hook) (query_string);
 	parsetree_list = pg_parse_query(query_string);
+	if (ClientQueryPostParse_hook)
+		(*ClientQueryPostParse_hook) (query_string, parsetree_list);
 
 	/* Log immediately if dictated by log_statement */
 	if (check_log_statement(parsetree_list))
@@ -1681,6 +1688,9 @@ exec_parse_message(const char *query_string,	/* string to execute */
 		oldcontext = MemoryContextSwitchTo(unnamed_stmt_context);
 	}
 
+	if (ClientQueryPreParse_hook)
+		(*ClientQueryPreParse_hook) (query_string);
+
 	/*
 	 * Do basic parsing of the query or queries (this should be safe even if
 	 * we are in aborted transaction state!)
@@ -1709,6 +1719,9 @@ exec_parse_message(const char *query_string,	/* string to execute */
 	else
 	/* End - ReqID:SRS-SQL-LIBPQOUT */
 		parsetree_list = pg_parse_query(query_string);
+
+	if (ClientQueryPostParse_hook)
+		(*ClientQueryPostParse_hook) (query_string, parsetree_list);
 
 	/*
 	 * We only allow a single user statement in a prepared statement. This is
