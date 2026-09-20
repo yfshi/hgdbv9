@@ -1407,7 +1407,10 @@ ivy_xml_replacenode(xpath_ws *ws, const xmlChar* new_node)
 					return true;
 				}
 			}
-			/* See ivy_xml_delenode: descendants must be processed first. */
+
+			/*
+			 * See ivy_xml_delenode: descendants must be processed first.
+			 */
 			for (i = num - 1; i >= 0; i--)
 			{
 				cur = xpathobj->nodesetval->nodeTab[i];
@@ -1453,13 +1456,23 @@ ivy_xml_replacenode(xpath_ws *ws, const xmlChar* new_node)
 						ereport(ERROR, (errcode(ERRCODE_INVALID_XML_DOCUMENT),
 								errmsg("XML new node has no root element")));
 					}
-					if (cur->type != XML_ELEMENT_NODE)
+
+					/*
+					 * Oracle allow an XML value to replace a text() node
+					 * Xpath text() also selects CDATA sections in libxml.
+					 */
+					if (cur->type != XML_ELEMENT_NODE &&
+						cur->type != XML_TEXT_NODE &&
+						cur->type != XML_CDATA_SECTION_NODE)
 					{
 						xmlFreeDoc(n_node);
 						ereport(ERROR, (errcode(ERRCODE_DATA_EXCEPTION),
 								errmsg("invalid XPath expression")));
 					}
-					/* Copy into the destination dictionary before freeing n_node. */
+
+					/*
+					 * Copy into the destination dictionary before freeing n_node.
+					 */
 					root = xmlDocCopyNode(root, cur->doc, 1);
 					if (root == NULL)
 					{

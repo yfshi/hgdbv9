@@ -480,6 +480,12 @@ insert into tb_9218 values (1, '<Envelope><EEE>test</EEE></Envelope>');
 select UPDATEXML(spec, '/', xmltype('<FFF>test</FFF>')) from tb_9218;
 drop table tb_9218;
 
+create table tb_9218(id number, spec xmltype);
+insert into tb_9218 values (1, '<AAA><BBB><DDD><EEE>111</EEE></DDD></BBB></AAA>');
+select UPDATEXML(spec, 'AAA/BBB/DDD/EEE/text()', 'test') from tb_9218;
+select UPDATEXML(spec, 'AAA/BBB/DDD/EEE/text()', xmltype('<TTT>test</TTT>')) from tb_9218;
+drop table tb_9218;
+
 -- Whole-document replacement, equivalent document XPath, and sequential pairs.
 select updatexml(XMLTYPE('<a/>'), ' / ', XMLTYPE('<b/>')) from dual;
 select updatexml(XMLTYPE('<a/>'), '/*/..', XMLTYPE('<b/>')) from dual;
