@@ -41,6 +41,8 @@ PG_FUNCTION_INFO_V1(mystext_div);
 PG_FUNCTION_INFO_V1(mystext_mod);
 PG_FUNCTION_INFO_V1(mystext_modiv);
 PG_FUNCTION_INFO_V1(mystext_xor);
+PG_FUNCTION_INFO_V1(mystext_xor_int);
+PG_FUNCTION_INFO_V1(mysint_xor_text);
 PG_FUNCTION_INFO_V1(mystext_logic_not);
 PG_FUNCTION_INFO_V1(mystext_logic_and);
 PG_FUNCTION_INFO_V1(text_bool);
@@ -62,8 +64,10 @@ PG_FUNCTION_INFO_V1(varlena_lt_float8);
 PG_FUNCTION_INFO_V1(varlena_le_float8);
 PG_FUNCTION_INFO_V1(varlena_gt_float8);
 PG_FUNCTION_INFO_V1(varlena_ge_float8);
+PG_FUNCTION_INFO_V1(float8_gt_varlena);
 PG_FUNCTION_INFO_V1(float8_ge_varlena);
 PG_FUNCTION_INFO_V1(float8_lt_varlena);
+PG_FUNCTION_INFO_V1(float8_le_varlena);
 PG_FUNCTION_INFO_V1(varlena_sum);
 
 /*
@@ -607,6 +611,46 @@ mystext_xor(PG_FUNCTION_ARGS)
 	PG_RETURN_INT64(i_arg1 ^ i_arg2);
 }
 
+/* Begin Bug#9146 */
+Datum
+mystext_xor_int(PG_FUNCTION_ARGS)
+{
+	text	   *arg1;
+	char	   num1[64];
+	int64	   i_arg1 = 0;
+	int64	   i_arg2 = 0;
+
+	arg1 = PG_GETARG_TEXT_PP(0);
+    i_arg2 = PG_GETARG_INT64(1);
+
+	extract_leading_integer_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	i_arg1 = DatumGetInt64(DirectFunctionCall1(int8in,
+												CStringGetDatum(num1)));
+
+	PG_RETURN_INT64(i_arg1 ^ i_arg2);
+}
+
+Datum
+mysint_xor_text(PG_FUNCTION_ARGS)
+{
+	text	   *arg1;
+	char	   num1[64];
+	int64	   i_arg1 = 0;
+	int64	   i_arg2 = 0;
+
+	arg1 = PG_GETARG_TEXT_PP(1);
+    i_arg2 = PG_GETARG_INT64(0);
+
+	extract_leading_integer_str(text_to_cstring(arg1), num1, sizeof(num1));
+
+	i_arg1 = DatumGetInt64(DirectFunctionCall1(int8in,
+												CStringGetDatum(num1)));
+
+	PG_RETURN_INT64(i_arg1 ^ i_arg2);
+}
+/* End Bug#9146 */
+
 Datum
 mystext_logic_not(PG_FUNCTION_ARGS)
 {
@@ -947,6 +991,34 @@ float8_lt_varlena(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(float8_lt(left, right));
 }
+
+/* Begin Bug#9146 */
+Datum
+float8_le_varlena(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	double		right;
+	double		left = PG_GETARG_FLOAT8(0);
+	bool		is_insert = CALL_IN_INSERT();
+
+	right = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_le(left, right));
+}
+
+Datum
+float8_gt_varlena(PG_FUNCTION_ARGS)
+{
+	char		*src = text_to_cstring(PG_GETARG_TEXT_PP(1));
+	double		right;
+	double		left = PG_GETARG_FLOAT8(0);
+	bool		is_insert = CALL_IN_INSERT();
+
+	right = my_atod(src, is_insert);
+
+	PG_RETURN_BOOL(float8_gt(left, right));
+}
+/* End Bug#9146 */
 
 Datum
 float8_ge_varlena(PG_FUNCTION_ARGS)
