@@ -1036,6 +1036,7 @@ create table comysql_test(id int,name varchar,age int);
 select * from public.comysql_test where public.COMYSQL_TEST.ID = 1;
 delete from public.COMYSQL_TEST where public.COMYSQL_TEST.ID = 1;
 update public.COMYSQL_TEST set public.COMYSQL_TEST.ID = 2 where public.COMYSQL_TEST.ID = 1;
+SHOW COLUMNS FROM COMYSQL_TEST;
 drop table COMYSQL_TEST;
 
 set lower_case_table_names = 2;
