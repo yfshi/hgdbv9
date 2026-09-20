@@ -82,3 +82,10 @@ select @result as complex_calculation; --42
 
 set mysql.at_or_atat = 0;
 set mysql.use_mysql_do = false;
+
+-- fix bug#9296
+SET foreign_key_checks = 0;
+SET sql_safe_updates = 0;
+
+show foreign_key_checks;
+show sql_safe_updates;

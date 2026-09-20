@@ -186,6 +186,11 @@ bool		create_function_with_sql_mode;
 int			max_execution_time;
 /* End - bug#8496 */
 
+/* Begin - BUG#9296 */
+bool		foreign_key_checks = true;
+bool		sql_safe_updates = true;
+/* End - BUG#9296 */
+
 /* Begin - ReqID:SRS-MYSQL-CASE */
 #define MIN_LOWER_NUM 0
 #define MAX_LOWER_NUM 2
@@ -397,6 +402,27 @@ int			max_execution_time;
 		NULL, NULL, NULL
 	},
 	/* End - ReqID:SRS-MYSQL-PROC */
+
+	/* Begin - BUG#9296 */
+	{
+		{"foreign_key_checks", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Sets whether foreign key checks are enabled."),
+			NULL
+		},
+		&foreign_key_checks,
+		true,
+		NULL, NULL, NULL
+	},
+	{
+		{"sql_safe_updates", PGC_USERSET, COMPAT_MYSQL_OPTIONS,
+			gettext_noop("Sets whether safe update mode is enabled."),
+			NULL
+		},
+		&sql_safe_updates,
+		true,
+		NULL, NULL, NULL
+	},
+	/* End - BUG#9296 */
 #endif
 
 #ifdef IVY_MY_GUC_INT_PARAMS
