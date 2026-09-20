@@ -247,10 +247,7 @@ transformAggregateCall(ParseState *pstate, Aggref *agg,
 			/* Begin Bug#8652 */
 			if (compatible_mode == MYS_MODE &&
 				sort_clause_has_resjunk(torder, tlist))
-			{
-				agg->aggdistinctorderseparate = true;
 				tdistinct = transformDistinctClause(pstate, &tlist, NIL, true);
-			}
 			else
 				tdistinct = transformDistinctClause(pstate, &tlist, torder, true);
 			/* End Bug#8652 */

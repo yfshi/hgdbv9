@@ -261,6 +261,7 @@
 #include "utils/datum.h"
 #include "utils/dynahash.h"
 #include "utils/expandeddatum.h"
+#include "utils/guc.h"
 #include "utils/logtape.h"
 #include "utils/lsyscache.h"
 #include "utils/memutils.h"
@@ -4175,6 +4176,36 @@ ExecInitAgg(Agg *node, EState *estate, int eflags)
 }
 
 /*
+ * Begin OA#2738
+ * DISTINCT sorting also satisfies ORDER BY when the latter is an exact
+ * prefix of the DISTINCT sort clauses.  Otherwise, sort the retained rows
+ * separately.  Derive this execution strategy from the existing clauses,
+ * without adding state to the stored Aggref representation.
+ */
+static bool
+aggregate_needs_separate_order(Aggref *aggref)
+{
+	ListCell   *orderlc;
+	ListCell   *distinctlc;
+
+	if (aggref->aggdistinct == NIL || aggref->aggorder == NIL)
+		return false;
+
+	if (list_length(aggref->aggorder) > list_length(aggref->aggdistinct))
+		return true;
+
+	/* Compare complete clauses, including operators and NULL ordering. */
+	forboth(orderlc, aggref->aggorder, distinctlc, aggref->aggdistinct)
+	{
+		if (!equal(lfirst(orderlc), lfirst(distinctlc)))
+			return true;
+	}
+
+	return false;
+}
+/* End OA#2738 */
+
+/*
  * Build the state needed to calculate a state value for an aggregate.
  *
  * This initializes all the fields in 'pertrans'. 'aggref' is the aggregate
@@ -4385,7 +4416,7 @@ build_pertrans_for_aggref(AggStatePerTrans pertrans,
 		sortlist = aggref->aggdistinct;
 		numSortCols = numDistinctCols = list_length(sortlist);
 
-		if (aggref->aggdistinctorderseparate)
+		if (compatible_mode == MYS_MODE && aggregate_needs_separate_order(aggref))
 			numOrderCols = list_length(aggref->aggorder);
 		else
 			Assert(numSortCols >= list_length(aggref->aggorder));
