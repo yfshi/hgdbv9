@@ -3699,6 +3699,40 @@ bulk_collect_into_receive(TupleTableSlot *slot, DestReceiver *self)
 					pfree(nulls);
 				}
 			}
+			/* Begin - BUG#Z9278 */
+			else if (value_typoid == ROWIDOID)
+			{
+				/*
+				 * if the collection element datatype is ROWID,
+				 * the query column datatype must be ROWID.
+				 */
+				if (tupdesc->attrs[0].atttypid != ROWIDOID)
+					ereport(ERROR,
+							(errcode(ERRCODE_WRONG_OBJECT_TYPE),
+							 errmsg("inconsistent datatypes: expected ROWID got %u",
+									tupdesc->attrs[0].atttypid)));
+
+				check_bulkcollect_target_number_match(1, slot->tts_nvalid);
+				if (TTS_EMPTY(slot) || slot->tts_isnull[i])
+				{
+					isnull = true;
+					value = (Datum) 0;
+				}
+				else
+				{
+					int16		expected_typLen;
+					bool		expected_typByVal;
+
+					get_typlenbyval(ROWIDOID, &expected_typLen, &expected_typByVal);
+
+					/* copy the rowid column value */
+					value = datumCopy(slot->tts_values[0], expected_typByVal, expected_typLen);
+					isnull = slot->tts_isnull[i];
+				}
+				collect_insert(PointerGetDatum(val), Int32GetDatum(++(val->max_index)), value, isnull);
+				break;
+			}
+			/* End - BUG#Z9278 */
 			else if (get_typtype(value_typoid) == TYPTYPE_COMPOSITE ||
 				(value_typoid == RECORDOID &&
 				value_datatype->ttype == PLISQL_TTYPE_EXPLICIT_CURSOR))
