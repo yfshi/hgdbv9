@@ -261,6 +261,11 @@ user_login_history_info_hook user_login_history_info = NULL;
 #endif
 /* End - ReqID:SRS-SECURITY-EAL4-LOGIN-DISPLAY */
 
+/*Begin - SRS-SECURITY-SQL-SENTINEL */
+/* hook for extensions to inspect a query string length after read */
+post_query_check_length_hook_type post_check_sql_length = NULL;
+/*End - SRS-SECURITY-SQL-SENTINEL */
+
 /* Begin ReqID: SESSION-VIEWS */
 unsigned long g_busy_secs = 0;
 unsigned long g_busy_microsecs = 0;
@@ -5493,6 +5498,13 @@ PostgresMain(int argc, char *argv[],
 					query_string = pq_getmsgstring(&input_message);
 					pq_getmsgend(&input_message);
 
+					/*Begin - SRS-SECURITY-SQL-SENTINEL */
+					if (post_check_sql_length)
+					{
+						(*post_check_sql_length)(query_string);
+					}
+					/*End - SRS-SECURITY-SQL-SENTINEL */
+
 					if (am_walsender)
 					{
 						if (!exec_replication_command(query_string))
@@ -5527,6 +5539,13 @@ PostgresMain(int argc, char *argv[],
 							paramTypes[i] = pq_getmsgint(&input_message, 4);
 					}
 					pq_getmsgend(&input_message);
+
+					/*Begin - SRS-SECURITY-SQL-SENTINEL */
+					if (post_check_sql_length)
+					{
+						(*post_check_sql_length)(query_string);
+					}
+					/*End - SRS-SECURITY-SQL-SENTINEL */
 
 					/* ReqID:SRS-MISC-HSH */
 					pgstat_report_query_phase(QUERY_PHASE_PARSER);

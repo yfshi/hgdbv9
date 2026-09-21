@@ -811,7 +811,7 @@ utl_raw_reverse(PG_FUNCTION_ARGS)
 				errmsg("numeric or value error")));
 	}
 
-	src_bytea_data = VARDATA_ANY(src_bytea);
+	src_bytea_data = (unsigned char *)VARDATA_ANY(src_bytea);
 	result = (bytea *) palloc(src_bytea_length + VARHDRSZ);
 	SET_VARSIZE(result, src_bytea_length + VARHDRSZ);
 	result_data = (unsigned char*)VARDATA_ANY(result);

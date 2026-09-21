@@ -4473,7 +4473,6 @@ adddate_interval(Datum *result, Timestamp timestamp, Interval *span, bool is_add
 	{
 		struct pg_tm tt, *tm = &tt;
 		fsec_t	fsec = 0;
-		int		warn = 0;
 
 		timestamp2tm(tsResult, NULL, tm, &fsec, NULL, NULL);
 		*result = TimeADTGetDatum(mys_tm2datetime(tm));

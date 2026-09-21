@@ -98,4 +98,9 @@ extern bool set_plan_disabling_options(const char *arg,
 									   GucContext context, GucSource source);
 extern const char *get_stats_option_name(const char *arg);
 
+/*Begin - SRS-SECURITY-SQL-SENTINEL */
+typedef void (*post_query_check_length_hook_type) (const char *query_string);
+extern PGDLLIMPORT post_query_check_length_hook_type post_check_sql_length;
+/*End - SRS-SECURITY-SQL-SENTINEL */
+
 #endif							/* TCOPPROT_H */

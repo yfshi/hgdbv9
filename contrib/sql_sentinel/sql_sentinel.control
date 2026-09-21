@@ -1,0 +1,8 @@
+# sql_sentinel extension
+comment = 'A SQL security filtering extension for IvorySQL'
+default_version = '1.0'
+module_pathname = '$libdir/sql_sentinel'
+relocatable = false
+trusted = true
+
+schema = 'hg_security'

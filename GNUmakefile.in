@@ -14,9 +14,9 @@ top_builddir = .
 include $(top_builddir)/src/Makefile.global
  
 ifeq ($(with_sqlite),yes)
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #/* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/sqlite_fdw contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota contrib/sql_sentinel)	# SRS-MISC-GB18030	# BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH #/* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK #SRS-SECURITY-SQL-SENTINEL
 else
-$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK
+$(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota contrib/sql_sentinel)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK #SRS-SECURITY-SQL-SENTINEL
 endif
 
 #/* Begin - BUG#Z00004703 */
@@ -59,6 +59,10 @@ install-contrib/hg_integrity_check: install-src-recurse
 all-contrib/diskquota: all-src-recurse
 install-contrib/diskquota: install-src-recurse
 #/* End - BUG#Z00004703 */
+#Begin - SRS-SECURITY-SQL-SENTINEL
+all-contrib/sql_sentinel: all-src-recurse
+install-contrib/sql_sentinel: install-src-recurse
+#End - SRS-SECURITY-SQL-SENTINEL
 
 
 docs:
