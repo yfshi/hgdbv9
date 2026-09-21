@@ -22,18 +22,26 @@ CREATE TABLE x (
 
 -- checking new options
 COPY x from stdin with sharding 2 sharding 2;
+\.
 COPY x from stdin with sharding 2;
+\.
 COPY x from stdin with sharding 2 current_shard 2;
+\.
 COPY x from stdin with badtable 'xxx_bad' badfile 'xxx.bad';
+\.
 COPY x from stdin with binary badtable 'xxx_bad';
+\.
 COPY x from stdin with binary sharding 2 current_shard 1;
+\.
 COPY x from stdin with badtable 'xxx_bad';
+\.
 COPY x from stdin with sharding 2 current_shard 1;
+\.
 
 -- TABLE
 -- with error tolerate, but bad table xx_bad did not exist: should fail
 COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' badtable 'xx_bad';
-
+\.
 COPY x (a, b, c, d, e, f) from stdin with csv delimiter ',' taskid '12' filename 'csv1.csv' badtable 'xx_bad';
 1,1,11.11,1,name_1,1
 1,2,22.22,2,name_2,2

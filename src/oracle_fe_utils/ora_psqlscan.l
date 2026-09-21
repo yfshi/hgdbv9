@@ -79,6 +79,10 @@ typedef int YYSTYPE;
 extern int	ora_psql_yyget_column(yyscan_t yyscanner);
 extern void ora_psql_yyset_column(int column_no, yyscan_t yyscanner);
 
+static bool ora_psqlscan_is_copy_from_stdin(PsqlScanState state);
+static void ora_psqlscan_track_identifier(PsqlScanState state,
+									  const char *identifier);
+
 /* Begin - ReqID:SRS-SQL-CustomObject */
 /*
  * Encode the leading words that make Oracle-style CREATE statements use '/'
@@ -111,10 +115,8 @@ ora_psqlscan_slash_word_code(const char *word)
 }
 
 static bool
-ora_psqlscan_is_slash_terminated_create(PsqlScanState state)
+ora_psqlscan_is_slash_terminated_create(const char *idents)
 {
-	char	   *idents = state->identifiers;
-
 	if (idents[0] != 'c')
 		return false;
 
@@ -139,7 +141,7 @@ ora_psqlscan_is_slash_terminated_create(PsqlScanState state)
 static bool
 ora_psqlscan_preserves_line_comments(PsqlScanState state)
 {
-	char	   *idents = state->identifiers;
+	char	   *idents = state->init_idents;
 
 	if (idents[0] != 'c')
 		return false;
@@ -921,7 +923,7 @@ other			.
 						cur_state->start_state = YY_START;
 						cur_state->token_count = 0;
 						cur_state->token_cursor_idx = 0;
-						cur_state->identifier_count = 0;
+						cur_state->init_idents_count = 0;
 						cur_state->begin_depth = 0;
 						return LEXRES_SEMI;
 					}
@@ -935,6 +937,9 @@ other			.
 						cur_state->begin_depth == 0 && 
 						!cur_state->cancel_semicolon_terminator) /* ReqID:SRS-SQL-PROC */
 					{
+						/* Remember if this subcommand was COPY FROM STDIN */
+						if (ora_psqlscan_is_copy_from_stdin(cur_state))
+							cur_state->copy_stdin_count++;
 						/* Terminate lexing temporarily */
 						/* Begin - ReqID:SRS-SQL-PROC */
 						/* Paranoid */
@@ -948,7 +953,7 @@ other			.
 						cur_state->token_count = 0;
 						/* End - ReqID:SRS-SQL-PROC */
 						cur_state->start_state = YY_START;
-						cur_state->identifier_count = 0;
+						cur_state->init_idents_count = 0;
 						return LEXRES_SEMI;
 					}
 				}
@@ -961,8 +966,16 @@ other			.
 "\\"[;:]		{
 					/* Force a semi-colon or colon into the query buffer */
 					ora_psqlscan_emit(cur_state, yytext + 1, 1);
-					if (yytext[1] == ';')
-						cur_state->identifier_count = 0;
+					/* Reset BEGIN/END/COPY tracking if semi at outer level */
+					if (yytext[1] == ';' &&
+						cur_state->paren_depth == 0 &&
+						cur_state->begin_depth == 0)
+					{
+						/* Remember if this subcommand was COPY FROM STDIN */
+						if (ora_psqlscan_is_copy_from_stdin(cur_state))
+							cur_state->copy_stdin_count++;
+						cur_state->init_idents_count = 0;
+					}
 				}
 
 "\\"			{
@@ -1169,72 +1182,21 @@ other			.
 
 
 {identifier}	{
-					/*
-					 * We need to track if we are inside a BEGIN .. END block
-					 * in a function definition, so that semicolons contained
-					 * therein don't terminate the whole statement.  Short of
-					 * writing a full parser here, the following heuristic
-					 * should work.  First, we track whether the beginning of
-					 * the statement matches CREATE [OR REPLACE]
-					 * {FUNCTION|PROCEDURE|PACKAGE|TRIGGER}
-					 */
-
-					if (cur_state->identifier_count == 0)
-						memset(cur_state->identifiers, 0, sizeof(cur_state->identifiers));
-
-					/* Begin - ReqID:SRS-SQL-CustomObject */
-					if (ora_psqlscan_slash_word_code(yytext) != '\0')
-					{
-						if (cur_state->identifier_count < sizeof(cur_state->identifiers))
-							cur_state->identifiers[cur_state->identifier_count] =
-								ora_psqlscan_slash_word_code(yytext);
-					}
-					/* End - ReqID:SRS-SQL-CustomObject */
+					if (cur_state->anonymous_label_start &&
+						cur_state->token_count == 1)
+						cur_state->anonymous_label_ident = true;
 
 					/* Begin - ReqID:SRS-SQL-PROC */
 					/*
-					 * Simply discard EDITIONABLE and NONEDITIONABLE that occur in 
-					 * the leading identifiers at the beginning of the command.
+					 * Simply discard EDITIONABLE and NONEDITIONABLE that occur in
+					 * the first 4 identifiers at the beginning of the command.
 					 */
 					if (pg_strcasecmp(yytext, "editionable") != 0 &&
 						pg_strcasecmp(yytext, "noneditionable") != 0)
-					/* End - ReqID:SRS-SQL-PROC */
-						cur_state->identifier_count++;
-
-					/* Begin - ReqID:SRS-SQL-CustomObject */
-					if (ora_psqlscan_is_slash_terminated_create(cur_state) &&
-					/* End - ReqID:SRS-SQL-CustomObject */
-						cur_state->paren_depth == 0)
 					{
-						/* Begin - ReqID:SRS-SQL-PROC */
-						/*
-						 * In Oracle mode we do not rely on begin_depth to cancel the semicolon terminator, 
-						 * because Oracle's DECLARE clause has no DECLARE keyword declaration, so a semicolon
-						 * will be encountered before begin_depth++; another reason is that the slash (/) will
-						 * force the query be sent to the server, the begin_depth is not 0 in the next query
-						 * scan phase, so the semicolon erroneously loses its ability to terminate.
-						 */
-						cur_state->cancel_semicolon_terminator = true;
-						/* End - ReqID:SRS-SQL-PROC */
-						
-						if (pg_strcasecmp(yytext, "begin") == 0)
-							cur_state->begin_depth++;
-						else if (pg_strcasecmp(yytext, "case") == 0)
-						{
-							/*
-							 * CASE also ends with END.  We only need to track
-							 * this if we are already inside a BEGIN.
-							 */
-							if (cur_state->begin_depth >= 1)
-								cur_state->begin_depth++;
-						}
-						else if (pg_strcasecmp(yytext, "end") == 0)
-						{
-							if (cur_state->begin_depth > 0)
-								cur_state->begin_depth--;
-						}
+						ora_psqlscan_track_identifier(cur_state, yytext);
 					}
-
+					/* End - ReqID:SRS-SQL-PROC */
 					ECHO;
 				}
 
@@ -1260,6 +1222,159 @@ other			.
 %%
 
 /* LCOV_EXCL_STOP */
+
+/*
+ * Record the first few keywords/identifiers of a statement
+ * in the idents[] array, of length idents_size.
+ * *idents_count is the number of entries filled so far.
+ *
+ * We record the interesting keywords using their first character, which
+ * works so long as those are all different.  We could switch to an enum
+ * if that stops being true, but for now this is easy and compact.
+ */
+static void
+ora_psqlscan_record_initial_keyword(const char *identifier,
+								char *idents,
+								int idents_size,
+								int *idents_count)
+{
+	if (*idents_count < idents_size)
+	{
+		/*
+		 * What we need to recognize is CREATE [OR REPLACE] FUNCTION/PROCEDURE.
+		 * We record these keywords in lower case.  We also need to recognize
+		 * COPY ... FROM STDIN.  (Note: the backend grammar doesn't
+		 * distinguish STDIN from STDOUT, so we should not do so here either.)
+		 * We record these keywords in upper case, to avoid conflicting with
+		 * the first set.
+		 */
+		char code = ora_psqlscan_slash_word_code(identifier);
+		if (code != '\0')
+			idents[*idents_count] = code;
+		else if (pg_strcasecmp(identifier, "copy") == 0 ||
+			pg_strcasecmp(identifier, "from") == 0 ||
+			pg_strcasecmp(identifier, "stdin") == 0 ||
+			pg_strcasecmp(identifier, "stdout") == 0)
+			idents[*idents_count] = pg_toupper((unsigned char) identifier[0]);
+
+		/* For other keywords or identifiers, leave '\0' in the array entry */
+		/* Begin - ReqID:SRS-SQL-PROC */
+		/*
+		 * Simply discard EDITIONABLE and NONEDITIONABLE that occur in
+		 * the first 4 identifiers at the beginning of the command.
+		 */
+		if (pg_strcasecmp(identifier, "editionable") != 0 &&
+			pg_strcasecmp(identifier, "noneditionable") != 0)
+		/* End - ReqID:SRS-SQL-PROC */
+			(*idents_count)++;
+	}
+}
+
+/*
+ * Does the current input match CREATE [OR REPLACE] {FUNCTION|PROCEDURE}?
+ */
+static bool
+ora_psqlscan_is_create_routine(const char *idents)
+{
+	return ora_psqlscan_is_slash_terminated_create(idents);
+}
+
+/*
+ * Does the current input match COPY ... FROM STDIN?
+ */
+static bool
+ora_psqlscan_is_copy_from_stdin(PsqlScanState state)
+{
+	const char *idents = state->init_idents;
+
+	/*
+	 * The first word must be COPY, but after that there could be up to four
+	 * identifiers (BINARY database.schema.table) before FROM.  Since some of
+	 * the words we track are not reserved words, don't assume the intervening
+	 * array entries are '\0'.  Life is simplified here by the fact that
+	 * psqlscan_track_identifier ignores everything within parens: we won't
+	 * see column lists nor the query in COPY (query).
+	 */
+	if (idents[0] != 'C')
+		return false;
+	for (int i = 1; i < lengthof(state->init_idents) - 1; i++)
+	{
+		/* Scan to find FROM; if not seen within range, it's not valid COPY */
+		if (idents[i] != 'F')
+			continue;
+		/* It's COPY FROM STDIN only if the next word is STDIN */
+		return (idents[i + 1] == 'S');
+	}
+	return false;
+}
+
+/*
+ * This function is called each time the lexer recognizes an unquoted
+ * identifier (which could also be a keyword, and indeed keywords are the
+ * only case we really care about here).  It presently has two tasks:
+ *
+ * 1. Track whether we are inside BEGIN .. END in a function definition,
+ * so that semicolons contained therein don't terminate the whole statement.
+ * Short of writing a full parser here, the following heuristic should work.
+ *
+ * We track whether the beginning of the statement matches CREATE [OR REPLACE]
+ * {FUNCTION|PROCEDURE}.  If so, count BEGIN and END pairs.  We also have to
+ * account for CASE ... END.
+ *
+ * 2. Record enough information for ora_psqlscan_is_copy_from_stdin() to recognize
+ * COPY FROM STDIN commands.
+ */
+static void
+ora_psqlscan_track_identifier(PsqlScanState state, const char *identifier)
+{
+	/* None of this needs to happen when we're inside parentheses */
+	if (state->paren_depth != 0)
+		return;
+
+	/* Reset all my state at the start of each new statement */
+	if (state->init_idents_count == 0)
+		memset(state->init_idents, 0, sizeof(state->init_idents));
+
+	/* Record initial keywords if init_idents_count is small enough */
+	ora_psqlscan_record_initial_keyword(identifier,
+									state->init_idents,
+									lengthof(state->init_idents),
+									&state->init_idents_count);
+
+	/*
+	 * Track BEGIN/CASE/END only when within an appropriate statement.
+	 */
+	if (ora_psqlscan_is_create_routine(state->init_idents))
+	{
+		/* Begin - ReqID:SRS-SQL-PROC */
+		/*
+		 * In Oracle mode we do not rely on begin_depth to cancel the semicolon terminator, 
+		 * because Oracle's DECLARE clause has no DECLARE keyword declaration, so a semicolon
+		 * will be encountered before begin_depth++; another reason is that the slash (/) will
+		 * force the query be sent to the server, the begin_depth is not 0 in the next query
+		 * scan phase, so the semicolon erroneously loses its ability to terminate.
+		 */
+		state->cancel_semicolon_terminator = true;
+		/* End - ReqID:SRS-SQL-PROC */
+
+		if (pg_strcasecmp(identifier, "begin") == 0)
+			state->begin_depth++;
+		else if (pg_strcasecmp(identifier, "case") == 0)
+		{
+			/*
+			 * CASE also ends with END.  We only need to track this if we are
+			 * already inside a BEGIN.
+			 */
+			if (state->begin_depth >= 1)
+				state->begin_depth++;
+		}
+		else if (pg_strcasecmp(identifier, "end") == 0)
+		{
+			if (state->begin_depth > 0)
+				state->begin_depth--;
+		}
+	}
+}
 
 /*
  * Create a lexer working state struct.
@@ -1533,10 +1648,9 @@ ora_psql_scan_finish(PsqlScanState state)
 /*
  * Reset lexer scanning state to start conditions.  This is appropriate
  * for executing \r psql commands (or any other time that we discard the
- * prior contents of query_buf).  It is not, however, necessary to do this
- * when we execute and clear the buffer after getting a PSCAN_SEMICOLON or
- * PSCAN_EOL scan result, because the scan state must be INITIAL when those
- * conditions are returned.
+ * prior contents of query_buf).  Do not call this between psql_scan()
+ * calls that are scanning successive chunks of a single query string;
+ * do call it when preparing to process a new query string.
  *
  * Note that this is unrelated to flushing unread input; that task is
  * done by psql_scan_finish().
@@ -1550,8 +1664,9 @@ ora_psql_scan_reset(PsqlScanState state)
 	if (state->dolqstart)
 		free(state->dolqstart);
 	state->dolqstart = NULL;
-	state->identifier_count = 0;
 	state->begin_depth = 0;
+	state->copy_stdin_count = 0;
+	state->init_idents_count = 0;
 	/* Begin - ReqID:SRS-SQL-PROC */
 	state->maybe_anonymous_declare_start = false;
 	state->maybe_anonymous_begin_start = false;
@@ -1594,6 +1709,26 @@ ora_psql_scan_reselect_sql_lexer(PsqlScanState state)
 }
 
 /*
+ * Return the number of COPY ... FROM STDIN commands in the input string.
+ *
+ * This should be called only after we've finished parsing a complete
+ * string and are ready to send it to the backend.
+ */
+int
+ora_psql_scan_count_copy_from_stdin(PsqlScanState state)
+{
+	if (state->init_idents_count > 0)
+	{
+		/* Count any COPY FROM STDIN following the last semicolon */
+		if (ora_psqlscan_is_copy_from_stdin(state))
+			state->copy_stdin_count++;
+		/* ... but do so only once */
+		state->init_idents_count = 0;
+	}
+	return state->copy_stdin_count;
+}
+
+/*
  * Return true if lexer is currently in an "inside quotes" state.
  *
  * This is pretty grotty but is needed to preserve the old behavior
@@ -1616,7 +1751,7 @@ ora_psql_scan_in_quote(PsqlScanState state)
  ora_psql_scan_in_block(PsqlScanState state)
 {
 	if (state->send_space_one_comments &&
-		state->identifier_count >= 4 &&
+		state->init_idents_count >= 4 &&
 		/* Begin - ReqID:SRS-SQL-CustomObject */
 		ora_psqlscan_preserves_line_comments(state))
 		/* End - ReqID:SRS-SQL-CustomObject */
@@ -1821,7 +1956,7 @@ ora_psqlscan_emit(PsqlScanState state, const char *txt, int len)
 			 */
 			if (strcmp(txt, "<<") == 0 && state->token_count == 0)
 				state->anonymous_label_start = true;
-			else if (state->identifier_count == 1 && state->token_count == 1)
+			else if (state->init_idents_count == 1 && state->token_count == 1)
 				state->anonymous_label_ident = true;
 			else if (strcmp(txt, ">>") == 0 && state->token_count == 2)
 				state->anonymous_label_end = true;

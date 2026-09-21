@@ -488,7 +488,7 @@ typedef struct _indxInfo
 	char	   *indstatvals;	/* statistic values for columns */
 	int			indnkeyattrs;	/* number of index key attributes */
 	int			indnattrs;		/* total number of index attributes */
-	Oid		   *indkeys;		/* In spite of the name 'indkeys' this field
+	int		   *indkeys;		/* In spite of the name 'indkeys' this field
 								 * contains both key and nonkey attributes */
 	bool		indisclustered;
 	bool		indisreplident;
@@ -970,7 +970,8 @@ extern void sortDumpableObjectsByTypeName(DumpableObject **objs, int numObjs);
 extern void setExtensionMembership(ExtensionMemberId *extmems, int nextmems);
 extern ExtensionInfo *findOwningExtension(CatalogId catalogId);
 
-extern void parseOidArray(const char *str, Oid *array, int arraysize);
+extern Oid *parseOidArray(const char *str, int arraysize);
+extern int *parseIntArray(const char *str, int arraysize);
 
 /* BEGIN - ReqID:SRS-SQL-DBLINK */
 #ifdef	WIN32

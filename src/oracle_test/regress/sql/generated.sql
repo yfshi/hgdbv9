@@ -187,6 +187,7 @@ COPY gtest1 FROM stdin;
 \.
 
 COPY gtest1 (a, b) FROM stdin;
+\.
 
 SELECT * FROM gtest1 ORDER BY a;
 
@@ -203,6 +204,7 @@ COPY gtest3 FROM stdin;
 \.
 
 COPY gtest3 (a, b) FROM stdin;
+\.
 
 SELECT * FROM gtest3 ORDER BY a;
 

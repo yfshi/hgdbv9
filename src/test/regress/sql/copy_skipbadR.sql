@@ -14,12 +14,15 @@ CREATE TABLE copy_skipbad (
 -- checking skip option, fail
 -- using skip in text format
 COPY copy_skipbad FROM STDIN with(skipbad);
+\.
 
 -- using skip in binary format
 COPY copy_skipbad FROM STDIN with(format binary, skipbad);
+\.
 
 -- double setting
 COPY copy_skipbad FROM STDIN with(format csv, skipbad, skipbad);
+\.
 
 -- using skipbad with or without taskid and filename is fine
 

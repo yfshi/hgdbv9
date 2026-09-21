@@ -187,6 +187,10 @@ CIPHER				{ return K_CIPHER; }
 					return IDENT;
 				}
 
+<xd>{xddouble}	{
+					addlitchar('"');
+				}
+
 <xd>{xdinside}  {
 					addlit(yytext, yyleng);
 				}

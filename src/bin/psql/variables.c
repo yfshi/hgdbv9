@@ -262,7 +262,7 @@ print_refcursor_bind_variable(char *name, char*value)
 
 	/* fetch and close */
 	printfPQExpBuffer(&query_buf, "fetch all in \"%s\"", value);
-	success = SendQuery(query_buf.data);
+	success = SendQuery(query_buf.data, -1);
 	if (!success)
 	{
 		termPQExpBuffer(&query_buf);

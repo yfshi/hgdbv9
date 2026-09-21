@@ -742,6 +742,7 @@
 
 #dynamic_library_path = '$libdir'
 #gin_fuzzy_search_limit = 0
+#output_plugin_libraries = 'pgoutput, test_decoding, flashback_decoder'  # approved plugins for logical decoding
 
 
 #------------------------------------------------------------------------------

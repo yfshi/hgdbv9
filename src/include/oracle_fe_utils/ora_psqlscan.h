@@ -86,6 +86,8 @@ extern void ora_psql_scan_reset(PsqlScanState state);
 
 extern void ora_psql_scan_reselect_sql_lexer(PsqlScanState state);
 
+extern int ora_psql_scan_count_copy_from_stdin(PsqlScanState state);
+
 extern bool ora_psql_scan_in_quote(PsqlScanState state);
 
 /* Begin - ReqID:SRS-SQL-PROC */

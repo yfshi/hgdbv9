@@ -5436,10 +5436,8 @@ getAggregates(Archive *fout, int *numAggs)
 			agginfo[i].aggfn.argtypes = NULL;
 		else
 		{
-			agginfo[i].aggfn.argtypes = (Oid *) pg_malloc(agginfo[i].aggfn.nargs * sizeof(Oid));
-			parseOidArray(PQgetvalue(res, i, i_proargtypes),
-						  agginfo[i].aggfn.argtypes,
-						  agginfo[i].aggfn.nargs);
+			agginfo[i].aggfn.argtypes = parseOidArray(PQgetvalue(res, i, i_proargtypes),
+													  agginfo[i].aggfn.nargs);
 		}
 		agginfo[i].aggfn.postponed_def = false; /* might get set during sort */
 
@@ -5667,11 +5665,8 @@ getFuncs(Archive *fout, int *numFuncs)
 		if (finfo[i].nargs == 0)
 			finfo[i].argtypes = NULL;
 		else
-		{
-			finfo[i].argtypes = (Oid *) pg_malloc(finfo[i].nargs * sizeof(Oid));
-			parseOidArray(PQgetvalue(res, i, i_proargtypes),
-						  finfo[i].argtypes, finfo[i].nargs);
-		}
+			finfo[i].argtypes = parseOidArray(PQgetvalue(res, i, i_proargtypes),
+											  finfo[i].nargs);
 		finfo[i].postponed_def = false; /* might get set during sort */
 
 		/* Decide whether we want to dump it */
@@ -6976,9 +6971,8 @@ getIndexes(Archive *fout, TableInfo tblinfo[], int numTables)
 			indxinfo[j].indreloptions = pg_strdup(PQgetvalue(res, j, i_indreloptions));
 			indxinfo[j].indstatcols = pg_strdup(PQgetvalue(res, j, i_indstatcols));
 			indxinfo[j].indstatvals = pg_strdup(PQgetvalue(res, j, i_indstatvals));
-			indxinfo[j].indkeys = (Oid *) pg_malloc(indxinfo[j].indnattrs * sizeof(Oid));
-			parseOidArray(PQgetvalue(res, j, i_indkey),
-						  indxinfo[j].indkeys, indxinfo[j].indnattrs);
+			indxinfo[j].indkeys = parseIntArray(PQgetvalue(res, j, i_indkey),
+												indxinfo[j].indnattrs);
 			indxinfo[j].indisclustered = (PQgetvalue(res, j, i_indisclustered)[0] == 't');
 			indxinfo[j].indisreplident = (PQgetvalue(res, j, i_indisreplident)[0] == 't');
 			indxinfo[j].parentidx = atooid(PQgetvalue(res, j, i_parentidx));
@@ -11935,12 +11929,10 @@ dumpFunc(Archive *fout, const FuncInfo *finfo)
 
 	if (protrftypes != NULL && strcmp(protrftypes, "") != 0)
 	{
-		Oid		   *typeids = palloc(FUNC_MAX_ARGS * sizeof(Oid));
-		int			i;
+		Oid		   *typeids = parseOidArray(protrftypes, -1);
 
 		appendPQExpBufferStr(q, " TRANSFORM ");
-		parseOidArray(protrftypes, typeids, FUNC_MAX_ARGS);
-		for (i = 0; typeids[i]; i++)
+		for (int i = 0; typeids[i]; i++)
 		{
 			if (i != 0)
 				appendPQExpBufferStr(q, ", ");
@@ -16672,7 +16664,7 @@ dumpConstraint(Archive *fout, const ConstraintInfo *coninfo)
 							  coninfo->contype == 'p' ? "PRIMARY KEY" : "UNIQUE");
 			for (k = 0; k < indxinfo->indnkeyattrs; k++)
 			{
-				int			indkey = (int) indxinfo->indkeys[k];
+				int			indkey = indxinfo->indkeys[k];
 				const char *attname;
 
 				if (indkey == InvalidAttrNumber)
@@ -16689,7 +16681,7 @@ dumpConstraint(Archive *fout, const ConstraintInfo *coninfo)
 
 			for (k = indxinfo->indnkeyattrs; k < indxinfo->indnattrs; k++)
 			{
-				int			indkey = (int) indxinfo->indkeys[k];
+				int			indkey = indxinfo->indkeys[k];
 				const char *attname;
 
 				if (indkey == InvalidAttrNumber)
