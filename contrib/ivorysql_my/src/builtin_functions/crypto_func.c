@@ -37,6 +37,7 @@
 PG_FUNCTION_INFO_V1(ivymy_aes_encrypt);
 PG_FUNCTION_INFO_V1(ivymy_aes_decrypt);
 PG_FUNCTION_INFO_V1(bytea_aes_decrypt);	/* bug#z7500 */
+PG_FUNCTION_INFO_V1(random_bytes);
 
 #if USE_OPENSSL
 #define AES_IV_SIZE 16
@@ -45,6 +46,7 @@ PG_FUNCTION_INFO_V1(bytea_aes_decrypt);	/* bug#z7500 */
 #define MIN_KDF_ITERATIONS_SIZE 1000
 #define MAX_KDF_ITERATIONS_SIZE 65535
 #define AES_BAD_DATA  -1
+#define MAX_RANDOM_BYTES_BUFFER 1024
 
 typedef enum Kdf_Name
 {
@@ -591,6 +593,7 @@ ivymy_aes_encrypt(PG_FUNCTION_ARGS)
 	int rkey_size, key_size, aes_length;
 	KDF_Option kdf_options;
 	KDF_Option null_kdf_options = {"","", "", -1};
+	text *t;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
@@ -608,9 +611,10 @@ ivymy_aes_encrypt(PG_FUNCTION_ARGS)
 		}
 		/* End - bug#8443 */
 
-		if (text_length(PG_GETARG_DATUM(2)) < 16)
-		{
+		t = PG_GETARG_TEXT_PP(2);
 
+		if (VARSIZE_ANY_EXHDR(t) < 16)
+		{
 			ereport(ERROR,
 					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
 		}
@@ -629,7 +633,6 @@ ivymy_aes_encrypt(PG_FUNCTION_ARGS)
 	arg3 = text_to_cstring(PG_GETARG_TEXT_PP(3));
 	arg4 = text_to_cstring(PG_GETARG_TEXT_PP(4));
 	arg5 = text_to_cstring(PG_GETARG_TEXT_PP(5));
-
 
 	kdf_options = retrieve_kdf_options(arg3, arg4, arg5);
 
@@ -669,6 +672,7 @@ ivymy_aes_decrypt(PG_FUNCTION_ARGS)
 	int rkey_size, key_size, aes_length;
 	KDF_Option kdf_options;
 	KDF_Option null_kdf_options = {"","", "", -1};
+	text *t;
 
 	if (PG_ARGISNULL(0) || PG_ARGISNULL(1))
 	{
@@ -677,7 +681,9 @@ ivymy_aes_decrypt(PG_FUNCTION_ARGS)
 
 	if (aes_needs_iv(mys_block_encryption_mode))
 	{
-		if (PG_ARGISNULL(2) || (text_length(PG_GETARG_DATUM(2)) < 16))
+		t = PG_GETARG_TEXT_PP(2);
+
+		if (PG_ARGISNULL(2) || (VARSIZE_ANY_EXHDR(t) < 16))
 			ereport(ERROR, 
 					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
 	}
@@ -734,13 +740,16 @@ bytea_aes_decrypt(PG_FUNCTION_ARGS)
 	size_t len = VARSIZE_ANY_EXHDR(bytea_data);
 	char *str = VARDATA_ANY(bytea_data);
 	char *sptr = palloc(len + 1);
+	text *t;
 
 	memcpy(sptr, str, len);
 	sptr[len] = '\0';
 
 	if (aes_needs_iv(mys_block_encryption_mode))
 	{
-		if (text_length(PG_GETARG_DATUM(2)) < 16)
+		t = PG_GETARG_TEXT_PP(2);
+
+		if (VARSIZE_ANY_EXHDR(t) < 16)
 			ereport(ERROR, 
 					(errmsg("The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long")));
 	}
@@ -779,3 +788,29 @@ bytea_aes_decrypt(PG_FUNCTION_ARGS)
 	PG_RETURN_NULL();
 }
 /* End Bug#Z7500 */
+
+Datum
+random_bytes(PG_FUNCTION_ARGS)
+{
+	int len = PG_GETARG_INT32(0);
+	bytea *res;
+
+	if (len < 1 || len > MAX_RANDOM_BYTES_BUFFER)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_NUMERIC_VALUE_OUT_OF_RANGE),
+				 errmsg("length value is out of range in 'random_bytes'")));
+	}
+
+	res = palloc(VARHDRSZ + len);
+	SET_VARSIZE(res, VARHDRSZ + len);
+
+	if (!pg_strong_random(VARDATA(res), len))
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_INTERNAL_ERROR),
+				 errmsg("could not generate a random number")));
+	}
+
+	PG_RETURN_BYTEA_P(res);
+}

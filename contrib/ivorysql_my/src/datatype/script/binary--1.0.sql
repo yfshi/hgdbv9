@@ -2029,6 +2029,14 @@ STRICT
 PARALLEL SAFE
 IMMUTABLE;
 
+CREATE FUNCTION ivymy.myblob_text(ivymy.myblob)
+RETURNS text
+AS 'MODULE_PATHNAME','myblob_text'
+LANGUAGE C
+STRICT
+PARALLEL SAFE
+IMMUTABLE;
+
 CREATE FUNCTION ivymy.pgtext2myblob(pg_catalog.text, integer, boolean)
 RETURNS ivymy.myblob
 AS 'MODULE_PATHNAME','pgtext2myblob'
@@ -2098,6 +2106,10 @@ AS IMPLICIT;
 CREATE CAST (ivymy.myblob AS bytea)
 WITHOUT FUNCTION
 AS IMPLICIT;
+
+CREATE CAST (ivymy.myblob AS text)
+WITH FUNCTION ivymy.myblob_text(ivymy.myblob)
+AS ASSIGNMENT;
 
 CREATE CAST (pg_catalog.text AS ivymy.myblob)
 WITH FUNCTION ivymy.pgtext2myblob(pg_catalog.text, integer, boolean)

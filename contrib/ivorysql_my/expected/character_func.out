@@ -3441,6 +3441,206 @@ SELECT AES_DECRYPT(AES_DECRYPT(AES_ENCRYPT(AES_ENCRYPT('nested', 'key1'), 'key2'
 (1 row)
 
 -- end - bug#7501
+-- random_bytes
+select length(random_bytes(2));
+ length 
+--------
+      2
+(1 row)
+
+select length(random_bytes(10));
+ length 
+--------
+     10
+(1 row)
+
+select length(random_bytes(100));
+ length 
+--------
+    100
+(1 row)
+
+select length(random_bytes(1024));
+ length 
+--------
+   1024
+(1 row)
+
+select random_bytes(null);
+ random_bytes 
+--------------
+ 
+(1 row)
+
+select random_bytes(0);
+ERROR:  length value is out of range in 'random_bytes'
+select random_bytes(-5);
+ERROR:  length value is out of range in 'random_bytes'
+select random_bytes(1025);
+ERROR:  length value is out of range in 'random_bytes'
+select random_bytes(8) <> random_bytes(8) as random_bytes_different;
+ random_bytes_different 
+------------------------
+ t
+(1 row)
+
+select length(random_bytes(3.5));
+ length 
+--------
+      4
+(1 row)
+
+select length(random_bytes(3.499999));
+ length 
+--------
+      3
+(1 row)
+
+select random_bytes(10000.999);
+ERROR:  length value is out of range in 'random_bytes'
+select length(random_bytes(120 > 100));
+ length 
+--------
+      1
+(1 row)
+
+select length(random_bytes(20 < 10));
+ERROR:  length value is out of range in 'random_bytes'
+select length(random_bytes('abc'));
+WARNING:  Truncated incorrect INTEGER value: 'abc'
+ERROR:  length value is out of range in 'random_bytes'
+select length(random_bytes('10abc'));
+WARNING:  Truncated incorrect INTEGER value: '10abc'
+ length 
+--------
+     10
+(1 row)
+
+select pg_typeof(random_bytes(4));
+ pg_typeof 
+-----------
+ blob
+(1 row)
+
+set mysql.use_mysql_bit_literal = on;
+select length(random_bytes(0b0101));
+ length 
+--------
+      5
+(1 row)
+
+select length(random_bytes(B'1100'));
+ length 
+--------
+     12
+(1 row)
+
+select length(random_bytes(0xc));
+ length 
+--------
+     12
+(1 row)
+
+set mysql.use_mysql_bit_literal = off;
+set mysql.at_or_atat = on;
+set @salt = random_bytes(16);
+set @value = 'user_password';
+select length(md5(concat(@salt, @value))) as salted_hash_length, length(@salt) as salt_stored_length;
+ salted_hash_length | salt_stored_length 
+--------------------+--------------------
+                 32 |                 16
+(1 row)
+
+set @salt1 = random_bytes(32);
+set @salt2 = random_bytes(32);
+select md5(concat(@salt1, @value)) <> md5(concat(@salt2, @value)) as hash_different;
+ hash_different 
+----------------
+ t
+(1 row)
+
+create table test_users (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	username varchar(64),
+	password_hash char(32),
+	salt varbinary(16));
+set @salt3 = random_bytes(16);
+set @value3 = 'user_password';
+insert into test_users(username, password_hash, salt) values('alice', md5(concat(@salt, @value3)), @salt3);
+select username, length(password_hash) as password_hash_length, length(salt) as salt_length from test_users;
+ username | password_hash_length | salt_length 
+----------+----------------------+-------------
+ alice    |                   32 |          16
+(1 row)
+
+drop table test_users;
+set session block_encryption_mode = 'aes-128-cbc';
+set @init_vector1 = random_bytes(16);
+set @init_vector2 = random_bytes(16);
+set @ct1 = aes_encrypt('secret message 1', 'key1', @init_vector1);
+set @ct2 = aes_encrypt('secret message 2', 'key2', @init_vector2);
+select aes_decrypt(@ct1, 'key1', @init_vector1);
+   aes_decrypt    
+------------------
+ secret message 1
+(1 row)
+
+select aes_decrypt(@ct2, 'key2', @init_vector2);
+   aes_decrypt    
+------------------
+ secret message 2
+(1 row)
+
+set @init_vector3 = random_bytes(8);
+set @ct3 = aes_encrypt('secret message 3', 'key3', @init_vector3);
+ERROR:  The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+CONTEXT:  SQL function "aes_encrypt" statement 1
+set @ct4 = aes_encrypt('secret message 4', 'key4', 'abcdabcdabcdabc');
+ERROR:  The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+set @ct5 = aes_encrypt('secret message 5', 'key5', 'abcdabcdabcdabcd');
+select hex(@ct5);
+                               hex                                
+------------------------------------------------------------------
+ 1F8F85BA8B2C0683AFC823274B9D7379A52AA6DFDD8C5CD3A0198BDFE339014D
+(1 row)
+
+set @ct6 = aes_encrypt('secret message 6', 'key6', '中中中中中');
+ERROR:  The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+set @ct7 = aes_encrypt('secret message 7', 'key7', '中中中中中中');
+select hex(@ct7);
+                               hex                                
+------------------------------------------------------------------
+ 092DCC2BC21563D11EC8AAAC9EDF26969FFDD21CFCD974CBED1D114756C40406
+(1 row)
+
+set @ct8 = aes_encrypt('secret message 8', 'key8', '文文文文文');
+ERROR:  The initialization vector supplied to aes_encrypt is too short. Must be at least 16 bytes long
+set @ct9 = aes_encrypt('secret message 9', 'key9', '文文文文文文');
+select hex(@ct9);
+                               hex                                
+------------------------------------------------------------------
+ C95CD3EC1CF2296DD4D2EF1B6A5ACB9BBED6792604E604D7A3899FAD872747DD
+(1 row)
+
+set @init_vector_a = random_bytes(32);
+set @init_vector_b = substring(@init_vector_a, 1, 16);
+set @ct_a = aes_encrypt('HIGH GO', 'key', @init_vector_a);
+set @ct_b = aes_encrypt('HIGH GO', 'key', @init_vector_b);
+select @ct_a = @ct_b as same_cipher;
+ same_cipher 
+-------------
+ t
+(1 row)
+
+select aes_decrypt(@ct_a, 'key', @init_vector_a), aes_decrypt(@ct_b, 'key', @init_vector_b);
+ aes_decrypt | aes_decrypt 
+-------------+-------------
+ HIGH GO     | HIGH GO
+(1 row)
+
+set session block_encryption_mode = default;
+set mysql.at_or_atat = off;
+-- group_concat
 create table gct(a int, b varchar(100));
 insert into gct values (0, 'a'), (1, 'b'), (1, 'c'), (2, 'd'), (2, 'f'), (2, 'g');
 insert into gct values (0, 'a'), (1, 'c'), (1, 'b'), (2, 'g'), (2, 'f'), (2, 'd');

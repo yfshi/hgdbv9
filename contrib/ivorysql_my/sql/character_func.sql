@@ -821,6 +821,78 @@ SELECT 'a' = AES_DECRYPT(AES_ENCRYPT('a', 'a'), 'a', REPEAT('a',100));
 SELECT AES_DECRYPT(AES_DECRYPT(AES_ENCRYPT(AES_ENCRYPT('nested', 'key1'), 'key2'), 'key2'), 'key1') AS result;
 -- end - bug#7501
 
+-- random_bytes
+select length(random_bytes(2));
+select length(random_bytes(10));
+select length(random_bytes(100));
+select length(random_bytes(1024));
+select random_bytes(null);
+select random_bytes(0);
+select random_bytes(-5);
+select random_bytes(1025);
+select random_bytes(8) <> random_bytes(8) as random_bytes_different;
+select length(random_bytes(3.5));
+select length(random_bytes(3.499999));
+select random_bytes(10000.999);
+select length(random_bytes(120 > 100));
+select length(random_bytes(20 < 10));
+select length(random_bytes('abc'));
+select length(random_bytes('10abc'));
+select pg_typeof(random_bytes(4));
+
+set mysql.use_mysql_bit_literal = on;
+select length(random_bytes(0b0101));
+select length(random_bytes(B'1100'));
+select length(random_bytes(0xc));
+set mysql.use_mysql_bit_literal = off;
+
+set mysql.at_or_atat = on;
+set @salt = random_bytes(16);
+set @value = 'user_password';
+select length(md5(concat(@salt, @value))) as salted_hash_length, length(@salt) as salt_stored_length;
+set @salt1 = random_bytes(32);
+set @salt2 = random_bytes(32);
+select md5(concat(@salt1, @value)) <> md5(concat(@salt2, @value)) as hash_different;
+
+create table test_users (
+	id INT PRIMARY KEY AUTO_INCREMENT,
+	username varchar(64),
+	password_hash char(32),
+	salt varbinary(16));
+set @salt3 = random_bytes(16);
+set @value3 = 'user_password';
+insert into test_users(username, password_hash, salt) values('alice', md5(concat(@salt, @value3)), @salt3);
+select username, length(password_hash) as password_hash_length, length(salt) as salt_length from test_users;
+drop table test_users;
+
+set session block_encryption_mode = 'aes-128-cbc';
+set @init_vector1 = random_bytes(16);
+set @init_vector2 = random_bytes(16);
+set @ct1 = aes_encrypt('secret message 1', 'key1', @init_vector1);
+set @ct2 = aes_encrypt('secret message 2', 'key2', @init_vector2);
+select aes_decrypt(@ct1, 'key1', @init_vector1);
+select aes_decrypt(@ct2, 'key2', @init_vector2);
+set @init_vector3 = random_bytes(8);
+set @ct3 = aes_encrypt('secret message 3', 'key3', @init_vector3);
+set @ct4 = aes_encrypt('secret message 4', 'key4', 'abcdabcdabcdabc');
+set @ct5 = aes_encrypt('secret message 5', 'key5', 'abcdabcdabcdabcd');
+select hex(@ct5);
+set @ct6 = aes_encrypt('secret message 6', 'key6', '中中中中中');
+set @ct7 = aes_encrypt('secret message 7', 'key7', '中中中中中中');
+select hex(@ct7);
+set @ct8 = aes_encrypt('secret message 8', 'key8', '文文文文文');
+set @ct9 = aes_encrypt('secret message 9', 'key9', '文文文文文文');
+select hex(@ct9);
+set @init_vector_a = random_bytes(32);
+set @init_vector_b = substring(@init_vector_a, 1, 16);
+set @ct_a = aes_encrypt('HIGH GO', 'key', @init_vector_a);
+set @ct_b = aes_encrypt('HIGH GO', 'key', @init_vector_b);
+select @ct_a = @ct_b as same_cipher;
+select aes_decrypt(@ct_a, 'key', @init_vector_a), aes_decrypt(@ct_b, 'key', @init_vector_b);
+set session block_encryption_mode = default;
+set mysql.at_or_atat = off;
+
+-- group_concat
 create table gct(a int, b varchar(100));
 insert into gct values (0, 'a'), (1, 'b'), (1, 'c'), (2, 'd'), (2, 'f'), (2, 'g');
 insert into gct values (0, 'a'), (1, 'c'), (1, 'b'), (2, 'g'), (2, 'f'), (2, 'd');

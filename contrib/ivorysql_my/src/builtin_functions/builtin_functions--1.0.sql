@@ -4327,6 +4327,15 @@ STRICT
 IMMUTABLE;
 /* End Bug#Z7500 */
 
+CREATE FUNCTION ivymy.aes_decrypt(varbinary, text, myblob, text default '', text default '', text default '')
+RETURNS varbinary
+AS $$
+SELECT ivymy.aes_decrypt($1, $2, $3::text, $4, $5, $6);
+$$
+LANGUAGE sql
+PARALLEL SAFE
+IMMUTABLE;
+
 /* Begin - BUG#8428 8441 */
 CREATE FUNCTION ivymy.aes_encrypt(varbinary, text, text default NULL, text default '', text default '', text default '')
 RETURNS varbinary
@@ -4346,6 +4355,15 @@ LANGUAGE sql
 PARALLEL SAFE
 IMMUTABLE;
 /* End Bug#Z7502 */
+
+CREATE FUNCTION ivymy.aes_encrypt(text, text, myblob, text default '', text default '', text default '')
+RETURNS varbinary
+AS $$
+SELECT ivymy.aes_encrypt($1, $2, $3::text, $4, $5, $6);
+$$
+LANGUAGE sql
+PARALLEL SAFE
+IMMUTABLE;
 
 /* Begin - OA#2098  Not Full Group */
 CREATE FUNCTION ivymy.any_value_transfn(internal, anyelement)
@@ -5204,6 +5222,46 @@ AS 'SELECT ivymy.extract($1, $2::ivymy.mysdatetimes)'
 LANGUAGE SQL
 STRICT
 IMMUTABLE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.random_bytes(int4)
+RETURNS myblob
+AS 'MODULE_PATHNAME', 'random_bytes'
+LANGUAGE C
+STRICT
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.random_bytes(numeric)
+RETURNS myblob
+AS 'SELECT ivymy.random_bytes($1::int4)'
+LANGUAGE SQL
+STRICT
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.random_bytes(text)
+RETURNS myblob
+AS 'SELECT ivymy.random_bytes($1::int4)'
+LANGUAGE SQL
+STRICT
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.random_bytes(boolean)
+RETURNS myblob
+AS 'SELECT ivymy.random_bytes($1::int4)'
+LANGUAGE SQL
+STRICT
+VOLATILE
+PARALLEL SAFE;
+
+CREATE OR REPLACE FUNCTION ivymy.random_bytes(ivy_hex)
+RETURNS myblob
+AS 'SELECT ivymy.random_bytes($1::int4)'
+LANGUAGE SQL
+STRICT
+VOLATILE
 PARALLEL SAFE;
 
 /* End - SRS-MYSQL-BUILDINFUNCTION */
