@@ -108,3 +108,6 @@ test: plisql-autonx-deadlock
 # Begin - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK
 test: session-exit-commit 
 # End - ReqID:SRS-PLSQL-STATEMENTLEVELROLLBACK
+# Begin - OA-2787
+test: package-body-recompile
+# End - OA-2787

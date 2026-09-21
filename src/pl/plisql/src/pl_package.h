@@ -261,5 +261,8 @@ extern void plisql_handle_package_explicit_cursor_retdesc(int globdno);
 extern TupleDesc get_plisql_rec_tupdesc(PLiSQL_rec *rec);
 /* End - ReqID:SRS-PLSQL-EXCEPTION */
 
+/* Begin - OA-2787 */
+extern bool plisql_package_has_global_variables(const PLiSQL_package *package);
+/* End - OA-2787 */
 #endif
 
