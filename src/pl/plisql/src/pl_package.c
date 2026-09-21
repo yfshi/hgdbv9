@@ -1688,6 +1688,9 @@ plisql_package_body_compile(Oid bodyoid,
 	/* Begin - BUG#M000088 */
 	bool		free_old_pkg = false;
 	/* End - BUG#M000088 */
+	/* Begin - OA-2787 */
+	bool		old_has_globalvars = false;
+	/* End - OA-2787 */
 
 	/*
 	 * Lookup the pg_package_body tuple by Oid
@@ -1757,6 +1760,9 @@ plisql_package_body_compile(Oid bodyoid,
 
 			hasbody = (bool) PACKAGE_HAS_BODY(olditem->cachestatus);
 			oldstatus = oldpsource->status;
+			/* Begin - OA-2787 */
+			old_has_globalvars = plisql_package_has_global_variables(oldpsource);
+			/* End - OA-2787 */
 			plisql_free_package_function(olditem);
 			/* Begin - BUG#M000088 */
 			free_old_pkg = true;
@@ -1775,7 +1781,11 @@ plisql_package_body_compile(Oid bodyoid,
 		 * 3) previous has been init
 		 * 4) doesn't create a package body
 		 */
-		if (execheck || free_old_pkg) /* BUG#M000088 */
+		/* Begin - OA-2787 */
+		if (!old_has_globalvars)
+			newpsource->status = PLISQL_PACKAGE_NO_INIT;
+		/* End - OA-2787 */
+		else if (execheck || free_old_pkg) /* BUG#M000088 */
 			newpsource->status = PLISQL_PACKAGE_REBUILD;
 		else if (!forValidator &&
 			newpsource->status == PLISQL_PACKAGE_NO_INIT &&
@@ -3164,6 +3174,17 @@ plisql_get_package_func(FunctionCallInfo fcinfo, bool forValidator)
 		elog(ERROR, "existing state of packages has been discarded");
 	}
 
+	/* Begin - OA-2787 */
+	if (psource->status == PLISQL_PACKAGE_NO_INIT)
+	{
+		plisql_exec_package_init(fcinfo, &psource->source);
+		psource->status = PLISQL_PACKAGE_STATUSED;
+
+		pfunc = &psource->source;
+		subprocfunc = pfunc->subprocfuncs[fno];
+	}
+	/* End - OA-2787 */
+
 	/* if not have poly arguments */
 	if (subprocfunc->has_poly_argument)
 	{
@@ -3217,12 +3238,6 @@ plisql_get_package_func(FunctionCallInfo fcinfo, bool forValidator)
 	if (func->action == NULL)
 		elog(ERROR, "subproc function \"%s\" doesn't define",
 		func->fn_signature);
-
-	if (psource->status == PLISQL_PACKAGE_NO_INIT)
-	{
-		plisql_exec_package_init(fcinfo, &psource->source);
-		psource->status = PLISQL_PACKAGE_STATUSED;
-	}
 
 	/* record pfunc counts */
 	pfunc->use_count++;
@@ -4854,4 +4869,57 @@ plisql_get_package_globalvar_value(PkgGlobalVarParam *gparam,
 
 /* End - OA#00002227*/
 
+/* Begin - OA-2787 */
+/*
+ * Return whether a compiled package specification declares a mutable data
+ * variable.  Constants, explicit cursors and exceptions do not count.
+ * The caller must supply a valid package whose specification is fully compiled.
+ * This does not compile or initialize the package, or inspect private body state.
+ */
+bool
+plisql_package_has_global_variables(const PLiSQL_package *package)
+{
+	const PLiSQL_function *function;
+	int	i;
 
+	Assert(package != NULL && package->finish_compile_special);
+	function = &package->source;
+
+	/* The body extends datums and last_globaldno, but preserves special_cur. */
+	for (i = 0; i <= package->last_globaldno; i++)
+	{
+		const PLiSQL_datum *datum;
+
+		if (i == function->found_varno || i == function->sql_varno ||
+		    i == function->plsql_unit_varno || i == function->plsql_unit_type_varno ||
+		    i == function->plsql_line_varno)
+			continue;
+
+		datum = function->datums[i];
+
+		switch (datum->dtype)
+		{
+			case PLISQL_DTYPE_VAR:
+				{
+					const PLiSQL_var *var = (const PLiSQL_var *) datum;
+
+					if (var->is_explicit_cursor ||
+						ISEXCEPTIONOID(var->datatype->typoid))
+						continue;
+					break;
+				}
+			case PLISQL_DTYPE_REC:
+			case PLISQL_DTYPE_ORA_RECORD:
+				break;
+			default:
+				/* Ignore references to other packages and auxiliary datums. */
+				continue;
+		}
+
+		if (!((const PLiSQL_variable *) datum)->isconst)
+			return true;
+	}
+
+	return false;
+}
+/* End - OA-2787 */
