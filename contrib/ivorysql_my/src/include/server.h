@@ -161,22 +161,27 @@ enum SERVER_STATUS_flags_enum {
 #define COM_RESET_CONNECTION        0x1f
 
 // flag for column definition
-#define NOT_NULL_FLAG				1
-#define PRI_KEY_FLAG			    2
-#define UNIQUE_KEY_FLAG				4
-#define MULTIPLE_KEY_FLAG			8
-#define BLOB_FLAG					16
-#define UNSIGNED_FLAG          		32
-#define ZEROFILL_FLAG				64
-#define BINARY_FLAG                 128
-#define ENUM_FLAG					256
-#define AUTO_INCREMENT_FLAG			512
-#define TIMESTAMP_FLAG				1024
-#define SET_FLAG					2048
-#define NO_DEFAULT_VALUE            4096
-#define ON_UPDATE_NOW_FLAG          8192
-#define PART_KEY_FLAG               16384
-#define NUM_FLAG                    32768
+#define NOT_NULL_FLAG            (1U << 0)
+#define PRI_KEY_FLAG             (1U << 1)
+#define UNIQUE_KEY_FLAG          (1U << 2)
+#define MULTIPLE_KEY_FLAG        (1U << 3)
+#define BLOB_FLAG                (1U << 4)
+#define UNSIGNED_FLAG            (1U << 5)
+#define ZEROFILL_FLAG            (1U << 6)
+#define BINARY_FLAG              (1U << 7)
+#define ENUM_FLAG                (1U << 8)
+#define AUTO_INCREMENT_FLAG      (1U << 9)
+#define TIMESTAMP_FLAG           (1U << 10)
+#define SET_FLAG                 (1U << 11)
+#define NO_DEFAULT_VALUE         (1U << 12)
+#define ON_UPDATE_NOW_FLAG       (1U << 13)
+#define PART_KEY_FLAG            (1U << 14)
+#define NUM_FLAG                 (1U << 15)
+
+/* Begin - BUG#9294 */
+/* Preserve PostgreSQL boolean semantics; bit 16 is internal and excluded from 16-bit protocol flags. */
+#define BOOL_FLAG                (1U << 16)
+/* End - BUG#9294 */
 
 #define DEFAULLT_DATA_FIELD_LEN     65535
 
@@ -317,7 +322,10 @@ typedef enum enum_field_types {
     MYSQL_TYPE_BLOB = 252,
     MYSQL_TYPE_VAR_STRING = 253,
     MYSQL_TYPE_STRING = 254,
-    MYSQL_TYPE_GEOMETRY = 255
+    MYSQL_TYPE_GEOMETRY = 255,
+    /* Begin - BUG#9294 */
+    MYSQL_TYPE_UNKNOWN = 256  /* Indicates that the PostgreSQL type cannot be mapped to a MySQL type. */
+    /* End - BUG#9294 */
 } enum_field_types;
 
 enum enum_cursor_type {

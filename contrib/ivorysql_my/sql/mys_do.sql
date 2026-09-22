@@ -80,6 +80,39 @@ select @x, @y, @z; --50
 do @result := (15 * 3) + (20 / 4) - POWER(2, 3);
 select @result as complex_calculation; --42
 
+-- fix#bug 9294
+CREATE TABLE IF NOT EXISTS elk_tree_map (
+    id          INT PRIMARY KEY,
+    parent_id   INT,
+    label       VARCHAR(100),
+    uuid        VARCHAR(64),
+    create_time DATETIME,
+    remark      VARCHAR(255),
+    update_man  VARCHAR(64)
+);
+
+DELETE FROM elk_tree_map;
+
+INSERT INTO elk_tree_map (id, parent_id, label, uuid, create_time, remark, update_man) VALUES
+(1, 0, 'Root Node',        'u-001', NOW(), 'root', 'admin'),
+(2, 1, 'Child Node A',     'u-002', NOW(), 'A',    'admin'),
+(3, 1, 'Child Node B',     'u-003', NOW(), 'B',    'admin'),
+(4, 2, 'Grandchild Node A1','u-004', NOW(), 'A1',  'admin'),
+(5, 4, 'Leaf Node',        'u-005', NOW(), 'A11',  'admin'),
+(6, 3, 'Grandchild Node B1','u-006', NOW(), 'B1',  'admin'),
+(7, 0, 'Orphan Node',      'u-007', NOW(), 'X',    'admin');
+
+SELECT 
+  1
+FROM elk_tree_map WHERE ID = 1
+UNION ALL
+select * from (
+  select 
+    if (find_in_set (parent_id, @pids) > 0, @pids := concat (@pids, ',', id), 0) as ischild
+from (
+  select * from elk_tree_map order by parent_id, id) t1, (select @pids := 1) t2) t3;
+
+
 set mysql.at_or_atat = 0;
 set mysql.use_mysql_do = false;
 

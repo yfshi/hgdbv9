@@ -720,11 +720,11 @@ EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE (c1 IS NOT NULL) IS DIST
 (3 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE c1 = ANY(ARRAY[c2, 1, c1 + 0]); -- ScalarArrayOpExpr
-                                                                    QUERY PLAN                                                                     
----------------------------------------------------------------------------------------------------------------------------------------------------
+                                                                        QUERY PLAN                                                                         
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
  Foreign Scan on public.ft1 t1
    Output: c1, c2, c3, c4, c5, c6, c7, c8
-   Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1" WHERE (("C 1" = ANY (ARRAY[c2, 1::bigint, ("C 1" OPERATOR(ivymy.+) 0)])))
+   Remote SQL: SELECT "C 1", c2, c3, c4, c5, c6, c7, c8 FROM "S 1"."T 1" WHERE (("C 1" = ANY (ARRAY[c2::bigint, 1::bigint, ("C 1" OPERATOR(ivymy.+) 0)])))
 (3 rows)
 
 EXPLAIN (VERBOSE, COSTS OFF) SELECT * FROM ft1 t1 WHERE c1 = (ARRAY[c1,c2,3])[1]; -- SubscriptingRef
@@ -10815,8 +10815,8 @@ update bar set f2 = f2 + 100
 from
   ( select f1 from foo union all select f1+3 from foo ) ss
 where bar.f1 = ss.f1;
-                         QUERY PLAN                          
--------------------------------------------------------------
+                            QUERY PLAN                             
+-------------------------------------------------------------------
  Update on public.bar
    ->  Merge Join
          Output: (bar.f2 + 100), bar.ctid, ss.*
@@ -10833,7 +10833,7 @@ where bar.f1 = ss.f1;
                      Output: ss.*, ss.f1
                      ->  Append
                            ->  Subquery Scan on "*SELECT* 1"
-                                 Output: "*SELECT* 1".f1
+                                 Output: ("*SELECT* 1".f1)::bigint
                                  ->  Seq Scan on public.foo
                                        Output: foo.f1
                            ->  Seq Scan on public.foo foo_1

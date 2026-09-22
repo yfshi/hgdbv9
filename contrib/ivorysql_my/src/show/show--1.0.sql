@@ -579,7 +579,7 @@ SELECT
 		ELSE
 			a.attname::varchar(64)
 		END
-	END AS "COLUMN_NAME",
+	END::varchar AS "COLUMN_NAME",
 	-- End - BUG#ZZ5974
 	CASE (k.opt & 1) WHEN 1 THEN 'D' ELSE 'A' END::varchar(1) AS "COLLATION",
 	CASE /* Bug - #z5988 */
@@ -917,7 +917,7 @@ BEGIN
  			THEN concat('CREATE TEMP VIEW ', v.TABLE_NAME, ' AS', v.VIEW_DEFINITION)
  		ELSE
  			concat('CREATE VIEW ', v.TABLE_NAME, ' AS', v.VIEW_DEFINITION)
- 		END AS "Create View",
+ 		END::varchar AS "Create View",
 		v.CHARACTER_SET_CLIENT AS character_set_client,
 		v.COLLATION_CONNECTION AS collation_connection
 	FROM mys_information_schema.views v

@@ -1050,7 +1050,13 @@ execute_com_stmt_prepare(char *client_sql)
 
         mysql_column_definition_t *param_field = make_column_definition_with_name("?", NULL, NULL);
         item = GetItemByTypeOid(entry->plansource->param_types[i], false);
-        param_field->type = item->mysql_type_id;
+
+        /* Begin - BUG#9294 */
+        if (item->mysql_type_id == MYSQL_TYPE_UNKNOWN)
+            param_field->type = MYSQL_TYPE_VARCHAR;
+        else
+            param_field->type = item->mysql_type_id;
+        /* End - BUG#9294 */
 
         /* Begin - OA#2772 */
         param_field->charset = get_mysql_result_collation_id(item);

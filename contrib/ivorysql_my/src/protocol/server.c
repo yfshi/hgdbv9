@@ -90,8 +90,7 @@ static TypeItem type_items[] = {
 	{"uint3", 		MYSQL_TYPE_INT24, 		UINT3OID, 		UNSIGNED_FLAG, 	true},
 	{"uint4", 		MYSQL_TYPE_LONG, 		UINT4OID, 		UNSIGNED_FLAG, 	true},
     {"uint8", 		MYSQL_TYPE_LONGLONG, 	UINT8OID, 		UNSIGNED_FLAG, 	true},
-	{"oid", 		MYSQL_TYPE_LONG, 		OIDOID,			UNSIGNED_FLAG, 	true},
-	{"bool", 		MYSQL_TYPE_TINY, 		BOOLOID, 		0, 				true},
+	{"bool", 		MYSQL_TYPE_TINY, 		BOOLOID, 		BOOL_FLAG,		true},
     {"float4", 		MYSQL_TYPE_FLOAT, 		FLOAT4OID, 		0, 				true},
     {"float8", 		MYSQL_TYPE_DOUBLE, 		FLOAT8OID, 		0, 				true},
 	{"numeric", 	MYSQL_TYPE_NEWDECIMAL, 	NUMERICOID, 	0, 				true},
@@ -121,28 +120,40 @@ static TypeItem type_items[] = {
 	{"mysdatetimes", MYSQL_TYPE_DATETIME, 	MYSDATETIMESOID,  0, 				true},
 	{"mystimestamp", MYSQL_TYPE_TIMESTAMP, 	MYSTIMESTAMPOID,  ZEROFILL_FLAG, 	true},
 	{"mystimestamps", MYSQL_TYPE_TIMESTAMP, MYSTIMESTAMPSOID, ZEROFILL_FLAG, 	true},
-
-	// ONLY FOR PG
-    {"name", 		MYSQL_TYPE_STRING, 		NAMEOID, 		0, 				false},
-	{"date", 		MYSQL_TYPE_STRING, 		DATEOID, 		0, 				true},
-    {"time", 		MYSQL_TYPE_STRING, 		TIMEOID, 		0, 				true},
-    {"timestamptz", MYSQL_TYPE_STRING, 		TIMESTAMPTZOID, 0, 				true},
-    {"timestamp", 	MYSQL_TYPE_STRING, 		TIMESTAMPOID, 	0, 				true},
-	{"bit", 		MYSQL_TYPE_VAR_STRING, 	BITOID, 		BINARY_FLAG, 	true},
-    {"varbit", 		MYSQL_TYPE_VAR_STRING, 	VARBITOID, 		0, 				true},
-	{"bytea", 		MYSQL_TYPE_VAR_STRING, 	BYTEAOID, 		0, 				true},
-
 	{"point", 		MYSQL_TYPE_GEOMETRY, 	POINTOID, 		0, 				true},
-    {"line", 		MYSQL_TYPE_GEOMETRY, 	LINEOID, 		0, 				true},
-    {"polygon", 	MYSQL_TYPE_GEOMETRY, 	POLYGONOID, 	0, 				true},
-    
-    {"json", 		MYSQL_TYPE_JSON, 		JSONOID, 		0, 				true},
 
-	{"regproc", 	MYSQL_TYPE_STRING, 		REGPROCOID, 	0, 				true},
-	{"pg_node_tree", MYSQL_TYPE_STRING, 	PG_NODE_TREEOID, 0, 			true},
-	{"_aclitem", 	MYSQL_TYPE_STRING, 		0, 				 0, 			true},
-	{"regtype",		MYSQL_TYPE_LONG,		REGTYPEOID,		0,				true},
+
+	/* Begin - BUG#9294 */
+	/*
+	* PostgreSQL-only types.
+	*
+	* These types do not participate in MySQL field type aggregation.
+	* MYSQL_TYPE_UNKNOWN causes mysql_agg_field_type() to fall back to
+	* PostgreSQL's native common-type resolution.
+	*/
+	// ONLY FOR PG
+	{"bit", 		MYSQL_TYPE_UNKNOWN, 	BITOID, 		BINARY_FLAG, 	true},
+	{"bytea", 		MYSQL_TYPE_UNKNOWN, 	BYTEAOID, 		0, 				true},
+	{"date", 		MYSQL_TYPE_UNKNOWN, 	DATEOID, 		0, 				true},
+    {"json", 		MYSQL_TYPE_UNKNOWN, 	JSONOID, 		0, 				true},
+	{"jsonb", 		MYSQL_TYPE_JSON, 		JSONBOID, 		0, 				false},
+    {"line", 		MYSQL_TYPE_UNKNOWN, 	LINEOID, 		0, 				true},
+	{"money", 		MYSQL_TYPE_UNKNOWN, 	MONEYOID, 		0, 				true},
+    {"name", 		MYSQL_TYPE_UNKNOWN, 	NAMEOID, 		0, 				false},
+	{"oid", 		MYSQL_TYPE_UNKNOWN, 	OIDOID,			UNSIGNED_FLAG, 	true},
+	{"pg_node_tree", MYSQL_TYPE_UNKNOWN, 	PG_NODE_TREEOID, 0, 			true},
+    {"polygon", 	MYSQL_TYPE_UNKNOWN, 	POLYGONOID, 	0, 				true},
+	{"regclass", 	MYSQL_TYPE_UNKNOWN, 	REGCLASSOID, 	0, 				true},
+	{"regproc", 	MYSQL_TYPE_UNKNOWN, 	REGPROCOID, 	0, 				true},
+	{"regtype",		MYSQL_TYPE_UNKNOWN,		REGTYPEOID,		0,				true},
+    {"time", 		MYSQL_TYPE_UNKNOWN, 	TIMEOID, 		0, 				true},
+    {"timestamptz", MYSQL_TYPE_UNKNOWN, 	TIMESTAMPTZOID, 0, 				true},
+    {"timestamp", 	MYSQL_TYPE_UNKNOWN, 	TIMESTAMPOID, 	0, 				true},
 	{"unknown",		MYSQL_TYPE_VAR_STRING,	UNKNOWNOID,		0,				false},
+    {"varbit", 		MYSQL_TYPE_UNKNOWN, 	VARBITOID, 		0, 				true},
+
+	{"_aclitem", 	MYSQL_TYPE_UNKNOWN, 	0, 				 0, 			true}
+	/* End - BUG#9294 */
 };
 
 static const int ntype_items = sizeof(type_items) / sizeof(TypeItem);
@@ -436,9 +447,10 @@ GetItemByTypeOid(Oid oid, bool report_warning)
 	result->flags = 0;
     result->is_binary_charset = false;
 
+
 	switch (typeForm->typtype)
 	{
-		case 'e':
+		case TYPTYPE_ENUM:
 			result->mysql_type_id = MYSQL_TYPE_STRING;
 			result->flags |= ENUM_FLAG;
 			break;
@@ -448,10 +460,30 @@ GetItemByTypeOid(Oid oid, bool report_warning)
 			result->flags |= SET_FLAG;
 			break;
 		*/
-		default:
-			result->mysql_type_id = MYSQL_TYPE_STRING;
+
+		/*
+		 * Composite \ domain \ pseudo types have no corresponding MySQL
+		 * scalar type. Keep them unknown and fall back to
+		 * PostgreSQL's native type resolution when necessary.
+		 */
+		case TYPTYPE_COMPOSITE:
+		case TYPTYPE_PSEUDO:
+		case TYPTYPE_DOMAIN:
+			result->mysql_type_id = MYSQL_TYPE_UNKNOWN;
 			break;
-	}
+
+		default:
+			/*
+			 * PostgreSQL array types have no direct MySQL type mapping.
+			 * Mark them as unknown so type resolution can fall back to
+			 * PostgreSQL's native rules instead of treating them as strings.
+			 */
+			if (typeForm->typcategory == TYPCATEGORY_ARRAY)
+				result->mysql_type_id = MYSQL_TYPE_UNKNOWN;
+			else
+				result->mysql_type_id = MYSQL_TYPE_STRING;
+			break;
+		}
 
 	ReleaseSysCache(tuple);
 

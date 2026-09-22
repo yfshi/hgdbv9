@@ -2749,8 +2749,8 @@ SELECT
 	-- 12. Hexadecimal and bit types
 	IF(TRUE, X'4D7953514C', 'hex_text') as hex_to_string,
 	IF(TRUE, 'hex_text', X'4D7953514C') as string_to_hex,
-	IF(TRUE, b'1010', 'bit_text') as bit_to_string,
-	IF(TRUE, 'bit_text', b'1010') as string_to_bit,
+	IF(TRUE, b'1010'::mysbit, 'bit_text') as bit_to_string,
+	IF(TRUE, 'bit_text', b'1010'::mysbit) as string_to_bit,
 	-- 13. Scientific notation numbers
 	IF(TRUE, 1.23e5, 'scientific') as scientific_to_string,
 	IF(TRUE, '1.23e5', 123000) as string_to_scientific,
@@ -2819,7 +2819,7 @@ ORDER BY
  int_to_time              | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  binary_to_int            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
  int_to_binary            | varbinary | varbinary   |                          |                   |               | YES         | UTF8               | 
- concat_to_int            | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
+ concat_to_int            | text      | text        |                          |                   |               | YES         | UTF8               | 
  empty_string_to_int      | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  string_zero_to_int       | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  very_large_int_to_string | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
@@ -2858,8 +2858,8 @@ ORDER BY
  string_to_spatial        | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
  date_to_datetime         | datetime  | datetime    |                          |                   |               | YES         | UTF8               | 
  datetime_to_date         | datetime  | datetime    |                          |                   |               | YES         | UTF8               | 
- null_to_bool             | tinyint   | tinyint(4)  |                          |                   |               | YES         | UTF8               | 
- bool_to_null             | tinyint   | tinyint(4)  |                          |                   |               | YES         | UTF8               | 
+ null_to_bool             | boolean   | boolean     |                          |                   |               | YES         | UTF8               | 
+ bool_to_null             | boolean   | boolean     |                          |                   |               | YES         | UTF8               | 
  null_default             | varchar   | varchar     |                          |                   |               | YES         | UTF8               | 
 (63 rows)
 

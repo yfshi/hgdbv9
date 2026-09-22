@@ -222,7 +222,12 @@ make_column_definition_with_attr(FormData_pg_attribute *attr)
                                    PG_UTF8);
     /* End - OA#2772 */
 
-    field->type = item->mysql_type_id;
+    /* Begin - BUG#9294 */
+    if (item->mysql_type_id == MYSQL_TYPE_UNKNOWN)
+        field->type = MYSQL_TYPE_VARCHAR;
+    else
+        field->type = item->mysql_type_id;
+    /* End - BUG#9294 */
 
     /* Begin - bug#9024 */
     get_column_length_and_decimal(attr, &field->length, &field->decimals);

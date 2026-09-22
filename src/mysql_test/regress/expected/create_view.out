@@ -353,7 +353,7 @@ View definition:
     vv.b,
     vv.c,
     vv.d
-   FROM ( VALUES ('abc'::character varying(3),'0123456789'::character varying,42,'abcd'::character varying(4)), ('0123456789'::character varying,'abc'::character varying(3),42.12,'abc'::character varying(4))) vv(a, b, c, d);
+   FROM ( VALUES ('abc'::character varying(3),'0123456789'::character varying,42::numeric,'abcd'::character varying(4)), ('0123456789'::character varying,'abc'::character varying(3),42.12,'abc'::character varying(4))) vv(a, b, c, d);
 
 SELECT * FROM tt1;
      a      |     b      |   c   |  d   

@@ -172,7 +172,7 @@ UNION ALL
     SELECT n+1 FROM t WHERE n < 10
 )
 SELECT n, pg_typeof(n) FROM t;
-ERROR:  recursive query "t" column 1 has type text in non-recursive term but type double precision overall
+ERROR:  recursive query "t" column 1 has type text in non-recursive term but type character varying overall
 LINE 2:     SELECT '7'
                    ^
 HINT:  Cast the output of the non-recursive term to the correct type.

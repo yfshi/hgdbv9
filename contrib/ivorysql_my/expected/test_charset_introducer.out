@@ -1728,6 +1728,7 @@ ORDER BY alter_sql;
  ALTER FUNCTION ivymy.ucase(varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.upper(bigint) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.upper(integer) EXPAND "convert_encoding";
+ ALTER FUNCTION ivymy.upper(uint8) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.upper(varbinary) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.varbinary_bpchar_eq(varbinary, character) EXPAND "convert_encoding";
  ALTER FUNCTION ivymy.varbinary_bpchar_ne(varbinary, character) EXPAND "convert_encoding";
@@ -1755,7 +1756,7 @@ ORDER BY alter_sql;
  ALTER FUNCTION pg_catalog.textltname(text, name) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.textne(text, text) EXPAND "convert_encoding";
  ALTER FUNCTION pg_catalog.textnename(text, name) EXPAND "convert_encoding";
-(147 rows)
+(148 rows)
 
 -- SELECT *
 -- FROM pg_catalog.pg_object

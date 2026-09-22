@@ -230,24 +230,26 @@ SELECT *, pg_typeof(f1) FROM
 
 -- ... unless there's context to suggest differently
 explain (verbose, costs off) select '42' union all select '43';
-         QUERY PLAN         
-----------------------------
+               QUERY PLAN                
+-----------------------------------------
  Append
    ->  Result
-         Output: '42'::text
+         Output: '42'::character varying
    ->  Result
-         Output: '43'::text
+         Output: '43'::character varying
 (5 rows)
 
 explain (verbose, costs off) select '42' union all select 43;
-     QUERY PLAN     
---------------------
+               QUERY PLAN                
+-----------------------------------------
  Append
    ->  Result
-         Output: 42
-   ->  Result
-         Output: 43
-(5 rows)
+         Output: '42'::character varying
+   ->  Subquery Scan on "*SELECT* 2"
+         Output: (43)::character varying
+         ->  Result
+               Output: 43
+(7 rows)
 
 -- check materialization of an initplan reference (bug #14524)
 explain (verbose, costs off)
