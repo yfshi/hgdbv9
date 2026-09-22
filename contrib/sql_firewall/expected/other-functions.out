@@ -1,0 +1,518 @@
+SELECT hg_security.sql_firewall_stat_reset();
+ sql_firewall_stat_reset 
+-------------------------
+ 
+(1 row)
+
+-- Protected firewall relations and views are superuser-only.
+CREATE ROLE sql_firewall_permission_test;
+GRANT USAGE ON SCHEMA hg_security TO sql_firewall_permission_test;
+SET ROLE sql_firewall_permission_test;
+SELECT * FROM hg_security.sql_firewall_rec;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_firewall_rec.
+SELECT * FROM hg_security.sql_firewall_stat_rec;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_firewall_stat_rec.
+SELECT * FROM hg_security.sql_high_risk_rec;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_high_risk_rec.
+SELECT * FROM hg_security.sql_firewall_black_list;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_firewall_black_list.
+SELECT * FROM hg_security.sql_firewall_stat;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_firewall_stat.
+SELECT * FROM hg_security.sql_firewall_statements;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_firewall_statements.
+SELECT * FROM hg_security.sql_firewall_white_list;
+ERROR:  When the se_feature_mode are disabled, only the superuser can access sql_firewall_white_list.
+RESET ROLE;
+REVOKE USAGE ON SCHEMA hg_security FROM sql_firewall_permission_test;
+DROP ROLE sql_firewall_permission_test;
+SELECT count(*) from hg_security.sql_firewall_statements;
+ count 
+-------
+     0
+(1 row)
+
+SELECT hg_security.import_white_list_for_user('sqlfirewallsuperuser'::name, 'CREATE ROLE case_owner NOLOGIN;');
+ import_white_list_for_user 
+----------------------------
+ t
+(1 row)
+
+select count(*) from hg_security.sql_firewall_white_list(true);
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from hg_security.sql_firewall_white_list(false);
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from hg_security.sql_firewall_white_list;
+ count 
+-------
+     1
+(1 row)
+
+SELECT hg_security.dispaly_single_sql(queryid) from hg_security.sql_firewall_statements;
+       dispaly_single_sql        
+---------------------------------
+ CREATE ROLE case_owner NOLOGIN;
+(1 row)
+
+ALTER SYSTEM SET sql_firewall.firewall to 'disabled';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+ALTER SYSTEM SET sql_firewall.firewall to 'permissive';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT 1;
+WARNING:  The current statement is neither a whitelist nor a blacklist statement, it is being executed in permissive mode.
+DETAIL:  SQL statement: SELECT 1;
+ ?column? 
+----------
+        1
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_error_count(); --0
+ sql_firewall_stat_error_count 
+-------------------------------
+                             0
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_warning_count(); --1
+ sql_firewall_stat_warning_count 
+---------------------------------
+                               1
+(1 row)
+
+ALTER SYSTEM SET sql_firewall.firewall to 'enforcing';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT 1;
+ERROR:  Prohibited SQL statement
+DETAIL:  SQL statement: SELECT 1;
+SELECT hg_security.sql_firewall_stat_error_count(); --1
+ sql_firewall_stat_error_count 
+-------------------------------
+                             1
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_warning_count(); --1
+ sql_firewall_stat_warning_count 
+---------------------------------
+                               1
+(1 row)
+
+select  * from hg_security.sql_firewall_stat;
+ sql_warning | sql_error 
+-------------+-----------
+           1 |         1
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_reset();
+ sql_firewall_stat_reset 
+-------------------------
+ 
+(1 row)
+
+select count(*) from hg_security.sql_firewall_black_list(true);
+ count 
+-------
+     0
+(1 row)
+
+select count(*) from hg_security.sql_firewall_black_list(false);
+ count 
+-------
+     0
+(1 row)
+
+SELECT hg_security.import_black_list_for_user('sqlfirewallsuperuser'::name, 'select ''aaa'';');
+ import_black_list_for_user 
+----------------------------
+ t
+(1 row)
+
+select count(*) from hg_security.sql_firewall_black_list(true);
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from hg_security.sql_firewall_black_list(false);
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from hg_security.sql_firewall_rec;
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from hg_security.sql_firewall_black_list;
+ count 
+-------
+     1
+(1 row)
+
+select count(*) from hg_security.sql_firewall_statements;
+ count 
+-------
+     1
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_stat_reset();
+ sql_firewall_stat_reset 
+-------------------------
+ 
+(1 row)
+
+-- test high risk statement
+select * from hg_security.sql_high_risk_rec;
+  statement   |          description          | warning_count | error_count 
+--------------+-------------------------------+---------------+-------------
+ unsafeupdate | UPDATE without a WHERE clause |            10 |           3
+ unsafedelete | DELETE without a WHERE clause |            11 |           9
+(2 rows)
+
+select hg_security.import_high_risk_statement('unsafealter');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.import_high_risk_statement('unsafedroptable');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.import_high_risk_statement('unsafetruncate');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.import_high_risk_statement('unsafedropdatabase');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.import_high_risk_statement('unsafedropschema');
+ import_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select * from hg_security.sql_high_risk_rec;
+     statement      |          description          | warning_count | error_count 
+--------------------+-------------------------------+---------------+-------------
+ unsafeupdate       | UPDATE without a WHERE clause |            10 |           3
+ unsafedelete       | DELETE without a WHERE clause |            11 |           9
+ unsafealter        | all ALTER statements          |             0 |           0
+ unsafedroptable    | DROP TABLE statements         |             0 |           0
+ unsafetruncate     | TRUNCATE TABLE statements     |             0 |           0
+ unsafedropdatabase | DROP DATABASE statements      |             0 |           0
+ unsafedropschema   | DROP SCHEMA statements        |             0 |           0
+(7 rows)
+
+ALTER SYSTEM SET sql_firewall.firewall to 'permissive';
+ERROR:  Prohibited high-risk SQL statement
+DETAIL:  SQL statement: ALTER SYSTEM SET sql_firewall.firewall to 'permissive';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+create table test(id int, name text);
+WARNING:  The current statement is neither a whitelist nor a blacklist statement, it is being executed in permissive mode.
+DETAIL:  SQL statement: create table test(id int, name text);
+alter table test add column address text;
+WARNING:  A high-risk statement is currently being executed, it is being executed in permissive mode.
+DETAIL:  SQL statement: alter table test add column address text;
+update test set id = 1;
+WARNING:  Prohibited high-risk SQL statement, it is being executed in permissive mode.
+DETAIL:  SQL statement: update test set id = 1;
+delete from test;
+WARNING:  Prohibited high-risk SQL statement, it is being executed in permissive mode.
+DETAIL:  SQL statement: delete from test;
+truncate test;
+WARNING:  A high-risk statement is currently being executed, it is being executed in permissive mode.
+DETAIL:  SQL statement: truncate test;
+drop table test;
+WARNING:  A high-risk statement is currently being executed, it is being executed in permissive mode.
+DETAIL:  SQL statement: drop table test;
+create schema aaa;
+WARNING:  The current statement is neither a whitelist nor a blacklist statement, it is being executed in permissive mode.
+DETAIL:  SQL statement: create schema aaa;
+drop schema aaa;
+WARNING:  A high-risk statement is currently being executed, it is being executed in permissive mode.
+DETAIL:  SQL statement: drop schema aaa;
+create database sqlfiretestdb;
+WARNING:  The current statement is neither a whitelist nor a blacklist statement, it is being executed in permissive mode.
+DETAIL:  SQL statement: create database sqlfiretestdb;
+drop  database sqlfiretestdb;
+WARNING:  A high-risk statement is currently being executed, it is being executed in permissive mode.
+DETAIL:  SQL statement: drop  database sqlfiretestdb;
+select hg_security.remove_high_risk_statement('unsafealter');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.remove_high_risk_statement('unsafedroptable');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.remove_high_risk_statement('unsafetruncate');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.remove_high_risk_statement('unsafedropdatabase');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select hg_security.remove_high_risk_statement('unsafedropschema');
+ remove_high_risk_statement 
+----------------------------
+ t
+(1 row)
+
+select * from hg_security.sql_high_risk_rec;
+  statement   |          description          | warning_count | error_count 
+--------------+-------------------------------+---------------+-------------
+ unsafeupdate | UPDATE without a WHERE clause |            11 |           3
+ unsafedelete | DELETE without a WHERE clause |            12 |           9
+(2 rows)
+
+-- Formatting-only whitespace and a trailing semicolon do not change queryid.
+ALTER SYSTEM SET sql_firewall.firewall TO 'disabled';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+CREATE TEMP TABLE sql_firewall_spacing_test(id integer);
+SELECT hg_security.import_white_list(
+    'SELECT * FROM sql_firewall_spacing_test WHERE id = 1');
+ERROR:  SQL firewall list statement must end with a semicolon
+SELECT hg_security.import_black_list(
+    'SELECT * FROM sql_firewall_spacing_test WHERE id = 1');
+ERROR:  SQL firewall list statement must end with a semicolon
+SELECT hg_security.delete_white_list(
+    'SELECT * FROM sql_firewall_spacing_test WHERE id = 1');
+ERROR:  SQL firewall list statement must end with a semicolon
+SELECT hg_security.delete_black_list(
+    'SELECT * FROM sql_firewall_spacing_test WHERE id = 1');
+ERROR:  SQL firewall list statement must end with a semicolon
+ALTER SYSTEM SET sql_firewall.firewall TO 'permissive';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT hg_security.import_white_list(
+    'SELECT * FROM sql_firewall_spacing_test WHERE id = 1;');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT *FROM sql_firewall_spacing_test WHERE id= 1;
+ id 
+----
+(0 rows)
+
+SELECT * FROM sql_firewall_spacing_test WHERE id=1;
+ id 
+----
+(0 rows)
+
+SELECT hg_security.import_white_list(
+    'CREATE TABLE sql_firewall_utility_spacing(id int, name text);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+CREATE TABLE sql_firewall_utility_spacing(id int,          name text);
+ALTER SYSTEM SET sql_firewall.firewall TO 'disabled';
+SELECT hg_security.import_white_list('SELECT pg_reload_conf();');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT hg_security.import_white_list('SELECT pg_sleep(1);');
+ import_white_list 
+-------------------
+ t
+(1 row)
+
+SELECT pg_reload_conf();
+ pg_reload_conf 
+----------------
+ t
+(1 row)
+
+SELECT pg_sleep(1);
+ pg_sleep 
+----------
+ 
+(1 row)
+
+SELECT hg_security.sql_firewall_reset();
+ sql_firewall_reset 
+--------------------
+ 
+(1 row)
+
+DROP TABLE sql_firewall_spacing_test;
+DROP TABLE sql_firewall_utility_spacing;
+-- end of other-functions
