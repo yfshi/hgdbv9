@@ -1049,12 +1049,16 @@ soundex(PG_FUNCTION_ARGS)
 {
 	text		*raw = PG_GETARG_TEXT_PP(0);
 	char		*input = VARDATA_ANY(raw);
-	int			 input_len = VARSIZE_ANY_EXHDR(raw) + 1;
+	int			 input_len = VARSIZE_ANY_EXHDR(raw);
 	char		*outstr = NULL;
 	text		*ret;
 	size_t		 size = 0;
 
 	outstr = _soundex_valstr(input, input_len, &size);
+
+	if (outstr == NULL)
+		PG_RETURN_NULL();
+
 	ret = cstring_to_text(outstr);
 	pfree(outstr);
 

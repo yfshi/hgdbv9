@@ -202,7 +202,7 @@ if (
 	my $status16 = $? >> 8;
 	exit $status16 if $status16;
 
-	system("pg_ctl.exe -D $installdir/data start -o \"-c mysql.regress_test_default_value=on\"");
+	system("pg_ctl.exe -D $installdir/data -l $installdir/log_pg_mys.txt start -o \"-c mysql.regress_test_default_value=on\"");
 	my $status17 = $? >> 8;
 	exit $status17 if $status17;
 
@@ -220,7 +220,7 @@ if (
 	foreach $a (@vcregress_mys_pg_install) {
 		system("vcregress_mys_pg.bat $a");
 		my $status18 = $? >> 8;
-		# exit $status18 if $status18;
+		exit $status18 if $status18;
 		print "=======end vcregress_mys_pg.bat $a regression================\n";
 	}
 
@@ -307,7 +307,7 @@ if (
 	$test_scope eq "all-check-world"
 	|| $test_scope eq "mysql-check-world"
 ) {
-	my @vcregress_mys = ();
+	my @vcregress_mys = ("check","recoverycheck","bincheck","upgradecheck");
 	foreach $a (@vcregress_mys) {
 		system("vcregress_mys.bat $a");
 		my $status20 = $? >> 8;
@@ -326,6 +326,7 @@ if (
 	print $conf_file "ivorysql.port = $ivy_port\n";
 	print $conf_file "mysql.port = $my_port\n";	# bug#6805
 	print $conf_file "mysql.protocol_type = pg\n";	# bug#6805
+	print $conf_file "max_prepared_transactions = 10\n";
 	close($conf_file);
 	my $status21 = $? >> 8;
 	exit $status21 if $status21;
@@ -337,11 +338,11 @@ if (
 	chdir "$startdir";
 	$ENV{PGPORT} = "$my_port";
 
-	my @vcregress_mys_install = ("contribcheck");
+	my @vcregress_mys_install = ("installcheck","plcheck","modulescheck","ecpgcheck","isolationcheck","contribcheck");
 	foreach $a (@vcregress_mys_install) {
 		system("vcregress_mys.bat $a");
 		my $status23 = $? >> 8;
-		# exit $status23 if $status23;
+		exit $status23 if $status23;
 		print "=======end vcregress_mys.bat $a regression================\n";
 	}
 

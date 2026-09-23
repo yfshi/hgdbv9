@@ -199,13 +199,15 @@ show collation;
  eucjpms_bin                 | eucjpms |  98 |         | Yes      |       1
  utf8_unicode_ci             | utf8    | 192 |         | Yes      |       8
  utf8mb3_unicode_ci          | utf8mb3 | 192 |         | Yes      |       8
+ utf8_esperanto_ci           | utf8    | 209 |         | Yes      |       8
  utf8_general_mysql500_ci    | utf8    | 223 |         | Yes      |       1
  utf8mb3_general_mysql500_ci | utf8mb3 | 223 |         | Yes      |       1
  utf8mb4_unicode_ci          | utf8mb4 | 224 |         | Yes      |       8
  gb18030_chinese_ci          | gb18030 | 248 | Yes     | Yes      |       2
  gb18030_bin                 | gb18030 | 249 |         | Yes      |       1
  gb18030_unicode_520_ci      | gb18030 | 250 |         | Yes      |       8
-(62 rows)
+ utf8mb4_0900_ai_ci          | utf8mb4 | 255 |         | Yes      |       8
+(64 rows)
 
 CREATE USER mysql_show_test_user WITH superuser;
 -- unix regress

@@ -195,7 +195,9 @@ create table t1(c int); insert into t1 values(1); rename table t1 to t2; select 
  1
 (1 row)
 
-create user user1;create user user2;rename user user1 to user3,user2 to user4;
+create user user1;
+create user user2;
+rename user user1 to user3,user2 to user4;
 drop user user3;
 drop user user4;
 --fix bug 5992

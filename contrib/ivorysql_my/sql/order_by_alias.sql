@@ -5,7 +5,7 @@
 -- Case 1: GROUP BY plus ORDER BY aliases from the select list.
 DROP TABLE IF EXISTS t1, t2, t3;
 
-CREATE TABLE t1 (id INT, facility CHAR(20));
+CREATE TABLE t1 (id INT, facility CHAR(20) collate utf8_bin);
 CREATE TABLE t2 (facility CHAR(20));
 
 INSERT INTO t1 VALUES

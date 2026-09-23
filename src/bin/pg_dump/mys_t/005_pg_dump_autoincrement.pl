@@ -27,98 +27,98 @@ set ivorysql.compatible_mode to mysql;
 
 CREATE TABLE report_scheme2(
  id float4 NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme3(
  id float8 NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme4(
  id int1 unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme5(
  id smallint unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme6(
  id uint3 NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme7(
  id integer unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 insert into report_scheme2(name, category) values('aa', 'aa');
 
 CREATE TABLE report_scheme8(
  id bigint unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 
 CREATE TABLE report_scheme9(
  id int1 NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme10(
  id smallint NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme11(
  id mediumint NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 CREATE TABLE report_scheme12(
  id mediumint unsigned NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 
 CREATE TABLE report_scheme13(
  id integer NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 
 CREATE TABLE report_scheme14(
  id bigint NOT NULL AUTO_INCREMENT COMMENT 'ID',
- name  varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'table name',
- category  varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT 'table type',
+ name  varchar(255) NOT NULL COMMENT 'table name',
+ category  varchar(100) DEFAULT '' COMMENT 'table type',
  PRIMARY KEY ( id ) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci ROW_FORMAT=DYNAMIC COMMENT='table config';
+) ENGINE=InnoDB AUTO_INCREMENT=3 ROW_FORMAT=DYNAMIC COMMENT='table config';
 
 -- insert
 insert into report_scheme2(name, category) values('aa', 'aa');
