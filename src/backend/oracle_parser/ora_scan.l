@@ -1557,8 +1557,6 @@ char *
 ora_scanner_str_byposition(int start, int end, ora_core_yyscan_t yyscanner)
 {
 	char *result = NULL;
-	int startpos;
-	int endpos;
 	int i;
 
 	if (start < 0 || end < 0 || end <= start)
@@ -1567,30 +1565,26 @@ ora_scanner_str_byposition(int start, int end, ora_core_yyscan_t yyscanner)
 	if (end > yyextra->scanbuflen)
 		return NULL;
 
-	startpos = pg_mbstrlen_with_len(yyextra->scanbuf, start);
-	endpos = pg_mbstrlen_with_len(yyextra->scanbuf, end);
-
-	if (endpos <= startpos)
-		return NULL;
-
+	/* Begin-OA-2840 */
 	/* ignore tail space */
-	while (endpos > startpos &&
-		(yyextra->scanbuf[endpos] == '\t' ||
-		yyextra->scanbuf[endpos] == '\n' ||
-		yyextra->scanbuf[endpos] == '\r' ||
-		yyextra->scanbuf[endpos] == ' ' ||
-		yyextra->scanbuf[endpos] == '\f' ||
-		yyextra->scanbuf[endpos] == '\v'))
-		endpos--;
+	while (end > start &&
+		(yyextra->scanbuf[end] == '\t' ||
+		yyextra->scanbuf[end] == '\n' ||
+		yyextra->scanbuf[end] == '\r' ||
+		yyextra->scanbuf[end] == ' ' ||
+		yyextra->scanbuf[end] == '\f' ||
+		yyextra->scanbuf[end] == '\v'))
+		end--;
 
-	if (endpos <= startpos)
+	if (end <= start)
 		return NULL;
 
-	result = palloc0(endpos - startpos + 2);
-	for (i = 0; i < endpos - startpos + 1; i++)
-		result[i] = yyextra->scanbuf[startpos + i];
+	result = palloc0(end - start + 2);
+	for (i = 0; i < end - start + 1; i++)
+		result[i] = yyextra->scanbuf[start + i];
 
-	Assert(i <= endpos);
+	Assert(i <= end);
+	/* End-OA-2840 */
 
 	return result;
 }
