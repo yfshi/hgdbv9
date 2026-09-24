@@ -195,3 +195,59 @@ SELECT * FROM t_force_idx FORCE INDEX (idx_force_c1) WHERE c1=1 AND c2=500;
 RESET mysql.enable_indexhint;
 RESET enable_bitmapscan;
 DROP TABLE t_force_num, t_force_idx;
+
+----- bug#9343
+-- ------------------------------------------------------------
+-- (8) Partitioned UPDATE.  The hint is on the parent; the scan is
+-- the leaf.  USE/FORCE Index Scan it; IGNORE Seq Scan it.
+-- ------------------------------------------------------------
+SET mysql.enable_indexhint = on;
+CREATE TABLE t1 (a int, b int) PARTITION BY HASH (a);
+CREATE TABLE p11 PARTITION OF t1 FOR VALUES WITH (MODULUS 2, REMAINDER 0);
+CREATE TABLE p12 PARTITION OF t1 FOR VALUES WITH (MODULUS 2, REMAINDER 1);
+CREATE TABLE t2 (c int, d int) PARTITION BY HASH (c);
+CREATE TABLE p21 PARTITION OF t2 FOR VALUES WITH (MODULUS 2, REMAINDER 0);
+CREATE TABLE p22 PARTITION OF t2 FOR VALUES WITH (MODULUS 2, REMAINDER 1);
+INSERT INTO t1 VALUES (1, 2), (2, 3);
+INSERT INTO t2 VALUES (1, 2), (2, 3);
+CREATE INDEX t1_idx ON t1(a);
+CREATE INDEX t2_idx ON t2(c);
+
+CREATE FUNCTION pg_temp.mys_plan_has(sql text, kind text, relname text)
+RETURNS boolean
+LANGUAGE plpgsql AS $$
+DECLARE
+	line text;
+BEGIN
+	FOR line IN EXECUTE 'EXPLAIN (COSTS OFF) ' || sql
+	LOOP
+		IF position(kind in line) > 0 AND position(relname in line) > 0 THEN
+			RETURN true;
+		END IF;
+	END LOOP;
+	RETURN false;
+END;
+$$;
+
+-- USE INDEX: Index Scan on the hinted partition
+SELECT pg_temp.mys_plan_has(
+	'UPDATE t1 PARTITION (p11) USE INDEX (t1_idx), t2 PARTITION (p21) SET t1.a = t2.d WHERE t1.a = t2.c',
+	'Index Scan', 'p11') AS use_index_scan;
+
+-- IGNORE INDEX: Seq Scan on the hinted partition, not an Index Scan
+SELECT pg_temp.mys_plan_has(
+	'UPDATE t1 PARTITION (p11) IGNORE INDEX (t1_idx), t2 PARTITION (p21) SET t1.a = t2.d WHERE t1.a = t2.c',
+	'Seq Scan', 'p11') AS ignore_seq_scan,
+       pg_temp.mys_plan_has(
+	'UPDATE t1 PARTITION (p11) IGNORE INDEX (t1_idx), t2 PARTITION (p21) SET t1.a = t2.d WHERE t1.a = t2.c',
+	'Index Scan', 'p11') AS ignore_index_scan;
+
+-- FORCE INDEX: Index Scan on the hinted partition
+SELECT pg_temp.mys_plan_has(
+	'UPDATE t1 PARTITION (p11) FORCE INDEX (t1_idx), t2 PARTITION (p21) SET t1.a = t2.d WHERE t1.a = t2.c',
+	'Index Scan', 'p11') AS force_index_scan;
+
+RESET enable_bitmapscan;
+RESET mysql.enable_indexhint;
+DROP FUNCTION pg_temp.mys_plan_has(text, text, text);
+DROP TABLE t1, t2;

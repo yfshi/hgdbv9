@@ -255,4 +255,6 @@ extern PathKey *make_canonical_pathkey(PlannerInfo *root,
 extern void add_paths_to_append_rel(PlannerInfo *root, RelOptInfo *rel,
 									List *live_childrels);
 
+extern bool IndexHintOidMatches(Oid hintOid, Oid scanOid);	/* bug#9343 */
+
 #endif							/* PATHS_H */
