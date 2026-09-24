@@ -24,7 +24,7 @@ create unique index hg_redaciton_column_polname_attname_index on hg_security.hg_
  * '4880-9898-4545-2525' will be redactioned as 'xxxx-xxxx-xxxx-2525',
  * This function redactions the numbers before the last four digits.
  */
-create or replace function hg_security.redact_bankcard(col text,letter char default 'x') RETURNS text AS $$
+create or replace function hg_security.redact_bankcard(col text,letter bpchar default 'x') RETURNS text AS $$
 declare 
 	size INTEGER := 4;
 begin
@@ -44,7 +44,7 @@ SET pg_proc.redaction to 1;
  * 'abcd@gmail.com' will be redactioned as'xxxx@gmail.com',
  * redaction the text before the first @.
  */
-create or replace function hg_security.redact_emailname(col text, letter char default 'x') RETURNS text AS $$
+create or replace function hg_security.redact_emailname(col text, letter bpchar default 'x') RETURNS text AS $$
 declare 
 	pos INTEGER := position('@' in col);
 begin
@@ -64,7 +64,7 @@ SET pg_proc.redaction to 1;
  * 'abcd@gmail.com' will be redactioned as 'xxxx@xxxxx.com',
  * redaction the text before the last '.', except'@'.
  */
-create or replace function hg_security.redact_emailfull(col text, letter char default 'x') RETURNS text AS $$
+create or replace function hg_security.redact_emailfull(col text, letter bpchar default 'x') RETURNS text AS $$
 declare 
 	pos INTEGER := position('@' in col);
 	dot_pos INTEGER := length(col) - position('.' in reverse(col)) + 1;
@@ -85,7 +85,7 @@ SET pg_proc.redaction to 1;
  * 'alex123alex' will be redactioned as 'alex000alex',
  * redaction only for numbers in text.
  */
-create or replace function hg_security.redact_digits(col text, letter char default '0') RETURNS text AS $$
+create or replace function hg_security.redact_digits(col text, letter bpchar default '0') RETURNS text AS $$
 begin
 	return REGEXP_REPLACE(col, '[\d+]', letter, 'g');
 end;
@@ -147,7 +147,7 @@ SET pg_proc.redaction to 1;
  * digits of the ID card number, and replace all the middle digits
  * with *.
  */
-create or replace function hg_security.redact_idcard(col text, letter char default '*') RETURNS text AS $$
+create or replace function hg_security.redact_idcard(col text, letter bpchar default '*') RETURNS text AS $$
 declare 
 	size INTEGER := 4;
 begin
@@ -170,7 +170,7 @@ SET pg_proc.redaction to 1;
  * such as “张三” will be redactioned as “张**”，“张三丰” will be redactioned as “张**”，
  * “富兰克林” will be redactioned as “富**”
  */
-create or replace function hg_security.redact_name(col text, letter char default '*') RETURNS text AS $$
+create or replace function hg_security.redact_name(col text, letter bpchar default '*') RETURNS text AS $$
 declare 
 	size INTEGER := 2;
 begin
@@ -192,7 +192,7 @@ SET pg_proc.redaction to 1;
  * first three and last four digits, redaction on the middle
  * number. such as “13534556093” will be redactioned as “135****6093”
  */
-create or replace function hg_security.redact_phone(col text, letter char default '*') RETURNS text AS $$
+create or replace function hg_security.redact_phone(col text, letter bpchar default '*') RETURNS text AS $$
 declare 
 	size INTEGER := 4;
 begin

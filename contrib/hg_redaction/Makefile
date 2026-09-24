@@ -13,6 +13,10 @@ LDFLAGS_SL += $(filter -lm, $(LIBS))
 
 REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/hg_redaction/hg_redaction.conf
 REGRESS = hg_redaction
+ORACLE_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/hg_redaction/hg_redaction_ora.conf
+ORA_REGRESS = ivy_hg_redaction
+MYSQL_REGRESS_OPTS = --temp-config $(top_srcdir)/contrib/hg_redaction/hg_redaction_mys.conf
+MYS_REGRESS = mys_hg_redaction
 # Disabled because these tests require "shared_preload_libraries="hg_redaction",
 # which typical installcheck users do not have (e.g. buildfarm clients).
 NO_INSTALLCHECK = 1

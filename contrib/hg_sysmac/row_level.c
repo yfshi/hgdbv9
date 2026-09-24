@@ -83,6 +83,8 @@ mac_identifier_case_transform(Oid relid, Relation target_rel, char **schema, cha
 			oriinf_relname = pg_object_get_ori_infor_hook (address);
 			if (oriinf_relname)
 				*relname = pstrdup(oriinf_relname->oriname);
+			else
+				*relname = pstrdup(RelationGetRelationName(target_rel));
 		}
 
 		memset(&address, 0, sizeof(ObjectAddress));
@@ -92,6 +94,8 @@ mac_identifier_case_transform(Oid relid, Relation target_rel, char **schema, cha
 			oriinf_schema = pg_object_get_ori_infor_hook (address);
 			if (oriinf_schema)
 				*schema = pstrdup(oriinf_schema->oriname);
+			else
+				*schema = get_namespace_name(target_rel->rd_rel->relnamespace);
 		}
 	}
 	else if (compatible_mode == ORA_MODE)

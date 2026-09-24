@@ -322,6 +322,7 @@ get_var_value(ParseState *pstate, const List *rtable, Var *var, VarParserValue *
 						 * if var is not found return NO_FOUND_RTE_OR_COLUMN,
 						 * no data redaction will be performed.
 						 */
+						relation_close(tbl_rel, AccessShareLock);
 						return NO_FOUND_RTE_OR_COLUMN;
 					}
 				}
@@ -651,6 +652,10 @@ redaction_data_all_function(ParseState *pstate, Var *var,
 		case INTERVALOID:
 		case TIMESTAMPOID:
 		case TIMESTAMPTZOID:
+		case ORATIMESTAMPOID:
+		case ORATIMESTAMPTZOID:
+		case MYSTIMEOID:
+		case MYSTIMESTAMPOID:
 		{
 			Node *const_node = NULL;
 
@@ -666,6 +671,14 @@ redaction_data_all_function(ParseState *pstate, Var *var,
 		case TEXTOID:
 		case BPCHAROID:
 		case VARCHAROID:
+		case ORAVARCHARBYTEOID:
+		case ORAVARCHARCHAROID:
+		case ORACHARBYTEOID:
+		case ORACHARCHAROID:
+		case ORACHARCHAR_2OID:
+		case ORACHARBYTE_2OID:
+		case ORAVARCHARCHAR_2OID:
+		case ORAVARCHARBYTE_2OID:
 		{
 			/* the number of characters of data redaction */
 			maskall_func_node = create_repeat_function(pstate, "x", (Node*)var);
@@ -772,7 +785,7 @@ redaction_data_all_function(ParseState *pstate, Var *var,
 			{
 				ereport(WARNING,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						 errmsg("Unsupported type of column will not be masked by policy.")));
+						 errmsg("Unsupported type of column will not be masked by policy typeoid= %d.", var->vartype)));
 			}
 
 			break;
@@ -812,6 +825,14 @@ static Node
 		case BPCHAROID:
 		case VARCHAROID:
 		case TEXTOID:
+		case ORAVARCHARBYTEOID:
+		case ORAVARCHARCHAROID:
+		case ORACHARBYTEOID:
+		case ORACHARCHAROID:
+		case ORACHARCHAR_2OID:
+		case ORACHARBYTE_2OID:
+		case ORAVARCHARCHAR_2OID:
+		case ORAVARCHARBYTE_2OID:
 		{
 			credit_func_node = create_predefined_function(funcname, funcid, 
 															TEXTOID, (Node*)var, 100);
@@ -1461,6 +1482,7 @@ mask_list_parameters(List **params, ParseState *pstate, bool *is_masking, List* 
 			case T_Var:
 			case T_RelabelType:
 			case T_FuncExpr:
+			case T_CollateExpr:
 			{
 				bool expr_masked = mask_expr_node(pstate, (Expr **)&item, rtable, can_mask, toptlistflg, eqflg);
 				*is_masking = expr_masked || *is_masking;
@@ -1518,6 +1540,16 @@ mask_expr_node(ParseState *pstate, Expr **expr, List* rtable, bool can_mask, boo
 		case T_RelabelType:
 		{
 			RelabelType *relabel = (RelabelType *) (*expr);
+
+			if (relabel->arg != NULL)
+			{
+				return mask_expr_node(pstate, (Expr **)&(relabel->arg), rtable, can_mask, toptlistflg, eqflg);
+			}
+			break;
+		}
+		case T_CollateExpr:
+		{
+			CollateExpr *relabel = (CollateExpr *) (*expr);
 
 			if (relabel->arg != NULL)
 			{
@@ -2061,6 +2093,30 @@ default_time_str(Var *var)
 			break;
 		}
 		case TIMESTAMPTZOID:
+		{
+			/* Display value after timestamp type data redaction */
+			snprintf(time_str, sizeof(time_str), "1970-01-01 00:00:00.000000+00");
+			break;
+		}
+		case MYSTIMESTAMPOID:
+		{
+			/* Display value after timestamp type data redaction */
+			snprintf(time_str, sizeof(time_str), "1970-01-01 10:00:00");
+			break;
+		}
+		case MYSTIMEOID:
+		{
+			/* Display value after time type data redaction */
+			snprintf(time_str, sizeof(time_str), "00:00:00");
+			break;
+		}
+		case ORATIMESTAMPOID:
+		{
+			/* Display value after timestamp type data redaction */
+			snprintf(time_str, sizeof(time_str), "1970-01-01 00:00:00.000000");
+			break;
+		}
+		case ORATIMESTAMPTZOID:
 		{
 			/* Display value after timestamp type data redaction */
 			snprintf(time_str, sizeof(time_str), "1970-01-01 00:00:00.000000+00");
