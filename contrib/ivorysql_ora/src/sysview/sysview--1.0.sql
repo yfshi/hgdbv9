@@ -11401,6 +11401,74 @@ CREATE OR REPLACE VIEW SYS.USER_TYPES AS
 GRANT SELECT ON SYS.USER_TYPES TO PUBLIC;
 
 /* *******************************************************************************************
+                                           pg_banned_role_api
+* *******************************************************************************************/
+create or replace function sys.pg_banned_role_api_definner()
+returns setof record
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+	SELECT * FROM hg_security.pg_banned_role;
+$$;
+
+CREATE VIEW sys.pg_banned_role_api_definner_view AS
+  SELECT * FROM sys.pg_banned_role_api_definner() AS t(
+	roleid oid,
+	username name,
+	failure_count real,
+	banned_date text
+  );
+ALTER FUNCTION sys.pg_banned_role_api_definner OWNER TO syssso;
+ALTER VIEW sys.pg_banned_role_api_definner_view OWNER TO syssso;
+GRANT SELECT ON sys.pg_banned_role_api_definner_view TO PUBLIC;
+GRANT EXECUTE ON FUNCTION sys.pg_banned_role_api_definner TO PUBLIC;
+
+create or replace function sys.pg_banned_role_api_invoker()
+returns setof record
+LANGUAGE sql
+STRICT VOLATILE
+AS $$
+	SELECT * FROM hg_security.pg_banned_role;
+$$;
+
+CREATE VIEW sys.pg_banned_role_api_invoker_view AS
+  SELECT * FROM sys.pg_banned_role_api_invoker() AS t(
+	roleid oid,
+	username name,
+	failure_count real,
+	banned_date text
+  );
+ALTER FUNCTION sys.pg_banned_role_api_invoker OWNER TO syssso;
+ALTER VIEW sys.pg_banned_role_api_invoker_view OWNER TO syssso;
+
+create or replace function sys.pg_banned_role_api()
+returns setof record
+LANGUAGE plpgsql
+STRICT VOLATILE
+AS $$
+DECLARE
+	se_feture_switch boolean;
+begin
+	se_feture_switch := COALESCE(NULLIF(pg_catalog.current_setting('se_feature.mode', true), '')::boolean, false);
+	IF se_feture_switch THEN
+		RETURN QUERY select * from sys.pg_banned_role_api_definner_view;
+	ELSE
+		RETURN QUERY select * from sys.pg_banned_role_api_invoker_view;
+	END IF;
+END;
+$$;
+
+CREATE VIEW sys.pg_banned_role_api AS
+  SELECT * FROM sys.pg_banned_role_api()AS t(
+	roleid oid,
+	username name,
+	failure_count real,
+	banned_date text
+  );
+ALTER VIEW sys.pg_banned_role_api OWNER TO syssso;
+GRANT SELECT ON sys.pg_banned_role_api TO PUBLIC;
+
+/* *******************************************************************************************
                                            XXX_USERS
 * *******************************************************************************************/
 CREATE OR REPLACE FUNCTION sys.get_user_auth_info(p_username text)
@@ -11417,7 +11485,7 @@ BEGIN
 		INTO passwd, is_banned, banned_time, validuntil
 	FROM pg_authid a
 	LEFT JOIN pg_roles r ON a.oid = r.oid
-	LEFT JOIN hg_security.pg_banned_role br ON r.oid = br.roleid
+	LEFT JOIN sys.pg_banned_role_api br ON r.oid = br.roleid
 	WHERE a.rolname = p_username;
     ret := ROW(passwd, is_banned, banned_time, validuntil);
     RETURN ret;
