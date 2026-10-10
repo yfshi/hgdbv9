@@ -37,6 +37,7 @@
 #include "utils/selfuncs.h"
 
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
+#include "catalog/partition.h"
 #include "utils/guc.h"
 #include "utils/ora_compatible.h"
 #include "nodes/parsenodes.h"
@@ -205,11 +206,39 @@ static bool ec_member_matches_indexcol(PlannerInfo *root, RelOptInfo *rel,
 /* Begin - ReqID:SRS-MYSQL-UPDATE */
 static IndexHintType CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index, Oid relationOid);
 
+/* Begin - bug#9343 */
+/*
+ * IndexHintOidMatches
+ *		True when scanOid is hintOid, or a partition leaf whose top parent
+ *		is hintOid.  Hints are stored on the partitioned table and its
+ *		index; planning scans the leaf partition and the child index.
+ */
+bool
+IndexHintOidMatches(Oid hintOid, Oid scanOid)
+{
+	int			depth = 0;
+
+	if (hintOid == scanOid)
+		return true;
+	if (!OidIsValid(hintOid) || !OidIsValid(scanOid))
+		return false;
+
+	while (get_rel_relispartition(scanOid) && depth < 32)
+	{
+		scanOid = get_partition_parent(scanOid, true);
+		if (scanOid == hintOid)
+			return true;
+		depth++;
+	}
+	return false;
+}
+/* End - bug#9343 */
+
 /* Get indexhint type */
 static IndexHintType
 CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index, Oid relationOid)
 {
-	/* Begin - bug#9228 */
+	/* Begin - bug#9228, bug#9343 */
 	IndexHintType			itype = INDEX_HINT_USE;
 	IndexHintRelationData  *indexdata;
 	bool					has_use_or_force = false;
@@ -220,29 +249,28 @@ CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index, Oid relationOid)
  	{
 		indexdata = (IndexHintRelationData *) lfirst(lc);
 
-		/* Ignore hints for other relations in this query. */
-		if (indexdata->relationOid != relationOid)
-			continue;
-
-		/* Hint names this index. */
- 		if (indexdata->indexOid == index->indexoid)
- 		{
-			if (indexdata->index_type == INDEX_HINT_IGNORE)
-				return INDEX_HINT_IGNORE;
-
-			if (indexdata->index_type == INDEX_HINT_USE ||
-				indexdata->index_type == INDEX_HINT_FORCE)
+		/* Hints for other relations do not apply to this scan. */		if (IndexHintOidMatches(indexdata->relationOid, relationOid))
+		if (IndexHintOidMatches(indexdata->relationOid, relationOid))
+		{
+			/* This index, or the parent of this partition index. */
+			if (IndexHintOidMatches(indexdata->indexOid, index->indexoid))
 			{
-				has_use_or_force = true;
-				this_use_or_force = true;
-				itype = indexdata->index_type;
-			}
-			continue;
-		}
+				/* Named IGNORE: skip only this index. */
+				if (indexdata->index_type == INDEX_HINT_IGNORE)
+					return INDEX_HINT_IGNORE;
 
-		if (indexdata->index_type == INDEX_HINT_USE ||
-			indexdata->index_type == INDEX_HINT_FORCE)
-			has_use_or_force = true;
+				if (indexdata->index_type == INDEX_HINT_USE ||
+					indexdata->index_type == INDEX_HINT_FORCE)
+				{
+					has_use_or_force = true;
+					this_use_or_force = true;
+					itype = indexdata->index_type;
+				}
+			}
+			else if (indexdata->index_type == INDEX_HINT_USE ||
+					 indexdata->index_type == INDEX_HINT_FORCE)
+				has_use_or_force = true;
+		}
  	}
 
 	/*
@@ -254,7 +282,7 @@ CheckRelindexInHint(List *indexhintlist, IndexOptInfo *index, Oid relationOid)
 		return INDEX_HINT_IGNORE;
 
  	return itype;
-	/* End - bug#9228 */
+	/* End - bug#9228, bug#9343 */
 }
 /* End - ReqID:SRS-MYSQL-UPDATE */
 

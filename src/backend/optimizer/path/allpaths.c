@@ -796,11 +796,17 @@ set_plain_rel_pathlist(PlannerInfo *root, RelOptInfo *rel, RangeTblEntry *rte)
 			IndexHintRelationData *indexdata =
 				(IndexHintRelationData *) lfirst(lc);
 
-			if (indexdata->relationOid != relationOid)
+			/* Begin - bug#9343 */
+			/* Partition leaf matches a hint stored on the parent. */
+			if (!IndexHintOidMatches(indexdata->relationOid, relationOid))
 				continue;
+			/* End - bug#9343 */
 
-			if (indexdata->index_type == INDEX_HINT_USE ||
-				indexdata->index_type == INDEX_HINT_FORCE)
+			/*
+			 * FORCE: a table scan is very expensive, so skip it.
+			 * USE only limits which indexes are considered.
+			 */
+			if (indexdata->index_type == INDEX_HINT_FORCE)
 			{
 				skip_seqscan = true;
 				break;
