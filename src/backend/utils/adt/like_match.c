@@ -15,6 +15,11 @@
  * MatchText - to name of function wanted
  * do_like_escape - name of function if wanted - needs CHAREQ and CopyAdvChar
  * MATCH_LOWER - define for case (4) to specify case folding for 1-byte chars
+ * bug9366 BEGIN
+ * CHAREQ - define for case (5) to compare whole characters
+ * LIKE_MATCH_BY_CHAR - define for cases (5)/(6), compare and advance whole chars
+ * LIKE_ICASE - define for case (6), compare characters case-insensitively
+ * bug9366 END
  *
  * Copyright (c) 1996-2021, PostgreSQL Global Development Group
  *
@@ -80,6 +85,37 @@
 #define GETCHAR(t) (t)
 #endif
 
+/* bug9366 BEGIN */
+/*
+ * The byte-at-a-time matching below relies on an assumption that no
+ * backend-legal encoding allows an ASCII wildcard byte ('%', '_', '\\') to
+ * appear as a non-first byte of a multibyte character.  GB18030 breaks that
+ * assumption: the second byte of a two-byte character can be 0x5C ('\') or
+ * 0x5F ('_').  When LIKE_MATCH_BY_CHAR is defined, we therefore compare and
+ * advance whole characters, which keeps pattern and text synchronized on
+ * character boundaries so that wildcard bytes are only recognized at the
+ * start of a character.
+ *
+ * LIKE_ICASE additionally folds case on a whole-character basis: only
+ * single-byte ASCII characters are case-folded, while multibyte characters
+ * (e.g. Chinese, which has no case) are compared as-is.  This avoids
+ * corrupting a multibyte character by folding an ASCII-looking trailing byte.
+ */
+#ifdef LIKE_MATCH_BY_CHAR
+#define LIKE_NEXT(p, plen) NextChar((p), (plen))
+#else
+#define LIKE_NEXT(p, plen) NextByte((p), (plen))
+#endif
+
+#ifdef LIKE_ICASE
+#define LIKE_CHAREQ(p1, p1len, p2, p2len) gb18030_ichareq((p1), (p1len), (p2), (p2len))
+#elif defined(LIKE_MATCH_BY_CHAR)
+#define LIKE_CHAREQ(p1, p1len, p2, p2len) CHAREQ((p1), (p1len), (p2), (p2len))
+#else
+#define LIKE_CHAREQ(p1, p1len, p2, p2len) (GETCHAR(*(p1)) == GETCHAR(*(p2)))
+#endif
+/* bug9366 END */
+
 static int
 MatchText(const char *t, int tlen, const char *p, int plen,
 		  pg_locale_t locale, bool locale_is_c)
@@ -110,8 +146,10 @@ MatchText(const char *t, int tlen, const char *p, int plen,
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_ESCAPE_SEQUENCE),
 						 errmsg("LIKE pattern must not end with escape character")));
-			if (GETCHAR(*p) != GETCHAR(*t))
+			/* bug9366 BEGIN */
+			if (!LIKE_CHAREQ(p, plen, t, tlen))
 				return LIKE_FALSE;
+			/* bug9366 END */
 		}
 		else if (*p == '%')
 		{
@@ -202,16 +240,20 @@ MatchText(const char *t, int tlen, const char *p, int plen,
 			NextByte(p, plen);
 			continue;
 		}
-		else if (GETCHAR(*p) != GETCHAR(*t))
+		/* bug9366 BEGIN */
+		else if (!LIKE_CHAREQ(p, plen, t, tlen))
 		{
 			/* non-wildcard pattern char fails to match text char */
 			return LIKE_FALSE;
 		}
+		/* bug9366 END */
 
+		/* bug9366 BEGIN */
 		/*
 		 * Pattern and text match, so advance.
 		 *
-		 * It is safe to use NextByte instead of NextChar here, even for
+		 * For the byte-at-a-time variants (LIKE_MATCH_BY_CHAR not defined), it
+		 * is safe to use NextByte instead of NextChar here, even for
 		 * multi-byte character sets, because we are not following immediately
 		 * after a wildcard character. If we are in the middle of a multibyte
 		 * character, we must already have matched at least one byte of the
@@ -219,9 +261,13 @@ MatchText(const char *t, int tlen, const char *p, int plen,
 		 * on character boundaries.  And we know that no backend-legal
 		 * encoding allows ASCII characters such as '%' to appear as non-first
 		 * bytes of characters, so we won't mistakenly detect a new wildcard.
+		 *
+		 * For GB18030 (LIKE_MATCH_BY_CHAR defined), the above assumption does
+		 * not hold, so we compare and advance whole characters instead.
 		 */
-		NextByte(t, tlen);
-		NextByte(p, plen);
+		LIKE_NEXT(t, tlen);
+		LIKE_NEXT(p, plen);
+		/* bug9366 END */
 	}
 	/* 
 	 * Begin - SRS-MISC-COMPATDM-SQL
@@ -410,6 +456,19 @@ do_like_escape(text *pat, text *esc)
 #ifdef do_like_escape
 #undef do_like_escape
 #endif
+
+/* bug9366 BEGIN */
+#ifdef LIKE_MATCH_BY_CHAR
+#undef LIKE_MATCH_BY_CHAR
+#endif
+
+#ifdef LIKE_ICASE
+#undef LIKE_ICASE
+#endif
+
+#undef LIKE_CHAREQ
+#undef LIKE_NEXT
+/* bug9366 END */
 
 #undef GETCHAR
 
