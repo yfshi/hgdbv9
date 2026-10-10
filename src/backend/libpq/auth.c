@@ -275,6 +275,7 @@ static int	PerformRadiusTransaction(const char *server, const char *secret, cons
  * to record login events, insert a delay after failed authentication, etc.
  */
 ClientAuthentication_hook_type ClientAuthentication_hook = NULL;
+ClientPreAuthentication_hook_type ClientPreAuthentication_hook = NULL;
 
 /*
  * Tell the user the authentication failed, but not (much about) why.
@@ -452,6 +453,10 @@ ClientAuthentication(Port *port)
 	char	   *logdetail = NULL;
 
 	ip_addr_str = port->remote_host; // ReqID:SRS-SECURITY-IDENTITYAUTH
+
+	/* The startup packet, peer address and requested username are available. */
+	if (ClientPreAuthentication_hook)
+		(*ClientPreAuthentication_hook) (port);
 
 	/*
 	 * Get the authentication method to use for this frontend/database
