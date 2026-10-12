@@ -63,6 +63,7 @@ PG_FUNCTION_INFO_V1(binary_in);
 PG_FUNCTION_INFO_V1(bytea_binary);
 PG_FUNCTION_INFO_V1(binary_sortsupport);
 PG_FUNCTION_INFO_V1(binary_bool);
+PG_FUNCTION_INFO_V1(myblob_text);
 
 Datum 
 binary(PG_FUNCTION_ARGS)
@@ -377,4 +378,17 @@ binary_bool(PG_FUNCTION_ARGS)
 	ret = my_atoi_int8(src, is_insert);
 	
 	PG_RETURN_BOOL(ret != 0);
+}
+
+Datum
+myblob_text(PG_FUNCTION_ARGS)
+{
+	bytea	*b = PG_GETARG_BYTEA_P(0);
+	Size	len = VARSIZE_ANY_EXHDR(b);
+	text	*t = (text *) palloc(len + VARHDRSZ);
+
+	SET_VARSIZE(t, len + VARHDRSZ);
+	memcpy(VARDATA(t), VARDATA_ANY(b), len);
+	PG_FREE_IF_COPY(b, 0);
+	PG_RETURN_TEXT_P(t);
 }
