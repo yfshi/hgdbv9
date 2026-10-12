@@ -4022,6 +4022,30 @@ coerce_null_to_domain(Oid typid, int32 typmod, Oid collation,
 	return result;
 }
 
+/* Begin - BUG#9294 */
+Oid mys_select_common_type(ParseState *pstate, List *exprs,
+						   const char *context, Node **which_expr)
+{
+	Oid resultOid;
+
+	/* Prefer MySQL type resolution; fall back to PostgreSQL if unresolved. */
+	if (mys_agg_field_type_hook)
+	{
+		resultOid = mys_agg_field_type_hook(exprs, which_expr);
+
+		if (!OidIsValid(resultOid))
+		{
+			return select_common_type(pstate, exprs,
+									  context, which_expr);
+		}
+		return resultOid;
+	}
+
+	return select_common_type(pstate, exprs,
+							  context, which_expr);
+}
+/* End - BUG#9294 */
+
 /*
  * parser_coercion_errposition - report coercion error location, if possible
  *
@@ -4525,13 +4549,29 @@ coerce_to_common_type(ParseState *pstate, Node *node,
 					  Oid targetTypeId, const char *context)
 {
 	Oid			inputTypeId = exprType(node);
+	CoercionContext ccontext;
+	CoercionForm cformat;
 
 	if (inputTypeId == targetTypeId)
 		return node;			/* no work */
-	if (can_coerce_type(1, &inputTypeId, &targetTypeId, COERCION_IMPLICIT))
+
+		/* Begin - BUG#9294 */
+	if (compatible_mode == MYS_MODE)
+	{
+		ccontext = COERCION_EXPLICIT;
+		cformat = COERCE_EXPLICIT_CAST;
+	}
+	/* End - BUG#9294 */
+	else
+	{
+		ccontext = COERCION_IMPLICIT;
+		cformat = COERCE_IMPLICIT_CAST;
+	}
+
+	if (can_coerce_type(1, &inputTypeId, &targetTypeId, ccontext))
 	{
 		node = coerce_type(pstate, node, inputTypeId, targetTypeId, -1,
-						   COERCION_IMPLICIT, COERCE_IMPLICIT_CAST, -1);
+						   ccontext, cformat, -1);
 	}
 	else
 		ereport(ERROR,
@@ -4544,44 +4584,6 @@ coerce_to_common_type(ParseState *pstate, Node *node,
 				 parser_errposition(pstate, exprLocation(node))));
 	return node;
 }
-
-/* Begin - bug#z6172 */
-
-/*
- * mys_coerce_to_common_type()
- *	  Coerce an expression to the given type.
- *
- * This is used following select_common_type() to coerce the individual
- * expressions to the desired type.  'context' is a phrase to use in the
- * error message if we fail to coerce.
- *
- * As with coerce_type, pstate may be NULL if no special unknown-Param
- * processing is wanted.
- */
-Node *
-mys_coerce_to_common_type(ParseState *pstate, Node *node,
-						  Oid targetTypeId, const char *context)
-{
-	Oid		inputTypeId = exprType(node);
-
-	if (inputTypeId == targetTypeId)
-		return node;			  /* no work */
-	if (can_coerce_type(1, &inputTypeId, &targetTypeId, COERCION_EXPLICIT))
-		node = coerce_type(pstate, node, inputTypeId, targetTypeId, -1,
-						   COERCION_EXPLICIT, COERCE_EXPLICIT_CAST, -1);
-	else
-		ereport(ERROR,
-				(errcode(ERRCODE_CANNOT_COERCE),
-		/* translator: first %s is name of a SQL construct, eg CASE */
-				 errmsg("%s could not convert type %s to %s",
-						context,
-						format_type_be(inputTypeId),
-						format_type_be(targetTypeId)),
-				 parser_errposition(pstate, exprLocation(node))));
-	return node;
-}
-
-/* End - bug#z6172 */
 
 /*
  * verify_common_type()

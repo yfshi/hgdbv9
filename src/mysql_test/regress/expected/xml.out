@@ -1448,7 +1448,7 @@ WITH
                 LATERAL xmltable('/proc' PASSING proc
                                  COLUMNS proname name,
                                          proowner oid,
-                                         procost float,
+                                         procost double,
                                          pronargs int,
                                          proargnames text,
                                          proargtypes text))
@@ -1474,7 +1474,7 @@ WITH
                 LATERAL xmltable('/data/proc' PASSING doc
                                  COLUMNS proname name,
                                          proowner oid,
-                                         procost float,
+                                         procost double,
                                          pronargs int,
                                          proargnames text,
                                          proargtypes text))

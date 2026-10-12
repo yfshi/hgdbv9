@@ -4048,10 +4048,24 @@ transformSetOperationTree(ParseState *pstate, SelectStmt *stmt,
 				/* End - bug#00008497 */
 			}
 			/* End - BUG#8430 */
-			rescoltype = select_common_type(pstate,
-											list_make2(lcolnode, rcolnode),
-											context,
-											&bestexpr);
+
+			/* Begin - BUG#9294 */
+			if (compatible_mode == MYS_MODE)
+			{
+				rescoltype = mys_select_common_type(pstate,
+													list_make2(lcolnode, rcolnode),
+													context,
+													&bestexpr);
+			}
+			/* End - BUG#9294 */
+			else
+			{
+				rescoltype = select_common_type(pstate,
+												list_make2(lcolnode, rcolnode),
+												context,
+												&bestexpr);
+			}
+
 			bestlocation = exprLocation(bestexpr);
 
 			/*

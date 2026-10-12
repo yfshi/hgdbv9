@@ -141,6 +141,9 @@ mq_append_string_lenenc(StringInfo buf, const char *data, int dataLen)
 static inline void
 mq_append_string_eof(StringInfo buf, const char *data)
 {
+    if (data == NULL)
+        return;
+
     appendBinaryStringInfo(buf, data, strlen(data));
 }
 

@@ -366,3 +366,15 @@ SELECT pg_typeof(
 
 DROP TABLE IF EXISTS biz_case_molecule_extend;
 /* Begin OA#2701 */
+
+/* Begin OA#2701 */
+
+/* Begin OA#2859 */
+CREATE TABLE t_coalesce_mysbit (a mysbit);
+INSERT INTO t_coalesce_mysbit VALUES (NULL);
+
+SELECT coalesce(a, 0) FROM t_coalesce_mysbit;
+SELECT pg_typeof(coalesce(a, 0)) FROM t_coalesce_mysbit;
+
+DROP TABLE t_coalesce_mysbit;
+/* End OA#2859 */

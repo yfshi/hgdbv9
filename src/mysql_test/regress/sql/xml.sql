@@ -569,13 +569,12 @@ WITH
                 LATERAL xmltable('/proc' PASSING proc
                                  COLUMNS proname name,
                                          proowner oid,
-                                         procost float,
+                                         procost double,
                                          pronargs int,
                                          proargnames text,
                                          proargtypes text))
    SELECT * FROM z
    EXCEPT SELECT * FROM x;
-
 -- multi line xml test, result should be empty too
 WITH
    x AS (SELECT proname, proowner, procost::numeric, pronargs,
@@ -592,7 +591,7 @@ WITH
                 LATERAL xmltable('/data/proc' PASSING doc
                                  COLUMNS proname name,
                                          proowner oid,
-                                         procost float,
+                                         procost double,
                                          pronargs int,
                                          proargnames text,
                                          proargtypes text))

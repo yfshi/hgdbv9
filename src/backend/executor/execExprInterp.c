@@ -4890,7 +4890,20 @@ ExecEvalVarRefExec(ExprState *state, ExprEvalStep *op)
 		 */
 		if (OidIsValid(op->d.varref.rettype))
 		{
-			*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype, -1);
+			/* Begin - BUG#9294 */
+			if (op->d.varref.rettype == UNKNOWNOID)
+			{
+				Oid		typOutput;
+				bool	typIsVarlena;
+
+				getTypeOutputInfo(currentval->consttype, &typOutput, &typIsVarlena);
+				*op->resvalue = CStringGetDatum(OidOutputFunctionCall(typOutput, currentval->constvalue));
+			}
+			/* End - BUG#9294 */
+			else
+			{
+				*op->resvalue = mys_convert_current_const_to_target_const(currentval, op->d.varref.rettype, -1);
+			}
 		}
 		else
 		{

@@ -970,7 +970,7 @@ make_op_ext(ParseState *pstate, List *opname, Node *ltree, Node *rtree,
 				List	   *exprlist = NIL;
 
 				exprlist = list_make2(ltree, rtree);
-				ptype = mys_agg_field_type_hook(exprlist);
+				ptype = mys_agg_field_type_hook(exprlist, NULL);
 
 				/* Because the varchar type does not have its
 				 * own dedicated operators, it is easy to encounter

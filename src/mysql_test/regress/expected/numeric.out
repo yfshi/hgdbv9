@@ -2572,9 +2572,11 @@ select 1.000000000123 ^ (-2147483648);
 (1 row)
 
 select coalesce(nullif(0.9999999999 ^ 23300000000000, 0), 0) as rounds_to_zero;
-ERROR:  COALESCE could not convert type integer to uint8
-LINE 1: ...oalesce(nullif(0.9999999999 ^ 23300000000000, 0), 0) as roun...
-                                                             ^
+ rounds_to_zero 
+----------------
+ 23300000000001
+(1 row)
+
 select round(((1 - 1.500012345678e-1000) ^ 1.45e1003) * 1e1000);
                           round                           
 ----------------------------------------------------------
@@ -2595,9 +2597,11 @@ select 0.5678 ^ (-85);
 (1 row)
 
 select coalesce(nullif(0.9999999999 ^ 70000000000000, 0), 0) as underflows;
-ERROR:  COALESCE could not convert type integer to uint8
-LINE 1: ...oalesce(nullif(0.9999999999 ^ 70000000000000, 0), 0) as unde...
-                                                             ^
+   underflows   
+----------------
+ 70000000000001
+(1 row)
+
 -- negative base to integer powers
 select (-1.0) ^ 2147483646;
        ?column?       

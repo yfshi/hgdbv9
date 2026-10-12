@@ -4153,6 +4153,17 @@ STRICT
 PARALLEL SAFE;
 /* End - bug#6988 */
 
+/* Begin - BUG#9294 */
+CREATE FUNCTION ivymy.upper(uint8)
+RETURNS varchar
+AS $$
+    SELECT $1::text;
+$$
+LANGUAGE SQL
+STRICT
+PARALLEL SAFE;
+/* End - BUG#9294 */
+
 /* Begin - BUG#8428 8441 */
 CREATE OR REPLACE FUNCTION ivymy.upper(ivymy.varbinary)
 RETURNS text

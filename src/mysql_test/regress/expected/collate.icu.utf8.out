@@ -773,10 +773,10 @@ WITH RECURSIVE foo(x) AS
    UNION ALL
    SELECT (x || 'c') COLLATE "de-x-icu" FROM foo WHERE length(x) < 10)
 SELECT * FROM foo;
-ERROR:  recursive query "foo" column 1 has collation "en-x-icu" in non-recursive term but collation "de-x-icu" overall
+ERROR:  recursive query "foo" column 1 has type character varying in non-recursive term but type text overall
 LINE 2:    (SELECT x FROM (VALUES('a' COLLATE "en-x-icu"),('b')) t(x...
                    ^
-HINT:  Use the COLLATE clause to set the collation of the non-recursive term.
+HINT:  Cast the output of the non-recursive term to the correct type.
 -- casting
 SELECT CAST('42' AS text COLLATE "C");
 ERROR:  syntax error at or near "COLLATE"

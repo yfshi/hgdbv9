@@ -24,7 +24,7 @@ typedef Datum (* ora_raw_input_hook_type)(PG_FUNCTION_ARGS);
 extern PGDLLIMPORT ora_raw_input_hook_type ora_raw_input_hook;
 
 /* Begin - bug#z6172 */
-typedef Oid (* mys_agg_field_type_hook_type) (List *exprs);
+typedef Oid (* mys_agg_field_type_hook_type) (List *exprs, Node **which_expr);
 extern PGDLLIMPORT mys_agg_field_type_hook_type mys_agg_field_type_hook;
 /* End - bug#z6172 */
 
@@ -81,6 +81,12 @@ extern int	parser_coercion_errposition(ParseState *pstate,
 
 extern Oid	select_common_type(ParseState *pstate, List *exprs,
 							   const char *context, Node **which_expr);
+
+/* Begin - BUG#9294 */
+extern Oid mys_select_common_type(ParseState *pstate, List *exprs,
+								  const char *context, Node **which_expr);
+/* End - BUG#9294 */
+
 /* Begin - BUGID:0000536 */
 extern Oid select_common_type_for_nvl(ParseState *pstate, List *exprs,
 				   const char *context, Node **which_expr);
@@ -92,11 +98,7 @@ extern Oid select_common_type_for_nvl2(ParseState *pstate, List *exprs,
 extern Node *coerce_to_common_type(ParseState *pstate, Node *node,
 								   Oid targetTypeId,
 								   const char *context);
-/* Begin - bug#z6172 */
-extern Node *mys_coerce_to_common_type(ParseState *pstate, Node *node,
-								   Oid targetTypeId,
-								   const char *context);
-/* End - bug#z6172 */
+
 extern bool verify_common_type(Oid common_type, List *exprs);
 
 extern int32 select_common_typmod(ParseState *pstate, List *exprs, Oid common_type);

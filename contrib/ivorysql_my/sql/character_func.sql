@@ -640,8 +640,8 @@ SELECT
 	-- 12. Hexadecimal and bit types
 	IF(TRUE, X'4D7953514C', 'hex_text') as hex_to_string,
 	IF(TRUE, 'hex_text', X'4D7953514C') as string_to_hex,
-	IF(TRUE, b'1010', 'bit_text') as bit_to_string,
-	IF(TRUE, 'bit_text', b'1010') as string_to_bit,
+	IF(TRUE, b'1010'::mysbit, 'bit_text') as bit_to_string,
+	IF(TRUE, 'bit_text', b'1010'::mysbit) as string_to_bit,
 
 	-- 13. Scientific notation numbers
 	IF(TRUE, 1.23e5, 'scientific') as scientific_to_string,

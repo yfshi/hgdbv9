@@ -413,8 +413,8 @@ SELECT pg_get_functiondef('functest_S_15'::regproc);
  BEGIN ATOMIC                                                        +
   SELECT                                                             +
           CASE                                                       +
-              WHEN ((x % 2) = 0) THEN (true)::tinyint                +
-              ELSE (false)::tinyint                                  +
+              WHEN ((x % 2) = 0) THEN true                           +
+              ELSE false                                             +
           END AS "case";                                             +
  END                                                                 +
  

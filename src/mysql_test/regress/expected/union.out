@@ -215,8 +215,8 @@ SELECT f1 FROM CHAR_TBL
 ORDER BY 1;
  three 
 -------
- a   
- ab  
+ a
+ ab
  abcd
 (3 rows)
 
@@ -986,13 +986,10 @@ LINE 1: SELECT a.f1 FROM (SELECT 'test' AS f1 FROM varchar_tbl) a
                                                    ^
 -- This should fail, but it should produce an error cursor
 SELECT '3.4'::numeric UNION SELECT 'foo';
-WARNING:  Truncated incorrect DECIMAL value: 'foo'
-LINE 1: SELECT '3.4'::numeric UNION SELECT 'foo';
-                                           ^
  numeric 
 ---------
-       0
-     3.4
+ 3.4
+ foo
 (2 rows)
 
 --

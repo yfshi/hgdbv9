@@ -96,5 +96,5 @@ extern Datum bittobinary(PG_FUNCTION_ARGS);
 /* End - bug#6619 */
 
 extern YearADT bigint_to_YearADT(int64 year);
-extern Oid mysql_agg_field_type(List *exprs); /* Bug - #6172 */
+extern Oid mysql_agg_field_type(List *exprs, Node **which_expr); /* Bug - #6172 */
 #endif	/* IVORYSQL_MYS_H_ */
