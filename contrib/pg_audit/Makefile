@@ -1,6 +1,7 @@
 # contrib/pg_audit/Makefile
 
 export enable_audit_partition_table
+export enable_compatible_ak
 
 MODULE_big = pg_audit
 OBJS = pg_audit.o  $(WIN32RES)

@@ -6649,9 +6649,32 @@ conninfo_storeval(PQconninfoOption *connOptions,
 	if (option == NULL)
 	{
 		if (!ignoreMissing)
-			appendPQExpBuffer(errorMessage,
-							  libpq_gettext("invalid connection option \"%s\"\n"),
+		{
+			#ifdef ENABLE_COMPATIBLE_AK
+			if (strcmp(keyword, "sslenccert") == 0)
+			{
+				appendPQExpBuffer(errorMessage,
+							  libpq_gettext("remove the connection option \"%s\", Use \"tlcpcacert and tlcpcert\" instead.\n"),
 							  keyword);
+			}
+			else if (strcmp(keyword, "sslenckey") == 0)
+			{
+				appendPQExpBuffer(errorMessage,
+							  libpq_gettext("remove the connection option \"%s\", Use \"tlcpkey\" instead.\n"),
+							  keyword);
+			}
+			else
+			{
+				appendPQExpBuffer(errorMessage,
+								  libpq_gettext("invalid connection option \"%s\"\n"),
+								  keyword);
+			}
+			#else
+			appendPQExpBuffer(errorMessage,
+				  libpq_gettext("invalid connection option \"%s\"\n"),
+				  keyword);
+			#endif
+		}
 		return NULL;
 	}
 

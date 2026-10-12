@@ -19,6 +19,12 @@ else
 $(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota contrib/sql_sentinel)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK #SRS-SECURITY-SQL-SENTINEL
 endif
 
+# hg_alarm is only built when --enable-compatible-ak is enabled, so it is
+# added to the top-level build separately from the fixed list above.
+ifeq ($(enable_compatible_ak), yes)
+$(call recurse,all install,contrib/hg_alarm)
+endif
+
 #/* Begin - BUG#Z00004703 */
 #build src/ before contrib/ or make -j 16 maybe failed for contrilb
 #rely on src
@@ -63,6 +69,11 @@ install-contrib/diskquota: install-src-recurse
 all-contrib/sql_sentinel: all-src-recurse
 install-contrib/sql_sentinel: install-src-recurse
 #End - SRS-SECURITY-SQL-SENTINEL
+# hg_alarm: build src/ before contrib/ (only when --enable-compatible-ak)
+ifeq ($(enable_compatible_ak), yes)
+all-contrib/hg_alarm-recurse: all-src-recurse
+install-contrib/hg_alarm-recurse: install-src-recurse
+endif
 
 
 docs:

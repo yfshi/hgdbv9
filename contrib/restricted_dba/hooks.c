@@ -66,6 +66,85 @@ static needs_fmgr_hook_type next_needs_fmgr_hook = NULL;
 
 SeParamCtl *se_param_ctl = NULL;
 
+#ifdef ENABLE_COMPATIBLE_AK
+/*
+ * Placeholder variable used to intercept the legacy GUC name hg_audit.enable.
+ * The check hook reports that the parameter has been renamed to audit.enable.
+ */
+static bool hg_dba_enable_accessctrl;
+
+static bool
+check_hg_accessctrl_enable(bool *newval, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_accessctrl.enable\" has been renamed");
+	GUC_check_errhint("Use \"se_feature.mode\" instead.");
+	return false;
+}
+
+static char *ssl_sign_cert_file;
+
+static bool check_sign_cert_file(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"ssl_sign_cert_file\" has been removed");
+	GUC_check_errhint("Use \"tlcp_cert_file\" instead.");
+	return false;
+}
+
+static char *ssl_sign_key_file;
+
+static bool check_sign_key_file(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"ssl_sign_key_file\" has been removed");
+	GUC_check_errhint("Use \"tlcp_sign_key_file\" instead.");
+	return false;
+}
+
+static char *ssl_enc_cert_file;
+
+static bool check_enc_cert_file(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"ssl_enc_cert_file\" has been removed");
+	GUC_check_errhint("Use \"tlcp_ca_cert_file\" instead.");
+	return false;
+}
+
+static char *ssl_enc_key_file;
+
+static bool check_enc_key_file(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"ssl_enc_key_file\" has been removed");
+	GUC_check_errhint("Use \"tlcp_enc_key_file\" instead.");
+	return false;
+}
+
+#endif
+
+
 static bool 
 drop_check(DropStmt *stmt, bool isTopLevel)
 {
@@ -914,4 +993,59 @@ _PG_init(void)
 	role_has_createrole_priv_hook = se_role_has_createrole_priv;
 	role_has_createdb_priv_hook = se_role_has_createdb_priv;
 	use_sequence_check_hook = se_use_sequence_check;
+
+#ifdef ENABLE_COMPATIBLE_AK
+		DefineCustomBoolVariable("hg_accessctrl.enable",
+								 "HighGo Access Control Enable.",
+								 NULL,
+								 &hg_dba_enable_accessctrl,
+								 false,
+								 PGC_USERSET,
+								 GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE,
+								 check_hg_accessctrl_enable,
+								 NULL,
+								 NULL);
+
+		/* TLCP */
+		DefineCustomStringVariable("ssl_sign_cert_file",
+								"Location of the SSL server certificate file.",
+								NULL,
+								&ssl_sign_cert_file,
+								"",
+								PGC_SIGHUP,
+								0,
+								check_sign_cert_file,
+								NULL,
+								NULL);
+		DefineCustomStringVariable("ssl_sign_key_file",
+								"Location of the SSL server certificate file.",
+								NULL,
+								&ssl_sign_key_file,
+								"",
+								PGC_SIGHUP,
+								0,
+								check_sign_key_file,
+								NULL,
+								NULL);
+		DefineCustomStringVariable("ssl_enc_cert_file",
+								"Location of the SSL server certificate file.",
+								NULL,
+								&ssl_enc_cert_file,
+								"",
+								PGC_SIGHUP,
+								0,
+								check_enc_cert_file,
+								NULL,
+								NULL);
+		DefineCustomStringVariable("ssl_enc_key_file",
+								"Location of the SSL server certificate file.",
+								NULL,
+								&ssl_enc_key_file,
+								"",
+								PGC_SIGHUP,
+								0,
+								check_enc_key_file,
+								NULL,
+								NULL);
+#endif
 }

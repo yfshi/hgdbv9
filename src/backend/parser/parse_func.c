@@ -72,6 +72,12 @@
 
 SynnameGetFuncInfo_hook_type SynnameGetFuncInfo_hook = NULL;	/* ReqID:SRS-SQL-SYNONYM */
 
+#ifdef ENABLE_COMPATIBLE_AK
+/* Hook for extensions to intercept an undefined function call */
+undefined_function_hook_type undefined_function_hook = NULL;
+#endif
+
+
 /* Possible error codes from LookupFuncNameInternal */
 typedef enum
 {
@@ -1004,6 +1010,17 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 							 "You might need to add explicit type casts."),
 					 parser_errposition(pstate, location)));
 		else
+		{
+			#ifdef ENABLE_COMPATIBLE_AK
+			/*
+			 * Give extensions a chance to intercept the undefined function
+			 * before reporting the standard error.
+			 */
+			if (undefined_function_hook)
+				(*undefined_function_hook) (NameListToString(funcname), nargs,
+											actual_arg_types);
+			#endif
+
 			ereport(ERROR,
 					(errcode(ERRCODE_UNDEFINED_FUNCTION),
 					 errmsg("function %s does not exist",
@@ -1012,6 +1029,7 @@ ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 					 errhint("No function matches the given name and argument types. "
 							 "You might need to add explicit type casts."),
 					 parser_errposition(pstate, location)));
+		}
 	}
 
 	/*

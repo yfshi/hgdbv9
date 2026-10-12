@@ -1,0 +1,56 @@
+Contrib: hg_alarm
+
+After installation of this contrib, you will get 4 files:
+    1. hg_alarm: 
+        An executable file under '$INSTALL/bin'.
+    2. hg_alarm.so: 
+        A dynamic loadable library under '$INSTALL/lib/postgresql'.
+    3. hg_alarm--1.0.sql
+        A SQL script under '$INSTALL/share/postgresql/extension'.
+    4. hg_alarm_conf.example:
+        A template configuration file under '$INSTALL/share/doc/contrib'.
+
+hg_alarm:
+    Usage:
+        ./hg_alarm OPERATION [-c] config-file-path [Options...]
+
+    While OPERATION can be 'start' or 'stop', the 'stop' opeartion aoto-
+    ignore any options provide, For 'start' operation:
+
+    The config-file-path must be provided in json format. A template is 
+    provided ($INSTALL/share/doc/contrib/hg_alarm_conf.example), users 
+    may use it to customize their own configuration.
+
+    hg_alarm is a simple daemon process to check config-threshold(s) 
+    registered in the conf file cyclically.
+
+    All options of 'hg_alarm' can alse be set in the config file, but the
+    options provided by cmd will overwrite them.
+
+    Try hg_alarm --help/-? for more details.
+
+hg_alarm.so:
+hg_alarm--1.0.sql:
+    These two files are used to create the hg_alarm extension.
+
+    The 'hg_alarm.so' defines the C language functions impl(s) of the SQL 
+    functions defined in 'hg_alarm--1.0.sql'.
+
+    Two SQL functions will be created after 'CREATE EXTENSION hg_alarm'.
+
+    1. hg_alarm_check(cfgpath, cfgname)
+        The backend who calls this routine simply parses the conf file to
+        get the threshold of the config specified by 'cfgname', and check
+        if current config value is out of it.
+
+        Returns 'True' if the config is still under control or 'False' if 
+        it is out of limitation.
+
+    2. hg_alarm_stat(cfgpath)
+        The backend who calls this routine simply parses the conf file to
+        get all configs and current config values.
+
+        Returns a table of tuples in a format: (cfgname, cfgcur, cfglimit)
+        
+hg_alarm_conf.example:
+    A template configuration file.

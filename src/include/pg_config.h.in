@@ -92,6 +92,8 @@
 
 /* Define to 1 to build with audit partition table. (--enable-audit-partition-table) */
 #undef ENABLE_AUDIT_PARTITION_TABLE
+/* Define to 1 to build with compatible ak. (--enable-compatible-ak) */
+#undef ENABLE_COMPATIBLE_AK
 /* Define to build with GSSAPI support. (--with-gssapi) */
 #undef ENABLE_GSS
 

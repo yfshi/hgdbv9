@@ -557,6 +557,11 @@ static bool audit_check_table_limit(Oid);
 static char get_audit_log_relkind(void);
 static void audit_drop_table_or_del_tuple(TimestampTz time_cur);
 /* End - SECURITY-AUTHENTICATION-METHOD */
+#ifdef ENABLE_COMPATIBLE_AK
+static void
+ivorysql_demo_undefined_function_hook(const char *funcname, int nargs,
+									  Oid *argtypes);
+#endif
 
 PG_FUNCTION_INFO_V1(pg_audit_ddl_command_end);
 PG_FUNCTION_INFO_V1(pg_audit_sql_drop);
@@ -588,6 +593,264 @@ PG_FUNCTION_INFO_V1(audit_show_diskinfo);
 PG_FUNCTION_INFO_V1(copy_file_to_remote_srv);
 PG_FUNCTION_INFO_V1(pg_audit_switch_primary);
 PG_FUNCTION_INFO_V1(show_audit_param);
+
+/* End - SECURITY-AUTHENTICATION-METHOD */
+#ifdef ENABLE_COMPATIBLE_AK
+/*
+ * Placeholder variable used to intercept the legacy GUC name hg_audit.enable.
+ * The check hook reports that the parameter has been renamed to audit.enable.
+ */
+static bool hg_audit_enable_placeholder;
+
+static bool
+check_hg_audit_enable(bool *newval, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.enable\" has been renamed");
+	GUC_check_errhint("Use \"audit.enable\" instead.");
+	return false;
+}
+
+/*
+ * Placeholder variable used to intercept the legacy GUC name hg_audit.alarm.
+ * The check hook reports that the parameter has been removed.
+ */
+static bool hg_audit_alarm_placeholder;
+
+static bool
+check_hg_audit_alarm(bool *newval, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.alarm\" has been removed");
+	return false;
+}
+
+static char *hg_audit_alarmemail;
+
+static bool check_hg_audit_alarmemail(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.arlarmemail\" has been removed");
+	return false;
+
+}
+
+static char *hg_audit_logencryp = NULL;
+
+static bool check_hg_audit_logencryp(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.logencryp\" has been removed");
+	return false;
+
+}
+
+static int hg_audit_logsize;
+
+static bool
+audit_check_hg_audit_logsize(int *newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	if (newvalue == NULL)
+		return false;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.logsize\" has been removed");
+	return false;
+
+}
+
+static int hg_fullmode;
+
+static bool
+audit_check_hg_audit_fullmode(int *newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	if (newvalue == NULL)
+		return false;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.fullmode\" has been renamed \"audit.logpolicy\".");
+	return false;
+
+}
+
+static int hg_audit_retentionpolicy_switch;
+
+static bool
+audit_check_retentionpolicy(int *newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	if (newvalue == NULL)
+		return false;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.retentionpolicy\" has been renamed \"audit.retentionpolicy\".");
+	return false;
+
+}
+
+static int hg_audit_spacelimit;
+static bool
+audit_check_spacelimit(int *newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	if (newvalue == NULL)
+		return false;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.spacelimit\" has been renamed \"audit.spacelimit\".");
+	return false;
+
+}
+
+static char *hg_audit_spacealarm;
+static bool audit_check_spacealarm(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.spacealarm\" has been renamed \"audit.spacealarm\".");
+	return false;
+
+}
+
+
+static AuditOpresSwitch hg_audit_systemopers;
+static bool
+audit_check_systemopers(int *newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	if (newvalue == NULL)
+		return false;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.systemopers\" has been renamed \"audit.systemopers\".");
+	return false;
+
+}
+
+static char *hg_audit_archdir;
+static bool audit_check_archdir(char **newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.logarchdir\" has been renamed \"audit.archdir\".");
+	return false;
+
+}
+
+static int hg_audit_retentiondays;
+static bool
+audit_check_retentiondays(int *newvalue, void **extra, GucSource source)
+{
+	/* allow the default initialization to proceed silently */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	if (newvalue == NULL)
+		return false;
+
+	GUC_check_errcode(ERRCODE_FEATURE_NOT_SUPPORTED);
+	GUC_check_errmsg("parameter \"hg_audit.retentiondays\" has been renamed \"audit.retentiondays\".");
+	return false;
+
+}
+
+
+
+/*
+ * Hook invoked when the parser fails to resolve a function call.  Report a
+ * customized message when the legacy name hg_audit_object is used.
+ */
+static void
+ivorysql_demo_undefined_function_hook(const char *funcname, int nargs,
+									  Oid *argtypes)
+{
+	if (audit_GUC.audit_enable != AUDIT_ON)
+		return;
+
+	if (pg_strcasecmp(funcname, "hg_audit_object") == 0)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function %s has been renamed", funcname),
+				 errhint("Use pg_audit_object instead.")));
+	else if(pg_strcasecmp(funcname, "hg_noaudit_object") == 0)
+			ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("function %s has been renamed", funcname),
+				 errhint("Use pg_noaudit_object instead.")));
+	else if(pg_strcasecmp(funcname, "hg_audit_showlog") == 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("function %s has been removed", funcname),
+			 errhint("Use SELECT TABLE instead.")));
+	else if(pg_strcasecmp(funcname, "hg_audit_file_archive") == 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("function %s has been renamed", funcname),
+			 errhint("Use pg_audit_file_archive instead.")));
+	else if(pg_strcasecmp(funcname, "hg_audit_stmt") == 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("function %s has been renamed", funcname),
+			 errhint("Use pg_audit_stmt instead.")));
+	else if(pg_strcasecmp(funcname, "hg_noaudit_stmt") == 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("function %s has been renamed", funcname),
+			 errhint("Use pg_noaudit_stmt instead.")));
+	else if(pg_strcasecmp(funcname, "hg_noaudit_stmt") == 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("function %s has been renamed", funcname),
+			 errhint("Use pg_noaudit_stmt instead.")));
+	else if(pg_strcasecmp(funcname, "hg_audit_add_analyze_rule") == 0 ||
+			pg_strcasecmp(funcname, "hg_audit_delete_analyze_rule") == 0 ||
+			pg_strcasecmp(funcname, "hg_audit_file_delete") == 0 ||
+			pg_strcasecmp(funcname, "hg_audit_get_filelist") == 0)
+		ereport(ERROR,
+			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+			 errmsg("function %s has been removed", funcname)));
+
+}
+#endif
 
 Datum
 current_is_syssao(PG_FUNCTION_ARGS)
@@ -1319,6 +1582,148 @@ static void audit_define_GUC(void)
 						NULL,
 						NULL);
 /* End - SECURITY-AUTHENTICATION-METHOD */
+
+#ifdef ENABLE_COMPATIBLE_AK
+	DefineCustomBoolVariable("hg_audit.enable",
+							 "Legacy name for audit.enable",
+							 NULL,
+							 &hg_audit_enable_placeholder,
+							 false,
+							 PGC_USERSET,
+							 GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE,
+							 check_hg_audit_enable,
+							 NULL,
+							 NULL);
+
+	DefineCustomBoolVariable("hg_audit.alarm",
+							 "Removed legacy parameter",
+							 NULL,
+							 &hg_audit_alarm_placeholder,
+							 false,
+							 PGC_USERSET,
+							 GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE,
+							 check_hg_audit_alarm,
+							 NULL,
+							 NULL);
+	DefineCustomStringVariable("hg_audit.alarmemail",
+							"analyze alarm email",
+							NULL,
+							&hg_audit_alarmemail,
+							"",
+							PGC_USERSET,
+							0,
+							check_hg_audit_alarmemail,
+							NULL,
+							NULL);
+
+	DefineCustomStringVariable("hg_audit.logencryp",
+							"support SM4",
+							NULL,
+							&hg_audit_logencryp,
+							"SM4",
+							PGC_USERSET,
+							0,
+							check_hg_audit_logencryp,
+							NULL,
+							NULL);
+
+	DefineCustomIntVariable("hg_audit.logsize",
+							"set M",
+							"only support XXXM",
+							&hg_audit_logsize,
+							16,
+							1, 1024,
+							PGC_USERSET,
+							GUC_UNIT_MB,
+							audit_check_hg_audit_logsize,
+							NULL,
+							NULL);
+
+
+	DefineCustomEnumVariable("hg_audit.retentionpolicy",
+						"time or space",
+						NULL,
+						(int *)&hg_audit_retentionpolicy_switch,
+						RETEN_SPACE,
+						audit_retion_options,
+						PGC_POSTMASTER,
+						0,
+						audit_check_retentionpolicy,
+						NULL,
+						NULL);
+
+	DefineCustomIntVariable("hg_audit.spacelimit",
+						"set MB",
+						"only support XXXG",
+						&hg_audit_spacelimit,
+						10240,
+						1, INT_MAX,
+						PGC_POSTMASTER,
+						GUC_UNIT_MB,
+						audit_check_spacelimit,
+						NULL,
+						NULL);
+
+	DefineCustomStringVariable("hg_audit.spacealarm",
+						"set audit space alarm",
+						NULL,
+						&hg_audit_spacealarm,
+						"0.8",
+						PGC_POSTMASTER,
+						0,
+						audit_check_spacealarm,
+						NULL,
+						NULL);
+
+	DefineCustomEnumVariable("hg_audit.systemopers",
+						"system audit, support off/succ/fail/all",
+						NULL,
+						(int *)&hg_audit_systemopers,
+						AUDIT_OPER_OFF,
+						audit_opers_options,
+						PGC_POSTMASTER,
+						0,
+						audit_check_systemopers,
+						NULL,
+						NULL);
+
+	DefineCustomStringVariable("hg_audit.logarchdir",
+						"set audit arch path",
+						NULL,
+						&hg_audit_archdir,
+						"",
+						PGC_POSTMASTER,
+						0,
+						audit_check_archdir,
+						NULL,
+						NULL);
+
+	DefineCustomIntVariable("hg_audit.retentiondays",
+						"set the audit log save days",
+						"If set to 30, the log save 30 days.",
+						&hg_audit_retentiondays,
+						180,
+						1, INT_MAX,
+						PGC_POSTMASTER,
+						0,
+						audit_check_retentiondays,
+						NULL,
+						NULL);
+
+	DefineCustomIntVariable("hg_audit.fullmode",
+						"set 1 or 2,3",
+						"when data is full, 1 cover the oldest log, 2 stop audit,3 stop HGDB",
+						&hg_fullmode,
+						1,
+						1, 3,
+						PGC_SIGHUP,
+						0,
+						audit_check_hg_audit_fullmode,
+						NULL,
+						NULL);
+
+#endif
+
 
 	MemoryContextSwitchTo(oldContext);
 }
@@ -5993,6 +6398,10 @@ audit_append_hook(void)
 
 	is_audit_enable = is_enable_audit;
 	get_audit_transaction_hook = audit_is_in_transaction;  // OA:2290
+
+	#ifdef ENABLE_COMPATIBLE_AK
+	undefined_function_hook = ivorysql_demo_undefined_function_hook;
+	#endif
 }
 
 static void

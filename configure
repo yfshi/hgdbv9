@@ -716,6 +716,7 @@ with_systemd
 with_selinux
 with_license
 with_ldap
+enable_compatible_ak
 enable_audit_partition_table
 enable_dky_beta_feature
 with_sqlite
@@ -882,6 +883,7 @@ with_swsds
 with_sqlite
 enable_dky_beta_feature
 enable_audit_partition_table
+enable_compatible_ak
 with_pam
 with_bsd_auth
 with_ldap
@@ -1570,6 +1572,7 @@ Optional Features:
                           enable some audit event
   --enable-audit-partition-table
                           enable audit partition table
+  --enable-compatible-ak  enable compatible ak
   --disable-largefile     omit support for large files
 
 Optional Packages:
@@ -9427,6 +9430,40 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_audit_partition_table" >&5
 $as_echo "$enable_audit_partition_table" >&6; }
+
+
+#
+# compatible ak
+#
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking whether to build with compatible ak support" >&5
+$as_echo_n "checking whether to build with compatible ak support... " >&6; }
+
+
+# Check whether --enable-compatible-ak was given.
+if test "${enable_compatible_ak+set}" = set; then :
+  enableval=$enable_compatible_ak;
+  case $enableval in
+    yes)
+
+$as_echo "#define ENABLE_COMPATIBLE_AK 1" >>confdefs.h
+
+      ;;
+    no)
+      :
+      ;;
+    *)
+      as_fn_error $? "no argument expected for --enable-compatible-ak option" "$LINENO" 5
+      ;;
+  esac
+
+else
+  enable_compatible_ak=no
+
+fi
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $enable_compatible_ak" >&5
+$as_echo "$enable_compatible_ak" >&6; }
 
 
 #

@@ -1,0 +1,5 @@
+# hg_alarm extension
+comment = 'hg_alarm'
+default_version = '1.0'
+module_pathname = '$libdir/hg_alarm'
+relocatable = false

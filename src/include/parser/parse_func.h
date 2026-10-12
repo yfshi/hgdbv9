@@ -30,6 +30,13 @@ typedef enum
 	FUNCDETAIL_COERCION			/* it's a type coercion request */
 } FuncDetailCode;
 
+#ifdef ENABLE_COMPATIBLE_AK
+/* Hook for extensions to intercept an undefined function call */
+typedef void (*undefined_function_hook_type) (const char *funcname,
+											  int nargs,
+											  Oid *argtypes);
+extern PGDLLIMPORT undefined_function_hook_type undefined_function_hook;
+#endif
 
 extern Node *ParseFuncOrColumn(ParseState *pstate, List *funcname, List *fargs,
 							   Node *last_srf, FuncCall *fn, bool proc_call,
