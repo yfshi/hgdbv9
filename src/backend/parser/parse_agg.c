@@ -591,6 +591,19 @@ check_agglevels_and_constraints(ParseState *pstate, Node *expr)
 				err = _("grouping operations are not allowed in trigger WHEN conditions");
 
 			break;
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case EXPR_KIND_PIVOT_IN:
+		case EXPR_KIND_UNPIVOT_IN:
+			if (isAgg)
+				err = pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN ?
+				_("aggregate functions are not allowed in UNPIVOT IN expressions") :
+				_("aggregate functions are not allowed in PIVOT IN expressions");
+			else
+				err = pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN ?
+				_("grouping operations are not allowed in UNPIVOT IN expressions") :
+				_("grouping operations are not allowed in PIVOT IN expressions");
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		case EXPR_KIND_PARTITION_BOUND:
 			if (isAgg)
 				err = _("aggregate functions are not allowed in partition bound");
@@ -1081,6 +1094,14 @@ transformWindowFuncCall(ParseState *pstate, WindowFunc *wfunc,
 		case EXPR_KIND_TRIGGER_WHEN:
 			err = _("window functions are not allowed in trigger WHEN conditions");
 			break;
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case EXPR_KIND_PIVOT_IN:
+		case EXPR_KIND_UNPIVOT_IN:
+			err = pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN ?
+				_("window functions are not allowed in UNPIVOT IN expressions") :
+				_("window functions are not allowed in PIVOT IN expressions");
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		case EXPR_KIND_PARTITION_BOUND:
 			err = _("window functions are not allowed in partition bound");
 			break;

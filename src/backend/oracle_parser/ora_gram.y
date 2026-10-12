@@ -259,6 +259,15 @@ static Node *makeObjectMethodCall(Node *arg, char *method_name, List *args,
 static char *redation_get_func_name(const char *fname, List *indirectionlist, ora_core_yyscan_t yyscanner);
 /* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+static PivotClause *makePivotClause(PivotType piv_type, bool is_xml,
+									bool include_nulls, List *aggregate_funcs,
+									List *unpivot_targets, List *for_cols,
+									List *in_list, ora_core_yyscan_t yyscanner);
+static PivotCall *makePivotCall(Node *source, PivotClause *pivot, Alias *alias);
+static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
+/* End - ReqID:SRS-SQL-PIVOT */
+
 %}
 
 %pure-parser
@@ -771,6 +780,17 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, or
 %type <range>		on_qualified_name
 /* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+%type <node>   base_table_ref pivot_table_ref aggregate_item pivot_in_item
+			   unpivot_in_item pivot_operation pivot_for_column
+%type <list>   aggregate_list pivot_for_clause pivot_in_clause pivot_in_list
+			   opt_pivot_label
+			   unpivot_target_list column_name_list unpivot_in_clause
+			   unpivot_in_list opt_unpivot_label_list unpivot_label_list
+			   column_ref_list pivot_any_list
+			   pivot_for_column_list
+%type <boolean> opt_include_exclude_nulls opt_pivot_xml
+/* End - ReqID:SRS-SQL-PIVOT */
 
 /*
  * Non-keyword token types.  These are hard-wired into the "flex" lexer.
@@ -891,7 +911,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, or
 	ORDER ORDINALITY OTHERS OUT_P OUTER_P
 	OVER OVERLAPS OVERLAY OVERRIDING OWNED OWNER PACKAGES /* ReqID:SRS-SQL-PACKAGE */
 
-	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD EXTRACT PLACING PLANS POLICY
+	PARALLEL PARSER PARTIAL PARTITION PASSING PASSWORD EXTRACT PIVOT PLACING PLANS POLICY
 	POSITION PRECEDES PRECEDING PRECISION PRESERVE PREPARE PREPARED PRIMARY
 	PRIOR PRIVILEGES PROCEDURAL PROCEDURE PROCEDURES PROGRAM PUBLIC PUBLICATION PURGE	/* BUG:M0000118 */
 
@@ -922,7 +942,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, or
 
 	UESCAPE UNBOUNDED UNCOMMITTED UNENCRYPTED UNION UNIQUE UNKNOWN
 	UNDER_P /* ReqID:SRS-SQL-CustomObject */
-	UNLISTEN UNLOGGED UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
+	UNLISTEN UNLOGGED UNPIVOT UNTIL UPDATE UPDATEXML USER USERENV/* BUG:0000830 */ USING
 
 	VACUUM VALID VALIDATE VALIDATOR VALUE_P VALUES VARCHAR VARCHAR2 /* ReqID:SRS-GKC-DATATYPE_001 */ VARIADIC VARYING
 	VERBOSE VERSION_P VERSIONS_P /* ReqID:SRS-SECURITY-FLASHBACK */ 
@@ -17647,7 +17667,258 @@ from_list:
 /*
  * table_ref is where an alias clause can be attached.
  */
-table_ref:	relation_expr opt_alias_clause /* ReqID:SRS-SECURITY-FLASHBACK */
+/* Begin - ReqID:SRS-SQL-PIVOT */
+table_ref:  base_table_ref							{ $$ = $1; }
+			| joined_table
+				{
+					$$ = (Node *) $1;
+				}
+			| '(' joined_table ')' alias_clause
+				{
+					$2->alias = $4;
+					$$ = (Node *) $2;
+				}
+			| pivot_table_ref opt_alias_clause
+				{
+					if ($2 != NULL)
+						((PivotCall *) $1)->alias = $2;
+					$$ = $1;
+				}
+
+		;
+
+pivot_table_ref:
+			base_table_ref pivot_operation
+				{
+					$$ = (Node *) makePivotCall($1, (PivotClause *) $2, NULL);
+				}
+			| pivot_table_ref pivot_operation
+				{
+					$$ = (Node *) makePivotCall($1, (PivotClause *) $2, NULL);
+				}
+			| '(' pivot_table_ref ')' alias_clause
+				{
+					((PivotCall *) $2)->alias = $4;
+					$$ = $2;
+				}
+		;
+
+/* One operation in a recursively nestable PIVOT/UNPIVOT chain. */
+pivot_operation:
+			PIVOT opt_pivot_xml
+			'(' aggregate_list pivot_for_clause pivot_in_clause ')'
+				{
+					$$ = (Node *) makePivotClause(PIV_PIVOT, $2, false, $4, NIL, $5, $6, yyscanner);
+				}
+			| UNPIVOT opt_include_exclude_nulls
+			  '(' unpivot_target_list pivot_for_clause unpivot_in_clause ')'
+				{
+					$$ = (Node *) makePivotClause(PIV_UNPIVOT, false, $2, NIL, $4, $5, $6, yyscanner);
+				}
+		;
+
+aggregate_list:
+			aggregate_item						{ $$ = list_make1($1); }
+			| aggregate_list ',' aggregate_item	{ $$ = lappend($1, $3); }
+		;
+
+aggregate_item:
+			func_expr AS ColId
+				{
+					ResTarget	*n = makeNode(ResTarget);
+					n->val = (Node *)$1;
+					n->name = $3;
+					n->location = @3;
+
+					$$ = (Node *) n;
+				}
+			| func_expr BareColLabel
+				{
+					ResTarget	*n = makeNode(ResTarget);
+					n->val = (Node *)$1;
+					n->name = $2;
+					n->location = @2;
+
+					$$ = (Node *) n;
+				}
+			| func_expr
+				{
+					ResTarget	*n = makeNode(ResTarget);
+					n->val = (Node *)$1;
+					n->name = NULL;
+					n->location = @1;
+
+					$$ = (Node *) n;
+				}
+		;
+
+pivot_for_clause:
+			FOR pivot_for_column					{ $$ = list_make1($2); }
+			| FOR '(' pivot_for_column_list ')'	{ $$ = $3; }
+		;
+
+pivot_for_column:
+			ColId
+				{
+					ResTarget	*n = makeNode(ResTarget);
+
+					n->name = $1;
+					n->location = @1;
+					$$ = (Node *) n;
+				}
+		;
+
+pivot_for_column_list:
+			pivot_for_column						{ $$ = list_make1($1); }
+			| pivot_for_column_list ',' pivot_for_column
+												{ $$ = lappend($1, $3); }
+		;
+
+pivot_in_clause:
+			IN_P '(' pivot_in_list ')'		{ $$ = $3; }
+			| IN_P '(' select_no_parens ')'
+				{
+					PivotInItem	*n = makeNode(PivotInItem);
+
+					n->in_kind = PIVOT_IN_SUBQUERY;
+					n->values = list_make1($3);
+					n->labels = NIL;
+
+					$$ = list_make1(n);
+				}
+			| IN_P '(' pivot_any_list ')'
+				{
+					PivotInItem	*n = makeNode(PivotInItem);
+
+					n->in_kind = PIVOT_IN_ANY;
+					n->values = $3;
+					n->labels = NIL;
+
+					$$ = list_make1(n);
+				}
+		;
+
+pivot_in_list:
+			pivot_in_item						{ $$ = list_make1($1); }
+			| pivot_in_list ',' pivot_in_item 	{ $$ = lappend($1, $3); }
+		;
+
+/*
+ * Use the ordinary expression grammar; validate constancy during analysis.
+ * An implicit row supplies the values of a multi-column FOR item.
+ */
+pivot_in_item:
+			a_expr opt_pivot_label
+				{
+					PivotInItem *n = makeNode(PivotInItem);
+
+					n->in_kind = PIVOT_IN_VALUES;
+					if (IsA($1, RowExpr) &&
+						((RowExpr *) $1)->row_format == COERCE_IMPLICIT_CAST)
+						n->values = ((RowExpr *) $1)->args;
+					else
+						n->values = list_make1($1);
+					n->labels = $2;
+					$$ = (Node *) n;
+				}
+		;
+
+/*
+ * Oracle's grammar shows ANY [, ANY]... under XML PIVOT. Multiple ANY tokens
+ * do not add different values, but accepting the list keeps the syntax shape
+ * compatible while the rewrite treats it as the ANY wildcard.
+ */
+pivot_any_list:
+			ANY							{ $$ = list_make1(makeString("any")); }
+			| pivot_any_list ',' ANY	{ $$ = lappend($1, makeString("any")); }
+		;
+
+opt_pivot_label:
+			AS ColLabel		{ $$ = list_make1(makeStringConst($2, @2)); }
+			| BareColLabel	{ $$ = list_make1(makeStringConst($1, @1)); }
+			| /*EMPTY*/				{ $$ = NIL; }
+		;
+
+opt_include_exclude_nulls:
+					INCLUDE NULLS_P			{ $$ = true; }
+					| EXCLUDE NULLS_P		{ $$ = false; }
+					| /*EMPTY*/				{ $$ = false; }
+		;
+
+opt_pivot_xml:
+			XML_P			{ $$ = true; }
+			| /*EMPTY*/		{ $$ = false; }
+		;
+
+unpivot_target_list:
+				ColId						{ $$ = list_make1(makeString($1)); }
+				| '(' column_name_list ')'	{ $$ = $2; }
+		;
+
+column_name_list:
+			ColId
+				{
+					$$ = list_make1(makeString($1));
+				}
+			| column_name_list ',' ColId
+				{
+					$$ = lappend($1, makeString($3));
+				}
+		;
+
+unpivot_in_clause:
+				IN_P '(' unpivot_in_list ')'		{ $$ = $3; }
+		;
+
+unpivot_in_list:
+			unpivot_in_item							{ $$ = list_make1($1); }
+			| unpivot_in_list ',' unpivot_in_item	{ $$ = lappend($1, $3); }
+		;
+
+unpivot_in_item:
+			columnref opt_unpivot_label_list
+				{
+					PivotInItem	*n = makeNode(PivotInItem);
+					n->in_kind = PIVOT_IN_VALUES;
+					n->values = list_make1($1);
+					n->labels = $2;
+					$$ = (Node *) n;
+				}
+			| '(' column_ref_list ')' opt_unpivot_label_list
+				{
+					PivotInItem *n = makeNode(PivotInItem);
+					n->in_kind = PIVOT_IN_VALUES;
+					n->values = $2;
+					n->labels = $4;
+					$$ = (Node *) n;
+				}
+		;
+
+opt_unpivot_label_list:
+				AS unpivot_label_list		{ $$ = $2; }
+				| unpivot_label_list		{ $$ = $1; }
+				| /*EMPTY*/					{ $$ = NIL; }
+		;
+
+/* Share PIVOT's expression grammar and analyze constancy after parsing. */
+unpivot_label_list:
+				a_expr
+					{
+						if (IsA($1, RowExpr) &&
+							((RowExpr *) $1)->row_format == COERCE_IMPLICIT_CAST)
+							$$ = ((RowExpr *) $1)->args;
+						else
+							$$ = list_make1($1);
+					}
+		;
+
+column_ref_list:
+			columnref						{ $$ = list_make1($1); }
+			| column_ref_list ',' columnref	{ $$ = lappend($1, $3); }
+		;
+/* End - ReqID:SRS-SQL-PIVOT */
+
+base_table_ref:	relation_expr opt_alias_clause /* ReqID:SRS-SECURITY-FLASHBACK */
 			/* Begin - ReqID:SRS-RECOVERY-FLASHBACK */
 			opt_flashback_clause
 			/* End - ReqID:SRS-RECOVERY-FLASHBACK */
@@ -17768,15 +18039,6 @@ table_ref:	relation_expr opt_alias_clause /* ReqID:SRS-SECURITY-FLASHBACK */
 									 parser_errposition(@2)));
 					}
 					$$ = (Node *) n;
-				}
-			| joined_table
-				{
-					$$ = (Node *) $1;
-				}
-			| '(' joined_table ')' alias_clause
-				{
-					$2->alias = $4;
-					$$ = (Node *) $2;
 				}
 		;
 
@@ -24176,6 +24438,7 @@ reserved_keyword:
 			| ORDER
 			| PARTITION		/* ReqID:SRS-SQL-PARTITION-TABLE */
 			| PARTITIONS	/* ReqID:SRS-SQL-PARTITION-TABLE */
+			| PIVOT			/* ReqID:SRS-SQL-PIVOT */
 			| PLACING
 			| PRIMARY
 			| PRIOR /* ReqID:SRS-SQL-HierarchicalQueries */
@@ -24202,6 +24465,7 @@ reserved_keyword:
 			| TRUE_P
 			| UNION
 			| UNIQUE
+			| UNPIVOT	/* ReqID:SRS-SQL-PIVOT */
 			| USER
 			| USING
 			| VALUES	/* ReqID:SRS-PLSQL-TYPE */
@@ -24574,6 +24838,7 @@ bare_label_keyword:
 			| PASSING
 			| PASSWORD
 			| PIPELINED /* ReqID:SRS-SQL-PROC */
+			| PIVOT		/* ReqID:SRS-SQL-PIVOT */
 			| PLACING
 			| PLANS
 			| POLICY
@@ -24738,6 +25003,7 @@ bare_label_keyword:
 			| UNLIMITED /* SRS-SQL-MULTITABLEINSERT */
 			| UNLISTEN
 			| UNLOGGED
+			| UNPIVOT	/* ReqID:SRS-SQL-PIVOT */
 			| UNTIL
 			| UPDATE
 			| UPDATEXML /* ReqID:SRS-SQL-XML */
@@ -25884,3 +26150,76 @@ redation_get_func_name(const char *fname, List *indirectionlist, ora_core_yyscan
 }
 /* End - ReqID:SRS-SECURITY-DATADESENSITIZATION */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+/* Return true when the token at location used delimited-identifier syntax. */
+static bool
+pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner)
+{
+	ora_base_yy_extra_type *yyextra = pg_yyget_extra(yyscanner);
+	const char *token;
+
+	if (location < 0 || location >= yyextra->core_yy_extra.scanbuflen)
+		return false;
+
+	token = yyextra->core_yy_extra.scanbuf + location;
+	return token[0] == '"' ||
+		((token[0] == 'U' || token[0] == 'u') &&
+		 token[1] == '&' && token[2] == '"');
+}
+
+/* Construct a PIVOT or UNPIVOT clause node. */
+static PivotClause *
+makePivotClause(PivotType piv_type, bool is_xml, bool include_nulls,
+				List *aggregate_funcs, List *unpivot_targets,
+				List *for_cols, List *in_list, ora_core_yyscan_t yyscanner)
+{
+	PivotClause *pivot = makeNode(PivotClause);
+	ListCell   *lc;
+
+	pivot->piv_type = piv_type;
+	pivot->is_xml = is_xml;
+	pivot->in_kind = (piv_type == PIV_PIVOT) ?
+		((PivotInItem *) linitial(in_list))->in_kind : PIVOT_IN_VALUES;
+	pivot->include_nulls = include_nulls;
+	pivot->aggregate_funcs = aggregate_funcs;
+	pivot->unpivot_targets = unpivot_targets;
+	pivot->for_cols = NIL;
+	pivot->for_col_quoted = NIL;
+	foreach(lc, for_cols)
+	{
+		ResTarget  *column = lfirst_node(ResTarget, lc);
+
+		pivot->for_cols = lappend(pivot->for_cols,
+								  makeString(pstrdup(column->name)));
+		pivot->for_col_quoted =
+			lappend_int(pivot->for_col_quoted,
+						pivotIdentifierWasQuoted(column->location, yyscanner));
+	}
+	pivot->aggregate_alias_quoted = NIL;
+	foreach(lc, aggregate_funcs)
+	{
+		ResTarget  *aggregate = lfirst_node(ResTarget, lc);
+		bool		quoted = aggregate->name != NULL &&
+			pivotIdentifierWasQuoted(aggregate->location, yyscanner);
+
+		pivot->aggregate_alias_quoted =
+			lappend_int(pivot->aggregate_alias_quoted, quoted);
+	}
+	pivot->in_list = in_list;
+
+	return pivot;
+}
+
+/* Construct the table-reference wrapper transformed during parse analysis. */
+static PivotCall *
+makePivotCall(Node *source, PivotClause *pivot, Alias *alias)
+{
+	PivotCall *call = makeNode(PivotCall);
+
+	call->source = source;
+	call->pivot = pivot;
+	call->alias = alias;
+
+	return call;
+}
+/* End - ReqID:SRS-SQL-PIVOT */

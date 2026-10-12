@@ -3950,6 +3950,45 @@ _equalOraPartSup(const OraPartSup *a, const OraPartSup *b)
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+static bool
+_equalPivotInItem(const PivotInItem *a, const PivotInItem *b)
+{
+	COMPARE_SCALAR_FIELD(in_kind);
+	COMPARE_NODE_FIELD(values);
+	COMPARE_NODE_FIELD(labels);
+
+	return true;
+}
+
+static bool
+_equalPivotClause(const PivotClause *a, const PivotClause *b)
+{
+	COMPARE_SCALAR_FIELD(piv_type);
+	COMPARE_SCALAR_FIELD(is_xml);
+	COMPARE_SCALAR_FIELD(in_kind);
+	COMPARE_SCALAR_FIELD(include_nulls);
+	COMPARE_NODE_FIELD(aggregate_funcs);
+	COMPARE_NODE_FIELD(unpivot_targets);
+	COMPARE_NODE_FIELD(for_cols);
+	COMPARE_NODE_FIELD(for_col_quoted);
+	COMPARE_NODE_FIELD(aggregate_alias_quoted);
+	COMPARE_NODE_FIELD(in_list);
+
+	return true;
+}
+
+static bool
+_equalPivotCall(const PivotCall *a, const PivotCall *b)
+{
+	COMPARE_NODE_FIELD(source);
+	COMPARE_NODE_FIELD(pivot);
+	COMPARE_NODE_FIELD(alias);
+
+	return true;
+}
+/* End - ReqID:SRS-SQL-PIVOT */
+
 /*
  * equal
  *	  returns whether two nodes are equal
@@ -4911,6 +4950,17 @@ equal(const void *a, const void *b)
 			retval = _equalOraPartSup(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case T_PivotCall:
+			retval = _equalPivotCall(a, b);
+			break;
+		case T_PivotClause:
+			retval = _equalPivotClause(a, b);
+			break;
+		case T_PivotInItem:
+			retval = _equalPivotInItem(a, b);
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(a));

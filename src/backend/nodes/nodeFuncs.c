@@ -1080,6 +1080,11 @@ exprCollation(const Node *expr)
 			coll = InvalidOid;	/* ... so it has no collation */
 			break;
 		/* End - BUG#7712 */
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case T_CaseWhen:
+			coll = InvalidOid;
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			coll = InvalidOid;	/* keep compiler quiet */
@@ -1805,7 +1810,15 @@ exprLocation(const Node *expr)
 			loc = ((const RowExpr *) expr)->location;
 			break;
 		/* End - BUG#7712 */
-
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case T_PivotCall:
+			loc = exprLocation((Node *) ((const PivotCall *) expr)->source);
+			break;
+		case T_PivotClause:
+		case T_PivotInItem:
+			loc = -1;
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		default:
 			/* for any other node type it's just unknown... */
 			loc = -1;
@@ -2593,6 +2606,42 @@ expression_tree_walker(Node *node,
 			}
 			break;
 		/* End - BUG#7712 */
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case T_PivotCall:
+			{
+				PivotCall	*pcall = (PivotCall *) node;
+
+				if (walker(pcall->source, context))
+					return true;
+				if (walker((Node *) pcall->pivot, context))
+					return true;
+			}
+			break;
+		case T_PivotClause:
+			{
+				PivotClause	*pc = (PivotClause *) node;
+
+				if (walker((Node *) pc->aggregate_funcs, context))
+					return true;
+				if (walker((Node *) pc->unpivot_targets, context))
+					return true;
+				if (walker((Node *) pc->for_cols, context))
+					return true;
+				if (walker((Node *) pc->in_list, context))
+					return true;
+			}
+			break;
+		case T_PivotInItem:
+			{
+				PivotInItem	*pii = (PivotInItem *) node;
+
+				if (walker((Node *) pii->values, context))
+					return true;
+				if (walker((Node *) pii->labels, context))
+					return true;
+			}
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));
@@ -4475,6 +4524,40 @@ raw_expression_tree_walker(Node *node,
 			}
 			break;
 		/* End - BUG#7712 */
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case T_PivotCall:
+			{
+				if (walker(((PivotCall *) node)->source, context))
+					return true;
+				if (walker((Node *)((PivotCall *) node)->pivot, context))
+					return true;
+			}
+			break;
+		case T_PivotClause:
+			{
+				PivotClause	*pc = (PivotClause *) node;
+
+				if (walker((Node *) pc->aggregate_funcs, context))
+					return true;
+				if (walker((Node *) pc->unpivot_targets, context))
+					return true;
+				if (walker((Node *) pc->for_cols, context))
+					return true;
+				if (walker((Node *) pc->in_list, context))
+					return true;
+			}
+			break;
+		case T_PivotInItem:
+			{
+				PivotInItem	*pii = (PivotInItem *) node;
+
+				if (walker((Node *) pii->values, context))
+					return true;
+				if (walker((Node *) pii->labels, context))
+					return true;
+			}
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		default:
 			elog(ERROR, "unrecognized node type: %d",
 				 (int) nodeTag(node));

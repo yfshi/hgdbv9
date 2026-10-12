@@ -3238,6 +3238,51 @@ _readOraPartSup(void)
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+static PivotInItem *
+_readPivotInItem(void)
+{
+	READ_LOCALS(PivotInItem);
+
+	READ_ENUM_FIELD(in_kind, PivotInKind);
+	READ_NODE_FIELD(values);
+	READ_NODE_FIELD(labels);
+
+	READ_DONE();
+}
+
+static PivotClause *
+_readPivotClause(void)
+{
+	READ_LOCALS(PivotClause);
+
+	READ_ENUM_FIELD(piv_type, PivotType);
+	READ_BOOL_FIELD(is_xml);
+	READ_ENUM_FIELD(in_kind, PivotInKind);
+	READ_BOOL_FIELD(include_nulls);
+	READ_NODE_FIELD(aggregate_funcs);
+	READ_NODE_FIELD(unpivot_targets);
+	READ_NODE_FIELD(for_cols);
+	READ_NODE_FIELD(for_col_quoted);
+	READ_NODE_FIELD(aggregate_alias_quoted);
+	READ_NODE_FIELD(in_list);
+
+	READ_DONE();
+}
+
+static PivotCall *
+_readPivotCall(void)
+{
+	READ_LOCALS(PivotCall);
+
+	READ_NODE_FIELD(source);
+	READ_NODE_FIELD(pivot);
+	READ_NODE_FIELD(alias);
+
+	READ_DONE();
+}
+/* End - ReqID:SRS-SQL-PIVOT */
+
 /*
  * parseNodeString
  *
@@ -3587,6 +3632,14 @@ parseNodeString(void)
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
 	else if (MATCH("PKGGLOBALVARPARAM", 17))
 		return_value = _readPkgGlobalVarParam();
+	/* Begin - ReqID:SRS-SQL-PIVOT */
+	else if (MATCH("PIVOTCALL", 9))
+		return_value = _readPivotCall();
+	else if (MATCH("PIVOTCLAUSE", 11))
+		return_value = _readPivotClause();
+	else if (MATCH("PIVOTINITEM", 11))
+		return_value = _readPivotInItem();
+	/* End - ReqID:SRS-SQL-PIVOT */
 	else
 	{
 		elog(ERROR, "badly formatted node string \"%.32s\"...", token);

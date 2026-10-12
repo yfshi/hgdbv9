@@ -4401,6 +4401,45 @@ _outOraRowExpr(StringInfo str, const OraRowExpr *node)
 }
 /* End - BUG#7712 */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+static void
+_outPivotInItem(StringInfo str, const PivotInItem *node)
+{
+	WRITE_NODE_TYPE("PIVOTINITEM");
+
+	WRITE_ENUM_FIELD(in_kind, PivotInKind);
+	WRITE_NODE_FIELD(values);
+	WRITE_NODE_FIELD(labels);
+}
+
+static void
+_outPivotClause(StringInfo str, const PivotClause *node)
+{
+	WRITE_NODE_TYPE("PIVOTCLAUSE");
+
+	WRITE_ENUM_FIELD(piv_type, PivotType);
+	WRITE_BOOL_FIELD(is_xml);
+	WRITE_ENUM_FIELD(in_kind, PivotInKind);
+	WRITE_BOOL_FIELD(include_nulls);
+	WRITE_NODE_FIELD(aggregate_funcs);
+	WRITE_NODE_FIELD(unpivot_targets);
+	WRITE_NODE_FIELD(for_cols);
+	WRITE_NODE_FIELD(for_col_quoted);
+	WRITE_NODE_FIELD(aggregate_alias_quoted);
+	WRITE_NODE_FIELD(in_list);
+}
+
+static void
+_outPivotCall(StringInfo str, const PivotCall *node)
+{
+	WRITE_NODE_TYPE("PIVOTCALL");
+
+	WRITE_NODE_FIELD(source);
+	WRITE_NODE_FIELD(pivot);
+	WRITE_NODE_FIELD(alias);
+}
+/* End - ReqID:SRS-SQL-PIVOT */
+
 /*
  * outNode -
  *	  converts a Node into ascii string and append it to 'str'
@@ -5234,6 +5273,17 @@ outNode(StringInfo str, const void *obj)
 				_outOraRowExpr(str, obj);
 				break;
 			/* End - BUG#7712 */
+			/* Begin - ReqID:SRS-SQL-PIVOT */
+			case T_PivotCall:
+				_outPivotCall(str, obj);
+				break;
+			case T_PivotClause:
+				_outPivotClause(str, obj);
+				break;
+			case T_PivotInItem:
+				_outPivotInItem(str, obj);
+				break;
+			/* End - ReqID:SRS-SQL-PIVOT */
 			default:
 
 				/*

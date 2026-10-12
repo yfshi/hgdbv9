@@ -70,6 +70,8 @@
 #include "pg_contrib_audit.h"
 /* End - ReqID:SRS-SECURITY-AUDIT */
 
+#include "parser/parse_pivot.h"		/* ReqID:SRS-SQL-PIVOT */
+
 /* Begin - ReqID:SRS-SQL-NLSSORT */
 typedef struct 
 {
@@ -1567,7 +1569,14 @@ transformFromClauseItem(ParseState *pstate, Node *n,
 	/* Guard against stack overflow due to overly deep subtree */
 	check_stack_depth();
 
-	if (IsA(n, RangeVar))
+	/* Begin - ReqID:SRS-SQL-PIVOT */
+	if (IsA(n, PivotCall))
+	{
+		return transformPivotFromClauseItem(pstate, castNode(PivotCall, n),
+											top_nsitem, namespace);
+	}
+	/* End - ReqID:SRS-SQL-PIVOT */
+	else if (IsA(n, RangeVar))
 	{
 		/* Plain relation reference, or perhaps a CTE reference */
 		RangeVar   *rv = (RangeVar *) n;
@@ -6618,3 +6627,13 @@ strip_explicit_to_var(Node *node)
 	return NULL;
 }
 /* End: Req:SRS-MYSQL-SQL-Select */
+
+/* Begin - ReqID:SRS-SQL-PIVOT */
+Node *
+transformFromClauseItemForPivot(ParseState *pstate, Node *n,
+								ParseNamespaceItem **top_nsitem,
+								List **namespace)
+{
+	return transformFromClauseItem(pstate, n, top_nsitem, namespace);
+}
+/* End - ReqID:SRS-SQL-PIVOT */

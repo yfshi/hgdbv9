@@ -1176,6 +1176,14 @@ transformColumnRefInternal(ParseState *pstate, ColumnRef *cref, bool missing_ok)
 		case EXPR_KIND_COLUMN_DEFAULT:
 			err = _("cannot use column reference in DEFAULT expression");
 			break;
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case EXPR_KIND_PIVOT_IN:
+		case EXPR_KIND_UNPIVOT_IN:
+			ereport(ERROR,
+					(errcode(ERRCODE_INVALID_COLUMN_REFERENCE),
+					 errmsg("non-constant expression is not allowed in a PIVOT or UNPIVOT value list")));
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		case EXPR_KIND_PARTITION_BOUND:
 			err = _("cannot use column reference in partition bound expression");
 			break;
@@ -2291,7 +2299,9 @@ TryTransformColumnRef(ParseState *pstate, List *fields)
 	Node	   *result;
 
 	if (pstate->p_expr_kind == EXPR_KIND_COLUMN_DEFAULT ||
-		pstate->p_expr_kind == EXPR_KIND_PARTITION_BOUND)
+		pstate->p_expr_kind == EXPR_KIND_PARTITION_BOUND ||
+		pstate->p_expr_kind == EXPR_KIND_PIVOT_IN ||	/* ReqID:SRS-SQL-PIVOT */
+		pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN)	/* ReqID:SRS-SQL-PIVOT */
 		return NULL;
 
 	cref->fields = copyObject(fields);
@@ -2334,6 +2344,16 @@ transformParamRef(ParseState *pstate, ParamRef *pref)
 {
 	Node	   *result;
 
+	/* Begin - ReqID:SRS-SQL-PIVOT */
+	if (pstate->p_expr_kind == EXPR_KIND_PIVOT_IN ||
+		pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("bind variables are not allowed in %s expressions",
+						ParseExprKindName(pstate->p_expr_kind)),
+				 parser_errposition(pstate, pref->location)));
+	/* End - ReqID:SRS-SQL-PIVOT */
+
 	/*
 	 * The core parser knows nothing about Params.  If a hook is supplied,
 	 * call it.  If not, or if the hook returns NULL, throw a generic error.
@@ -2357,6 +2377,16 @@ static Node *
 transformOraParamRef(ParseState *pstate, OraParamRef *pref)
 {
 	Node	   *result;
+
+	/* Begin - ReqID:SRS-SQL-PIVOT */
+	if (pstate->p_expr_kind == EXPR_KIND_PIVOT_IN ||
+		pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN)
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("bind variables are not allowed in %s expressions",
+						ParseExprKindName(pstate->p_expr_kind)),
+				 parser_errposition(pstate, pref->location)));
+	/* End - ReqID:SRS-SQL-PIVOT */
 
 	/*
 	* The core parser knows nothing about Params.  If a hook is supplied,
@@ -4264,6 +4294,14 @@ transformSubLink(ParseState *pstate, SubLink *sublink)
 		case EXPR_KIND_TRIGGER_WHEN:
 			err = _("cannot use subquery in trigger WHEN condition");
 			break;
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case EXPR_KIND_PIVOT_IN:
+		case EXPR_KIND_UNPIVOT_IN:
+			err = pstate->p_expr_kind == EXPR_KIND_UNPIVOT_IN ?
+				_("cannot use subquery in UNPIVOT IN expression") :
+				_("cannot use subquery in PIVOT IN expression");
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		case EXPR_KIND_PARTITION_BOUND:
 			err = _("cannot use subquery in partition bound");
 			break;
@@ -5912,6 +5950,12 @@ ParseExprKindName(ParseExprKind exprKind)
 			return "EXECUTE";
 		case EXPR_KIND_TRIGGER_WHEN:
 			return "WHEN";
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case EXPR_KIND_PIVOT_IN:
+			return "PIVOT IN";
+		case EXPR_KIND_UNPIVOT_IN:
+			return "UNPIVOT IN";
+		/* End - ReqID:SRS-SQL-PIVOT */
 		case EXPR_KIND_PARTITION_BOUND:
 			return "partition bound";
 		case EXPR_KIND_PARTITION_EXPRESSION:

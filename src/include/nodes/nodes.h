@@ -506,7 +506,11 @@ typedef enum NodeTag
 	T_FlashbackStmt,		
 	T_PurgeStmt,
 	/* End - ReqID:SRS-RECOVERY-FLASHBACK */
-
+	/* Begin - ReqID:SRS-SQL-PIVOT */
+	T_PivotCall,
+	T_PivotClause,
+	T_PivotInItem,
+	/* End - ReqID:SRS-SQL-PIVOT */
 	/*
 	 * TAGS FOR PARSE TREE NODES (parsenodes.h)
 	 */
