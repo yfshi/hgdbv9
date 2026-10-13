@@ -44,6 +44,12 @@ static int	UTF8_MatchText(const char *t, int tlen, const char *p, int plen,
 
 static int	SB_IMatchText(const char *t, int tlen, const char *p, int plen,
 						  pg_locale_t locale, bool locale_is_c);
+/* bug9366 BEGIN */
+static int	GB18030_MatchText(const char *t, int tlen, const char *p, int plen,
+							  pg_locale_t locale, bool locale_is_c);
+static int	GB18030_IMatchText(const char *t, int tlen, const char *p, int plen,
+							   pg_locale_t locale, bool locale_is_c);
+/* bug9366 END */
 
 static int	GenericMatchText(const char *s, int slen, const char *p, int plen, Oid collation);
 static int	Generic_Text_IC_like(text *str, text *pat, Oid collation);
@@ -74,6 +80,22 @@ wchareq(const char *p1, int p1len, const char *p2, int p2len)
 	}
 	return 1;
 }
+
+/* bug9366 BEGIN */
+/*
+ * Case-insensitive comparison of two GB18030 characters.  Only single-byte
+ * ASCII characters are case-folded; multibyte characters (e.g. Chinese, which
+ * has no case) are compared as-is.  We must not fold an ASCII-looking trailing
+ * byte of a multibyte character.
+ */
+static inline int
+gb18030_ichareq(const char *p1, int p1len, const char *p2, int p2len)
+{
+	if (!IS_HIGHBIT_SET(*p1) && !IS_HIGHBIT_SET(*p2))
+		return pg_ascii_tolower(*p1) == pg_ascii_tolower(*p2);
+	return wchareq(p1, p1len, p2, p2len);
+}
+/* bug9366 END */
 
 /*
  * Formerly we had a routine iwchareq() here that tried to do case-insensitive
@@ -146,13 +168,42 @@ SB_lower_char(unsigned char c, pg_locale_t locale, bool locale_is_c)
 
 #include "like_match.c"
 
+/* bug9366 BEGIN */
+/*
+ * setup to compile like_match.c for GB18030, matching whole characters.
+ * GB18030 needs this because the trailing byte of a multibyte character can
+ * be an ASCII wildcard byte ('_' or '\').
+ */
+#define CHAREQ(p1, p1len, p2, p2len) wchareq((p1), (p1len), (p2), (p2len))
+#define NextChar(p, plen) \
+	do { int __l = pg_mblen(p); (p) +=__l; (plen) -=__l; } while (0)
+#define LIKE_MATCH_BY_CHAR
+#define MatchText	GB18030_MatchText
+
+#include "like_match.c"
+
+/*
+ * setup to compile like_match.c for case-insensitive matches in GB18030.
+ * Only single-byte ASCII characters are case-folded.
+ */
+#define MATCH_LOWER
+#define NextChar(p, plen) \
+	do { int __l = pg_mblen(p); (p) +=__l; (plen) -=__l; } while (0)
+#define LIKE_MATCH_BY_CHAR
+#define LIKE_ICASE
+#define MatchText	GB18030_IMatchText
+
+#include "like_match.c"
+/* bug9366 END */
+
 /* Generic for all cases not requiring inline case-folding */
 static inline int
 GenericMatchText(const char *s, int slen, const char *p, int plen, Oid collation)
 {
+	pg_locale_t locale = NULL;
 	if (collation && !lc_ctype_is_c(collation) && collation != DEFAULT_COLLATION_OID)
 	{
-		pg_locale_t locale = pg_newlocale_from_collation(collation);
+		locale = pg_newlocale_from_collation(collation);
 
 		if (locale && !locale->deterministic)
 			ereport(ERROR,
@@ -164,6 +215,10 @@ GenericMatchText(const char *s, int slen, const char *p, int plen, Oid collation
 		return SB_MatchText(s, slen, p, plen, 0, true);
 	else if (GetDatabaseEncoding() == PG_UTF8)
 		return UTF8_MatchText(s, slen, p, plen, 0, true);
+	/* bug9366 BEGIN */
+	else if (GetDatabaseEncoding() == PG_GB18030)
+		return GB18030_MatchText(s, slen, p, plen, locale, true);
+	/* bug9366 END */
 	else
 		return MB_MatchText(s, slen, p, plen, 0, true);
 }
@@ -211,18 +266,36 @@ Generic_Text_IC_like(text *str, text *pat, Oid collation)
 
 	if (pg_database_encoding_max_length() > 1 || (locale && locale->provider == COLLPROVIDER_ICU))
 	{
-		pat = DatumGetTextPP(DirectFunctionCall1Coll(lower, collation,
-													 PointerGetDatum(pat)));
-		p = VARDATA_ANY(pat);
-		plen = VARSIZE_ANY_EXHDR(pat);
-		str = DatumGetTextPP(DirectFunctionCall1Coll(lower, collation,
-													 PointerGetDatum(str)));
-		s = VARDATA_ANY(str);
-		slen = VARSIZE_ANY_EXHDR(str);
-		if (GetDatabaseEncoding() == PG_UTF8)
-			return UTF8_MatchText(s, slen, p, plen, 0, true);
+		/* bug9366 BEGIN */
+		/*
+		 * GB18030 needs its own case-insensitive matching: it must compare whole
+		 * characters and fold only single-byte ASCII characters, rather than
+		 * applying lower() to the whole string.
+		 */
+		if (GetDatabaseEncoding() == PG_GB18030)
+		{
+			p = VARDATA_ANY(pat);
+			plen = VARSIZE_ANY_EXHDR(pat);
+			s = VARDATA_ANY(str);
+			slen = VARSIZE_ANY_EXHDR(str);
+			return GB18030_IMatchText(s, slen, p, plen, locale, true);
+		}
 		else
-			return MB_MatchText(s, slen, p, plen, 0, true);
+		{
+			pat = DatumGetTextPP(DirectFunctionCall1Coll(lower, collation,
+														 PointerGetDatum(pat)));
+			p = VARDATA_ANY(pat);
+			plen = VARSIZE_ANY_EXHDR(pat);
+			str = DatumGetTextPP(DirectFunctionCall1Coll(lower, collation,
+														 PointerGetDatum(str)));
+			s = VARDATA_ANY(str);
+			slen = VARSIZE_ANY_EXHDR(str);
+			if (GetDatabaseEncoding() == PG_UTF8)
+				return UTF8_MatchText(s, slen, p, plen, 0, true);
+			else
+				return MB_MatchText(s, slen, p, plen, 0, true);
+		}
+		/* bug9366 END */
 	}
 	else
 	{

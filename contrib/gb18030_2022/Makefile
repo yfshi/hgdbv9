@@ -13,7 +13,8 @@ REGRESS = 	gb18030_2022_and_utf8 \
 			gbk_and_utf8 \
 			copy \
 			ora_gbk_to_utf8 \
-			ora_utf8_to_gbk
+			ora_utf8_to_gbk \
+			like
 
 
 ifdef USE_PGXS
