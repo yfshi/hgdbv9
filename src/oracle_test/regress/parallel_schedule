@@ -316,3 +316,8 @@ test: ora_result_cache_gram
 #/* Begin - ReqID:SRS-SQL-SYSVIEW */
 test: ora_dynamic_view
 #/* End - ReqID:SRS-SQL-SYSVIEW */
+
+#/*Begin - ReqID:SRS-SQL-PIVOT */
+test: ora_pivot_unpivot
+#/*End - ReqID:SRS-SQL-PIVOT*/
+

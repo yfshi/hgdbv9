@@ -1,0 +1,2871 @@
+--
+-- regression test for compatible Oracle pivot and unpivot
+--
+drop table if exists olympic_medal_winners;
+NOTICE:  table "olympic_medal_winners" does not exist, skipping
+create table olympic_medal_winners (   
+  olympic_year int,  
+  sport        varchar2( 30 ),  
+  gender       varchar2( 1 ),  
+  event        varchar2( 128 ),  
+  medal        varchar2( 10 ),  
+  noc          varchar2( 3 ),  
+  athlete      varchar2( 128 ) 
+);
+Insert into olympic_medal_winners  values (2016,'Archery','M','Men''s Individual','Gold','KOR','KU Bonchan');
+Insert into olympic_medal_winners  values (2016,'Archery','M','Men''s Individual','Silver','FRA','VALLADONT Jean-Charles');
+Insert into olympic_medal_winners  values (2016,'Archery','M','Men''s Individual','Bronze','USA','ELLISON Brady');
+Insert into olympic_medal_winners  values (2016,'Archery','M','Men''s Team','Gold','KOR','Republic of Korea');
+Insert into olympic_medal_winners  values (2016,'Archery','M','Men''s Team','Bronze','AUS','Australia');
+Insert into olympic_medal_winners  values (2016,'Archery','M','Men''s Team','Silver','USA','United States');
+Insert into olympic_medal_winners  values (2016,'Artistic Gymnastics','M','Men''s Floor Exercise','Gold','GBR','WHITLOCK Max');
+Insert into olympic_medal_winners  values (2016,'Artistic Gymnastics','M','Men''s Floor Exercise','Bronze','BRA','MARIANO Arthur');
+Insert into olympic_medal_winners  values (2016,'Artistic Gymnastics','M','Men''s Floor Exercise','Silver','BRA','HYPOLITO Diego');
+Insert into olympic_medal_winners  values (2016,'Artistic Gymnastics','M','Men''s Horizontal Bar','Gold','GER','HAMBUECHEN Fabian');
+Insert into olympic_medal_winners  values (2016,'Artistic Gymnastics','M','Men''s Horizontal Bar','Bronze','GBR','WILSON Nile');
+Insert into olympic_medal_winners  values (2016,'Artistic Gymnastics','M','Men''s Horizontal Bar','Silver','USA','LEYVA Danell');
+Insert into olympic_medal_winners  values (2016,'Athletics','M','Men''s 10,000m','Gold','GBR','FARAH Mohamed');
+Insert into olympic_medal_winners  values (2016,'Athletics','M','Men''s 10,000m','Bronze','ETH','TOLA Tamirat');
+Insert into olympic_medal_winners  values (2016,'Athletics','M','Men''s 10,000m','Silver','KEN','TANUI Paul Kipngetich');
+Insert into olympic_medal_winners  values (2016,'Athletics','M','Men''s 100m','Gold','JAM','BOLT Usain');
+Insert into olympic_medal_winners  values (2016,'Athletics','M','Men''s 100m','Silver','USA','GATLIN Justin');
+Insert into olympic_medal_winners  values (2016,'Athletics','M','Men''s 100m','Bronze','CAN','DE GRASSE Andre');
+Insert into olympic_medal_winners  values (2016,'Badminton','M','Men''s Doubles','Gold','CHN','Zhang');
+Insert into olympic_medal_winners  values (2016,'Badminton','M','Men''s Doubles','Bronze','GBR','Langridge');
+Insert into olympic_medal_winners  values (2016,'Badminton','M','Men''s Doubles','Bronze','GBR','Ellis');
+Insert into olympic_medal_winners  values (2016,'Badminton','M','Men''s Doubles','Silver','MAS','Tan');
+Insert into olympic_medal_winners  values (2016,'Badminton','M','Men''s Doubles','Silver','MAS','Goh');
+Insert into olympic_medal_winners  values (2016,'Badminton','M','Men''s Doubles','Gold','CHN','Fu');
+Insert into olympic_medal_winners  values (2016,'Beach Volleyball','M','Men','Gold','BRA','Cerutti');
+Insert into olympic_medal_winners  values (2016,'Beach Volleyball','M','Men','Gold','BRA','Oscar Schmidt');
+Insert into olympic_medal_winners  values (2016,'Beach Volleyball','M','Men','Silver','ITA','Nicolai');
+Insert into olympic_medal_winners  values (2016,'Beach Volleyball','M','Men','Silver','ITA','Lupo');
+Insert into olympic_medal_winners  values (2016,'Beach Volleyball','M','Men','Bronze','NED','Meeuwsen');
+Insert into olympic_medal_winners  values (2016,'Beach Volleyball','M','Men','Bronze','NED','Brouwer');
+Insert into olympic_medal_winners  values (2016,'Boxing','M','Men''s Bantam (56kg)','Gold','CUB','RAMIREZ Robeisy');
+Insert into olympic_medal_winners  values (2016,'Boxing','M','Men''s Bantam (56kg)','Bronze','UZB','AKHMADALIEV Murodjon');
+Insert into olympic_medal_winners  values (2016,'Boxing','M','Men''s Bantam (56kg)','Bronze','RUS','NIKITIN Vladimir');
+Insert into olympic_medal_winners  values (2016,'Boxing','M','Men''s Bantam (56kg)','Silver','USA','STEVENSON Shakur');
+Insert into olympic_medal_winners  values (2016,'Boxing','M','Men''s Fly (52kg)','Gold','UZB','ZOIROV Shakhobidin');
+Insert into olympic_medal_winners  values (2016,'Boxing','M','Men''s Fly (52kg)','Bronze','CHN','HU Jianguan');
+Insert into olympic_medal_winners  values (2016,'Canoe Slalom','M','Canoe Double (C2) Men','Gold','SVK','PETER Skantar');
+Insert into olympic_medal_winners  values (2016,'Canoe Slalom','M','Canoe Double (C2) Men','Bronze','FRA','GAUTHIER Klauss');
+Insert into olympic_medal_winners  values (2016,'Canoe Slalom','M','Canoe Double (C2) Men','Bronze','FRA','MATTHIEU Peche');
+Insert into olympic_medal_winners  values (2016,'Canoe Slalom','M','Canoe Double (C2) Men','Silver','GBR','RICHARD Hounslow');
+Insert into olympic_medal_winners  values (2016,'Canoe Slalom','M','Canoe Double (C2) Men','Silver','GBR','DAVID Florence');
+Insert into olympic_medal_winners  values (2016,'Canoe Slalom','M','Canoe Double (C2) Men','Gold','SVK','LADISLAV Skantar');
+Insert into olympic_medal_winners  values (2016,'Canoe Sprint','M','Men''s Canoe Double 1000m','Gold','GER','Brendel');
+Insert into olympic_medal_winners  values (2016,'Canoe Sprint','M','Men''s Canoe Double 1000m','Bronze','UKR','Mishchuk');
+Insert into olympic_medal_winners  values (2016,'Canoe Sprint','M','Men''s Canoe Double 1000m','Bronze','UKR','Ianchuk');
+Insert into olympic_medal_winners  values (2016,'Canoe Sprint','M','Men''s Canoe Double 1000m','Silver','BRA','Queiroz dos Santos');
+Insert into olympic_medal_winners  values (2016,'Canoe Sprint','M','Men''s Canoe Double 1000m','Silver','BRA','de Souza Silva');
+Insert into olympic_medal_winners  values (2016,'Canoe Sprint','M','Men''s Canoe Double 1000m','Gold','GER','Vandrey');
+Insert into olympic_medal_winners  values (2016,'Cycling Road','M','Men''s Individual Time Trial','Gold','SUI','CANCELLARA Fabian');
+Insert into olympic_medal_winners  values (2016,'Cycling Road','M','Men''s Individual Time Trial','Bronze','GBR','FROOME Christopher');
+Insert into olympic_medal_winners  values (2016,'Cycling Road','M','Men''s Individual Time Trial','Silver','NED','DUMOULIN Tom');
+Insert into olympic_medal_winners  values (2016,'Cycling Road','M','Men''s Road Race','Gold','BEL','VAN AVERMAET Greg');
+Insert into olympic_medal_winners  values (2016,'Cycling Road','M','Men''s Road Race','Silver','DEN','FUGLSANG Jakob');
+Insert into olympic_medal_winners  values (2016,'Cycling Road','M','Men''s Road Race','Bronze','POL','MAJKA Rafal');
+Insert into olympic_medal_winners  values (2016,'Cycling Track','M','Men''s Keirin','Gold','GBR','KENNY Jason');
+Insert into olympic_medal_winners  values (2016,'Cycling Track','M','Men''s Keirin','Bronze','MAS','AWANG Azizulhasni');
+Insert into olympic_medal_winners  values (2016,'Cycling Track','M','Men''s Keirin','Silver','NED','BUCHLI Matthijs');
+Insert into olympic_medal_winners  values (2016,'Cycling Track','M','Men''s Omnium','Gold','ITA','VIVIANI Elia');
+Insert into olympic_medal_winners  values (2016,'Cycling Track','M','Men''s Omnium','Bronze','DEN','HANSEN Lasse Norman');
+Insert into olympic_medal_winners  values (2016,'Cycling Track','M','Men''s Omnium','Silver','GBR','CAVENDISH Mark');
+Insert into olympic_medal_winners  values (2016,'Diving','M','Men''s 10m Platform','Gold','CHN','CHEN Aisen');
+Insert into olympic_medal_winners  values (2016,'Diving','M','Men''s 10m Platform','Bronze','USA','BOUDIA David');
+Insert into olympic_medal_winners  values (2016,'Diving','M','Men''s 10m Platform','Silver','MEX','SANCHEZ German');
+Insert into olympic_medal_winners  values (2016,'Diving','M','Men''s 3m Springboard','Gold','CHN','CAO Yuan');
+Insert into olympic_medal_winners  values (2016,'Diving','M','Men''s 3m Springboard','Silver','GBR','LAUGHER Jack');
+Insert into olympic_medal_winners  values (2016,'Diving','M','Men''s 3m Springboard','Bronze','GER','HAUSDING Patrick');
+Insert into olympic_medal_winners  values (2016,'Equestrian','X','Dressage Individual','Gold','GBR','DUJARDIN Charlotte');
+Insert into olympic_medal_winners  values (2016,'Equestrian','X','Dressage Individual','Bronze','GER','BRORING-SPREHE Kristina');
+Insert into olympic_medal_winners  values (2016,'Equestrian','X','Dressage Individual','Silver','GER','WERTH Isabell');
+Insert into olympic_medal_winners  values (2016,'Equestrian','X','Dressage Team','Gold','GER','Germany');
+Insert into olympic_medal_winners  values (2016,'Equestrian','X','Dressage Team','Bronze','USA','United States');
+Insert into olympic_medal_winners  values (2016,'Equestrian','X','Dressage Team','Silver','GBR','Great Britain');
+Insert into olympic_medal_winners  values (2016,'Fencing','M','Men''s Foil Individual','Gold','ITA','GAROZZO Daniele');
+Insert into olympic_medal_winners  values (2016,'Fencing','M','Men''s Foil Individual','Silver','USA','MASSIALAS Alexander');
+Insert into olympic_medal_winners  values (2016,'Fencing','M','Men''s Foil Individual','Bronze','RUS','SAFIN Timur');
+Insert into olympic_medal_winners  values (2016,'Fencing','M','Men''s Foil Team','Gold','RUS','Russian Federation');
+Insert into olympic_medal_winners  values (2016,'Fencing','M','Men''s Foil Team','Bronze','USA','United States');
+Insert into olympic_medal_winners  values (2016,'Fencing','M','Men''s Foil Team','Silver','FRA','France');
+Insert into olympic_medal_winners  values (2016,'Handball','M','Men','Gold','DEN','Denmark');
+Insert into olympic_medal_winners  values (2016,'Handball','M','Men','Silver','FRA','France');
+Insert into olympic_medal_winners  values (2016,'Handball','M','Men','Bronze','GER','Germany');
+Insert into olympic_medal_winners  values (2016,'Handball','W','Women','Gold','RUS','Russian Federation');
+Insert into olympic_medal_winners  values (2016,'Handball','W','Women','Silver','FRA','France');
+Insert into olympic_medal_winners  values (2016,'Handball','W','Women','Bronze','NOR','Norway');
+Insert into olympic_medal_winners  values (2016,'Hockey','M','Men','Gold','ARG','Argentina');
+Insert into olympic_medal_winners  values (2016,'Hockey','M','Men','Silver','BEL','Belgium');
+Insert into olympic_medal_winners  values (2016,'Hockey','M','Men','Bronze','GER','Germany');
+Insert into olympic_medal_winners  values (2016,'Hockey','W','Women','Gold','GBR','Great Britain');
+Insert into olympic_medal_winners  values (2016,'Hockey','W','Women','Silver','NED','Netherlands');
+Insert into olympic_medal_winners  values (2016,'Hockey','W','Women','Bronze','GER','Germany');
+Insert into olympic_medal_winners  values (2016,'Judo','M','Men +100 kg','Gold','FRA','RINER Teddy');
+Insert into olympic_medal_winners  values (2016,'Judo','M','Men +100 kg','Bronze','BRA','SILVA Rafael');
+Insert into olympic_medal_winners  values (2016,'Judo','M','Men +100 kg','Bronze','ISR','SASSON Or');
+Insert into olympic_medal_winners  values (2016,'Judo','M','Men +100 kg','Silver','JPN','HARASAWA Hisayoshi');
+Insert into olympic_medal_winners  values (2016,'Judo','M','Men -100 kg','Gold','CZE','KRPALEK Lukas');
+Insert into olympic_medal_winners  values (2016,'Judo','M','Men -100 kg','Bronze','FRA','MARET Cyrille');
+Insert into olympic_medal_winners  values (2016,'Modern Pentathlon','M','Men''s Individual','Gold','RUS','LESUN Alexander');
+Insert into olympic_medal_winners  values (2016,'Modern Pentathlon','M','Men''s Individual','Silver','UKR','TYMOSHCHENKO Pavlo');
+Insert into olympic_medal_winners  values (2016,'Modern Pentathlon','M','Men''s Individual','Bronze','MEX','HERNANDEZ USCANGA Ismael Marcelo');
+Insert into olympic_medal_winners  values (2016,'Modern Pentathlon','W','Women''s Individual','Gold','AUS','ESPOSITO Chloe');
+Insert into olympic_medal_winners  values (2016,'Modern Pentathlon','W','Women''s Individual','Silver','FRA','CLOUVEL Elodie');
+Insert into olympic_medal_winners  values (2016,'Modern Pentathlon','W','Women''s Individual','Bronze','POL','NOWACKA Oktawia');
+Insert into olympic_medal_winners  values (2016,'Rhythmic Gymnastics','W','Group All-Around','Gold','RUS','Russian Federation');
+Insert into olympic_medal_winners  values (2016,'Rhythmic Gymnastics','W','Group All-Around','Bronze','BUL','Bulgaria');
+Insert into olympic_medal_winners  values (2016,'Rhythmic Gymnastics','W','Group All-Around','Silver','ESP','Spain');
+Insert into olympic_medal_winners  values (2016,'Rhythmic Gymnastics','W','Individual All-Around','Gold','RUS','MAMUN Margarita');
+Insert into olympic_medal_winners  values (2016,'Rhythmic Gymnastics','W','Individual All-Around','Silver','RUS','KUDRYAVTSEVA Yana');
+Insert into olympic_medal_winners  values (2016,'Rhythmic Gymnastics','W','Individual All-Around','Bronze','UKR','RIZATDINOVA Ganna');
+Insert into olympic_medal_winners  values (2016,'Rowing','M','Lightweight Men''s Double Sculls','Gold','FRA','Azou');
+Insert into olympic_medal_winners  values (2016,'Rowing','M','Lightweight Men''s Double Sculls','Bronze','NOR','Brun');
+Insert into olympic_medal_winners  values (2016,'Rowing','M','Lightweight Men''s Double Sculls','Bronze','NOR','Strandli');
+Insert into olympic_medal_winners  values (2016,'Rowing','M','Lightweight Men''s Double Sculls','Silver','IRL','O''Donovan');
+Insert into olympic_medal_winners  values (2016,'Rowing','M','Lightweight Men''s Double Sculls','Silver','IRL','O''Donovan');
+Insert into olympic_medal_winners  values (2016,'Rowing','M','Lightweight Men''s Double Sculls','Gold','FRA','Houin');
+Insert into olympic_medal_winners  values (2016,'Sailing','M','470 Men','Gold','CRO','Fantela');
+Insert into olympic_medal_winners  values (2016,'Sailing','M','470 Men','Bronze','GRE','Kagialis');
+Insert into olympic_medal_winners  values (2016,'Sailing','M','470 Men','Bronze','GRE','Mantis');
+Insert into olympic_medal_winners  values (2016,'Sailing','M','470 Men','Silver','AUS','Ryan');
+Insert into olympic_medal_winners  values (2016,'Sailing','M','470 Men','Silver','AUS','Belcher');
+Insert into olympic_medal_winners  values (2016,'Sailing','M','470 Men','Gold','CRO','Marenic');
+Insert into olympic_medal_winners  values (2016,'Swimming','M','Men''s 100m Backstroke','Gold','USA','MURPHY Ryan');
+Insert into olympic_medal_winners  values (2016,'Swimming','M','Men''s 100m Backstroke','Bronze','USA','PLUMMER David');
+Insert into olympic_medal_winners  values (2016,'Swimming','M','Men''s 100m Backstroke','Silver','CHN','XU Jiayu');
+Insert into olympic_medal_winners  values (2016,'Swimming','M','Men''s 100m Breaststroke','Gold','GBR','PEATY Adam');
+Insert into olympic_medal_winners  values (2016,'Swimming','M','Men''s 100m Breaststroke','Bronze','USA','MILLER Cody');
+Insert into olympic_medal_winners  values (2016,'Swimming','M','Men''s 100m Breaststroke','Silver','RSA','VAN DER BURGH Cameron');
+Insert into olympic_medal_winners  values (2016,'Table Tennis','M','Men''s Singles','Gold','CHN','MA Long');
+Insert into olympic_medal_winners  values (2016,'Table Tennis','M','Men''s Singles','Bronze','JPN','MIZUTANI Jun');
+Insert into olympic_medal_winners  values (2016,'Table Tennis','M','Men''s Singles','Silver','CHN','ZHANG Jike');
+Insert into olympic_medal_winners  values (2016,'Table Tennis','M','Men''s Team','Gold','CHN','China');
+Insert into olympic_medal_winners  values (2016,'Table Tennis','M','Men''s Team','Bronze','GER','Germany');
+Insert into olympic_medal_winners  values (2016,'Table Tennis','M','Men''s Team','Silver','JPN','Japan');
+Insert into olympic_medal_winners  values (2016,'Taekwondo','M','Men +80kg','Gold','AZE','ISAEV Radik');
+Insert into olympic_medal_winners  values (2016,'Taekwondo','M','Men +80kg','Bronze','KOR','CHA Dongmin');
+Insert into olympic_medal_winners  values (2016,'Taekwondo','M','Men +80kg','Bronze','BRA','SIQUEIRA Maicon');
+Insert into olympic_medal_winners  values (2016,'Taekwondo','M','Men +80kg','Silver','NIG','ISSOUFOU ALFAGA Abdoulrazak');
+Insert into olympic_medal_winners  values (2016,'Taekwondo','M','Men -58kg','Gold','CHN','ZHAO Shuai');
+Insert into olympic_medal_winners  values (2016,'Taekwondo','M','Men -58kg','Silver','THA','HANPRAB Tawin');
+Insert into olympic_medal_winners  values (2016,'Tennis','M','Men''s Doubles','Gold','ESP','Lopez');
+Insert into olympic_medal_winners  values (2016,'Tennis','M','Men''s Doubles','Bronze','USA','Johnson');
+Insert into olympic_medal_winners  values (2016,'Tennis','M','Men''s Doubles','Bronze','USA','Sock');
+Insert into olympic_medal_winners  values (2016,'Tennis','M','Men''s Doubles','Silver','ROU','Tecau');
+Insert into olympic_medal_winners  values (2016,'Tennis','M','Men''s Doubles','Silver','ROU','Mergea');
+Insert into olympic_medal_winners  values (2016,'Tennis','M','Men''s Doubles','Gold','ESP','Nadal');
+Insert into olympic_medal_winners  values (2016,'Trampoline Gymnastics','M','Men','Gold','BLR','HANCHAROU Uladzislau');
+Insert into olympic_medal_winners  values (2016,'Trampoline Gymnastics','M','Men','Silver','CHN','DONG Dong');
+Insert into olympic_medal_winners  values (2016,'Trampoline Gymnastics','M','Men','Bronze','CHN','GAO Lei');
+Insert into olympic_medal_winners  values (2016,'Trampoline Gymnastics','W','Women','Gold','CAN','MACLENNAN Rosannagh');
+Insert into olympic_medal_winners  values (2016,'Trampoline Gymnastics','W','Women','Silver','GBR','PAGE Bryony');
+Insert into olympic_medal_winners  values (2016,'Trampoline Gymnastics','W','Women','Bronze','CHN','LI Dan');
+Insert into olympic_medal_winners  values (2016,'Triathlon','M','Men','Gold','GBR','BROWNLEE Alistair');
+Insert into olympic_medal_winners  values (2016,'Triathlon','M','Men','Silver','GBR','BROWNLEE Jonathan');
+Insert into olympic_medal_winners  values (2016,'Triathlon','M','Men','Bronze','RSA','SCHOEMAN Henri');
+Insert into olympic_medal_winners  values (2016,'Triathlon','W','Women','Gold','USA','JORGENSEN Gwen');
+Insert into olympic_medal_winners  values (2016,'Triathlon','W','Women','Silver','SUI','SPIRIG HUG Nicola');
+Insert into olympic_medal_winners  values (2016,'Triathlon','W','Women','Bronze','GBR','HOLLAND Vicky');
+Insert into olympic_medal_winners  values (2016,'Volleyball','M','Men','Gold','BRA','Brazil');
+Insert into olympic_medal_winners  values (2016,'Volleyball','M','Men','Silver','ITA','Italy');
+Insert into olympic_medal_winners  values (2016,'Volleyball','M','Men','Bronze','USA','United States');
+Insert into olympic_medal_winners  values (2016,'Volleyball','W','Women','Gold','CHN','China');
+Insert into olympic_medal_winners  values (2016,'Volleyball','W','Women','Silver','SRB','Serbia');
+Insert into olympic_medal_winners  values (2016,'Volleyball','W','Women','Bronze','USA','United States');
+Insert into olympic_medal_winners  values (2016,'Water Polo','M','Men','Gold','SRB','Serbia');
+Insert into olympic_medal_winners  values (2016,'Water Polo','M','Men','Silver','CRO','Croatia');
+Insert into olympic_medal_winners  values (2016,'Water Polo','M','Men','Bronze','ITA','Italy');
+Insert into olympic_medal_winners  values (2016,'Water Polo','W','Women','Gold','USA','United States');
+Insert into olympic_medal_winners  values (2016,'Water Polo','W','Women','Silver','ITA','Italy');
+Insert into olympic_medal_winners  values (2016,'Water Polo','W','Women','Bronze','RUS','Russian Federation');
+Insert into olympic_medal_winners  values (2016,'Weightlifting','M','Men''s +105kg','Gold','GEO','TALAKHADZE Lasha');
+Insert into olympic_medal_winners  values (2016,'Weightlifting','M','Men''s +105kg','Bronze','GEO','TURMANIDZE Irakli');
+Insert into olympic_medal_winners  values (2016,'Weightlifting','M','Men''s +105kg','Silver','ARM','MINASYAN Gor');
+Insert into olympic_medal_winners  values (2016,'Weightlifting','M','Men''s 105kg','Gold','UZB','NURUDINOV Ruslan');
+Insert into olympic_medal_winners  values (2016,'Weightlifting','M','Men''s 105kg','Bronze','KAZ','ZAICHIKOV Alexandr');
+Insert into olympic_medal_winners  values (2016,'Weightlifting','M','Men''s 105kg','Silver','ARM','MARTIROSYAN Simon');
+Insert into olympic_medal_winners  values (2016,'Wrestling','M','Men''s Freestyle 125 kg','Gold','TUR','AKGUL Taha');
+Insert into olympic_medal_winners  values (2016,'Wrestling','M','Men''s Freestyle 125 kg','Bronze','BLR','SAIDAU Ibrahim');
+Insert into olympic_medal_winners  values (2016,'Wrestling','M','Men''s Freestyle 125 kg','Bronze','GEO','PETRIASHVILI Geno');
+Insert into olympic_medal_winners  values (2016,'Wrestling','M','Men''s Freestyle 125 kg','Silver','IRI','GHASEMI Komeil Nemat');
+Insert into olympic_medal_winners  values (2016,'Wrestling','M','Men''s Freestyle 57 kg','Gold','GEO','KHINCHEGASHVILI Vladimer');
+Insert into olympic_medal_winners  values (2016,'Wrestling','M','Men''s Freestyle 57 kg','Bronze','AZE','ALIYEV Haji');
+select count(*) from olympic_medal_winners; -- 180
+ count 
+-------
+   180
+(1 row)
+
+--1,
+select * from olympic_medal_winners
+pivot ( count(*) for medal in ( 
+ 'Gold' gold, 'Silver' silver, 'Bronze' bronze
+))
+order by noc
+fetch first 6 rows only;
+ olympic_year |       sport       | gender |       event        | noc |      athlete      | gold | silver | bronze 
+--------------+-------------------+--------+--------------------+-----+-------------------+------+--------+--------
+         2016 | Hockey            | M      | Men                | ARG | Argentina         |    1 |      0 |      0
+         2016 | Weightlifting     | M      | Men's 105kg        | ARM | MARTIROSYAN Simon |    0 |      1 |      0
+         2016 | Weightlifting     | M      | Men's +105kg       | ARM | MINASYAN Gor      |    0 |      1 |      0
+         2016 | Sailing           | M      | 470 Men            | AUS | Ryan              |    0 |      1 |      0
+         2016 | Modern Pentathlon | W      | Women's Individual | AUS | ESPOSITO Chloe    |    1 |      0 |      0
+         2016 | Archery           | M      | Men's Team         | AUS | Australia         |    0 |      0 |      1
+(6 rows)
+
+--2,
+select * from (
+ select noc, medal from olympic_medal_winners
+)
+pivot ( count(*) for medal in (
+ 'Gold' gold, 'Silver' silver, 'Bronze' bronze
+))
+order  by 2 desc, 3 desc, 4 desc
+fetch first 5 rows only;
+ noc | gold | silver | bronze 
+-----+------+--------+--------
+ CHN |    8 |      3 |      3
+ GBR |    7 |      7 |      5
+ RUS |    5 |      1 |      3
+ GER |    4 |      1 |      6
+ USA |    3 |      5 |     10
+(5 rows)
+
+--3,
+select * from (
+ select noc, medal, sport, event, gender
+ from olympic_medal_winners
+)
+pivot ( count(distinct sport ||'#'|| event ||'#'||gender ) for medal in (
+ 'Gold' gold, 'Silver' silver, 'Bronze' bronze
+))
+order  by 2 desc, 3 desc, 4 desc
+fetch first 5 rows only;
+ noc | gold | silver | bronze 
+-----+------+--------+--------
+ GBR |    7 |      6 |      4
+ CHN |    7 |      3 |      3
+ RUS |    5 |      1 |      3
+ USA |    3 |      5 |      9
+ GER |    3 |      1 |      6
+(5 rows)
+
+--4,
+select * from (
+  select noc, medal, sport, event, gender, athlete
+  from   olympic_medal_winners
+)
+pivot  (
+  count( distinct sport ||'#'|| event ||'#'|| gender ) medals,
+  count( distinct sport ) sports,
+  listagg( athlete, ',') within group (order by athlete) athletes
+  for medal in ( 'Gold' gold )
+)
+where  gold_medals > 1
+order  by gold_medals, gold_sports, noc
+fetch  first 5 rows only;
+ noc | gold_medals | gold_sports |               gold_athletes               
+-----+-------------+-------------+-------------------------------------------
+ KOR |           2 |           1 | KU Bonchan,Republic of Korea
+ BRA |           2 |           2 | Brazil,Cerutti,Oscar Schmidt
+ FRA |           2 |           2 | Azou,Houin,RINER Teddy
+ GEO |           2 |           2 | KHINCHEGASHVILI Vladimer,TALAKHADZE Lasha
+ ITA |           2 |           2 | GAROZZO Daniele,VIVIANI Elia
+(5 rows)
+
+--5,
+select * from (
+  select noc, medal, sport, event, gender, athlete
+  from   olympic_medal_winners
+)
+pivot  (
+  count( distinct sport ||'#'|| event ||'#'|| gender ) medals,
+  count( distinct sport ) sports,
+  listagg( athlete, ',') within group (order by athlete) athletes
+  for medal in ( 'Gold' gold )
+)
+where  noc like 'D%'
+order  by gold_medals;
+ noc | gold_medals | gold_sports | gold_athletes 
+-----+-------------+-------------+---------------
+ DEN |           1 |           1 | Denmark
+(1 row)
+
+--6,
+select * from ( 
+  select noc, sport
+  from   olympic_medal_winners
+)
+pivot (min('X') for sport in (
+  'Archery' as arc, 'Athletics' as ath, 'Hockey' as hoc,
+  'Judo' as jud, 'Sailing' as sai, 'Wrestling' as wre
+  )
+)
+order  by noc
+fetch  first 7 rows only;
+ noc | arc | ath | hoc | jud | sai | wre 
+-----+-----+-----+-----+-----+-----+-----
+ ARG |     |     | X   |     |     | 
+ ARM |     |     |     |     |     | 
+ AUS | X   |     |     |     | X   | 
+ AZE |     |     |     |     |     | X
+ BEL |     |     | X   |     |     | 
+ BLR |     |     |     |     |     | X
+ BRA |     |     |     | X   |     | 
+(7 rows)
+
+--7,
+drop table if exists olympic_medal_tables;
+NOTICE:  table "olympic_medal_tables" does not exist, skipping
+create table olympic_medal_tables as
+select * from (
+ select noc, medal, sport, event, gender
+ from olympic_medal_winners
+)
+pivot ( count(distinct sport ||'#'|| event ||'#'||gender ) for medal in (
+ 'Gold' gold_medals, 'Silver' silver_medals, 'Bronze' bronze_medals
+))
+order  by 2 desc, 3 desc, 4 desc;
+--8,
+select * from olympic_medal_tables
+unpivot (medal_count for medal_colour in (
+  gold_medals as 'GOLD',
+  silver_medals as 'SILVER',
+  bronze_medals as 'BRONZE'
+))
+order  by noc
+fetch  first 6 rows only;
+ noc | medal_colour | medal_count 
+-----+--------------+-------------
+ ARG | SILVER       | 0
+ ARG | BRONZE       | 0
+ ARG | GOLD         | 1
+ ARM | SILVER       | 2
+ ARM | GOLD         | 0
+ ARM | BRONZE       | 0
+(6 rows)
+
+drop table olympic_medal_tables purge;
+--9,
+create table olympic_medal_tables as
+select * from (
+ select noc, medal, sport, event, gender
+ from olympic_medal_winners
+)
+pivot ( count(distinct sport ||'#'|| event ||'#'||gender ) medals,
+  count(distinct sport) sports
+  for medal in (
+ 'Gold' gold, 'Silver' silver, 'Bronze' bronze
+))
+order  by 2 desc, 4 desc, 6 desc;
+select count(*) from olympic_medal_tables;
+ count 
+-------
+    47
+(1 row)
+
+--10,
+select * from olympic_medal_tables
+unpivot ((medal_count, sport_count) for medal_colour in (
+  (gold_medals, gold_sports) as 'GOLD',
+  (silver_medals, silver_sports) as 'SILVER',
+  (bronze_medals, bronze_sports) as 'BRONZE'
+))
+fetch first 9 rows only;
+ noc | medal_colour | medal_count | sport_count 
+-----+--------------+-------------+-------------
+ GBR | GOLD         | 7           | 7
+ GBR | SILVER       | 6           | 6
+ GBR | BRONZE       | 4           | 4
+ CHN | GOLD         | 7           | 5
+ CHN | SILVER       | 3           | 3
+ CHN | BRONZE       | 3           | 2
+ RUS | GOLD         | 5           | 4
+ RUS | SILVER       | 1           | 1
+ RUS | BRONZE       | 3           | 3
+(9 rows)
+
+drop table olympic_medal_tables purge;
+--11,
+create table olympic_medal_tables as
+select * from (
+ select noc, medal, sport, event, gender, athlete
+ from olympic_medal_winners
+)
+pivot ( count(distinct sport ||'#'|| event ||'#'||gender ) medals,
+  listagg(athlete, ',') within group (order by athlete) athletes
+  for medal in (
+ 'Gold' gold, 'Silver' silver, 'Bronze' bronze
+))
+order  by 2 desc, 4 desc, 6 desc;
+select count(*) from olympic_medal_tables;
+ count 
+-------
+    47
+(1 row)
+
+--12,
+select * from olympic_medal_tables
+unpivot ((medal_count, athletes) for medal_colour in (
+  (gold_medals, gold_athletes) as 'GOLD',
+  (silver_medals, silver_athletes) as 'SILVER',
+  (bronze_medals, bronze_athletes) as 'BRONZE'
+))
+where  medal_colour = 'GOLD'
+and    medal_count = 2
+order  by noc
+fetch first 3 rows only;
+ noc | medal_colour | medal_count |                 athletes                  
+-----+--------------+-------------+-------------------------------------------
+ BRA | GOLD         | 2           | Brazil,Cerutti,Oscar Schmidt
+ FRA | GOLD         | 2           | Azou,Houin,RINER Teddy
+ GEO | GOLD         | 2           | KHINCHEGASHVILI Vladimer,TALAKHADZE Lasha
+(3 rows)
+
+drop table olympic_medal_tables;
+--13,
+drop table if exists olympic_country_sport_medals;
+NOTICE:  table "olympic_country_sport_medals" does not exist, skipping
+create table olympic_country_sport_medals as
+select * from (
+  select noc, sport
+  from   olympic_medal_winners
+)
+pivot (count(sport) for sport in (
+  'Athletics' as ath, 'Artistic Gymnastics' as gym, 'Cycling Track' as cyc,
+  'Boxing' as box, 'Sailing' as sai
+  )
+)
+order  by 1;
+--14,
+select * from olympic_country_sport_medals
+pivot  (
+  sum(ath) ath, sum(box) box, sum(gym) gym, sum(sai) sai, sum(cyc) cyc
+  for noc in (
+    'BRA' BRA, 'CHN' CHN, 'DEN' DEN, 'ESP' ESP, 'ETH' ETH, 'GRE' GRE
+  )
+)
+unpivot (
+  ( BRA, CHN, DEN, ESP, ETH, GRE ) for sport in (
+    (BRA_ATH, CHN_ATH, DEN_ATH,  ESP_ATH,  ETH_ATH, GRE_ATH) as 'Athletics',
+    (BRA_GYM, CHN_GYM, DEN_GYM,  ESP_GYM,  ETH_GYM, GRE_GYM) as 'Artistic Gym',
+    (BRA_BOX, CHN_BOX, DEN_BOX,  ESP_BOX,  ETH_BOX, GRE_BOX) as 'Boxing',
+    (BRA_SAI, CHN_SAI, DEN_SAI,  ESP_SAI,  ETH_SAI, GRE_SAI) as 'Sailing',
+    (BRA_CYC, CHN_CYC, DEN_CYC,  ESP_CYC,  ETH_CYC, GRE_CYC) as 'Track Cycling'
+  )
+);
+     sport     | bra | chn | den | esp | eth | gre 
+---------------+-----+-----+-----+-----+-----+-----
+ Athletics     | 0   | 0   | 0   | 0   | 1   | 0
+ Artistic Gym  | 2   | 0   | 0   | 0   | 0   | 0
+ Boxing        | 0   | 1   | 0   | 0   | 0   | 0
+ Sailing       | 0   | 0   | 0   | 0   | 0   | 2
+ Track Cycling | 0   | 0   | 1   | 0   | 0   | 0
+(5 rows)
+
+--15,
+select * from olympic_country_sport_medals
+unpivot (
+  (medals) for sport in ( ath, box, gym, sai, cyc )
+)
+pivot  (
+  sum(medals) for noc in (
+    'BRA' BRA, 'CHN' CHN, 'DEN' DEN, 'ESP' ESP, 'ETH' ETH, 'GRE' GRE
+  )
+);
+ sport | bra | chn | den | esp | eth | gre 
+-------+-----+-----+-----+-----+-----+-----
+ ath   | 0   | 0   | 0   | 0   | 1   | 0
+ box   | 0   | 1   | 0   | 0   | 0   | 0
+ cyc   | 0   | 0   | 1   | 0   | 0   | 0
+ gym   | 2   | 0   | 0   | 0   | 0   | 0
+ sai   | 0   | 0   | 0   | 0   | 0   | 2
+(5 rows)
+
+--16, recursive grammar supports a three-operation chain
+SELECT chained.*
+FROM (
+  olympic_country_sport_medals
+  UNPIVOT (
+    medals FOR sport IN (ath AS 'ATH', box AS 'BOX')
+  )
+  PIVOT (
+    SUM(medals) FOR noc IN ('BRA' AS BRA, 'CHN' AS CHN)
+  )
+  UNPIVOT (
+    medal_count FOR country IN (BRA AS 'BRA', CHN AS 'CHN')
+  )
+) chained
+ORDER BY chained.sport, chained.country;
+ gym | cyc | sai | sport | country | medal_count 
+-----+-----+-----+-------+---------+-------------
+   2 |   0 |   0 | ATH   | BRA     | 0
+   0 |   0 |   0 | ATH   | CHN     | 0
+   2 |   0 |   0 | BOX   | BRA     | 0
+   0 |   0 |   0 | BOX   | CHN     | 1
+(4 rows)
+
+drop table olympic_country_sport_medals;
+drop table olympic_medal_winners;
+--17, Oracle 21c verified recursive PIVOT/UNPIVOT chain matrix
+DROP TABLE IF EXISTS ora_chain_sales_verify;
+NOTICE:  table "ora_chain_sales_verify" does not exist, skipping
+DROP TABLE IF EXISTS ora_chain_wide_verify;
+NOTICE:  table "ora_chain_wide_verify" does not exist, skipping
+CREATE TABLE ora_chain_sales_verify
+(
+  product VARCHAR2(20),
+  region  VARCHAR2(20),
+  channel VARCHAR2(20),
+  amount  NUMBER
+);
+INSERT INTO ora_chain_sales_verify VALUES ('Laptop', 'East', 'Online', 100);
+INSERT INTO ora_chain_sales_verify VALUES ('Laptop', 'East', 'Store',   50);
+INSERT INTO ora_chain_sales_verify VALUES ('Laptop', 'West', 'Online', 200);
+INSERT INTO ora_chain_sales_verify VALUES ('Laptop', 'West', 'Store',   80);
+INSERT INTO ora_chain_sales_verify VALUES ('Phone',  'East', 'Online', 300);
+INSERT INTO ora_chain_sales_verify VALUES ('Phone',  'East', 'Store',   40);
+INSERT INTO ora_chain_sales_verify VALUES ('Phone',  'West', 'Online',  20);
+INSERT INTO ora_chain_sales_verify VALUES ('Phone',  'West', 'Store',  400);
+CREATE TABLE ora_chain_wide_verify
+(
+  product   VARCHAR2(20),
+  q1_amount NUMBER,
+  q1_qty    NUMBER,
+  q2_amount NUMBER,
+  q2_qty    NUMBER
+);
+INSERT INTO ora_chain_wide_verify VALUES ('Laptop', 100, 2, 200, 3);
+INSERT INTO ora_chain_wide_verify VALUES ('Phone',  300, 4, 400, 5);
+-- T1: UNPIVOT -> PIVOT -> UNPIVOT
+SELECT chain_upu.*
+FROM ora_chain_wide_verify
+UNPIVOT INCLUDE NULLS
+(
+  (amount, qty)
+  FOR quarter_code IN
+  (
+    (q1_amount, q1_qty) AS 'Q1',
+    (q2_amount, q2_qty) AS 'Q2'
+  )
+)
+PIVOT
+(
+  SUM(amount) AS amount_total,
+  SUM(qty)    AS qty_total
+  FOR quarter_code IN
+  (
+    'Q1' AS q1_period,
+    'Q2' AS q2_period
+  )
+)
+UNPIVOT INCLUDE NULLS
+(
+  (amount, qty)
+  FOR quarter_code IN
+  (
+    (q1_period_amount_total, q1_period_qty_total) AS 'Q1',
+    (q2_period_amount_total, q2_period_qty_total) AS 'Q2'
+  )
+) chain_upu
+ORDER BY chain_upu.product, chain_upu.quarter_code;
+ product | quarter_code | amount | qty 
+---------+--------------+--------+-----
+ Laptop  | Q1           | 100    | 2
+ Laptop  | Q2           | 200    | 3
+ Phone   | Q1           | 300    | 4
+ Phone   | Q2           | 400    | 5
+(4 rows)
+
+-- T2: PIVOT -> PIVOT
+SELECT chain_pp.*
+FROM ora_chain_sales_verify
+PIVOT
+(
+  SUM(amount) AS amt
+  FOR region IN
+  (
+    'East' AS east_r,
+    'West' AS west_r
+  )
+)
+PIVOT
+(
+  SUM(east_r_amt) AS east_total,
+  SUM(west_r_amt) AS west_total
+  FOR channel IN
+  (
+    'Online' AS online_ch,
+    'Store'  AS store_ch
+  )
+) chain_pp
+ORDER BY chain_pp.product;
+ product | online_ch_east_total | online_ch_west_total | store_ch_east_total | store_ch_west_total 
+---------+----------------------+----------------------+---------------------+---------------------
+ Laptop  | 100                  | 200                  | 50                  | 80
+ Phone   | 300                  | 20                   | 40                  | 400
+(2 rows)
+
+-- T3: UNPIVOT -> UNPIVOT
+SELECT chain_uu.*
+FROM ora_chain_wide_verify
+UNPIVOT INCLUDE NULLS
+(
+  (amount, qty)
+  FOR quarter_code IN
+  (
+    (q1_amount, q1_qty) AS 'Q1',
+    (q2_amount, q2_qty) AS 'Q2'
+  )
+)
+UNPIVOT INCLUDE NULLS
+(
+  metric_value
+  FOR metric_name IN
+  (
+    amount AS 'AMOUNT',
+    qty    AS 'QTY'
+  )
+) chain_uu
+ORDER BY chain_uu.product, chain_uu.quarter_code, chain_uu.metric_name;
+ product | quarter_code | metric_name | metric_value 
+---------+--------------+-------------+--------------
+ Laptop  | Q1           | AMOUNT      | 100
+ Laptop  | Q1           | QTY         | 2
+ Laptop  | Q2           | AMOUNT      | 200
+ Laptop  | Q2           | QTY         | 3
+ Phone   | Q1           | AMOUNT      | 300
+ Phone   | Q1           | QTY         | 4
+ Phone   | Q2           | AMOUNT      | 400
+ Phone   | Q2           | QTY         | 5
+(8 rows)
+
+-- T4: PIVOT -> UNPIVOT -> PIVOT -> UNPIVOT
+SELECT chain_4.*
+FROM ora_chain_sales_verify
+PIVOT
+(
+  SUM(amount) AS amt
+  FOR region IN ('East' AS east_r, 'West' AS west_r)
+)
+UNPIVOT INCLUDE NULLS
+(
+  amount FOR region IN
+  (
+    east_r_amt AS 'East',
+    west_r_amt AS 'West'
+  )
+)
+PIVOT
+(
+  SUM(amount) AS amt
+  FOR channel IN ('Online' AS online_ch, 'Store' AS store_ch)
+)
+UNPIVOT INCLUDE NULLS
+(
+  amount FOR channel IN
+  (
+    online_ch_amt AS 'Online',
+    store_ch_amt  AS 'Store'
+  )
+) chain_4
+ORDER BY chain_4.product, chain_4.region, chain_4.channel;
+ product | region | channel | amount 
+---------+--------+---------+--------
+ Laptop  | East   | Online  | 100
+ Laptop  | East   | Store   | 50
+ Laptop  | West   | Online  | 200
+ Laptop  | West   | Store   | 80
+ Phone   | East   | Online  | 300
+ Phone   | East   | Store   | 40
+ Phone   | West   | Online  | 20
+ Phone   | West   | Store   | 400
+(8 rows)
+
+-- T5: PIVOT -> UNPIVOT -> PIVOT -> UNPIVOT -> PIVOT
+SELECT chain_5.*
+FROM ora_chain_sales_verify
+PIVOT
+(
+  SUM(amount) AS amt
+  FOR region IN ('East' AS east_r, 'West' AS west_r)
+)
+UNPIVOT INCLUDE NULLS
+(
+  amount FOR region IN
+  (
+    east_r_amt AS 'East',
+    west_r_amt AS 'West'
+  )
+)
+PIVOT
+(
+  SUM(amount) AS amt
+  FOR channel IN ('Online' AS online_ch, 'Store' AS store_ch)
+)
+UNPIVOT INCLUDE NULLS
+(
+  amount FOR channel IN
+  (
+    online_ch_amt AS 'Online',
+    store_ch_amt  AS 'Store'
+  )
+)
+PIVOT
+(
+  SUM(amount) AS amt
+  FOR region IN ('East' AS east_final, 'West' AS west_final)
+) chain_5
+ORDER BY chain_5.product, chain_5.channel;
+ product | channel | east_final_amt | west_final_amt 
+---------+---------+----------------+----------------
+ Laptop  | Online  | 100            | 200
+ Laptop  | Store   | 50             | 80
+ Phone   | Online  | 300            | 20
+ Phone   | Store   | 40             | 400
+(4 rows)
+
+-- A parenthesized intermediate alias propagates through the outer operation.
+SELECT mid_chain.*
+FROM
+(
+  ora_chain_wide_verify
+  UNPIVOT INCLUDE NULLS
+  (
+    amount FOR quarter_code IN
+    (
+      q1_amount AS 'Q1',
+      q2_amount AS 'Q2'
+    )
+  )
+) mid_chain
+PIVOT
+(
+  SUM(amount) AS total
+  FOR quarter_code IN ('Q1' AS q1_period, 'Q2' AS q2_period)
+)
+ORDER BY mid_chain.product, mid_chain.q1_qty, mid_chain.q2_qty;
+ product | q1_qty | q2_qty | q1_period_total | q2_period_total 
+---------+--------+--------+-----------------+-----------------
+ Laptop  | 2      | 3      | 100             | 200
+ Phone   | 4      | 5      | 300             | 400
+(2 rows)
+
+DROP TABLE ora_chain_sales_verify;
+DROP TABLE ora_chain_wide_verify;
+drop table if exists h_athletes;
+NOTICE:  table "h_athletes" does not exist, skipping
+create table h_athletes (
+    athlete_id   number primary key,
+    athlete_name varchar2(50),
+    noc          varchar2(3),
+    gender       varchar2(1)
+);
+drop table if exists h_olympic_medals;
+NOTICE:  table "h_olympic_medals" does not exist, skipping
+create table h_olympic_medals (
+    medal_id     number primary key,
+    athlete_id   number,
+    sport        varchar2(50),
+    event        varchar2(50),
+    medal        varchar2(10), -- 'Gold', 'Silver', 'Bronze'
+    year         number,
+    foreign key (athlete_id) references h_athletes(athlete_id)
+);
+insert into h_athletes values (1, 'Alice', 'USA', 'F');
+insert into h_athletes values (2, 'Bob', 'USA', 'M');
+insert into h_athletes values (3, 'Charlie', 'CHN', 'M');
+insert into h_athletes values (4, 'Diana', 'CHN', 'F');
+insert into h_athletes values (5, 'Eve', 'BRA', 'F');
+insert into h_olympic_medals values (1, 1, 'Athletics', '100m', 'Gold', 2020);
+insert into h_olympic_medals values (2, 2, 'Athletics', '200m', 'Silver', 2020);
+insert into h_olympic_medals values (3, 3, 'Swimming', '100m Freestyle', 'Gold', 2020);
+insert into h_olympic_medals values (4, 4, 'Swimming', '200m Freestyle', 'Bronze', 2020);
+insert into h_olympic_medals values (5, 5, 'Gymnastics', 'Vault', 'Silver', 2020);
+select a.noc,
+       a.athlete_name,
+       a.gender,
+       m.sport,
+       m.event,
+       m.medal
+from h_athletes a
+join h_olympic_medals m on a.athlete_id = m.athlete_id
+order by a.noc, a.athlete_name;
+ noc | athlete_name | gender |   sport    |     event      | medal  
+-----+--------------+--------+------------+----------------+--------
+ BRA | Eve          | F      | Gymnastics | Vault          | Silver
+ CHN | Charlie      | M      | Swimming   | 100m Freestyle | Gold
+ CHN | Diana        | F      | Swimming   | 200m Freestyle | Bronze
+ USA | Alice        | F      | Athletics  | 100m           | Gold
+ USA | Bob          | M      | Athletics  | 200m           | Silver
+(5 rows)
+
+--1, join + pivot
+select *
+from (
+    select a.noc,
+           m.sport,
+           m.medal
+    from h_athletes a
+    join h_olympic_medals m on a.athlete_id = m.athlete_id
+)
+pivot (
+    count(medal)
+    for medal in ('Gold' as GOLD, 'Silver' as SILVER, 'Bronze' as BRONZE)
+)
+order by noc, sport;
+ noc |   sport    | gold | silver | bronze 
+-----+------------+------+--------+--------
+ BRA | Gymnastics |    0 |      1 |      0
+ CHN | Swimming   |    1 |      0 |      1
+ USA | Athletics  |    1 |      1 |      0
+(3 rows)
+
+--2, join + unpivot
+select noc, sport, medal_type, count
+from (
+    select *
+    from (
+        select a.noc,
+               m.sport,
+               m.medal
+        from h_athletes a
+        join h_olympic_medals m on a.athlete_id = m.athlete_id
+    )
+    pivot (
+        count(medal)
+        for medal in ('Gold' as GOLD, 'Silver' as SILVER, 'Bronze' as BRONZE)
+    )
+)
+unpivot (
+    count for medal_type in (GOLD, SILVER, BRONZE)
+)
+order by noc, sport, medal_type;
+ noc |   sport    | medal_type | count 
+-----+------------+------------+-------
+ BRA | Gymnastics | bronze     | 0
+ BRA | Gymnastics | gold       | 0
+ BRA | Gymnastics | silver     | 1
+ CHN | Swimming   | bronze     | 1
+ CHN | Swimming   | gold       | 1
+ CHN | Swimming   | silver     | 0
+ USA | Athletics  | bronze     | 0
+ USA | Athletics  | gold       | 1
+ USA | Athletics  | silver     | 1
+(9 rows)
+
+--3,
+select *
+from (
+    select gender, sport, medal
+    from h_athletes a
+    join h_olympic_medals m on a.athlete_id = m.athlete_id
+)
+pivot (
+    count(medal)
+    for gender in ('M' as MALE, 'F' as FEMALE)
+);
+   sport    | male | female 
+------------+------+--------
+ Athletics  |    1 |      1
+ Gymnastics |    0 |      1
+ Swimming   |    1 |      1
+(3 rows)
+
+drop table h_olympic_medals;
+drop table h_athletes;
+drop table if exists g_products;
+NOTICE:  table "g_products" does not exist, skipping
+CREATE TABLE g_products (
+	product_id	 NUMBER PRIMARY KEY,
+	product_name VARCHAR2(50)
+);
+INSERT INTO g_products VALUES (1, 'Laptop');
+INSERT INTO g_products VALUES (2, 'Tablet');
+INSERT INTO g_products VALUES (3, 'Phone');
+drop table if exists g_regions;
+NOTICE:  table "g_regions" does not exist, skipping
+CREATE TABLE g_regions (
+    region_id NUMBER PRIMARY KEY,
+    region_name VARCHAR2(50)
+);
+INSERT INTO g_regions VALUES (10, 'Americas');
+INSERT INTO g_regions VALUES (20, 'Europe');
+INSERT INTO g_regions VALUES (30, 'Asia');
+drop table if exists g_sales;
+NOTICE:  table "g_sales" does not exist, skipping
+CREATE TABLE g_sales (
+    product_id NUMBER,
+    region_id  NUMBER,
+    q1 NUMBER,
+    q2 NUMBER,
+    q3 NUMBER,
+    q4 NUMBER
+);
+INSERT INTO g_sales VALUES (1, 10, 100, 120, NULL, 150);
+INSERT INTO g_sales VALUES (1, 20,  80, NULL,  90, 110);
+INSERT INTO g_sales VALUES (2, 10, 200, 230, 210, NULL);
+INSERT INTO g_sales VALUES (2, 30, NULL, NULL, 180, 200);
+INSERT INTO g_sales VALUES (3, 20,  50,  70,  60,  80);
+SELECT *
+FROM (
+    SELECT
+        p.product_name,
+        r.region_name,
+        s.q1, s.q2, s.q3, s.q4
+    FROM g_sales s
+    JOIN g_products p ON s.product_id = p.product_id
+    JOIN g_regions  r ON s.region_id  = r.region_id
+)
+PIVOT (
+    SUM(q1) AS Q1,
+    SUM(q2) AS Q2,
+    SUM(q3) AS Q3,
+    SUM(q4) AS Q4
+    FOR region_name IN (
+        'Americas' AS AMR,
+        'Europe'   AS EUR,
+        'Asia'     AS ASIA
+    )
+)
+ORDER BY product_name;
+ product_name | amr_q1 | amr_q2 | amr_q3 | amr_q4 | eur_q1 | eur_q2 | eur_q3 | eur_q4 | asia_q1 | asia_q2 | asia_q3 | asia_q4 
+--------------+--------+--------+--------+--------+--------+--------+--------+--------+---------+---------+---------+---------
+ Laptop       | 100    | 120    |        | 150    | 80     |        | 90     | 110    |         |         |         | 
+ Phone        |        |        |        |        | 50     | 70     | 60     | 80     |         |         |         | 
+ Tablet       | 200    | 230    | 210    |        |        |        |        |        |         |         | 180     | 200
+(3 rows)
+
+SELECT *
+FROM (
+    SELECT
+        p.product_name,
+        r.region_name,
+        s.q1, s.q2, s.q3, s.q4
+    FROM g_sales s
+    JOIN g_products p ON s.product_id = p.product_id
+    JOIN g_regions  r ON s.region_id  = r.region_id
+)
+UNPIVOT (
+    sales_amount FOR quarter IN (
+        q1 AS 'Q1',
+        q2 AS 'Q2',
+        q3 AS 'Q3',
+        q4 AS 'Q4'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | Q1      | 100
+ Laptop       | Americas    | Q2      | 120
+ Laptop       | Americas    | Q4      | 150
+ Laptop       | Europe      | Q1      | 80
+ Laptop       | Europe      | Q3      | 90
+ Laptop       | Europe      | Q4      | 110
+ Phone        | Europe      | Q1      | 50
+ Phone        | Europe      | Q2      | 70
+ Phone        | Europe      | Q3      | 60
+ Phone        | Europe      | Q4      | 80
+ Tablet       | Americas    | Q1      | 200
+ Tablet       | Americas    | Q2      | 230
+ Tablet       | Americas    | Q3      | 210
+ Tablet       | Asia        | Q3      | 180
+ Tablet       | Asia        | Q4      | 200
+(15 rows)
+
+-- unpivot include nulls
+SELECT *
+FROM (
+    SELECT
+        p.product_name,
+        r.region_name,
+        s.q1, s.q2, s.q3, s.q4
+    FROM g_sales s
+    JOIN g_products p ON s.product_id = p.product_id
+    JOIN g_regions  r ON s.region_id  = r.region_id
+)
+UNPIVOT INCLUDE NULLS
+(
+    sales_amount FOR quarter IN (
+        q1 AS 'Q1',
+        q2 AS 'Q2',
+        q3 AS 'Q3',
+        q4 AS 'Q4'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | Q1      | 100
+ Laptop       | Americas    | Q2      | 120
+ Laptop       | Americas    | Q3      | 
+ Laptop       | Americas    | Q4      | 150
+ Laptop       | Europe      | Q1      | 80
+ Laptop       | Europe      | Q2      | 
+ Laptop       | Europe      | Q3      | 90
+ Laptop       | Europe      | Q4      | 110
+ Phone        | Europe      | Q1      | 50
+ Phone        | Europe      | Q2      | 70
+ Phone        | Europe      | Q3      | 60
+ Phone        | Europe      | Q4      | 80
+ Tablet       | Americas    | Q1      | 200
+ Tablet       | Americas    | Q2      | 230
+ Tablet       | Americas    | Q3      | 210
+ Tablet       | Americas    | Q4      | 
+ Tablet       | Asia        | Q1      | 
+ Tablet       | Asia        | Q2      | 
+ Tablet       | Asia        | Q3      | 180
+ Tablet       | Asia        | Q4      | 200
+(20 rows)
+
+-- unpivot exclude nulls
+SELECT *
+FROM (
+    SELECT
+        p.product_name,
+        r.region_name,
+        s.q1, s.q2, s.q3, s.q4
+    FROM g_sales s
+    JOIN g_products p ON s.product_id = p.product_id
+    JOIN g_regions  r ON s.region_id  = r.region_id
+)
+UNPIVOT EXCLUDE NULLS
+(
+    sales_amount FOR quarter IN (
+        q1 AS 'Q1',
+        q2 AS 'Q2',
+        q3 AS 'Q3',
+        q4 AS 'Q4'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | Q1      | 100
+ Laptop       | Americas    | Q2      | 120
+ Laptop       | Americas    | Q4      | 150
+ Laptop       | Europe      | Q1      | 80
+ Laptop       | Europe      | Q3      | 90
+ Laptop       | Europe      | Q4      | 110
+ Phone        | Europe      | Q1      | 50
+ Phone        | Europe      | Q2      | 70
+ Phone        | Europe      | Q3      | 60
+ Phone        | Europe      | Q4      | 80
+ Tablet       | Americas    | Q1      | 200
+ Tablet       | Americas    | Q2      | 230
+ Tablet       | Americas    | Q3      | 210
+ Tablet       | Asia        | Q3      | 180
+ Tablet       | Asia        | Q4      | 200
+(15 rows)
+
+WITH pivoted AS (
+    SELECT *
+    FROM (
+        SELECT
+            p.product_name,
+            r.region_name,
+            s.q1, s.q2, s.q3, s.q4
+        FROM g_sales s
+        JOIN g_products p ON s.product_id = p.product_id
+        JOIN g_regions  r ON s.region_id  = r.region_id
+    )
+    PIVOT (
+        SUM(q1 + q2 + q3 + q4) AS TOTAL
+        FOR region_name IN ('Americas' AS AMR, 'Europe' AS EUR, 'Asia' AS ASIA)
+    )
+)
+SELECT * FROM pivoted;
+ product_name | amr_total | eur_total | asia_total 
+--------------+-----------+-----------+------------
+ Laptop       |           |           | 
+ Phone        |           | 260       | 
+ Tablet       |           |           | 
+(3 rows)
+
+DROP TABLE g_sales;
+DROP TABLE g_regions;
+DROP TABLE g_products;
+drop table if exists d_sales_quarterly;
+NOTICE:  table "d_sales_quarterly" does not exist, skipping
+CREATE TABLE d_sales_quarterly (
+    product   VARCHAR2(20),
+    q1_qty    NUMBER,
+    q1_amt    NUMBER,
+    q2_qty    NUMBER,
+    q2_amt    NUMBER,
+    q3_qty    NUMBER,
+    q3_amt    NUMBER,
+    q4_qty    NUMBER,
+    q4_amt    NUMBER
+);
+INSERT INTO d_sales_quarterly VALUES ('A', 10, 100, 20, 220, 30, 330, 40, 480);
+INSERT INTO d_sales_quarterly VALUES ('B',  5,  60, 15, 180, 25, 300, 35, 420);
+SELECT product,
+       quarter,
+       qty,
+       amt
+FROM   d_sales_quarterly
+UNPIVOT INCLUDE NULLS
+(
+    (qty, amt)
+    FOR quarter IN (
+        (q1_qty, q1_amt) AS 'Q1',
+        (q2_qty, q2_amt) AS 'Q2',
+        (q3_qty, q3_amt) AS 'Q3',
+        (q4_qty, q4_amt) AS 'Q4'
+    )
+)
+ORDER BY product, quarter;
+ product | quarter | qty | amt 
+---------+---------+-----+-----
+ A       | Q1      | 10  | 100
+ A       | Q2      | 20  | 220
+ A       | Q3      | 30  | 330
+ A       | Q4      | 40  | 480
+ B       | Q1      | 5   | 60
+ B       | Q2      | 15  | 180
+ B       | Q3      | 25  | 300
+ B       | Q4      | 35  | 420
+(8 rows)
+
+DROP TABLE d_sales_quarterly;
+drop table if exists sales_pu;
+NOTICE:  table "sales_pu" does not exist, skipping
+CREATE TABLE sales_pu (
+    product_name VARCHAR2(30),
+    region_name  VARCHAR2(30),
+    year_no      NUMBER,
+    quarter      VARCHAR2(2),
+    sales_amount NUMBER,
+    sales_qty    NUMBER
+);
+INSERT INTO sales_pu VALUES ('Laptop', 'Americas', 2024, 'Q1', 100, 10);
+INSERT INTO sales_pu VALUES ('Laptop', 'Americas', 2024, 'Q2', 120, 12);
+INSERT INTO sales_pu VALUES ('Laptop', 'Europe',   2024, 'Q1',  80,  8);
+INSERT INTO sales_pu VALUES ('Laptop', 'Europe',   2024, 'Q2', NULL, 9);
+INSERT INTO sales_pu VALUES ('Tablet', 'Americas', 2024, 'Q1', 200, 20);
+INSERT INTO sales_pu VALUES ('Tablet', 'Americas', 2024, 'Q2', 230, 23);
+INSERT INTO sales_pu VALUES ('Tablet', 'Asia',     2025, 'Q1', 180, 18);
+INSERT INTO sales_pu VALUES ('Tablet', 'Asia',     2025, 'Q2', 200, 20);
+INSERT INTO sales_pu VALUES ('Phone',  'Europe',   2025, 'Q1',  50,  5);
+INSERT INTO sales_pu VALUES ('Phone',  'Europe',   2025, 'Q2',  70,  7);
+-- ============================
+-- 1. PIVOT
+--   aggregate_function(expr)
+--   FOR column
+--   IN (expr, expr, ...)
+-- ============================
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount)
+    FOR quarter IN ('Q1', 'Q2')
+)
+ORDER BY product_name;
+ product_name | 'Q1' | 'Q2' 
+--------------+------+------
+ Laptop       | 180  | 120
+ Phone        | 50   | 70
+ Tablet       | 380  | 430
+(3 rows)
+
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+) su
+PIVOT (
+    SUM(su.sales_amount)
+    FOR quarter IN ('Q1', 'Q2')
+)
+ORDER BY product_name;
+ product_name | 'Q1' | 'Q2' 
+--------------+------+------
+ Laptop       | 180  | 120
+ Phone        | 50   | 70
+ Tablet       | 380  | 430
+(3 rows)
+
+SELECT *
+    FROM sales_pu su
+PIVOT (
+    SUM(su.sales_amount)
+    FOR quarter IN ('Q1', 'Q2')
+)
+ORDER BY product_name;
+ product_name | region_name | year_no | sales_qty | 'Q1' | 'Q2' 
+--------------+-------------+---------+-----------+------+------
+ Laptop       | Americas    | 2024    | 10        | 100  | 
+ Laptop       | Americas    | 2024    | 12        |      | 120
+ Laptop       | Europe      | 2024    | 8         | 80   | 
+ Laptop       | Europe      | 2024    | 9         |      | 
+ Phone        | Europe      | 2025    | 5         | 50   | 
+ Phone        | Europe      | 2025    | 7         |      | 70
+ Tablet       | Americas    | 2024    | 20        | 200  | 
+ Tablet       | Americas    | 2024    | 23        |      | 230
+ Tablet       | Asia        | 2025    | 18        | 180  | 
+ Tablet       | Asia        | 2025    | 20        |      | 200
+(10 rows)
+
+-- ====================================
+-- 2. PIVOT
+--   aggregate_function(expr) AS alias
+--   expr AS alias
+-- ====================================
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) AS amt
+    FOR quarter IN (
+        'Q1' AS q1,
+        'Q2' AS q2
+    )
+)
+ORDER BY product_name;
+ product_name | q1_amt | q2_amt 
+--------------+--------+--------
+ Laptop       | 180    | 120
+ Phone        | 50     | 70
+ Tablet       | 380    | 430
+(3 rows)
+
+-- ====================================
+-- 3. PIVOT
+--   aggregate_function(expr) alias,
+--   aggregate_function(expr) alias ...
+-- ====================================
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount, sales_qty
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) AS sum_amt,
+    COUNT(sales_amount) AS cnt_amt,
+    MAX(sales_qty) AS max_qty
+    FOR quarter IN (
+        'Q1' AS q1,
+        'Q2' AS q2
+    )
+)
+ORDER BY product_name;
+ product_name | q1_sum_amt | q1_cnt_amt | q1_max_qty | q2_sum_amt | q2_cnt_amt | q2_max_qty 
+--------------+------------+------------+------------+------------+------------+------------
+ Laptop       | 180        |          2 | 10         | 120        |          1 | 12
+ Phone        | 50         |          1 | 5          | 70         |          1 | 7
+ Tablet       | 380        |          2 | 20         | 430        |          2 | 23
+(3 rows)
+
+-- ==================================
+-- 4. PIVOT
+--   FOR (column, column, ...)
+--   IN ((expr, expr) AS alias, ...)
+-- ==================================
+SELECT *
+FROM (
+    SELECT product_name, year_no, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) AS amt
+    FOR (year_no, quarter) IN (
+        (2024, 'Q1') AS y2024_q1,
+        (2024, 'Q2') AS y2024_q2,
+        (2025, 'Q1') AS y2025_q1,
+        (2025, 'Q2') AS y2025_q2
+    )
+)
+ORDER BY product_name;
+ product_name | y2024_q1_amt | y2024_q2_amt | y2025_q1_amt | y2025_q2_amt 
+--------------+--------------+--------------+--------------+--------------
+ Laptop       | 180          | 120          |              | 
+ Phone        |              |              | 50           | 70
+ Tablet       | 200          | 230          | 180          | 200
+(3 rows)
+
+-- =====================================
+-- 5. PIVOT
+--   pivot_in_clause  (expr [, expr]...)
+--   single expression list
+-- =====================================
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) AS amt
+    FOR quarter IN (
+        ('Q1') AS q1,
+        ('Q2') AS q2
+    )
+)
+ORDER BY product_name;
+ product_name | q1_amt | q2_amt 
+--------------+--------+--------
+ Laptop       | 180    | 120
+ Phone        | 50     | 70
+ Tablet       | 380    | 430
+(3 rows)
+
+-- ===============
+-- 6. PIVOT
+--   [[AS] alias]
+-- ===============
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) amt
+    FOR quarter IN (
+        'Q1' q1,
+        'Q2' q2
+    )
+)
+ORDER BY product_name;
+ product_name | q1_amt | q2_amt 
+--------------+--------+--------
+ Laptop       | 180    | 120
+ Phone        | 50     | 70
+ Tablet       | 380    | 430
+(3 rows)
+
+-- Generated names must be unique after aggregate aliases are appended
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) AS amt
+    FOR quarter IN (
+        'Q1' AS duplicate_name,
+        'Q2' AS duplicate_name
+    )
+);
+ERROR:  column ambiguously defined
+DETAIL:  PIVOT generates column name "duplicate_name_amt" more than once.
+-- Generated names must not be silently truncated to NAMEDATALEN
+SELECT *
+FROM (
+    SELECT product_name, quarter, sales_amount
+    FROM sales_pu
+)
+PIVOT (
+    SUM(sales_amount) AS this_is_a_long_aggregate_alias
+    FOR quarter IN (
+        'Q1' AS this_is_a_very_long_pivot_value_alias_1234567890
+    )
+);
+ERROR:  generated PIVOT column name is too long
+DETAIL:  Generated column name "this_is_a_very_long_pivot_value_alias_1234567890_this_is_a_long_aggregate_alias" exceeds the maximum identifier length of 63 bytes.
+HINT:  Specify shorter aliases for the pivot value or aggregate function.
+-- ==============================
+-- 7. UNPIVOT
+--   UNPIVOT
+--   column
+--   FOR column
+--   IN (column AS literal, ...)
+-- default is EXCLUDE NULLS
+-- ==============================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_amount END) AS q1,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_amount END) AS q2
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT (
+    sales_amount
+    FOR quarter IN (
+        q1 AS 'Q1',
+        q2 AS 'Q2'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | Q1      | 100
+ Laptop       | Americas    | Q2      | 120
+ Laptop       | Europe      | Q1      | 80
+ Phone        | Europe      | Q1      | 50
+ Phone        | Europe      | Q2      | 70
+ Tablet       | Americas    | Q1      | 200
+ Tablet       | Americas    | Q2      | 230
+ Tablet       | Asia        | Q1      | 180
+ Tablet       | Asia        | Q2      | 200
+(9 rows)
+
+-- ========================
+-- 8. UNPIVOT
+--   UNPIVOT EXCLUDE NULLS
+-- ========================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_amount END) AS q1,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_amount END) AS q2
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT EXCLUDE NULLS (
+    sales_amount
+    FOR quarter IN (
+        q1 AS 'Q1',
+        q2 AS 'Q2'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | Q1      | 100
+ Laptop       | Americas    | Q2      | 120
+ Laptop       | Europe      | Q1      | 80
+ Phone        | Europe      | Q1      | 50
+ Phone        | Europe      | Q2      | 70
+ Tablet       | Americas    | Q1      | 200
+ Tablet       | Americas    | Q2      | 230
+ Tablet       | Asia        | Q1      | 180
+ Tablet       | Asia        | Q2      | 200
+(9 rows)
+
+-- ========================
+-- 9. UNPIVOT
+--   UNPIVOT INCLUDE NULLS
+-- ========================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_amount END) AS q1,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_amount END) AS q2
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT INCLUDE NULLS (
+    sales_amount
+    FOR quarter IN (
+        q1 AS 'Q1',
+        q2 AS 'Q2'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | Q1      | 100
+ Laptop       | Americas    | Q2      | 120
+ Laptop       | Europe      | Q1      | 80
+ Laptop       | Europe      | Q2      | 
+ Phone        | Europe      | Q1      | 50
+ Phone        | Europe      | Q2      | 70
+ Tablet       | Americas    | Q1      | 200
+ Tablet       | Americas    | Q2      | 230
+ Tablet       | Asia        | Q1      | 180
+ Tablet       | Asia        | Q2      | 200
+(10 rows)
+
+-- ========================
+-- 10. UNPIVOT
+--   unpivot_in_clause:
+--     column
+--     column, column ...
+-- ========================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_amount END) AS q1,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_amount END) AS q2
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT (
+    sales_amount
+    FOR quarter IN (
+        q1,
+        q2
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount 
+--------------+-------------+---------+--------------
+ Laptop       | Americas    | q1      | 100
+ Laptop       | Americas    | q2      | 120
+ Laptop       | Europe      | q1      | 80
+ Phone        | Europe      | q1      | 50
+ Phone        | Europe      | q2      | 70
+ Tablet       | Americas    | q1      | 200
+ Tablet       | Americas    | q2      | 230
+ Tablet       | Asia        | q1      | 180
+ Tablet       | Asia        | q2      | 200
+(9 rows)
+
+-- ========================================
+-- 11. UNPIVOT
+--   UNPIVOT (column, column, ...)
+--   IN ((column, column) AS literal, ...)
+-- ========================================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_amount END) AS q1_amt,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_qty    END) AS q1_qty,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_amount END) AS q2_amt,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_qty    END) AS q2_qty
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT (
+    (sales_amount, sales_qty)
+    FOR quarter IN (
+        (q1_amt, q1_qty) AS 'Q1',
+        (q2_amt, q2_qty) AS 'Q2'
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount | sales_qty 
+--------------+-------------+---------+--------------+-----------
+ Laptop       | Americas    | Q1      | 100          | 10
+ Laptop       | Americas    | Q2      | 120          | 12
+ Laptop       | Europe      | Q1      | 80           | 8
+ Laptop       | Europe      | Q2      |              | 9
+ Phone        | Europe      | Q1      | 50           | 5
+ Phone        | Europe      | Q2      | 70           | 7
+ Tablet       | Americas    | Q1      | 200          | 20
+ Tablet       | Americas    | Q2      | 230          | 23
+ Tablet       | Asia        | Q1      | 180          | 18
+ Tablet       | Asia        | Q2      | 200          | 20
+(10 rows)
+
+-- ============================================
+-- 12. UNPIVOT
+--   AS { literal | (literal [, literal]...) }
+--
+--     FOR (column, column, ...)
+-- ============================================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN year_no = 2024 AND quarter = 'Q1' THEN sales_amount END) AS y2024_q1_amt,
+           SUM(CASE WHEN year_no = 2024 AND quarter = 'Q1' THEN sales_qty    END) AS y2024_q1_qty,
+           SUM(CASE WHEN year_no = 2024 AND quarter = 'Q2' THEN sales_amount END) AS y2024_q2_amt,
+           SUM(CASE WHEN year_no = 2024 AND quarter = 'Q2' THEN sales_qty    END) AS y2024_q2_qty,
+           SUM(CASE WHEN year_no = 2025 AND quarter = 'Q1' THEN sales_amount END) AS y2025_q1_amt,
+           SUM(CASE WHEN year_no = 2025 AND quarter = 'Q1' THEN sales_qty    END) AS y2025_q1_qty,
+           SUM(CASE WHEN year_no = 2025 AND quarter = 'Q2' THEN sales_amount END) AS y2025_q2_amt,
+           SUM(CASE WHEN year_no = 2025 AND quarter = 'Q2' THEN sales_qty    END) AS y2025_q2_qty
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT INCLUDE NULLS (
+    (sales_amount, sales_qty)
+    FOR (year_no, quarter) IN (
+        (y2024_q1_amt, y2024_q1_qty) AS (2024, 'Q1'),
+        (y2024_q2_amt, y2024_q2_qty) AS (2024, 'Q2'),
+        (y2025_q1_amt, y2025_q1_qty) AS (2025, 'Q1'),
+        (y2025_q2_amt, y2025_q2_qty) AS (2025, 'Q2')
+    )
+)
+ORDER BY product_name, region_name, year_no, quarter;
+ product_name | region_name | year_no | quarter | sales_amount | sales_qty 
+--------------+-------------+---------+---------+--------------+-----------
+ Laptop       | Americas    |    2024 | Q1      | 100          | 10
+ Laptop       | Americas    |    2024 | Q2      | 120          | 12
+ Laptop       | Americas    |    2025 | Q1      |              | 
+ Laptop       | Americas    |    2025 | Q2      |              | 
+ Laptop       | Europe      |    2024 | Q1      | 80           | 8
+ Laptop       | Europe      |    2024 | Q2      |              | 9
+ Laptop       | Europe      |    2025 | Q1      |              | 
+ Laptop       | Europe      |    2025 | Q2      |              | 
+ Phone        | Europe      |    2024 | Q1      |              | 
+ Phone        | Europe      |    2024 | Q2      |              | 
+ Phone        | Europe      |    2025 | Q1      | 50           | 5
+ Phone        | Europe      |    2025 | Q2      | 70           | 7
+ Tablet       | Americas    |    2024 | Q1      | 200          | 20
+ Tablet       | Americas    |    2024 | Q2      | 230          | 23
+ Tablet       | Americas    |    2025 | Q1      |              | 
+ Tablet       | Americas    |    2025 | Q2      |              | 
+ Tablet       | Asia        |    2024 | Q1      |              | 
+ Tablet       | Asia        |    2024 | Q2      |              | 
+ Tablet       | Asia        |    2025 | Q1      | 180          | 18
+ Tablet       | Asia        |    2025 | Q2      | 200          | 20
+(20 rows)
+
+-- =========================
+-- 13. UNPIVOT
+--   (column [, column]...)
+-- =========================
+SELECT *
+FROM (
+    SELECT product_name, region_name,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_amount END) AS q1_amt,
+           SUM(CASE WHEN quarter = 'Q1' THEN sales_qty    END) AS q1_qty,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_amount END) AS q2_amt,
+           SUM(CASE WHEN quarter = 'Q2' THEN sales_qty    END) AS q2_qty
+    FROM sales_pu
+    GROUP BY product_name, region_name
+)
+UNPIVOT (
+    (sales_amount, sales_qty)
+    FOR quarter IN (
+        (q1_amt, q1_qty),
+        (q2_amt, q2_qty)
+    )
+)
+ORDER BY product_name, region_name, quarter;
+ product_name | region_name | quarter | sales_amount | sales_qty 
+--------------+-------------+---------+--------------+-----------
+ Laptop       | Americas    | q1_amt  | 100          | 10
+ Laptop       | Americas    | q2_amt  | 120          | 12
+ Laptop       | Europe      | q1_amt  | 80           | 8
+ Laptop       | Europe      | q2_amt  |              | 9
+ Phone        | Europe      | q1_amt  | 50           | 5
+ Phone        | Europe      | q2_amt  | 70           | 7
+ Tablet       | Americas    | q1_amt  | 200          | 20
+ Tablet       | Americas    | q2_amt  | 230          | 23
+ Tablet       | Asia        | q1_amt  | 180          | 18
+ Tablet       | Asia        | q2_amt  | 200          | 20
+(10 rows)
+
+drop table sales_pu;
+DROP TABLE if exists piv_diff_test;
+NOTICE:  table "piv_diff_test" does not exist, skipping
+CREATE TABLE piv_diff_test (
+  order_id NUMBER,
+  product_id NUMBER,
+  product_name VARCHAR2(20),
+  amount NUMBER
+);
+INSERT INTO piv_diff_test VALUES (1, 10, 'APPLE', 100);
+INSERT INTO piv_diff_test VALUES (2, 20, 'ORANGE', 200);
+INSERT INTO piv_diff_test VALUES (3, 10, 'APPLE', 300);
+--1. PIVOT IN supports constant expressions, 10 + 0
+SELECT *
+FROM piv_diff_test
+PIVOT (
+  SUM(amount)
+  FOR product_id IN (
+    10 + 0 AS p10,
+    20     AS p20
+  )
+);
+ order_id | product_name | p10 | p20 
+----------+--------------+-----+-----
+ 1        | APPLE        | 100 | 
+ 2        | ORANGE       |     | 200
+ 3        | APPLE        | 300 | 
+(3 rows)
+
+-- negative numbers
+SELECT *
+FROM piv_diff_test
+PIVOT (
+  SUM(amount)
+  FOR product_id IN (
+    -10 AS neg10,
+    20  AS p20
+  )
+);
+ order_id | product_name | neg10 | p20 
+----------+--------------+-------+-----
+ 1        | APPLE        |       | 
+ 2        | ORANGE       |       | 200
+ 3        | APPLE        |       | 
+(3 rows)
+
+--2. When multiple aggregate functions are used in PIVOT, at most one agregate expression may omit an alias
+SELECT *
+FROM piv_diff_test
+PIVOT (
+  SUM(amount) total_amount,
+  COUNT(*)
+  FOR product_name IN (
+    'APPLE'  AS apple,
+    'ORANGE' AS orange
+  )
+);
+ order_id | product_id | apple_total_amount | apple | orange_total_amount | orange 
+----------+------------+--------------------+-------+---------------------+--------
+ 1        | 10         | 100                |     1 |                     |      0
+ 2        | 20         |                    |     0 | 200                 |      1
+ 3        | 10         | 300                |     1 |                     |      0
+(3 rows)
+
+--4. Aggregation parameters are complex expressions, such as CASE...WHEN
+SELECT *
+FROM piv_diff_test
+PIVOT (
+  SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END)
+  FOR product_name IN (
+    'APPLE'  AS apple,
+    'ORANGE' AS orange
+  )
+);
+ order_id | product_id | apple | orange 
+----------+------------+-------+--------
+ 1        | 10         | 100   | 
+ 2        | 20         |       | 200
+ 3        | 10         | 300   | 
+(3 rows)
+
+DROP TABLE piv_diff_test;
+DROP TABLE if exists expr_test_data;
+NOTICE:  table "expr_test_data" does not exist, skipping
+CREATE TABLE expr_test_data (
+    product_name   VARCHAR2(50),
+    store_id       NUMBER,
+    business_date  DATE,
+    revenue        NUMBER(12,2)
+);
+INSERT INTO expr_test_data VALUES ('Laptop', 10, TO_DATE('2026-01-01', 'YYYY-MM-DD'), 1500.00);
+INSERT INTO expr_test_data VALUES ('Laptop', 20, TO_DATE('2026-05-15', 'YYYY-MM-DD'), 1600.00);
+INSERT INTO expr_test_data VALUES ('Phone',  10, TO_DATE('2026-01-01', 'YYYY-MM-DD'), 800.00);
+INSERT INTO expr_test_data VALUES ('Phone',  30, TO_DATE('2026-12-31', 'YYYY-MM-DD'), 950.00);
+SELECT * FROM (
+    SELECT store_id, product_name, revenue FROM expr_test_data
+)
+PIVOT (
+    SUM(revenue)
+    FOR (store_id, product_name) IN (
+        (10, 'Laptop')          AS store10_laptop,
+        (20, 'Laptop'),
+        (30, UPPER('p')||'hone') AS store30_phone
+    )
+);
+ store10_laptop | 20_'Laptop' | store30_phone 
+----------------+-------------+---------------
+ 1500.00        | 1600.00     | 950.00
+(1 row)
+
+SELECT * FROM (
+    SELECT business_date, store_id, revenue FROM expr_test_data
+)
+PIVOT (
+    SUM(revenue)
+    FOR (business_date, store_id) IN (
+        (TO_DATE('2026-01-01', 'YYYY-MM-DD'), 10),
+        (TRUNC(TO_DATE('2026-05-20', 'YYYY-MM-DD'), 'MM'), 10 + 10) AS mid_year_store20
+    )
+);
+ to_date('2026-01-01', 'YYYY-MM-DD')_10 | mid_year_store20 
+----------------------------------------+------------------
+ 2300.00                                | 
+(1 row)
+
+SELECT * FROM (
+    SELECT product_name, store_id, revenue FROM expr_test_data
+)
+PIVOT (
+    SUM(revenue)
+    FOR product_name IN (
+        'Laptop',
+        revenue
+    )
+);
+ERROR:  non-constant expression is not allowed in a PIVOT or UNPIVOT value list
+DROP TABLE expr_test_data;
+DROP TABLE if exists pivot_expr_test;
+NOTICE:  table "pivot_expr_test" does not exist, skipping
+CREATE TABLE pivot_expr_test (
+    id      NUMBER,
+    k_num   NUMBER,
+    k_chr   VARCHAR2(30),
+    k_date  DATE,
+    k_ts    TIMESTAMP,
+    amount  NUMBER
+);
+INSERT INTO pivot_expr_test VALUES (
+    1, 1, 'A',
+    DATE '2024-01-01',
+    TIMESTAMP '2024-01-01 10:00:00',
+    100
+);
+INSERT INTO pivot_expr_test VALUES (
+    1, 2, 'B',
+    DATE '2024-01-02',
+    TIMESTAMP '2024-01-02 10:00:00',
+    200
+);
+INSERT INTO pivot_expr_test VALUES (
+    2, 3, 'C',
+    DATE '2024-01-03',
+    TIMESTAMP '2024-01-03 10:00:00',
+    300
+);
+INSERT INTO pivot_expr_test VALUES (
+    2, NULL, NULL,
+    NULL,
+    NULL,
+    400
+);
+--
+--1 Numeric constant expr
+--
+-- numceri literal
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        1 AS n1,
+        2 AS n2,
+        3 AS n3
+    )
+)
+ORDER BY id;
+ id | n1  | n2  | n3  
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+-- plus-minus sign
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        +1 AS plus_1,
+        -1 AS minus_1,
+        2 AS n2
+    )
+)
+ORDER BY id;
+ id | plus_1 | minus_1 | n2  
+----+--------+---------+-----
+ 1  | 100    |         | 200
+ 2  |        |         | 
+(2 rows)
+
+-- Numerical arithmetic expression
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        1 + 0 AS expr_1,
+        1 * 2 AS expr_2,
+        10 - 7 AS expr_3
+    )
+)
+ORDER BY id;
+ id | expr_1 | expr_2 | expr_3 
+----+--------+--------+--------
+ 1  | 100    | 200    | 
+ 2  |        |        | 300
+(2 rows)
+
+-- Numerical function expression
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        ABS(-1) AS abs_1,
+        ROUND(1.6) AS round_2,
+        TRUNC(3.9) AS trunc_3
+    )
+)
+ORDER BY id;
+ id | abs_1 | round_2 | trunc_3 
+----+-------+---------+---------
+ 1  | 100   | 200     | 
+ 2  |       |         | 300
+(2 rows)
+
+--
+-- 2, String constant expr
+--
+-- String literal
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        'A' AS a,
+        'B' AS b,
+        'C' AS c
+    )
+)
+ORDER BY id;
+ id |  a  |  b  |  c  
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+-- String concatenation expression
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        'A' || '' AS a_expr,
+        'B' || '' AS b_expr,
+        'C' || '' AS c_expr
+    )
+)
+ORDER BY id;
+ id | a_expr | b_expr | c_expr 
+----+--------+--------+--------
+ 1  | 100    | 200    | 
+ 2  |        |        | 300
+(2 rows)
+
+-- String function expression
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        UPPER('a') AS a_upper,
+        LOWER('B') AS b_lower,
+        SUBSTR('CCC', 1, 1) AS c_substr
+    )
+)
+ORDER BY id;
+ id | a_upper | b_lower | c_substr 
+----+---------+---------+----------
+ 1  | 100     |         | 
+ 2  |         |         | 300
+(2 rows)
+
+-- q-quoted string
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        q'[A]' AS q_a,
+        q'[B]' AS q_b,
+        q'[C]' AS q_c
+    )
+)
+ORDER BY id;
+ id | q_a | q_b | q_c 
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+--
+-- 3, DATE literal
+--
+-- date literal
+SELECT *
+FROM (
+    SELECT id, k_date, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_date IN (
+        DATE '2024-01-01' AS d_20240101,
+        DATE '2024-01-02' AS d_20240102,
+        DATE '2024-01-03' AS d_20240103
+    )
+)
+ORDER BY id;
+ id | d_20240101 | d_20240102 | d_20240103 
+----+------------+------------+------------
+ 1  | 100        | 200        | 
+ 2  |            |            | 300
+(2 rows)
+
+-- date arithmetic expression
+SELECT *
+FROM (
+    SELECT id, k_date, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_date IN (
+        DATE '2023-12-31' + 1 AS d_20240101,
+        DATE '2024-01-01' + 1 AS d_20240102,
+        DATE '2024-01-01' + 2 AS d_20240103
+    )
+)
+ORDER BY id;
+ id | d_20240101 | d_20240102 | d_20240103 
+----+------------+------------+------------
+ 1  | 100        | 200        | 
+ 2  |            |            | 300
+(2 rows)
+
+-- to_date constant expression
+SELECT *
+FROM (
+    SELECT id, k_date, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_date IN (
+        TO_DATE('2024-01-01', 'YYYY-MM-DD') AS d1,
+        TO_DATE('2024-01-02', 'YYYY-MM-DD') AS d2,
+        TO_DATE('2024-01-03', 'YYYY-MM-DD') AS d3
+    )
+)
+ORDER BY id;
+ id | d1  | d2  | d3  
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+--
+-- 4, TIMESTAMP literal
+--
+-- timestamp literal
+SELECT *
+FROM (
+    SELECT id, k_ts, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_ts IN (
+        TIMESTAMP '2024-01-01 10:00:00' AS ts1,
+        TIMESTAMP '2024-01-02 10:00:00' AS ts2,
+        TIMESTAMP '2024-01-03 10:00:00' AS ts3
+    )
+)
+ORDER BY id;
+ id | ts1 | ts2 | ts3 
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+-- timestamp + interval expression
+SELECT *
+FROM (
+    SELECT id, k_ts, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_ts IN (
+        TIMESTAMP '2024-01-01 09:00:00' + INTERVAL '1' HOUR AS ts1,
+        TIMESTAMP '2024-01-02 09:00:00' + INTERVAL '1' HOUR AS ts2,
+        TIMESTAMP '2024-01-03 09:00:00' + INTERVAL '1' HOUR AS ts3
+    )
+)
+ORDER BY id;
+ id | ts1 | ts2 | ts3 
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+-- to_timestamp constant expression
+SELECT *
+FROM (
+    SELECT id, k_ts, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_ts IN (
+        TO_TIMESTAMP('2024-01-01 10:00:00', 'YYYY-MM-DD HH24:MI:SS') AS ts1,
+        TO_TIMESTAMP('2024-01-02 10:00:00', 'YYYY-MM-DD HH24:MI:SS') AS ts2,
+        TO_TIMESTAMP('2024-01-03 10:00:00', 'YYYY-MM-DD HH24:MI:SS') AS ts3
+    )
+)
+ORDER BY id;
+ id | ts1 | ts2 | ts3 
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+--
+-- 5, NULL as pivot expr
+--
+-- null constant
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        1 AS n1,
+        2 AS n2,
+        NULL AS null_key
+    )
+)
+ORDER BY id;
+ id | n1  | n2  | null_key 
+----+-----+-----+----------
+ 1  | 100 | 200 | 
+ 2  |     |     | 
+(2 rows)
+
+-- CAST(NULL as type)
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        'A' AS a,
+        CAST(NULL AS VARCHAR2(30)) AS null_chr
+    )
+)
+ORDER BY id;
+ id |  a  | null_chr 
+----+-----+----------
+ 1  | 100 | 
+ 2  |     | 
+(2 rows)
+
+--
+-- 6, CAST / Type conversion expr
+--
+-- CAST numerical
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        CAST(1 AS NUMBER) AS n1,
+        CAST(2 AS NUMBER) AS n2,
+        CAST(3 AS NUMBER) AS n3
+    )
+)
+ORDER BY id;
+ id | n1  | n2  | n3  
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+-- CAST character
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        CAST('A' AS VARCHAR2(30)) AS a,
+        CAST('B' AS VARCHAR2(30)) AS b,
+        CAST('C' AS VARCHAR2(30)) AS c
+    )
+)
+ORDER BY id;
+ id |  a  |  b  |  c  
+----+-----+-----+-----
+ 1  | 100 | 200 | 
+ 2  |     |     | 300
+(2 rows)
+
+-- CAST DATE / TIMESTAMP
+SELECT *
+FROM (
+    SELECT id, k_date, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_date IN (
+        CAST(DATE '2024-01-01' AS DATE) AS d1,
+        CAST(DATE '2024-01-02' AS DATE) AS d2
+    )
+)
+ORDER BY id;
+ id | d1  | d2  
+----+-----+-----
+ 1  | 100 | 200
+ 2  |     | 
+(2 rows)
+
+--
+-- 7, Constant expressions such as CASE / DECODE / NVL
+--
+-- CASE constant expression
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        CASE WHEN 1 = 1 THEN 'A' ELSE 'X' END AS case_a,
+        CASE WHEN 2 = 2 THEN 'B' ELSE 'X' END AS case_b
+    )
+)
+ORDER BY id;
+ id | case_a | case_b 
+----+--------+--------
+ 1  | 100    | 200
+ 2  |        | 
+(2 rows)
+
+-- decode constant expression
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        DECODE(1, 1, 'A', 'X') AS decode_a,
+        DECODE(2, 2, 'B', 'X') AS decode_b
+    )
+)
+ORDER BY id;
+ id | decode_a | decode_b 
+----+----------+----------
+ 1  | 100      | 200
+ 2  |          | 
+(2 rows)
+
+-- NVL / COALESCE constant expression
+SELECT *
+FROM (
+    SELECT id, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_chr IN (
+        NVL(NULL, 'A') AS nvl_a,
+        COALESCE(NULL, 'B') AS coalesce_b
+    )
+)
+ORDER BY id;
+ id | nvl_a | coalesce_b 
+----+-------+------------
+ 1  | 100   | 200
+ 2  |       | 
+(2 rows)
+
+-- Multi-column FOR: each IN item is a list of expression
+SELECT *
+FROM (
+    SELECT id, k_num, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR (k_num, k_chr) IN (
+        (1, 'A') AS n1_a,
+        (2, 'B') AS n2_b,
+        (1 + 2, UPPER('c')) AS n3_c
+    )
+)
+ORDER BY id;
+ id | n1_a | n2_b | n3_c 
+----+------+------+------
+ 1  | 100  | 200  | 
+ 2  |      |      | 300
+(2 rows)
+
+-- Multi-column FOR: DATE + String
+SELECT *
+FROM (
+    SELECT id, k_date, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR (k_date, k_chr) IN (
+        (DATE '2024-01-01', 'A') AS d1_a,
+        (DATE '2024-01-02', 'B') AS d2_b,
+        (DATE '2024-01-03', 'C') AS d3_c
+    )
+)
+ORDER BY id;
+ id | d1_a | d2_b | d3_c 
+----+------+------+------
+ 1  | 100  | 200  | 
+ 2  |      |      | 300
+(2 rows)
+
+-- Cannot use the pivot column itself or other input columns as IN expr
+SELECT *
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (
+        k_num AS bad_expr
+    )
+);
+ERROR:  non-constant expression is not allowed in a PIVOT or UNPIVOT value list
+-- Alias following the PIVOT clause names the transformed table reference
+SELECT p.id, p.n1
+FROM (
+    SELECT id, k_num, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR k_num IN (1 AS n1)
+) p
+ORDER BY p.id;
+ id | n1  
+----+-----
+ 1  | 100
+ 2  | 
+(2 rows)
+
+-- Each IN item must supply one value for every FOR column
+SELECT *
+FROM (
+    SELECT id, k_num, k_chr, amount
+    FROM pivot_expr_test
+)
+PIVOT (
+    SUM(amount)
+    FOR (k_num, k_chr) IN (1 AS bad_count)
+);
+ERROR:  PIVOT value count does not match FOR column count
+DROP TABLE pivot_expr_test;
+--
+-- Support PIVOT XML
+--
+DROP TABLE if exists pivot_xml_sales;
+NOTICE:  table "pivot_xml_sales" does not exist, skipping
+CREATE TABLE pivot_xml_sales (
+    region       VARCHAR2(10),
+    salesman    VARCHAR2(20),
+    product     VARCHAR2(20),
+    amount      NUMBER,
+    order_count NUMBER
+);
+INSERT INTO pivot_xml_sales VALUES ('N', 'Alice', 'Apple',  100, 1);
+INSERT INTO pivot_xml_sales VALUES ('N', 'Alice', 'Apple',  100, 1);
+INSERT INTO pivot_xml_sales VALUES ('N', 'Alice', 'Apple',  120, 1);
+INSERT INTO pivot_xml_sales VALUES ('N', 'Alice', 'Orange', 200, 1);
+INSERT INTO pivot_xml_sales VALUES ('S', 'Bob',   'Apple',   80, 1);
+INSERT INTO pivot_xml_sales VALUES ('S', 'Bob',   'Berry',  300, 1);
+INSERT INTO pivot_xml_sales VALUES  ('S', 'Bob',   'Berry',  320, 1);
+--1, PIVOT XML IN (ANY) includes only values present in each group
+SELECT region, salesman
+FROM (
+    SELECT region, salesman, product, amount, order_count
+    FROM pivot_xml_sales
+)
+PIVOT XML (
+    SUM(amount) AS total,
+    COUNT(*) AS rows_seen
+    FOR product IN (ANY)
+)
+ORDER BY region, salesman;
+ region | salesman 
+--------+----------
+ N      | Alice
+ S      | Bob
+(2 rows)
+
+--2, PIVOT XML IN (subquery) includes all subquery values for every group
+SELECT region, salesman
+FROM (
+    SELECT region, salesman, product, amount
+    FROM pivot_xml_sales
+)
+PIVOT XML (
+    SUM(amount) AS total
+    FOR product IN (SELECT DISTINCT product FROM pivot_xml_sales)
+)
+ORDER BY region, salesman;
+ region | salesman 
+--------+----------
+ N      | Alice
+ S      | Bob
+(2 rows)
+
+--3, PIVOT XML count(*) returns zero for subquery values with no matching rows
+SELECT *
+FROM (
+    SELECT region, salesman, product
+    FROM pivot_xml_sales
+)
+PIVOT XML (
+    COUNT(*) AS cnt
+    FOR product IN (SELECT DISTINCT product FROM pivot_xml_sales)
+)
+ORDER BY region, salesman;
+ region | salesman |                                                                                                                             product_xml                                                                                                                             
+--------+----------+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ N      | Alice    | <PivotSet><item><column name="PRODUCT">Apple</column><column name="CNT">3</column></item><item><column name="PRODUCT">Berry</column><column name="CNT">0</column></item><item><column name="PRODUCT">Orange</column><column name="CNT">1</column></item></PivotSet>
+ S      | Bob      | <PivotSet><item><column name="PRODUCT">Apple</column><column name="CNT">1</column></item><item><column name="PRODUCT">Berry</column><column name="CNT">2</column></item><item><column name="PRODUCT">Orange</column><column name="CNT">0</column></item></PivotSet>
+(2 rows)
+
+--4, COUNT(*) uses a non-null source-row marker when the FOR value is NULL
+DROP TABLE if exists pivot_xml_null_key;
+NOTICE:  table "pivot_xml_null_key" does not exist, skipping
+CREATE TABLE pivot_xml_null_key (
+    grp     VARCHAR2(10),
+    key_col VARCHAR2(10),
+    amount  NUMBER
+);
+INSERT INTO pivot_xml_null_key VALUES ('A', NULL, 10);
+INSERT INTO pivot_xml_null_key VALUES ('A', NULL, 20);
+SELECT *
+FROM pivot_xml_null_key
+PIVOT XML (
+    COUNT(*) AS cnt,
+    SUM(amount) AS total
+    FOR key_col IN (ANY)
+)
+ORDER BY grp;
+ grp |                                                       key_col_xml                                                       
+-----+-------------------------------------------------------------------------------------------------------------------------
+ A   | <PivotSet><item><column name="KEY_COL"/><column name="CNT">2</column><column name="TOTAL">30</column></item></PivotSet>
+(1 row)
+
+DROP TABLE pivot_xml_null_key;
+DROP TABLE pivot_xml_sales;
+--5, PIVOT XML multi-column FOR with matching ANY list
+DROP TABLE if exists pivot_xml_multi_for;
+NOTICE:  table "pivot_xml_multi_for" does not exist, skipping
+CREATE TABLE pivot_xml_multi_for (
+    product VARCHAR2(20),
+    region  VARCHAR2(20),
+    channel VARCHAR2(20),
+    amount  NUMBER
+);
+INSERT INTO pivot_xml_multi_for VALUES ('Laptop', 'East', 'Online', 100);
+INSERT INTO pivot_xml_multi_for VALUES ('Laptop', 'East', 'Online',  50);
+INSERT INTO pivot_xml_multi_for VALUES ('Laptop', 'East', 'Store',  150);
+INSERT INTO pivot_xml_multi_for VALUES ('Laptop', 'West', 'Online', 200);
+INSERT INTO pivot_xml_multi_for VALUES ('Phone',  'East', 'Online', 300);
+INSERT INTO pivot_xml_multi_for VALUES ('Phone',  'West', 'Store',  400);
+SELECT p.product, p."region_channel_xml"
+FROM pivot_xml_multi_for
+PIVOT XML (
+    SUM(amount) AS total_amount
+    FOR (region, channel) IN (ANY, ANY)
+) p
+ORDER BY product;
+ product |                                                                                                                                                                                               region_channel_xml                                                                                                                                                                                               
+---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Laptop  | <PivotSet><item><column name="REGION">East</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT">150</column></item><item><column name="REGION">East</column><column name="CHANNEL">Store</column><column name="TOTAL_AMOUNT">150</column></item><item><column name="REGION">West</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT">200</column></item></PivotSet>
+ Phone   | <PivotSet><item><column name="REGION">East</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT">300</column></item><item><column name="REGION">West</column><column name="CHANNEL">Store</column><column name="TOTAL_AMOUNT">400</column></item></PivotSet>
+(2 rows)
+
+--6, duplicate multi-column subquery combinations are rejected at runtime
+SELECT p.product, p."region_channel_xml"
+FROM pivot_xml_multi_for
+PIVOT XML (
+    SUM(amount) AS total_amount
+    FOR (region, channel) IN (
+        SELECT region, channel FROM pivot_xml_multi_for
+    )
+) p
+ORDER BY product;
+ERROR:  more than one row returned by a subquery used as an expression
+--7, multi-column subquery values are densified across implicit groups
+SELECT p.product, p."region_channel_xml"
+FROM pivot_xml_multi_for
+PIVOT XML (
+    SUM(amount) AS total_amount
+    FOR (region, channel) IN (
+        SELECT DISTINCT region, channel FROM pivot_xml_multi_for
+    )
+) p
+ORDER BY product;
+ product |                                                                                                                                                                                                                                                        region_channel_xml                                                                                                                                                                                                                                                        
+---------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Laptop  | <PivotSet><item><column name="REGION">East</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT">150</column></item><item><column name="REGION">East</column><column name="CHANNEL">Store</column><column name="TOTAL_AMOUNT">150</column></item><item><column name="REGION">West</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT">200</column></item><item><column name="REGION">West</column><column name="CHANNEL">Store</column><column name="TOTAL_AMOUNT"/></item></PivotSet>
+ Phone   | <PivotSet><item><column name="REGION">East</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT">300</column></item><item><column name="REGION">East</column><column name="CHANNEL">Store</column><column name="TOTAL_AMOUNT"/></item><item><column name="REGION">West</column><column name="CHANNEL">Online</column><column name="TOTAL_AMOUNT"/></item><item><column name="REGION">West</column><column name="CHANNEL">Store</column><column name="TOTAL_AMOUNT">400</column></item></PivotSet>
+(2 rows)
+
+--8, the number of ANY keywords must match the number of FOR columns
+SELECT p.*
+FROM pivot_xml_multi_for
+PIVOT XML (
+    SUM(amount) AS total_amount
+    FOR (region, channel) IN (ANY)
+) p;
+ERROR:  PIVOT XML ANY count does not match FOR column count
+DROP TABLE pivot_xml_multi_for;
+--9, subquery keys are coerced to the FOR column type before comparison
+DROP TABLE if exists pivot_xml_typed_key;
+NOTICE:  table "pivot_xml_typed_key" does not exist, skipping
+CREATE TABLE pivot_xml_typed_key (
+    grp     VARCHAR2(10),
+    key_col CHAR(3),
+    amount  NUMBER
+);
+INSERT INTO pivot_xml_typed_key VALUES ('A', 'X', 10);
+SELECT p.*
+FROM pivot_xml_typed_key
+PIVOT XML (
+    SUM(amount) AS total
+    FOR key_col IN (
+        SELECT CAST('X' AS VARCHAR2(3)) FROM dual
+    )
+) p;
+ grp |                                              key_col_xml                                              
+-----+-------------------------------------------------------------------------------------------------------
+ A   | <PivotSet><item><column name="KEY_COL">X  </column><column name="TOTAL">10</column></item></PivotSet>
+(1 row)
+
+DROP TABLE pivot_xml_typed_key;
+--10, XML name attributes retain spelling; the generated output column is lowercase
+DROP TABLE if exists pivot_xml_identifier_test;
+NOTICE:  table "pivot_xml_identifier_test" does not exist, skipping
+CREATE TABLE pivot_xml_identifier_test (
+    "Group Key"     VARCHAR2(10),
+    "lowercase"     VARCHAR2(20),
+    "Pivot&Key"     VARCHAR2(20),
+    "Measure&Value" NUMBER
+);
+INSERT INTO pivot_xml_identifier_test
+VALUES ('G1', 'A&B', '<Online>', 12.50);
+INSERT INTO pivot_xml_identifier_test
+VALUES ('G1', NULL, NULL, 7);
+SELECT p."Group Key", p."lowercase_pivot&key_xml"
+FROM pivot_xml_identifier_test
+PIVOT XML (
+    SUM("Measure&Value") AS "Total&Value"
+    FOR ("lowercase", "Pivot&Key") IN (ANY, ANY)
+) p
+ORDER BY p."Group Key";
+ Group Key |                                                                                                                                  lowercase_pivot&key_xml                                                                                                                                   
+-----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ G1        | <PivotSet><item><column name="lowercase">A&amp;B</column><column name="Pivot&amp;Key">&lt;Online&gt;</column><column name="Total&amp;Value">12.50</column></item><item><column name="lowercase"/><column name="Pivot&amp;Key"/><column name="Total&amp;Value">7</column></item></PivotSet>
+(1 row)
+
+-- Ordinary PIVOT combines quoted aliases without folding or losing symbols
+SELECT p.*
+FROM pivot_xml_identifier_test
+PIVOT (
+    SUM("Measure&Value") AS "Total&Value"
+    FOR ("lowercase", "Pivot&Key") IN (
+        ('A&B', '<Online>') AS "Mixed Alias"
+    )
+) p;
+ Group Key | Mixed Alias_Total&Value 
+-----------+-------------------------
+ G1        | 12.50
+(1 row)
+
+-- Generated XML output names must not be silently truncated
+SELECT p.*
+FROM (
+    SELECT "Group Key",
+           "lowercase" AS
+             "this_is_a_quoted_for_column_name_that_is_long_enough_1234567",
+           "Measure&Value"
+    FROM pivot_xml_identifier_test
+)
+PIVOT XML (
+    SUM("Measure&Value") AS total
+    FOR "this_is_a_quoted_for_column_name_that_is_long_enough_1234567"
+    IN (ANY)
+) p;
+ERROR:  generated PIVOT XML column name is too long
+DETAIL:  Generated column name "this_is_a_quoted_for_column_name_that_is_long_enough_1234567_xml" exceeds the maximum identifier length of 63 bytes.
+HINT:  Use shorter FOR column names in the PIVOT XML source query.
+DROP TABLE pivot_xml_identifier_test;
+--11, Oracle DATE/TIMESTAMP/NUMBER retain their native XML output forms
+DROP TABLE if exists pivot_xml_scalar_format_test;
+NOTICE:  table "pivot_xml_scalar_format_test" does not exist, skipping
+CREATE TABLE pivot_xml_scalar_format_test (
+    grp          VARCHAR2(10),
+    date_key     DATE,
+    ts_measure   TIMESTAMP,
+    amount       NUMBER(10,4),
+    null_measure NUMBER
+);
+INSERT INTO pivot_xml_scalar_format_test VALUES (
+    'G1', DATE '2024-01-02',
+    TIMESTAMP '2024-01-02 03:04:05.123456',
+    123.4500, NULL
+);
+SELECT p.*
+FROM pivot_xml_scalar_format_test
+PIVOT XML (
+    MAX(ts_measure) AS max_ts,
+    SUM(amount) AS total_amount,
+    MAX(null_measure) AS null_measure
+    FOR date_key IN (ANY)
+) p;
+ grp |                                                                                                   date_key_xml                                                                                                   
+-----+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ G1  | <PivotSet><item><column name="DATE_KEY">2024-01-02</column><column name="MAX_TS">2024-01-02 03:04:05.123456</column><column name="TOTAL_AMOUNT">123.4500</column><column name="NULL_MEASURE"/></item></PivotSet>
+(1 row)
+
+DROP TABLE pivot_xml_scalar_format_test;
+-- Oracle DATE time fields reach XMLELEMENT without a cast to pg_catalog.date.
+SET nls_date_format = 'YYYY-MM-DD HH24:MI:SS';
+SELECT p.*
+FROM (
+    SELECT TO_DATE('2024-01-02 03:04:05', 'YYYY-MM-DD HH24:MI:SS') AS date_key,
+           1 AS amount
+    FROM dual
+)
+PIVOT XML (SUM(amount) AS total FOR date_key IN (ANY)) p;
+                                                     date_key_xml                                                      
+-----------------------------------------------------------------------------------------------------------------------
+ <PivotSet><item><column name="DATE_KEY">2024-01-02 03:04:05</column><column name="TOTAL">1</column></item></PivotSet>
+(1 row)
+
+RESET nls_date_format;
+drop table if exists cust_sales_category;
+NOTICE:  table "cust_sales_category" does not exist, skipping
+CREATE TABLE cust_sales_category (
+    location      VARCHAR2(50),
+    prod_category VARCHAR2(50),
+    customer_id   NUMBER,
+    sale_amount   NUMBER
+);
+INSERT INTO cust_sales_category VALUES ('north', 'furniture', 2, 875);
+INSERT INTO cust_sales_category VALUES ('south', 'electronics', 2, 378);
+INSERT INTO cust_sales_category VALUES ('east', 'gardening', 4, 136);
+INSERT INTO cust_sales_category VALUES ('west', 'electronics', 3, 236);
+INSERT INTO cust_sales_category VALUES ('central', 'furniture', 3, 174);
+INSERT INTO cust_sales_category VALUES ('north', 'electronics', 1, 729);
+INSERT INTO cust_sales_category VALUES ('east', 'gardening', 2, 147);
+INSERT INTO cust_sales_category VALUES ('west', 'electronics', 3, 200);
+INSERT INTO cust_sales_category VALUES ('north', 'furniture', 4, 987);
+INSERT INTO cust_sales_category VALUES ('central', 'gardening', 4, 584);
+INSERT INTO cust_sales_category VALUES ('south', 'electronics', 3, 714);
+INSERT INTO cust_sales_category VALUES ('east', 'furniture', 1, 192);
+INSERT INTO cust_sales_category VALUES ('west', 'gardening', 3, 946);
+INSERT INTO cust_sales_category VALUES ('east', 'electronics', 4, 649);
+INSERT INTO cust_sales_category VALUES ('south', 'furniture', 2, 503);
+INSERT INTO cust_sales_category VALUES ('north', 'electronics', 1, 399);
+INSERT INTO cust_sales_category VALUES ('central', 'gardening', 3, 259);
+INSERT INTO cust_sales_category VALUES ('east', 'electronics', 3, 407);
+INSERT INTO cust_sales_category VALUES ('west', 'furniture', 1, 545);
+SELECT *
+FROM (
+  SELECT location, customer_id, sale_amount
+  FROM cust_sales_category
+)
+PIVOT XML (
+  SUM(sale_amount) AS sales_total
+  FOR customer_id
+  IN (1, 2, 3, 4)
+);
+ERROR:  explicit pivot values are not allowed with PIVOT XML
+-- PIVOT XML ANY
+SELECT *
+FROM (
+  SELECT location, customer_id, sale_amount
+  FROM cust_sales_category
+)
+PIVOT XML (
+  SUM(sale_amount) AS sales_total
+  FOR customer_id
+  IN (ANY)
+);
+ location |                                                                                                                                                                                      customer_id_xml                                                                                                                                                                                      
+----------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ central  | <PivotSet><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">433</column></item><item><column name="CUSTOMER_ID">4</column><column name="SALES_TOTAL">584</column></item></PivotSet>
+ east     | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL">192</column></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL">147</column></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">407</column></item><item><column name="CUSTOMER_ID">4</column><column name="SALES_TOTAL">785</column></item></PivotSet>
+ north    | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL">1128</column></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL">875</column></item><item><column name="CUSTOMER_ID">4</column><column name="SALES_TOTAL">987</column></item></PivotSet>
+ south    | <PivotSet><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL">881</column></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">714</column></item></PivotSet>
+ west     | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL">545</column></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">1382</column></item></PivotSet>
+(5 rows)
+
+-- PIVOT XML subquery must reject duplicate runtime pivot values
+SELECT *
+FROM (
+  SELECT location, customer_id, sale_amount
+  FROM cust_sales_category
+)
+PIVOT XML (
+  SUM(sale_amount) AS sales_total
+  FOR customer_id
+  IN (
+    SELECT customer_id
+    FROM cust_sales_category
+  )
+);
+ERROR:  more than one row returned by a subquery used as an expression
+-- A unique subquery value set is densified across every implicit group
+SELECT *
+FROM (
+  SELECT location, customer_id, sale_amount
+  FROM cust_sales_category
+)
+PIVOT XML (
+  SUM(sale_amount) AS sales_total
+  FOR customer_id
+  IN (
+    SELECT DISTINCT customer_id
+    FROM cust_sales_category
+    WHERE customer_id <= 3
+  )
+);
+ location |                                                                                                                                         customer_id_xml                                                                                                                                          
+----------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ central  | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL"/></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL"/></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">433</column></item></PivotSet>
+ east     | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL">192</column></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL">147</column></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">407</column></item></PivotSet>
+ north    | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL">1128</column></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL">875</column></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL"/></item></PivotSet>
+ south    | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL"/></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL">881</column></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">714</column></item></PivotSet>
+ west     | <PivotSet><item><column name="CUSTOMER_ID">1</column><column name="SALES_TOTAL">545</column></item><item><column name="CUSTOMER_ID">2</column><column name="SALES_TOTAL"/></item><item><column name="CUSTOMER_ID">3</column><column name="SALES_TOTAL">1382</column></item></PivotSet>
+(5 rows)
+
+drop table cust_sales_category;
+-- UNPIVOT applies Oracle character and numeric datatype-group precedence
+DROP TABLE if exists unpivot_type_group_test;
+NOTICE:  table "unpivot_type_group_test" does not exist, skipping
+CREATE TABLE unpivot_type_group_test (
+    id       NUMBER,
+    c_fixed  CHAR(4),
+    c_fixed2 CHAR(6),
+    c_var    VARCHAR2(8),
+    n_number NUMBER,
+    n_float  BINARY_FLOAT,
+    n_double BINARY_DOUBLE,
+    d1       DATE,
+    d2       DATE
+);
+INSERT INTO unpivot_type_group_test VALUES (
+    1, 'A', 'C', 'B', 10,
+    CAST(20 AS BINARY_FLOAT),
+    CAST(30 AS BINARY_DOUBLE),
+    DATE '2024-01-01', DATE '2024-01-02'
+);
+SELECT kind, val, pg_typeof(val) AS value_type
+FROM (
+    SELECT id, c_fixed, c_var
+    FROM unpivot_type_group_test
+)
+UNPIVOT (
+    val FOR kind IN (c_fixed AS 'FIXED', c_var AS 'VARYING')
+)
+ORDER BY kind;
+  kind   | val  | value_type 
+---------+------+------------
+ FIXED   | A    | varchar2
+ VARYING | B    | varchar2
+(2 rows)
+
+SELECT kind, val, pg_typeof(val) AS value_type
+FROM (
+    SELECT id, c_fixed, c_fixed2
+    FROM unpivot_type_group_test
+)
+UNPIVOT (
+    val FOR kind IN (c_fixed AS 'CHAR4', c_fixed2 AS 'CHAR6')
+)
+ORDER BY kind;
+ kind  |  val   | value_type 
+-------+--------+------------
+ CHAR4 | A      | char
+ CHAR6 | C      | char
+(2 rows)
+
+SELECT kind, val, pg_typeof(val) AS value_type
+FROM (
+    SELECT id, n_number, n_float, n_double
+    FROM unpivot_type_group_test
+)
+UNPIVOT (
+    val FOR kind IN (
+        n_number AS 'NUMBER',
+        n_float AS 'BINARY_FLOAT',
+        n_double AS 'BINARY_DOUBLE'
+    )
+)
+ORDER BY kind;
+     kind      |   val    |  value_type   
+---------------+----------+---------------
+ BINARY_DOUBLE | 3.0E+001 | binary_double
+ BINARY_FLOAT  | 2.0E+001 | binary_double
+ NUMBER        | 1.0E+001 | binary_double
+(3 rows)
+
+SELECT kind, char_val, number_val,
+       pg_typeof(char_val) AS char_type,
+       pg_typeof(number_val) AS number_type
+FROM (
+    SELECT id, c_fixed, c_var, n_number, n_float
+    FROM unpivot_type_group_test
+)
+UNPIVOT (
+    (char_val, number_val) FOR kind IN (
+        (c_fixed, n_number) AS 'A',
+        (c_var, n_float) AS 'B'
+    )
+)
+ORDER BY kind;
+ kind | char_val | number_val | char_type | number_type  
+------+----------+------------+-----------+--------------
+ A    | A        | 1.0E+001   | varchar2  | binary_float
+ B    | B        | 2.0E+001   | varchar2  | binary_float
+(2 rows)
+
+SELECT kind, val, pg_typeof(val) AS value_type
+FROM (
+    SELECT id, d1, d2
+    FROM unpivot_type_group_test
+)
+UNPIVOT (
+    val FOR kind IN (d1 AS 'D1', d2 AS 'D2')
+)
+ORDER BY kind;
+ kind |    val     | value_type 
+------+------------+------------
+ D1   | 2024-01-01 | date
+ D2   | 2024-01-02 | date
+(2 rows)
+
+-- Character and numeric source columns are not in one datatype group
+SELECT *
+FROM (
+    SELECT id, c_var, n_number
+    FROM unpivot_type_group_test
+)
+UNPIVOT (
+    val FOR kind IN (c_var AS 'CHAR', n_number AS 'NUMBER')
+);
+ERROR:  UNPIVOT value columns must be in the same datatype group
+DETAIL:  Column "n_number" has type number, which is incompatible with the other columns for output position 1.
+DROP TABLE unpivot_type_group_test;

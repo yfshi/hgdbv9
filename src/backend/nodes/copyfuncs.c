@@ -6021,6 +6021,51 @@ _copyOraPartSup(const OraPartSup *from)
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+static PivotInItem *
+_copyPivotInItem(const PivotInItem *from)
+{
+	PivotInItem	*newnode = makeNode(PivotInItem);
+
+	COPY_SCALAR_FIELD(in_kind);
+	COPY_NODE_FIELD(values);
+	COPY_NODE_FIELD(labels);
+
+	return newnode;
+}
+
+static PivotClause *
+_copyPivotClause(const PivotClause *from)
+{
+	PivotClause	*newnode = makeNode(PivotClause);
+
+	COPY_SCALAR_FIELD(piv_type);
+	COPY_SCALAR_FIELD(is_xml);
+	COPY_SCALAR_FIELD(in_kind);
+	COPY_SCALAR_FIELD(include_nulls);
+	COPY_NODE_FIELD(aggregate_funcs);
+	COPY_NODE_FIELD(unpivot_targets);
+	COPY_NODE_FIELD(for_cols);
+	COPY_NODE_FIELD(for_col_quoted);
+	COPY_NODE_FIELD(aggregate_alias_quoted);
+	COPY_NODE_FIELD(in_list);
+
+	return newnode;
+}
+
+static PivotCall *
+_copyPivotCall(const PivotCall *from)
+{
+	PivotCall	*newnode = makeNode(PivotCall);
+
+	COPY_NODE_FIELD(source);
+	COPY_NODE_FIELD(pivot);
+	COPY_NODE_FIELD(alias);
+
+	return newnode;
+}
+/* End - ReqID:SRS-SQL-PIVOT */
+
 /*
  * copyObjectImpl -- implementation of copyObject(); see nodes/nodes.h
  *
@@ -7164,6 +7209,17 @@ copyObjectImpl(const void *from)
 			retval = _copyOraPartSup(from);
 			break;
 		/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+		/* Begin - ReqID:SRS-SQL-PIVOT */
+		case T_PivotCall:
+			retval = _copyPivotCall(from);
+			break;
+		case T_PivotClause:
+			retval = _copyPivotClause(from);
+			break;
+		case T_PivotInItem:
+			retval = _copyPivotInItem(from);
+			break;
+		/* End - ReqID:SRS-SQL-PIVOT */
 		default:
 		{
 			/*

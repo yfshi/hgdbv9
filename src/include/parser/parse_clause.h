@@ -81,4 +81,11 @@ extern List *transfromRelationposition(ParseState *pstate, List *frmList);
 /* Begin - ReqID:SRS-SQL-NLSSORT */
 extern void pseudo_collation_replace(ParseState *pstate, Node *node, Node *base, Oid targetcoll);
 /* End - ReqID:SRS-SQL-NLSSORT */
+
+/* Begin - ReqID:SRS-SQL-PIVOT */
+extern Node *transformFromClauseItemForPivot(ParseState *pstate, Node *n,
+											 ParseNamespaceItem **top_nsitem,
+											 List **namespace);
+/* End - ReqID:SRS-SQL-PIVOT */
+
 #endif							/* PARSE_CLAUSE_H */

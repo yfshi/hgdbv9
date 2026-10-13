@@ -40,7 +40,8 @@ OBJS = \
 	parse_connectby.o \
 	../mysql_parser/mys_set_hook.o \
 	parse_multitable_insert.o \
-	parse_object_type.o
+	parse_object_type.o \
+	parse_pivot.o
 
 include $(top_srcdir)/src/backend/common.mk
 

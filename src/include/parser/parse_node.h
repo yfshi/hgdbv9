@@ -85,6 +85,10 @@ typedef enum ParseExprKind
 	EXPR_KIND_ASOF,				/* ReqID:SRS-RECOVERY-FLASHBACK */
 	EXPR_KIND_VERSIONS_BETWEEN,	/* ReqID:SRS-RECOVERY-FLASHBACK */
 	EXPR_KIND_HAVING_FUNCTION,	/* Req: SRS-MYSQL-SQL-Select, The function located in the having clause */
+	/* Begin - ReqID:SRS-SQL-PIVOT */
+	EXPR_KIND_PIVOT_IN,			/* PIVOT IN value expression */
+	EXPR_KIND_UNPIVOT_IN		/* UNPIVOT IN label expression */
+	/* End - ReqID:SRS-SQL-PIVOT */
 } ParseExprKind;
 
 

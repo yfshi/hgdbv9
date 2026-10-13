@@ -4836,4 +4836,103 @@ typedef struct VarRef
 } VarRef;
 /* End - ReqID:SRS-MYSQL-SET */
 
+/* Begin - ReqID:SRS-SQL-PIVOT */
+/*
+ * PivotType identifies whether a PivotClause represents Oracle-compatible
+ * PIVOT or UNPIVOT syntax.  Both syntaxes share the same wrapper node
+ * because they attach to a base table reference and are transformed into
+ * a generated subquery during parse analysis.
+ */
+typedef enum PivotType
+{
+	PIV_PIVOT,
+	PIV_UNPIVOT
+} PivotType;
+
+typedef enum PivotInKind
+{
+	PIVOT_IN_VALUES,	/* ordinary IN (<expr> [alias], ...) list */
+	PIVOT_IN_SUBQUERY,	/* PIVOT XML IN (<subquery>) */
+	PIVOT_IN_ANY		/* PIVOT XML IN (ANY [, ANY]...) */
+} PivotInKind;
+
+/*
+ * One item from the PIVOT/UNPIVOT IN list.
+ *
+ * For PIVOT, values holds the comparison expressions from an IN item and
+ * labels holds its optional output-column alias.  For example, values holds
+ * 'Gold' and labels holds gold for the item "'Gold' gold".
+ *
+ *	For PIVOT XML IN (subquery), values contains the raw SelectStmt.
+ *	For PIVOT XML IN (ANY), values contains one placeholder for each ANY
+ *	keyword.  The values themselves are discovered from source rows at
+ *	execution time; the placeholders preserve the list arity for validation
+ *	against a multi-column FOR clause.
+ *
+ * For UNPIVOT, values holds input-column references and labels holds the
+ * optional values generated for the FOR columns.  If labels is NIL, the
+ * single input column name is used as the generated value.
+ */
+typedef struct PivotInItem
+{
+	NodeTag		type;
+	PivotInKind	in_kind;	/* explicit values, subquery, or ANY */
+	List	   *values;		/* list of literal/column values */
+	List	   *labels;		/* list of label literals */
+} PivotInItem;
+
+/*
+ * Parsed Oracle PIVOT/UNPIVOT clause.
+ *
+ * PIVOT uses aggregate_funcs, for_cols, and in_list:
+ *	aggregate_funcs: ResTarget list for aggregate expressions.
+ *	for_cols:		 source column names used by the FOR clause.
+ *	in_list:		 values/aliases that become output columns.
+ *	is_xml:          true for PIVOT XML.
+ *	in_kind:         explicit value list, subquery, or ANY.
+ *
+ * UNPIVOT uses include_nulls, unpivot_targets, for_cols, and in_list:
+ *	include_nulls:	 true for INCLUDE NULLS, false for default EXCLUDE NULLS.
+ *	unpivot_targets: target output value columns.
+ *	for_cols:		 generated label columns, including multi-column FOR.
+ *	in_list:		 source column/labels expanded into rows.
+ *
+ * Quote metadata is retained separately because PostgreSQL normally discards
+ * whether an identifier was quoted after lexical folding, while PIVOT XML
+ * exposes identifier spelling in XML attribute values. Each quote-metadata
+ * field is an IntList whose nth flay describes the identifier stored by the
+ * nth element of its associated list; true means that the identifier was
+ * delimited (quoted) in the input SQL, and false means that it was not.
+ */
+typedef struct PivotClause
+{
+	NodeTag 	type;
+	PivotType	piv_type;
+	bool		is_xml;				/* PIVOT XML flag */
+	PivotInKind	in_kind;			/* explicit values, subquery, or ANY */
+	bool		include_nulls;		/* for UNPIVOT */
+	List	   *aggregate_funcs;	/* PIVOT aggregate ResTarget list */
+	List	   *unpivot_targets;	/* UNPIVOT output value column names */
+	List	   *for_cols;			/* PIVOT/UNPIVOT FOR column names */
+	List	   *for_col_quoted;		/* quote flag for each for_cols item */
+	List	   *aggregate_alias_quoted; /*quote flag for each aggregate alias, false when that item has no alias */
+	List	   *in_list;			/* PivotInItem list from the IN clause */
+} PivotClause;
+
+/*
+ * FROM-clause wrapper produced by the Ora-grammar.
+ *
+ * source is the base table/subquery/table expression to pivot or unpivot.
+ * pivot describes the PIVOT/UNPIVOT operation.  Parse analysis replaces this
+ * node with a RangeTblRef to an equivalent generated subquery.
+ */
+typedef struct PivotCall
+{
+	NodeTag		type;
+	Node	   *source;		/* base_table_ref */
+	PivotClause *pivot;		/* pivot/unpivot clause */
+	Alias		*alias;		/* alias attached after the PIVOT/UNPIVOT clause */
+} PivotCall;
+/* End - ReqID:SRS-SQL-PIVOT */
+
 #endif							/* PARSENODES_H */
