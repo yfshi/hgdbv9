@@ -2027,7 +2027,7 @@ buildMatViewRefreshDependenciesMysql(Archive *fout)
 
 	appendPQExpBufferStr(query, "WITH RECURSIVE w AS "
 						 "( "
-						 "SELECT d1.objid, d2.refobjid, c2.relkind AS refrelkind "
+						 "SELECT d1.objid, d2.refobjid, c2.relkind::text AS refrelkind "
 						 "FROM pg_depend d1 "
 						 "JOIN pg_class c1 ON c1.oid = d1.objid "
 						 "AND c1.relkind = " CppAsString2(RELKIND_MATVIEW)
