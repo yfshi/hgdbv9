@@ -1,0 +1,1904 @@
+CREATE USER u_utl_encode PASSWORD 'highgo@123';
+SET SESSION AUTHORIZATION u_utl_encode;
+-- 0.check constant
+set serveroutput ON;
+declare
+begin
+dbms_output.put_line('value of base64 is ' || utl_encode.base64);
+dbms_output.put_line('value of quoted_printable is ' || utl_encode.quoted_printable);
+dbms_output.put_line('value of complete is ' || utl_encode.complete);
+dbms_output.put_line('value of header_piece is ' || utl_encode.header_piece);
+dbms_output.put_line('value of middle_piece is ' || utl_encode.middle_piece);
+dbms_output.put_line('value of end_piece is ' || utl_encode.end_piece);
+end;
+/
+value of base64 is 1
+value of quoted_printable is 2
+value of complete is 1
+value of header_piece is 2
+value of middle_piece is 3
+value of end_piece is 4
+set serveroutput OFF;
+-- 1.check base64
+-- 1.1 'SGVsbG8sIFdvcmxkIQ=='
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw('Hello, World!')));
+   cast_to_varchar2   
+----------------------
+ SGVsbG8sIFdvcmxkIQ==
+(1 row)
+
+-- 1.2 1byte encode to 'YQ=='
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw('a')));
+ cast_to_varchar2 
+------------------
+ YQ==
+(1 row)
+
+-- 1.3. 2 bytes encode to 'YWI='
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw('ab')));
+ cast_to_varchar2 
+------------------
+ YWI=
+(1 row)
+
+-- 1.4 3 bytes without '=' : 'YWJj'
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_encode(utl_raw.cast_to_raw('abc')));
+ cast_to_varchar2 
+------------------
+ YWJj
+(1 row)
+
+-- 1.5 48 bytes encode to 64 bytes without 0D0A [\r\n] = 64
+SELECT utl_raw.length(utl_encode.base64_encode(utl_raw.cast_to_raw(repeat('a', 48))));
+ length 
+--------
+ 64
+(1 row)
+
+-- 1.6 49 bytes encode to 64 + 0D0A + 4 = 70
+SELECT utl_raw.length(utl_encode.base64_encode(utl_raw.cast_to_raw(repeat('a', 49))));
+ length 
+--------
+ 70
+(1 row)
+
+-- 1.7 96 bytes encode to 64 + 0D0A + 64 = 130
+SELECT utl_raw.length(utl_encode.base64_encode(utl_raw.cast_to_raw(repeat('a', 96))));
+ length 
+--------
+ 130
+(1 row)
+
+-- 1.8 NULL or '' with error
+SELECT utl_encode.base64_encode(NULL);
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_encode line 8 at RETURN
+SELECT utl_encode.base64_encode('');
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_encode line 8 at RETURN
+-- 1.9 decode to 'Hello, World!'
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_decode(utl_raw.cast_to_raw('SGVsbG8sIFdvcmxkIQ==')));
+ cast_to_varchar2 
+------------------
+ Hello, World!
+(1 row)
+
+-- 1.10 'a'
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_decode(utl_raw.cast_to_raw('YQ==')));
+ cast_to_varchar2 
+------------------
+ a
+(1 row)
+
+-- 1.11 'ab'
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_decode(utl_raw.cast_to_raw('YWI=')));
+ cast_to_varchar2 
+------------------
+ ab
+(1 row)
+
+-- 1.12 'abc'
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_decode(utl_raw.cast_to_raw('YWJj')));
+ cast_to_varchar2 
+------------------
+ abc
+(1 row)
+
+-- 1.13 49 * a, remove 0D0A[CRLF]
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_decode(utl_encode.base64_encode(utl_raw.cast_to_raw(repeat('a', 49)))));
+                 cast_to_varchar2                  
+---------------------------------------------------
+ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+(1 row)
+
+-- 1.14 decode with encode 
+SELECT utl_raw.cast_to_varchar2(utl_encode.base64_decode(utl_encode.base64_encode(utl_raw.cast_to_raw('The quick brown fox')))) = 'The quick brown fox';
+ ?column? 
+----------
+ t
+(1 row)
+
+-- 1.15 remove all CR LF, decode to null
+SELECT utl_encode.base64_decode('0D0A');
+ base64_decode 
+---------------
+ 
+(1 row)
+
+-- 1.16 invalid base64 1 byte decode to NULL
+SELECT utl_encode.base64_decode(utl_raw.cast_to_raw('x'));
+ base64_decode 
+---------------
+ 
+(1 row)
+
+-- 1.17 invalid base64 1 byte with 3 '=' decode to NULL
+SELECT utl_encode.base64_decode(utl_raw.cast_to_raw('0==='));
+ base64_decode 
+---------------
+ 
+(1 row)
+
+-- 1.18 remove character after '=' : '123456'
+SELECT utl_encode.base64_decode(utl_raw.cast_to_raw('EjRWF===eJCr'));
+ base64_decode 
+---------------
+ \x123456
+(1 row)
+
+-- 1.19 NULL or '' with error
+SELECT utl_encode.base64_decode(NULL);
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_decode line 4 at RETURN
+SELECT utl_encode.base64_decode('');
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_decode line 4 at RETURN
+-- 1.20 invalid character ' ' with error
+SELECT utl_encode.base64_decode(utl_raw.cast_to_raw('Y Q=='));
+ERROR:  invalid base64 input for BASE64_DECODE
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_decode line 4 at RETURN
+-- 1.21 invalid character '\t' with error
+SELECT utl_encode.base64_decode(utl_raw.cast_to_raw('YQ\t=='));
+ERROR:  invalid base64 input for BASE64_DECODE
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_decode line 4 at RETURN
+-- 1.22 invalid character '!' with error
+SELECT utl_encode.base64_decode(utl_raw.cast_to_raw('YQ!='));
+ERROR:  invalid base64 input for BASE64_DECODE
+CONTEXT:  PL/iSQL function sys.utl_encode.base64_decode line 4 at RETURN
+-- 2.check mimeheader
+-- 2.1 '=?UTF8?B?QUJD?='
+SELECT utl_encode.mimeheader_encode('ABC', 'UTF8', 1) AS result;
+     result      
+-----------------
+ =?UTF8?B?QUJD?=
+(1 row)
+
+-- 2.2 '=?UTF8?B?QUJDREVG?='
+SELECT utl_encode.mimeheader_encode('ABCDEF', 'UTF8', 1) AS result;
+       result        
+---------------------
+ =?UTF8?B?QUJDREVG?=
+(1 row)
+
+-- 2.3 '=?UTF8?Q?ABC?='
+SELECT utl_encode.mimeheader_encode('ABC', 'UTF8', 2) AS result;
+     result     
+----------------
+ =?UTF8?Q?ABC?=
+(1 row)
+
+-- 2.4 encode_charset is null '=?UTF8?Q?ABC?='
+SELECT utl_encode.mimeheader_encode('ABC', NULL, NULL) AS result;
+     result     
+----------------
+ =?UTF8?Q?ABC?=
+(1 row)
+
+-- 2.5 1 line, 16 * QUFB
+SELECT utl_encode.mimeheader_encode(rpad('A', 48, 'A'), 'UTF8', 1) AS result;
+                                   result                                    
+-----------------------------------------------------------------------------
+ =?UTF8?B?QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB?=
+(1 row)
+
+-- 2.6 2 lines, 16 * QUFB + CRLF + QQ==
+SELECT utl_encode.mimeheader_encode(rpad('A', 49, 'A'), 'UTF8', 1) AS result;
+                                    result                                     
+-------------------------------------------------------------------------------
+ =?UTF8?B?QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB?=\r+
+ =?UTF8?B?QQ==?=
+(1 row)
+
+-- 2.7 1 line, 64 * A
+SELECT utl_encode.mimeheader_encode(rpad('A', 64, 'A'), 'UTF8', 2) AS result;
+                                   result                                    
+-----------------------------------------------------------------------------
+ =?UTF8?Q?AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?=
+(1 row)
+
+-- 2.8 2 lines, 64 * A + CRLF + A
+SELECT utl_encode.mimeheader_encode(rpad('A', 65, 'A'), 'UTF8', 2) AS result;
+                                    result                                     
+-------------------------------------------------------------------------------
+ =?UTF8?Q?AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?=\r+
+ =?UTF8?Q?A?=
+(1 row)
+
+-- 2.9 2 lines, 64 * A + CRLF + 64 *A
+SELECT utl_encode.mimeheader_encode(rpad('A', 128, 'A'), 'UTF8', 2) AS result;
+                                    result                                     
+-------------------------------------------------------------------------------
+ =?UTF8?Q?AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?=\r+
+ =?UTF8?Q?AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?=
+(1 row)
+
+-- 2.10 3 lines, 64 * A + CRLF + 64 * A + CRLF + A
+SELECT utl_encode.mimeheader_encode(rpad('A', 129, 'A'), 'UTF8', 2) AS result;
+                                    result                                     
+-------------------------------------------------------------------------------
+ =?UTF8?Q?AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?=\r+
+ =?UTF8?Q?AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA?=\r+
+ =?UTF8?Q?A?=
+(1 row)
+
+-- 2.11 '=?UTF8?Q?a=20b?='
+SELECT utl_encode.mimeheader_encode('a b', 'UTF8', 2) AS result;
+      result      
+------------------
+ =?UTF8?Q?a=20b?=
+(1 row)
+
+-- 2.12 '=?UTF8?Q?a=3Db?='
+SELECT utl_encode.mimeheader_encode('a=b', 'UTF8', 2) AS result;
+      result      
+------------------
+ =?UTF8?Q?a=3Db?=
+(1 row)
+
+-- 2.13 '=?UTF8?Q?a=3Fb?='
+SELECT utl_encode.mimeheader_encode('a?b', 'UTF8', 2) AS result;
+      result      
+------------------
+ =?UTF8?Q?a=3Fb?=
+(1 row)
+
+-- 2.14 '=?UTF8?Q?a=5Fb?='
+SELECT utl_encode.mimeheader_encode('a_b', 'UTF8', 2) AS result;
+      result      
+------------------
+ =?UTF8?Q?a=5Fb?=
+(1 row)
+
+-- 2.15 '=?UTF8?Q?abc?='
+SELECT utl_encode.mimeheader_encode('abc', 'UTF8', 2) AS result;
+     result     
+----------------
+ =?UTF8?Q?abc?=
+(1 row)
+
+-- 2.16 '=?UTF8?Q?A=0DB?='
+SELECT utl_encode.mimeheader_encode('A' || chr(13) || 'B', 'UTF8', 2) AS result;
+      result      
+------------------
+ =?UTF8?Q?A=0DB?=
+(1 row)
+
+-- 2.17 '=?UTF8?Q?A=0AB?='
+SELECT utl_encode.mimeheader_encode('A' || chr(10) || 'B', 'UTF8', 2) AS result;
+      result      
+------------------
+ =?UTF8?Q?A=0AB?=
+(1 row)
+
+-- 2.18 '=?UTF8?Q?A + CRLF + B?='
+SELECT utl_encode.mimeheader_encode('A' || chr(13) || chr(10) || 'B', 'UTF8', 2) AS result;
+    result    
+--------------
+ =?UTF8?Q?A\r+
+ B?=
+(1 row)
+
+-- 2.19 7 * =E4=B8=AD
+SELECT utl_encode.mimeheader_encode('中中中中中中中', 'UTF8', 2) AS result;
+                                   result                                   
+----------------------------------------------------------------------------
+ =?UTF8?Q?=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD?=
+(1 row)
+
+-- 2.20 7 * =E4=B8=AD + CRLF + =E4=B8=AD
+SELECT utl_encode.mimeheader_encode('中中中中中中中中', 'UTF8', 2) AS result;
+                                    result                                    
+------------------------------------------------------------------------------
+ =?UTF8?Q?=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD=E4=B8=AD?=\r+
+ =?UTF8?Q?=E4=B8=AD?=
+(1 row)
+
+-- 2.21 '=?UTF8?B?w6k=?='
+SELECT utl_encode.mimeheader_encode('é', 'UTF8', 1) AS result;
+     result      
+-----------------
+ =?UTF8?B?w6k=?=
+(1 row)
+
+-- 2.22 '=?UTF8?B?w6k=?='
+SELECT utl_encode.mimeheader_encode('é', NULL, 1) AS result;
+     result      
+-----------------
+ =?UTF8?B?w6k=?=
+(1 row)
+
+-- 2.23 buf is null or '' with error
+SELECT utl_encode.mimeheader_encode(NULL, NULL, 1);
+ERROR:  bad argument: encode string cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+SELECT utl_encode.mimeheader_encode('', NULL, 1);
+ERROR:  bad argument: encode string cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+-- 2.24 invalid encoding with error
+SELECT utl_encode.mimeheader_encode('ABC', NULL, 0);
+ERROR:  bad argument: invalid encoding option
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+SELECT utl_encode.mimeheader_encode('ABC', NULL, 3);
+ERROR:  bad argument: invalid encoding option
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+-- 2.25 invalid encode_charset with error
+SELECT utl_encode.mimeheader_encode('ABC', 'INVALID', 1);
+ERROR:  invalid Character set
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+SELECT utl_encode.mimeheader_encode('ABC', 'INVALID', 2);
+ERROR:  invalid Character set
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+SELECT utl_encode.mimeheader_encode('ABC', 'INVALID', NULL);
+ERROR:  invalid Character set
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_encode line 20 at RETURN
+-- 2.26 'ABC'
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?QUJD?=') AS result;
+ result 
+--------
+ ABC
+(1 row)
+
+-- 2.27 'ABCDEF'
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?QUJDREVG?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+-- 2.28 'A'
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?QQ==?=') AS result;
+ result 
+--------
+ A
+(1 row)
+
+-- 2.29 'A'
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?QQ?=') AS result;
+ result 
+--------
+ A
+(1 row)
+
+-- 2.30 'ABC'
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?QUJDQ?=') AS result;
+ result 
+--------
+ ABC
+(1 row)
+
+-- 2.31 'ABC'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=') AS result;
+ result 
+--------
+ ABC
+(1 row)
+
+-- 2.32 'A B'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A=20B?=') AS result;
+ result 
+--------
+ A B
+(1 row)
+
+-- 2.33 'A_B'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A_B?=') AS result;
+ result 
+--------
+ A_B
+(1 row)
+
+-- 2.34 'A_B'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A=5FB?=') AS result;
+ result 
+--------
+ A_B
+(1 row)
+
+-- 2.35 'ABC'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=41=42=43?=') AS result;
+ result 
+--------
+ ABC
+(1 row)
+
+-- 2.36 '\r'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=0D?=') AS result;
+ result 
+--------
+ \r
+(1 row)
+
+-- 2.37 '\n'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=0A?=') AS result;
+ result 
+--------
+       +
+ 
+(1 row)
+
+-- 2.38 remove last '=', 'A'
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A=?=') AS result;
+ result 
+--------
+ A
+(1 row)
+
+-- 2.39 only '=' with error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=?=');
+ERROR:  invalid mime header tag
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.40 invalid =xx with error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=4?=');
+ERROR:  invalid mime header tag: incomplete sequence
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.41 first is 0x00 error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A=4?=');
+ERROR:  invalid mime header tag: incomplete sequence
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.42 invalid hex ERROR
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=a1?=');
+ERROR:  invalid mime header tag: invalid hex sequence
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=G1?=');
+ERROR:  invalid mime header tag: invalid hex sequence
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.43 ? error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A?B?=');
+ERROR:  invalid mime header tag: encode_text contain '?'
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.44 invalid encoding error
+SELECT utl_encode.mimeheader_decode('=?UTF8?q?ABC?=');
+ERROR:  invalid mime header tag: invalid encoding
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?b?QUJD?=');
+ERROR:  invalid mime header tag: invalid encoding
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.45 CRLF, NULL, CR is true 'ABCDEF', others are error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=' || chr(13) || chr(10) || '=?UTF8?Q?DEF?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?==?UTF8?Q?DEF?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?= =?UTF8?Q?DEF?=');
+ERROR:  invalid mime header tag: invalid separators
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=' || chr(13) || chr(10) || ' =?UTF8?Q?DEF?=');
+ERROR:  invalid mime header tag
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=' || chr(10) || '=?LATIN1?B?REVG?=') AS result;
+ERROR:  invalid mime header tag: invalid separators
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=' || chr(13) || chr(10) || '=?LATIN1?Q?DEF?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?QUJD?=' || chr(13) || chr(10) || '=?LATIN1?Q?DEF?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=' || chr(13) || chr(10) || '=?LATIN1?B?REVG?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?==?LATIN1?B?REVG?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?ABC?=' || chr(13) || '=?LATIN1?B?REVG?=') AS result;
+ result 
+--------
+ ABCDEF
+(1 row)
+
+-- 2.46 encode text is null error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q??=');
+ERROR:  invalid mime header tag: decode_text is null
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?B??=');
+ERROR:  invalid mime header tag: decode_text is null
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.47 encode text too long or too short error
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?' || rpad('A', 75, 'A') || '?=');
+ERROR:  invalid mime header tag: decode_text is too long
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?Q?=');
+ERROR:  invalid mime header tag: invalid base64 decode text
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?B?Q' || chr(13) || chr(10) || '?=');
+ERROR:  invalid mime header tag: invalid base64 decode text
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+-- 2.48 0x00 
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?=00?=') AS result;
+ERROR:  invalid mime header tag: invalid decode text
+CONTEXT:  PL/iSQL function sys.utl_encode.mimeheader_decode line 14 at RETURN
+SELECT utl_encode.mimeheader_decode('=?UTF8?Q?A=00B?=') AS result;
+ result 
+--------
+ A
+(1 row)
+
+-- 3 check quoted_printable
+-- 3.1 20-7E is itself, other and '=' is =xx
+SELECT utl_encode.quoted_printable_encode(utl_raw.cast_to_raw('abc')) FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x616263
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode(utl_raw.cast_to_raw('=')) FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d3344
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('00') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d3030
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('09') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d3039
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('0D') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d3044
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('0A') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d3041
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('FF') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d4646
+(1 row)
+
+-- 3.2 0D0A
+SELECT utl_encode.quoted_printable_encode('0D0A') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x0d0a
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('0D0A0D0A') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x0d0a0d0a
+(1 row)
+
+-- 3D3044 0D0A 3D3041
+SELECT utl_encode.quoted_printable_encode('0D0D0A0A') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d30440d0a3d3041
+(1 row)
+
+-- 3D3044 20 3D3041
+SELECT utl_encode.quoted_printable_encode('0D200A') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d3044203d3041
+(1 row)
+
+-- 3D3230 0D0A
+SELECT utl_encode.quoted_printable_encode('200D0A') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x3d32300d0a
+(1 row)
+
+SELECT utl_encode.quoted_printable_encode('20') FROM dual;
+ quoted_printable_encode 
+-------------------------
+ \x20
+(1 row)
+
+-- 3.3 75 bytes with 3D0D0A 75, 79, 75
+SELECT utl_raw.length(utl_encode.quoted_printable_encode(utl_raw.cast_to_raw(rpad('a',75,'a')))) FROM dual;
+ length 
+--------
+ 75
+(1 row)
+
+SELECT utl_raw.length(utl_encode.quoted_printable_encode(utl_raw.cast_to_raw(rpad('a',76,'a')))) FROM dual;
+ length 
+--------
+ 79
+(1 row)
+
+SELECT utl_raw.length(utl_encode.quoted_printable_encode(utl_raw.cast_to_raw(rpad('=',25,'=')))) FROM dual;
+ length 
+--------
+ 75
+(1 row)
+
+-- 3.4 null or '' with error
+SELECT utl_encode.quoted_printable_encode(NULL) FROM dual;
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.quoted_printable_encode line 30 at RETURN
+SELECT utl_encode.quoted_printable_encode('') FROM dual;
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.quoted_printable_encode line 30 at RETURN
+-- 3.4 20-7E print ifself
+SELECT utl_encode.quoted_printable_decode(utl_raw.cast_to_raw('abc')) FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x616263
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x20
+(1 row)
+
+-- 3.5 =xx decode to xx
+SELECT utl_encode.quoted_printable_decode(utl_raw.cast_to_raw('=3D')) FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x3d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D3030') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x00
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D4646') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \xff
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D3044') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D3041') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0a
+(1 row)
+
+-- 3.6 remove 20 with 0D
+SELECT utl_encode.quoted_printable_decode('200D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d0a
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('200D41') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d41
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('2020') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x2020
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('200D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20200D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('2020200D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('202020200D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('200D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('202041') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x202041
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20410D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x20410d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20204120200D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x2020410d
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20200A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x20200a
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20200D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d0a
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('20200D0D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d0d0a
+(1 row)
+
+-- 3.7 0D0A
+SELECT utl_encode.quoted_printable_decode('0D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d0a
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('0D0A0D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0d0a0d0a
+(1 row)
+
+-- 3.8 3D00 decode to 00
+SELECT utl_encode.quoted_printable_decode('3D00') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x00
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D003D00') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0000
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0041') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x0041
+(1 row)
+
+-- 3.9 3D0D 3D0A is NULL
+SELECT utl_encode.quoted_printable_decode('3D0D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ 
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ 
+(1 row)
+
+-- 3.10 3D 0D/0A + 0D/0A is NULL
+SELECT utl_encode.quoted_printable_decode('3D0D0D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ 
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0D0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ 
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0A0D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ 
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0A0A') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ 
+(1 row)
+
+-- 3.11 decode '3D 0D/0A + xx' is equal to decode 'xx'
+SELECT utl_encode.quoted_printable_decode('3D0D3D00') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x00
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0A3D00') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x00
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0A7700') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x7700
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('3D0D7700') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x7700
+(1 row)
+
+-- 3.12 remove last 3D
+SELECT utl_encode.quoted_printable_decode('41') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x41
+(1 row)
+
+SELECT utl_encode.quoted_printable_decode('413D') FROM dual;
+ quoted_printable_decode 
+-------------------------
+ \x41
+(1 row)
+
+-- 3.13 null, '', invalid with error
+SELECT utl_encode.quoted_printable_decode(NULL) FROM dual;
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.quoted_printable_decode line 26 at RETURN
+SELECT utl_encode.quoted_printable_decode('') FROM dual;
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.quoted_printable_decode line 26 at RETURN
+SELECT utl_encode.quoted_printable_decode('3D4747') FROM dual;
+ERROR:  invalid encoded string
+CONTEXT:  PL/iSQL function sys.utl_encode.quoted_printable_decode line 26 at RETURN
+SELECT utl_encode.quoted_printable_decode('3D41') FROM dual;
+ERROR:  invalid encoded string
+CONTEXT:  PL/iSQL function sys.utl_encode.quoted_printable_decode line 26 at RETURN
+-- 3.14 encode and decode
+SELECT CASE WHEN utl_raw.compare(utl_encode.quoted_printable_decode(
+                    utl_encode.quoted_printable_encode('4142433D00FF0D0A20'))
+                 ,'4142433D00FF0D0A20') =  0
+            THEN 'OK' ELSE 'FAIL' END FROM dual;
+ case 
+------
+ OK
+(1 row)
+
+-- 4 check text
+-- 4.1 with Base64
+-- 'QQ=='
+SELECT utl_encode.text_encode('A', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ QQ==
+(1 row)
+
+-- 'QUI='
+SELECT utl_encode.text_encode('AB', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ QUI=
+(1 row)
+
+-- 'QUJD'
+SELECT utl_encode.text_encode('ABC', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ QUJD
+(1 row)
+
+-- 'QUJDRA=='
+SELECT utl_encode.text_encode('ABCD', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ QUJDRA==
+(1 row)
+
+-- 'QUJDREU='
+SELECT utl_encode.text_encode('ABCDE', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ QUJDREU=
+(1 row)
+
+-- 'QUJDREVG'
+SELECT utl_encode.text_encode('ABCDEF', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ QUJDREVG
+(1 row)
+
+-- 4.2 check CRLF
+SELECT utl_encode.text_encode(rpad('A', 48, 'A'), NULL, 1) FROM dual;
+                           text_encode                            
+------------------------------------------------------------------
+ QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB
+(1 row)
+
+-- 64 character + CRLF + 'QQ=='
+SELECT utl_encode.text_encode(rpad('A', 49, 'A'), NULL, 1) FROM dual;
+                            text_encode                             
+--------------------------------------------------------------------
+ QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB\r+
+ QQ==
+(1 row)
+
+-- 64 character + CRLF + 64 character + CRLF + 'QUFBQQ=='
+SELECT utl_encode.text_encode(rpad('A', 100, 'A'), NULL, 1) FROM dual;
+                            text_encode                             
+--------------------------------------------------------------------
+ QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB\r+
+ QUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB\r+
+ QUFBQQ==
+(1 row)
+
+-- 4.3 with QP
+SELECT utl_encode.text_encode('Hello, World!', NULL, 2) FROM dual;
+  text_encode  
+---------------
+ Hello, World!
+(1 row)
+
+SELECT utl_encode.text_encode('a=b', NULL, 2) FROM dual;
+ text_encode 
+-------------
+ a=3Db
+(1 row)
+
+SELECT utl_encode.text_encode('A' || chr(1) || 'B', NULL, 2) FROM dual;
+ text_encode 
+-------------
+ A=01B
+(1 row)
+
+SELECT utl_encode.text_encode('A' || chr(13) || 'B', NULL, 2) FROM dual;
+ text_encode 
+-------------
+ A=0DB
+(1 row)
+
+SELECT utl_encode.text_encode('A' || chr(10) || 'B', NULL, 2) FROM dual;
+ text_encode 
+-------------
+ A=0AB
+(1 row)
+
+SELECT utl_encode.text_encode('A' || chr(13) || chr(10) || 'B', NULL, 2) FROM dual;
+ text_encode 
+-------------
+ A\r        +
+ B
+(1 row)
+
+-- 4.3 with QP CRLF
+SELECT utl_encode.text_encode(rpad('A', 75, 'A'), NULL, 2) FROM dual;
+                                 text_encode                                 
+-----------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 76, 'A'), NULL, 2) FROM dual;
+                                  text_encode                                   
+--------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\r+
+ A
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 150, 'A'), NULL, 2) FROM dual;
+                                  text_encode                                   
+--------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\r+
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 151, 'A'), NULL, 2) FROM dual;
+                                  text_encode                                   
+--------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\r+
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\r+
+ A
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 73, 'A') || chr(1), NULL, 2) FROM dual;
+                                 text_encode                                  
+------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\r+
+ =01
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 74, 'A') || chr(1) || 'A', NULL, 2) FROM dual;
+                                  text_encode                                  
+-------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\r+
+ =01A
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 74, 'A') || chr(13) || chr(10) || 'B', NULL, 2) FROM dual;
+                                 text_encode                                  
+------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r+
+ B
+(1 row)
+
+SELECT utl_encode.text_encode(rpad('A', 75, 'A') || chr(13) || chr(10) || 'B', NULL, 2) FROM dual;
+                                  text_encode                                  
+-------------------------------------------------------------------------------
+ AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\r+
+ B
+(1 row)
+
+-- 4.4 convert with charset
+-- 'w6k='
+SELECT utl_encode.text_encode('é', 'UTF8', 1) FROM dual;
+ text_encode 
+-------------
+ w6k=
+(1 row)
+
+-- 'w6k='
+SELECT utl_encode.text_encode('é', NULL, 1) FROM dual;
+ text_encode 
+-------------
+ w6k=
+(1 row)
+
+-- '=C3=A9' 
+SELECT utl_encode.text_encode('é', 'UTF8', 2) FROM dual;
+ text_encode 
+-------------
+ =C3=A9
+(1 row)
+
+-- 4.5 buf is null, '', invalid encoding with error
+SELECT utl_encode.text_encode(NULL, NULL, 1);
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_encode line 44 at RETURN
+SELECT utl_encode.text_encode('', NULL, 1);
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_encode line 44 at RETURN
+SELECT utl_encode.text_encode(NULL, NULL, 2);
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_encode line 44 at RETURN
+SELECT utl_encode.text_encode(NULL, NULL, NULL);
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_encode line 44 at RETURN
+SELECT utl_encode.text_encode('ABC', NULL, 0);
+ERROR:  bad argument: invalid encoding option
+CONTEXT:  PL/iSQL function sys.utl_encode.text_encode line 44 at RETURN
+SELECT utl_encode.text_encode('ABC', NULL, 3);
+ERROR:  bad argument: invalid encoding option
+CONTEXT:  PL/iSQL function sys.utl_encode.text_encode line 44 at RETURN
+-- 4.6 decode base64 A AB ABC ABCD ABCDE ABCDEF
+SELECT utl_encode.text_decode('QQ==', NULL, 1);
+ text_decode 
+-------------
+ A
+(1 row)
+
+SELECT utl_encode.text_decode('QUI=', NULL, 1);
+ text_decode 
+-------------
+ AB
+(1 row)
+
+SELECT utl_encode.text_decode('QUJD', NULL, 1);
+ text_decode 
+-------------
+ ABC
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDRA==', NULL, 1);
+ text_decode 
+-------------
+ ABCD
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDREU=', NULL, 1);
+ text_decode 
+-------------
+ ABCDE
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDREVG', NULL, 1);
+ text_decode 
+-------------
+ ABCDEF
+(1 row)
+
+-- NULL
+SELECT utl_encode.text_decode(chr(13) || chr(10), NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(13), NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(10), NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(13) || chr(10) || chr(13) || chr(10), NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode('Q', NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode('Q' || chr(13) || chr(10), NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+-- 4.7 decode base64 remove after 3D:A NULL A AB
+SELECT utl_encode.text_decode('QQ==AAAA', NULL, 1);
+ text_decode 
+-------------
+ A
+(1 row)
+
+SELECT utl_encode.text_decode('Q=JD', NULL, 1);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode('QU=JD', NULL, 1);
+ text_decode 
+-------------
+ A
+(1 row)
+
+SELECT utl_encode.text_decode('QUJ=D', NULL, 1);
+ text_decode 
+-------------
+ AB
+(1 row)
+
+-- 4.8 add 3D when not enough: ABC ABCA ABCAA ABCAAA ABCAAA ABCAAAA
+SELECT utl_encode.text_decode('QUJDQ', NULL, 1);
+ text_decode 
+-------------
+ ABC
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDQQ', NULL, 1);
+ text_decode 
+-------------
+ ABCA
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDQUF', NULL, 1);
+ text_decode 
+-------------
+ ABCAA
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDQUFB', NULL, 1);
+ text_decode 
+-------------
+ ABCAAA
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDQUFBQ', NULL, 1);
+ text_decode 
+-------------
+ ABCAAA
+(1 row)
+
+SELECT utl_encode.text_decode('QUJDQUFBQQ', NULL, 1);
+ text_decode 
+-------------
+ ABCAAAA
+(1 row)
+
+-- 4.9 decode QP
+SELECT utl_encode.text_decode('Hello', NULL, 2);
+ text_decode 
+-------------
+ Hello
+(1 row)
+
+SELECT utl_encode.text_decode('=3D', NULL, 2);
+ text_decode 
+-------------
+ =
+(1 row)
+
+SELECT utl_encode.text_decode('=01', NULL, 2);
+ text_decode 
+-------------
+ \x01
+(1 row)
+
+SELECT utl_encode.text_decode('=C3=A9', NULL, 2);
+ text_decode 
+-------------
+ é
+(1 row)
+
+SELECT utl_encode.text_decode('ABC=', NULL, 2);
+ text_decode 
+-------------
+ ABC
+(1 row)
+
+SELECT utl_encode.text_decode('=00', NULL, 2);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode('=0D', NULL, 2);
+ text_decode 
+-------------
+ \r
+(1 row)
+
+SELECT utl_encode.text_decode('=0A', NULL, 2);
+ text_decode 
+-------------
+            +
+ 
+(1 row)
+
+-- 4.10 decode QP with 3D
+-- 3D0D 3D0A 3D0D0D 3D0D0A 3D0A0A decode null
+SELECT utl_encode.text_decode(chr(61) || chr(10), NULL, 2);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(61) || chr(13), NULL, 2);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(61) || chr(10) || chr(10), NULL, 2);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(61) || chr(10) || chr(13), NULL, 2);
+ text_decode 
+-------------
+ 
+(1 row)
+
+SELECT utl_encode.text_decode(chr(61) || chr(13) || chr(13), NULL, 2);
+ text_decode 
+-------------
+ 
+(1 row)
+
+-- 3D0D xx is equal to xx
+SELECT utl_encode.text_decode(chr(61) || chr(10) || chr(65), NULL, 2) = 'A' AS result;
+ result 
+--------
+ t
+(1 row)
+
+-- 4.11 invalid hex, invalid encoding, buf is null or '' decode error
+SELECT utl_encode.text_decode('=c3=a9', NULL, 2);
+ERROR:  invalid encoded string
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode('=C3=a9', NULL, 2);
+ERROR:  invalid encoded string
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode('=X', NULL, 2);
+ERROR:  invalid encoded string
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode(NULL, NULL, 1);
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode('', NULL, 1);
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode(NULL, NULL, 2);
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode(NULL, NULL, NULL);
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode('ABC', NULL, 0);
+ERROR:  bad argument: invalid decoding option
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+SELECT utl_encode.text_decode('ABC', NULL, 3);
+ERROR:  bad argument: invalid decoding option
+CONTEXT:  PL/iSQL function sys.utl_encode.text_decode line 38 at RETURN
+-- 4.12 remove 20 before 0D
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('200D'), NULL, 2) = chr(13) AS result;
+ result 
+--------
+ t
+(1 row)
+
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('20200D'), NULL, 2) = chr(13) AS result;
+ result 
+--------
+ t
+(1 row)
+
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('2020200D'), NULL, 2) = chr(13) AS result;
+ result 
+--------
+ t
+(1 row)
+
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('202041'), NULL, 2) = '  A' AS result;
+ result 
+--------
+ t
+(1 row)
+
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('20204120200D'), NULL, 2) = '  A' || chr(13) AS result;
+ result 
+--------
+ t
+(1 row)
+
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('20200A'), NULL, 2) = '  ' || chr(10) AS result;
+ result 
+--------
+ t
+(1 row)
+
+SELECT utl_encode.text_decode(utl_raw.cast_to_varchar2('20200D0A'), NULL, 2) = chr(13) || chr(10) AS result;
+ result 
+--------
+ t
+(1 row)
+
+-- 5 check Unix to Unix
+-- 5.1 default type=1, filename='uuencode.txt', permission='0'
+-- 626567696E2030207575656E636F64652E7478740D0A24303429230D0A0A656E64
+SELECT utl_encode.uuencode('414243') FROM dual;
+                               uuencode                               
+----------------------------------------------------------------------
+ \x626567696e2030207575656e636f64652e7478740d0a24303429230d0a0a656e64
+(1 row)
+
+-- 626567696E2030207575656E636F64652E7478740D0A24303429230D0A0A656E64
+SELECT utl_encode.uuencode('414243', 1) FROM dual;
+                               uuencode                               
+----------------------------------------------------------------------
+ \x626567696e2030207575656e636f64652e7478740d0a24303429230d0a0a656e64
+(1 row)
+
+-- 626567696E2030207575656E636F64652E7478740D0A24303429230D0A
+SELECT utl_encode.uuencode('414243', 2) FROM dual;
+                           uuencode                           
+--------------------------------------------------------------
+ \x626567696e2030207575656e636f64652e7478740d0a24303429230d0a
+(1 row)
+
+-- 24303429230D0A
+SELECT utl_encode.uuencode('414243', 3) FROM dual;
+     uuencode     
+------------------
+ \x24303429230d0a
+(1 row)
+
+-- 24303429230D0A0A656E64
+SELECT utl_encode.uuencode('414243', 4) FROM dual;
+         uuencode         
+--------------------------
+ \x24303429230d0a0a656e64
+(1 row)
+
+-- 5.2 not enough 3 bytes, add 0x00
+-- 22303020200D0A
+SELECT utl_encode.uuencode('41', 3) FROM dual;
+     uuencode     
+------------------
+ \x22303020200d0a
+(1 row)
+
+-- 23303428200D0A
+SELECT utl_encode.uuencode('4142', 3) FROM dual;
+     uuencode     
+------------------
+ \x23303428200d0a
+(1 row)
+
+-- 24303429230D0A
+SELECT utl_encode.uuencode('414243', 3) FROM dual;
+     uuencode     
+------------------
+ \x24303429230d0a
+(1 row)
+
+-- 2830342923312435260D0A
+SELECT utl_encode.uuencode('414243444546', 3) FROM dual;
+         uuencode         
+--------------------------
+ \x2830342923312435260d0a
+(1 row)
+
+-- 2C3034292331243526315441290D0A
+SELECT utl_encode.uuencode('414243444546474849', 3) FROM dual;
+             uuencode             
+----------------------------------
+ \x2c3034292331243526315441290d0a
+(1 row)
+
+-- 5.3 57bytes with 0D0A, length is 79,79,86,158,165
+SELECT utl_raw.length(utl_encode.uuencode(utl_raw.copies('41', 57), 3)) FROM dual;
+ length 
+--------
+ 79
+(1 row)
+
+SELECT utl_raw.length(utl_encode.uuencode(utl_raw.copies('41', 56), 3)) FROM dual;
+ length 
+--------
+ 79
+(1 row)
+
+SELECT utl_raw.length(utl_encode.uuencode(utl_raw.copies('41', 58), 3)) FROM dual;
+ length 
+--------
+ 86
+(1 row)
+
+SELECT utl_raw.length(utl_encode.uuencode(utl_raw.copies('41', 114), 3)) FROM dual;
+ length 
+--------
+ 158
+(1 row)
+
+SELECT utl_raw.length(utl_encode.uuencode(utl_raw.copies('41', 115), 3)) FROM dual;
+ length 
+--------
+ 165
+(1 row)
+
+-- 5.4 check begin line
+-- 626567696E20363434206120622E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, 'a b.txt', '644') FROM dual;
+                            uuencode                            
+----------------------------------------------------------------
+ \x626567696e20363434206120622e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E2036343420612020622E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, 'a  b.txt', '644') FROM dual;
+                             uuencode                             
+------------------------------------------------------------------
+ \x626567696e2036343420612020622e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E203634342020612E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, ' a.txt', '644') FROM dual;
+                           uuencode                           
+--------------------------------------------------------------
+ \x626567696e203634342020612e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E203620343420612E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, 'a.txt', '6 44') FROM dual;
+                           uuencode                           
+--------------------------------------------------------------
+ \x626567696e203620343420612e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E20363434200D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, '', '644') FROM dual;
+                     uuencode                     
+--------------------------------------------------
+ \x626567696e20363434200d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E2020612E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, 'a.txt', '') FROM dual;
+                       uuencode                       
+------------------------------------------------------
+ \x626567696e2020612e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E20363434200D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, NULL, '644') FROM dual;
+                     uuencode                     
+--------------------------------------------------
+ \x626567696e20363434200d0a22303020200d0a0a656e64
+(1 row)
+
+-- 626567696E2036343420C3A92E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', 1, 'é.txt', '644') FROM dual;
+                           uuencode                           
+--------------------------------------------------------------
+ \x626567696e2036343420c3a92e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+-- 5.5 invalid type, raw is null or '' with error
+-- 626567696E2036343420612E7478740D0A22303020200D0A0A656E64
+SELECT utl_encode.uuencode('41', NULL, 'a.txt', '644') FROM dual;
+                          uuencode                          
+------------------------------------------------------------
+ \x626567696e2036343420612e7478740d0a22303020200d0a0a656e64
+(1 row)
+
+SELECT utl_encode.uuencode('41', 5, 'a.txt', '644') FROM dual;
+ERROR:  bad argument: invalid type value 5 for UUENCODE
+CONTEXT:  PL/iSQL function sys.utl_encode.uuencode line 57 at RETURN
+SELECT utl_encode.uuencode('41', -7, 'a.txt', '644') FROM dual;
+ERROR:  bad argument: invalid type value -7 for UUENCODE
+CONTEXT:  PL/iSQL function sys.utl_encode.uuencode line 57 at RETURN
+SELECT utl_encode.uuencode(NULL) FROM dual;
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.uuencode line 57 at RETURN
+SELECT utl_encode.uuencode('') FROM dual;
+ERROR:  bad argument: encode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.uuencode line 57 at RETURN
+SELECT CASE WHEN utl_raw.compare(utl_encode.uudecode(utl_encode.uuencode('48656C6C6F')), '48656C6C6F') = 0
+            THEN 'OK' ELSE 'FAIL' END FROM dual;
+ case 
+------
+ OK
+(1 row)
+
+SELECT CASE WHEN utl_raw.compare(utl_encode.uudecode(utl_encode.uuencode(utl_raw.copies('41', 100))), utl_raw.copies('41', 100)) = 0
+            THEN 'OK' ELSE 'FAIL' END FROM dual;
+ case 
+------
+ OK
+(1 row)
+
+SELECT CASE WHEN utl_raw.compare(utl_encode.uudecode(utl_encode.uuencode(utl_raw.copies('42', 1000))), utl_raw.copies('42', 1000)) = 0
+            THEN 'OK' ELSE 'FAIL' END FROM dual;
+ case 
+------
+ OK
+(1 row)
+
+-- 5.6 decode unix
+-- AB
+SELECT utl_encode.uudecode('224A5C574F') FROM dual;
+ uudecode 
+----------
+ \xab
+(1 row)
+
+-- ABCD
+SELECT utl_encode.uudecode('234A5C574F') FROM dual;
+ uudecode 
+----------
+ \xabcd
+(1 row)
+
+-- ABCDEF
+SELECT utl_encode.uudecode('244A5C574F') FROM dual;
+ uudecode 
+----------
+ \xabcdef
+(1 row)
+
+-- ABCDEFAB
+SELECT utl_encode.uudecode('264A5C574F4A5C574F') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+-- ABCDEFABCDEFAB
+SELECT utl_encode.uudecode('2A4A5C574F4A5C574F4A5C574F') FROM dual;
+     uudecode     
+------------------
+ \xabcdefabcdefab
+(1 row)
+
+-- ABCDEFABCDEFABCD
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A234A5C574F') FROM dual;
+      uudecode      
+--------------------
+ \xabcdefabcdefabcd
+(1 row)
+
+-- ABCDEFABCD
+SELECT utl_encode.uudecode('224A5C574F0D0A234A5C574F') FROM dual;
+   uudecode   
+--------------
+ \xabcdefabcd
+(1 row)
+
+-- ABCDEFABCDEFAB
+SELECT utl_encode.uudecode('234A5C574F0D0A264A5C574F4A5C574F') FROM dual;
+     uudecode     
+------------------
+ \xabcdefabcdefab
+(1 row)
+
+-- ABCDEFABCDEFABCD
+SELECT utl_encode.uudecode('234A5C574F0D0A234A5C574F0D0A234A5C574F') FROM dual;
+      uudecode      
+--------------------
+ \xabcdefabcdefabcd
+(1 row)
+
+-- 5.7 invalid length byte will check more bytes
+-- B=0x21, D=1, L=0 → NULL
+SELECT utl_encode.uudecode('214A5C574F') FROM dual;
+ uudecode 
+----------
+ 
+(1 row)
+
+-- B=0x25, D=5, L=3, M=8，
+SELECT utl_raw.compare(utl_encode.uudecode('254A5C574F4A5C574F'), 'ABCDEF') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+-- B=0x25 less then 8 bytes ERROR
+SELECT utl_encode.uudecode('254A5C574F') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+-- B=0x29, D=9, L=6, M=12，need 16bytes
+SELECT utl_raw.compare(utl_encode.uudecode('294A5C574F4A5C574F4A5C574F4A5C574F'), 'ABCDEFABCDEF') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+-- B=0x2D, D=13, L=9, M=16，need 16bytes
+SELECT utl_raw.compare(utl_encode.uudecode('2D4A5C574F4A5C574F4A5C574F4A5C574F'), 'ABCDEFABCDEFABCDEF') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+-- B=0x31, D=17, L=12, M=20，less then 16 bytes ERROR
+SELECT utl_encode.uudecode('314A5C574F4A5C574F4A5C574F4A5C574F') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+-- 5.8 remove begin, end
+-- AB
+SELECT utl_encode.uudecode('626567696E2036343420612E7478740D0A224A5C574F') FROM dual;
+ uudecode 
+----------
+ \xab
+(1 row)
+
+SELECT utl_encode.uudecode('626567696E2036343420612E7478740A224A5C574F') FROM dual;
+ uudecode 
+----------
+ \xab
+(1 row)
+
+SELECT utl_encode.uudecode('626567696E2036343420612E7478740D224A5C574F') FROM dual;
+ uudecode 
+----------
+ \xab
+(1 row)
+
+SELECT utl_encode.uudecode('626567696E2036343420612E7478740D0D224A5C574F') FROM dual;
+ uudecode 
+----------
+ \xab
+(1 row)
+
+-- ABCDEFAB
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A656E64') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0A656E64') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+-- 0D end is error
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D656E64') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+-- ABCDEFAB
+SELECT utl_encode.uudecode('264A5C574F4A5C574F656E64') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A0A656E64') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+-- ABCDEFABCDEFABCD
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A234A5C574F0D0A656E64') FROM dual;
+      uudecode      
+--------------------
+ \xabcdefabcdefabcd
+(1 row)
+
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A234A5C574F0D0A0A656E64') FROM dual;
+      uudecode      
+--------------------
+ \xabcdefabcdefabcd
+(1 row)
+
+-- 5.9 data line with 0D 0A:
+-- ABCDEFAB
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0A') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+SELECT utl_encode.uudecode('264A5C574F4A5C574F') FROM dual;
+  uudecode  
+------------
+ \xabcdefab
+(1 row)
+
+-- ABCDEF
+SELECT utl_encode.uudecode('244A5C574F0D0D') FROM dual;
+ uudecode 
+----------
+ \xabcdef
+(1 row)
+
+SELECT utl_encode.uudecode('244A5C574F0D0D0D') FROM dual;
+ uudecode 
+----------
+ \xabcdef
+(1 row)
+
+-- ABCDEFABCDEFABCD
+SELECT utl_encode.uudecode('264A5C574F4A5C574F0D0A234A5C574F0D0A') FROM dual;
+      uudecode      
+--------------------
+ \xabcdefabcdefabcd
+(1 row)
+
+-- 0D0D0D0D K=3 ERROR
+SELECT utl_encode.uudecode('244A5C574F0D0D0D0D') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+-- 0D0D0D0A K=3 ERROR
+SELECT utl_encode.uudecode('244A5C574F0D0D0D0A') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+SELECT utl_raw.compare(utl_encode.uudecode('626567696E2036343420612E7478740D0A224A5C574F0A656E64'), 'AB') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+SELECT utl_raw.compare(utl_encode.uudecode('626567696E2036343420612E7478740D0A264A5C574F4A5C574F0D0A234A5C574F0D0A656E64'), 'ABCDEFABCDEFABCD') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+-- 5.10 too much 0D 0A, null, '', not enough bytes with error
+SELECT utl_encode.uudecode('234A5C574F0D0D0D234A5C574F') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+SELECT utl_raw.compare(utl_encode.uudecode('234A5C574F0D0D0D'), 'ABCD') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+SELECT utl_encode.uudecode('234A5C574F0D0A0D0A234A5C574F') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+SELECT utl_encode.uudecode(NULL) FROM dual;
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+SELECT utl_encode.uudecode('') FROM dual;
+ERROR:  bad argument: decode raw cannot be NULL
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+SELECT utl_encode.uudecode('264A5C574F4A5C') FROM dual;
+ERROR:  invalid uuencode input
+CONTEXT:  PL/iSQL function sys.utl_encode.uudecode line 50 at RETURN
+SELECT utl_raw.compare(utl_encode.uudecode(utl_encode.uuencode('48656C6C6F')), '48656C6C6F') FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+SELECT utl_raw.compare(utl_encode.uudecode(utl_encode.uuencode(utl_raw.copies('41', 100))), utl_raw.copies('41', 100)) FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+SELECT utl_raw.compare(utl_encode.uudecode(utl_encode.uuencode(utl_raw.copies('42', 1000))), utl_raw.copies('42', 1000)) FROM dual;
+ compare 
+---------
+ 0
+(1 row)
+
+RESET SESSION AUTHORIZATION;
+DROP USER u_utl_encode CASCADE;
