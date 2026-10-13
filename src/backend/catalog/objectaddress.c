@@ -6277,7 +6277,7 @@ getObjectIdentityParts(const ObjectAddress *object,
 
 					SynIdGetname_hook(object->objectId, &syn_name, &synnsp);
 					appendStringInfo(&buffer, "%s.%s", synnsp, syn_name);
-					if (syn_name)
+					if (objname) /* OA#2882 */
 						*objname = lappend(list_make1(pstrdup(synnsp)),
 							list_make1(pstrdup(syn_name)));
 				}
