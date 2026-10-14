@@ -3684,7 +3684,7 @@ $node->psql('postgres', 'create database regress_pg_dump_test;');
 
 # Start with number of command_fails_like()*2 tests below (each
 # command_fails_like is actually 2 tests) + number of command_ok()*3
-my $num_tests = 35;
+my $num_tests = 36;
 
 foreach my $run (sort keys %pgdump_runs)
 {
@@ -4027,5 +4027,14 @@ foreach my $run (sort keys %pgdump_runs)
 
 #########################################
 # Stop the database instance, which will be removed at the end of the tests.
+
+$node->stop('fast');
+
+$node->append_conf('postgresql.conf', "mysql.protocol_type = pg");
+$node->restart;
+my $mysql_port = $node->safe_psql('postgres', 'SHOW mysql.port');
+$node->command_ok(
+	[ 'pg_dump', '-p', $mysql_port, '-d', 'postgres' ],
+	'pg_dump through the MySQL listener port');
 
 $node->stop('fast');
