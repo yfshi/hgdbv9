@@ -30,6 +30,7 @@
 #include "executor/executor.h"
 #include "parser/parse_func.h"
 #include "miscadmin.h"
+#include "parser/parse_func.h"
 #include "storage/ipc.h"
 #include "storage/shmem.h"
 #include "tcop/utility.h"
@@ -358,9 +359,157 @@ is_security_roles()
 	return true;
 }
 
+#ifdef ENABLE_COMPATIBLE_AK
+
+/* Start obsolete GUC compatibility. */
+
+/* Obsolete GUC compatibility placeholders. */
+static char *obsolete_enable = NULL;
+static char *obsolete_default_label = NULL;
+static char *obsolete_labelmode = NULL;
+static char *obsolete_label_impexp = NULL;
+
+static bool
+reject_obsolete_guc(GucSource source, const char *name, const char *hint)
+{
+	/* Registration validates the built-in default before accepting settings. */
+	if (source == PGC_S_DEFAULT)
+		return true;
+
+	GUC_check_errmsg("parameter \"%s\" is no longer supported", name);
+	GUC_check_errhint("%s", hint);
+	return false;
+}
+
+static bool
+check_obsolete_enable(char **newval, void **extra, GucSource source)
+{
+	return reject_obsolete_guc(source, "hg_sysmac.enable",
+							   "This parameter has been renamed to "
+							   "\"hg_sysmac.global_on\". Use the new name instead.");
+}
+
+static bool
+check_obsolete_default_label(char **newval, void **extra, GucSource source)
+{
+	return reject_obsolete_guc(source, "hg_sysmac.default_label",
+							   "This parameter has been removed. "
+							   "Remove it from your configuration.");
+}
+
+static bool
+check_obsolete_labelmode(char **newval, void **extra, GucSource source)
+{
+	return reject_obsolete_guc(source, "hg_sysmac.labelmode",
+							   "This parameter has been replaced by "
+							   "\"hg_sysmac.global_table_level\" and "
+							   "\"hg_sysmac.global_row_level\". "
+							   "Set the two parameters separately.");
+}
+
+static bool
+check_obsolete_label_impexp(char **newval, void **extra, GucSource source)
+{
+	return reject_obsolete_guc(source, "hg_sysmac.label_impexp",
+							   "This parameter has been removed. "
+							   "Remove it from your configuration.");
+}
+
+static void
+register_obsolete_guc(const char *name, char **storage,
+					  GucStringCheckHook check_hook)
+{
+	/* Accept any input type for diagnostics, but reject explicit assignments. */
+	DefineCustomStringVariable(name,
+							   "Obsolete hg_sysmac parameter.",
+							   NULL,
+							   storage,
+							   NULL,
+							   PGC_USERSET,
+							   GUC_NO_SHOW_ALL | GUC_NOT_IN_SAMPLE | GUC_NO_RESET_ALL,
+							   check_hook,
+							   NULL,
+							   NULL);
+}
+
+static void
+register_obsolete_gucs(void)
+{
+	register_obsolete_guc("hg_sysmac.enable", &obsolete_enable,
+						  check_obsolete_enable);
+	register_obsolete_guc("hg_sysmac.default_label", &obsolete_default_label,
+						  check_obsolete_default_label);
+	register_obsolete_guc("hg_sysmac.labelmode", &obsolete_labelmode,
+						  check_obsolete_labelmode);
+	register_obsolete_guc("hg_sysmac.label_impexp", &obsolete_label_impexp,
+						  check_obsolete_label_impexp);
+}
+/* End obsolete GUC compatibility. */
+
+/* Obsolete function diagnostics. */
+static undefined_function_hook_type prev_undefined_function_hook = NULL;
+
+static void
+sysmac_undefined_function(const char *funcname, int nargs, Oid *argtypes)
+{
+	static const struct
+	{
+		const char *name;
+		const char *replacement;
+	} obsolete_functions[] = {
+		{"mac_remove_user_policy", NULL},
+		{"mac_remove_table_policy", NULL},
+		{"mac_create_label_policy", NULL},
+		{"mac_alter_label_policy", NULL},
+		{"mac_drop_label_policy", NULL},
+		{"mac_set_label_policy", NULL},
+		{"mac_label_to_char", NULL},
+		{"mac_char_to_label", NULL},
+		{"mac_apply_user_policy", "set_user_seclabel"},
+		{"mac_apply_table_policy", "set_table_seclabel"}
+	};
+	size_t		i;
+	const char *message = NULL;
+	const char *hint = NULL;
+
+	if (funcname)
+	{
+		/* Match the parsed final name, including schema-qualified calls. */
+		for (i = 0; i < lengthof(obsolete_functions); i++)
+		{
+			if (strcmp(funcname, obsolete_functions[i].name) == 0)
+			{
+				message = psprintf("function \"%s\" is no longer supported", funcname);
+				if (obsolete_functions[i].replacement != NULL)
+					hint = psprintf("Use \"%s\" instead.",
+									 obsolete_functions[i].replacement);
+				else
+					hint = "This function has been removed. Remove it from your SQL.";
+				break;
+			}
+		}
+
+		if (message)
+			ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_FUNCTION),
+				 errmsg_internal("%s", message),
+				 hint ? errhint("%s", hint) : 0));
+	}
+
+	if (prev_undefined_function_hook)
+		prev_undefined_function_hook(funcname, nargs, argtypes);
+}
+/* End obsolete function diagnostics. */
+#endif
+
 void
 _PG_init(void)
 {
+#ifdef ENABLE_COMPATIBLE_AK
+	/* Keep obsolete names recognizable without changing shared state. */
+	register_obsolete_gucs();
+#endif
+
 	DefineCustomBoolVariable("hg_sysmac.global_on",
 							 "Turn on/off global_on",
 							 NULL,
@@ -422,6 +571,12 @@ _PG_init(void)
 	next_sequence_access_hook = sequence_access_hook;
 	sequence_access_hook = sysmac_sequence_access;
 	/* End - Bug#z8537 */
+
+#ifdef ENABLE_COMPATIBLE_AK
+	/* Customize diagnostics only after ordinary function resolution fails. */
+	prev_undefined_function_hook = undefined_function_hook;
+	undefined_function_hook = sysmac_undefined_function;
+#endif
 }
 
 /* End - ReqID: SRS-SECURITY-LMAC */

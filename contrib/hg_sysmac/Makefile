@@ -26,3 +26,7 @@ top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk
 endif
+
+ifeq ($(enable_compatible_ak), yes)
+REGRESS += obsolete
+endif

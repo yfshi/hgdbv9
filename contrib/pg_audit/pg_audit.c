@@ -597,6 +597,10 @@ PG_FUNCTION_INFO_V1(pg_audit_file_archive_auto); /* BUG#Z9340 */
 
 /* End - SECURITY-AUTHENTICATION-METHOD */
 #ifdef ENABLE_COMPATIBLE_AK
+
+/* Obsolete function diagnostics. */
+static undefined_function_hook_type prev_undefined_function_hook = NULL;
+
 /*
  * Placeholder variable used to intercept the legacy GUC name hg_audit.enable.
  * The check hook reports that the parameter has been renamed to audit.enable.
@@ -850,6 +854,8 @@ ivorysql_demo_undefined_function_hook(const char *funcname, int nargs,
 			(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 			 errmsg("function %s has been removed", funcname)));
 
+	if (prev_undefined_function_hook)
+		prev_undefined_function_hook(funcname, nargs, argtypes);
 }
 #endif
 
@@ -6401,6 +6407,7 @@ audit_append_hook(void)
 	get_audit_transaction_hook = audit_is_in_transaction;  // OA:2290
 
 	#ifdef ENABLE_COMPATIBLE_AK
+	prev_undefined_function_hook = undefined_function_hook;
 	undefined_function_hook = ivorysql_demo_undefined_function_hook;
 	#endif
 }
