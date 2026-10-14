@@ -230,7 +230,7 @@ add_str(const char *str, int len, bool is_newline)
 	}
 
 	/* enlarge buffer */
-	if (buffer_len + len > buffer_size)
+	if (buffer_len + len > buffer_size && buffer_size < MaxAllocSize - 2) /* BUG#Z9462 */
 	{
 		Size	rpsize;
 
@@ -239,12 +239,33 @@ add_str(const char *str, int len, bool is_newline)
 		while(rpsize < buffer_len + len)
 			rpsize *= 2;
 
+		/* Begin - BUG#Z9462 */
+		/*
+		 * The buffer limit is 1 GB, therefore, when the calculated repalloc
+		 * value exceeds 1 GB but is sufficient to accommodate the current input,
+		 * we choose to allocate 1 GB memory.
+		 */
 		if (rpsize > MaxAllocSize - 2)
-			rpsize = buffer_len + len;
+		{
+			if (buffer_len + len <= MaxAllocSize - 2)
+				rpsize = MaxAllocSize - 2;
+			else
+				ereport(ERROR,
+					(errcode(ERRCODE_INSUFFICIENT_RESOURCES),
+					 errmsg("buffer overflow, limit of 1GB")));
+		}
+		/* End - BUG#Z9462 */
 
 		buffer = repalloc(buffer, rpsize + 2);
 		buffer_size = rpsize;
 	}
+
+	/* Begin - BUG#Z9462 */
+	if (buffer_len + len > buffer_size)
+		ereport(ERROR,
+			(errcode(ERRCODE_INSUFFICIENT_RESOURCES),
+			 errmsg("buffer overflow, limit of 1GB")));
+	/* End - BUG#Z9462 */
 
 	memcpy(buffer + buffer_len, str, len);
 	buffer_len += len;
