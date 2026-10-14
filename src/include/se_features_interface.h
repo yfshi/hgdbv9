@@ -48,6 +48,7 @@ extern PGDLLIMPORT Oid tmp_superuser_oid;
 /* se_feature switch */
 extern PGDLLIMPORT bool se_feature_mode;
 extern PGDLLIMPORT bool restricted_dba;
+extern PGDLLIMPORT bool audit_copy_log;   /* BUG#Z9340 */
 
 
 #define SYSDBA_ROLE "sysdba_role"

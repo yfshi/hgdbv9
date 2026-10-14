@@ -39,6 +39,7 @@ Oid tmp_superuser_oid = InvalidOid;
 /* se_feature switch */
 bool se_feature_mode = false;
 bool restricted_dba = false;
+bool audit_copy_log = false;   /* BUG#Z9340 */
 
 /*
  * Hooks for function calls

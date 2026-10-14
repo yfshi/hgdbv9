@@ -588,6 +588,7 @@ PG_FUNCTION_INFO_V1(audit_show_diskinfo);
 PG_FUNCTION_INFO_V1(copy_file_to_remote_srv);
 PG_FUNCTION_INFO_V1(pg_audit_switch_primary);
 PG_FUNCTION_INFO_V1(show_audit_param);
+PG_FUNCTION_INFO_V1(pg_audit_file_archive_auto); /* BUG#Z9340 */
 
 Datum
 current_is_syssao(PG_FUNCTION_ARGS)
@@ -6620,16 +6621,16 @@ audit_arch_job(void)
 							(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir)))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", archpath, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */	/* BUG#Z6166 */
+			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ select hg_security.pg_audit_file_archive_auto($$COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';$$);select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", archpath, oids[elemno], archfile, audit_GUC.remote_archdir);	/* BUG#Z5840 */ /* BUG#Z6166 */ /* BUG#Z9340 */
 		}
 		else if ((audit_GUC.remote_archdir != NULL && strlen(audit_GUC.remote_archdir) > 0) &&
 								(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir) == 0))
 		{
 			snprintf(archfile, MAXPGPATH, "%s/%d.csv", DataDir, oids[elemno]);	/* Bug#Z5840 */
-			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */	/* BUG#Z6166 */
+			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ select hg_security.pg_audit_file_archive_auto($$COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';$$);select hg_security.copy_file_to_remote_srv(''%s'', ''%s'');", DataDir, oids[elemno], archfile, audit_GUC.remote_archdir); /* BUG#Z5840 */	/* BUG#Z6166 */ /* BUG#Z9340 */
 		}
 		else if(audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
-			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv''", archpath, oids[elemno]);	/* BUG#Z5840 */
+			snprintf(copysql, sizeof(copysql), "/* AUDIT_ARCHIVE_COPY */ select hg_security.pg_audit_file_archive_auto($$COPY (SELECT * FROM hg_security.pg_audit_log) TO ''%s/%d.csv'';$$);", archpath, oids[elemno]); /* BUG#Z5840 */ /* BUG#Z9340 */
 
 		if (audit_GUC.audit_archdir != NULL && strlen(audit_GUC.audit_archdir))
 		{
@@ -11003,8 +11004,19 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 		PG_RETURN_BOOL(false);
 	}
 
-	/* Now retrieve the crosstab source rows */
-	ret = SPI_execute(archcmd, false, 0);
+	/*Begin - BUG#Z9340 */
+	PG_TRY();
+	{
+		audit_copy_log = true;
+		/* Now retrieve the crosstab source rows */
+		ret = SPI_execute(archcmd, false, 0);
+	}
+	PG_FINALLY();
+	{
+		audit_copy_log = false;
+	}
+	PG_END_TRY();
+	/*End BUG#Z9340 */
 
 	/* Check for qualifying tuples */
 	if (ret != SPI_OK_UTILITY)
@@ -11020,6 +11032,71 @@ pg_audit_file_archive(PG_FUNCTION_ARGS)
 
 	PG_RETURN_BOOL(true);
 }
+
+/* Begin - BUG#Z9340 */
+Datum
+pg_audit_file_archive_auto(PG_FUNCTION_ARGS)
+{
+	int			ret;
+	Oid 		userid = GetUserId();
+
+	char	   *sql = text_to_cstring(PG_GETARG_TEXT_PP(0));
+
+	/* permission check */
+	check_audit_saosso_perm(userid, false);
+
+	if (audit_GUC.audit_archdir[0] == '\0')
+	{
+		ereport(ERROR,
+				(errmsg("audit archive directory is not configured, please configure it first!")));
+	}
+
+	if (pg_strncasecmp(sql, "COPY (SELECT * FROM hg_security.pg_audit_log) TO",
+								strlen("COPY (SELECT * FROM hg_security.pg_audit_log) TO")))
+	{
+		ereport(ERROR,
+				(errmsg("this function only use archive pg_audit_log")));
+	}
+
+	internalStatement = true;
+
+	/* Connect to SPI manager */
+	if ((ret = SPI_connect()) < 0)
+	{
+		internalStatement = false;
+		/* internal error */
+		elog(WARNING, "pg_audit_file_archive_auto: SPI_connect returned %d", ret);
+		PG_RETURN_BOOL(false);
+	}
+
+	PG_TRY();
+	{
+		audit_copy_log = true;
+		/* Now retrieve the crosstab source rows */
+		ret = SPI_execute(sql, false, 0);
+	}
+	PG_FINALLY();
+	{
+		audit_copy_log = false;
+	}
+	PG_END_TRY();
+
+
+	/* Check for qualifying tuples */
+	if (ret != SPI_OK_UTILITY)
+	{
+		internalStatement = false;
+		elog(WARNING, "pg_audit_file_archive_auto: SPI_execute returned %d", ret);
+		PG_RETURN_BOOL(false);
+	}
+
+	SPI_finish();
+
+	internalStatement = false;
+
+	PG_RETURN_BOOL(true);
+}
+/*End - BUG#Z9340 */
 
 Datum
 copy_file_to_remote_srv(PG_FUNCTION_ARGS)
