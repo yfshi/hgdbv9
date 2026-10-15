@@ -4033,6 +4033,14 @@ initialize_data_directory(void)
 		PG_CMD_PUTS("select sys.ora_set_first_normal_objectid();\n\n");
 	/* End - bug#5514 */
 
+#if defined(ENABLE_DKY_BETA_FEATURE)
+	PG_CMD_PUTS("ALTER SYSTEM SET se_feature.mode = on;\n\n");
+	PG_CMD_PUTS("ALTER SYSTEM SET se_feature.restricted_dba = on;\n\n");
+	PG_CMD_PUTS("ALTER SYSTEM SET credcheck.enable = on;\n\n");
+	PG_CMD_PUTS("ALTER SYSTEM SET audit.enable = on;\n\n");
+	PG_CMD_PUTS("ALTER SYSTEM SET audit.systemopers = 'all';\n\n");
+#endif
+
 	PG_CMD_CLOSE;
 
 	check_ok();
