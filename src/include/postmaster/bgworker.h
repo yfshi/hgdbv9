@@ -129,7 +129,7 @@ extern BgwHandleStatus WaitForBackgroundWorkerStartup(BackgroundWorkerHandle *ha
 extern BgwHandleStatus
 			WaitForBackgroundWorkerShutdown(BackgroundWorkerHandle *);
 extern const char *GetBackgroundWorkerTypeByPid(pid_t pid);
-extern const pid_t GetBackgroundWorkerPidByBgwName(const char *bgwork_name);  // SECURITY-AUTHENTICATION-METHOD
+extern pid_t GetBackgroundWorkerPidByBgwName(const char *bgwork_name);  // SECURITY-AUTHENTICATION-METHOD
 
 /* Terminate a bgworker */
 extern void TerminateBackgroundWorker(BackgroundWorkerHandle *handle);

@@ -1383,7 +1383,7 @@ GetBackgroundWorkerTypeByPid(pid_t pid)
 }
 
 /* Begin - SECURITY-AUTHENTICATION-METHOD */
-const pid_t
+pid_t
 GetBackgroundWorkerPidByBgwName(const char *bgwork_name)
 {
 	int			slotno;
