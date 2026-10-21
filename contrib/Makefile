@@ -83,6 +83,10 @@ else
 ALWAYS_SUBDIRS += sslinfo
 endif
 
+ifeq ($(enable_compatible_ak), yes)
+SUBDIRS += hg_alarm
+endif
+
 #ifneq ($(with_uuid),no)
 #SUBDIRS += uuid-ossp
 #else

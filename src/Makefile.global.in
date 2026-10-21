@@ -221,6 +221,7 @@ enable_dky_beta_feature = @enable_dky_beta_feature@
 # BEGIN - SECURITY-AUTHENTICATION-METHOD
 enable_audit_partition_table = @enable_audit_partition_table@
 # END - SECURITY-AUTHENTICATION-METHOD
+enable_compatible_ak = @enable_compatible_ak@
 
 python_includespec	= @python_includespec@
 python_libdir		= @python_libdir@

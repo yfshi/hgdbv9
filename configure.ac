@@ -1159,6 +1159,16 @@ AC_MSG_RESULT([$enable_audit_partition_table])
 AC_SUBST(enable_audit_partition_table)
 
 #
+# compatible ak
+#
+AC_MSG_CHECKING([whether to build with compatible ak support])
+PGAC_ARG_BOOL(enable, compatible-ak, no,
+             [enable compatible ak],
+              [AC_DEFINE([ENABLE_COMPATIBLE_AK], 1, [Define to 1 to build with compatible ak. (--enable-compatible-ak)])])
+AC_MSG_RESULT([$enable_compatible_ak])
+AC_SUBST(enable_compatible_ak)
+
+#
 # PAM
 #
 AC_MSG_CHECKING([whether to build with PAM support])

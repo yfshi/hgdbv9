@@ -1,0 +1,39 @@
+{
+    "host" : "localhost",
+    "port" : 5432,
+    "database" : "highgo",
+    "username" : "sysdba",
+	"password" : "Hello@123",
+    "memory_limit" : "5MB",
+    "interval" : "1s",
+    "log_directory" : "/tmp/log",
+    "log_segsize" : "10MB",
+    "mail_user" : "",
+    "datadir_limit" : "10MB",
+    "database_limit" : [
+        {
+            "dbname" : "postgres",
+            "limit" : "100MB"
+        }
+    ],
+    "tablespace_limit" : [
+        {
+            "tsname" : "a",
+            "limit" : "200MB"
+        }
+    ],
+    "relation_limit": [
+        {
+            "dbname" : "postgres",
+            "schema" : "public",
+            "relname" : "tb",
+            "limit" : "10MB"
+        },
+        {
+            "dbname" : "postgres",
+            "schema" : "public",
+            "relname" : "ttt",
+            "limit" : "100"
+        }
+    ]
+}

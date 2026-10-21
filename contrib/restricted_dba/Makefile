@@ -1,5 +1,7 @@
 # contrib/restricted_dba/Makefile
 
+export enable_compatible_ak
+
 MODULE_big = restricted_dba
 OBJS = \
 	$(WIN32RES) \
@@ -19,6 +21,8 @@ OBJS = \
 EXTENSION = restricted_dba
 DATA = restricted_dba--1.0.sql
 PGFILEDESC = "restricted_dba - restrict superuser privilege from dba"
+
+TAP_TESTS = 1
 
 REGRESS = role helper tablespace database schema table view sequence index		\
 			function procedure routine aclchk guc misc 
