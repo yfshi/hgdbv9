@@ -8955,6 +8955,14 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			appendPQExpBufferStr(q,
 								 "0 AS attcollation,\n");
 
+		/* JSON field lookup also works against an unmodified PostgreSQL 14. */
+		if (fout->remoteVersion >= 140000)
+			appendPQExpBufferStr(q,
+				"CASE WHEN pg_catalog.to_jsonb(a)->>'attencrypted' = 'true' "
+				"THEN 't' ELSE 'f' END AS attencrypted,\n");
+		else
+			appendPQExpBufferStr(q, "false AS attencrypted,\n");
+
 		if (fout->remoteVersion >= 140000)
 			appendPQExpBuffer(q,
 							  "a.attcompression AS attcompression,\n");
@@ -9026,6 +9034,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->attislocal = (bool *) pg_malloc(ntups * sizeof(bool));
 		tbinfo->attoptions = (char **) pg_malloc(ntups * sizeof(char *));
 		tbinfo->attcollation = (Oid *) pg_malloc(ntups * sizeof(Oid));
+		tbinfo->attencrypted = (bool *) pg_malloc(ntups * sizeof(bool));
 		tbinfo->attcompression = (char *) pg_malloc(ntups * sizeof(char));
 		tbinfo->attfdwoptions = (char **) pg_malloc(ntups * sizeof(char *));
 		tbinfo->attmissingval = (char **) pg_malloc(ntups * sizeof(char *));
@@ -9092,6 +9101,7 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 			tbinfo->notnull[j] = (PQgetvalue(res, j, PQfnumber(res, "attnotnull"))[0] == 't');
 			tbinfo->attoptions[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attoptions")));
 			tbinfo->attcollation[j] = atooid(PQgetvalue(res, j, PQfnumber(res, "attcollation")));
+			tbinfo->attencrypted[j] = PQgetvalue(res, j, PQfnumber(res, "attencrypted"))[0] == 't';
 			tbinfo->attcompression[j] = *(PQgetvalue(res, j, PQfnumber(res, "attcompression")));
 			tbinfo->attfdwoptions[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attfdwoptions")));
 			tbinfo->attmissingval[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "attmissingval")));
@@ -16591,6 +16601,8 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					{
 						appendPQExpBuffer(q, " %s",
 										  tbinfo->atttypnames[j]);
+						if (tbinfo->attencrypted[j])
+							appendPQExpBufferStr(q, " ENCRYPT");
 					}
 
 					if (print_default)

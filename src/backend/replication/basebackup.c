@@ -478,8 +478,12 @@ perform_base_backup(basebackup_options *opt)
 					bool	crc_ok;
 
 					cfile = get_controlfile(".", &crc_ok);
-					cfile->file_encryption_method = DISABLED_ENCRYPTION_METHOD;
-					cfile->encryption_target_mode = ENCRYPTION_MODE_NOTHING;
+					/* ALL/REL writes no column envelopes. CUSTOM/WAL may contain them. */
+					if (AllTableEncrypted)
+						cfile->file_encryption_method = DISABLED_ENCRYPTION_METHOD;
+					cfile->encryption_target_mode =
+						cfile->file_encryption_method == DISABLED_ENCRYPTION_METHOD ?
+						ENCRYPTION_MODE_NOTHING : ENCRYPTION_MODE_CUSTOM;
 
 					/* Recalculate CRC of control file */
 					INIT_CRC32C(cfile->crc);

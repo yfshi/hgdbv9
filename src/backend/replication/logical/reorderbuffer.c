@@ -4888,7 +4888,9 @@ ReorderBufferToastReplace(ReorderBuffer *rb, ReorderBufferTXN *txn,
 
 		free[natt] = true;
 
-		reconstructed = palloc0(toast_pointer.va_rawsize);
+		/* Encrypted external values can be larger than their plaintext. */
+		reconstructed = palloc0(VARATT_EXTERNAL_GET_EXTSIZE(toast_pointer) +
+							   VARHDRSZ);
 
 		ent->reconstructed = reconstructed;
 

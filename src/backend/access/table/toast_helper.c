@@ -13,6 +13,7 @@
  */
 
 #include "postgres.h"
+#include "crypto/columnenc.h"
 
 #include "access/detoast.h"
 #include "access/table.h"
@@ -43,6 +44,7 @@ toast_tuple_init(ToastTupleContext *ttc)
 	TupleDesc	tupleDesc = ttc->ttc_rel->rd_att;
 	int			numAttrs = tupleDesc->natts;
 	int			i;
+	bool column_encryption = RelationNeedsColumnEncryption(ttc->ttc_rel);
 
 	ttc->ttc_flags = 0;
 
@@ -74,6 +76,7 @@ toast_tuple_init(ToastTupleContext *ttc)
 				VARATT_IS_EXTERNAL_ONDISK(old_value))
 			{
 				if (ttc->ttc_isnull[i] ||
+					(att->attencrypted && column_encryption) != ColumnDatumIsEncrypted(new_value) ||
 					!VARATT_IS_EXTERNAL_ONDISK(new_value) ||
 					memcmp((char *) old_value, (char *) new_value,
 						   VARSIZE_EXTERNAL(old_value)) != 0)
@@ -144,6 +147,20 @@ toast_tuple_init(ToastTupleContext *ttc)
 				ttc->ttc_values[i] = PointerGetDatum(new_value);
 				ttc->ttc_attr[i].tai_colflags |= TOASTCOL_NEEDS_FREE;
 				ttc->ttc_flags |= (TOAST_NEEDS_CHANGE | TOAST_NEEDS_FREE);
+			}
+
+			/* Transform even small values before deciding whether to externalize. */
+			if ((att->attencrypted && column_encryption) != ColumnDatumIsEncrypted(new_value))
+			{
+				struct varlena *transformed;
+				transformed = (att->attencrypted && column_encryption) ? ColumnEncryptDatum(new_value) :
+					ColumnDecryptDatum(new_value);
+				if (ttc->ttc_attr[i].tai_colflags & TOASTCOL_NEEDS_FREE)
+					pfree(new_value);
+				new_value = transformed;
+				ttc->ttc_values[i] = PointerGetDatum(new_value);
+				ttc->ttc_attr[i].tai_colflags |= TOASTCOL_NEEDS_FREE;
+				ttc->ttc_flags |= TOAST_NEEDS_CHANGE | TOAST_NEEDS_FREE;
 			}
 
 			/*

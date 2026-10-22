@@ -12,6 +12,7 @@
  */
 
 #include "postgres.h"
+#include "crypto/columnenc.h"
 
 #include "access/detoast.h"
 #include "access/table.h"
@@ -492,6 +493,9 @@ toast_decompress_datum(struct varlena *attr)
 	cmid = TOAST_COMPRESS_METHOD(attr);
 	switch (cmid)
 	{
+		case TOAST_COLUMN_ENCRYPTION_ID:
+			/* Authenticate the entire value, even for a prefix request. */
+			return ColumnDecryptDatum(attr);
 		case TOAST_PGLZ_COMPRESSION_ID:
 			return pglz_decompress_datum(attr);
 		case TOAST_LZ4_COMPRESSION_ID:
@@ -535,6 +539,9 @@ toast_decompress_datum_slice(struct varlena *attr, int32 slicelength)
 	cmid = TOAST_COMPRESS_METHOD(attr);
 	switch (cmid)
 	{
+		case TOAST_COLUMN_ENCRYPTION_ID:
+			/* Authenticate the entire value, even for a prefix request. */
+			return ColumnDecryptDatum(attr);
 		case TOAST_PGLZ_COMPRESSION_ID:
 			return pglz_decompress_datum_slice(attr, slicelength);
 		case TOAST_LZ4_COMPRESSION_ID:

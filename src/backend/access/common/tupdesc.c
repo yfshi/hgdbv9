@@ -462,6 +462,8 @@ equalTupleDescs(TupleDesc tupdesc1, TupleDesc tupdesc2)
 			return false;
 		if (attr1->attstorage != attr2->attstorage)
 			return false;
+		if (attr1->attencrypted != attr2->attencrypted)
+			return false;
 		if (attr1->attcompression != attr2->attcompression)
 			return false;
 		if (attr1->attnotnull != attr2->attnotnull)
@@ -638,6 +640,7 @@ TupleDescInitEntry(TupleDesc desc,
 
 	att->attnum = attributeNumber;
 	att->attndims = attdim;
+	att->attencrypted = false;
 
 	att->attnotnull = false;
 	att->atthasdef = false;
@@ -700,6 +703,7 @@ TupleDescInitBuiltinEntry(TupleDesc desc,
 
 	att->attnum = attributeNumber;
 	att->attndims = attdim;
+	att->attencrypted = false;
 
 	att->attnotnull = false;
 	att->atthasdef = false;
@@ -861,6 +865,7 @@ BuildDescForRelation(List *schema)
 			att->attstorage = entry->storage;
 
 		/* Fill in additional stuff not handled by TupleDescInitEntry */
+		att->attencrypted = entry->encrypted;
 		att->attnotnull = entry->is_not_null;
 		has_not_null |= entry->is_not_null;
 		att->attislocal = entry->is_local;

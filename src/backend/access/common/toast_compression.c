@@ -274,6 +274,9 @@ toast_get_compression_id(struct varlena *attr)
 	else if (VARATT_IS_COMPRESSED(attr))
 		cmid = VARDATA_COMPRESSED_GET_COMPRESS_METHOD(attr);
 
+	/* Encryption is an envelope, not a user-visible compression method. */
+	if (cmid == TOAST_COLUMN_ENCRYPTION_ID)
+		return TOAST_INVALID_COMPRESSION_ID;
 	return cmid;
 }
 

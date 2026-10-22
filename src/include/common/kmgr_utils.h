@@ -108,7 +108,8 @@ typedef struct encryption_target_mode_type
 #define ENCRYPTION_MODE_ALL		1
 #define ENCRYPTION_MODE_WAL		2
 #define ENCRYPTION_MODE_REL		3
-#define NUM_ENCRYPTION_MODES	4
+#define ENCRYPTION_MODE_CUSTOM	4
+#define NUM_ENCRYPTION_MODES	5
 
 #ifdef USE_SWSDS
 typedef struct hsm_encryption_algorithm_type

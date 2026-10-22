@@ -30,6 +30,7 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
+#include "crypto/columnenc.h"
 
 #include "access/bufmask.h"
 #include "access/genam.h"
@@ -2400,7 +2401,8 @@ heap_prepare_insert(Relation relation, HeapTuple tup, TransactionId xid,
 		Assert(!HeapTupleHasExternal(tup));
 		return tup;
 	}
-	else if (HeapTupleHasExternal(tup) || tup->t_len > TOAST_TUPLE_THRESHOLD)
+	else if (HeapTupleHasExternal(tup) || tup->t_len > TOAST_TUPLE_THRESHOLD ||
+			 ColumnTupleNeedsTransform(relation, tup))
 		return heap_toast_insert_or_update(relation, tup, NULL, options);
 	else
 		return tup;
@@ -3864,7 +3866,8 @@ l2:
 	else
 		need_toast = (HeapTupleHasExternal(&oldtup) ||
 					  HeapTupleHasExternal(newtup) ||
-					  newtup->t_len > TOAST_TUPLE_THRESHOLD);
+					  newtup->t_len > TOAST_TUPLE_THRESHOLD ||
+					  ColumnTupleNeedsTransform(relation, newtup));
 
 	pagefree = PageGetHeapFreeSpace(page);
 

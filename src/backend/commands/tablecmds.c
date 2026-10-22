@@ -20,6 +20,8 @@
  */
 #include "postgres.h"
 
+#include "crypto/columnenc.h"
+
 #include "access/attmap.h"
 #include "access/genam.h"
 #include "access/heapam.h"
@@ -1075,6 +1077,19 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 	 * inherited attributes.  (Note that stmt->tableElts is destructively
 	 * modified by MergeAttributes.)
 	 */
+	if (inheritOids != NIL)
+	{
+		ListCell *lc;
+		foreach(lc, stmt->tableElts)
+		{
+			ColumnDef *col = lfirst_node(ColumnDef, lc);
+			if (col->encrypted)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("encrypted columns do not support inheritance or partitioning")));
+		}
+	}
+
 	stmt->tableElts =
 		MergeAttributes(stmt->tableElts, inheritOids,
 						stmt->relation->relpersistence,
@@ -1180,6 +1195,19 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 			cooked->is_no_inherit = false;
 			cookedDefaults = lappend(cookedDefaults, cooked);
 			attr->atthasdef = true;
+		}
+
+		attr->attencrypted = colDef->encrypted;
+		if (colDef->encrypted)
+		{
+			CheckColumnEncryption(attr->atttypid);
+			if (colDef->generated == ATTRIBUTE_GENERATED_VIRTUAL)
+				ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							errmsg("virtual columns cannot be encrypted")));
+			if (relkind != RELKIND_RELATION || inheritOids != NIL)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("encrypted columns require an ordinary table without inheritance")));
 		}
 
 		if (colDef->identity)
@@ -3572,6 +3600,11 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 									   get_collation_name(defCollId),
 									   get_collation_name(attribute->attcollation))));
 
+				if (attribute->attencrypted || def->encrypted)
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("encrypted columns do not support inheritance")));
+
 				/* Copy/check storage parameter */
 				if (def->storage == 0)
 					def->storage = attribute->attstorage;
@@ -3625,6 +3658,7 @@ MergeAttributes(List *schema, List *supers, char relpersistence,
 				def->inhcount = 1;
 				def->is_local = false;
 				def->is_not_null = attribute->attnotnull;
+				def->encrypted = attribute->attencrypted;
 				def->is_from_type = false;
 				def->storage = attribute->attstorage;
 				def->raw_default = NULL;
@@ -8694,6 +8728,21 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 	attribute.attnotnull = colDef->is_not_null;
 	attribute.atthasdef = false;
 	attribute.atthasmissing = false;
+	attribute.attencrypted = colDef->encrypted;
+	if (colDef->encrypted)
+	{
+		CheckColumnEncryption(typeOid);
+		if (colDef->generated == ATTRIBUTE_GENERATED_VIRTUAL)
+			ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("virtual columns cannot be encrypted")));
+		/* Materialize defaults with the new physical encoding. */
+		tab->rewrite |= AT_REWRITE_COLUMN_REWRITE;
+		if (rel->rd_rel->relkind != RELKIND_RELATION ||
+			rel->rd_rel->relhassubclass || has_superclass(myrelid))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("encrypted columns require an ordinary table without inheritance")));
+	}
 	attribute.attidentity = colDef->identity;
 	attribute.attgenerated = colDef->generated;
 	attribute.attisdropped = false;
@@ -8879,6 +8928,7 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 			 * volatile; else it might fail even when the table is empty.
 			 */
 			if (rel->rd_rel->relkind == RELKIND_RELATION &&
+				!colDef->encrypted &&
 				!colDef->generated &&
 				!has_domain_constraints &&
 				!contain_volatile_functions((Node *) defval))
@@ -14295,6 +14345,21 @@ ATPrepAlterColumnType(List **wqueue,
 
 	/* Look up the target type */
 	typenameTypeIdAndMod(NULL, typeName, &targettype, &targettypmod);
+	if (def->encrypted)
+	{
+		CheckColumnEncryption(targettype);
+		if (attTup->attgenerated == ATTRIBUTE_GENERATED_VIRTUAL)
+			ereport(ERROR, (errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("virtual columns cannot be encrypted")));
+	}
+	if (def->encrypted || attTup->attencrypted)
+	{
+		if (rel->rd_rel->relkind != RELKIND_RELATION ||
+			rel->rd_rel->relhassubclass || has_superclass(RelationGetRelid(rel)))
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("encrypted columns require an ordinary table without inheritance")));
+	}
 
 	aclresult = pg_type_aclcheck(targettype, GetUserId(), ACL_USAGE);
 	if (aclresult != ACLCHECK_OK)
@@ -14373,7 +14438,8 @@ ATPrepAlterColumnType(List **wqueue,
 		newval->is_generated = false;
 
 		tab->newvals = lappend(tab->newvals, newval);
-		if (ATColumnChangeRequiresRewrite(transform, attnum))
+		if (attTup->attencrypted != def->encrypted ||
+			ATColumnChangeRequiresRewrite(transform, attnum))
 			tab->rewrite |= AT_REWRITE_COLUMN_REWRITE;
 	}
 	else if (transform)
@@ -15494,6 +15560,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 		}
 	}
 
+	attTup->attencrypted = def->encrypted;
 	attTup->atttypid = targettype;
 	attTup->atttypmod = targettypmod;
 	attTup->attcollation = targetcollid;
@@ -17613,6 +17680,24 @@ CreateInheritance(Relation child_rel, Relation parent_rel)
 	ScanKeyData key;
 	HeapTuple	inheritsTuple;
 	int32		inhseqno;
+
+	/* Attachment must never silently change the physical column encoding. */
+	for (int i = 0; i < RelationGetDescr(child_rel)->natts; i++)
+	{
+		Form_pg_attribute attr = TupleDescAttr(RelationGetDescr(child_rel), i);
+		if (!attr->attisdropped && attr->attencrypted)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("encrypted columns do not support inheritance or partitioning")));
+	}
+	for (int i = 0; i < RelationGetDescr(parent_rel)->natts; i++)
+	{
+		Form_pg_attribute attr = TupleDescAttr(RelationGetDescr(parent_rel), i);
+		if (!attr->attisdropped && attr->attencrypted)
+			ereport(ERROR,
+					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+					 errmsg("encrypted columns do not support inheritance or partitioning")));
+	}
 
 	/* Note: get RowExclusiveLock because we will write pg_inherits below. */
 	catalogRelation = table_open(InheritsRelationId, RowExclusiveLock);
@@ -23970,6 +24055,7 @@ ATExecHandleColumnDefault(AlteredTableInfo *tab, Relation rel, AlterTableCmd *cm
 			 * volatile; else it might fail even when the table is empty.
  			 */
 			if (rel->rd_rel->relkind == RELKIND_RELATION &&
+				!def->encrypted &&
 				!def->generated &&
 				!has_domain_constraints &&
 				!contain_volatile_functions((Node *) defval))

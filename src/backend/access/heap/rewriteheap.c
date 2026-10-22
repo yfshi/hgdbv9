@@ -101,6 +101,7 @@
  *-------------------------------------------------------------------------
  */
 #include "postgres.h"
+#include "crypto/columnenc.h"
 
 #include <sys/stat.h>
 #include <unistd.h>
@@ -639,7 +640,8 @@ raw_heap_insert(RewriteState state, HeapTuple tup)
 		Assert(!HeapTupleHasExternal(tup));
 		heaptup = tup;
 	}
-	else if (HeapTupleHasExternal(tup) || tup->t_len > TOAST_TUPLE_THRESHOLD)
+	else if (HeapTupleHasExternal(tup) || tup->t_len > TOAST_TUPLE_THRESHOLD ||
+			 ColumnTupleNeedsTransform(state->rs_new_rel, tup))
 	{
 		int			options = HEAP_INSERT_SKIP_FSM;
 

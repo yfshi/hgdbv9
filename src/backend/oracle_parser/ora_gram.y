@@ -704,6 +704,7 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 %type <windef>	over_clause_partition window_specification_partition	/* OA-REQ-2132 */
 %type <ival>	opt_window_exclusion_clause opt_virtual_or_stored	/* ReqID:SRS-SQL-VIRTUALCOL */
 %type <str>		opt_existing_window_name
+%type <boolean> opt_encrypt
 %type <boolean> opt_if_not_exists
 %type <ival>	generated_when override_kind
 %type <partspec>	PartitionSpec OptPartitionSpec
@@ -869,7 +870,7 @@ static bool pivotIdentifierWasQuoted(int location, ora_core_yyscan_t yyscanner);
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBDELI /* BUG#M0000414 */ DOUBLE_P DROP
 
-	EACH ELEMENT /* ReqID:SRS-SQL-Collection */ ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	EACH ELEMENT /* ReqID:SRS-SQL-Collection */ ELSE ENABLE_P ENCODING ENCRYPT ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION EXTEND	/* ReqID:SRS-SQL-SEQ */
 	EXTENSION EXTERNAL EXTRACT
 
@@ -2780,6 +2781,21 @@ modify_col_property:
 					n->def = (Node *) def;					
 					$$ = (Node *)n;
 				}
+			| ColId Typename ENCRYPT opt_collate_clause
+				{
+						AlterTableCmd *n = makeNode(AlterTableCmd);
+						ColumnDef *def = makeNode(ColumnDef);
+						def->typeName = $2;
+						def->encrypted = true;
+						def->collClause = (CollateClause *) $4;
+						def->raw_default = NULL;
+						def->location = @1;
+
+						n->subtype = AT_AlterColumnType;
+						n->name = $1;
+						n->def = (Node *) def;
+						$$ = (Node *)n;
+				}
 		;
 
 modify_col_properties:
@@ -3435,7 +3451,7 @@ alter_table_cmd:
 			 * ALTER TABLE <name> ALTER [COLUMN] <colname> [SET DATA] TYPE <typename>
 			 *		[ USING <expression> ]
 			 */
-			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_collate_clause alter_using
+			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_encrypt opt_collate_clause alter_using
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
@@ -3444,8 +3460,9 @@ alter_table_cmd:
 					n->def = (Node *) def;
 					/* We only use these fields of the ColumnDef node */
 					def->typeName = $6;
-					def->collClause = (CollateClause *) $7;
-					def->raw_default = $8;
+					def->encrypted = $7;
+					def->collClause = (CollateClause *) $8;
+					def->raw_default = $9;
 					def->location = @3;
 					$$ = (Node *)n;
 				}
@@ -5770,7 +5787,11 @@ TypedTableElement:
 			| TableConstraint					{ $$ = $1; }
 		;
 
-columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_options ColQualList	/* ReqID:SRS-SQL-INVISIBLECOL */
+opt_encrypt: ENCRYPT { $$ = true; }
+			| /* EMPTY */ { $$ = false; }
+		;
+
+columnDef:	ColId Typename opt_encrypt Opt_visibility opt_column_compression create_generic_options ColQualList	/* ReqID:SRS-SQL-INVISIBLECOL */
 				{
 					ListCell   *lc;	/* ReqID:SRS-SQL-VIRTUALCOL */
 					char	   *tpname;		/* ReqID:SRS-SQL-INVISIBLECOL */
@@ -5778,16 +5799,17 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					ColumnDef *n = makeNode(ColumnDef);
 					n->colname = $1;
 					n->typeName = $2;
+					n->encrypted = $3;
 					/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
 					tpname = strVal(linitial(n->typeName->names));
-					if (pg_strcasecmp(tpname, "invisible") == 0 && $3)
+					if (pg_strcasecmp(tpname, "invisible") == 0 && $4)
 					{
 						n->typeName = makeTypeName("int4");
 						n->not_spefify_column_type = true;	/* Bug#Z485 */
 						n->isvisible = false;
 						keyword_is_visibility = true;
 					}
-					else if (pg_strcasecmp(tpname, "visible") == 0 && $3)
+					else if (pg_strcasecmp(tpname, "visible") == 0 && $4)
 					{
 						n->typeName = makeTypeName("int4");
 						n->not_spefify_column_type = true;	/* Bug#Z485 */
@@ -5804,7 +5826,7 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					}
 					/* End - ReqID:SRS-SQL-INVISIBLECOL */
 					/* Begin - Bug#Z476 */
-					n->compression = $4;
+					n->compression = $5;
 					n->inhcount = 0;
 					n->is_local = true;
 					n->is_not_null = false;
@@ -5813,17 +5835,17 @@ columnDef:	ColId Typename Opt_visibility opt_column_compression create_generic_o
 					n->raw_default = NULL;
 					n->cooked_default = NULL;
 					n->collOid = InvalidOid;
-					n->fdwoptions = $5;
+					n->fdwoptions = $6;
 					/* Begin - ReqID:SRS-SQL-INVISIBLECOL */
 					if (!keyword_is_visibility)
 					{
-						if ($3)
+						if ($4)
 							n->isvisible = true;
 						else
 							n->isvisible = false;
 					}
 					/* End - ReqID:SRS-SQL-INVISIBLECOL */
-					SplitColQualList($6, &n->constraints, &n->collClause,
+					SplitColQualList($7, &n->constraints, &n->collClause,
 									 yyscanner);
 					/* Begin - ReqID:SRS-SQL-VIRTUALCOL */
 					foreach(lc, n->constraints)
@@ -24474,6 +24496,7 @@ unreserved_keyword:
 			| ELEMENT /* ReqID:SRS-SQL-Collection */
 			| ENABLE_P
 			| ENCODING
+			| ENCRYPT
 			| ENCRYPTED
 			| ENUM_P
 			| ERROR_P	/* ReqID:SRS-SQL-SYSFUNC */
@@ -25183,6 +25206,7 @@ bare_label_keyword:
 			| ELSE
 			| ENABLE_P
 			| ENCODING
+			| ENCRYPT
 			| ENCRYPTED
 			| END_P
 			| ENUM_P
