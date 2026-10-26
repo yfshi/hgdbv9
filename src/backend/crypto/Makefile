@@ -14,6 +14,7 @@ include $(top_builddir)/src/Makefile.global
 
 OBJS = \
 	bufenc.o \
+	columnenc.o \
 	walenc.o \
 	kmgr.o
 

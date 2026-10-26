@@ -77,7 +77,8 @@ encryption_target_mode_type encryption_target_modes[NUM_ENCRYPTION_MODES] = {
 	{"", ENCRYPTION_MODE_NOTHING},
 	{"ALL", ENCRYPTION_MODE_ALL},
 	{"WAL", ENCRYPTION_MODE_WAL},
-	{"REL", ENCRYPTION_MODE_REL}
+	{"REL", ENCRYPTION_MODE_REL},
+	{"CUSTOM", ENCRYPTION_MODE_CUSTOM}
 };
 
 /* This maps wrapped key filesnames to their array slots */

@@ -852,6 +852,7 @@ InsertPgAttributeTuples(Relation pg_attribute_rel,
 		slot[slotCount]->tts_values[Anum_pg_attribute_attnotnull - 1] = BoolGetDatum(attrs->attnotnull);
 		slot[slotCount]->tts_values[Anum_pg_attribute_atthasdef - 1] = BoolGetDatum(attrs->atthasdef);
 		slot[slotCount]->tts_values[Anum_pg_attribute_atthasmissing - 1] = BoolGetDatum(attrs->atthasmissing);
+		slot[slotCount]->tts_values[Anum_pg_attribute_attencrypted - 1] = BoolGetDatum(attrs->attencrypted);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attidentity - 1] = CharGetDatum(attrs->attidentity);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attgenerated - 1] = CharGetDatum(attrs->attgenerated);
 		slot[slotCount]->tts_values[Anum_pg_attribute_attisdropped - 1] = BoolGetDatum(attrs->attisdropped);
@@ -1848,6 +1849,7 @@ RemoveAttributeById(Oid relid, AttrNumber attnum)
 
 		/* Unset this so no one tries to look up the generation expression */
 		attStruct->attgenerated = '\0';
+		attStruct->attencrypted = false;
 
 		/*
 		 * Change the column name to something that isn't likely to conflict

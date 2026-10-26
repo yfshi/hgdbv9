@@ -144,6 +144,9 @@ CATALOG(pg_attribute,1249,AttributeRelationId) BKI_BOOTSTRAP BKI_ROWTYPE_OID(75,
 	/* Has a missing value or not */
 	bool		atthasmissing BKI_DEFAULT(f);
 
+	/* Encrypt non-null values in the physical heap representation. */
+	bool		attencrypted BKI_DEFAULT(f);
+
 	/* One of the ATTRIBUTE_IDENTITY_* constants below, or '\0' */
 	char		attidentity BKI_DEFAULT('\0');
 

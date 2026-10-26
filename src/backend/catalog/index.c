@@ -40,6 +40,7 @@
 #include "catalog/dependency.h"
 #include "catalog/heap.h"
 #include "catalog/index.h"
+#include "crypto/columnenc.h"
 #include "catalog/objectaccess.h"
 #include "catalog/partition.h"
 #include "catalog/pg_am.h"
@@ -850,6 +851,21 @@ ora_index_create(Relation heapRelation,
 			 */
 			flags &= ~INDEX_CREATE_SKIP_BUILD;
 		}		/* End - BUG#Z6206 */
+	}
+
+	/* Plain index keys would expose encrypted values through index WAL. */
+	if (RelationHasEncryptedColumns(heapRelation))
+	{
+		for (i = 0; i < indexInfo->ii_NumIndexAttrs; i++)
+		{
+			AttrNumber attnum = indexInfo->ii_IndexAttrNumbers[i];
+
+			if (attnum == 0 || (attnum > 0 &&
+				TupleDescAttr(heapRelation->rd_att, attnum - 1)->attencrypted))
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						errmsg("indexes on encrypted columns and expression indexes on their tables are not supported")));
+		}
 	}
 
 	/* constraint flags can only be set when a constraint is requested */

@@ -378,7 +378,8 @@ typedef struct
 #define VARATT_EXTERNAL_SET_SIZE_AND_COMPRESS_METHOD(toast_pointer, len, cm) \
 	do { \
 		Assert((cm) == TOAST_PGLZ_COMPRESSION_ID || \
-			   (cm) == TOAST_LZ4_COMPRESSION_ID); \
+			   (cm) == TOAST_LZ4_COMPRESSION_ID || \
+			   (cm) == TOAST_COLUMN_ENCRYPTION_ID); \
 		((toast_pointer).va_extinfo = \
 			(len) | ((uint32) (cm) << VARLENA_EXTSIZE_BITS)); \
 	} while (0)
@@ -392,7 +393,8 @@ typedef struct
  */
 #define VARATT_EXTERNAL_IS_COMPRESSED(toast_pointer) \
 	(VARATT_EXTERNAL_GET_EXTSIZE(toast_pointer) < \
-	 (toast_pointer).va_rawsize - VARHDRSZ)
+	 (toast_pointer).va_rawsize - VARHDRSZ || \
+	 VARATT_EXTERNAL_GET_COMPRESS_METHOD(toast_pointer) == 2)
 
 /* Begin - ReqID:SRS-PLSQL-Collection */
 #define VARATT_IS_EXTERNAL_COLLECT(PTR) \

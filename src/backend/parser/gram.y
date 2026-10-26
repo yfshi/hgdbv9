@@ -620,6 +620,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 				opt_frame_clause frame_extent frame_bound
 %type <ival>	opt_window_exclusion_clause
 %type <str>		opt_existing_window_name
+%type <boolean> opt_encrypt
 %type <boolean> opt_if_not_exists
 %type <ival>	generated_when override_kind
 %type <partspec>	PartitionSpec OptPartitionSpec
@@ -689,7 +690,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBDELI /* BUG#M0000414 */ DOUBLE_P DROP
 
-	EACH ELSE ENABLE_P ENCODING ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	EACH ELSE ENABLE_P ENCODING ENCRYPT ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
@@ -2535,7 +2536,7 @@ alter_table_cmd:
 			 * ALTER TABLE <name> ALTER [COLUMN] <colname> [SET DATA] TYPE <typename>
 			 *		[ USING <expression> ]
 			 */
-			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_collate_clause alter_using
+			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_encrypt opt_collate_clause alter_using
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
@@ -2544,8 +2545,9 @@ alter_table_cmd:
 					n->def = (Node *) def;
 					/* We only use these fields of the ColumnDef node */
 					def->typeName = $6;
-					def->collClause = (CollateClause *) $7;
-					def->raw_default = $8;
+					def->encrypted = $7;
+					def->collClause = (CollateClause *) $8;
+					def->raw_default = $9;
 					def->location = @3;
 					$$ = (Node *)n;
 				}
@@ -3698,12 +3700,17 @@ TypedTableElement:
 			| TableConstraint					{ $$ = $1; }
 		;
 
-columnDef:	ColId Typename opt_column_compression create_generic_options ColQualList
+opt_encrypt: ENCRYPT { $$ = true; }
+			| /* EMPTY */ { $$ = false; }
+		;
+
+columnDef:	ColId Typename opt_encrypt opt_column_compression create_generic_options ColQualList
 				{
 					ColumnDef *n = makeNode(ColumnDef);
 					n->colname = $1;
 					n->typeName = $2;
-					n->compression = $3;
+					n->encrypted = $3;
+					n->compression = $4;
 					n->inhcount = 0;
 					n->is_local = true;
 					n->is_not_null = false;
@@ -3712,9 +3719,9 @@ columnDef:	ColId Typename opt_column_compression create_generic_options ColQualL
 					n->raw_default = NULL;
 					n->cooked_default = NULL;
 					n->collOid = InvalidOid;
-					n->fdwoptions = $4;
+					n->fdwoptions = $5;
 					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
-					SplitColQualList($5, &n->constraints, &n->collClause,
+					SplitColQualList($6, &n->constraints, &n->collClause,
 									 yyscanner);
 					n->location = @1;
 					$$ = (Node *)n;
@@ -16252,6 +16259,7 @@ unreserved_keyword:
 			| EACH
 			| ENABLE_P
 			| ENCODING
+			| ENCRYPT
 			| ENCRYPTED
 			| ENUM_P
 			| ESCAPE
@@ -16820,6 +16828,7 @@ bare_label_keyword:
 			| ELSE
 			| ENABLE_P
 			| ENCODING
+			| ENCRYPT
 			| ENCRYPTED
 			| END_P
 			| ENUM_P

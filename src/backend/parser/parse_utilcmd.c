@@ -1987,6 +1987,7 @@ transformTableLikeClause(CreateStmtContext *cxt, TableLikeClause *table_like_cla
 		def->inhcount = 0;
 		def->is_local = true;
 		def->is_not_null = attribute->attnotnull;
+		def->encrypted = attribute->attencrypted;
 		def->is_from_type = false;
 		def->storage = 0;
 		def->raw_default = NULL;
@@ -4738,7 +4739,12 @@ transformAlterTableStmt(Oid relid, AlterTableStmt *stmt,
 					 * ALTER TABLE xxx MODIFY [ datatype ] [ COLLATE collation ]
 					 */
 					if (def->typeName == NULL)
+					{
+						/* Oracle MODIFY COLLATE preserves the storage policy. */
+						if (attnum > 0)
+							def->encrypted = TupleDescAttr(tupdesc, attnum - 1)->attencrypted;
 						def->typeName = makeTypeNameFromOid(get_atttype(relid, attnum), get_atttypmod(relid, attnum));
+					}
 
 					if (attnum > 0 &&
 						TupleDescAttr(tupdesc, attnum - 1)->attidentity)

@@ -39,6 +39,7 @@
 #include "commands/progress.h"
 #include "commands/tablecmds.h"
 #include "commands/vacuum.h"
+#include "crypto/columnenc.h"
 #include "executor/executor.h"
 #include "foreign/fdwapi.h"
 #include "miscadmin.h"
@@ -648,7 +649,7 @@ do_analyze_rel(Relation onerel, VacuumParams *params,
 		 * For now we only build extended statistics on individual relations,
 		 * not for relations representing inheritance trees.
 		 */
-		if (build_ext_stats)
+		if (build_ext_stats && !RelationHasEncryptedColumns(onerel))
 			BuildRelationExtStatistics(onerel, totalrows, numrows, rows,
 									   attr_cnt, vacattrstats);
 	}
@@ -1043,6 +1044,11 @@ examine_attribute(Relation onerel, int attnum, Node *index_expr)
 	VacAttrStats *stats;
 	int			i;
 	bool		ok;
+
+	/* Histograms and MCV lists would expose encrypted column values. */
+	if (attr->attencrypted ||
+		(onerel->rd_rel->relkind == RELKIND_INDEX && RelationIsEncrypted(onerel)))
+		return NULL;
 
 	/* Never analyze dropped columns */
 	if (attr->attisdropped)
