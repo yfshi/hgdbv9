@@ -28,6 +28,10 @@
 #include "libpq-fe.h"
 #include "libpq-int.h"
 #include "mb/pg_wchar.h"
+/* Include TECC libpq integration module */
+#include "tecc_libpq_integration/fe-tecc-integration.h"
+#include "tecc_libpq_integration/fe-tecc-copy.h"
+#include "tecc_common/tecc_logging.h"
 
 /* keep this in same order as ExecStatusType in libpq-fe.h */
 char	   *const pgresStatus[] = {
@@ -128,7 +132,7 @@ static int	pqPipelineFlush(PGconn *conn);
  * ----------------
  */
 
-#define PGRESULT_DATA_BLOCKSIZE		2048
+#define PGRESULT_DATA_BLOCKSIZE		8192
 #define PGRESULT_ALIGN_BOUNDARY		MAXIMUM_ALIGNOF /* from configure */
 #define PGRESULT_BLOCK_OVERHEAD		Max(sizeof(PGresult_data), PGRESULT_ALIGN_BOUNDARY)
 #define PGRESULT_SEP_ALLOC_THRESHOLD	(PGRESULT_DATA_BLOCKSIZE / 2)
@@ -169,6 +173,17 @@ PQmakeEmptyPGresult(PGconn *conn, ExecStatusType status)
 	result->curOffset = 0;
 	result->spaceLeft = 0;
 	result->memorySize = sizeof(PGresult);
+	/*
+	 * NOTE: block_pool is intentionally left NULL to avoid a dangling
+	 * pointer hazard — if block_pool pointed into tecc_state (which
+	 * is freed by tecc_state_cleanup on PQfinish), any PGresult
+	 * still alive after cleanup would write into freed memory.
+	 * With pool == NULL, tecc_pgresult_block_alloc/free fall back
+	 * to plain malloc/free, which is always safe.
+	 */
+	result->block_pool = NULL;
+	if (conn != NULL && conn->tecc_state != NULL)
+		result->block_pool = &((TeccState *)conn->tecc_state)->block_pool;
 
 	if (conn)
 	{
@@ -609,7 +624,7 @@ pqResultAlloc(PGresult *res, size_t nBytes, bool isBinary)
 	}
 
 	/* Otherwise, start a new block. */
-	block = (PGresult_data *) malloc(PGRESULT_DATA_BLOCKSIZE);
+	block = (PGresult_data *) tecc_pgresult_block_alloc((TeccBlockPool *)res->block_pool);
 	if (!block)
 		return NULL;
 	res->memorySize += PGRESULT_DATA_BLOCKSIZE;
@@ -723,7 +738,7 @@ PQclear(PGresult *res)
 	while ((block = res->curBlock) != NULL)
 	{
 		res->curBlock = block->next;
-		free(block);
+		tecc_pgresult_block_free((TeccBlockPool *)res->block_pool, block);
 	}
 
 	/* Free the top-level tuple pointer array */
@@ -825,6 +840,42 @@ pqPrepareAsyncResult(PGconn *conn)
 	 */
 	conn->result = conn->next_result;
 	conn->next_result = NULL;
+
+	/* TECC: Process query result for encrypted columns */
+	if (conn->enable_tecc && res)
+	{
+		/* Begin - ReqID:TECC4.0 */
+		const char *tecc_error; /* ReqID:TECC4.0 */
+		int tecc_saved_asyncStatus = conn->asyncStatus;
+		/* End - ReqID:TECC4.0 */
+
+		/* Call TECC libpq integration module for result processing */
+		tecc_process_result(conn, res);
+
+		/*
+		 * ReqID:TECC4.0 - tecc_process_result may cause ReadyForQuery
+		 * ('Z') to be processed on the main connection (via pool
+		 * connection PQexec callbacks), advancing asyncStatus from
+		 * PGASYNC_READY to PGASYNC_IDLE. Leave it at IDLE to signal
+		 * the query is complete.
+		 */
+		if (conn->asyncStatus != tecc_saved_asyncStatus) {
+			/* 'Z' consumed, asyncStatus now IDLE: query complete */
+		}
+
+		/* Check if TECC processing had any errors */
+		/* Begin - ReqID:TECC4.0 */
+		tecc_error = tecc_get_last_error(conn);
+		if (tecc_error != NULL)
+		{
+			/* Strict mode: mark result as FATAL_ERROR on TECC failure */
+			appendPQExpBuffer(&conn->errorMessage,
+							  "TECC result processing error: %s\n",
+							  tecc_error);
+			res->resultStatus = PGRES_FATAL_ERROR;
+		}
+		/* End - ReqID:TECC4.0 */
+	}
 
 	return res;
 }
@@ -1343,6 +1394,7 @@ PQsendQueryInternal(PGconn *conn, const char *query, bool newQuery)
 {
 	PGcmdQueueEntry *entry = NULL;
 	PGcmdQueueEntry *entry2 = NULL;
+	char	   *processed_query = NULL;	/* TECC: Preprocessed SQL query */
 
 	if (!PQsendQueryStart(conn, newQuery))
 		return 0;
@@ -1353,6 +1405,45 @@ PQsendQueryInternal(PGconn *conn, const char *query, bool newQuery)
 		appendPQExpBufferStr(&conn->errorMessage,
 							 libpq_gettext("command string is a null pointer\n"));
 		return 0;
+	}
+
+	/* TECC: Preprocess SQL query for encrypted columns */
+	if (conn->enable_tecc)
+	{
+		/* Call TECC libpq integration module for query preprocessing */
+		processed_query = tecc_preprocess_query(conn, query);
+		/* Check if TECC processing failed */
+		if (processed_query == NULL)
+		{
+			/* TECC processing returned NULL - check if this is an error or normal case */
+			const char *tecc_error = tecc_get_last_error(conn);
+			/* DEBUG: Log the error check */
+			TECC_LOG(TECC_LOG_DEBUG1, "fe-exec.c: tecc_preprocess_query returned NULL, tecc_get_last_error returned %s",
+				tecc_error ? tecc_error : "(NULL)");
+			if (tecc_error != NULL)
+			{
+				/* TECC processing actually failed - log error and abort SQL execution.
+				 * Do NOT continue with the original query, as that would send unencrypted
+				 * plaintext to the backend, breaking the all-encrypted constraint. */
+				appendPQExpBuffer(&conn->errorMessage,
+								  "TECC query preprocessing failed: %s\n",
+								  tecc_error);
+				return 0;  /* Abort SQL execution */
+			}
+			else
+			{
+				/* NULL return but no error - this is normal (e.g., TECC disabled via disable_once,
+				 * no encrypted columns, or COPY command). No error message needed. */
+				TECC_LOG(TECC_LOG_DEBUG1, "fe-exec.c: NULL return but no error - normal case");
+			}
+		}
+		else
+		{
+			/* TECC processing succeeded */
+			/* Use the rewritten SQL */
+			query = processed_query;
+		}
+		/* If no rewrite needed or fails, continue with original query */
 	}
 
 	entry = pqAllocCmdQueueEntry(conn);
@@ -1447,9 +1538,17 @@ PQsendQueryInternal(PGconn *conn, const char *query, bool newQuery)
 		pqAppendCmdQueueEntry(conn, entry2);
 	}
 
+	/* TECC: Clean up processed query if any */
+	if (processed_query)
+		free(processed_query);
+
 	return 1;
 
 sendFailed:
+	/* TECC: Clean up processed query if any */
+	if (processed_query)
+		free(processed_query);
+
 	pqRecycleCmdQueueEntry(conn, entry);
 	pqRecycleCmdQueueEntry(conn, entry2);
 	/* error message should be set up already */
@@ -1512,6 +1611,7 @@ PQsendPrepare(PGconn *conn,
 			  int nParams, const Oid *paramTypes)
 {
 	PGcmdQueueEntry *entry = NULL;
+	char	   *processed_query = NULL;	/* TECC: Preprocessed SQL query */
 
 	if (!PQsendQueryStart(conn, true))
 		return 0;
@@ -1537,9 +1637,47 @@ PQsendPrepare(PGconn *conn,
 		return 0;
 	}
 
+	/* TECC: Preprocess SQL query for encrypted columns */
+	if (conn->enable_tecc)
+	{
+		/* Call TECC libpq integration module for query preprocessing */
+		processed_query = tecc_preprocess_query(conn, query);
+
+		/* Check if TECC processing failed */
+		if (processed_query == NULL)
+		{
+			/* TECC processing returned NULL - check if this is an error or normal case */
+			const char *tecc_error = tecc_get_last_error(conn);
+			/* DEBUG: Log the error check */
+			TECC_LOG(TECC_LOG_DEBUG1, "fe-exec.c (second): tecc_preprocess_query returned NULL, tecc_get_last_error returned %s",
+				tecc_error ? tecc_error : "(NULL)");
+			if (tecc_error != NULL)
+			{
+				/* TECC processing actually failed - log error */
+				appendPQExpBuffer(&conn->errorMessage,
+								  "TECC query preprocessing failed: %s\n",
+								  tecc_error);
+				/* Continue with original query (no TECC processing) */
+			}
+			else
+			{
+				/* NULL return but no error - this is normal (e.g., TECC disabled via disable_once,
+				 * no encrypted columns, or COPY command). No error message needed. */
+			}
+		}
+		else
+		{
+			/* TECC processing succeeded */
+			/* Use the rewritten SQL */
+			query = processed_query;
+		}
+	}
+
 	entry = pqAllocCmdQueueEntry(conn);
 	if (entry == NULL)
+	{
 		return 0;				/* error msg already set */
+	}
 
 	/* construct the Parse message */
 	if (pqPutMsgStart('P', conn) < 0 ||
@@ -1593,10 +1731,20 @@ PQsendPrepare(PGconn *conn,
 	/* OK, it's launched! */
 	pqAppendCmdQueueEntry(conn, entry);
 
+	/* TECC: Store prepared statement query text for later execute */
+	if (conn->enable_tecc)
+		tecc_store_prepared_query(conn, stmtName, query);
+
+	/* TECC: Clean up processed query if any */
+	if (processed_query)
+		free(processed_query);
 	return 1;
 
 sendFailed:
 	pqRecycleCmdQueueEntry(conn, entry);
+	/* TECC: Clean up processed query if any */
+	if (processed_query)
+		free(processed_query);
 	/* error message should be set up already */
 	return 0;
 }
@@ -1653,6 +1801,27 @@ PQsendQueryStart(PGconn *conn, bool newQuery)
 {
 	if (!conn)
 		return false;
+
+	/* Check TECC metadata update mark if TECC is initialized */
+	/* Only check in non-pipeline mode to avoid interfering with ongoing operations */
+	if (tecc_is_initialized(conn) && conn->pipelineStatus == PQ_PIPELINE_OFF)
+	{
+		TeccState *state = tecc_get_state(conn);
+		if (state != NULL)
+		{
+			TeccCacheManager *manager = get_cache_manager(state);
+			if (manager != NULL && manager->metadata_check_enabled && should_check_metadata_mark(manager) && !manager->check_in_progress)
+			{
+				/* Update last check time */
+				manager->last_metadata_check_time = time(NULL);
+
+				/* Check metadata update mark */
+				manager->check_in_progress = true;
+				check_metadata_update_mark(state);
+				manager->check_in_progress = false;
+			}
+		}
+	}
 
 	/*
 	 * If this is the beginning of a query cycle, reset the error buffer.
@@ -1744,10 +1913,86 @@ PQsendQueryGuts(PGconn *conn,
 {
 	int			i;
 	PGcmdQueueEntry *entry;
+	char	   *processed_command = NULL;
+	TeccQueryParams *tecc_params = NULL;
+	const char *tecc_processed_command = NULL;
+	const char *const *tecc_param_values = paramValues;
+	const int *tecc_param_lengths = paramLengths;
+	const int *tecc_param_formats = paramFormats;
+
+	/* TECC: Preprocess SQL command and parameters for encrypted columns */
+	if (conn->enable_tecc && command)
+	{
+		/* Call TECC libpq integration module for query and parameter preprocessing */
+		tecc_params = tecc_preprocess_params(conn, command, nParams,
+											 paramTypes, paramValues,
+											 paramLengths, paramFormats);
+	}
+	else if (conn->enable_tecc && command == NULL && nParams > 0 && stmtName && stmtName[0])
+	{
+		/* Prepared stmt execute: get stored query for param encryption */
+		const char *prep_query = tecc_get_prepared_query(conn, stmtName);
+		if (prep_query)
+		{
+			tecc_params = tecc_preprocess_params(conn, prep_query, nParams,
+												 paramTypes, paramValues,
+												 paramLengths, paramFormats);
+		}
+	}
+
+	/* Check if TECC processing failed */
+	if (tecc_params == NULL)
+		{
+			/* TECC processing returned NULL - check if this is an error or normal case */
+			const char *tecc_error = tecc_get_last_error(conn);
+			if (tecc_error != NULL)
+			{
+				/* TECC processing actually failed - log error */
+				appendPQExpBuffer(&conn->errorMessage,
+								  "TECC parameter preprocessing failed: %s\n",
+								  tecc_error);
+				/* Continue with original parameters (no TECC processing) */
+			}
+			else
+			{
+				/* NULL return but no error - this is normal (e.g., TECC disabled via disable_once,
+				 * no encrypted columns). No error message needed. */
+			}
+		}
+		else
+		{
+			/* TECC processing succeeded */
+			/* Use the rewritten query if available */
+			if (tecc_params->rewritten_query)
+				tecc_processed_command = tecc_params->rewritten_query;
+
+			/* Use processed parameters if they were modified */
+			if (tecc_params->params_modified)
+			{
+				tecc_param_values = tecc_params->adjusted_values;
+				tecc_param_lengths = tecc_params->adjusted_lengths;
+				tecc_param_formats = tecc_params->adjusted_formats;
+			}
+		}
+
+		/* Note: tecc_preprocess_params should handle query rewriting if needed.
+		 * If it doesn't set rewritten_query, that means no rewrite is needed.
+		 * We don't fall back to tecc_preprocess_query to avoid duplicate processing. */
+
+		/* Update command pointer if we have a processed version */
+		if (tecc_processed_command)
+			command = tecc_processed_command;
 
 	entry = pqAllocCmdQueueEntry(conn);
 	if (entry == NULL)
+	{
+		/* TECC: Clean up processed resources */
+		if (tecc_params)
+			tecc_free_query_params(tecc_params);
+		if (processed_command)
+			free(processed_command);
 		return 0;				/* error msg already set */
+	}
 
 	/*
 	 * We will send Parse (if needed), Bind, Describe Portal, Execute, Sync
@@ -1788,13 +2033,13 @@ PQsendQueryGuts(PGconn *conn,
 		goto sendFailed;
 
 	/* Send parameter formats */
-	if (nParams > 0 && paramFormats)
+	if (nParams > 0 && tecc_param_formats)
 	{
 		if (pqPutInt(nParams, 2, conn) < 0)
 			goto sendFailed;
 		for (i = 0; i < nParams; i++)
 		{
-			if (pqPutInt(paramFormats[i], 2, conn) < 0)
+			if (pqPutInt(tecc_param_formats[i], 2, conn) < 0)
 				goto sendFailed;
 		}
 	}
@@ -1810,15 +2055,15 @@ PQsendQueryGuts(PGconn *conn,
 	/* Send parameters */
 	for (i = 0; i < nParams; i++)
 	{
-		if (paramValues && paramValues[i])
+		if (tecc_param_values && tecc_param_values[i])
 		{
 			int			nbytes;
 
-			if (paramFormats && paramFormats[i] != 0)
+			if (tecc_param_formats && tecc_param_formats[i] != 0)
 			{
 				/* binary parameter */
-				if (paramLengths)
-					nbytes = paramLengths[i];
+				if (tecc_param_lengths)
+					nbytes = tecc_param_lengths[i];
 				else
 				{
 					appendPQExpBufferStr(&conn->errorMessage,
@@ -1829,10 +2074,10 @@ PQsendQueryGuts(PGconn *conn,
 			else
 			{
 				/* text parameter, do not use paramLengths */
-				nbytes = strlen(paramValues[i]);
+				nbytes = strlen(tecc_param_values[i]);
 			}
 			if (pqPutInt(nbytes, 4, conn) < 0 ||
-				pqPutnchar(paramValues[i], nbytes, conn) < 0)
+				pqPutnchar(tecc_param_values[i], nbytes, conn) < 0)
 				goto sendFailed;
 		}
 		else
@@ -1889,9 +2134,21 @@ PQsendQueryGuts(PGconn *conn,
 	/* OK, it's launched! */
 	pqAppendCmdQueueEntry(conn, entry);
 
+	/* TECC: Clean up processed resources */
+	if (tecc_params)
+		tecc_free_query_params(tecc_params);
+	if (processed_command)
+		free(processed_command);
+
 	return 1;
 
 sendFailed:
+	/* TECC: Clean up processed resources */
+	if (tecc_params)
+		tecc_free_query_params(tecc_params);
+	if (processed_command)
+		free(processed_command);
+
 	pqRecycleCmdQueueEntry(conn, entry);
 	/* error message should be set up already */
 	return 0;
@@ -2122,12 +2379,19 @@ PQgetResult(PGconn *conn)
 			}
 			else
 			{
-				/* Set the state back to BUSY, allowing parsing to proceed. */
-				conn->asyncStatus = PGASYNC_BUSY;
+				/*
+				 * Set the state back to BUSY, allowing parsing to proceed.
+				 * ReqID:TECC4.0: If asyncStatus is already IDLE, ReadyForQuery
+				 * ('Z') was consumed during tecc_process_result (via pool
+				 * connection PQexec callbacks). Stay IDLE to signal completion.
+				 */
+				if (conn->asyncStatus != PGASYNC_IDLE)
+					conn->asyncStatus = PGASYNC_BUSY;
 			}
 			break;
 		case PGASYNC_READY_MORE:
 			res = pqPrepareAsyncResult(conn);
+
 			/* Set the state back to BUSY, allowing parsing to proceed. */
 			conn->asyncStatus = PGASYNC_BUSY;
 			break;
@@ -2188,6 +2452,12 @@ PQgetResult(PGconn *conn)
 		}
 	}
 
+	/*
+	 * NOTE: tecc_process_result is called inside pqPrepareAsyncResult
+	 * (line 841), which feeds into this function. Do NOT add another
+	 * call here because it would double-process the same PGresult.
+	 */
+
 	return res;
 }
 
@@ -2218,7 +2488,35 @@ getCopyResult(PGconn *conn, ExecStatusType copytype)
 		return pqPrepareAsyncResult(conn);
 
 	/* Otherwise, invent a suitable PGresult */
-	return PQmakeEmptyPGresult(conn, copytype);
+	{
+		PGresult *res = PQmakeEmptyPGresult(conn, copytype);
+
+		/* TECC: Process COPY result for encrypted columns */
+		if (conn->enable_tecc && res)
+		{
+			/* Begin - ReqID:TECC4.0 */
+			const char *tecc_error; /* ReqID:TECC4.0 */
+			/* End - ReqID:TECC4.0 */
+
+			/* Call TECC libpq integration module for result processing */
+			tecc_process_result(conn, res);
+
+			/* Check if TECC processing had any errors */
+			tecc_error = tecc_get_last_error(conn);
+			if (tecc_error != NULL)
+			{
+				/* Strict mode: mark result as FATAL_ERROR on TECC failure */
+				/* Begin - ReqID:TECC4.0 */
+				appendPQExpBuffer(&conn->errorMessage,
+								  "TECC COPY result processing error: %s\n",
+								  tecc_error);
+				res->resultStatus = PGRES_FATAL_ERROR;
+				/* End - ReqID:TECC4.0 */
+			}
+		}
+
+		return res;
+	}
 }
 
 
@@ -2539,7 +2837,7 @@ PQsendDescribe(PGconn *conn, char desc_type, const char *desc_target)
 
 sendFailed:
 	pqRecycleCmdQueueEntry(conn, entry);
-	/* error message should be set up already */
+	/* TECC: Clean up processed query if any */
 	return 0;
 }
 
@@ -2587,6 +2885,7 @@ PQnotifies(PGconn *conn)
 int
 PQputCopyData(PGconn *conn, const char *buffer, int nbytes)
 {
+
 	if (!conn)
 		return -1;
 	if (conn->asyncStatus != PGASYNC_COPY_IN &&
@@ -2598,36 +2897,157 @@ PQputCopyData(PGconn *conn, const char *buffer, int nbytes)
 	}
 
 	/*
-	 * Process any NOTICE or NOTIFY messages that might be pending in the
-	 * input buffer.  Since the server might generate many notices during the
-	 * COPY, we want to clean those out reasonably promptly to prevent
-	 * indefinite expansion of the input buffer.  (Note: the actual read of
-	 * input data into the input buffer happens down inside pqSendSome, but
-	 * it's not authorized to get rid of the data again.)
+	 * TECC: Encrypt COPY IN data for encrypted columns.
+	 * Previously handled by psql's handleCopyIn before calling
+	 * PQputCopyData. Centralizing here ensures pg_restore and any
+	 * other libpq user also gets transparent encryption.
+	 *
+	 * Note: pg_restore sends the entire COPY data (including the \.
+	 * end-of-copy marker) in a single PQputCopyData call. We must
+	 * strip the \. marker before encryption, then re-attach it.
 	 */
-	parseInput(conn);
-
-	if (nbytes > 0)
 	{
+		char	   *tecc_enc_buf = NULL;
+		int			tecc_data_len = nbytes;
+		int			tecc_trailer_len = 0;
+		const char *tecc_trailer = NULL;
+
 		/*
-		 * Try to flush any previously sent data in preference to growing the
-		 * output buffer.  If we can't enlarge the buffer enough to hold the
-		 * data, return 0 in the nonblock case, else hard error. (For
-		 * simplicity, always assume 5 bytes of overhead.)
+		 * Scan for \. end-of-copy marker: look for "\\.\n" in the
+		 * buffer. If found, split so only the data before it gets
+		 * encrypted.
 		 */
-		if ((conn->outBufSize - conn->outCount - 5) < nbytes)
+		if (conn->enable_tecc && conn->tecc_copy_state != NULL &&
+			nbytes > 0)
 		{
-			if (pqFlush(conn) < 0)
-				return -1;
-			if (pqCheckOutBufferSpace(conn->outCount + 5 + (size_t) nbytes,
-									  conn))
-				return pqIsnonblocking(conn) ? 0 : -1;
+			const char *cp_pos = buffer + nbytes;
+
+			while (cp_pos > buffer)
+			{
+				cp_pos--;
+				if (*cp_pos == '\n' && cp_pos + 2 <= buffer + nbytes &&
+					cp_pos[1] == '\\' && cp_pos[2] == '.')
+				{
+					/* Found \. after a newline - this is the end-of-copy marker */
+					tecc_data_len = cp_pos - buffer + 1; /* Include the newline */
+					tecc_trailer = cp_pos + 1;			 /* Points at "\.\n..." */
+					tecc_trailer_len = nbytes - tecc_data_len;
+					break;
+				}
+			}
+
+			/* Also check if buffer itself starts with \. (only terminator) */
+			if (tecc_trailer == NULL && nbytes >= 2 &&
+				buffer[0] == '\\' && buffer[1] == '.')
+			{
+				tecc_data_len = 0;
+				tecc_trailer = buffer;
+				tecc_trailer_len = nbytes;
+			}
 		}
-		/* Send the data (too simple to delegate to fe-protocol files) */
-		if (pqPutMsgStart('d', conn) < 0 ||
-			pqPutnchar(buffer, nbytes, conn) < 0 ||
-			pqPutMsgEnd(conn) < 0)
-			return -1;
+
+		if (conn->enable_tecc && conn->tecc_copy_state != NULL &&
+			tecc_data_len > 0)
+		{
+			TeccCopyState *cp = (TeccCopyState *) conn->tecc_copy_state;
+
+			if (cp->encrypted_column_count > 0 && cp->is_from_stdin)
+			{
+				char	   *enc_buf = NULL;
+				int			enc_len = 0;
+
+				if (tecc_process_copy_data(conn, buffer,
+										   tecc_data_len,
+										   &enc_buf, &enc_len) != 0)
+				{
+					pg_free(enc_buf);
+					return -1;
+				}
+
+				if (enc_buf != NULL && enc_len > 0 && enc_buf != buffer)
+				{
+					tecc_enc_buf = enc_buf;
+					buffer = tecc_enc_buf;
+					nbytes = enc_len;
+				}
+
+				/*
+				 * If there was a \. trailer, append it after the
+				 * encrypted data.
+				 */
+				if (tecc_trailer != NULL && tecc_trailer_len > 0)
+				{
+					int			total_len = nbytes + tecc_trailer_len;
+					char	   *combined;
+
+					if (tecc_enc_buf != NULL && tecc_enc_buf != buffer)
+					{
+						combined = (char *) pg_malloc(total_len);
+						memcpy(combined, tecc_enc_buf, nbytes);
+						memcpy(combined + nbytes, tecc_trailer,
+							   tecc_trailer_len);
+						pg_free(tecc_enc_buf);
+						tecc_enc_buf = combined;
+					}
+					else
+					{
+						combined = (char *) pg_malloc(total_len);
+						memcpy(combined, buffer, nbytes);
+						memcpy(combined + nbytes, tecc_trailer,
+							   tecc_trailer_len);
+						tecc_enc_buf = combined;
+					}
+					buffer = combined;
+					nbytes = total_len;
+				}
+			}
+		}
+
+		/*
+		 * Process any NOTICE or NOTIFY messages that might be pending in
+		 * the input buffer.  Since the server might generate many notices
+		 * during the COPY, we want to clean those out reasonably promptly
+		 * to prevent indefinite expansion of the input buffer.  (Note: the
+		 * actual read of input data into the input buffer happens down
+		 * inside pqSendSome, but it's not authorized to get rid of the
+		 * data again.)
+		 */
+		parseInput(conn);
+
+		if (nbytes > 0)
+		{
+			/*
+			 * Try to flush any previously sent data in preference to
+			 * growing the output buffer.  If we can't enlarge the buffer
+			 * enough to hold the data, return 0 in the nonblock case,
+			 * else hard error. (For simplicity, always assume 5 bytes of
+			 * overhead.)
+			 */
+			if ((conn->outBufSize - conn->outCount - 5) < nbytes)
+			{
+				if (pqFlush(conn) < 0)
+				{
+					pg_free(tecc_enc_buf);
+					return -1;
+				}
+				if (pqCheckOutBufferSpace(conn->outCount + 5 +
+										  (size_t) nbytes, conn))
+				{
+					pg_free(tecc_enc_buf);
+					return pqIsnonblocking(conn) ? 0 : -1;
+				}
+			}
+			/* Send the data (too simple to delegate to fe-protocol files) */
+			if (pqPutMsgStart('d', conn) < 0 ||
+				pqPutnchar(buffer, nbytes, conn) < 0 ||
+				pqPutMsgEnd(conn) < 0)
+			{
+				pg_free(tecc_enc_buf);
+				return -1;
+			}
+		}
+
+		pg_free(tecc_enc_buf);
 	}
 	return 1;
 }

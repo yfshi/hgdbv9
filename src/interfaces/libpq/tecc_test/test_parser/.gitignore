@@ -1,0 +1,14 @@
+# Local test binaries (all Makefile variants)
+/test_parser_basic
+/test_parser_nodes
+/test_parser_integration
+/test_parser_performance
+/test_parser_error
+/test_simple_compatibility
+/test_parser_ddl
+/test_direct_compatibility
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

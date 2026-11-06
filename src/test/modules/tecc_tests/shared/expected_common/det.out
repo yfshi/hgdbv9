@@ -1,0 +1,193 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 All 9 Types DET Equality ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+1a_all_decrypt|1|1|10|100|1.5|10.5|100.5|short_str|bpchar1|text1
+1a_all_decrypt|2|2|20|200|2.5|20.5|200.5|medium_string|bpchar2|text2
+1a_all_decrypt|3|3|30|300|3.5|30.5|300.5|a_longer_string_value|bpchar3|text3
+1a_all_decrypt|4|99|999|9999|99.9|999.9|9999.9|zzzzzzz|bpchar99|text99
+(4 rows)
+1b_int2_eq|2|2
+(1 row)
+1c_int4_eq|2|20
+(1 row)
+1d_int8_eq|2|200
+(1 row)
+1e_float4_eq|2|2.5
+(1 row)
+1f_float8_eq|2|20.5
+(1 row)
+1g_numeric_eq|2|200.5
+(1 row)
+1h_varchar_eq|2|medium_string
+(1 row)
+1i_bpchar_eq|2|bpchar2
+(1 row)
+1j_text_eq|2|text2
+(1 row)
+1k_int4_and_int8|3
+(1 row)
+1l_int4_or_int4|1|10
+1l_int4_or_int4|3|30
+(2 rows)
+1m_cross_type_and|2
+(1 row)
+1n_numeric_and_varchar|1
+(1 row)
+1o_int4_ne|1|10
+1o_int4_ne|3|30
+1o_int4_ne|4|999
+(3 rows)
+1p_plain_and_enc|2|200
+(1 row)
+1q_no_match|4
+(1 row)
+1r_full_row_match|3
+(1 row)
+1s_float8_int_input|1|10.5
+(1 row)
+1t_text_last_row|4|text99
+(1 row)
+DROP TABLE
+=== 2 Cross-Type String Equality ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+2a_null_cross|t|
+(1 row)
+2b_empty_cross|t|t
+(1 row)
+2c_distinct_cross|f
+2c_distinct_cross|f
+2c_distinct_cross|f
+2c_distinct_cross|f
+2c_distinct_cross|f
+2c_distinct_cross|f
+2c_distinct_cross|f
+2c_distinct_cross|f
+(8 rows)
+CREATE TABLE
+INSERT 0 8
+2d_bpchar_space_plain|t|t
+2d_bpchar_space_plain|t|t
+2d_bpchar_space_plain|t|t
+(3 rows)
+2e_bpchar_space_enc|t|f
+2e_bpchar_space_enc|t|f
+2e_bpchar_space_enc|t|f
+(3 rows)
+DROP TABLE
+DROP TABLE
+=== 3 WHERE Literal ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+3a_id_gt|3|Charlie
+3a_id_gt|4|David
+3a_id_gt|5|Eve
+(3 rows)
+3b_id_eq|3|Charlie
+(1 row)
+3c_name_eq|3|Charlie
+(1 row)
+DROP TABLE
+=== 4 Case Sensitivity ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 13
+4a_eq_apple|1|apple
+(1 row)
+4b_eq_Apple|6|Apple
+(1 row)
+DROP TABLE
+=== 5 Combined DET/OPE/LIKE/ORDER BY ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+5a_int_eq|3|Charlie|300
+(1 row)
+5b_float_eq|5|Eve|500.5
+(1 row)
+5c_int_gt|4|David|400
+5c_int_gt|5|Eve|500
+(2 rows)
+5d_int_lt|1|Alice|100
+5d_int_lt|2|Bob|200
+(2 rows)
+5e_int_between|3|Charlie|300
+5e_int_between|4|David|400
+5e_int_between|5|Eve|500
+(3 rows)
+5f_like_ana|2|Bob|Banana
+(1 row)
+5g_like_erry|3|Charlie|Cherry
+5g_like_erry|5|Eve|Elderberry
+(2 rows)
+5h_like_e|1|Alice|Apple
+5h_like_e|3|Charlie|Cherry
+5h_like_e|4|David|Date
+5h_like_e|5|Eve|Elderberry
+(4 rows)
+5i_eq_order_asc|5|Eve|500
+(1 row)
+5j_eq_order_desc|3|Charlie|300
+(1 row)
+5k_range_order_asc|4|David|400
+5k_range_order_asc|5|Eve|500
+(2 rows)
+5l_range_order_desc|5|Eve|500
+5l_range_order_desc|4|David|400
+(2 rows)
+5m_range_order_name|1|Alice|100
+5m_range_order_name|2|Bob|200
+5m_range_order_name|3|Charlie|300
+(3 rows)
+5n_like_order_desc|5|Eve|Elderberry
+5n_like_order_desc|4|David|Date
+5n_like_order_desc|3|Charlie|Cherry
+5n_like_order_desc|1|Alice|Apple
+(4 rows)
+UPDATE 1
+5o_update_range|1|Alice|100
+5o_update_range|2|Bob|200
+5o_update_range|3|Charlie|300
+5o_update_range|4|David|400
+5o_update_range|5|BigNum|500
+(5 rows)
+UPDATE 2
+5p_update_like|1|Alice|Apple
+5p_update_like|2|Bob|Banana
+5p_update_like|3|CherryLover|Cherry
+5p_update_like|4|David|Date
+5p_update_like|5|CherryLover|Elderberry
+(5 rows)
+DELETE 1
+5q_delete_range|2|Bob|200
+5q_delete_range|3|CherryLover|300
+5q_delete_range|4|David|400
+5q_delete_range|5|CherryLover|500
+(4 rows)
+5r_full|2|Bob|200|Banana
+5r_full|3|CherryLover|300|Cherry
+5r_full|4|David|400|Date
+5r_full|5|CherryLover|500|Elderberry
+(4 rows)
+DROP TABLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+NOTICE: key encryption key "kek_det" does not exist, skipping
+NOTICE: table "test_all_types_det" does not exist, skipping
+NOTICE: table "tecc_string_type_test" does not exist, skipping
+NOTICE: table "test_where" does not exist, skipping
+NOTICE: table "tecc_text_case_test" does not exist, skipping
+NOTICE: table "tecc_test" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_det

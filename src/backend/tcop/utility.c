@@ -41,6 +41,10 @@
 #include "commands/event_trigger.h"
 #include "commands/explain.h"
 #include "commands/extension.h"
+#include "commands/createkek.h"
+#include "commands/createdek.h"
+#include "commands/dropkek.h"
+#include "commands/dropdek.h"
 #include "commands/lockcmds.h"
 #include "commands/matview.h"
 #include "commands/policy.h"
@@ -308,6 +312,8 @@ ClassifyUtilityCommandAsReadOnly(Node *parsetree)
 		case T_CreateCollectionTypeStmt:
 		case T_AlterCollectionTypeStmt:
 		/* End - ReqID:SRS-SQL-Collection */
+		case T_CreateKekStmt:
+		case T_CreateDekStmt:
 			{
 				/* DDL is not read-only, and neither is TRUNCATE. */
 				return COMMAND_IS_NOT_READ_ONLY;
@@ -696,7 +702,9 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 	if (readonly_flags != COMMAND_IS_STRICTLY_READ_ONLY &&
 		(XactReadOnly || IsInParallelMode()))
 	{
-		CommandTag	commandtag = CreateCommandTag(parsetree);
+		CommandTag	commandtag; /* ReqID:TECC4.0 */
+
+		commandtag = CreateCommandTag(parsetree);
 
 		if ((readonly_flags & COMMAND_OK_IN_READ_ONLY_TXN) == 0)
 			PreventCommandIfReadOnly(GetCommandTagName(commandtag));
@@ -709,6 +717,9 @@ standard_ProcessUtility(PlannedStmt *pstmt,
 	pstate = make_parsestate(NULL);
 	pstate->p_sourcetext = queryString;
 	pstate->p_queryEnv = queryEnv;
+
+	elog(DEBUG1, "ProcessUtilitySlow: processing node type %d",
+		 (int) nodeTag(parsetree));
 
 	switch (nodeTag(parsetree))
 	{
@@ -1288,6 +1299,9 @@ ProcessUtilitySlow(ParseState *pstate,
 		if (isCompleteQuery)
 			EventTriggerDDLCommandStart(parsetree);
 
+		elog(DEBUG1, "ProcessUtilitySlow DDL switch: node type=%d",
+			 (int) nodeTag(parsetree));
+
 		switch (nodeTag(parsetree))
 		{
 				/*
@@ -1816,6 +1830,13 @@ ProcessUtilitySlow(ParseState *pstate,
 				address = CreateExtension(pstate, (CreateExtensionStmt *) parsetree);
 				break;
 
+			case T_CreateKekStmt:
+				address = CreateKek((CreateKekStmt *) parsetree);
+				break;
+
+			case T_CreateDekStmt:
+				address = CreateDek((CreateDekStmt *) parsetree);
+				break;
 			case T_AlterExtensionStmt:
 				address = ExecAlterExtensionStmt(pstate, (AlterExtensionStmt *) parsetree);
 				break;
@@ -2369,6 +2390,14 @@ ExecDropStmt(DropStmt *stmt, bool isTopLevel)
 		case OBJECT_FOREIGN_TABLE:
 			RemoveRelations(stmt);
 			break;
+		/*Begin: ReqId: TECC-v4.0*/
+		case OBJECT_KEK:
+			DropKek(stmt);
+			break;
+		case OBJECT_DEK:
+			DropDek(stmt);
+			break;
+		/*End: ReqId: TECC-v4.0*/
 		default:
 			RemoveObjects(stmt);
 			break;
@@ -2738,7 +2767,7 @@ CreateCommandTag(Node *parsetree)
 {
 	CommandTag	tag;
 
-	switch (nodeTag(parsetree))
+		switch (nodeTag(parsetree))
 	{
 			/* recurse if we're given a RawStmt */
 		case T_RawStmt:
@@ -2874,6 +2903,13 @@ CreateCommandTag(Node *parsetree)
 			tag = CMDTAG_DROP_TABLESPACE;
 			break;
 
+		case T_CreateKekStmt:
+			tag = CMDTAG_CREATE_KEK;
+			break;
+
+		case T_CreateDekStmt:
+			tag = CMDTAG_CREATE_DEK;
+			break;
 		case T_AlterTableSpaceOptionsStmt:
 			tag = CMDTAG_ALTER_TABLESPACE;
 			break;
@@ -3048,6 +3084,12 @@ CreateCommandTag(Node *parsetree)
 					tag = CMDTAG_DROP_SYNONYM;
 					break;
 				/* End - ReqID:SRS-SQL-SYNONYM */
+				case OBJECT_KEK:
+					tag = CMDTAG_DROP_KEK;
+					break;
+				case OBJECT_DEK:
+					tag = CMDTAG_DROP_DEK;
+					break;
 				default:
 					tag = CMDTAG_UNKNOWN;
 			}
@@ -3850,6 +3892,8 @@ GetCommandLogLevel(Node *parsetree)
 
 		case T_CreateStmt:
 		case T_CreateForeignTableStmt:
+		case T_CreateKekStmt:
+		case T_CreateDekStmt:
 			lev = LOGSTMT_DDL;
 			break;
 

@@ -49,6 +49,7 @@
 #include "catalog/pg_namespace.h"
 #include "commands/comment.h"
 #include "commands/dbcommands.h" /* ReqID:SRS-SECURITY-TABLESPACE */
+#include "commands/encrypted_column.h"
 #include "commands/defrem.h"
 #include "commands/sequence.h"
 #include "commands/schemacmds.h"
@@ -138,6 +139,8 @@ typedef struct
 
 static void transformColumnDefinition(CreateStmtContext *cxt,
 									  ColumnDef *column);
+static void processEncryptedColumn(CreateStmtContext *cxt,
+								   ColumnDef *column);
 static void validate_mysql_enum_values(List *vals, Oid collid);
 static void transformTableConstraint(CreateStmtContext *cxt,
 									 Constraint *constraint);
@@ -1723,6 +1726,16 @@ transformColumnDefinition(CreateStmtContext *cxt, ColumnDef *column)
 					 parser_errposition(cxt->pstate,
 										constraint->location)));
 	}
+
+	/*Begin: ReqId: TECC-v4.0*/
+	/*
+	 * Process encrypted column options, if any.
+	 */
+	if (column->encrypted_with != NIL)
+	{
+		processEncryptedColumn(cxt, column);
+	}
+	/*End: ReqId: TECC-v4.0*/
 
 	/*
 	 * If needed, generate ALTER FOREIGN TABLE ALTER COLUMN statement to add
@@ -6519,3 +6532,44 @@ transformSubPartitionTemplateBound(ParseState *pstate, PartitionKey key, OraPart
 	return result_spec;
 }
 /* End - ReqID:SRS-SQL-PARTITION-TABLE */
+/*Begin: ReqId: TECC-v4.0*/
+/*
+ * processEncryptedColumn - process ENCRYPTED WITH clause for a column
+ *
+ * This function validates encrypted column parameters and schedules metadata
+ * recording for after table creation.
+ */
+static void
+processEncryptedColumn(CreateStmtContext *cxt, ColumnDef *column)
+{
+	EncryptedColumnParams *params;
+
+	/* Parse encrypted_with options */
+	params = parse_encrypted_with_options(column->encrypted_with);
+	if (!params)
+	{
+		/* Error already reported by parse_encrypted_with_options */
+		return;
+	}
+
+	/* Validate parameters */
+	if (!validate_encrypted_column_params(params, column->typeName->typeOid))
+	{
+		/* Error already reported */
+		pfree(params);
+		return;
+	}
+
+	/* Parameters will be processed in DefineRelation */
+	/* Just report what will be done */
+	ereport(DEBUG1,
+			(errmsg("Encrypted column \"%s\" in table \"%s\" will be recorded",
+				column->colname, cxt->relation->relname),
+			errdetail("DEK: %s, Encryption type: %s",
+				params->column_encryption_key,
+				params->encryption_type)));
+
+	/* Free params since we're not storing them */
+	pfree(params);
+}
+/*End: ReqId: TECC-v4.0*/

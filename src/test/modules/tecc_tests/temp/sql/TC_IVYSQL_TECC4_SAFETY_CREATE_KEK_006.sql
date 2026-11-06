@@ -1,0 +1,7 @@
+DROP SCHEMA IF EXISTS sch1 CASCADE;
+CREATE SCHEMA sch1;
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+CREATE KEK sch1.kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+DROP KEK kek_test CASCADE;
+DROP KEK sch1.kek_test CASCADE;
+DROP SCHEMA IF EXISTS sch1 CASCADE;

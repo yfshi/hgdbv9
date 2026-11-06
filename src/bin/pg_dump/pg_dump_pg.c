@@ -63,6 +63,7 @@
 #include "catalog/pg_proc_d.h"
 #include "catalog/pg_trigger_d.h"
 #include "catalog/pg_type_d.h"
+#include "catalog/pg_type_enc.h"
 #include "common/connect.h"
 #include "dumputils.h"
 #include "fe_utils/string_utils.h"
@@ -1606,6 +1607,12 @@ dumpTableData_insert(Archive *fout, const void *dcontext)
 					case FLOAT4OID:
 					case FLOAT8OID:
 					case NUMERICOID:
+						case INT2_ENCOID:
+						case INT4_ENCOID:
+						case INT8_ENCOID:
+						case FLOAT4_ENCOID:
+						case FLOAT8_ENCOID:
+						case NUMERIC_ENCOID:
 						{
 							/*
 							 * These types are printed without quotes unless
@@ -8357,6 +8364,36 @@ getTransforms(Archive *fout, int *numTransforms)
 
 	return transforminfo;
 }
+/*
+ * ReqID:TECC4.0 - Convert encryption_type bitmask to support_algo string.
+ *
+ * Encryption type bitmask values:
+ *   HG_ENCRYPTION_TYPE_DET    = 0x01
+ *   HG_ENCRYPTION_TYPE_OPE    = 0x02
+ *   HG_ENCRYPTION_TYPE_SEARCH = 0x04
+ */
+static void
+encryption_type_to_support_algo(uint32 encryption_type, char *buf, size_t bufsize)
+{
+	buf[0] = '\0';
+
+	if (encryption_type & 0x01)
+	{
+		strncat(buf, "det", bufsize - strlen(buf) - 1);
+	}
+	if (encryption_type & 0x02)
+	{
+		if (buf[0] != '\0')
+			strncat(buf, ",", bufsize - strlen(buf) - 1);
+		strncat(buf, "ope", bufsize - strlen(buf) - 1);
+	}
+	if (encryption_type & 0x04)
+	{
+		if (buf[0] != '\0')
+			strncat(buf, ",", bufsize - strlen(buf) - 1);
+		strncat(buf, "search", bufsize - strlen(buf) - 1);
+	}
+}
 
 /*
  * getTableAttrs -
@@ -8492,15 +8529,30 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 
 		/* Begin - Bug#M233 */
 		if (fout->remoteVersion >= 140008)
-			appendPQExpBufferStr(q, "a.attisvisible\n");	/* ReqID:SRS-SQL-INVISIBLECOL */
+			appendPQExpBufferStr(q, "a.attisvisible, \n");	/* ReqID:SRS-SQL-INVISIBLECOL */
 		else
-			appendPQExpBufferStr(q, "true AS attisvisible\n");
+			appendPQExpBufferStr(q, "true AS attisvisible, \n");
 		/* End - Bug#M233 */
+
+                /* ReqID:TECC4.0 - TECC encrypted column metadata */
+                appendPQExpBufferStr(q,
+                                                        "a.atttypid AS atttypid,\n"
+                                                        "CASE WHEN ec.column_key_id IS NOT NULL "
+                                                        "THEN true ELSE false END AS att_is_encrypted,\n"
+                                                        "COALESCE(d.dek_name, '') AS enc_dek_name,\n"
+                                                        "COALESCE(dn.nspname, '') AS enc_dek_namespace,\n"
+                                                        "COALESCE(ec.encryption_type, 0) AS encryption_type\n");
 
 		/* need left join here to not fail on dropped columns ... */
 		appendPQExpBuffer(q,
 						  "FROM pg_catalog.pg_attribute a LEFT JOIN pg_catalog.pg_type t "
 						  "ON a.atttypid = t.oid\n"
+                                                  "LEFT JOIN pg_catalog.hg_encrypted_columns ec "
+                                                  "ON (a.attrelid = ec.table_oid AND a.attnum = ec.column_attnum)\n"
+                                                  "LEFT JOIN pg_catalog.hg_dek d "
+                                                  "ON (ec.column_key_id = d.oid)\n"
+                                                  "LEFT JOIN pg_catalog.pg_namespace dn "
+                                                  "ON (d.key_namespace = dn.oid)\n"
 						  "WHERE a.attrelid = '%u'::pg_catalog.oid "
 						  "AND a.attnum > 0::pg_catalog.int2\n"
 						  "AND a.attname != '%s'\n"
@@ -8536,6 +8588,12 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 		tbinfo->inhNotNull = (bool *) pg_malloc(ntups * sizeof(bool));
 		tbinfo->attrdefs = (AttrDefInfo **) pg_malloc(ntups * sizeof(AttrDefInfo *));
 		tbinfo->no_export_hgseclabel = (bool *) pg_malloc(ntups * sizeof(bool)); /* ReqID: SRS-SECURITY-LMAC */
+                /* ReqID:TECC4.0 - TECC encrypted column metadata */
+                tbinfo->atttypid = (Oid *) pg_malloc(ntups * sizeof(Oid));
+                tbinfo->att_is_encrypted = (bool *) pg_malloc(ntups * sizeof(bool));
+                tbinfo->att_enc_dek_name = (char **) pg_malloc(ntups * sizeof(char *));
+                tbinfo->att_enc_dek_namespace = (char **) pg_malloc(ntups * sizeof(char *));
+                tbinfo->att_enc_support_algo = (char **) pg_malloc(ntups * sizeof(char *));
 		hasdefaults = false;
 
 		for (int j = 0; j < ntups; j++)
@@ -8569,6 +8627,25 @@ getTableAttrs(Archive *fout, TableInfo *tblinfo, int numTables)
 				hasdefaults = true;
 			/* these flags will be set in flagInhAttrs() */
 			tbinfo->inhNotNull[j] = false;
+
+                        /* ReqID:TECC4.0 - TECC encrypted column metadata */
+                        tbinfo->atttypid[j] = atooid(PQgetvalue(res, j, PQfnumber(res, "atttypid")));
+                        tbinfo->att_is_encrypted[j] = (PQgetvalue(res, j, PQfnumber(res, "att_is_encrypted"))[0] == 't');
+                        tbinfo->att_enc_dek_name[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "enc_dek_name")));
+                        tbinfo->att_enc_dek_namespace[j] = pg_strdup(PQgetvalue(res, j, PQfnumber(res, "enc_dek_namespace")));
+                        {
+                                uint32          enc_type = (uint32) atoi(PQgetvalue(res, j, PQfnumber(res, "encryption_type")));
+                                char            algo_buf[64];
+
+                                algo_buf[0] = '\0';
+                                if (enc_type > 0)
+                                {
+                                        encryption_type_to_support_algo(enc_type, algo_buf, sizeof(algo_buf));
+                                        tbinfo->att_enc_support_algo[j] = pg_strdup(algo_buf);
+                                }
+                                else
+                                        tbinfo->att_enc_support_algo[j] = pg_strdup("");
+                        }
 
 			/* Begin - ReqID: SRS-SECURITY-LMAC */
 			/* when include_sysmac_label is false and the column is __hg_seclabel__, do not export this column. */
@@ -15981,6 +16058,39 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					if (!tbinfo->attisvisible[j])
 						appendPQExpBufferStr(q, " INVISIBLE");
 					/* End - ReqID:SRS-SQL-INVISIBLECOL */
+					/* ReqID:TECC4.0 - output ENCRYPTED WITH for encrypted columns */
+					if (tbinfo->att_is_encrypted[j])
+					{
+						if (tbinfo->att_enc_support_algo[j][0] != '\0')
+						{
+							/* ReqID:TECC4.0 - schema-qualify DEK to avoid
+							 * search_path dependency.	Dot-separated names
+							 * must be output as string literals because the
+							 * grammar accepts only NonReservedWord_or_Sconst
+							 * after DEK =, and dots are invalid in bare
+							 * identifiers. */
+							if (tbinfo->att_enc_dek_namespace[j][0] != '\0')
+								appendPQExpBuffer(q, " ENCRYPTED WITH (DEK = '%s.%s', SUPPORT_ALGO = '%s')",
+												  tbinfo->att_enc_dek_namespace[j],
+												  tbinfo->att_enc_dek_name[j],
+												  tbinfo->att_enc_support_algo[j]);
+							else
+								appendPQExpBuffer(q, " ENCRYPTED WITH (DEK = %s, SUPPORT_ALGO = '%s')",
+												  fmtId(tbinfo->att_enc_dek_name[j]),
+												  tbinfo->att_enc_support_algo[j]);
+						}
+						else
+						{
+							if (tbinfo->att_enc_dek_namespace[j][0] != '\0')
+								appendPQExpBuffer(q, " ENCRYPTED WITH (DEK = '%s.%s')",
+												  tbinfo->att_enc_dek_namespace[j],
+												  tbinfo->att_enc_dek_name[j]);
+							else
+								appendPQExpBuffer(q, " ENCRYPTED WITH (DEK = %s)",
+												  fmtId(tbinfo->att_enc_dek_name[j]));
+						}
+
+					}
 
 					if (print_default)
 					{
@@ -16005,15 +16115,33 @@ dumpTableSchema(Archive *fout, const TableInfo *tbinfo)
 					if (print_notnull && !is_ora_identity)	/* ReqID:SRS-SQL-IDENTCOL */
 						appendPQExpBufferStr(q, " NOT NULL");
 
-					/* Add collation if not default for the type */
+					/* ReqID:TECC4.0 - Add collation if not default for the type.
+					 * For encrypted columns, only output COLLATE when support_alg
+					 * includes OPE.  DET equality uses memcmp, SEARCH/LIKE is not
+					 * collation-aware; only OPE ordering depends on collation. */
 					if (OidIsValid(tbinfo->attcollation[j]))
 					{
-						CollInfo   *coll;
+						bool		output_collate;
 
-						coll = findCollationByOid(tbinfo->attcollation[j]);
-						if (coll)
-							appendPQExpBuffer(q, " COLLATE %s",
-											  fmtQualifiedDumpable(coll));
+						output_collate = !tbinfo->att_is_encrypted[j];
+
+						if (!output_collate)
+						{
+							/* encryption_type_to_support_algo() always produces
+							 * lowercase, so strstr with lowercase "ope" is safe. */
+							output_collate = (strstr(tbinfo->att_enc_support_algo[j],
+													 "ope") != NULL);
+						}
+						
+						if (output_collate)
+						{
+							CollInfo   *coll;
+
+							coll = findCollationByOid(tbinfo->attcollation[j]);
+							if (coll)
+								appendPQExpBuffer(q, " COLLATE %s",
+												  fmtQualifiedDumpable(coll));
+						}
 					}
 					is_ora_identity = false;	/* ReqID:SRS-SQL-IDENTCOL */
 				}

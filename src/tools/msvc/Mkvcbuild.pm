@@ -276,11 +276,38 @@ sub mkvcbuild
 	$postgres->AddFiles('src/backend/utils/adt', 'jsonpath_scan.l',
 		'jsonpath_gram.y');
 	$postgres->AddDefine('BUILDING_DLL');
+        $libpq->AddIncludeDir('src/interfaces/libpq');
+        $libpq->AddIncludeDir('src/interfaces/libpq/frontend_parser');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_processor');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_cache');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_data_fetcher/include');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_hsm_adapter');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_common');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_formatter');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_scheduler');
+        $libpq->AddIncludeDir('src/interfaces/libpq/tecc_libpq_integration');
+        $libpq->AddIncludeDir('src/common');
+        $libpq->AddIncludeDir('src/backend');
+        $libpq->AddIncludeDir('src/include/hsm');
 	$postgres->AddLibrary('secur32.lib');
 	$postgres->AddLibrary('ws2_32.lib');
 	$postgres->AddLibrary('wldap32.lib') if ($solution->{options}->{ldap});
 	$postgres->FullExportDLL('postgres.lib');
 	$postgres->AddFiles('src/backend/utils/resgroup', 'io_limit_scanner.c', 'io_limit_gram.y');
+
+        # The OBJS scraper doesn't know that data_fetcher sources are in a
+        # src/ subdirectory.  Fix up the paths.
+        my @df_files = qw(
+          tecc_data_fetcher tecc_libpq_cursor tecc_metadata_query
+          tecc_permission_check tecc_bitmask_parser tecc_key_args_parser
+          tecc_error_handler tecc_connection_pool tecc_metadata_serializer
+          tecc_bytea_decoder);
+        foreach my $f (@df_files)
+        {
+                $libpq->ReplaceFile(
+                        "src/interfaces/libpq/tecc_data_fetcher/$f.c",
+                        "src/interfaces/libpq/tecc_data_fetcher/src/$f.c");
+        }
 
 	# The OBJS scraper doesn't know about ifdefs, so remove appropriate files
 	# if building without OpenSSL.
@@ -359,6 +386,12 @@ sub mkvcbuild
 		$libpq->RemoveFile('src/interfaces/libpq/fe-gssapi-common.c');
 		$libpq->RemoveFile('src/interfaces/libpq/fe-secure-gssapi.c');
 	}
+
+	# pthread-win32.c provides external function implementations for the
+	# old src/port/pthread-win32.h.  Our new src/include/port/win32/pthread.h
+	# provides inline implementations of all pthread functions, so the old
+	# .c file is not needed and its defines conflict (C2371).
+	$libpq->RemoveFile('src/interfaces/libpq/pthread-win32.c');
 
 	my $libpqwalreceiver =
 	  $solution->AddProject('libpqwalreceiver', 'dll', '',

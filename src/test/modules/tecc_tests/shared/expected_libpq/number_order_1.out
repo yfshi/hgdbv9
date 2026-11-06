@@ -1,0 +1,358 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+        ?column?        
+------------------------
+ === 1 Int ORDER BY ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 7
+    ?column?     | id | enc_val | plain_val |  descr  
+-----------------+----+---------+-----------+---------
+ 1a_int2_decrypt |  1 | 0       |         0 | zero
+ 1a_int2_decrypt |  2 | -1      |        -1 | neg one
+ 1a_int2_decrypt |  3 | 32767   |     32767 | max
+ 1a_int2_decrypt |  4 | -32768  |    -32768 | min
+ 1a_int2_decrypt |  5 | 100     |       100 | pos
+ 1a_int2_decrypt |  6 | -100    |      -100 | neg
+ 1a_int2_decrypt |  7 | 1       |         1 | one
+(7 rows)
+
+     ?column?      | id | enc_val 
+-------------------+----+---------
+ 1b_int2_enc_order |  4 | -32768
+ 1b_int2_enc_order |  6 | -100
+ 1b_int2_enc_order |  2 | -1
+ 1b_int2_enc_order |  1 | 0
+ 1b_int2_enc_order |  7 | 1
+ 1b_int2_enc_order |  5 | 100
+ 1b_int2_enc_order |  3 | 32767
+(7 rows)
+
+      ?column?       | id | plain_val 
+---------------------+----+-----------
+ 1c_int2_plain_order |  4 |    -32768
+ 1c_int2_plain_order |  6 |      -100
+ 1c_int2_plain_order |  2 |        -1
+ 1c_int2_plain_order |  1 |         0
+ 1c_int2_plain_order |  7 |         1
+ 1c_int2_plain_order |  5 |       100
+ 1c_int2_plain_order |  3 |     32767
+(7 rows)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+    ?column?     | id |   enc_val   |  plain_val  |  descr  
+-----------------+----+-------------+-------------+---------
+ 1d_int4_decrypt |  1 | 0           |           0 | zero
+ 1d_int4_decrypt |  2 | -1          |          -1 | neg one
+ 1d_int4_decrypt |  3 | 2147483647  |  2147483647 | max
+ 1d_int4_decrypt |  4 | -2147483648 | -2147483648 | min
+ 1d_int4_decrypt |  5 | 1000000     |     1000000 | pos
+ 1d_int4_decrypt |  6 | -1000000    |    -1000000 | neg
+(6 rows)
+
+     ?column?      | id |   enc_val   
+-------------------+----+-------------
+ 1e_int4_enc_order |  4 | -2147483648
+ 1e_int4_enc_order |  6 | -1000000
+ 1e_int4_enc_order |  2 | -1
+ 1e_int4_enc_order |  1 | 0
+ 1e_int4_enc_order |  5 | 1000000
+ 1e_int4_enc_order |  3 | 2147483647
+(6 rows)
+
+      ?column?       | id |  plain_val  
+---------------------+----+-------------
+ 1f_int4_plain_order |  4 | -2147483648
+ 1f_int4_plain_order |  6 |    -1000000
+ 1f_int4_plain_order |  2 |          -1
+ 1f_int4_plain_order |  1 |           0
+ 1f_int4_plain_order |  5 |     1000000
+ 1f_int4_plain_order |  3 |  2147483647
+(6 rows)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+    ?column?     | id |       enc_val        |      plain_val       |  descr  
+-----------------+----+----------------------+----------------------+---------
+ 1g_int8_decrypt |  1 | 0                    |                    0 | zero
+ 1g_int8_decrypt |  2 | -1                   |                   -1 | neg one
+ 1g_int8_decrypt |  3 | 9223372036854775807  |  9223372036854775807 | max
+ 1g_int8_decrypt |  4 | -9223372036854775808 | -9223372036854775808 | min
+ 1g_int8_decrypt |  5 | 1000000000000        |        1000000000000 | pos
+ 1g_int8_decrypt |  6 | -1000000000000       |       -1000000000000 | neg
+(6 rows)
+
+     ?column?      | id |       enc_val        
+-------------------+----+----------------------
+ 1h_int8_enc_order |  4 | -9223372036854775808
+ 1h_int8_enc_order |  6 | -1000000000000
+ 1h_int8_enc_order |  2 | -1
+ 1h_int8_enc_order |  1 | 0
+ 1h_int8_enc_order |  5 | 1000000000000
+ 1h_int8_enc_order |  3 | 9223372036854775807
+(6 rows)
+
+      ?column?       | id |      plain_val       
+---------------------+----+----------------------
+ 1i_int8_plain_order |  4 | -9223372036854775808
+ 1i_int8_plain_order |  6 |       -1000000000000
+ 1i_int8_plain_order |  2 |                   -1
+ 1i_int8_plain_order |  1 |                    0
+ 1i_int8_plain_order |  5 |        1000000000000
+ 1i_int8_plain_order |  3 |  9223372036854775807
+(6 rows)
+
+DROP TABLE
+            ?column?             
+---------------------------------
+ === 2 Cross-Type Comparison ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+    ?column?     | id | c_i2 | c_i4 | c_i8 | c_f4 | c_f8  |   c_num    
+-----------------+----+------+------+------+------+-------+------------
+ 2a_full_decrypt |  1 | 10   | 100  | 1000 | 10.5 | 100.5 | 1000.50000
+ 2a_full_decrypt |  2 | 20   | 200  | 2000 | 20.5 | 200.5 | 2000.50000
+ 2a_full_decrypt |  3 | 30   | 300  | 3000 | 30.5 | 300.5 | 3000.50000
+(3 rows)
+
+  ?column?  | id | c_i4 
+------------+----+------
+ 2b_int4_eq |  1 | 100
+(1 row)
+
+  ?column?  | id | c_i4 
+------------+----+------
+ 2c_int4_gt |  2 | 200
+ 2c_int4_gt |  3 | 300
+(2 rows)
+
+   ?column?   | id | c_f4 
+--------------+----+------
+ 2d_float4_eq |  1 | 10.5
+(1 row)
+
+   ?column?   | id | c_f8  
+--------------+----+-------
+ 2e_float8_gt |  2 | 200.5
+ 2e_float8_gt |  3 | 300.5
+(2 rows)
+
+   ?column?    | id |   c_num    
+---------------+----+------------
+ 2f_numeric_eq |  1 | 1000.50000
+(1 row)
+
+   ?column?    | id |   c_num    
+---------------+----+------------
+ 2g_numeric_lt |  1 | 1000.50000
+(1 row)
+
+     ?column?     | id 
+------------------+----
+ 2h_int4_and_int8 |  1
+(1 row)
+
+     ?column?     | id 
+------------------+----
+ 2i_int2_and_int4 |  1
+(1 row)
+
+      ?column?      | id 
+--------------------+----
+ 2j_int4_and_float4 |  1
+(1 row)
+
+      ?column?       | id 
+---------------------+----
+ 2k_int8_and_numeric |  1
+(1 row)
+
+        ?column?        | id | c_f4 
+------------------------+----+------
+ 2l_float4_gt_int_const |  2 | 20.5
+ 2l_float4_gt_int_const |  3 | 30.5
+(2 rows)
+
+        ?column?        | id | c_f8  
+------------------------+----+-------
+ 2m_float8_lt_int_const |  1 | 100.5
+(1 row)
+
+        ?column?         | id |   c_num    
+-------------------------+----+------------
+ 2n_numeric_gt_int_const |  1 | 1000.50000
+ 2n_numeric_gt_int_const |  2 | 2000.50000
+ 2n_numeric_gt_int_const |  3 | 3000.50000
+(3 rows)
+
+    ?column?     | id | c_i8 
+-----------------+----+------
+ 2o_int8_between |  1 | 1000
+ 2o_int8_between |  2 | 2000
+ 2o_int8_between |  3 | 3000
+(3 rows)
+
+  ?column?   | id | c_i2 | c_i4 
+-------------+----+------+------
+ 2p_i4_gt_i2 |  1 | 10   | 100
+ 2p_i4_gt_i2 |  2 | 20   | 200
+ 2p_i4_gt_i2 |  3 | 30   | 300
+(3 rows)
+
+  ?column?   | id | c_i4 | c_i8 
+-------------+----+------+------
+ 2q_i8_gt_i4 |  1 | 100  | 1000
+ 2q_i8_gt_i4 |  2 | 200  | 2000
+ 2q_i8_gt_i4 |  3 | 300  | 3000
+(3 rows)
+
+  ?column?   | id | c_i2 | c_f4 
+-------------+----+------+------
+ 2r_f4_gt_i2 |  1 | 10   | 10.5
+ 2r_f4_gt_i2 |  2 | 20   | 20.5
+ 2r_f4_gt_i2 |  3 | 30   | 30.5
+(3 rows)
+
+  ?column?   | id | c_i4 | c_f8  
+-------------+----+------+-------
+ 2s_f8_gt_i4 |  1 | 100  | 100.5
+ 2s_f8_gt_i4 |  2 | 200  | 200.5
+ 2s_f8_gt_i4 |  3 | 300  | 300.5
+(3 rows)
+
+   ?column?   | id | c_i8 |   c_num    
+--------------+----+------+------------
+ 2t_num_gt_i8 |  1 | 1000 | 1000.50000
+ 2t_num_gt_i8 |  2 | 2000 | 2000.50000
+ 2t_num_gt_i8 |  3 | 3000 | 3000.50000
+(3 rows)
+
+  ?column?   | id | c_f4 | c_i8 
+-------------+----+------+------
+ 2u_i8_gt_f4 |  1 | 10.5 | 1000
+ 2u_i8_gt_f4 |  2 | 20.5 | 2000
+ 2u_i8_gt_f4 |  3 | 30.5 | 3000
+(3 rows)
+
+   ?column?   | id | c_f4 |   c_num    
+--------------+----+------+------------
+ 2v_num_gt_f4 |  1 | 10.5 | 1000.50000
+ 2v_num_gt_f4 |  2 | 20.5 | 2000.50000
+ 2v_num_gt_f4 |  3 | 30.5 | 3000.50000
+(3 rows)
+
+            ?column?            | id | c_i2 | c_i4 | c_i8 
+--------------------------------+----+------+------+------
+ 2w_combo_i4_gt_i2_and_i8_gt_i4 |  1 | 10   | 100  | 1000
+ 2w_combo_i4_gt_i2_and_i8_gt_i4 |  2 | 20   | 200  | 2000
+ 2w_combo_i4_gt_i2_and_i8_gt_i4 |  3 | 30   | 300  | 3000
+(3 rows)
+
+INSERT 0 1
+    ?column?    | id | c_i2 | c_i4 
+----------------+----+------+------
+ 2x_eq_i4_eq_i2 |  4 | 50   | 50
+(1 row)
+
+    ?column?    | id | c_i2 | c_f4 
+----------------+----+------+------
+ 2y_eq_f4_eq_i2 |  4 | 50   | 50
+(1 row)
+
+ ?column? | id | c_i8 | c_num 
+----------+----+------+-------
+(0 rows)
+
+         ?column?         
+--------------------------
+ === 3 Numeric Typmod ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+ ?column? | id | c_num2 
+----------+----+--------
+(0 rows)
+
+INSERT 0 1
+       ?column?       | id |   c_num2   
+----------------------+----+------------
+ 3b_typmod_10_2_100p5 |  1 | 100.500000
+(1 row)
+
+INSERT 0 1
+    ?column?     | id |   c_num2   
+-----------------+----+------------
+ 3c_typmod_round |  1 | 100.500000
+ 3c_typmod_round |  2 | 100.560000
+(2 rows)
+
+INSERT 0 1
+   ?column?    | id |   c_num4   
+---------------+----+------------
+ 3d_typmod_8_4 |  3 | 12.3456000
+(1 row)
+
+INSERT 0 1
+ ?column? | id | c_num2 | c_int4 
+----------+----+--------+--------
+(0 rows)
+
+INSERT 0 1
+ ?column? | id | c_num2 | c_f4 
+----------+----+--------+------
+(0 rows)
+
+ ?column? | id | c_num2 | c_int4 
+----------+----+--------+--------
+(0 rows)
+
+     ?column?     | id |   c_num2   | c_f4 
+------------------+----+------------+------
+ 3h_typmod_col_gt |  5 | 25.5000000 | 25.5
+(1 row)
+
+DROP TABLE
+          ?column?           
+-----------------------------
+ === 4 Cross-Type UPDATE ===
+(1 row)
+
+INSERT 0 4
+UPDATE 1
+        ?column?        | id | c_i2 | c_f8 
+------------------------+----+------+------
+ 4a_update_f8_eq_i2_neg |  5 | -100 | -100
+(1 row)
+
+UPDATE 1
+         ?column?         | id | c_f4 | c_num 
+--------------------------+----+------+-------
+ 4b_update_num_eq_f4_zero |  6 | 0    | 0.00
+(1 row)
+
+DROP TABLE
+    ?column?     
+-----------------
+ === Cleanup ===
+(1 row)
+
+DROP KEK
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:12: 注意:  key encryption key "kek_num" does not exist, skipping
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:22: 注意:  表 "test_i2" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:33: 注意:  表 "test_i4" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:44: 注意:  表 "test_i8" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:60: 注意:  表 "test_num_cross" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:121: 注意:  表 "test_num_typmod" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/number_order.sql:175: 注意:  递归删除 data encryption key dek_num

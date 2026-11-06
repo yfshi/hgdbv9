@@ -57,8 +57,13 @@ hash_f8_heap|t
 hash_i4_heap|t
 hash_name_heap|t
 hash_txt_heap|t
+hg_dek|t
+hg_dek_args|t
+hg_encrypted_columns|t
 hg_global_antitamper|t
 hg_global_antitamper_backup|f
+hg_kek|t
+hg_kek_args|t
 hobbies_r|f
 ihighway|t
 inet_tbl|f

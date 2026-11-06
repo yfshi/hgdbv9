@@ -52,6 +52,7 @@
 #include "catalog/pg_proc_d.h"
 #include "catalog/pg_trigger_d.h"
 #include "catalog/pg_type_d.h"
+#include "catalog/pg_type_enc.h"
 #include "common/connect.h"
 #include "dumputils.h"
 #include "fe_utils/string_utils.h"
@@ -1584,6 +1585,12 @@ dumpTableData_insert(Archive *fout, const void *dcontext)
 					case FLOAT4OID:
 					case FLOAT8OID:
 					case NUMERICOID:
+						case INT2_ENCOID:
+						case INT4_ENCOID:
+						case INT8_ENCOID:
+						case FLOAT4_ENCOID:
+						case FLOAT8_ENCOID:
+						case NUMERIC_ENCOID:
 						{
 							/*
 							 * These types are printed without quotes unless

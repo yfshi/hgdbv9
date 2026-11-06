@@ -1,0 +1,19 @@
+NOTICE: key encryption key "kek_cross" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+CREATE DEK
+NOTICE: table "cross_rnd" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "cross_det" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "cross_ope" does not exist, skipping
+DROP TABLE
+CREATE TABLE
+NOTICE: table "cross_search" does not exist, skipping
+DROP TABLE
+CREATE TABLE

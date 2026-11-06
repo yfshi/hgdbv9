@@ -95,6 +95,8 @@ SecLabelSupportsObjectType(ObjectType objtype)
 		case OBJECT_PACKAGE:
 		case OBJECT_PACKAGE_BODY:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		case OBJECT_KEK:
+		case OBJECT_DEK:
 		/* Begin - ReqID:SRS-SQL-CustomObject */
 		case OBJECT_OBJECT_TYPE:
 		case OBJECT_OBJECT_TYPE_BODY:

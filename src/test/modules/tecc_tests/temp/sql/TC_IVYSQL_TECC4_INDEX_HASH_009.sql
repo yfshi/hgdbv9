@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_numeric_indexes_hash CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE test_numeric_indexes_hash (id SERIAL PRIMARY KEY,numeric_col numeric_enc encrypted with (dek = dek_t1,support_algo='ope') NOT NULL,sensor_id VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_numeric_indexes_hash (numeric_col, sensor_id) SELECT (2 * 123.4567)::numeric(15,4),CASE WHEN i % 3 = 0 THEN 'USD' WHEN i % 3 = 1 THEN 'EUR' ELSE 'GBP' END FROM generate_series(1, 5000) i;
+CREATE INDEX idx_numeric_hash ON test_numeric_indexes_hash USING hash (numeric_col);
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_numeric_indexes_hash WHERE numeric_col = 6172.8;
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_numeric_indexes_hash';
+DROP TABLE IF EXISTS test_numeric_indexes_hash CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

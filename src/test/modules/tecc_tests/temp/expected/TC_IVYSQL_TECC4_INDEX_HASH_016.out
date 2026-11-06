@@ -1,0 +1,66 @@
+>>> 1
+DROP TABLE IF EXISTS test_float4_indexes_hash CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE test_float4_indexes_hash (id SERIAL PRIMARY KEY,float4_col float4_enc encrypted with (dek = dek_t1,support_algo='det') NOT NULL,sensor_id VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+rows: 0
+>>> 7
+INSERT INTO test_float4_indexes_hash (float4_col, sensor_id) SELECT (2 * 12.3456)::float4,'SENSOR_' || (i % 50)::text FROM generate_series(1, 5000) i;
+
+错误: 字段 "float4_col" 的类型为 float4_enc, 但表达式的类型为 real
+  建议：你需要重写或转换表达式
+  位置：70
+>>> 8
+CREATE INDEX idx_float4_det_hash ON test_float4_indexes_hash USING hash (float4_col);
+
+rows: 0
+>>> 9
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_float4_indexes_hash WHERE float4_col = 6172.8;
+
+Bitmap Heap Scan on test_float4_indexes_hash  (cost=4.02..9.36 rows=2 width=162) (actual time=0.009..0.010 rows=0 loops=1)
+  Recheck Cond: (float4_col = '\x7000000000000100b96f306500000000000000000000000000000000'::float4_enc)
+  Buffers: shared hit=2
+  ->  Bitmap Index Scan on idx_float4_det_hash  (cost=0.00..4.01 rows=2 width=0) (actual time=0.007..0.007 rows=0 loops=1)
+        Index Cond: (float4_col = '\x7000000000000100b96f306500000000000000000000000000000000'::float4_enc)
+        Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=29 read=1
+Planning Time: 0.237 ms
+Execution Time: 0.034 ms
+rows: -1
+>>> 10
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_float4_indexes_hash';
+
+test_float4_indexes_hash_pkey|CREATE UNIQUE INDEX test_float4_indexes_hash_pkey ON public.test_float4_indexes_hash USING btree (id)|8192 bytes
+idx_float4_det_hash|CREATE INDEX idx_float4_det_hash ON public.test_float4_indexes_hash USING hash (float4_col)|32 kB
+rows: -1
+>>> 11
+DROP TABLE IF EXISTS test_float4_indexes_hash CASCADE;
+
+rows: 0
+>>> 12
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 13
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

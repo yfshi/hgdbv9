@@ -1,0 +1,294 @@
+tecc_tests - TECC全密态回归测试模块
+======================================
+
+TECC (Transparent Encryption Columnar Cryptography) 是 PostgreSQL 的全密态
+数据库扩展，在 libpq 客户端实现透明加密/解密。本模块包含三类回归测试范式。
+
+
+目录结构
+--------
+
+  shared/             共享用例（libpq和JDBC分头执行，双预期对比）
+    sql/              共享SQL用例
+    expected_common/  归一化输出预期（仅去掉列头/分隔线，保留(N rows)等）
+    expected_libpq/   libpq原始输出预期（psql -X，含列头/分隔线/NOTICE）
+    expected_jdbc/    JDBC原始输出预期（TeccSqlTestRunner --output-format raw）
+    issues_jdbc_common.md  JDBC端已知差异记录
+
+  libpq/              仅libpq执行
+    sql/              独有SQL用例（test_copy_extended: \copy扩展,
+                       test_only_insert: INSERT专有）
+    expected/         psql完整输出格式（-X，含表头边框）
+
+  jdbc/               仅JDBC执行
+    sql/              独有SQL用例
+    expected/         JDBC原生输出格式
+
+  cross/              跨驱动交替执行
+    sql/              数字前缀排序的用例（不标驱动，按顺序交替分配）
+    expected/         规范格式预期（两轮共用）
+
+  t/                  TAP测试脚本
+    tecc_test_utils.pm          公共工具模块
+    001_tecc_libpq_test.pl      libpq：共享 + 独有 + pg_dump/pg_restore
+    002_tecc_jdbc_test.pl       JDBC：共享 + 独有
+    003_tecc_cross_test.pl      跨驱动：正向/反向交替
+
+
+快速开始
+--------
+
+  # 注：check-tecc-* 通过 temp-install 依赖自动完成构建安装，
+  #     修改源码后直接 make check-tecc-libpq 即可，无需手动 make install。
+
+  # 后端回归 + libpq + JDBC + 交替（全量TECC测试）
+  make check-tecc
+
+  # 仅 libpq 全链路测试
+  make check-tecc-libpq
+
+  # 仅 JDBC 全链路测试（需设置 TECC_JDBC_HOME）
+  export TECC_JDBC_HOME=~/pgjdbc-release-42.5.x
+  make check-tecc-jdbc
+
+  # 仅跨驱动交替测试
+  make check-tecc-cross
+
+  # 仅跑单个 SQL 用例（按文件名过滤，不限目录）
+  TECC_TEST=test_ope.sql make check-tecc-libpq
+  TECC_TEST=001_create_table.sql make check-tecc-cross
+
+  # 仅跑后端 SQL 回归
+  make check TESTS="tecc_system_tables tecc_permissions"
+
+  # libpq 性能测试（含客户端加解密开销的完整往返时间）
+  make check-tecc-perf-libpq
+
+  # 性能测试单用例过滤
+  TECC_TEST=int4_eq.sql make check-tecc-perf-libpq
+
+  # 性能测试指定数据量（默认100行，可设100000等）
+  PERF_ROWS=100000 make check-tecc-perf-libpq
+
+  # 选择比较模式（默认 both，raw + common 都比）
+  make check-tecc-libpq-common    # 仅归一化输出比较（数据一致性）
+  make check-tecc-libpq-raw       # 仅原始输出比较（驱动特有格式）
+  TECC_TEST=search.sql make check-tecc-jdbc-common
+
+  # 查看失败详情
+  less tmp_check/log/regress_log_001_tecc_libpq_test
+
+
+三种测试范式
+----------
+
+  1. 共享 (shared/) — dual diff
+     libpq和JDBC分别对同一批SQL执行，每个SQL文件跑一次，同时产生两种比较：
+
+     raw 比较：驱动原始输出 vs expected_{libpq,jdbc}/ 对比。
+     保留驱动特有格式（列头、分隔线、(N rows)、NOTICE等全部输出），
+     暴露驱动层面的差异。
+
+     common 比较：黑名单归一化（仅去掉列头行和分隔线）后 vs expected_common/。
+     libpq和JDBC归一化到同一格式后比较，验证两端数据一致性。
+     保留数据行、(N rows)、命令标签、ERROR、NOTICE等全部非格式内容。
+
+     比较模式选择：
+       MODE=raw make check-tecc-libpq     — 仅 raw
+       MODE=common make check-tecc-libpq  — 仅 common
+       默认 both                            — 两种都比
+       快捷 target: make check-tecc-libpq-raw / check-tecc-libpq-common
+
+     当前JDBC端已知差异见 shared/issues_jdbc_common.md。
+
+  2. 独有 (libpq/ jdbc/)
+     各驱动独有的功能测试，使用各自原生输出格式对比。
+     libpq 用 psql -X（完整表格式），JDBC 使用 JDBC 原生输出。
+
+  3. 交替 (cross/)
+     以数字前缀排序的用例文件，不标注驱动。
+     第一轮正向交替：001→libpq, 002→jdbc, 003→libpq ...
+     第二轮反向交替：001→jdbc,  002→libpq, 003→jdbc ...
+     每步结果与同一份规范格式预期对比。
+     验证跨驱动操作同一张表时的数据一致性。
+
+
+与标准 make check / make check-world 的关系
+------------------------------------------
+
+  make check
+      仅执行 src/test/regress/ 的后端 SQL 回归（psql 纯服务端测试）。
+      TECC 后端测试（已注册在 parallel_schedule 中）通过 make check 自动执行，
+      无需额外参数。
+
+  make check-world
+      执行全部测试，包括 src/test/modules/ 下的所有模块。
+      tecc_tests 模块已注册在 modules/Makefile 的 SUBDIRS 中，
+      执行 check-world 时会自动运行 tecc_tests 的 TAP 测试。
+
+  三者包含关系：check ⊂ check-tecc ⊂ check-world
+
+    check          — 后端 tecc SQL 回归（通过 parallel_schedule）
+    check-tecc     — 后端 + libpq + JDBC + 交替
+    check-world    — 全量所有测试（含 tecc_tests 模块）
+
+
+JDBC 测试环境准备
+-----------------
+
+需要设置 TECC_JDBC_HOME 环境变量指向 pgjdbc 项目根目录：
+
+  export TECC_JDBC_HOME=~/pgjdbc-release-42.5.x
+
+设置后，make check-tecc-jdbc 会自动构建 JDBC 驱动 jar 并执行测试。
+未设置时，JDBC 测试和交替测试会被跳过。
+
+JDBC 测试额外需要 Java JDK（java 命令可在 PATH 中找到或设置 JAVA_HOME）。
+
+
+查看测试结果
+------------
+
+tecc 使用 TAP 测试（Perl），不是传统的 pg_regress 框架。因此不生成
+output/*.out 文件，测试结果和差异信息通过以下方式查看：
+
+  # 运行测试（结果输出到 stdout）
+  make check-tecc-libpq
+
+  # 失败用例的详细差异（got / expected）写入此文件
+  less tmp_check/log/regress_log_001_tecc_libpq_test
+
+  # PG 服务端日志（ERROR 等）
+  less tmp_check/log/001_tecc_libpq_test_tecc_libpq.log
+
+差异格式说明：
+  TAP 测试的 is() 比较失败时，在 regress_log 中输出：
+    #          got: '...'     ← 实际输出
+    #     expected: '...'     ← expected/*.out 的内容
+
+  注意：传统 pg_regress 的 output/*.out 在此框架中不存在。
+
+
+添加新用例
+---------
+
+  1. 按测试范式将 SQL 文件放入对应的 sql/ 目录
+  2. 确保对应 expected_xxx/ 中已有 .out 预期文件
+     shared/ 用例需要三种预期：
+       expected_libpq/*.out   — libpq原始输出
+       expected_jdbc/*.out   — JDBC原始输出（暂无）
+       expected_common/*.out — 归一化输出（两边共用）
+  3. 用 TECC_TEST 过滤执行验证
+
+  生成预期文件的标准方法：
+    首次运行会因缺少预期文件而失败（expected file not found），
+    检查 tmp_check/results/ 中的实际输出，确认无误则复制：
+      make check-tecc-libpq-common TECC_TEST=foo.sql    # 失败
+      cp tmp_check/results/..._common.out expected_common/foo.out
+      make check-tecc-libpq-common TECC_TEST=foo.sql    # PASS
+      make check-tecc-libpq-raw TECC_TEST=foo.sql       # PASS
+
+
+性能测试
+--------
+
+性能测试测量包含客户端加解密开销的完整往返时间（非 EXPLAIN ANALYZE 服务端
+时间），对照阈值校验 PASS/FAIL。框架基于 TAP，流程自动化。
+
+
+运行流程
+~~~~~~~~
+
+  make check-tecc-perf-libpq 执行：
+
+  1. temp-install — 编译 + 安装到临时目录（~49s，与源码修改无关的固定开销）
+  2. 启动 PG 节点 — initdb + pg_ctl start
+  3. DDL — 执行 perf/sql/perf_ddl.sql：
+     - 创建 KEK/DEK（kek_perf / dek_perf，key_store = localkms）
+     - 创建 3 张代表表（int4/float8/text，合并 DET+OPE+SEARCH 列）
+     - 创建 5 个索引（DET 用 hash，OPE 用 btree）
+  4. 数据初始化 — init_encrypted_data()，种子+倍增模式：
+     Phase 1: 客户端加密种子数据（seed=1000 行，3 张多列INSERT）
+     Phase 2: 服务端 INSERT...SELECT CROSS JOIN 倍增密文到 PERF_ROWS
+     - 密文为普通字节，服务端复制不触发客户端加密
+     - PERF_ROWS≤seed 时跳过倍增，直接使用种子数据
+  5. 性能测量 — 对 perf/sql/ 下每个 .sql 文件：
+     - 同一 psql 会话内：预热 1 次 + 正式测量 5 次
+     - 多 -c 共享连接确保 TECC 缓存初始化开销只发生一次
+     - 解析 psql \timing 输出，计算 avg/min/max
+  6. 阈值校验 — 对照 perf/thresholds.json 标记 PASS/FAIL
+  7. 汇总输出 — 打印 PASS/FAIL 汇总表，保存 JSON 结果到 perf/results/
+
+
+预置数据表
+~~~~~~~~~~
+
+  3 张代表表，7 个加密列，覆盖 3 种加密算法：
+
+  整数代表（DET + OPE，1 张）：
+    enc_int4 — INT4_ENC: val_det(DET) + val_ope(OPE)
+  浮点代表（DET + OPE，1 张）：
+    enc_float8 — FLOAT8_ENC: val_det(DET) + val_ope(OPE)
+  文本代表（DET + OPE + SEARCH，1 张）：
+    enc_text — TEXT_ENC: val_det(DET) + val_ope(OPE) + val_search(SEARCH)
+
+  同质类型合并原则：int2/int4/int8 加密开销一致（同 SM4 算法仅编码宽度不同），
+  float4/float8/numeric 同理，text/varchar/bpchar 同理。各选 1 个代表类型。
+
+
+查询用例
+~~~~~~~~
+
+  perf/sql/ 目录下 14 条 SQL 用例，自动发现，覆盖 5 种查询场景：
+
+  - scan  (3条): SELECT val_det FROM enc_xxx      — 全表扫描 + 客户端解密
+  - eq    (3条): WHERE val_det = N                — 等值查询（hash 索引）
+  - range_small (3条): WHERE val_ope >= a AND < b — 小范围（~100行，btree 索引）
+  - range_large (3条): WHERE val_ope >= a AND < b — 大范围（~800行）
+  - like_small  (1条): WHERE val_search LIKE '..' — 模糊查询小（仅文本）
+  - like_large  (1条): WHERE val_search LIKE '..' — 模糊查询大（仅文本）
+
+
+KEK/DEK 缓存优化
+~~~~~~~~~~~~~~~~
+
+  性能测试中每个用例启动独立 psql 进程，按原始设计每次都要重新加载 KEK：
+
+    fopen/fread KEK文件 → PBKDF2 (10,000次迭代) → HMAC校验 → SM4-CBC解密
+
+  已实现两级明文缓存（提交 1c05d6ac2）：
+
+  - KEK 明文缓存：首次加载后存入 TeccKekCacheItem.plain_kek，后续命中直接
+    memcpy 返回，跳过全部 I/O + PBKDF2 + SM4 开销
+  - DEK 明文缓存：首次 SM4-CBC 解密后存入 TeccDekCacheItem.plain_dek，
+    后续直接返回已解密的 DEK
+
+
+添加性能测试用例
+~~~~~~~~~~~~~~~~
+
+  只需 2 步，不修改任何框架代码：
+
+  1. 在 perf/sql/ 下放置 .sql 文件（单个查询语句）：
+       -- perf: int4 等值查询
+       SELECT val_det FROM enc_int4 WHERE val_det = 500;
+
+  2. 在 perf/thresholds.json 添加阈值：
+       {
+         "int4_eq": {
+           "threshold_ms": 120,
+           "desc": "int4等值查询",
+           "tc": "TC-EQ-INT4-001"
+         }
+       }
+
+  文件名（不含 .sql）与 JSON key 对应，框架自动匹配。
+  如需正确性验证，在 perf/expected/ 下放置同名 .out 文件。
+
+
+环境变量
+~~~~~~~~
+
+  PERF_ROWS    每表预置数据行数，默认 1000。百万行测试: PERF_ROWS=1000000
+  PERF_RUNS    每条用例执行次数（含预热），默认 5
+  TECC_TEST    单用例过滤，如 TECC_TEST=int4_eq.sql

@@ -516,6 +516,20 @@ does_not_exist_skipping(ObjectType objtype, Node *object)
 				}
 			}
 			break;
+		case OBJECT_KEK:
+			if (!schema_does_not_exist_skipping(castNode(List, object), &msg, &name))
+			{
+				msg = gettext_noop("key encryption key \"%s\" does not exist, skipping");
+				name = NameListToString(castNode(List, object));
+			}
+			break;
+		case OBJECT_DEK:
+			if (!schema_does_not_exist_skipping(castNode(List, object), &msg, &name))
+			{
+				msg = gettext_noop("data encryption key \"%s\" does not exist, skipping");
+				name = NameListToString(castNode(List, object));
+			}
+			break;
 		case OBJECT_PUBLICATION:
 			msg = gettext_noop("publication \"%s\" does not exist, skipping");
 			name = strVal((Value *) object);

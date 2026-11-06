@@ -1,0 +1,195 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+        ?column?        
+------------------------
+ === 1 Setup Tables ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+DROP TABLE
+CREATE TABLE
+       ?column?        
+-----------------------
+ === 2 Insert Data ===
+(1 row)
+
+INSERT 0 10
+INSERT 0 10
+             ?column?              
+-----------------------------------
+ === 3 Multi-Condition Queries ===
+(1 row)
+
+       ?column?        
+-----------------------
+ 3a_text_eq_int4_range
+(1 row)
+
+ id | text_col | int4_col | varchar_col | numeric_col 
+----+----------+----------+-------------+-------------
+  1 | test数据 |      100 | test文本    |      123.45
+(1 row)
+
+ id | text_col | int4_col | varchar_col | numeric_col 
+----+----------+----------+-------------+-------------
+  1 | test数据 | 100      | test文本    | 123.450000
+(1 row)
+
+          ?column?          
+----------------------------
+ 3b_int8_range_varchar_like
+(1 row)
+
+ id |    varchar_col     | int8_col |        text_col        | float8_col 
+----+--------------------+----------+------------------------+------------
+  2 | 测试文本           |     2000 | 测试数据               |     56.789
+  3 | 测试test           |     3000 | test测试               |      67.89
+  5 | 测试样例           |    20000 | 测试示例               |     89.012
+  7 | 包含测试的变长字符 |    40000 | 这是一个测试长文本数据 |      1.234
+(4 rows)
+
+ id |    varchar_col     | int8_col |        text_col        | float8_col 
+----+--------------------+----------+------------------------+------------
+  2 | 测试文本           | 2000     | 测试数据               | 56.789
+  3 | 测试test           | 3000     | test测试               | 67.89
+  5 | 测试样例           | 20000    | 测试示例               | 89.012
+  7 | 包含测试的变长字符 | 40000    | 这是一个测试长文本数据 | 1.234
+(4 rows)
+
+        ?column?        
+------------------------
+ 3c_bpchar_like_int2_eq
+(1 row)
+
+ id |                                               bpchar_col                                               | int2_col | varchar_col | float4_col 
+----+--------------------------------------------------------------------------------------------------------+----------+-------------+------------
+  3 | test测试                                                                                               |        3 | 测试test    |       3.45
+(1 row)
+
+ id | bpchar_col | int2_col | varchar_col | float4_col 
+----+------------+----------+-------------+------------
+  3 | test测试   | 3        | 测试test    | 3.45
+(1 row)
+
+          ?column?           
+-----------------------------
+ 3d_float4_eq_precision_diff
+(1 row)
+
+ id | int2_col | numeric_col | float4_col | text_col 
+----+----------+-------------+------------+----------
+(0 rows)
+
+ id | int2_col | numeric_col | float4_col | text_col 
+----+----------+-------------+------------+----------
+  1 | 1        | 123.450000  | 1.23       | test数据
+(1 row)
+
+        ?column?         
+-------------------------
+ 3e_int4_eq_float8_range
+(1 row)
+
+ id | int4_col | float8_col | varchar_col |                                                bpchar_col                                                
+----+----------+------------+-------------+----------------------------------------------------------------------------------------------------------
+  2 |      200 |     56.789 | 测试文本    | 测试字符                                                                                                
+(1 row)
+
+ id | int4_col | float8_col | varchar_col | bpchar_col 
+----+----------+------------+-------------+------------
+  2 | 200      | 56.789     | 测试文本    | 测试字符
+(1 row)
+
+        ?column?         
+-------------------------
+ 3f_int8_range_text_like
+(1 row)
+
+ id | int8_col |        text_col        | numeric_col | float4_col 
+----+----------+------------------------+-------------+------------
+  4 |    10000 | test示例               |      456.78 |       4.56
+  6 |    30000 | 这是一个test长文本数据 |      678.90 |       6.78
+  8 |    50000 | test test test         |      890.12 |        8.9
+(3 rows)
+
+ id | int8_col |        text_col        | numeric_col | float4_col 
+----+----------+------------------------+-------------+------------
+  4 | 10000    | test示例               | 456.780000  | 4.56
+  6 | 30000    | 这是一个test长文本数据 | 678.900000  | 6.78
+  8 | 50000    | test test test         | 890.120000  | 8.9
+(3 rows)
+
+          ?column?          
+----------------------------
+ 3g_numeric_eq_varchar_like
+(1 row)
+
+ id | numeric_col | varchar_col | int2_col | float8_col 
+----+-------------+-------------+----------+------------
+  3 |      345.67 | 测试test    |        3 |      67.89
+(1 row)
+
+ id | numeric_col | varchar_col | int2_col | float8_col 
+----+-------------+-------------+----------+------------
+  3 | 345.670000  | 测试test    | 3        | 67.89
+(1 row)
+
+          ?column?           
+-----------------------------
+ 3h_float4_eq_precision_diff
+(1 row)
+
+ id | float4_col | int8_col | int2_col | text_col 
+----+------------+----------+----------+----------
+(0 rows)
+
+ id | float4_col | int8_col | int2_col | text_col 
+----+------------+----------+----------+----------
+  3 | 3.45       | 3000     | 3        | test测试
+(1 row)
+
+          ?column?           
+-----------------------------
+ 3i_float8_range_bpchar_like
+(1 row)
+
+ id | float8_col |                                               bpchar_col                                               | int4_col | numeric_col 
+----+------------+--------------------------------------------------------------------------------------------------------+----------+-------------
+  3 |      67.89 | test测试                                                                                               |      300 |      345.67
+  5 |     89.012 | 测试demo                                                                                               |     2000 |      567.89
+(2 rows)
+
+ id | float8_col | bpchar_col | int4_col | numeric_col 
+----+------------+------------+----------+-------------
+  3 | 67.89      | test测试   | 300      | 345.670000
+  5 | 89.012     | 测试demo   | 2000     | 567.890000
+(2 rows)
+
+            ?column?            
+--------------------------------
+ 3j_combo_float4_precision_diff
+(1 row)
+
+ id | text_col | varchar_col | bpchar_col | int2_col | int4_col | int8_col | numeric_col | float4_col | float8_col 
+----+----------+-------------+------------+----------+----------+----------+-------------+------------+------------
+(0 rows)
+
+ id | text_col | varchar_col | bpchar_col | int2_col | int4_col | int8_col | numeric_col | float4_col | float8_col 
+----+----------+-------------+------------+----------+----------+----------+-------------+------------+------------
+  1 | test数据 | test文本    | test字符   | 1        | 100      | 1000     | 123.450000  | 1.23       | 45.678
+(1 row)
+
+     ?column?      
+-------------------
+ === 4 Cleanup ===
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/float_precision.sql:20: 注意:  key encryption key "kek_multi_cond" does not exist, skipping
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/float_precision.sql:33: 注意:  表 "multi_cond_plain" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/float_precision.sql:47: 注意:  表 "multi_cond_enc" 不存在

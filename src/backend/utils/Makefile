@@ -28,6 +28,7 @@ SUBDIRS     = \
 	resowner \
 	resgroup \
 	sort \
+	tecc \
 	time \
 	sqlresourcelimit
 

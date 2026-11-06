@@ -1,0 +1,75 @@
+# Makefile for TECC data formatter test program
+# Authored by <wangxp@highgo.com>, 20260412
+
+# Compiler and flags
+CC = gcc
+CFLAGS = -std=c90 -Wall -Werror -Wno-unused-function -Wno-deprecated-declarations \
+         -I../../../../src/include \
+         -I../../../../src/include/common/tecc_algorithm \
+         -I../../../../src/interfaces/libpq \
+         -I../../../../src/interfaces/libpq/tecc_processor \
+         -I../../../../src/interfaces/libpq/tecc_formatter \
+         -I../../../../src/interfaces/libpq/tecc_common \
+         -I../../../../src/interfaces/libpq/tecc_scheduler \
+         -I/usr/include/openssl \
+         -D_GNU_SOURCE -DFRONTEND -g
+
+LDFLAGS = -lssl -lcrypto
+
+# Test source files
+TEST_SRC = test_formatter.c
+TEST_OBJ = $(TEST_SRC:.c=.o)
+TEST_TARGET = test_formatter
+
+# Formatter module source files
+FORMATTER_SRC_DIR = ../tecc_formatter
+FORMATTER_SRCS = $(FORMATTER_SRC_DIR)/tecc_formatter.c \
+                 $(FORMATTER_SRC_DIR)/tecc_normalizer.c \
+                 $(FORMATTER_SRC_DIR)/tecc_text_normalizer.c \
+                 $(FORMATTER_SRC_DIR)/tecc_data_validator.c \
+                 $(FORMATTER_SRC_DIR)/tecc_cipherdata.c \
+                 $(FORMATTER_SRC_DIR)/tecc_type_converter.c \
+                 $(FORMATTER_SRC_DIR)/tecc_format_validator.c \
+                 $(FORMATTER_SRC_DIR)/tecc_hex_encoder.c \
+                 $(FORMATTER_SRC_DIR)/tecc_encoder_api.c \
+                 $(FORMATTER_SRC_DIR)/tecc_buffer_manager.c \
+                 $(FORMATTER_SRC_DIR)/tecc_formatter_utils.c \
+                 $(FORMATTER_SRC_DIR)/tecc_icu_normalizer.c \
+                 $(FORMATTER_SRC_DIR)/tecc_normalization_common.c
+
+FORMATTER_OBJS = $(FORMATTER_SRCS:.c=.o)
+
+# Common types source files
+COMMON_SRC_DIR = ../tecc_common
+COMMON_SRCS = $(COMMON_SRC_DIR)/tecc_common_types.c
+COMMON_OBJS = $(COMMON_SRCS:.c=.o)
+
+# Default target
+all: $(TEST_TARGET)
+
+# Link test program
+$(TEST_TARGET): $(TEST_OBJ) $(FORMATTER_OBJS) $(COMMON_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+# Compile test program
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Compile formatter module files
+$(FORMATTER_SRC_DIR)/%.o: $(FORMATTER_SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Compile common module files
+$(COMMON_SRC_DIR)/%.o: $(COMMON_SRC_DIR)/%.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Clean up
+clean:
+	rm -f $(TEST_OBJ) $(TEST_TARGET)
+	rm -f $(FORMATTER_OBJS) $(COMMON_OBJS)
+
+# Run tests
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+.PHONY: all clean test

@@ -1,0 +1,75 @@
+5月 23, 2026 1:33:39 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:33:40 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:33:40 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS tb_test CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t2 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t2 CASCADE;
+
+rows: 0
+>>> 4
+create table tb_test(id SERIAL PRIMARY KEY, text_enc_col text_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "text_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 5
+create table tb_test(id SERIAL PRIMARY KEY, varchar_enc_col bpchar_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "varchar_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 6
+create table tb_test(id SERIAL PRIMARY KEY, bpchar_enc_col bpchar_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "bpchar_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 7
+create table tb_test(id SERIAL PRIMARY KEY, int2_enc_col int2_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "int2_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 8
+create table tb_test(id SERIAL PRIMARY KEY, int4_enc_col int4_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "int4_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 9
+create table tb_test(id SERIAL PRIMARY KEY, int8_enc_col int8_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "int8_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 10
+create table tb_test(id SERIAL PRIMARY KEY, numeric_enc_col numeric_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "numeric_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 11
+create table tb_test(id SERIAL PRIMARY KEY, float4_enc_col float4_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "float4_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 12
+create table tb_test(id SERIAL PRIMARY KEY, float8_enc_col float4_enc encrypted with (dek = dek_t2));
+
+错误: DEK "dek_t2" not found, cannot create encrypted column "float8_enc_col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 13
+DROP TABLE IF EXISTS tb_test CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t2 CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_t2 CASCADE;
+
+rows: 0

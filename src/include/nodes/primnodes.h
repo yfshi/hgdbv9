@@ -146,6 +146,9 @@ typedef struct IntoClause
 	char      *filename;		/* file name for output */
 	List      *copy_options;	/* options for select into outfile xxx */
 	/* End - ReqID:SRS-MYSQL-SQL-LOADDATA */
+        /* Begin - ReqID:TECC4.0 */
+        List       *encrypted_with_list; /* CTAS: per-column ENCRYPTED WITH from SELECT */
+        /* End - ReqID:TECC4.0 */
 } IntoClause;
 
 

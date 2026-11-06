@@ -1,0 +1,134 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|Alice
+2|Bob
+3|Charlie
+=== test1: \copy TO with explicit column list ===
+COPY 3
+1	Alice
+2	Bob
+3	Charlie
+=== test2: \copy FROM with explicit column list ===
+TRUNCATE TABLE
+COPY 3
+1|Alice
+2|Bob
+3|Charlie
+=== test3: \copy TO without column list ===
+COPY 3
+1	Alice
+2	Bob
+3	Charlie
+=== test4: \copy FROM without column list ===
+TRUNCATE TABLE
+COPY 3
+1|Alice
+2|Bob
+3|Charlie
+=== test5: \copy CSV format (fixed: plaintext output) ===
+COPY 3
+1,Alice
+2,Bob
+3,Charlie
+TRUNCATE TABLE
+COPY 3
+1|Alice
+2|Bob
+3|Charlie
+=== test6: multi-row \copy ===
+INSERT 0 1
+INSERT 0 1
+COPY 5
+TRUNCATE TABLE
+COPY 5
+1|Alice
+2|Bob
+3|Charlie
+4|David
+5|Eve
+=== test8: pg_dump all 9 enc types (REL_BR_014) ===
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+COPY 1
+=== pg_dump-style COPY data (expect plaintext) ===
+1	text_value	varchar_value	bpchar_val	123	456789	9876543210	12345.67	3.14	2.718281828
+DELETE 1
+COPY 1
+1|text_value|varchar_value|bpchar_val|123|456789|9876543210|12345.67|3.14|2.718281828
+DROP TABLE
+DROP DEK
+DROP KEK
+=== test9: server-side COPY TO/FROM (ciphertext, no decryption) ===
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|Alice
+2|Bob
+=== test9a: COPY TO server file ===
+COPY 2
+\\x被隐藏的HEX输出	\\x被隐藏的HEX输出
+\\x被隐藏的HEX输出	\\x被隐藏的HEX输出
+=== test9b: COPY FROM server file ===
+DELETE 2
+COPY 2
+1|Alice
+2|Bob
+=== test9c: COPY TO with column list ===
+COPY 2
+\\x被隐藏的HEX输出	\\x被隐藏的HEX输出
+\\x被隐藏的HEX输出	\\x被隐藏的HEX输出
+=== test9d: COPY FROM with column list ===
+DELETE 2
+COPY 2
+1|Alice
+2|Bob
+=== test9e: COPY TO CSV format (ciphertext) ===
+COPY 2
+\x被隐藏的HEX输出,\x被隐藏的HEX输出
+\x被隐藏的HEX输出,\x被隐藏的HEX输出
+=== test9f: COPY FROM CSV format ===
+DELETE 2
+COPY 2
+1|Alice
+2|Bob
+=== test9g: COPY TO with delimiter ===
+COPY 2
+\\x被隐藏的HEX输出|\\x被隐藏的HEX输出
+\\x被隐藏的HEX输出|\\x被隐藏的HEX输出
+=== test9h: COPY FROM with custom delimiter ===
+DELETE 2
+COPY 2
+1|Alice
+2|Bob
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../copy_extended.sql:9: NOTICE:  table "test_copy_ext" does not exist, skipping
+psql:/.../copy_extended.sql:10: NOTICE:  data encryption key "dek_copy_ext" does not exist, skipping
+psql:/.../copy_extended.sql:11: NOTICE:  key encryption key "kek_copy_ext" does not exist, skipping
+psql:/.../copy_extended.sql:89: NOTICE:  table "tb_all" does not exist, skipping
+psql:/.../copy_extended.sql:90: NOTICE:  data encryption key "dek1" does not exist, skipping
+psql:/.../copy_extended.sql:91: NOTICE:  key encryption key "kek1" does not exist, skipping
+psql:/.../copy_extended.sql:132: NOTICE:  table "test_srv" does not exist, skipping
+psql:/.../copy_extended.sql:133: NOTICE:  data encryption key "dek_srv" does not exist, skipping
+psql:/.../copy_extended.sql:134: NOTICE:  key encryption key "kek_srv" does not exist, skipping

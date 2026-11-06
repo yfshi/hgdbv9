@@ -1,0 +1,47 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+Setting up SWXA KEK: swxa_kek (key index: 1)
+SUCCESS: Key found in SWXA password machine at index 1
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+         stage          
+------------------------
+ === SWXA: 全表解密 ===
+(1 row)
+
+ id | c_int2 | c_int4 | c_int8 | c_float4 | c_float8 | c_numeric |   c_text   |  c_varchar  |  c_bpchar  | tag  
+----+--------+--------+--------+----------+----------+-----------+------------+-------------+------------+------
+  1 | 1      | 100    | 10000  | 1.5      | 3.14159  | 9999.99   | hello swxa | varchar_val | BPCHAR_VAL | row1
+  2 | 2      | 200    | 20000  | 2.5      | 2.71828  | 500.50    | world swxa | varchar_2   | BPCHAR_2   | row2
+(2 rows)
+
+           stage           
+---------------------------
+ === SWXA: DET等值查询 ===
+(1 row)
+
+ tag  
+------
+ row1
+(1 row)
+
+ tag  
+------
+ row1
+(1 row)
+
+       stage        
+--------------------
+ === SWXA: 清理 ===
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../swxa_enc.sql:9: NOTICE:  table "swxa_enc_t" does not exist, skipping
+psql:/.../swxa_enc.sql:10: NOTICE:  data encryption key "swxa_dek" does not exist, skipping
+psql:/.../swxa_enc.sql:11: NOTICE:  key encryption key "swxa_kek" does not exist, skipping

@@ -235,6 +235,9 @@ krb_srvtab = @krb_srvtab@
 ICU_CFLAGS		= @ICU_CFLAGS@
 ICU_LIBS		= @ICU_LIBS@
 
+tzwy_sdf_libdir	= @tzwy_sdf_libdir@
+swxa_sdf_libdir	= @swxa_sdf_libdir@
+
 TCLSH			= @TCLSH@
 TCL_LIBS		= @TCL_LIBS@
 TCL_LIB_SPEC		= @TCL_LIB_SPEC@
@@ -684,6 +687,17 @@ rpathdir = $(libdir)
 
 ifeq ($(enable_rpath), yes)
 LDFLAGS += $(rpath)
+endif
+# TZWY-SDF (HSM) client library - add RPATH for non-standard library path
+# Note: -L for the HSM library is added in src/interfaces/libpq/Makefile,
+# NOT here, to avoid interfering with ICU library resolution order in the
+# backend (ICU_LIBS comes before HSM paths in the link command).
+ifneq ($(tzwy_sdf_libdir),)
+    LDFLAGS += -Wl,-rpath,'$(tzwy_sdf_libdir)'
+endif
+# SWXA-SDF (HSM) client library - add RPATH for dlopen(runtime) discovery
+ifneq ($(swxa_sdf_libdir),)
+    LDFLAGS += -Wl,-rpath,'$(swxa_sdf_libdir)'
 endif
 
 # Show the DLSUFFIX to build scripts (e.g. buildfarm)

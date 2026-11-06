@@ -296,6 +296,20 @@ ExecuteQuery(ParseState *pstate,
 	cplan = GetCachedPlan(entry->plansource, paramLI, NULL, NULL);
 	plan_list = cplan->stmt_list;
 
+       /*
+        * ReqID:TECC4.0 - For CTAS EXECUTE, propagate plan info to the
+        * DestReceiver so intorel_startup can populate encryption metadata.
+        */
+       if (intoClause && dest != NULL && dest->mydest == DestIntoRel)
+       {
+               PlannedStmt *pstmt;
+               pstmt = linitial_node(PlannedStmt, plan_list);
+               if (pstmt != NULL)
+                       SetCTASSourceInfo(dest,
+                               pstmt->planTree->targetlist,
+                               pstmt->rtable);
+       }
+
 	/*
 	 * DO NOT add any logic that could possibly throw an error between
 	 * GetCachedPlan and PortalDefineQuery, or you'll leak the plan refcount.

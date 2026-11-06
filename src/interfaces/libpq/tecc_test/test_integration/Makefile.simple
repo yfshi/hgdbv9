@@ -1,0 +1,47 @@
+# Simple Makefile for processor test program
+CC = gcc
+CFLAGS = -std=c99 -Wall -Wextra -g -O0 -fPIC \
+         -DFRONTEND -DTECC_TEST_INTEGRATION \
+         -I../../../../../src/include \
+         -I../../../../../src/interfaces/libpq \
+         -I../../../../../src/interfaces/libpq/tecc_processor \
+         -I../../../../../src/interfaces/libpq/frontend_parser \
+         -I../../../../../src/interfaces/libpq/tecc_libpq_integration \
+         -I../../../../../src/interfaces/libpq/tecc_cache \
+         -I../../../../../src/interfaces/libpq/tecc_common
+
+# Parser object files (simplified)
+PARSER_OBJS = ../../frontend_parser/parser.o \
+              ../../frontend_parser/tecc_parser.o \
+              ../../frontend_parser/tecc_nodes.o \
+              ../../frontend_parser/tecc_error.o \
+              ../../frontend_parser/tecc_location.o \
+              ../../frontend_parser/tecc_perf.o \
+              ../../frontend_parser/tecc_semantic.o \
+              ../../frontend_parser/feparser_memutils.o \
+              ../../frontend_parser/fe_adapter.o
+
+# Target executable
+TARGET = test_processor_simple
+
+# Default target
+all: $(TARGET)
+
+# Build executable
+$(TARGET): test_processor_simple.o
+	$(CC) -o $@ $^ -lm
+
+# Compile source file
+test_processor_simple.o: test_processor_simple.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean build artifacts
+clean:
+	rm -f test_processor_simple.o $(TARGET)
+
+# Run test
+run: all
+	@echo "Running simple processor test..."
+	./$(TARGET)
+
+.PHONY: all clean run

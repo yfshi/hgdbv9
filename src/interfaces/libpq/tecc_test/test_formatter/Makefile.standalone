@@ -1,0 +1,33 @@
+# Makefile for TECC data formatter standalone test program
+# Authored by <wangxp@highgo.com>, 20260412
+
+# Compiler and flags
+CC = gcc
+CFLAGS = -std=c90 -Wall -Werror -Wno-unused-function -g
+LDFLAGS =
+
+# Test source files
+TEST_SRC = test_formatter_standalone.c
+TEST_OBJ = $(TEST_SRC:.c=.o)
+TEST_TARGET = test_formatter_standalone
+
+# Default target
+all: $(TEST_TARGET)
+
+# Link test program
+$(TEST_TARGET): $(TEST_OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+# Compile test program
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Clean up
+clean:
+	rm -f $(TEST_OBJ) $(TEST_TARGET)
+
+# Run tests
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+.PHONY: all clean test

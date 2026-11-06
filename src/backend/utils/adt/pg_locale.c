@@ -56,8 +56,10 @@
 
 #include "access/htup_details.h"
 #include "catalog/pg_collation.h"
+#include "catalog/pg_database.h"
 #include "catalog/pg_control.h"
 #include "mb/pg_wchar.h"
+#include "miscadmin.h"
 #include "utils/builtins.h"
 #include "utils/formatting.h"
 #include "utils/guc.h"
@@ -1479,7 +1481,54 @@ pg_newlocale_from_collation(Oid collid)
 
 	/* Return 0 for "default" collation, just in case caller forgets */
 	if (collid == DEFAULT_COLLATION_OID)
+	{
+#ifdef USE_ICU
+		/* ReqID:TECC4.0 - Create ICU collator for default database collation */
+		HeapTuple	dtp;
+		Form_pg_database dbform;
+		const char *datcollate;
+		UCollator  *collator;
+		UErrorCode	status;
+
+		dtp = SearchSysCache1(DATABASEOID, ObjectIdGetDatum(MyDatabaseId));
+		if (!HeapTupleIsValid(dtp))
+			elog(ERROR, "cache lookup failed for database %u", MyDatabaseId);
+		dbform = (Form_pg_database) GETSTRUCT(dtp);
+		datcollate = NameStr(dbform->datcollate);
+		ReleaseSysCache(dtp);
+
+		if (lc_collate_is_c(collid))
+			return (pg_locale_t) 0;  /* C/POSIX: no locale_t needed */
+
+		status = U_ZERO_ERROR;
+		collator = ucol_open(datcollate, &status);
+		if (U_SUCCESS(status))
+		{
+			pg_locale_t resultp;
+
+			resultp = (pg_locale_t) palloc0(sizeof(struct pg_locale_struct));
+			resultp->provider = COLLPROVIDER_ICU;
+			resultp->deterministic = true;
+			resultp->info.icu.locale = datcollate;
+			resultp->info.icu.ucol = collator;
+
+			/*
+			 * Don't cache in lookup_collation_cache since OID=100
+			 * has a dedicated fast path.  This pg_locale_t lives for
+			 * the duration of the session.
+			 */
+			return resultp;
+		}
+		ereport(FATAL,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("database default collation \"%s\" is not supported by ICU",
+						datcollate),
+				 errdetail("TECC requires the database default collation "
+						   "to be usable with ICU.")));
+#else
 		return (pg_locale_t) 0;
+#endif
+	}
 
 	cache_entry = lookup_collation_cache(collid, false);
 
@@ -1509,6 +1558,32 @@ pg_newlocale_from_collation(Oid collid)
 		result.deterministic = collform->collisdeterministic;
 
 		if (collform->collprovider == COLLPROVIDER_LIBC)
+		{
+#ifdef USE_ICU
+			/* ReqID:TECC4.0 - Force ICU for all collations */
+			{
+				UCollator  *collator;
+				UErrorCode	status;
+
+				status = U_ZERO_ERROR;
+				collator = ucol_open(collcollate, &status);
+				if (U_SUCCESS(status))
+				{
+					result.provider = COLLPROVIDER_ICU;
+					result.info.icu.ucol = collator;
+					result.info.icu.locale = collcollate;
+				}
+				else
+				{
+					ereport(ERROR,
+							(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+							 errmsg("collation \"%s\" not supported by ICU",
+									collcollate),
+							 errdetail("TECC requires all collations to use the ICU provider.")));
+				}
+			}
+#else
+			/* USE_ICU not defined -- fall back to libc locale_t */
 		{
 #ifdef HAVE_LOCALE_T
 			locale_t	loc;
@@ -1560,6 +1635,8 @@ pg_newlocale_from_collation(Oid collid)
 					(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
 					 errmsg("collation provider LIBC is not supported on this platform")));
 #endif							/* not HAVE_LOCALE_T */
+		}
+#endif							/* USE_ICU */
 		}
 		else if (collform->collprovider == COLLPROVIDER_ICU)
 		{

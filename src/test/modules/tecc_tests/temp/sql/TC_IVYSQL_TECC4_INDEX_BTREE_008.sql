@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_float8_indexes CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE test_float8_indexes (id SERIAL PRIMARY KEY,float8_col float8_enc encrypted with (dek = dek_t1,support_algo='ope') NOT NULL,sensor_id VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_float8_indexes (float8_col, measurement_type) SELECT 2 * 1234.5678,CASE WHEN i % 4 = 0 THEN 'distance' WHEN i % 4 = 1 THEN 'velocity' WHEN i % 4 = 2 THEN 'acceleration' ELSE 'force' END FROM generate_series(1, 5000) i;
+CREATE INDEX idx_float4_btree ON test_float8_indexes USING btree (float4_col);
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_float8_indexes WHERE float8_col = 6172.8;
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_float8_indexes';
+DROP TABLE IF EXISTS test_float8_indexes CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

@@ -44,6 +44,11 @@
 #include "utils/ora_compatible.h"
 #include "utils/guc.h"	
 #include "commands/user.h"
+/* Begin - ReqID:TECC4.0 - TECC headers */
+#include "catalog/hg_kek.h"
+#include "catalog/hg_dek.h"
+#include "utils/hg_key_utils.h"
+/* End - ReqID:TECC4.0 */
 
 typedef struct
 {
@@ -119,6 +124,13 @@ static Oid	convert_type_name(text *typename);
 static AclMode convert_type_priv_string(text *priv_type_text);
 static AclMode convert_role_priv_string(text *priv_type_text);
 static AclResult pg_role_aclcheck(Oid role_oid, Oid roleid, AclMode mode);
+
+/* Begin - ReqID:TECC4.0 - TECC KEK/DEK privilege functions */
+static Oid	convert_kek_name(text *kekname);
+static AclMode convert_kek_priv_string(text *priv_type_text);
+static Oid	convert_dek_name(text *dekname);
+static AclMode convert_dek_priv_string(text *priv_type_text);
+/* End - ReqID:TECC4.0 */
 
 static void RoleMembershipCacheCallback(Datum arg, int cacheid, uint32 hashvalue);
 
@@ -815,6 +827,18 @@ acldefault(ObjectType objtype, Oid ownerId)
 			world_default = ACL_NO_RIGHTS;
 			owner_default = ACL_ALL_RIGHTS_FOREIGN_SERVER;
 			break;
+		/*Begin: ReqId : TECC-V4.0*/
+		case OBJECT_KEK:
+			/* KEK: grant USAGE by default */
+			world_default = ACL_NO_RIGHTS;
+			owner_default = ACL_ALL_RIGHTS_KEK;
+			break;
+		case OBJECT_DEK:
+			/* DEK: grant USAGE by default */
+			world_default = ACL_NO_RIGHTS;
+			owner_default = ACL_ALL_RIGHTS_DEK;
+			break;
+		/*End: ReqId : TECC-V4.0*/
 		case OBJECT_DOMAIN:
 		case OBJECT_TYPE:
 			world_default = ACL_USAGE;
@@ -5166,6 +5190,412 @@ select_best_grantor(Oid roleId, AclMode privileges,
 			}
 		}
 	}
+}
+
+/* Begin - ReqID:TECC4.0 - TECC KEK/DEK privilege functions */
+
+/*
+ * convert_kek_priv_string
+ *		Convert text string to AclMode value for KEK.
+ */
+static AclMode
+convert_kek_priv_string(text *priv_type_text)
+{
+	static const priv_map kek_priv_map[] = {
+		{"USAGE", ACL_USAGE},
+		{"USAGE WITH GRANT OPTION", ACL_GRANT_OPTION_FOR(ACL_USAGE)},
+		{NULL, 0}
+	};
+
+	return convert_any_priv_string(priv_type_text, kek_priv_map);
+}
+
+/*
+ * convert_dek_priv_string
+ *		Convert text string to AclMode value for DEK.
+ */
+static AclMode
+convert_dek_priv_string(text *priv_type_text)
+{
+	static const priv_map dek_priv_map[] = {
+		{"USAGE", ACL_USAGE},
+		{"USAGE WITH GRANT OPTION", ACL_GRANT_OPTION_FOR(ACL_USAGE)},
+		{NULL, 0}
+	};
+
+	return convert_any_priv_string(priv_type_text, dek_priv_map);
+}
+
+/*
+ * convert_kek_name
+ *		Convert text string to KEK OID.
+ */
+static Oid
+convert_kek_name(text *kekname)
+{
+	Oid			kekId;
+	char	   *kek_name_str;
+
+	kek_name_str = text_to_cstring(kekname);
+	kekId = get_kek_oid(kek_name_str, false);
+
+	if (!OidIsValid(kekId))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("key encryption key \"%s\" does not exist",
+						kek_name_str)));
+
+	pfree(kek_name_str);
+	return kekId;
+}
+
+/*
+ * convert_dek_name
+ *		Convert text string to DEK OID.
+ */
+static Oid
+convert_dek_name(text *dekname)
+{
+	Oid			dekId;
+	char	   *dek_name_str;
+
+	dek_name_str = text_to_cstring(dekname);
+	dekId = get_dek_oid(dek_name_str, false);
+
+	if (!OidIsValid(dekId))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("data encryption key \"%s\" does not exist",
+						dek_name_str)));
+
+	pfree(dek_name_str);
+	return dekId;
+}
+
+/*
+ * has_kek_privilege variants
+ *		These are all named "has_kek_privilege" at the SQL level.
+ *		They take various combinations of key name, key OID,
+ *		user name, user OID, or implicit user = current_user.
+ *
+ *		The result is a boolean value: true if user has the indicated
+ *		privilege, false if not.  The variants that take a key OID
+ *		return NULL if the OID doesn't exist.
+ */
+
+/*
+ * has_kek_privilege_name_name
+ *		Check user privileges on a KEK given
+ *		name username, text kekname, and text priv name.
+ */
+Datum
+has_kek_privilege_name_name(PG_FUNCTION_ARGS)
+{
+	Name		rolename = PG_GETARG_NAME(0);
+	text	   *kekname = PG_GETARG_TEXT_PP(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	Oid			roleid;
+	Oid			kekId;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = get_role_oid_or_public(NameStr(*rolename));
+	kekId = convert_kek_name(kekname);
+	mode = convert_kek_priv_string(priv_type_text);
+
+	aclresult = hg_kek_aclcheck(kekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_kek_privilege_name
+ *		Check user privileges on a KEK given
+ *		text kekname and text priv name.
+ *		current_user is assumed
+ */
+Datum
+has_kek_privilege_name(PG_FUNCTION_ARGS)
+{
+	text	   *kekname = PG_GETARG_TEXT_PP(0);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(1);
+	Oid			roleid;
+	Oid			kekId;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = GetUserId();
+	kekId = convert_kek_name(kekname);
+	mode = convert_kek_priv_string(priv_type_text);
+
+	aclresult = hg_kek_aclcheck(kekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_kek_privilege_name_id
+ *		Check user privileges on a KEK given
+ *		name username, OID kekid, and text priv name.
+ */
+Datum
+has_kek_privilege_name_id(PG_FUNCTION_ARGS)
+{
+	Name		rolename = PG_GETARG_NAME(0);
+	Oid			kekId = PG_GETARG_OID(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	Oid			roleid;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = get_role_oid_or_public(NameStr(*rolename));
+	mode = convert_kek_priv_string(priv_type_text);
+
+	/* Check if KEK exists */
+	if (!SearchSysCacheExists1(HGKEKOID, ObjectIdGetDatum(kekId)))
+		PG_RETURN_NULL();
+
+	aclresult = hg_kek_aclcheck(kekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_kek_privilege_id
+ *		Check user privileges on a KEK given
+ *		OID kekid and text priv name.
+ *		current_user is assumed
+ */
+Datum
+has_kek_privilege_id(PG_FUNCTION_ARGS)
+{
+	Oid			kekId = PG_GETARG_OID(0);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(1);
+	Oid			roleid;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = GetUserId();
+	mode = convert_kek_priv_string(priv_type_text);
+
+	/* Check if KEK exists */
+	if (!SearchSysCacheExists1(HGKEKOID, ObjectIdGetDatum(kekId)))
+		PG_RETURN_NULL();
+
+	aclresult = hg_kek_aclcheck(kekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_kek_privilege_id_name
+ *		Check user privileges on a KEK given
+ *		OID roleid, text kekname, and text priv name.
+ */
+Datum
+has_kek_privilege_id_name(PG_FUNCTION_ARGS)
+{
+	Oid			roleid = PG_GETARG_OID(0);
+	text	   *kekname = PG_GETARG_TEXT_PP(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	Oid			kekId;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	kekId = convert_kek_name(kekname);
+	mode = convert_kek_priv_string(priv_type_text);
+
+	aclresult = hg_kek_aclcheck(kekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_kek_privilege_id_id
+ *		Check user privileges on a KEK given
+ *		OID roleid, OID kekid, and text priv name.
+ */
+Datum
+has_kek_privilege_id_id(PG_FUNCTION_ARGS)
+{
+	Oid			roleid = PG_GETARG_OID(0);
+	Oid			kekId = PG_GETARG_OID(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	AclMode		mode;
+	AclResult	aclresult;
+
+	mode = convert_kek_priv_string(priv_type_text);
+
+	/* Check if KEK exists */
+	if (!SearchSysCacheExists1(HGKEKOID, ObjectIdGetDatum(kekId)))
+		PG_RETURN_NULL();
+
+	aclresult = hg_kek_aclcheck(kekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_dek_privilege variants
+ *		These are all named "has_dek_privilege" at the SQL level.
+ *		They take various combinations of key name, key OID,
+ *		user name, user OID, or implicit user = current_user.
+ *
+ *		The result is a boolean value: true if user has the indicated
+ *		privilege, false if not.  The variants that take a key OID
+ *		return NULL if the OID doesn't exist.
+ */
+
+/*
+ * has_dek_privilege_name_name
+ *		Check user privileges on a DEK given
+ *		name username, text dekname, and text priv name.
+ */
+Datum
+has_dek_privilege_name_name(PG_FUNCTION_ARGS)
+{
+	Name		rolename = PG_GETARG_NAME(0);
+	text	   *dekname = PG_GETARG_TEXT_PP(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	Oid			roleid;
+	Oid			dekId;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = get_role_oid_or_public(NameStr(*rolename));
+	dekId = convert_dek_name(dekname);
+	mode = convert_dek_priv_string(priv_type_text);
+
+	aclresult = hg_dek_aclcheck(dekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_dek_privilege_name
+ *		Check user privileges on a DEK given
+ *		text dekname and text priv name.
+ *		current_user is assumed
+ */
+Datum
+has_dek_privilege_name(PG_FUNCTION_ARGS)
+{
+	text	   *dekname = PG_GETARG_TEXT_PP(0);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(1);
+	Oid			roleid;
+	Oid			dekId;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = GetUserId();
+	dekId = convert_dek_name(dekname);
+	mode = convert_dek_priv_string(priv_type_text);
+
+	aclresult = hg_dek_aclcheck(dekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_dek_privilege_name_id
+ *		Check user privileges on a DEK given
+ *		name username, OID dekid, and text priv name.
+ */
+Datum
+has_dek_privilege_name_id(PG_FUNCTION_ARGS)
+{
+	Name		rolename = PG_GETARG_NAME(0);
+	Oid			dekId = PG_GETARG_OID(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	Oid			roleid;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = get_role_oid_or_public(NameStr(*rolename));
+	mode = convert_dek_priv_string(priv_type_text);
+
+	/* Check if DEK exists */
+	if (!SearchSysCacheExists1(HGDEKOID, ObjectIdGetDatum(dekId)))
+		PG_RETURN_NULL();
+
+	aclresult = hg_dek_aclcheck(dekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_dek_privilege_id
+ *		Check user privileges on a DEK given
+ *		OID dekid and text priv name.
+ *		current_user is assumed
+ */
+Datum
+has_dek_privilege_id(PG_FUNCTION_ARGS)
+{
+	Oid			dekId = PG_GETARG_OID(0);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(1);
+	Oid			roleid;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	roleid = GetUserId();
+	mode = convert_dek_priv_string(priv_type_text);
+
+	/* Check if DEK exists */
+	if (!SearchSysCacheExists1(HGDEKOID, ObjectIdGetDatum(dekId)))
+		PG_RETURN_NULL();
+
+	aclresult = hg_dek_aclcheck(dekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_dek_privilege_id_name
+ *		Check user privileges on a DEK given
+ *		OID roleid, text dekname, and text priv name.
+ */
+Datum
+has_dek_privilege_id_name(PG_FUNCTION_ARGS)
+{
+	Oid			roleid = PG_GETARG_OID(0);
+	text	   *dekname = PG_GETARG_TEXT_PP(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	Oid			dekId;
+	AclMode		mode;
+	AclResult	aclresult;
+
+	dekId = convert_dek_name(dekname);
+	mode = convert_dek_priv_string(priv_type_text);
+
+	aclresult = hg_dek_aclcheck(dekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
+}
+
+/*
+ * has_dek_privilege_id_id
+ *		Check user privileges on a DEK given
+ *		OID roleid, OID dekid, and text priv name.
+ */
+Datum
+has_dek_privilege_id_id(PG_FUNCTION_ARGS)
+{
+	Oid			roleid = PG_GETARG_OID(0);
+	Oid			dekId = PG_GETARG_OID(1);
+	text	   *priv_type_text = PG_GETARG_TEXT_PP(2);
+	AclMode		mode;
+	AclResult	aclresult;
+
+	mode = convert_dek_priv_string(priv_type_text);
+
+	/* Check if DEK exists */
+	if (!SearchSysCacheExists1(HGDEKOID, ObjectIdGetDatum(dekId)))
+		PG_RETURN_NULL();
+
+	aclresult = hg_dek_aclcheck(dekId, roleid, mode);
+
+	PG_RETURN_BOOL(aclresult == ACLCHECK_OK);
 }
 
 /*

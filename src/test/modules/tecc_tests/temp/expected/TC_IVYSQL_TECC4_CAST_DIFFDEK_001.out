@@ -1,0 +1,128 @@
+>>> 1
+DROP TABLE IF EXISTS example_table CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE example_table (id SERIAL PRIMARY KEY, col_text text_enc encrypted with (dek = dek_t1), col_varchar varchar_enc encrypted with (dek = dek_t1), col_bpchar bpchar_enc encrypted with (dek = dek_t1), col_int2 int2_enc encrypted with (dek = dek_t1), col_int4 int4_enc encrypted with (dek = dek_t1), col_int8 int8_enc encrypted with (dek = dek_t1), col_numeric numeric_enc encrypted with (dek = dek_t1),col_float4 float4_enc encrypted with (dek = dek_t1),col_float8 float8_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 7
+INSERT INTO example_table (col_text, col_varchar,col_bpchar,col_int2,col_int4, col_int8,col_numeric,col_float4,col_float8) VALUES ('这是一个文本字段','可变长度字符串','anc',1234,123456,123456789012,12345678.90,123.456,123456.789012);
+
+rows: 1
+>>> 8
+select col_text::text from example_table;
+
+错误: 无法把类型 text_enc 转换为 text
+  位置：16
+>>> 9
+select col_varchar::varchar from example_table;
+
+错误: 无法把类型 varchar_enc 转换为 character varying
+  位置：19
+>>> 10
+select col_bpchar::bpchar from example_table;
+
+错误: 无法把类型 bpchar_enc 转换为 character
+  位置：18
+>>> 11
+select col_int2::int2 from example_table;
+
+错误: 无法把类型 int2_enc 转换为 smallint
+  位置：16
+>>> 12
+select col_int4::int4 from example_table;
+
+错误: 无法把类型 int4_enc 转换为 integer
+  位置：16
+>>> 13
+select col_int8::int8 from example_table;
+
+错误: 无法把类型 int8_enc 转换为 bigint
+  位置：16
+>>> 14
+select col_float4::float4 from example_table;
+
+错误: 无法把类型 float4_enc 转换为 real
+  位置：18
+>>> 15
+select col_float8::float8 from example_table;
+
+错误: 无法把类型 float8_enc 转换为 double precision
+  位置：18
+>>> 16
+select col_numeric::numeric from example_table;
+
+错误: 无法把类型 numeric_enc 转换为 numeric
+  位置：19
+>>> 17
+alter table example_table alter column col_text set data type text;
+
+错误: 字段 "col_text" 不能自动转换成类型 text
+  建议：您可能需要指定"USING col_text::text"。
+>>> 18
+alter table example_table alter column col_varcahr set data type varchar;
+
+错误: 关系 "example_table" 的 "col_varcahr" 字段不存在
+>>> 19
+alter table example_table alter column col_bpcahr set data type bpchar;
+
+错误: 关系 "example_table" 的 "col_bpcahr" 字段不存在
+>>> 20
+alter table example_table alter column col_int2 set data type int2;
+
+错误: 字段 "col_int2" 不能自动转换成类型 smallint
+  建议：您可能需要指定"USING col_int2::smallint"。
+>>> 21
+alter table example_table alter column col_int4 set data type int4;
+
+错误: 字段 "col_int4" 不能自动转换成类型 integer
+  建议：您可能需要指定"USING col_int4::integer"。
+>>> 22
+alter table example_table alter column col_int8 set data type int8;
+
+错误: 字段 "col_int8" 不能自动转换成类型 bigint
+  建议：您可能需要指定"USING col_int8::bigint"。
+>>> 23
+alter table example_table alter column col_float4 set data type float4;
+
+错误: 字段 "col_float4" 不能自动转换成类型 real
+  建议：您可能需要指定"USING col_float4::real"。
+>>> 24
+alter table example_table alter column col_float8 set data type float8;
+
+错误: 字段 "col_float8" 不能自动转换成类型 double precision
+  建议：您可能需要指定"USING col_float8::double precision"。
+>>> 25
+alter table example_table alter column col_numeric set data type numeric;
+
+错误: 字段 "col_numeric" 不能自动转换成类型 numeric
+  建议：您可能需要指定"USING col_numeric::numeric"。
+>>> 26
+DROP TABLE IF EXISTS example_table CASCADE;
+
+rows: 0
+>>> 27
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 28
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

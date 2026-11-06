@@ -1,0 +1,67 @@
+>>> 1
+DROP TABLE IF EXISTS tb_int4 CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS tb_int8 CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP DEK IF EXISTS dek_t2 CASCADE;
+
+rows: 0
+>>> 5
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 6
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 7
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 8
+CREATE DEK dek_t2 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 9
+select 1::int2_enc encrypted with (dek = dek_t1)::int4_enc encrypted with (dek = dek_t2), pg_typeof(1::int2_enc encrypted with (dek = dek_t1)::int4_enc encrypted with (dek = dek_t2));
+
+错误: 无法把类型 integer 转换为 int2_enc
+  位置：9
+>>> 10
+select 1::int2_enc encrypted with (dek = dek_t1)::int8_enc encrypted with (dek = dek_t2), pg_typeof(1::int2_enc encrypted with (dek = dek_t1)::int8_enc encrypted with (dek = dek_t2));
+
+错误: 无法把类型 integer 转换为 int2_enc
+  位置：9
+>>> 11
+select 1::int4_enc encrypted with (dek = dek_t1)::int8_enc encrypted with (dek = dek_t2), pg_typeof(1::int4_enc encrypted with (dek = dek_t1)::int8_enc encrypted with (dek = dek_t2));
+
+错误: 无法把类型 integer 转换为 int4_enc
+  位置：9
+>>> 12
+DROP TABLE IF EXISTS tb_int4 CASCADE;
+
+rows: 0
+>>> 13
+DROP TABLE IF EXISTS tb_int8 CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 15
+DROP DEK IF EXISTS dek_t2 CASCADE;
+
+rows: 0
+>>> 16
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

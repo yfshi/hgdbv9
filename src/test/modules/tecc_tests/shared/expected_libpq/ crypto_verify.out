@@ -1,0 +1,480 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+        ?column?        
+------------------------
+ === 1 NaN/Infinity ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ id |    f4     |    f8     | nm  
+----+-----------+-----------+-----
+  1 | NaN       | NaN       | NaN
+  2 | Infinity  | Infinity  | NaN
+  3 | -Infinity | -Infinity | NaN
+  4 | 1.5       | 2.5       | 3.5
+(4 rows)
+
+DROP TABLE
+            ?column?            
+--------------------------------
+ === 2 Empty String vs NULL ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ id | enc_text | enc_varchar | enc_bpchar |      descr       
+----+----------+-------------+------------+------------------
+  1 |          |             |            | all empty string
+  2 | '<NULL>' | '<NULL>'    | '<NULL>'   | all NULL
+  3 | hello    | hello       | hello      | normal
+(3 rows)
+
+   ?column?    | id | enc_text |      descr       
+---------------+----+----------+------------------
+ empty_orderby |  2 |          | all NULL
+ empty_orderby |  1 |          | all empty string
+ empty_orderby |  3 | hello    | normal
+(3 rows)
+
+DROP TABLE
+         ?column?          
+---------------------------
+ === 3 Float Precision ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+ id |     f4     |    descr    
+----+------------+-------------
+  1 | 3.1415927  | pi 8-digit
+  2 | 2.7182817  | e 8-digit
+  3 | 123.45679  | decimal
+  4 | -123.45679 | neg decimal
+(4 rows)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+ id |        f8         |    descr    
+----+-------------------+-------------
+  1 | 3.141592653589793 | pi 15-digit
+  2 | 2.718281828459045 | e 15-digit
+  3 | 123.456789012345  | decimal
+  4 | -123.456789012345 | neg decimal
+(4 rows)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+ id |         n         |    descr    
+----+-------------------+-------------
+  1 | 3.141592653589793 | pi 15-digit
+  2 | 2.718281828459045 | e 15-digit
+  3 | 123.456789012345  | decimal
+  4 | -0.0000001        | tiny neg
+(4 rows)
+
+DROP TABLE
+     ?column?     
+------------------
+ 3d_native_vs_enc
+(1 row)
+
+ float4_native 
+---------------
+     3.1415927
+(1 row)
+
+ float4_enc 
+------------
+ 3.14159
+(1 row)
+
+   float8_native   
+-------------------
+ 3.141592653589793
+(1 row)
+
+ float8_enc 
+------------
+ 3.14159
+(1 row)
+
+  numeric_native   
+-------------------
+ 3.141592653589793
+(1 row)
+
+ numeric_enc 
+-------------
+ 3.14159
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+ id | f8 | descr 
+----+----+-------
+(0 rows)
+
+         max_f8          
+-------------------------
+ 1.7976931348623157e+308
+(1 row)
+
+          min_f8          
+--------------------------
+ -1.7976931348623157e+308
+(1 row)
+
+ big_e308 
+----------
+   1e+308
+(1 row)
+
+ small_e308 
+------------
+     1e-308
+(1 row)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 9
+ id |  enc_val  | plain_val |    descr     
+----+-----------+-----------+--------------
+  1 | 0         |         0 | zero
+  2 | -1        |        -1 | neg one
+  3 | -123.456  |  -123.456 | neg decimal
+  4 | -1e-07    |    -1e-07 | tiny neg
+  5 | -1e-10    |    -1e-10 | tiny neg sci
+  6 | 1         |         1 | one
+  7 | 3.1415927 | 3.1415927 | pi
+  8 | 1e-07     |     1e-07 | tiny pos
+  9 | 1e+10     |     1e+10 | large
+(9 rows)
+
+   ?column?   | id |  enc_val  
+--------------+----+-----------
+ f4_enc_order |  3 | -123.456
+ f4_enc_order |  2 | -1
+ f4_enc_order |  4 | -1e-07
+ f4_enc_order |  5 | -1e-10
+ f4_enc_order |  1 | 0
+ f4_enc_order |  8 | 1e-07
+ f4_enc_order |  6 | 1
+ f4_enc_order |  7 | 3.1415927
+ f4_enc_order |  9 | 1e+10
+(9 rows)
+
+    ?column?    | id | plain_val 
+----------------+----+-----------
+ f4_plain_order |  3 |  -123.456
+ f4_plain_order |  2 |        -1
+ f4_plain_order |  4 |    -1e-07
+ f4_plain_order |  5 |    -1e-10
+ f4_plain_order |  1 |         0
+ f4_plain_order |  8 |     1e-07
+ f4_plain_order |  6 |         1
+ f4_plain_order |  7 | 3.1415927
+ f4_plain_order |  9 |     1e+10
+(9 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+ id |      enc_val       |     plain_val      |     descr      
+----+--------------------+--------------------+----------------
+  1 | 0                  |                  0 | zero
+  2 | -1                 |                 -1 | neg one
+  3 | -123.456           |           -123.456 | neg decimal
+  4 | -1e-07             |             -1e-07 | tiny neg
+  5 | -1e-10             |             -1e-10 | tiny neg sci
+  6 | 1                  |                  1 | one
+  7 | 3.14159265         |         3.14159265 | pi
+  8 | 1e-07              |              1e-07 | tiny pos
+  9 | 10000000000        |        10000000000 | large
+ 10 | 1.2345678901234567 | 1.2345678901234567 | full precision
+(10 rows)
+
+   ?column?   | id |      enc_val       
+--------------+----+--------------------
+ f8_enc_order |  3 | -123.456
+ f8_enc_order |  2 | -1
+ f8_enc_order |  4 | -1e-07
+ f8_enc_order |  5 | -1e-10
+ f8_enc_order |  1 | 0
+ f8_enc_order |  8 | 1e-07
+ f8_enc_order |  6 | 1
+ f8_enc_order | 10 | 1.2345678901234567
+ f8_enc_order |  7 | 3.14159265
+ f8_enc_order |  9 | 10000000000
+(10 rows)
+
+    ?column?    | id |     plain_val      
+----------------+----+--------------------
+ f8_plain_order |  3 |           -123.456
+ f8_plain_order |  2 |                 -1
+ f8_plain_order |  4 |             -1e-07
+ f8_plain_order |  5 |             -1e-10
+ f8_plain_order |  1 |                  0
+ f8_plain_order |  8 |              1e-07
+ f8_plain_order |  6 |                  1
+ f8_plain_order | 10 | 1.2345678901234567
+ f8_plain_order |  7 |         3.14159265
+ f8_plain_order |  9 |        10000000000
+(10 rows)
+
+DROP TABLE
+DROP TABLE
+          ?column?           
+-----------------------------
+ === 4 Error Propagation ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+   int_col   | description 
+-------------+-------------
+ -2147483648 | int4 min
+ -1          | negative
+ 0           | zero
+ 1           | positive
+ 2147483647  | int4 max
+(5 rows)
+
+DROP TABLE
+          ?column?          
+----------------------------
+ === 5 Basic E2E SELECT ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ id | name  | salary 
+----+-------+--------
+  1 | Alice | 50000
+(1 row)
+
+ id | name  | salary 
+----+-------+--------
+  1 | Alice | 50000
+(1 row)
+
+ count 
+-------
+     1
+(1 row)
+
+ salary 
+--------
+ 50000
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+    ?column?    | id |  name   
+----------------+----+---------
+ 5b1_select_all |  1 | Alice
+ 5b1_select_all |  2 | Bob
+ 5b1_select_all |  3 | Charlie
+ 5b1_select_all |  4 | Diana
+(4 rows)
+
+ ?column? | id |  name   
+----------+----+---------
+ 5b2_eq   |  1 | Alice
+ 5b2_eq   |  3 | Charlie
+(2 rows)
+
+ ?column? | id | name  
+----------+----+-------
+ 5b3_like |  1 | Alice
+(1 row)
+
+   ?column?   | id |  name   
+--------------+----+---------
+ 5b4_not_like |  1 | Alice
+ 5b4_not_like |  3 | Charlie
+ 5b4_not_like |  4 | Diana
+(3 rows)
+
+ ?column? | id |  name   | salary 
+----------+----+---------+--------
+ 5b5_cmp  |  2 | Bob     | 60000
+ 5b5_cmp  |  3 | Charlie | 70000
+(2 rows)
+
+UPDATE 1
+  ?column?  | id |  name   | salary 
+------------+----+---------+--------
+ 5b6_update |  3 | Charlie | 75000
+(1 row)
+
+DELETE 1
+  ?column?  | count 
+------------+-------
+ 5b7_delete |     3
+(1 row)
+
+DROP TABLE
+                  ?column?                   
+---------------------------------------------
+ === 6 All 9 Types Round-Trip (20 cases) ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ ?column? | id | name | col_int4 | col_varchar 
+----------+----+------+----------+-------------
+(0 rows)
+
+ ?column? | id | name | col_int4 | col_varchar 
+----------+----+------+----------+-------------
+(0 rows)
+
+ ?column? | id | name | col_varchar 
+----------+----+------+-------------
+(0 rows)
+
+ ?column? | id | name | col_numeric 
+----------+----+------+-------------
+(0 rows)
+
+ ?column? | id | name | col_int8 | col_float8 
+----------+----+------+----------+------------
+(0 rows)
+
+UPDATE 0
+ ?column? | id | name | col_int4 | col_varchar 
+----------+----+------+----------+-------------
+(0 rows)
+
+UPDATE 0
+ ?column? | id | name | remark | col_int4 
+----------+----+------+--------+----------
+(0 rows)
+
+ ?column? | id | name | col_int2 | col_float4 | col_numeric | col_text 
+----------+----+------+----------+------------+-------------+----------
+(0 rows)
+
+   ?column?   | id |  name   | col_int2 |  col_int4   |       col_int8       
+--------------+----+---------+----------+-------------+----------------------
+ c18_all_rows |  3 | Charlie | 0        | 0           | 0
+ c18_all_rows |  4 | David   | 32767    | 2147483647  | 9223372036854775807
+ c18_all_rows |  5 | Eve     | -32768   | -2147483648 | -9223372036854775808
+ c18_all_rows |  7 | Grace   |          |             | 
+ c18_all_rows |  8 | Heidi   |          |             | 
+(5 rows)
+
+ ?column? | col_int2 | col_int4 | col_int8 | col_float4 | col_float8 | col_numeric | col_varchar | col_bpchar | col_text 
+----------+----------+----------+----------+------------+------------+-------------+-------------+------------+----------
+(0 rows)
+
+ ?column? | id | name | col_bpchar 
+----------+----+------+------------
+(0 rows)
+
+DROP TABLE
+    ?column?     
+-----------------
+ === Cleanup ===
+(1 row)
+
+DROP KEK
+psql:/.../crypto_verify.sql:14: NOTICE:  key encryption key "kek_crypto" does not exist, skipping
+psql:/.../crypto_verify.sql:27: NOTICE:  table "test_nan" does not exist, skipping
+psql:/.../crypto_verify.sql:48: NOTICE:  table "test_empty" does not exist, skipping
+psql:/.../crypto_verify.sql:80: NOTICE:  table "test_float4_prec" does not exist, skipping
+psql:/.../crypto_verify.sql:89: NOTICE:  table "test_float8_prec" does not exist, skipping
+psql:/.../crypto_verify.sql:98: NOTICE:  table "test_numeric_prec" does not exist, skipping
+psql:/.../crypto_verify.sql:116: NOTICE:  table "test_f8_limit" does not exist, skipping
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 6
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:122: TECC query preprocessing failed: invalid input syntax for type double precision: "1e-308"
+psql:/.../crypto_verify.sql:135: NOTICE:  table "test_f4_range" does not exist, skipping
+psql:/.../crypto_verify.sql:153: NOTICE:  table "test_f8_range" does not exist, skipping
+psql:/.../crypto_verify.sql:178: NOTICE:  table "test_errmsg" does not exist, skipping
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 1
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:184: TECC query preprocessing failed: value "2147483648" is out of range for type integer
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 0
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:199: TECC query preprocessing failed: value "2147483648" is out of range for type integer
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 0
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:200: TECC query preprocessing failed: value "-2147483649" is out of range for type integer
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 0
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:201: TECC query preprocessing failed: value "4294967295" is out of range for type integer
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 0
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:202: TECC query preprocessing failed: invalid input syntax for type integer: "12.34"
+psql:/.../crypto_verify.sql:213: NOTICE:  table "test_employee_select" does not exist, skipping
+psql:/.../crypto_verify.sql:257: NOTICE:  table "tecc_all_types_test" does not exist, skipping
+TECC [tecc_scheduler/tecc_algorithm_scheduler.c:775] ERROR: Failed to normalize data for DET algorithm: 1101
+TECC [tecc_scheduler/tecc_crypto_scheduler.c:2278] ERROR: TECC SCHEDULER ERROR: DET algorithm encryption failed for column with support_algo='det': 1101
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 12
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:286: TECC query preprocessing failed: Encryption failed: scheduler returned no result
+TECC [tecc_scheduler/tecc_algorithm_scheduler.c:775] ERROR: Failed to normalize data for DET algorithm: 1101
+TECC [tecc_scheduler/tecc_crypto_scheduler.c:2278] ERROR: TECC SCHEDULER ERROR: DET algorithm encryption failed for column with support_algo='det': 1101
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 12
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:299: TECC query preprocessing failed: Encryption failed: scheduler returned no result
+TECC [tecc_processor/stmt_processor.c:2651] ERROR: VALUES clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:332: TECC query preprocessing failed: function expressions are not supported for encrypted column "col_varchar"; pre-compute the value and insert it as a literal
+TECC [tecc_scheduler/tecc_algorithm_scheduler.c:775] ERROR: Failed to normalize data for DET algorithm: 1101
+TECC [tecc_scheduler/tecc_crypto_scheduler.c:5951] ERROR: TECC SCHEDULER ERROR: DET algorithm encryption failed for WHERE clause
+TECC [tecc_processor/where_clause_processor.c:1524] ERROR: Encryption result is NULL
+TECC [tecc_scheduler/tecc_algorithm_scheduler.c:775] ERROR: Failed to normalize data for DET algorithm: 1101
+TECC [tecc_scheduler/tecc_crypto_scheduler.c:5951] ERROR: TECC SCHEDULER ERROR: DET algorithm encryption failed for WHERE clause
+TECC [tecc_processor/where_clause_processor.c:3350] ERROR: Failed to encrypt WHERE clause value for column: col_text
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:357: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
+TECC [tecc_scheduler/tecc_algorithm_scheduler.c:775] ERROR: Failed to normalize data for DET algorithm: 1101
+TECC [tecc_scheduler/tecc_crypto_scheduler.c:2278] ERROR: TECC SCHEDULER ERROR: DET algorithm encryption failed for column with support_algo='det': 1101
+TECC [tecc_processor/values_processor.c:2445] ERROR: Failed to process value at index 3
+TECC [tecc_processor/stmt_processor.c:3718] ERROR: SET clause processing failed: -3
+TECC ERROR: SAFETY CHECK: encrypted columns present but no rewritten query
+psql:/.../crypto_verify.sql:370: TECC query preprocessing failed: Encryption failed: scheduler returned no result
+psql:/.../crypto_verify.sql:389: NOTICE:  drop cascades to data encryption key dek_crypto

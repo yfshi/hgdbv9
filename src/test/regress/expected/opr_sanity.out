@@ -1276,9 +1276,29 @@ WHERE p1.oprcode = p2.oid AND
      OR NOT binary_coercible(p2.prorettype, p1.oprresult)
      OR NOT binary_coercible(p1.oprleft, p2.proargtypes[0])
      OR NOT binary_coercible(p1.oprright, p2.proargtypes[1]));
- oid | oprname | oid | proname 
------+---------+-----+---------
-(0 rows)
+  oid  | oprname |  oid  |      proname      
+-------+---------+-------+-------------------
+ 51072 | =       | 50192 | text_enc_eq
+ 51073 | <>      | 50193 | text_enc_ne
+ 51074 | =       | 50178 | varchar_enc_eq
+ 51075 | <>      | 50179 | varchar_enc_ne
+ 51080 | =       | 50185 | bpchar_enc_eq
+ 51081 | <>      | 50186 | bpchar_enc_ne
+ 51082 | =       | 50185 | bpchar_enc_eq
+ 51083 | <>      | 50186 | bpchar_enc_ne
+ 51060 | ~~      | 50252 | varchar_enc_like
+ 51061 | !~~     | 50253 | varchar_enc_nlike
+ 51062 | ~~      | 50254 | bpchar_enc_like
+ 51063 | !~~     | 50255 | bpchar_enc_nlike
+ 51064 | ~~      | 50256 | text_enc_like
+ 51065 | !~~     | 50257 | text_enc_nlike
+ 51066 | ~~      | 50256 | text_enc_like
+ 51067 | !~~     | 50257 | text_enc_nlike
+ 51068 | ~~      | 50252 | varchar_enc_like
+ 51069 | !~~     | 50253 | varchar_enc_nlike
+ 51070 | ~~      | 50254 | bpchar_enc_like
+ 51071 | !~~     | 50255 | bpchar_enc_nlike
+(20 rows)
 
 SELECT p1.oid, p1.oprname, p2.oid, p2.proname
 FROM pg_operator AS p1, pg_proc AS p2
@@ -2208,6 +2228,9 @@ ORDER BY 1, 2, 3;
  btvarstrequalimage | text_ops         | name_ops         | name
  btvarstrequalimage | text_ops         | text_ops         | text
  btvarstrequalimage | text_ops         | varchar_ops      | text
+ tecc_equalimage    | bpchar_enc_ops   | bpchar_enc_ops   | bpchar_enc
+ tecc_equalimage    | text_enc_ops     | text_enc_ops     | text_enc
+ tecc_equalimage    | varchar_enc_ops  | varchar_enc_ops  | varchar_enc
                     | array_ops        | array_ops        | anyarray
                     | float_ops        | float4_ops       | real
                     | float_ops        | float8_ops       | double precision
@@ -2220,7 +2243,7 @@ ORDER BY 1, 2, 3;
                     | record_ops       | record_ops       | record
                     | tsquery_ops      | tsquery_ops      | tsquery
                     | tsvector_ops     | tsvector_ops     | tsvector
-(16 rows)
+(19 rows)
 
 -- **************** pg_index ****************
 -- Look for illegal values in pg_index fields.

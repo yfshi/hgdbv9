@@ -1,0 +1,44 @@
+-- SM4 algorithm regression tests
+-- This file contains SQL tests for SM4 encryption algorithms
+
+-- Load the test module
+CREATE EXTENSION IF NOT EXISTS test_sm4;
+
+-- Test SM4 algorithm functions
+SELECT test_sm4_all();
+INFO:  Starting SM4 algorithm tests...
+INFO:  Testing SM3 hash function...
+INFO:  SM3 hash of 'abc': 66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0
+INFO:  Expected hash: 66c7f0f462eeedd9d1f2d46bdc10e4e24167c4875cf2f7a2297da02b8f4ba8e0
+INFO:  SM3 hash test passed
+INFO:  Testing HMAC-SM3 function...
+INFO:  HMAC-SM3 test passed
+INFO:  Testing HKDF-SM3 function...
+INFO:  HKDF-SM3 test passed
+INFO:  Testing SM4-RND encrypt/decrypt...
+INFO:  Plaintext: Hello, SM4-RND encryption!
+INFO:  Plaintext length: 26
+INFO:  Encryption successful, ciphertext length: 90
+INFO:  Format validation passed
+INFO:  Decryption successful, decrypted length: 26
+INFO:  Decrypted text: Hello, SM4-RND encryption!
+INFO:  SM4-RND encrypt/decrypt test passed
+INFO:  Testing SM4-RND with various data lengths...
+INFO:    Test passed for length 0
+INFO:    Test passed for length 1
+INFO:    Test passed for length 15
+INFO:    Test passed for length 16
+INFO:    Test passed for length 17
+INFO:    Test passed for length 31
+INFO:    Test passed for length 32
+INFO:    Test passed for length 100
+INFO:    Test passed for length 1000
+INFO:  All length tests passed
+INFO:  All SM4 algorithm tests passed successfully!
+ test_sm4_all
+--------------
+
+(1 row)
+
+-- Clean up
+DROP EXTENSION test_sm4;

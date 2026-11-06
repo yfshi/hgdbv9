@@ -1000,6 +1000,8 @@ EventTriggerSupportsObjectType(ObjectType obtype)
 		case OBJECT_TYPE:
 		case OBJECT_USER_MAPPING:
 		case OBJECT_VIEW:
+		case OBJECT_KEK:
+		case OBJECT_DEK:
 			return true;
 
 			/*
@@ -1027,6 +1029,9 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 			return false;
 		case OCLASS_EVENT_TRIGGER:
 			/* no support for event triggers on event triggers */
+			return false;
+		case OCLASS_ENCRYPTED_COLUMN:
+			/* no support for internal encrypted column metadata */
 			return false;
 		case OCLASS_CLASS:
 		case OCLASS_PROC:
@@ -1059,6 +1064,8 @@ EventTriggerSupportsObjectClass(ObjectClass objclass)
 		case OCLASS_EXTENSION:
 		case OCLASS_POLICY:
 		case OCLASS_PUBLICATION:
+		case OCLASS_KEK:
+		case OCLASS_DEK:
 		case OCLASS_PUBLICATION_REL:
 		case OCLASS_SUBSCRIPTION:
 		case OCLASS_TRANSFORM:
@@ -2145,6 +2152,10 @@ stringify_grant_objtype(ObjectType objtype)
 			return "TABLESPACE";
 		case OBJECT_TYPE:
 			return "TYPE";
+		case OBJECT_KEK:
+			return "KEK";
+		case OBJECT_DEK:
+			return "DEK";
 			/* these currently aren't used */
 		case OBJECT_ACCESS_METHOD:
 		case OBJECT_AGGREGATE:
@@ -2278,6 +2289,8 @@ stringify_adefprivs_objtype(ObjectType objtype)
 		case OBJECT_TSPARSER:
 		case OBJECT_TSTEMPLATE:
 		case OBJECT_USER_MAPPING:
+		case OBJECT_DEK:
+		case OBJECT_KEK:
 		case OBJECT_VIEW:
 			elog(ERROR, "unsupported object type: %d", (int) objtype);
 	}

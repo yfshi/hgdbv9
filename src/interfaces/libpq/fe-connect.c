@@ -32,6 +32,8 @@
 #include "mb/pg_wchar.h"
 #include "pg_config_paths.h"
 #include "port/pg_bswap.h"
+/* TECC integration headers */
+#include "tecc_libpq_integration/fe-tecc-integration.h"
 /* Begin - ReqID:SRS-SECURITY-IDENTITYAUTH */
 #include "common/pass_crypt.h"
 /* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
@@ -59,11 +61,7 @@
 #endif
 
 #ifdef ENABLE_THREAD_SAFETY
-#ifdef WIN32
-#include "pthread-win32.h"
-#else
 #include <pthread.h>
-#endif
 #endif
 
 #ifdef USE_LDAP
@@ -416,6 +414,10 @@ static const internalPQconninfoOption PQconninfoOptions[] = {
 	offsetof(struct pg_conn, osuser)},
 	/* End ReqID:SRS-SQL-SYSVIEW */
 
+	{"enable_tecc", "PGENABLETECC", "false", NULL,
+		"Enable-Transparent-Encrypted-Column-Computing", "", 5,
+	offsetof(struct pg_conn, enable_tecc)},
+
 	/* Terminating entry --- MUST BE LAST */
 	{NULL, NULL, NULL, NULL,
 	NULL, NULL, 0}
@@ -684,6 +686,16 @@ pqDropServerData(PGconn *conn)
 	conn->write_err_msg = NULL;
 	conn->be_pid = 0;
 	conn->be_key = 0;
+
+	/* Clean up TECC state */
+	/* Begin - ReqID:TECC4.0 */
+	tecc_cleanup_copy_state(conn);
+	if (conn->tecc_state != NULL)
+	{
+		tecc_state_cleanup((TeccState *)conn->tecc_state);
+		conn->tecc_state = NULL;
+	}
+	/* End - ReqID:TECC4.0 */
 }
 
 
@@ -982,16 +994,46 @@ fillPGconn(PGconn *conn, PQconninfoOption *connOptions)
 
 			if (tmp)
 			{
-				char	  **connmember = (char **) ((char *) conn + option->connofs);
-
-				if (*connmember)
-					free(*connmember);
-				*connmember = strdup(tmp);
-				if (*connmember == NULL)
+				/* Special handling for enable_tecc boolean field */
+				if (strcmp(option->keyword, "enable_tecc") == 0)
 				{
-					appendPQExpBufferStr(&conn->errorMessage,
-										 libpq_gettext("out of memory\n"));
-					return false;
+					bool *connmember = (bool *) ((char *) conn + option->connofs);
+
+					/* Parse boolean value: "true", "1", "on" -> true, others -> false */
+					if (strcasecmp(tmp, "true") == 0 ||
+						strcasecmp(tmp, "1") == 0 ||
+						strcasecmp(tmp, "on") == 0 ||
+						strcasecmp(tmp, "yes") == 0)
+					{
+						*connmember = true;
+					}
+					else if (strcasecmp(tmp, "false") == 0 ||
+							 strcasecmp(tmp, "0") == 0 ||
+							 strcasecmp(tmp, "off") == 0 ||
+							 strcasecmp(tmp, "no") == 0)
+					{
+						*connmember = false;
+					}
+					else
+					{
+						/* Default to true for any other value */
+						*connmember = false;
+					}
+				}
+				else
+				{
+					/* Standard string handling for other fields */
+					char	  **connmember = (char **) ((char *) conn + option->connofs);
+
+					if (*connmember)
+						free(*connmember);
+					*connmember = strdup(tmp);
+					if (*connmember == NULL)
+					{
+						appendPQExpBufferStr(&conn->errorMessage,
+											 libpq_gettext("out of memory\n"));
+						return false;
+					}
 				}
 			}
 		}
@@ -2277,6 +2319,18 @@ connectDBComplete(PGconn *conn)
 		switch (flag)
 		{
 			case PGRES_POLLING_OK:
+				/* Initialize TECC state for the connection */
+				/* Begin - ReqID:TECC4.0 */
+				if (conn->enable_tecc)
+				{
+					TeccState *tecc_state = tecc_state_init(conn);
+					if (tecc_state == NULL)
+					{
+						/* Log error but don't fail the connection */
+						/* TECC will be disabled for this connection */
+					}
+				}
+				/* End - ReqID:TECC4.0 */
 				return 1;		/* success! */
 
 			case PGRES_POLLING_READING:
@@ -6757,6 +6811,21 @@ PQconninfo(PGconn *conn)
 
 			if (option->connofs < 0)
 				continue;
+
+			/* Begin - ReqID:TECC4.0 */
+			/* enable_tecc is stored as bool in pg_conn, not char *.
+			 * Convert the boolean value to its string representation
+			 * for conninfo_storeval. */
+			if (strcmp(option->keyword, "enable_tecc") == 0)
+			{
+				bool	   *boolval = (bool *) ((char *) conn + option->connofs);
+
+				conninfo_storeval(connOptions, option->keyword,
+								  *boolval ? "true" : "false",
+								  &errorBuf, true, false);
+				continue;
+			}
+			/* End - ReqID:TECC4.0 */
 
 			connmember = (char **) ((char *) conn + option->connofs);
 

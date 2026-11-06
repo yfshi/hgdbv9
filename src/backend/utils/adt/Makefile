@@ -24,6 +24,7 @@ OBJS = \
 	ascii.o \
 	bool.o \
 	cash.o \
+	hg_key_utils.o \
 	char.o \
 	cryptohashfuncs.o \
 	date.o \
@@ -138,3 +139,7 @@ numeric.o: CFLAGS += ${CFLAGS_VECTORIZE}
 varlena.o: varlena.c levenshtein.c
 
 include $(top_srcdir)/src/backend/common.mk
+
+# TECC后端文件头文件依赖
+hg_key_utils.o: $(top_srcdir)/src/include/utils/hg_key_utils.h \
+                $(top_srcdir)/src/include/utils/cipherdatatype.h

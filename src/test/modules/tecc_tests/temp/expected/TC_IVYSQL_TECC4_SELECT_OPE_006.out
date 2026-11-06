@@ -1,0 +1,154 @@
+>>> 1
+DROP TABLE IF EXISTS tecc_float_type_test CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS float_type_test CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+CREATE TABLE tecc_float_type_test (id SERIAL PRIMARY KEY, numeric_col numeric_enc encrypted with (dek = dek_t1,support_algo='ope'), float4_col float4_enc encrypted with (dek = dek_t1,support_algo='ope'), float8_col float8_enc encrypted with (dek = dek_t1,support_algo='ope'));
+
+rows: 0
+>>> 8
+CREATE TABLE float_type_test (id SERIAL PRIMARY KEY, numeric_col numeric, float4_col float4, float8_col float8);
+
+rows: 0
+>>> 9
+INSERT INTO float_type_test (numeric_col, float4_col, float8_col) VALUES (1.0, 1.0, 1.0),(10.0, 10.0, 10.0),(20.0, 20.0, 20.0),(30.0, 30.0, 30.0),(40.0, 40.0, 40.0),(50.0, 50.0, 50.0),(60.0, 60.0, 60.0),(100.0, 100.0, 100.0),(NULL, NULL, NULL);
+
+rows: 9
+>>> 10
+INSERT INTO tecc_float_type_test (numeric_col, float4_col, float8_col) VALUES (1.0, 1.0, 1.0),(10.0, 10.0, 10.0),(20.0, 20.0, 20.0),(30.0, 30.0, 30.0),(40.0, 40.0, 40.0),(50.0, 50.0, 50.0),(60.0, 60.0, 60.0),(100.0, 100.0, 100.0),(NULL, NULL, NULL);
+
+rows: 9
+>>> 11
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE numeric_col > 10.0 AND numeric_col < 50.0 ORDER BY numeric_col;
+
+3|20.0|20|20
+4|30.0|30|30
+5|40.0|40|40
+rows: -1
+>>> 12
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE numeric_col > 10.0 AND numeric_col < 50.0 ORDER BY numeric_col;
+
+3|20|20|20
+4|30|30|30
+5|40|40|40
+rows: -1
+>>> 13
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE float4_col >= 20.0 AND float4_col <= 40.0 ORDER BY float4_col;
+
+3|20.0|20|20
+4|30.0|30|30
+5|40.0|40|40
+rows: -1
+>>> 14
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE float4_col >= 20.0 AND float4_col <= 40.0 ORDER BY float4_col;
+
+3|20|20|20
+4|30|30|30
+5|40|40|40
+rows: -1
+>>> 15
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE float8_col >= 30.5 AND float8_col < 50.0 ORDER BY float8_col;
+
+5|40.0|40|40
+rows: -1
+>>> 16
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE float8_col >= 30.5 AND float8_col < 50.0 ORDER BY float8_col;
+
+5|40|40|40
+rows: -1
+>>> 17
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE numeric_col > 30.0 ORDER BY numeric_col;
+
+5|40.0|40|40
+6|50.0|50|50
+7|60.0|60|60
+8|100.0|100|100
+rows: -1
+>>> 18
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE numeric_col > 30.0 ORDER BY numeric_col;
+
+5|40|40|40
+6|50|50|50
+7|60|60|60
+8|100|100|100
+rows: -1
+>>> 19
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE float4_col >= 40.0 ORDER BY float4_col;
+
+5|40.0|40|40
+6|50.0|50|50
+7|60.0|60|60
+8|100.0|100|100
+rows: -1
+>>> 20
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE float4_col >= 40.0 ORDER BY float4_col;
+
+5|40|40|40
+6|50|50|50
+7|60|60|60
+8|100|100|100
+rows: -1
+>>> 21
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE float8_col < 30.0 ORDER BY float8_col;
+
+1|1.0|1|1
+2|10.0|10|10
+3|20.0|20|20
+rows: -1
+>>> 22
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE float8_col < 30.0 ORDER BY float8_col;
+
+1|1|1|1
+2|10|10|10
+3|20|20|20
+rows: -1
+>>> 23
+SELECT id, numeric_col, float4_col, float8_col FROM float_type_test WHERE numeric_col <= 20.0 ORDER BY numeric_col;
+
+1|1.0|1|1
+2|10.0|10|10
+3|20.0|20|20
+rows: -1
+>>> 24
+SELECT id, numeric_col, float4_col, float8_col FROM tecc_float_type_test WHERE numeric_col <= 20.0 ORDER BY numeric_col;
+
+1|1|1|1
+2|10|10|10
+3|20|20|20
+rows: -1
+>>> 25
+DROP TABLE IF EXISTS tecc_float_type_test CASCADE;
+
+rows: 0
+>>> 26
+DROP TABLE IF EXISTS float_type_test CASCADE;
+
+rows: 0
+>>> 27
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 28
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

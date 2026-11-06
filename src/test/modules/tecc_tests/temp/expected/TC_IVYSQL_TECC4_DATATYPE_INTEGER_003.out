@@ -1,0 +1,62 @@
+5月 23, 2026 1:32:09 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:32:09 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:32:09 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS tb_int8 CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+create table tb_int8( id SERIAL PRIMARY KEY, bigint_col int8_enc encrypted with (dek = dek_t1,support_algo='ope'), description TEXT);
+
+rows: 0
+>>> 7
+INSERT INTO tb_int8 (bigint_col, description) VALUES (0, '零值'),(1, '正值'),(-1, '负值'),(1000000000, '十亿'),(-1000000000, '负十亿'),(9223372036854775807, 'int8最大值'),(-9223372036854775808, 'int8最小值'),(9223372036854775806, '接近int8最大值'),(-9223372036854775807, '接近int8最小值');
+
+rows: 9
+>>> 8
+INSERT INTO tb_int8 (bigint_col, description) VALUES (9223372036854775808, '超过int8最大值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 9
+INSERT INTO tb_int8 (bigint_col, description) VALUES (-9223372036854775809, '超过int8最小值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 10
+INSERT INTO tb_int8 (bigint_col, description) VALUES (12.24, '浮点值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 11
+SELECT bigint_col, description, pg_typeof(bigint_col) as data_type FROM tb_int8 ORDER BY bigint_col NULLS FIRST;
+
+TECC strict: function 'pg_typeof' is not in the encryption-safe whitelist but references encrypted column [tb_int8.bigint_col]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, min, max, coalesce).
+>>> 12
+DROP TABLE IF EXISTS tb_int8 CASCADE;
+
+rows: 0
+>>> 13
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 14
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

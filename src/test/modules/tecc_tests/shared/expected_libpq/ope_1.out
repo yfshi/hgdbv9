@@ -1,0 +1,942 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+               ?column?               
+--------------------------------------
+ === 1 Int Range (int2/int4/int8) ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+    ?column?    | id | int4_col 
+----------------+----+----------
+ 1a_int4_gt_500 |  6 | 600
+ 1a_int4_gt_500 |  7 | 700
+ 1a_int4_gt_500 |  8 | 800
+ 1a_int4_gt_500 |  9 | 900
+ 1a_int4_gt_500 | 10 | 1000
+(5 rows)
+
+    ?column?    | id | int4_col 
+----------------+----+----------
+ 1b_int4_lt_300 |  1 | 100
+ 1b_int4_lt_300 |  2 | 200
+(2 rows)
+
+    ?column?    | id | int4_col 
+----------------+----+----------
+ 1c_int4_ge_500 |  5 | 500
+ 1c_int4_ge_500 |  6 | 600
+ 1c_int4_ge_500 |  7 | 700
+ 1c_int4_ge_500 |  8 | 800
+ 1c_int4_ge_500 |  9 | 900
+ 1c_int4_ge_500 | 10 | 1000
+(6 rows)
+
+    ?column?    | id | int4_col 
+----------------+----+----------
+ 1d_int4_le_300 |  1 | 100
+ 1d_int4_le_300 |  2 | 200
+ 1d_int4_le_300 |  3 | 300
+(3 rows)
+
+    ?column?     | id | int4_col 
+-----------------+----+----------
+ 1e_int4_between |  3 | 300
+ 1e_int4_between |  4 | 400
+ 1e_int4_between |  5 | 500
+ 1e_int4_between |  6 | 600
+ 1e_int4_between |  7 | 700
+(5 rows)
+
+    ?column?     | id | int2_col 
+-----------------+----+----------
+ 1f_int2_between |  3 | 30
+ 1f_int2_between |  4 | 40
+ 1f_int2_between |  5 | 50
+ 1f_int2_between |  6 | 60
+ 1f_int2_between |  7 | 70
+(5 rows)
+
+    ?column?     | id | int8_col 
+-----------------+----+----------
+ 1g_int8_gt_5000 |  6 | 6000
+ 1g_int8_gt_5000 |  7 | 7000
+ 1g_int8_gt_5000 |  8 | 8000
+ 1g_int8_gt_5000 |  9 | 9000
+ 1g_int8_gt_5000 | 10 | 10000
+(5 rows)
+
+    ?column?    | id | int4_col 
+----------------+----+----------
+ 1h_int4_eq_500 |  5 | 500
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 14
+   ?column?    | id |       int8_col       
+---------------+----+----------------------
+ 1i_int8_lt_30 |  7 | -9223372036854775808
+ 1i_int8_lt_30 |  5 | -32768
+ 1i_int8_lt_30 |  3 | -100
+ 1i_int8_lt_30 | 10 | -10
+ 1i_int8_lt_30 |  2 | 0
+ 1i_int8_lt_30 |  9 | 2
+(6 rows)
+
+   ?column?   | id |      int8_col       
+--------------+----+---------------------
+ 1j_int8_gt_0 |  9 | 2
+ 1j_int8_gt_0 |  1 | 100
+ 1j_int8_gt_0 | 12 | 100
+ 1j_int8_gt_0 |  8 | 300
+ 1j_int8_gt_0 |  4 | 32767
+ 1j_int8_gt_0 |  6 | 9223372036854775807
+(6 rows)
+
+    ?column?    | id | int8_col 
+----------------+----+----------
+ 1k_int8_eq_100 |  1 | 100
+ 1k_int8_eq_100 | 12 | 100
+(2 rows)
+
+   ?column?    | id |  int4_col   
+---------------+----+-------------
+ 1l_int4_lt_30 |  7 | -2147483648
+ 1l_int4_lt_30 |  5 | -32768
+ 1l_int4_lt_30 |  3 | -100
+ 1l_int4_lt_30 | 10 | -5
+ 1l_int4_lt_30 |  2 | 0
+ 1l_int4_lt_30 |  9 | 1
+(6 rows)
+
+   ?column?    | id | int2_col 
+---------------+----+----------
+ 1m_int2_lt_30 |  5 | -32768
+ 1m_int2_lt_30 |  7 | -32768
+ 1m_int2_lt_30 |  3 | -100
+ 1m_int2_lt_30 | 10 | -5
+ 1m_int2_lt_30 |  2 | 0
+ 1m_int2_lt_30 |  9 | 1
+(6 rows)
+
+ ?column? | id | int8_col 
+----------+----+----------
+(0 rows)
+
+ ?column? | id | int8_col 
+----------+----+----------
+(0 rows)
+
+    ?column?    | id |      int8_col       
+----------------+----+---------------------
+ 1p_int8_ge_max |  2 | 0
+ 1p_int8_ge_max |  9 | 2
+ 1p_int8_ge_max | 12 | 100
+ 1p_int8_ge_max |  1 | 100
+ 1p_int8_ge_max |  8 | 300
+ 1p_int8_ge_max |  4 | 32767
+ 1p_int8_ge_max |  6 | 9223372036854775807
+(7 rows)
+
+    ?column?     | id | int2_col | int4_col |      int8_col       
+-----------------+----+----------+----------+---------------------
+ 1q_combo_or_and |  2 | 0        | 0        | 0
+ 1q_combo_or_and |  9 | 1        | 1        | 2
+ 1q_combo_or_and |  1 | 100      | 100      | 100
+ 1q_combo_or_and |  8 | 100      | 200      | 300
+ 1q_combo_or_and |  4 | 32767    | 32767    | 32767
+ 1q_combo_or_and |  6 | 32767    | 32767    | 9223372036854775807
+(6 rows)
+
+DROP TABLE
+DROP TABLE
+           ?column?            
+-------------------------------
+ === 2 Float/Numeric Range ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 14
+        ?column?        | id | numeric_col 
+------------------------+----+-------------
+ 2a_numeric_gt_10_lt_50 |  1 | 10.5
+ 2a_numeric_gt_10_lt_50 |  2 | 20.2500000
+ 2a_numeric_gt_10_lt_50 |  3 | 30.7500000
+ 2a_numeric_gt_10_lt_50 |  4 | 40.1250000
+(4 rows)
+
+       ?column?        | id | float4_col 
+-----------------------+----+------------
+ 2b_float4_ge_20_le_40 |  2 | 20.25
+ 2b_float4_ge_20_le_40 |  3 | 30.75
+(2 rows)
+
+        ?column?         | id | float8_col 
+-------------------------+----+------------
+ 2c_float8_gt_30p5_lt_50 |  3 | 30.75
+ 2c_float8_gt_30p5_lt_50 |  4 | 40.125
+(2 rows)
+
+     ?column?     | id |   numeric_col    
+------------------+----+------------------
+ 2d_numeric_gt_30 |  3 | 30.7500000
+ 2d_numeric_gt_30 |  4 | 40.1250000
+ 2d_numeric_gt_30 |  5 | 50.3330000
+ 2d_numeric_gt_30 |  7 | 100.990000
+ 2d_numeric_gt_30 | 10 | 999999.999999000
+(5 rows)
+
+    ?column?     | id | float4_col 
+-----------------+----+------------
+ 2e_float4_ge_40 |  4 | 40.125
+ 2e_float4_ge_40 |  5 | 50.333
+ 2e_float4_ge_40 |  7 | 100.99
+ 2e_float4_ge_40 | 10 | 1e+06
+(4 rows)
+
+    ?column?     | id |    float8_col     
+-----------------+----+-------------------
+ 2f_float8_lt_30 | 11 | -999999.999999
+ 2f_float8_lt_30 |  6 | -10.5
+ 2f_float8_lt_30 |  8 | 0
+ 2f_float8_lt_30 |  9 | 1e-07
+ 2f_float8_lt_30 | 13 | 2.718281828459045
+ 2f_float8_lt_30 | 12 | 3.141592653589793
+ 2f_float8_lt_30 |  1 | 10.5
+ 2f_float8_lt_30 |  2 | 20.25
+(8 rows)
+
+     ?column?     | id |      numeric_col       
+------------------+----+------------------------
+ 2g_numeric_le_20 | 11 | -999999.999999000
+ 2g_numeric_le_20 |  6 | -10.5
+ 2g_numeric_le_20 |  8 | 0.00
+ 2g_numeric_le_20 |  9 | 0.000000100
+ 2g_numeric_le_20 | 13 | 2.71828182845904500000
+ 2g_numeric_le_20 | 12 | 3.14159265358979300000
+ 2g_numeric_le_20 |  1 | 10.5
+(7 rows)
+
+     ?column?      | id | float4_col 
+-------------------+----+------------
+ 2h_float4_between | 12 | 3.1415927
+(1 row)
+
+    ?column?    | id |  float8_col   
+----------------+----+---------------
+ 2i_float8_ge_5 |  1 | 10.5
+ 2i_float8_ge_5 |  2 | 20.25
+ 2i_float8_ge_5 |  3 | 30.75
+ 2i_float8_ge_5 |  4 | 40.125
+ 2i_float8_ge_5 |  5 | 50.333
+ 2i_float8_ge_5 |  7 | 100.99
+ 2i_float8_ge_5 | 10 | 999999.999999
+(7 rows)
+
+ ?column? | id | numeric_col 
+----------+----+-------------
+(0 rows)
+
+         ?column?          | id |    float8_col     
+---------------------------+----+-------------------
+ 2k_float8_between_precise | 12 | 3.141592653589793
+ 2k_float8_between_precise | 13 | 2.718281828459045
+(2 rows)
+
+DROP TABLE
+       ?column?       
+----------------------
+ === 3 Text Range ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 13
+          ?column?          | id |  text_col   
+----------------------------+----+-------------
+ 3a_text_gt_apple_lt_cherry |  8 | 123apple
+ 3a_text_gt_apple_lt_cherry |  9 | apple123
+ 3a_text_gt_apple_lt_cherry |  2 | application
+ 3a_text_gt_apple_lt_cherry |  3 | banana
+ 3a_text_gt_apple_lt_cherry |  4 | berry
+(5 rows)
+
+           ?column?            | id | varchar_col 
+-------------------------------+----+-------------
+ 3b_varchar_ge_apple_le_cherry |  1 | apple
+ 3b_varchar_ge_apple_le_cherry |  8 | 123apple
+ 3b_varchar_ge_apple_le_cherry |  9 | apple123
+ 3b_varchar_ge_apple_le_cherry |  2 | application
+ 3b_varchar_ge_apple_le_cherry |  3 | banana
+ 3b_varchar_ge_apple_le_cherry |  4 | berry
+ 3b_varchar_ge_apple_le_cherry |  5 | cherry
+(7 rows)
+
+           ?column?            | id | bpchar_col 
+-------------------------------+----+------------
+ 3c_bpchar_gt_banana_lt_cherry |  4 | berry
+(1 row)
+
+              ?column?               | id |  text_col   
+-------------------------------------+----+-------------
+ 3d_gt_a_lt_b_or_gt_banana_lt_cherry |  1 | apple
+ 3d_gt_a_lt_b_or_gt_banana_lt_cherry |  8 | 123apple
+ 3d_gt_a_lt_b_or_gt_banana_lt_cherry |  9 | apple123
+ 3d_gt_a_lt_b_or_gt_banana_lt_cherry |  2 | application
+ 3d_gt_a_lt_b_or_gt_banana_lt_cherry |  4 | berry
+(5 rows)
+
+                   ?column?                    | id | varchar_col 
+-----------------------------------------------+----+-------------
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry |  9 | apple123
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry |  8 | 123apple
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry |  2 | application
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry |  3 | banana
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry |  6 | Apple
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry |  7 | APPLE
+ 3e_varchar_gt_apple_and_lt_berry_or_gt_cherry | 11 | zoo
+(7 rows)
+
+       ?column?        | id |  text_col   
+-----------------------+----+-------------
+ 3f_text_gt_empty_lt_c | 10 | a
+ 3f_text_gt_empty_lt_c |  1 | apple
+ 3f_text_gt_empty_lt_c |  8 | 123apple
+ 3f_text_gt_empty_lt_c |  9 | apple123
+ 3f_text_gt_empty_lt_c |  2 | application
+ 3f_text_gt_empty_lt_c |  3 | banana
+ 3f_text_gt_empty_lt_c |  4 | berry
+(7 rows)
+
+      ?column?      | id | bpchar_col  
+--------------------+----+-------------
+ 3g_bpchar_range_ne |  1 | apple
+ 3g_bpchar_range_ne |  8 | 123apple
+ 3g_bpchar_range_ne |  9 | apple123
+ 3g_bpchar_range_ne |  2 | application
+ 3g_bpchar_range_ne |  4 | berry
+ 3g_bpchar_range_ne |  5 | cherry
+(6 rows)
+
+DROP TABLE
+          ?column?          
+----------------------------
+ === 4 ORDER BY Numeric ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+  ?column?   |   tag    | ope_i4 
+-------------+----------+--------
+ 4a_int4_asc | r1_1     | 10
+ 4a_int4_asc | r1.5_1.5 | 15
+ 4a_int4_asc | r2_2.5   | 20
+ 4a_int4_asc | r3_5     | 30
+ 4a_int4_asc | r4_7.5   | 40
+ 4a_int4_asc | r5_10    | 50
+(6 rows)
+
+   ?column?   |   tag    | ope_i4 
+--------------+----------+--------
+ 4b_int4_desc | r5_10    | 50
+ 4b_int4_desc | r4_7.5   | 40
+ 4b_int4_desc | r3_5     | 30
+ 4b_int4_desc | r2_2.5   | 20
+ 4b_int4_desc | r1.5_1.5 | 15
+ 4b_int4_desc | r1_1     | 10
+(6 rows)
+
+   ?column?    |   tag    | ope_f4 
+---------------+----------+--------
+ 4c_float4_asc | r1_1     | 1
+ 4c_float4_asc | r1.5_1.5 | 1.5
+ 4c_float4_asc | r2_2.5   | 2.5
+ 4c_float4_asc | r3_5     | 5
+ 4c_float4_asc | r4_7.5   | 7.5
+ 4c_float4_asc | r5_10    | 10
+(6 rows)
+
+    ?column?    |   tag    | ope_f4 
+----------------+----------+--------
+ 4d_float4_desc | r5_10    | 10
+ 4d_float4_desc | r4_7.5   | 7.5
+ 4d_float4_desc | r3_5     | 5
+ 4d_float4_desc | r2_2.5   | 2.5
+ 4d_float4_desc | r1.5_1.5 | 1.5
+ 4d_float4_desc | r1_1     | 1
+(6 rows)
+
+   ?column?    |   tag    | ope_f8 
+---------------+----------+--------
+ 4e_float8_asc | r1_1     | 1
+ 4e_float8_asc | r1.5_1.5 | 1.5
+ 4e_float8_asc | r2_2.5   | 2.5
+ 4e_float8_asc | r3_5     | 5
+ 4e_float8_asc | r4_7.5   | 7.5
+ 4e_float8_asc | r5_10    | 10
+(6 rows)
+
+    ?column?    |   tag    | ope_f8 
+----------------+----------+--------
+ 4f_float8_desc | r5_10    | 10
+ 4f_float8_desc | r4_7.5   | 7.5
+ 4f_float8_desc | r3_5     | 5
+ 4f_float8_desc | r2_2.5   | 2.5
+ 4f_float8_desc | r1.5_1.5 | 1.5
+ 4f_float8_desc | r1_1     | 1
+(6 rows)
+
+    ?column?    |   tag    | ope_num 
+----------------+----------+---------
+ 4g_numeric_asc | r1_1     | 1.00
+ 4g_numeric_asc | r1.5_1.5 | 1.50
+ 4g_numeric_asc | r2_2.5   | 2.50
+ 4g_numeric_asc | r3_5     | 5.00
+ 4g_numeric_asc | r4_7.5   | 7.50
+ 4g_numeric_asc | r5_10    | 10.0
+(6 rows)
+
+    ?column?     |   tag    | ope_num 
+-----------------+----------+---------
+ 4h_numeric_desc | r5_10    | 10.0
+ 4h_numeric_desc | r4_7.5   | 7.50
+ 4h_numeric_desc | r3_5     | 5.00
+ 4h_numeric_desc | r2_2.5   | 2.50
+ 4h_numeric_desc | r1.5_1.5 | 1.50
+ 4h_numeric_desc | r1_1     | 1.00
+(6 rows)
+
+      ?column?      |   tag    | ope_i4 | ope_f8 
+--------------------+----------+--------+--------
+ 4i_multi_col_order | r1_1     | 10     | 1
+ 4i_multi_col_order | r1.5_1.5 | 15     | 1.5
+ 4i_multi_col_order | r2_2.5   | 20     | 2.5
+ 4i_multi_col_order | r3_5     | 30     | 5
+ 4i_multi_col_order | r4_7.5   | 40     | 7.5
+ 4i_multi_col_order | r5_10    | 50     | 10
+(6 rows)
+
+DROP TABLE
+        ?column?         
+-------------------------
+ === 5 ORDER BY Text ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 6
+    ?column?    |   tag    | ope_vc 
+----------------+----------+--------
+ 5a_varchar_asc | r2_a     | a
+ 5a_varchar_asc | r4_abcde | abcde
+ 5a_varchar_asc | r1_hello | hello
+ 5a_varchar_asc | r5_test  | test
+ 5a_varchar_asc | r3_world | world
+ 5a_varchar_asc | r6_z     | z
+(6 rows)
+
+    ?column?     |   tag    | ope_vc 
+-----------------+----------+--------
+ 5b_varchar_desc | r6_z     | z
+ 5b_varchar_desc | r3_world | world
+ 5b_varchar_desc | r5_test  | test
+ 5b_varchar_desc | r1_hello | hello
+ 5b_varchar_desc | r4_abcde | abcde
+ 5b_varchar_desc | r2_a     | a
+(6 rows)
+
+   ?column?    |   tag    | ope_bp 
+---------------+----------+--------
+ 5c_bpchar_asc | r2_a     | a
+ 5c_bpchar_asc | r4_abcde | abcde
+ 5c_bpchar_asc | r1_hello | hello
+ 5c_bpchar_asc | r5_test  | test
+ 5c_bpchar_asc | r3_world | world
+ 5c_bpchar_asc | r6_z     | z
+(6 rows)
+
+    ?column?    |   tag    | ope_bp 
+----------------+----------+--------
+ 5d_bpchar_desc | r6_z     | z
+ 5d_bpchar_desc | r3_world | world
+ 5d_bpchar_desc | r5_test  | test
+ 5d_bpchar_desc | r1_hello | hello
+ 5d_bpchar_desc | r4_abcde | abcde
+ 5d_bpchar_desc | r2_a     | a
+(6 rows)
+
+  ?column?   |   tag    | ope_txt 
+-------------+----------+---------
+ 5e_text_asc | r2_a     | a
+ 5e_text_asc | r4_abcde | abcde
+ 5e_text_asc | r1_hello | hello
+ 5e_text_asc | r5_test  | test
+ 5e_text_asc | r3_world | world
+ 5e_text_asc | r6_z     | z
+(6 rows)
+
+   ?column?   |   tag    | ope_txt 
+--------------+----------+---------
+ 5f_text_desc | r6_z     | z
+ 5f_text_desc | r3_world | world
+ 5f_text_desc | r5_test  | test
+ 5f_text_desc | r1_hello | hello
+ 5f_text_desc | r4_abcde | abcde
+ 5f_text_desc | r2_a     | a
+(6 rows)
+
+   ?column?   |   tag    | ope_vc | ope_txt 
+--------------+----------+--------+---------
+ 5g_multi_col | r2_a     | a      | a
+ 5g_multi_col | r4_abcde | abcde  | abcde
+ 5g_multi_col | r1_hello | hello  | hello
+ 5g_multi_col | r5_test  | test   | test
+ 5g_multi_col | r3_world | world  | world
+ 5g_multi_col | r6_z     | z      | z
+(6 rows)
+
+DROP TABLE
+             ?column?              
+-----------------------------------
+ === 6 ORDER BY Extreme Varlen ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+    ?column?    |     tag     |           ope_vc           
+----------------+-------------+----------------------------
+ 6b_varchar_asc | s1_a        | a
+ 6b_varchar_asc | s2_aa       | aa
+ 6b_varchar_asc | s3_aaa      | aaa
+ 6b_varchar_asc | s7_abcd     | abcd
+ 6b_varchar_asc | s6_long     | hello world this is a long
+ 6b_varchar_asc | s8_xtralong | test test test test test
+ 6b_varchar_asc | s4_z        | z
+ 6b_varchar_asc | s5_zz       | zz
+(8 rows)
+
+    ?column?     |     tag     |           ope_vc           
+-----------------+-------------+----------------------------
+ 6c_varchar_desc | s5_zz       | zz
+ 6c_varchar_desc | s4_z        | z
+ 6c_varchar_desc | s8_xtralong | test test test test test
+ 6c_varchar_desc | s6_long     | hello world this is a long
+ 6c_varchar_desc | s7_abcd     | abcd
+ 6c_varchar_desc | s3_aaa      | aaa
+ 6c_varchar_desc | s2_aa       | aa
+ 6c_varchar_desc | s1_a        | a
+(8 rows)
+
+DROP TABLE
+            ?column?             
+---------------------------------
+ === 7 ORDER BY with COLLATE ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 13
+       ?column?       | id | text_col 
+----------------------+----+----------
+ 7a_collateC_text_asc |  7 | 
+ 7a_collateC_text_asc | 12 | 0start
+ 7a_collateC_text_asc |  3 | 123abc
+ 7a_collateC_text_asc | 13 | 9end
+ 7a_collateC_text_asc |  4 | ABC
+ 7a_collateC_text_asc |  2 | Banana
+ 7a_collateC_text_asc |  9 | Z
+ 7a_collateC_text_asc |  8 | a
+ 7a_collateC_text_asc |  1 | apple
+ 7a_collateC_text_asc | 11 | berry
+ 7a_collateC_text_asc |  5 | orange
+ 7a_collateC_text_asc |  6 | 测试
+ 7a_collateC_text_asc | 10 | 
+(13 rows)
+
+        ?column?         | id | varchar_col 
+-------------------------+----+-------------
+ 7b_collateC_varchar_asc |  7 | 
+ 7b_collateC_varchar_asc | 12 | 0start
+ 7b_collateC_varchar_asc |  3 | 123abc
+ 7b_collateC_varchar_asc | 13 | 9end
+ 7b_collateC_varchar_asc |  4 | ABC
+ 7b_collateC_varchar_asc |  2 | Banana
+ 7b_collateC_varchar_asc |  9 | Z
+ 7b_collateC_varchar_asc |  8 | a
+ 7b_collateC_varchar_asc |  1 | apple
+ 7b_collateC_varchar_asc | 11 | berry
+ 7b_collateC_varchar_asc |  5 | orange
+ 7b_collateC_varchar_asc |  6 | 测试
+ 7b_collateC_varchar_asc | 10 | 
+(13 rows)
+
+        ?column?        | id | bpchar_col 
+------------------------+----+------------
+ 7c_collateC_bpchar_asc |  7 | 
+ 7c_collateC_bpchar_asc | 12 | 0start
+ 7c_collateC_bpchar_asc |  3 | 123abc
+ 7c_collateC_bpchar_asc | 13 | 9end
+ 7c_collateC_bpchar_asc |  4 | ABC
+ 7c_collateC_bpchar_asc |  2 | Banana
+ 7c_collateC_bpchar_asc |  9 | Z
+ 7c_collateC_bpchar_asc |  8 | a
+ 7c_collateC_bpchar_asc |  1 | apple
+ 7c_collateC_bpchar_asc | 11 | berry
+ 7c_collateC_bpchar_asc |  5 | orange
+ 7c_collateC_bpchar_asc |  6 | 测试
+ 7c_collateC_bpchar_asc | 10 | 
+(13 rows)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+        ?column?        | id | smallint_col 
+------------------------+----+--------------
+ 7d_int2_asc_nullsfirst | 10 | 
+ 7d_int2_asc_nullsfirst |  5 | -32768
+ 7d_int2_asc_nullsfirst |  7 | -32767
+ 7d_int2_asc_nullsfirst |  9 | -100
+ 7d_int2_asc_nullsfirst |  3 | -1
+ 7d_int2_asc_nullsfirst |  1 | 0
+ 7d_int2_asc_nullsfirst |  2 | 1
+ 7d_int2_asc_nullsfirst |  8 | 100
+ 7d_int2_asc_nullsfirst |  6 | 32766
+ 7d_int2_asc_nullsfirst |  4 | 32767
+(10 rows)
+
+  ?column?   | id | int_col 
+-------------+----+---------
+ 7e_int4_asc |  5 | -32768
+ 7e_int4_asc |  7 | -32767
+ 7e_int4_asc |  9 | -100
+ 7e_int4_asc |  3 | -1
+ 7e_int4_asc |  1 | 0
+ 7e_int4_asc |  2 | 1
+ 7e_int4_asc |  8 | 100
+ 7e_int4_asc |  6 | 32766
+ 7e_int4_asc |  4 | 32767
+ 7e_int4_asc | 10 | 
+(10 rows)
+
+  ?column?   | id | bigint_col 
+-------------+----+------------
+ 7f_int8_asc |  5 | -32768
+ 7f_int8_asc |  7 | -32767
+ 7f_int8_asc |  9 | -100
+ 7f_int8_asc |  3 | -1
+ 7f_int8_asc |  1 | 0
+ 7f_int8_asc |  2 | 1
+ 7f_int8_asc |  8 | 100
+ 7f_int8_asc |  6 | 32766
+ 7f_int8_asc |  4 | 32767
+ 7f_int8_asc | 10 | 
+(10 rows)
+
+DROP TABLE
+DROP TABLE
+            ?column?             
+---------------------------------
+ === 8 COALESCE / Expression ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+      ?column?      | id | name 
+--------------------+----+------
+ 8a_coalesce_det_eq |  5 | Eve
+(1 row)
+
+      ?column?      | id |  name   
+--------------------+----+---------
+ 8b_coalesce_det_ne |  1 | Alice
+ 8b_coalesce_det_ne |  2 | Bob
+ 8b_coalesce_det_ne |  3 | Charlie
+ 8b_coalesce_det_ne |  4 | Diana
+(4 rows)
+
+   ?column?    | id | name  
+---------------+----+-------
+ 8c_nullif_det |  1 | Alice
+ 8c_nullif_det |  2 | Bob
+ 8c_nullif_det |  4 | Diana
+(3 rows)
+
+      ?column?      | id | name  
+--------------------+----+-------
+ 8f_coalesce_ope_eq |  2 | Bob
+ 8f_coalesce_ope_eq |  4 | Diana
+ 8f_coalesce_ope_eq |  5 | Eve
+(3 rows)
+
+      ?column?      | id |  name   
+--------------------+----+---------
+ 8g_coalesce_ope_gt |  1 | Alice
+ 8g_coalesce_ope_gt |  3 | Charlie
+(2 rows)
+
+      ?column?      | id | name  
+--------------------+----+-------
+ 8h_coalesce_ope_lt |  1 | Alice
+ 8h_coalesce_ope_lt |  5 | Eve
+(2 rows)
+
+      ?column?      | id |  name   
+--------------------+----+---------
+ 8i_coalesce_ope_ge |  1 | Alice
+ 8i_coalesce_ope_ge |  3 | Charlie
+(2 rows)
+
+      ?column?      | id | name  
+--------------------+----+-------
+ 8j_coalesce_ope_le |  2 | Bob
+ 8j_coalesce_ope_le |  4 | Diana
+ 8j_coalesce_ope_le |  5 | Eve
+(3 rows)
+
+     ?column?     | id |  name   
+------------------+----+---------
+ 8k_nullif_ope_gt |  3 | Charlie
+(1 row)
+
+      ?column?      | id |  name   
+--------------------+----+---------
+ 8l_greatest_ope_eq |  3 | Charlie
+(1 row)
+
+    ?column?     | id | name  
+-----------------+----+-------
+ 8m_least_ope_eq |  1 | Alice
+(1 row)
+
+   ?column?    | id |  name   
+---------------+----+---------
+ 8n_mixed_cond |  1 | Alice
+ 8n_mixed_cond |  3 | Charlie
+(2 rows)
+
+    ?column?    | id | name  
+----------------+----+-------
+ 8o_is_not_null |  1 | Alice
+(1 row)
+
+      ?column?       | id |  name   |   s   
+---------------------+----+---------+-------
+ 8p_orderby_coalesce |  3 | Charlie | 80000
+ 8p_orderby_coalesce |  1 | Alice   | 50000
+ 8p_orderby_coalesce |  2 | Bob     | 0
+ 8p_orderby_coalesce |  4 | Diana   | 0
+ 8p_orderby_coalesce |  5 | Eve     | 0
+(5 rows)
+
+   ?column?   | id | name 
+--------------+----+------
+ 8q_coalesce3 |  2 | Bob
+(1 row)
+
+      ?column?       | id |  name   
+---------------------+----+---------
+ 8r_coalesce_self_eq |  1 | Alice
+ 8r_coalesce_self_eq |  2 | Bob
+ 8r_coalesce_self_eq |  3 | Charlie
+ 8r_coalesce_self_eq |  4 | Diana
+ 8r_coalesce_self_eq |  5 | Eve
+(5 rows)
+
+       ?column?       | id |  name   
+----------------------+----+---------
+ 8s_coalesce_multi_or |  2 | Bob
+ 8s_coalesce_multi_or |  3 | Charlie
+ 8s_coalesce_multi_or |  4 | Diana
+ 8s_coalesce_multi_or |  5 | Eve
+(4 rows)
+
+    ?column?     | id | name  
+-----------------+----+-------
+ 8t_coalesce_neg |  2 | Bob
+ 8t_coalesce_neg |  4 | Diana
+(2 rows)
+
+      ?column?      | id |  name   
+--------------------+----+---------
+ 8u_coalesce_neg_gt |  1 | Alice
+ 8u_coalesce_neg_gt |  3 | Charlie
+(2 rows)
+
+DROP TABLE
+         ?column?          
+---------------------------
+ === 9 Bug Regressions ===
+(1 row)
+
+  ?column?  
+------------
+ 9a_bug7882
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+ id |     text_col     |  category  
+----+------------------+------------
+  1 | 这是测试文本数据 | Category_A
+(1 row)
+
+DROP TABLE
+      ?column?       
+---------------------
+ 9b_bug7909_int2_neg
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 15
+ id | smallint_col | description 
+----+--------------+-------------
+  1 | 0            | 零值
+  2 | 1            | 正值
+  3 | -1           | 负值
+  4 | 32767        | 最大值
+  5 | -32768       | 最小值
+  6 | 32766        | 接近最大值
+  7 | -32767       | 接近最小值
+  8 | 100          | 中等正值
+  9 | -100         | 中等负值
+ 10 | 2            | 边界值2-1
+ 11 | -2           | 边界值-2-1
+ 12 | 127          | 边界值127
+ 13 | -128         | 边界值-128
+ 14 | 255          | 边界值255
+ 15 | -256         | 边界值-256
+(15 rows)
+
+DROP TABLE
+      ?column?      
+--------------------
+ 9c_algo_regression
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+  ?column?  | c_det | c_ope 
+------------+-------+-------
+ 9c1_det_eq | 10    | 100
+(1 row)
+
+  ?column?  | c_det | c_ope 
+------------+-------+-------
+ 9c2_ope_eq | 20    | 200
+(1 row)
+
+    ?column?     | c_det | c_ope 
+-----------------+-------+-------
+ 9c3_det_text_eq | 20    | 200
+(1 row)
+
+    ?column?     | c_det | c_ope 
+-----------------+-------+-------
+ 9c4_ope_text_eq | 30    | 300
+(1 row)
+
+  ?column?  | c_ope 
+------------+-------
+ 9c5_ope_gt | 200
+ 9c5_ope_gt | 300
+(2 rows)
+
+  ?column?  | c_ope 
+------------+-------
+ 9c6_ope_ge | 200
+ 9c6_ope_ge | 300
+(2 rows)
+
+  ?column?  | c_ope 
+------------+-------
+ 9c7_ope_lt | 100
+ 9c7_ope_lt | 200
+(2 rows)
+
+  ?column?  | c_ope 
+------------+-------
+ 9c8_ope_le | 100
+ 9c8_ope_le | 200
+(2 rows)
+
+      ?column?      | s_ope 
+--------------------+-------
+ 9c9_ope_text_range | Beta
+ 9c9_ope_text_range | Gamma
+(2 rows)
+
+UPDATE 1
+UPDATE 1
+    ?column?    | c_ope | s_ope 
+----------------+-------+-------
+ 9c11_update_eq | 100   | Alpha
+ 9c11_update_eq | 250   | Beta2
+ 9c11_update_eq | 300   | Gamma
+(3 rows)
+
+UPDATE 2
+     ?column?      | c_ope 
+-------------------+-------
+ 9c12_update_range | 100
+ 9c12_update_range | 250
+ 9c12_update_range | 250
+(3 rows)
+
+INSERT 0 1
+DELETE 1
+DELETE 0
+     ?column?      | count 
+-------------------+-------
+ 9c13_delete_after |     3
+(1 row)
+
+INSERT 0 1
+INSERT 0 1
+DELETE 2
+DELETE 1
+     ?column?      | count 
+-------------------+-------
+ 9c14_delete_range |     2
+(1 row)
+
+DROP TABLE
+    ?column?     
+-----------------
+ === Cleanup ===
+(1 row)
+
+DROP KEK
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:15: 注意:  key encryption key "kek_ope" does not exist, skipping
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:28: 注意:  表 "tecc_int_range_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:57: 注意:  表 "tecc_int_combo_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:96: 注意:  表 "tecc_float_range_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:133: 注意:  表 "tecc_text_type_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:164: 注意:  表 "tecc_ope_ob_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:196: 注意:  表 "tecc_ope_text_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:225: 注意:  表 "tecc_ope_varlen_test" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:238: 错误:  无法把类型 varchar_enc 转换为 text
+LINE 1: SELECT '6a_cipher_len', tag, length(ope_vc::text) AS cipher_...
+                                                  ^
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:249: 注意:  表 "tb_7856_enc" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:270: 注意:  表 "tb_7824_enc" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:296: 注意:  表 "test_reg_emp" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:319: 错误:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
+HINT:  Enable OPE or DET encryption on the column to support comparison.
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:320: 错误:  cannot compare encrypted values for ordering: no OPE or DET ciphertext available
+HINT:  Enable OPE or DET encryption on the column to support comparison.
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:353: 注意:  表 "test_ope_eq" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:366: 注意:  表 "tb_int2_enc" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:385: 注意:  表 "test_algo" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:410: TECC query preprocessing failed: ��������ҪOPE��������ܣ��㷨��������δ����OPE��
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/ope.sql:437: 注意:  递归删除 data encryption key dek_ope

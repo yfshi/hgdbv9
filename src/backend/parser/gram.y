@@ -305,6 +305,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 		CreateMatViewStmt RefreshMatViewStmt CreateAmStmt
 		CreatePublicationStmt AlterPublicationStmt
 		CreateSubscriptionStmt AlterSubscriptionStmt DropSubscriptionStmt
+		CreateKekStmt CreateDekStmt
 /* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 %type <node>	AlterResourceGroupStmt
 		CreateResourceGroupStmt
@@ -328,9 +329,11 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 %type <list>	createdb_opt_list createdb_opt_items copy_opt_list
 				transaction_mode_list
 				create_extension_opt_list alter_extension_opt_list
+				kek_opt_list dek_opt_list
 %type <defelt>	createdb_opt_item copy_opt_item
 				transaction_mode_item
 				create_extension_opt_item alter_extension_opt_item
+				kek_opt_item dek_opt_item
 
 %type <ival>	opt_lock lock_type cast_context
 %type <str>		utility_option_name
@@ -567,7 +570,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 %type <str>		Sconst comment_text notify_payload
 %type <str>		RoleId opt_boolean_or_string
 %type <list>	var_list
-%type <str>		ColId ColLabel BareColLabel
+%type <str>		ColId ColLabel BareColLabel dek_kek_name
 %type <str>		NonReservedWord NonReservedWord_or_Sconst
 %type <str>		var_name type_function_name param_name
 %type <str>		createdb_opt_name plassign_target
@@ -581,7 +584,8 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 %type <node>	TableConstraint TableLikeClause
 %type <ival>	TableLikeOptionList TableLikeOption
 %type <str>		column_compression opt_column_compression
-%type <list>	ColQualList
+%type <list>	ColQualList encrypted_with_options opt_encrypted_with_clause
+%type <defelt>	encrypted_with_option
 %type <node>	ColConstraint ColConstraintElem ConstraintAttr
 %type <ival>	key_actions key_delete key_match key_update key_action
 %type <ival>	ConstraintAttributeSpec ConstraintAttributeElem
@@ -667,7 +671,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 
 /* ordinary key words in alphabetical order */
 %token <keyword> ABORT_P ABSOLUTE_P ACCESS ACTION ADD_P ADMIN AFTER
-	AGGREGATE ALL ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
+	AGGREGATE ALL ALGORITHM ALSO ALTER ALWAYS ANALYSE ANALYZE AND ANY ARRAY AS ASC
 	ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC ATOMIC AT ATTACH ATTRIBUTE AUTHORIZATION ANTITAMPER
 
 	BACKWARD BADFILE BADTABLE /* ReqID:SRS-MISC-BULKLOAD */
@@ -686,11 +690,11 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 	CURRENT_TIME CURRENT_TIMESTAMP CURRENT_USER CURSOR CYCLE
 
 	DATA_P DATABASE DAY_P DEALLOCATE DEC DECIMAL_P DECLARE DEFAULT DEFAULTS
-	DEFERRABLE DEFERRED DEFINER DELETE_P DELIMITER DELIMITERS  DEPENDS DEPTH DESC
+	DEFERRABLE DEFERRED DEFINER DEK DELETE_P DELIMITER DELIMITERS  DEPENDS DEPTH DESC
 	DETACH DICTIONARY DISABLE_P DISCARD DISTINCT DO DOCUMENT_P DOMAIN_P
 	DOUBDELI /* BUG#M0000414 */ DOUBLE_P DROP
 
-	EACH ELSE ENABLE_P ENCODING ENCRYPT ENCRYPTED END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
+	EACH ELSE ENABLE_P ENCODING ENCRYPT ENCRYPTED ENCRYPTED_VALUE END_P ENUM_P ESCAPE EVENT EXCEPT EXCEPTION /* ReqID:SRS-SECURITY-DATADESENSITIZATION */
 	EXCLUDE EXCLUDING EXCLUSIVE EXECUTE EXISTS EXPLAIN EXPRESSION
 	EXTENSION EXTERNAL EXTRACT
 
@@ -708,7 +712,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 
 	JOIN
 
-	KEY
+	KEK KEY KEY_LENGTH KEY_PATH KEY_STORE _KEK_FILE_CHECKSUM _TECC_PROCESSED
 
 	LABEL LANGUAGE LARGE_P LAST_P LATERAL_P
 	LEADING LEAKPROOF LEAST LEFT LEVEL LIKE LIMIT LISTEN LOAD LOCAL
@@ -742,7 +746,7 @@ static char *redation_get_func_name(const char *fname, List *indirectionlist, co
 	SIMILAR SIMPLE SKIP SKIPBAD /* BUG#Z1616 */ SKIPLIST /* BUG:M0000368*/ SMALLINT SNAPSHOT 
 	SOME SQL_P STABLE STANDALONE_P
 	START STATEMENT STATISTICS STDIN STDOUT STORAGE STORED STRICT_P STRIP_P
-	SUBSCRIPTION SUBSTRING SUPPORT SYMMETRIC SYSID SYSTEM_P
+	SUBSCRIPTION SUBSTRING SUPPORT SUPPORTS_DET SUPPORTS_OPE SUPPORTS_SEARCH SUPPORT_ALGO SYMMETRIC SYSID SYSTEM_P
 
 	TABLE TABLES TABLESAMPLE TABLESPACE TASKID /* ReqID:SRS-MISC-BULKLOAD*/ TEMP TEMPLATE TEMPORARY TEXT_P THEN
 	TIES TIME TIMESTAMP TO TRAILING TRANSACTION TRANSFORM
@@ -990,6 +994,7 @@ stmt:
 			| CreateAssertionStmt
 			| CreateCastStmt
 			| CreateConversionStmt
+			| CreateDekStmt
 			| CreateDomainStmt
 			| CreateExtensionStmt
 			| CreateFdwStmt
@@ -997,6 +1002,7 @@ stmt:
 			| CreateForeignTableStmt
 			| CreateFunctionStmt
 			| CreateGroupStmt
+			| CreateKekStmt
 			| CreateMatViewStmt
 			| CreateOpClassStmt
 			| CreateOpFamilyStmt
@@ -2536,7 +2542,7 @@ alter_table_cmd:
 			 * ALTER TABLE <name> ALTER [COLUMN] <colname> [SET DATA] TYPE <typename>
 			 *		[ USING <expression> ]
 			 */
-			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_encrypt opt_collate_clause alter_using
+			| ALTER opt_column ColId opt_set_data TYPE_P Typename opt_encrypt opt_encrypted_with_clause opt_collate_clause alter_using
 				{
 					AlterTableCmd *n = makeNode(AlterTableCmd);
 					ColumnDef *def = makeNode(ColumnDef);
@@ -2546,8 +2552,9 @@ alter_table_cmd:
 					/* We only use these fields of the ColumnDef node */
 					def->typeName = $6;
 					def->encrypted = $7;
-					def->collClause = (CollateClause *) $8;
-					def->raw_default = $9;
+					def->encrypted_with = $8;
+					def->collClause = (CollateClause *) $9;
+					def->raw_default = $10;
 					def->location = @3;
 					$$ = (Node *)n;
 				}
@@ -2874,6 +2881,14 @@ opt_collate_clause:
 			| /* EMPTY */				{ $$ = NULL; }
 		;
 
+
+opt_encrypted_with_clause:
+			ENCRYPTED WITH '(' encrypted_with_options ')'
+				{
+					$$ = $4;
+				}
+			| /* EMPTY */			{ $$ = NIL; }
+	;
 alter_using:
 			USING a_expr				{ $$ = $2; }
 			| /* EMPTY */				{ $$ = NULL; }
@@ -3721,11 +3736,62 @@ columnDef:	ColId Typename opt_encrypt opt_column_compression create_generic_opti
 					n->collOid = InvalidOid;
 					n->fdwoptions = $5;
 					n->isvisible = true;	/* ReqID:SRS-SQL-INVISIBLECOL */
+					n->encrypted_with = NIL;
 					SplitColQualList($6, &n->constraints, &n->collClause,
 									 yyscanner);
 					n->location = @1;
 					$$ = (Node *)n;
 				}
+			| ColId Typename ENCRYPTED WITH '(' encrypted_with_options ')' opt_column_compression create_generic_options ColQualList
+				{
+					ColumnDef *n = makeNode(ColumnDef);
+					n->colname = $1;
+					n->typeName = $2;
+					n->compression = $8;
+					n->inhcount = 0;
+					n->is_local = true;
+					n->is_not_null = false;
+					n->is_from_type = false;
+					n->storage = 0;
+					n->raw_default = NULL;
+					n->cooked_default = NULL;
+					n->collOid = InvalidOid;
+					n->fdwoptions = $9;
+					n->isvisible = true;
+					n->encrypted_with = $6;  /* 新增字段：加密参数列表 */
+					SplitColQualList($10, &n->constraints, &n->collClause,
+									 yyscanner);
+					n->location = @1;
+					$$ = (Node *)n;
+				}
+		;
+
+encrypted_with_options:
+			encrypted_with_option
+			{
+				$$ = list_make1($1);
+			}
+		| encrypted_with_options ',' encrypted_with_option
+			{
+				$$ = lappend($1, $3);
+			}
+		;
+
+encrypted_with_option:
+			DEK '=' NonReservedWord_or_Sconst
+			{
+				$$ = makeDefElem("dek", (Node *)makeString($3), @1);
+			}
+		| DEK '=' NonReservedWord_or_Sconst '.' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("dek",
+									 (Node *)makeString(psprintf("%s.%s", $3, $5)),
+									 @1);
+				}
+		| SUPPORT_ALGO '=' NonReservedWord_or_Sconst
+			{
+				$$ = makeDefElem("support_algo", (Node *)makeString($3), @1);
+			}
 		;
 
 columnOptions:	ColId ColQualList
@@ -4885,6 +4951,137 @@ create_extension_opt_item:
 					$$ = makeDefElem("cascade", (Node *)makeInteger(true), @1);
 				}
 		;
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *             CREATE KEK kek_name WITH (KEY_STORE=..., KEY_PATH=..., ALGORITHM=...)
+ *
+ *****************************************************************************/
+
+CreateKekStmt: CREATE KEK any_name opt_with '(' kek_opt_list ')'
+				{
+					CreateKekStmt *n = makeNode(CreateKekStmt);
+					n->names = $3;
+					n->if_not_exists = false;
+					n->options = $6;
+					$$ = (Node *) n;
+				}
+				| CREATE KEK IF_P NOT EXISTS any_name opt_with '(' kek_opt_list ')'
+				{
+					CreateKekStmt *n = makeNode(CreateKekStmt);
+					n->names = $6;
+					n->if_not_exists = true;
+					n->options = $9;
+					$$ = (Node *) n;
+				}
+		;
+
+kek_opt_list:
+			kek_opt_item
+				{ $$ = list_make1($1); }
+			| kek_opt_list ',' kek_opt_item
+				{ $$ = lappend($1, $3); }
+			| /* EMPTY */
+				{ $$ = NIL; }
+		;
+
+kek_opt_item:
+			KEY_STORE '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("key_store", (Node *)makeString($3), @1);
+				}
+			| KEY_PATH '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("key_path", (Node *)makeString($3), @1);
+				}
+			| ALGORITHM '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("algorithm", (Node *)makeString($3), @1);
+				}
+			| KEY_LENGTH '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("key_length", (Node *)makeString($3), @1);
+				}
+			| _KEK_FILE_CHECKSUM '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("_kek_file_checksum", (Node *)makeString($3), @1);
+				}
+			| _TECC_PROCESSED '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("_tecc_processed", (Node *)makeString($3), @1);
+				}
+		;
+
+/*****************************************************************************
+ *
+ *		QUERY:
+ *             CREATE DEK dek_name WITH VALUES(KEK=..., SUPPORTS_DET=...,
+ *             SUPPORTS_OPE=..., SUPPORTS_SEARCH=...)
+ *
+ *****************************************************************************/
+
+CreateDekStmt: CREATE DEK any_name opt_with VALUES '(' dek_opt_list ')'
+				{
+					CreateDekStmt *n = makeNode(CreateDekStmt);
+					n->names = $3;
+					n->if_not_exists = false;
+					n->options = $7;
+					$$ = (Node *) n;
+				}
+				| CREATE DEK IF_P NOT EXISTS any_name opt_with VALUES '(' dek_opt_list ')'
+				{
+					CreateDekStmt *n = makeNode(CreateDekStmt);
+					n->names = $6;
+					n->if_not_exists = true;
+					n->options = $10;
+					$$ = (Node *) n;
+				}
+		;
+
+dek_opt_list:
+			dek_opt_item
+				{ $$ = list_make1($1); }
+			| dek_opt_list ',' dek_opt_item
+				{ $$ = lappend($1, $3); }
+			| /* EMPTY */
+				{ $$ = NIL; }
+		;
+
+dek_opt_item:
+			KEK '=' dek_kek_name
+				{
+					$$ = makeDefElem("kek", (Node *)makeString($3), @1);
+				}
+			| ENCRYPTED_VALUE '=' Sconst
+				{
+					$$ = makeDefElem("encrypted_value", (Node *)makeString($3), @1);
+				}
+			| SUPPORT_ALGO '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("support_algo", (Node *)makeString($3), @1);
+				}
+			| KEY_LENGTH '=' Sconst
+				{
+					$$ = makeDefElem("key_length", (Node *)makeString($3), @1);
+				}
+			| _TECC_PROCESSED '=' NonReservedWord_or_Sconst
+				{
+					$$ = makeDefElem("_tecc_processed", (Node *)makeString($3), @1);
+				}
+			;
+
+dek_kek_name:
+			any_name
+				{
+					$$ = NameListToString($1);
+				}
+			| Sconst
+				{
+					$$ = $1;
+				}
+		;
+
 
 /*****************************************************************************
  *
@@ -6844,6 +7041,8 @@ object_type_any_name:
 			| TEXT_P SEARCH DICTIONARY				{ $$ = OBJECT_TSDICTIONARY; }
 			| TEXT_P SEARCH TEMPLATE				{ $$ = OBJECT_TSTEMPLATE; }
 			| TEXT_P SEARCH CONFIGURATION			{ $$ = OBJECT_TSCONFIGURATION; }
+			| KEK									{ $$ = OBJECT_KEK; }
+			| DEK									{ $$ = OBJECT_DEK; }
 		;
 
 /*
@@ -7612,6 +7811,24 @@ privilege_target:
 					n->objs = $2;
 					$$ = n;
 				}
+			/* Begin - ReqID:TECC4.0 */
+			| KEK any_name_list
+				{
+					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
+					n->targtype = ACL_TARGET_OBJECT;
+					n->objtype = OBJECT_KEK;
+					n->objs = $2;
+					$$ = n;
+				}
+			| DEK any_name_list
+				{
+					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
+					n->targtype = ACL_TARGET_OBJECT;
+					n->objtype = OBJECT_DEK;
+					n->objs = $2;
+					$$ = n;
+				}
+			/* End - ReqID:TECC4.0 */
 			| ALL TABLES IN_P SCHEMA name_list
 				{
 					PrivTarget *n = (PrivTarget *) palloc(sizeof(PrivTarget));
@@ -13950,6 +14167,17 @@ interval_second:
 a_expr:		c_expr									{ $$ = $1; }
 			| a_expr TYPECAST Typename
 					{ $$ = makeTypeCast($1, $3, @2); }
+				/* Begin - ReqID:TECC4.0 - ENCRYPTED WITH on type cast */
+				| a_expr TYPECAST Typename ENCRYPTED WITH '(' encrypted_with_options ')'
+					{
+						TypeCast *n = makeNode(TypeCast);
+						$3->encrypted_with = $7;
+						n->arg = $1;
+						n->typeName = $3;
+						n->location = @2;
+						$$ = (Node *)n;
+					}
+				/* End - ReqID:TECC4.0 */
 			| a_expr COLLATE any_name
 				{
 					CollateClause *n = makeNode(CollateClause);
@@ -16171,7 +16399,7 @@ BareColLabel:	IDENT								{ $$ = $1; }
 /* "Unreserved" keywords --- available for use as any kind of name.
  */
 unreserved_keyword:
-			  ABORT_P
+				  ABORT_P
 			| ABSOLUTE_P
 			| ACCESS
 			| ACTION
@@ -16179,6 +16407,7 @@ unreserved_keyword:
 			| ADMIN
 			| AFTER
 			| AGGREGATE
+			| ALGORITHM
 			| ALSO
 			| ALTER
 			| ALWAYS
@@ -16242,6 +16471,7 @@ unreserved_keyword:
 			| DEFAULTS
 			| DEFERRED
 			| DEFINER
+			| DEK
 			| DELETE_P
 			| DELIMITER
 			| DELIMITERS
@@ -16261,6 +16491,7 @@ unreserved_keyword:
 			| ENCODING
 			| ENCRYPT
 			| ENCRYPTED
+			| ENCRYPTED_VALUE
 			| ENUM_P
 			| ESCAPE
 			| EVENT
@@ -16312,7 +16543,11 @@ unreserved_keyword:
 			| INVOKER
 			| IO_LIMIT /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 			| ISOLATION
+			| KEK
 			| KEY
+			| KEY_LENGTH
+			| KEY_PATH
+			| KEY_STORE
 			| LABEL
 			| LANGUAGE
 			| LARGE_P
@@ -16458,6 +16693,10 @@ unreserved_keyword:
 			| STRIP_P
 			| SUBSCRIPTION
 			| SUPPORT
+			| SUPPORTS_DET
+			| SUPPORTS_OPE
+			| SUPPORTS_SEARCH
+			| SUPPORT_ALGO
 			| SYSID
 			| SYSTEM_P
 			| TABLES
@@ -16504,6 +16743,8 @@ unreserved_keyword:
 			| YEAR_P
 			| YES_P
 			| ZONE
+			| _KEK_FILE_CHECKSUM
+			| _TECC_PROCESSED
 		;
 
 /* Column identifier --- keywords that can be column, table, etc names.
@@ -16702,7 +16943,7 @@ reserved_keyword:
  * in kwlist.h if it is included here, or AS_LABEL if it is not.
  */
 bare_label_keyword:
-			  ABORT_P
+			 ABORT_P
 			| ABSOLUTE_P
 			| ACCESS
 			| ACTION
@@ -16710,6 +16951,7 @@ bare_label_keyword:
 			| ADMIN
 			| AFTER
 			| AGGREGATE
+			| ALGORITHM
 			| ALL
 			| ALSO
 			| ALTER
@@ -16807,6 +17049,7 @@ bare_label_keyword:
 			| DEFERRABLE
 			| DEFERRED
 			| DEFINER
+			| DEK
 			| DELETE_P
 			| DELIMITER
 			| DELIMITERS
@@ -16829,7 +17072,7 @@ bare_label_keyword:
 			| ENABLE_P
 			| ENCODING
 			| ENCRYPT
-			| ENCRYPTED
+			| ENCRYPTED_VALUE
 			| END_P
 			| ENUM_P
 			| ESCAPE
@@ -16899,7 +17142,11 @@ bare_label_keyword:
 			| IS
 			| ISOLATION
 			| JOIN
+			| KEK
 			| KEY
+			| KEY_LENGTH
+			| KEY_PATH
+			| KEY_STORE
 			| LABEL
 			| LANGUAGE
 			| LARGE_P
@@ -17076,6 +17323,10 @@ bare_label_keyword:
 			| SUBSCRIPTION
 			| SUBSTRING
 			| SUPPORT
+			| SUPPORTS_DET
+			| SUPPORTS_OPE
+			| SUPPORTS_SEARCH
+			| SUPPORT_ALGO
 			| SYMMETRIC
 			| SYSID
 			| SYSTEM_P
@@ -17147,6 +17398,8 @@ bare_label_keyword:
 			| XMLTABLE
 			| YES_P
 			| ZONE
+			| _KEK_FILE_CHECKSUM
+			| _TECC_PROCESSED
 		;
 
 %%

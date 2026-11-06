@@ -1,0 +1,65 @@
+DROP TABLE
+DROP KEK
+           stage           
+---------------------------
+ === SWXA SEARCH Setup ===
+(1 row)
+
+Setting up SWXA KEK: swxa_search_kek (key index: 1)
+SUCCESS: Key found in SWXA password machine at index 1
+CREATE KEK
+CREATE DEK
+          stage          
+-------------------------
+ === 1 LIKE Wildcard ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 7
+          tc          | id |   c_text    
+----------------------+----+-------------
+ 1a_text_like_app_pct |  1 | apple
+ 1a_text_like_app_pct |  2 | application
+(2 rows)
+
+         tc         | id |  c_vc  
+--------------------+----+--------
+ 1b_vc_like_ban_pct |  3 | banana
+(1 row)
+
+ tc | id | c_bp 
+----+----+------
+(0 rows)
+
+          tc          | id |  c_text   
+----------------------+----+-----------
+ 1d_text_like_ple_pct |  1 | apple
+ 1d_text_like_ple_pct |  4 | pineapple
+ 1d_text_like_ple_pct |  5 | Apple
+(3 rows)
+
+        tc        | id |   c_text    
+------------------+----+-------------
+ 1e_text_like_app |  1 | apple
+ 1e_text_like_app |  2 | application
+ 1e_text_like_app |  4 | pineapple
+(3 rows)
+
+       tc       | id |    c_vc     
+----------------+----+-------------
+ 1f_vc_like_ppl |  1 | apple
+ 1f_vc_like_ppl |  2 | application
+ 1f_vc_like_ppl |  4 | pineapple
+ 1f_vc_like_ppl |  5 | Apple
+(4 rows)
+
+            stage            
+-----------------------------
+ === SWXA SEARCH Cleanup ===
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../swxa_search.sql:6: NOTICE:  table "swxa_search_t" does not exist, skipping
+psql:/.../swxa_search.sql:7: NOTICE:  key encryption key "swxa_search_kek" does not exist, skipping

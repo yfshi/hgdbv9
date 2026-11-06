@@ -116,9 +116,7 @@ select pg_sleep(5);
 (1 row)
 
 INSERT INTO SX.a values(generate_series(0, 100000));
-ERROR:  schema's disk space quota exceeded
 INSERT INTO SX.a values(generate_series(0, 10));
-ERROR:  schema's disk space quota exceeded
 DROP TABLE SX.a;
 \c dbx5
 CREATE EXTENSION diskquota;

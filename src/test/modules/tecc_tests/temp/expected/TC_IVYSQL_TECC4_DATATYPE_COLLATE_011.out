@@ -1,0 +1,36 @@
+5月 23, 2026 1:43:36 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:43:36 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:43:36 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 2
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 3
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 4
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 5
+select 'test'::text_enc encrypted with (dek=dek_t1,support_algo='ope') collate "C",'test'::varchar_enc encrypted with (dek=dek_t1,support_algo='ope') collate "C",'test'::bpchar_enc encrypted with (dek=dek_t1,support_algo='ope') collate "C";
+
+错误: invalid hex string: "test"
+  详情：Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
+  位置：8
+>>> 6
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 7
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

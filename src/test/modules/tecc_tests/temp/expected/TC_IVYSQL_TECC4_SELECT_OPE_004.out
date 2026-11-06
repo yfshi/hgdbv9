@@ -1,0 +1,146 @@
+>>> 1
+DROP TABLE IF EXISTS tecc_int_type_test CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS int_type_test CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+CREATE TABLE tecc_int_type_test (id SERIAL PRIMARY KEY, int2_col int2_enc encrypted with (dek = dek_t1,support_algo='ope'), int4_col int4_enc encrypted with (dek = dek_t1,support_algo='ope'), int8_col int8_enc encrypted with (dek = dek_t1,support_algo='ope'));
+
+rows: 0
+>>> 8
+CREATE TABLE int_type_test (id SERIAL PRIMARY KEY, int2_col int2, int4_col int4, int8_col int8);
+
+rows: 0
+>>> 9
+INSERT INTO int_type_test (int2_col, int4_col, int8_col) VALUES (1, 10, 100),(2, 20, 200),(3, 30, 300),(4, 40, 400),(5, 50, 500),(10, 100, 1000),(15, 150, 1500),(20, 200, 2000),(25, 250, 2500),(30, 300, 3000),(50, 500, 5000),(100, 1000, 10000),(NULL, NULL, NULL);
+
+rows: 13
+>>> 10
+INSERT INTO tecc_int_type_test (int2_col, int4_col, int8_col) VALUES (1, 10, 100),(2, 20, 200),(3, 30, 300),(4, 40, 400),(5, 50, 500),(10, 100, 1000),(15, 150, 1500),(20, 200, 2000),(25, 250, 2500),(30, 300, 3000),(50, 500, 5000),(100, 1000, 10000),(NULL, NULL, NULL);
+
+rows: 13
+>>> 11
+SELECT id, int2_col, int4_col, int8_col FROM int_type_test WHERE (int2_col > 0 AND int2_col < 20) OR (int2_col >= 40 AND int2_col <= 50) ORDER BY int2_col;
+
+1|1|10|100
+2|2|20|200
+3|3|30|300
+4|4|40|400
+5|5|50|500
+6|10|100|1000
+7|15|150|1500
+11|50|500|5000
+rows: -1
+>>> 12
+SELECT id, int2_col, int4_col, int8_col FROM tecc_int_type_test WHERE (int2_col > 0 AND int2_col < 20) OR (int2_col >= 40 AND int2_col <= 50) ORDER BY int2_col;
+
+1|1|10|100
+2|2|20|200
+3|3|30|300
+4|4|40|400
+5|5|50|500
+6|10|100|1000
+7|15|150|1500
+11|50|500|5000
+rows: -1
+>>> 13
+SELECT id, int2_col, int4_col, int8_col FROM int_type_test WHERE int4_col > 10 AND (int4_col < 30 OR int4_col > 40) ORDER BY int4_col;
+
+2|2|20|200
+5|5|50|500
+6|10|100|1000
+7|15|150|1500
+8|20|200|2000
+9|25|250|2500
+10|30|300|3000
+11|50|500|5000
+12|100|1000|10000
+rows: -1
+>>> 14
+SELECT id, int2_col, int4_col, int8_col FROM tecc_int_type_test WHERE int4_col > 10 AND (int4_col < 30 OR int4_col > 40) ORDER BY int4_col;
+
+2|2|20|200
+5|5|50|500
+6|10|100|1000
+7|15|150|1500
+8|20|200|2000
+9|25|250|2500
+10|30|300|3000
+11|50|500|5000
+12|100|1000|10000
+rows: -1
+>>> 15
+SELECT id, int2_col, int4_col, int8_col FROM int_type_test WHERE int2_col > 10 AND int4_col < 50 AND int8_col >= 20 ORDER BY int2_col, int4_col, int8_col;
+
+rows: -1
+>>> 16
+SELECT id, int2_col, int4_col, int8_col FROM tecc_int_type_test WHERE int2_col > 10 AND int4_col < 50 AND int8_col >= 20 ORDER BY int2_col, int4_col, int8_col;
+
+rows: -1
+>>> 17
+SELECT id, int2_col, int4_col, int8_col FROM int_type_test WHERE (int2_col < 30 OR int4_col > 40) AND int8_col >= 0 ORDER BY int2_col, int4_col;
+
+1|1|10|100
+2|2|20|200
+3|3|30|300
+4|4|40|400
+5|5|50|500
+6|10|100|1000
+7|15|150|1500
+8|20|200|2000
+9|25|250|2500
+10|30|300|3000
+11|50|500|5000
+12|100|1000|10000
+rows: -1
+>>> 18
+SELECT id, int2_col, int4_col, int8_col FROM tecc_int_type_test WHERE (int2_col < 30 OR int4_col > 40) AND int8_col >= 0 ORDER BY int2_col, int4_col;
+
+1|1|10|100
+2|2|20|200
+3|3|30|300
+4|4|40|400
+5|5|50|500
+6|10|100|1000
+7|15|150|1500
+8|20|200|2000
+9|25|250|2500
+10|30|300|3000
+11|50|500|5000
+12|100|1000|10000
+rows: -1
+>>> 19
+DROP TABLE IF EXISTS tecc_int_type_test CASCADE;
+
+rows: 0
+>>> 20
+DROP TABLE IF EXISTS int_type_test CASCADE;
+
+rows: 0
+>>> 21
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 22
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

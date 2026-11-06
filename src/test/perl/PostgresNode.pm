@@ -1644,15 +1644,14 @@ sub _reserve_port
 END
 {
 
-	# take care not to change the script's exit value
+	# PG_TEST_NOCLEAN=1 跳过全部清理（停服+删数据），保留节点用于 perf 分析
 	my $exit_code = $?;
+
+	return if defined $ENV{'PG_TEST_NOCLEAN'};
 
 	foreach my $node (@all_nodes)
 	{
 		$node->teardown_node;
-
-		# skip clean if we are requested to retain the basedir
-		next if defined $ENV{'PG_TEST_NOCLEAN'};
 
 		# clean basedir on clean test invocation
 		$node->clean_node if $exit_code == 0 && TestLib::all_tests_passing();

@@ -64,6 +64,7 @@
 #include "commands/cluster.h"
 #include "commands/comment.h"
 #include "commands/defrem.h"
+#include "commands/encrypted_column.h"
 #include "commands/event_trigger.h"
 #include "commands/policy.h"
 #include "commands/sequence.h"
@@ -1885,7 +1886,136 @@ DefineRelation(CreateStmt *stmt, char relkind, Oid ownerId,
 								  true, true, false, queryString);
 
 	ObjectAddressSet(address, RelationRelationId, relationId);
-	
+
+       /*Begin: ReqId: TECC-v4.0*/
+       /*
+        * Process encrypted columns, if any
+        */
+       if (stmt->tableElts)
+       {
+               ListCell   *lc;
+               int16           attnum = 1;  /* Attribute numbers start at 1 */
+
+               foreach(lc, stmt->tableElts)
+               {
+                       Node       *node = lfirst(lc);
+
+                       if (IsA(node, ColumnDef))
+                       {
+                               ColumnDef *column = (ColumnDef *) node;
+                               Oid                     typeOid;
+                               int32           typmod;
+                               EncryptedColumnParams *params; /* ReqID:TECC4.0 */
+
+                               /* Get type OID and typmod from type name */
+                                typenameTypeIdAndMod(NULL, column->typeName, &typeOid, &typmod);
+                               if (!OidIsValid(typeOid))
+                               {
+                                       ereport(ERROR,
+                                                       (errcode(ERRCODE_UNDEFINED_OBJECT),
+                                                        errmsg("type \"%s\" does not exist",
+                                                                       TypeNameToString(column->typeName))));
+                               }
+                               /* Check if this is an encrypted data type */
+                               if (is_encrypted_data_type(typeOid))
+                               {
+                                       /* Encrypted data type requires encrypted_with clause */
+                                       if (!column->encrypted_with)
+                                       {
+                                               /* ReqID:TECC4.0 - CTAS bypass: caller populates hg_encrypted_columns afterwards */
+                                               if (stmt->is_ctas)
+                                               {
+                                                       attnum++;
+                                                       continue;
+                                               }
+
+                                               /*
+                                                * ReqID:TECC4.0 - PARTITION OF bypass:
+                                                * Columns inherited from the parent table have an encrypted
+                                                * data type but no ENCRYPTED WITH clause.  Inherit the
+                                                * encryption metadata from the parent.
+                                                */
+                                               if (stmt->partbound != NULL)
+                                               {
+                                                       if (inheritOids != NIL)
+                                                       {
+                                                               Oid                     parent_oid = linitial_oid(inheritOids);
+                                                               Oid                     src_dek_oid = InvalidOid;
+                                                               uint32          src_enc_type = 0;
+
+                                                               if (hg_get_encrypted_column_info(parent_oid,
+                                                                                                                                attnum,
+                                                                                                                                &src_dek_oid,
+                                                                                                                                &src_enc_type))
+                                                               {
+                                                                       HgEncryptedColumnCreateParams hg_params;
+
+                                                                       memset(&hg_params, 0, sizeof(hg_params));
+                                                                       hg_params.table_oid = relationId;
+                                                                       hg_params.column_attnum = attnum;
+                                                                       hg_params.column_name = column->colname;
+                                                                       hg_params.data_type = typeOid;
+                                                                       hg_params.column_key_id = src_dek_oid;
+                                                                       hg_params.encryption_type = src_enc_type;
+                                                                       hg_params.type_mod = typmod;
+                                                                       hg_create_encrypted_column(&hg_params);
+                                                               }
+                                                               else
+                                                               {
+                                                                       ereport(WARNING,
+                                                                               (errmsg("could not find encrypted column info for inherited column \"%s\" in partition of \"%s\"",
+                                                                                       column->colname,
+                                                                                       get_rel_name(parent_oid) ? get_rel_name(parent_oid) : "(unknown)")));
+                                                               }
+                                                       }
+
+                                                       attnum++;
+                                                       continue;
+                                               }
+
+                                               ereport(ERROR,
+                                                               (errcode(ERRCODE_SYNTAX_ERROR),
+                                                               errmsg("encrypted data type \"%s\" requires ENCRYPTED WITH clause",
+                                                                               TypeNameToString(column->typeName)),
+                                                                errhint("Add ENCRYPTED WITH (dek = dek_name) to the column definition")));
+                                       }
+
+                                       /* Parse encrypted_with options */
+                                       params = parse_encrypted_with_options(column->encrypted_with);
+                                       if (params)
+                                       {
+                                               /* Validate parameters */
+                                               if (validate_encrypted_column_params(params, typeOid))
+                                               {
+                                                       /* Record encrypted column metadata */
+                                                       Oid             enc_collOid;
+
+                                                       enc_collOid = tecc_resolve_collation_oid(
+                                                                       GetColumnDefCollation(NULL, column, typeOid));
+                                                       record_encrypted_column_metadata(relationId, attnum,
+                                                                                                                       column->colname, typeOid,
+                                                                                                                       typmod, enc_collOid, params);
+                                               }
+                                               /* params will be freed by record_encrypted_column_metadata */
+                                       }
+                               }
+                               else
+                               {
+                                       /* Non-encrypted type should not have encrypted_with clause */
+                                       if (column->encrypted_with)
+                                       {
+                                               ereport(ERROR,
+                                                               (errcode(ERRCODE_SYNTAX_ERROR),
+                                                                errmsg("non-encrypted data type \"%s\" cannot have ENCRYPTED WITH clause",
+                                                                               TypeNameToString(column->typeName))));
+                                       }
+                               }
+                               attnum++;
+                       }
+               }
+       }
+       /*End: ReqId: TECC-v4.0*/
+
 	/* Begin - ReqID: SRS-SECURITY-ANTITAMPERING */
 	/* the parent table and child table of the partition table create a history
 	 * hash table. only the child table triggers are created beceuse only 
@@ -8706,6 +8836,10 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	collOid = GetColumnDefCollation(NULL, colDef, typeOid);
 
+	/* ReqID:TECC4.0 - Encrypted columns need fixed collation, not DEFAULT */
+	if (is_encrypted_data_type(typeOid))
+		collOid = tecc_resolve_collation_oid(collOid);
+
 	/* make sure datatype is legal for a column */
 	CheckAttributeType(colDef->colname, typeOid, collOid,
 					   list_make1_oid(rel->rd_rel->reltype),
@@ -8793,6 +8927,54 @@ ATExecAddColumn(List **wqueue, AlteredTableInfo *tab, Relation rel,
 
 	/* Make the attribute's catalog entry visible */
 	CommandCounterIncrement();
+
+	/* Begin - ReqID:TECC4.0 - Record encrypted column metadata for ADD COLUMN */
+	if (is_encrypted_data_type(typeOid))
+	{
+		/*
+		 * Encrypted data type requires encrypted_with clause.
+		 * ALTER TABLE ADD COLUMN uses the same ColumnDef grammar as
+		 * CREATE TABLE, so encrypted_with is parsed by the backend
+		 * gram.y.  Record the metadata here (DefineRelation does this
+		 * for CREATE TABLE, but ATExecAddColumn needs it too).
+		 */
+		if (!colDef->encrypted_with)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("encrypted data type \"%s\" requires ENCRYPTED WITH clause",
+							TypeNameToString(colDef->typeName))));
+		}
+
+		{
+			/* ReqID:TECC4.0 - Parse, validate, and record */
+			EncryptedColumnParams *params = NULL;
+
+			params = parse_encrypted_with_options(colDef->encrypted_with);
+			if (params != NULL)
+			{
+				if (validate_encrypted_column_params(params, typeOid))
+				{
+					record_encrypted_column_metadata(myrelid, newattnum,
+													colDef->colname, typeOid,
+													typmod, collOid, params);
+				}
+				/* params freed by record_encrypted_column_metadata */
+			}
+		}
+	}
+	else
+	{
+		/* Non-encrypted type with encrypted_with clause is invalid */
+		if (colDef->encrypted_with)
+		{
+			ereport(ERROR,
+					(errcode(ERRCODE_SYNTAX_ERROR),
+					 errmsg("non-encrypted data type \"%s\" cannot have ENCRYPTED WITH clause",
+							TypeNameToString(colDef->typeName))));
+		}
+	}
+	/* End - ReqID:TECC4.0 */
 
 	/*
 	 * Store the DEFAULT, if any, in the catalogs
@@ -11479,6 +11661,79 @@ ATAddForeignKeyConstraint(List **wqueue, AlteredTableInfo *tab, Relation rel,
 						(errcode(ERRCODE_SYNTAX_ERROR),
 						 errmsg("invalid %s action for foreign key constraint containing generated column",
 								"ON DELETE")));
+		}
+	}
+
+	/*
+	 * ReqID:TECC4.0 - Check encrypted column compatibility for foreign keys.
+	 *
+	 * FK on encrypted columns requires both sides to use the same DEK so that
+	 * the btree equality operator produces consistent results.  If exactly one
+	 * side is encrypted the types are incompatible; if both sides are encrypted
+	 * with different DEKs the ciphertexts cannot be compared.
+	 */
+	for (i = 0; i < numfks; i++)
+	{
+		Oid			fktype = fktypoid[i];
+		Oid			pktype = pktypoid[i];
+		bool		fk_is_enc;
+		bool		pk_is_enc;
+
+		fk_is_enc = is_encrypted_data_type(fktype);
+		pk_is_enc = is_encrypted_data_type(pktype);
+
+		if (fk_is_enc || pk_is_enc)
+		{
+			Oid			fk_dek_oid = InvalidOid;
+			Oid			pk_dek_oid = InvalidOid;
+			const char *fk_colname;
+			const char *pk_colname;
+
+			fk_colname = strVal(list_nth(fkconstraint->fk_attrs, i));
+			pk_colname = strVal(list_nth(fkconstraint->pk_attrs, i));
+
+			/* One side encrypted, the other not → type mismatch */
+			if (!fk_is_enc || !pk_is_enc)
+				ereport(ERROR,
+						(errcode(ERRCODE_DATATYPE_MISMATCH),
+						 errmsg("foreign key constraint \"%s\" cannot be implemented",
+								fkconstraint->conname),
+						 errdetail("Key columns \"%s\" (%s) and \"%s\" (%s) "
+								   "are of incompatible types.",
+								   fk_colname, format_type_be(fktype),
+								   pk_colname, format_type_be(pktype))));
+
+			/* Both encrypted → validate DEK consistency */
+			if (!hg_get_encrypted_column_info(RelationGetRelid(rel),
+											  fkattnum[i],
+											  &fk_dek_oid, NULL))
+				ereport(ERROR,
+						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+						 errmsg("could not find encryption metadata for column \"%s\"",
+								fk_colname)));
+
+			if (!hg_get_encrypted_column_info(RelationGetRelid(pkrel),
+											  pkattnum[i],
+											  &pk_dek_oid, NULL))
+				ereport(ERROR,
+						(errcode(ERRCODE_OBJECT_NOT_IN_PREREQUISITE_STATE),
+						 errmsg("could not find encryption metadata for column \"%s\"",
+								pk_colname)));
+
+			if (fk_dek_oid != pk_dek_oid)
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("foreign key constraint \"%s\" cannot use "
+								"different data encryption keys",
+								fkconstraint->conname),
+						 errdetail("Column \"%s\" uses DEK with OID %u, "
+								   "column \"%s\" uses DEK with OID %u.",
+								   fk_colname, fk_dek_oid,
+								   pk_colname, pk_dek_oid),
+						 errhint("Both columns must be encrypted with the "
+								 "same DEK for foreign key comparisons to work.")));
+
+			/* Same DEK — allow, btree = operator works correctly */
 		}
 	}
 
@@ -14459,6 +14714,19 @@ ATPrepAlterColumnType(List **wqueue,
 
 	ReleaseSysCache(tuple);
 
+	/* Begin - ReqID:TECC4.0
+	 * Reject ALTER COLUMN TYPE with ENCRYPTED WITH clause. */
+	if (def->encrypted_with != NIL)
+	{
+		ereport(ERROR,
+				(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+				 errmsg("cannot alter type of an encrypted column"),
+				 errdetail("ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. "
+						   "Column \"%s\" is encrypted and cannot be altered.",
+						   colName)));
+	}
+	/* End - ReqID:TECC4.0 */
+
 	/*
 	 * Recurse manually by queueing a new command for each child, if
 	 * necessary. We cannot apply ATSimpleRecursion here because we need to
@@ -15075,6 +15343,35 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 				Assert(foundObject.objectSubId == 0);
 				RememberConstraintForRebuilding(foundObject.objectId, tab);
 				break;
+			case OCLASS_ENCRYPTED_COLUMN:
+
+				/*
+				 * An encrypted column record depends on this column.
+				 * Changing the column type would break the encryption
+				 * binding.
+				 */
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot alter type of an encrypted column"),
+						 errdetail("%s depends on column \"%s\"",
+								   getObjectDescription(&foundObject, false),
+								   colName)));
+				break;
+
+			case OCLASS_DEK:
+
+				/*
+				 * A DEK (Data Encryption Key) depends on an encrypted column.
+				 * Changing the column type would break the encryption binding,
+				 * so disallow it.
+				 */
+				ereport(ERROR,
+						(errcode(ERRCODE_FEATURE_NOT_SUPPORTED),
+						 errmsg("cannot alter type of a column used by an encrypted column"),
+						 errdetail("%s depends on column \"%s\"",
+								   getObjectDescription(&foundObject, false),
+								   colName)));
+				break;
 
 			case OCLASS_REWRITE:
 				/* Begin - ReqID:SRS-SQL-FORCEVIEW */
@@ -15322,6 +15619,7 @@ ATExecAlterColumnType(AlteredTableInfo *tab, Relation rel,
 			case OCLASS_EVENT_TRIGGER:
 			case OCLASS_PUBLICATION:
 			case OCLASS_PUBLICATION_REL:
+			case OCLASS_KEK:
 			case OCLASS_SUBSCRIPTION:
 			case OCLASS_TRANSFORM:
 

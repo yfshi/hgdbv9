@@ -166,3 +166,6 @@ test: aggregates_without_group_by
 #/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
 test: sql-resourece-limit
 #/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-SQL */
+
+# TECC encryption regression tests (backend: DDL, ACL, system tables, metadata)
+test: tecc_bug8000 tecc_system_tables tecc_key_management tecc_permissions tecc_acl_queries tecc_acl_edge_cases tecc_frontend_processor tecc_integration

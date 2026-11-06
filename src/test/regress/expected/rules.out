@@ -1285,6 +1285,64 @@ drop table cchild;
 SELECT viewname, definition FROM pg_views
 WHERE schemaname IN ('pg_catalog', 'public')
 ORDER BY viewname;
+hg_dek_info| SELECT d.oid AS dek_oid,
+    d.dek_name,
+    d.column_key_distributed_id,
+    k.oid AS kek_oid,
+    k.kek_name,
+    n.nspname AS key_namespace_name,
+    d.key_namespace,
+    d.key_owner AS key_owner_oid,
+    r.rolname AS key_owner_name,
+    d.key_acl,
+    d.create_date,
+    da.function_name,
+    da.key AS arg_key,
+    da.value AS arg_value
+   FROM ((((hg_dek d
+     JOIN hg_kek k ON ((d.kek_id = k.oid)))
+     JOIN pg_namespace n ON ((d.key_namespace = n.oid)))
+     JOIN pg_authid r ON ((d.key_owner = r.oid)))
+     LEFT JOIN hg_dek_args da ON (((d.oid = da.dek_id) AND (da.function_name = 'dek_config'::name))))
+  WHERE has_dek_privilege(d.oid, 'USAGE'::text);
+hg_encrypted_columns_info| SELECT ec.oid AS column_oid,
+    ec.table_oid,
+    ec.column_attnum,
+    ec.column_name,
+    ec.data_type_original_oid,
+    ec.data_type_original_mod,
+    d.dek_name,
+    ec.encryption_type,
+        CASE
+            WHEN (ec.collation_oid = (100)::oid) THEN ( SELECT pg_database.datcollate
+               FROM pg_database
+              WHERE (pg_database.datname = current_database()))
+            ELSE col.collcollate
+        END AS collation_locale,
+    ec.column_key_id,
+    ec.create_date
+   FROM ((hg_encrypted_columns ec
+     JOIN hg_dek d ON ((ec.column_key_id = d.oid)))
+     LEFT JOIN pg_collation col ON ((ec.collation_oid = col.oid)))
+  WHERE (EXISTS ( SELECT 1
+           FROM hg_dek d2
+          WHERE (d2.oid = ec.column_key_id)));
+hg_kek_info| SELECT k.oid AS kek_oid,
+    k.kek_name,
+    n.nspname AS key_namespace_name,
+    k.key_namespace,
+    k.key_owner AS key_owner_oid,
+    r.rolname AS key_owner_name,
+    k.key_acl,
+    k.create_date,
+    ka.function_name,
+    ka.key AS arg_key,
+    ka.value AS arg_value
+   FROM (((hg_kek k
+     JOIN pg_namespace n ON ((k.key_namespace = n.oid)))
+     JOIN pg_authid r ON ((k.key_owner = r.oid)))
+     LEFT JOIN hg_kek_args ka ON (((k.oid = ka.kek_id) AND (ka.function_name = 'kek_config'::name))))
+  WHERE has_kek_privilege(k.oid, 'USAGE'::text);
 iexit| SELECT ih.name,
     ih.thepath,
     interpt_pp(ih.thepath, r.thepath) AS exit

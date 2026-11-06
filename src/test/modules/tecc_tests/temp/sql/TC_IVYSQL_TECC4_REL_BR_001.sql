@@ -1,0 +1,14 @@
+DROP TABLE IF EXISTS tb_all CASCADE;
+DROP DEK IF EXISTS dek1 CASCADE;
+DROP KEK IF EXISTS kek1 CASCADE;
+CREATE KEK kek1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+CREATE DEK dek1 WITH VALUES(KEK = kek1);
+CREATE TABLE tb_all (id INT, col_text TEXT_ENC ENCRYPTED WITH (DEK = dek1), col_varchar VARCHAR_ENC ENCRYPTED WITH (DEK = dek1), col_bpchar BPCHAR_ENC ENCRYPTED WITH (DEK = dek1), col_int2 INT2_ENC ENCRYPTED WITH (DEK = dek1), col_int4 INT4_ENC ENCRYPTED WITH (DEK = dek1), col_int8 INT8_ENC ENCRYPTED WITH (DEK = dek1), col_numeric NUMERIC_ENC ENCRYPTED WITH (DEK = dek1), col_float4 FLOAT4_ENC ENCRYPTED WITH (DEK = dek1), col_float8 FLOAT8_ENC ENCRYPTED WITH (DEK = dek1));
+INSERT INTO tb_all VALUES (1, 'text_value', 'varchar_value', 'bpchar_val', 123, 456789, 9876543210, 12345.67, 3.14, 2.718281828);
+COPY tb_all TO '/tmp/copy_all_enc.csv';
+DELETE FROM tb_all;
+COPY tb_all FROM '/tmp/copy_all_enc.csv';
+SELECT * FROM tb_all;
+DROP TABLE IF EXISTS tb_all CASCADE;
+DROP DEK IF EXISTS dek1 CASCADE;
+DROP KEK IF EXISTS kek1 CASCADE;

@@ -570,6 +570,68 @@ objectNamesToOids(ObjectType objtype, List *objnames)
 				objects = lappend_oid(objects, oid);
 			}
 			break;
+		case OBJECT_KEK:
+			foreach(cell, objnames)
+			{
+				List	   *names = (List *) lfirst(cell);
+				char	   *kekname;
+				Oid			kekid;
+
+				if (list_length(names) == 1)
+				{
+					kekname = strVal(linitial(names));
+					kekid = get_kek_oid(kekname, false);
+				}
+				else if (list_length(names) == 2)
+				{
+					char   *nspname = strVal(linitial(names));
+					Oid		nspid = get_namespace_oid(nspname, false);
+					kekname = strVal(lsecond(names));
+					kekid = get_kek_oid_ext(kekname, nspid, false);
+				}
+				else
+					 ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("invalid KEK name")));
+				objects = lappend_oid(objects, kekid);
+				
+				/*
+				 *TODO: Implement get_kek_oid function
+				 * kekid = get_kek_oid(kekname, false);
+				 * objects = lappend_oid(objects, kekid);
+				 */
+			}
+			break;
+		case OBJECT_DEK:
+			foreach(cell, objnames)
+			{
+				List	   *names = (List *) lfirst(cell);
+				char	   *dekname;
+				Oid			dekid;
+
+				if (list_length(names) == 1)
+				{
+					dekname = strVal(linitial(names));
+					dekid = get_dek_oid(dekname, false);
+				}
+				else if (list_length(names) == 2)
+				{
+					char   *nspname = strVal(linitial(names));
+					Oid		nspid = get_namespace_oid(nspname, false);
+					dekname = strVal(lsecond(names));
+					dekid = get_dek_oid_ext(dekname, nspid, false);
+				}
+				else
+					 ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("invalid DEK name")));
+				objects = lappend_oid(objects, dekid);
+				/* TODO: Implement get_dek_oid function
+				 * dekid = get_dek_oid(dekname, false);
+				 * objects = lappend_oid(objects, dekid);
+				 */
+			}
+			break;
 		case OBJECT_FUNCTION:
 			foreach(cell, objnames)
 			{
@@ -1045,6 +1107,10 @@ grant_object_check(GrantStmt *stmt)
 		case OBJECT_FOREIGN_SERVER:
 			// all_privileges = ACL_ALL_RIGHTS_FOREIGN_SERVER;
 			// errormsg = gettext_noop("invalid privilege type %s for foreign server");
+			break;
+		case OBJECT_KEK:
+			break;
+		case OBJECT_DEK:
 			break;
 		default:
 			elog(ERROR, "unrecognized GrantStmt.objtype: %d",

@@ -1,0 +1,130 @@
+-- TECC ACL Permission Query Functions Regression Test
+-- Test all variants of has_kek_privilege and has_dek_privilege functions
+
+-- Setup: Create test users
+CREATE USER tecc_acl_user1;
+CREATE USER tecc_acl_user2;
+CREATE USER tecc_acl_user3;
+
+-- Create test KEK and DEK
+CREATE KEK test_acl_kek WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_acl_key'
+);
+
+CREATE DEK test_acl_dek WITH VALUES (
+    _TECC_PROCESSED = '1',
+    ENCRYPTED_VALUE = 'deadbeef12345678abcdef00',
+    KEK = 'test_acl_kek'
+);
+
+-- Get OIDs for testing
+\set kek_oid '(SELECT oid FROM hg_kek WHERE kek_name = ''test_acl_kek'')'
+\set dek_oid '(SELECT oid FROM hg_dek WHERE dek_name = ''test_acl_dek'')'
+\set user1_oid '(SELECT oid FROM pg_authid WHERE rolname = ''tecc_acl_user1'')'
+\set user2_oid '(SELECT oid FROM pg_authid WHERE rolname = ''tecc_acl_user2'')'
+
+-- Test 1: Owner has USAGE privilege by default
+SELECT has_kek_privilege('test_acl_kek', 'USAGE') AS owner_has_kek_priv;
+SELECT has_dek_privilege('test_acl_dek', 'USAGE') AS owner_has_dek_priv;
+
+-- Test 2: Other users do NOT have privilege initially
+SELECT has_kek_privilege('tecc_acl_user1', 'test_acl_kek', 'USAGE') AS user1_has_kek_priv_init;
+SELECT has_dek_privilege('tecc_acl_user1', 'test_acl_dek', 'USAGE') AS user1_has_dek_priv_init;
+
+-- Test 3: Grant USAGE to user1
+GRANT USAGE ON KEK test_acl_kek TO tecc_acl_user1;
+GRANT USAGE ON DEK test_acl_dek TO tecc_acl_user1;
+
+-- Test 4: Check user1 now has privilege (all function variants)
+-- Variant 1: username, keyname, privilege
+SELECT has_kek_privilege('tecc_acl_user1', 'test_acl_kek', 'USAGE') AS user1_has_kek_priv_name_name;
+SELECT has_dek_privilege('tecc_acl_user1', 'test_acl_dek', 'USAGE') AS user1_has_dek_priv_name_name;
+
+-- Variant 2: username, key OID, privilege
+SELECT has_kek_privilege('tecc_acl_user1', :kek_oid, 'USAGE') AS user1_has_kek_priv_name_id;
+SELECT has_dek_privilege('tecc_acl_user1', :dek_oid, 'USAGE') AS user1_has_dek_priv_name_id;
+
+-- Variant 3: user OID, keyname, privilege
+SELECT has_kek_privilege(:user1_oid, 'test_acl_kek', 'USAGE') AS user1_has_kek_priv_id_name;
+SELECT has_dek_privilege(:user1_oid, 'test_acl_dek', 'USAGE') AS user1_has_dek_priv_id_name;
+
+-- Variant 4: user OID, key OID, privilege
+SELECT has_kek_privilege(:user1_oid, :kek_oid, 'USAGE') AS user1_has_kek_priv_id_id;
+SELECT has_dek_privilege(:user1_oid, :dek_oid, 'USAGE') AS user1_has_dek_priv_id_id;
+
+-- Variant 5: keyname, privilege (current user)
+-- Switch to user1 to test
+SET SESSION AUTHORIZATION tecc_acl_user1;
+SELECT has_kek_privilege('test_acl_kek', 'USAGE') AS current_user_has_kek_priv;
+SELECT has_dek_privilege('test_acl_dek', 'USAGE') AS current_user_has_dek_priv;
+RESET SESSION AUTHORIZATION;
+
+-- Variant 6: key OID, privilege (current user)
+SET SESSION AUTHORIZATION tecc_acl_user1;
+SELECT has_kek_privilege(:kek_oid, 'USAGE') AS current_user_has_kek_priv_oid;
+SELECT has_dek_privilege(:dek_oid, 'USAGE') AS current_user_has_dek_priv_oid;
+RESET SESSION AUTHORIZATION;
+
+-- Test 5: Check user2 still does NOT have privilege
+SELECT has_kek_privilege('tecc_acl_user2', 'test_acl_kek', 'USAGE') AS user2_has_kek_priv;
+SELECT has_dek_privilege('tecc_acl_user2', 'test_acl_dek', 'USAGE') AS user2_has_dek_priv;
+
+-- Test 6: Grant USAGE to user2 WITH GRANT OPTION
+GRANT USAGE ON KEK test_acl_kek TO tecc_acl_user2 WITH GRANT OPTION;
+GRANT USAGE ON DEK test_acl_dek TO tecc_acl_user2 WITH GRANT OPTION;
+
+-- Test 7: Check user2 can now grant to user3
+SET SESSION AUTHORIZATION tecc_acl_user2;
+GRANT USAGE ON KEK test_acl_kek TO tecc_acl_user3;
+GRANT USAGE ON DEK test_acl_dek TO tecc_acl_user3;
+RESET SESSION AUTHORIZATION;
+
+-- Test 8: Check user3 now has privilege
+SELECT has_kek_privilege('tecc_acl_user3', 'test_acl_kek', 'USAGE') AS user3_has_kek_priv;
+SELECT has_dek_privilege('tecc_acl_user3', 'test_acl_dek', 'USAGE') AS user3_has_dek_priv;
+
+-- Test 9: Revoke from user1
+REVOKE USAGE ON KEK test_acl_kek FROM tecc_acl_user1;
+REVOKE USAGE ON DEK test_acl_dek FROM tecc_acl_user1;
+
+-- Test 10: Check user1 no longer has privilege
+SELECT has_kek_privilege('tecc_acl_user1', 'test_acl_kek', 'USAGE') AS user1_revoked_kek_priv;
+SELECT has_dek_privilege('tecc_acl_user1', 'test_acl_dek', 'USAGE') AS user1_revoked_dek_priv;
+
+-- Test 11: Revoke GRANT OPTION from user2
+REVOKE GRANT OPTION FOR USAGE ON KEK test_acl_kek FROM tecc_acl_user2 CASCADE;
+REVOKE GRANT OPTION FOR USAGE ON DEK test_acl_dek FROM tecc_acl_user2 CASCADE;
+
+-- Test 12: Check user3 still has privilege (CASCADE should not revoke)
+SELECT has_kek_privilege('tecc_acl_user3', 'test_acl_kek', 'USAGE') AS user3_still_has_kek_priv;
+SELECT has_dek_privilege('tecc_acl_user3', 'test_acl_dek', 'USAGE') AS user3_still_has_dek_priv;
+
+-- Test 13: Test error cases
+-- Invalid privilege
+SELECT has_kek_privilege('test_acl_kek', 'INVALID_PRIV') AS invalid_priv_kek;
+SELECT has_dek_privilege('test_acl_dek', 'INVALID_PRIV') AS invalid_priv_dek;
+
+-- Non-existent key
+SELECT has_kek_privilege('non_existent_kek', 'USAGE') AS non_existent_kek;
+SELECT has_dek_privilege('non_existent_dek', 'USAGE') AS non_existent_dek;
+
+-- Non-existent user
+SELECT has_kek_privilege('non_existent_user', 'test_acl_kek', 'USAGE') AS non_existent_user_kek;
+SELECT has_dek_privilege('non_existent_user', 'test_acl_dek', 'USAGE') AS non_existent_user_dek;
+
+-- Test 14: Programming interface note
+-- Note: TECC权限管理通过标准的SQL GRANT/REVOKE命令实现。
+-- 编程接口已被移除，请使用SQL命令进行权限管理。
+
+-- Cleanup
+REVOKE ALL ON KEK test_acl_kek FROM tecc_acl_user2, tecc_acl_user3;
+REVOKE ALL ON DEK test_acl_dek FROM tecc_acl_user2, tecc_acl_user3;
+
+DROP DEK test_acl_dek;
+DROP KEK test_acl_kek;
+
+DROP USER tecc_acl_user1;
+DROP USER tecc_acl_user2;
+DROP USER tecc_acl_user3;

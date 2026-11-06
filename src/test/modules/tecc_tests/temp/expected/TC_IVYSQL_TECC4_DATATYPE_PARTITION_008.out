@@ -1,0 +1,76 @@
+5月 23, 2026 1:54:50 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:54:50 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:54:50 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS partition_float4_main CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE partition_float4_main (id SERIAL,amount float4_enc encrypted with (dek = dek_t1) ,range_code CHAR(1),PRIMARY KEY (id, amount)) PARTITION BY RANGE (amount);
+
+rows: 0
+>>> 7
+CREATE TABLE partition_float4_zone_f PARTITION OF partition_float4_main FOR VALUES FROM ('-Infinity') TO (-20.0);
+
+5月 23, 2026 1:54:51 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_float4_main.amount' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_float4_main.amount' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 8
+CREATE TABLE partition_float4_zone_c PARTITION OF partition_float4_main FOR VALUES FROM (-20.0) TO (0.0);
+
+5月 23, 2026 1:54:51 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_float4_main.amount' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_float4_main.amount' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 9
+CREATE TABLE partition_float4_zone_n PARTITION OF partition_float4_main FOR VALUES FROM (0.0) TO (20.0);
+
+5月 23, 2026 1:54:51 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_float4_main.amount' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_float4_main.amount' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 10
+CREATE TABLE partition_float4_zone_w PARTITION OF partition_float4_main FOR VALUES FROM (20.0) TO ('Infinity');
+
+5月 23, 2026 1:54:51 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_float4_main.amount' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_float4_main.amount' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 11
+INSERT INTO partition_float4_main (amount, range_code) VALUES (-30.0, 'F'), (-10.0, 'C'), (10.0, 'N'), (30.0, 'W');
+
+错误: 没有为行找到关系"partition_float4_main"的分区
+  详情：失败行的分区键包含(amount) = (\xe001000000000100b96f30655c000000000000000000000000000000000100...).
+>>> 12
+SELECT float4_enc as table_type, tableoid::regclass as partition_name, COUNT(*) FROM partition_float4_main GROUP BY tableoid;
+
+错误: 字段 "float4_enc" 不存在
+  位置：8
+>>> 13
+DROP TABLE IF EXISTS partition_float4_main CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

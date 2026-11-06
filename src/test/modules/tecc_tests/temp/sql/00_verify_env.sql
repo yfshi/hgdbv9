@@ -1,0 +1,3 @@
+-- TC_HGDB_TECC4_DRIVER_SWITCH_001 前置条件
+CREATE KEK kek_test;
+CREATE DEK dek_test ENCRYPTED BY kek_test;

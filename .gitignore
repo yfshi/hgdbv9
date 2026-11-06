@@ -31,6 +31,15 @@ win32ver.rc
 *.exe
 lib*dll.def
 lib*.pc
+# Backup files (should never be committed)
+*.bak
+*.backup
+*.backup2
+*.backup.[0-9]*
+
+# Auto-generated dependency files
+.depend
+
 
 # Local excludes in root directory
 /GNUmakefile

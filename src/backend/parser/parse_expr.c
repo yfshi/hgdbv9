@@ -19,6 +19,7 @@
 
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
+#include "catalog/pg_type_enc.h"
 #include "commands/dbcommands.h"
 #include "miscadmin.h"
 #include "nodes/makefuncs.h"
@@ -28,6 +29,7 @@
 #include "parser/analyze.h"
 #include "parser/parse_agg.h"
 #include "parser/parse_clause.h"
+#include "parser/parsetree.h"
 #include "parser/parse_coerce.h"
 #include "parser/parse_collate.h"
 #include "parser/parse_expr.h"
@@ -41,8 +43,13 @@
 #include "utils/date.h"
 #include "utils/guc.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/lsyscache.h"
+#include "utils/syscache.h"
 #include "utils/timestamp.h"
+/* ReqID:TECC4.0 - OPE check for COLLATE on encrypted columns */
+#include "catalog/hg_encrypted_columns.h"
+#include "commands/encrypted_column.h"
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
+#include "utils/tecc/tecc_type_mapping.h"
 #include "utils/xml.h"
 /* Begin - BUGID:0000536 */
 #include "utils/fmgroids.h"
@@ -5471,6 +5478,19 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 {
 	CollateExpr *newc;
 	Oid			argtype;
+	char	   *colname = NULL;
+
+	/* ReqID:TECC4.0 - Save column name before transformExprRecurse consumes c->arg */
+	if (IsA(c->arg, ColumnRef))
+	{
+		ColumnRef  *cref = (ColumnRef *) c->arg;
+		if (cref->fields != NIL)
+		{
+			Node   *lastfield = (Node *) llast(cref->fields);
+			if (IsA(lastfield, String))
+				colname = strVal(lastfield);
+		}
+	}
 
 	newc = makeNode(CollateExpr);
 	newc->arg = (Expr *) transformExprRecurse(pstate, c->arg);
@@ -5523,7 +5543,7 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 	/* End - BUG#8428 8441 */
 
 	/*
-	 * The unknown type is not collatable, but coerce_type() takes care of it
+	 * The unknown type is not collatable, but coerce_type() takes it
 	 * separately, so we'll let it go here.
 	 */
 	if (!type_is_collatable(argtype) && argtype != UNKNOWNOID)
@@ -5533,7 +5553,98 @@ transformCollateClause(ParseState *pstate, CollateClause *c)
 						format_type_be(argtype)),
 				 parser_errposition(pstate, c->location)));
 
-	newc->collOid = LookupCollation(pstate, c->collname, c->location);
+        /* ReqID:TECC4.0 - COLLATE compatibility check for encrypted character types */
+        if ((argtype == TEXT_ENCOID || argtype == VARCHAR_ENCOID ||
+                 argtype == BPCHAR_ENCOID) && colname != NULL)
+        {
+                RangeTblEntry *rte;
+                int             rtindex;
+                AttrNumber      attnum;
+                Oid             col_collid;
+                Oid             tmp_typid;
+                int32           tmp_typmod;
+
+                for (rtindex = 1; rtindex <= list_length(pstate->p_rtable); rtindex++)
+                {
+                        rte = rt_fetch(rtindex, pstate->p_rtable);
+                        if (rte == NULL || rte->rtekind != RTE_RELATION)
+                                continue;
+                        if (!OidIsValid(rte->relid))
+                                continue;
+
+                        attnum = get_attnum(rte->relid, colname);
+                        if (attnum == InvalidAttrNumber)
+                                continue;
+
+                        get_atttypetypmodcoll(rte->relid, attnum,
+                                                                  &tmp_typid, &tmp_typmod, &col_collid);
+						/* ReqID:TECC4.0 - Before collation checks, verify the
+						* encrypted column has OPE.  Without OPE, COLLATE is
+						* meaningless and should be rejected immediately. */
+						{
+							HeapTuple	enc_tup;
+
+							enc_tup = SearchSysCache2(HGENCRYPTEDCOLUMNSTABLEATTNUM,
+													ObjectIdGetDatum(rte->relid),
+													Int16GetDatum((int16) attnum));
+							if (HeapTupleIsValid(enc_tup))
+							{
+								Form_hg_encrypted_columns enc_form;
+
+								enc_form = (Form_hg_encrypted_columns) GETSTRUCT(enc_tup);
+								if (!(enc_form->encryption_type & HG_ENCRYPTION_TYPE_OPE))
+								{
+									ReleaseSysCache(enc_tup);
+									ereport(ERROR,
+											(errcode(ERRCODE_COLLATION_MISMATCH),
+											errmsg("COLLATE cannot be used on encrypted "
+													"column \"%s\" without OPE algorithm",
+													colname),
+											errhint("Set support_algo = 'ope' in the "
+													"ENCRYPTED WITH clause when creating "
+													"the column."),
+											parser_errposition(pstate, c->location)));
+								}
+								ReleaseSysCache(enc_tup);
+							}
+						}
+
+                        if (!OidIsValid(col_collid))
+                                break;
+
+                        if (col_collid == DEFAULT_COLLATION_OID)
+                                ereport(ERROR,
+                                                (errcode(ERRCODE_COLLATION_MISMATCH),
+                                                 errmsg("encrypted column \"%s\" has no fixed collation",
+                                                                colname),
+                                                 errdetail("The column's collation was not resolved at "
+                                                                   "creation time. Recreate the column with an "
+                                                                   "explicit COLLATE clause."),
+                                                 parser_errposition(pstate, c->location)));
+
+                        {
+                                Oid     query_collid;
+                                char   *col_collname;
+                                char   *query_collname;
+
+                                query_collid = LookupCollation(pstate, c->collname, c->location);
+                                if (query_collid != col_collid)
+                                {
+                                        col_collname = get_collation_name(col_collid);
+                                        query_collname = get_collation_name(query_collid);
+                                        ereport(ERROR,
+                                                        (errcode(ERRCODE_COLLATION_MISMATCH),
+                                                         errmsg("COLLATE \"%s\" does not match encrypted "
+                                                                        "column \"%s\" collation \"%s\"",
+                                                                        query_collname, colname, col_collname),
+                                                         parser_errposition(pstate, c->location)));
+                                }
+                        }
+                        break;
+                }
+        }
+
+        newc->collOid = LookupCollation(pstate, c->collname, c->location);
 	newc->location = c->location;
 
 	return (Node *) newc;

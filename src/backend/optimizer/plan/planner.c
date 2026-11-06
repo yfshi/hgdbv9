@@ -1382,8 +1382,10 @@ preprocess_qual_conditions(PlannerInfo *root, Node *jtnode)
 		j->quals = preprocess_expression(root, j->quals, EXPRKIND_QUAL);
 	}
 	else
+	{
 		elog(ERROR, "unrecognized node type: %d",
 			 (int) nodeTag(jtnode));
+	}
 }
 
 /*

@@ -1,0 +1,12 @@
+>>> 1
+SELECT set_config('enable_tecc', '2', false);
+
+错误: 未认可的配置参数 "enable_tecc"
+>>> 2
+SELECT set_config('enable_tecc', 'abc', false);
+
+错误: 未认可的配置参数 "enable_tecc"
+>>> 3
+SELECT set_config('enable_tecc', '', false);
+
+错误: 未认可的配置参数 "enable_tecc"

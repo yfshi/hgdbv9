@@ -1,0 +1,119 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1a SEARCH on int4 — expect error ===
+(1 row)
+DROP TABLE
+1a_search_int_error|error expected above
+(1 row)
+=== 1b Hash Index ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+1b_hash_idx_created|4
+(1 row)
+DROP TABLE
+=== 2 B-tree Index + Query ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+2a_eq_id|50|500|Name_50
+(1 row)
+2b_eq_name|50|500|Name_50
+(1 row)
+2c_range_gt|60|600|Name_60
+2c_range_gt|70|700|Name_70
+2c_range_gt|80|800|Name_80
+2c_range_gt|90|900|Name_90
+2c_range_gt|100|1000|Name_100
+(5 rows)
+2d_range_lt|10|100|Name_10
+2d_range_lt|20|200|Name_20
+(2 rows)
+2e_range_between|30|300|Name_30
+2e_range_between|40|400|Name_40
+2e_range_between|50|500|Name_50
+2e_range_between|60|600|Name_60
+2e_range_between|70|700|Name_70
+(5 rows)
+DROP TABLE
+=== 3 Index + EXPLAIN ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+idx_btree_id|CREATE INDEX idx_btree_id ON public.test_index_plan USING btree (id)
+idx_btree_val|CREATE INDEX idx_btree_val ON public.test_index_plan USING btree (val)
+idx_hash_id|CREATE INDEX idx_hash_id ON public.test_index_plan USING hash (id)
+idx_hash_name|CREATE INDEX idx_hash_name ON public.test_index_plan USING hash (name)
+(4 rows)
+3a_eq_id|50|500|Name_50
+(1 row)
+3b_eq_name|50|500|Name_50
+(1 row)
+3c_range_gt|60|600|Name_60
+3c_range_gt|70|700|Name_70
+3c_range_gt|80|800|Name_80
+3c_range_gt|90|900|Name_90
+3c_range_gt|100|1000|Name_100
+(5 rows)
+3d_range_ge|100|1000|Name_100
+(1 row)
+3e_range_lt|10|100|Name_10
+3e_range_lt|20|200|Name_20
+(2 rows)
+3f_range_between|30|300|Name_30
+3f_range_between|40|400|Name_40
+3f_range_between|50|500|Name_50
+3f_range_between|60|600|Name_60
+3f_range_between|70|700|Name_70
+(5 rows)
+Seq Scan on test_index_plan
+Filter: (id = '\xE'\\x被隐藏的HEX输出'::int4_enc)
+(2 rows)
+Sort
+Sort Key: val
+->  Seq Scan on test_index_plan
+Filter: (val > '\xE'\\x被隐藏的HEX输出'::int4_enc)
+(4 rows)
+Seq Scan on test_index_plan
+Filter: (name = '\xE'\\x被隐藏的HEX输出'::text_enc)
+(2 rows)
+3g_ctrl_select|50|500|Name_50
+(1 row)
+DROP TABLE
+=== 4 B-tree on OPE + Basic ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+CREATE INDEX
+CREATE INDEX
+4a_idx_created|2
+(1 row)
+DROP TABLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+NOTICE: key encryption key "kek_idx" does not exist, skipping
+NOTICE: table "test_search_int" does not exist, skipping
+ERROR: SEARCH algorithm is not supported for numeric encrypted types
+HINT:  SEARCH (fuzzy matching via LIKE) is only supported for character encrypted types (text_enc, varchar_enc, bpchar_enc). Remove 'search' from SUPPORT_ALGO for the numeric column, or change the column type to a character encrypted type.
+NOTICE: table "test_index_all" does not exist, skipping
+NOTICE: table "test_index_usage" does not exist, skipping
+NOTICE: table "test_index_plan" does not exist, skipping
+NOTICE: table "test_idx" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_idx

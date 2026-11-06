@@ -1185,6 +1185,9 @@ _outIntoClause(StringInfo str, const IntoClause *node)
 	WRITE_STRING_FIELD(tableSpaceName);
 	WRITE_NODE_FIELD(viewQuery);
 	WRITE_BOOL_FIELD(skipData);
+	/* Begin - ReqID:TECC4.0 */
+	WRITE_NODE_FIELD(encrypted_with_list);
+	/* End - ReqID:TECC4.0 */
 }
 
 static void
@@ -2955,6 +2958,7 @@ _outCreateStmtInfo(StringInfo str, const CreateStmt *node)
 	WRITE_STRING_FIELD(tablespacename);
 	WRITE_STRING_FIELD(accessMethod);
 	WRITE_BOOL_FIELD(if_not_exists);
+	WRITE_BOOL_FIELD(is_ctas);
 	WRITE_STRING_FIELD(collname);
 	WRITE_NODE_FIELD(autoIncStart);/* SRS-MYSQL-CREATE-TABLE */
 	WRITE_NODE_FIELD(relcomment); /* SRS-MYSQL-CREATE-TABLE */
@@ -2997,6 +3001,28 @@ _outImportForeignSchemaStmt(StringInfo str, const ImportForeignSchemaStmt *node)
 	WRITE_NODE_FIELD(table_list);
 	WRITE_NODE_FIELD(options);
 }
+
+/* Begin - ReqID:TECC4.0 */
+static void
+_outCreateKekStmt(StringInfo str, const CreateKekStmt *node)
+{
+	WRITE_NODE_TYPE("CREATEKEKSTMT");
+
+	WRITE_NODE_FIELD(names);
+	WRITE_BOOL_FIELD(if_not_exists);
+	WRITE_NODE_FIELD(options);
+}
+
+static void
+_outCreateDekStmt(StringInfo str, const CreateDekStmt *node)
+{
+	WRITE_NODE_TYPE("CREATEDEKSTMT");
+
+	WRITE_NODE_FIELD(names);
+	WRITE_BOOL_FIELD(if_not_exists);
+	WRITE_NODE_FIELD(options);
+}
+/* End - ReqID:TECC4.0 */
 
 static void
 _outIndexStmt(StringInfo str, const IndexStmt *node)
@@ -3237,6 +3263,7 @@ _outColumnDef(StringInfo str, const ColumnDef *node)
 	WRITE_OID_FIELD(collOid);
 	WRITE_NODE_FIELD(constraints);
 	WRITE_NODE_FIELD(fdwoptions);
+        WRITE_NODE_FIELD(encrypted_with);
 	WRITE_LOCATION_FIELD(location);
 	WRITE_BOOL_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	WRITE_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
@@ -3257,6 +3284,9 @@ _outTypeName(StringInfo str, const TypeName *node)
 	WRITE_NODE_FIELD(typmods);
 	WRITE_INT_FIELD(typemod);
 	WRITE_NODE_FIELD(arrayBounds);
+	/* Begin - ReqID:TECC4.0 */
+	WRITE_NODE_FIELD(encrypted_with);
+	/* End - ReqID:TECC4.0 */
 	WRITE_LOCATION_FIELD(location);
 }
 
@@ -4992,6 +5022,14 @@ outNode(StringInfo str, const void *obj)
 			case T_ImportForeignSchemaStmt:
 				_outImportForeignSchemaStmt(str, obj);
 				break;
+			/* Begin - ReqID:TECC4.0 */
+			case T_CreateKekStmt:
+				_outCreateKekStmt(str, obj);
+				break;
+			case T_CreateDekStmt:
+				_outCreateDekStmt(str, obj);
+				break;
+			/* End - ReqID:TECC4.0 */
 			case T_IndexStmt:
 				_outIndexStmt(str, obj);
 				break;

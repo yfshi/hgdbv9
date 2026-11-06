@@ -1,0 +1,127 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+        ?column?         
+-------------------------
+ === 1 Cache Refresh ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+     ?column?     | id 
+------------------+----
+ 1a_cache_refresh |  1
+(1 row)
+
+DROP TABLE
+           ?column?            
+-------------------------------
+ === 2 Cross-DEK Rejection ===
+(1 row)
+
+           ?column?           
+------------------------------
+ 2a_text_t2_via_dek1_dek2_err
+(1 row)
+
+            ?column?            
+--------------------------------
+ 2b_text_to_bpchar_diff_dek_err
+(1 row)
+
+            ?column?             
+---------------------------------
+ 2c_varchar_to_text_diff_dek_err
+(1 row)
+
+             ?column?              
+-----------------------------------
+ 2d_varchar_to_bpchar_diff_dek_err
+(1 row)
+
+            ?column?            
+--------------------------------
+ 2e_bpchar_to_text_diff_dek_err
+(1 row)
+
+             ?column?              
+-----------------------------------
+ 2f_bpchar_to_varchar_diff_dek_err
+(1 row)
+
+               ?column?               
+--------------------------------------
+ === 3 Cross-DEK Insert Rejection ===
+(1 row)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+          ?column?           
+-----------------------------
+ 3a_insert_int2_diff_dek_err
+(1 row)
+
+          ?column?           
+-----------------------------
+ 3b_insert_int8_diff_dek_err
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+      ?column?      | a 
+--------------------+---
+ 3c_same_dek_insert | 2
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP TABLE
+         ?column?         
+--------------------------
+ === 4 DEK Permission ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+      ?column?       | id | name  | salary | bonus 
+---------------------+----+-------+--------+-------
+ 4a_superuser_select |  1 | Alice | 50000  | 5000
+ 4a_superuser_select |  2 | Bob   | 60000  | 6000
+(2 rows)
+
+GRANT
+GRANT
+DROP ROLE
+CREATE ROLE
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:12: 错误:  cannot drop key encryption key "kek_cache" because encrypted columns depend on it
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:13: 注意:  递归删除 data encryption key dek_cache2
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:15: 错误:  KEK "kek_cache" already exists
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:16: 错误:  DEK "dek_cache" already exists
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:26: 注意:  表 "test_cr" 不存在
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:41: TECC query preprocessing failed: Cannot cast encrypted type text_enc to varchar_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:44: TECC query preprocessing failed: Cannot cast encrypted type text_enc to bpchar_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:47: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to text_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:50: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to bpchar_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:53: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to text_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:56: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to varchar_enc with different DEKs (dek_cache vs dek_cache2)
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:63: 注意:  表 "tb_int4" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:64: 注意:  表 "tb_int8" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:70: TECC query preprocessing failed: cannot assign encrypted value with DEK dek_cache2 to column id which uses DEK dek_cache
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:72: TECC query preprocessing failed: cannot assign encrypted value with DEK dek_cache2 to column id which uses DEK dek_cache
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:75: 注意:  表 "tb_v" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:90: 错误:  无法删除"test_noperm_user"因为有其它对象倚赖它
+DETAIL:  模式 public的权限
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:105: 错误:  角色"test_noperm_user" 已经存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/cache.sql:114: error: \connect: connection to server at "127.0.0.1", port NNNN failed: ��������:  �����û� "test_noperm_user" �� SSPI ��֤ʧ��

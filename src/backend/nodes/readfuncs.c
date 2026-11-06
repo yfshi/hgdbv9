@@ -332,6 +332,38 @@ _readNotifyStmt(void)
 	READ_DONE();
 }
 
+/* Begin - ReqID:TECC4.0 */
+/*
+ * _readCreateKekStmt
+ */
+static CreateKekStmt *
+_readCreateKekStmt(void)
+{
+	READ_LOCALS(CreateKekStmt);
+
+	READ_NODE_FIELD(names);
+	READ_BOOL_FIELD(if_not_exists);
+	READ_NODE_FIELD(options);
+
+	READ_DONE();
+}
+
+/*
+ * _readCreateDekStmt
+ */
+static CreateDekStmt *
+_readCreateDekStmt(void)
+{
+	READ_LOCALS(CreateDekStmt);
+
+	READ_NODE_FIELD(names);
+	READ_BOOL_FIELD(if_not_exists);
+	READ_NODE_FIELD(options);
+
+	READ_DONE();
+}
+/* End - ReqID:TECC4.0 */
+
 /*
  * _readDeclareCursorStmt
  */
@@ -3102,6 +3134,7 @@ _readTypeName(void)
 	READ_NODE_FIELD(typmods);
 	READ_INT_FIELD(typemod);
 	READ_NODE_FIELD(arrayBounds);
+        READ_NODE_FIELD(encrypted_with);
 	READ_LOCATION_FIELD(location);
 
 	READ_DONE();
@@ -3448,6 +3481,12 @@ parseNodeString(void)
 		return_value = _readTableSampleClause();
 	else if (MATCH("NOTIFY", 6))
 		return_value = _readNotifyStmt();
+	/* Begin - ReqID:TECC4.0 */
+	else if (MATCH("CREATEKEKSTMT", 13))
+		return_value = _readCreateKekStmt();
+	else if (MATCH("CREATEDEKSTMT", 13))
+		return_value = _readCreateDekStmt();
+	/* End - ReqID:TECC4.0 */
 	else if (MATCH("DEFELEM", 7))
 		return_value = _readDefElem();
 	else if (MATCH("DECLARECURSOR", 13))

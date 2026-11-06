@@ -1,0 +1,322 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+            ?column?             
+---------------------------------
+ === 1 PREPARE/EXECUTE Basic ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+PREPARE
+ id | name  | salary | dept 
+----+-------+--------+------
+  1 | Alice |  50000 | IT
+  2 | Bob   |  60000 | HR
+(2 rows)
+
+DEALLOCATE
+PREPARE
+ id | name | salary | dept 
+----+------+--------+------
+  2 | Bob  |  60000 | HR
+(1 row)
+
+DEALLOCATE
+PREPARE
+INSERT 0 1
+ ?column? | id |  name   
+----------+----+---------
+ p3_check |  3 | Charlie
+(1 row)
+
+DEALLOCATE
+PREPARE
+UPDATE 1
+ ?column? | id | salary 
+----------+----+--------
+ p4_check |  1 |  55000
+(1 row)
+
+DEALLOCATE
+PREPARE
+DEALLOCATE
+PREPARE
+INSERT 0 1
+ ?column? | id | name  
+----------+----+-------
+ e1_check |  4 | Diana
+(1 row)
+
+DEALLOCATE
+PREPARE
+ count 
+-------
+     3
+(1 row)
+
+DEALLOCATE
+PREPARE
+DEALLOCATE
+PREPARE
+DEALLOCATE
+PREPARE
+PREPARE
+DEALLOCATE ALL
+PREPARE
+DEALLOCATE ALL
+                           QUERY PLAN                           
+----------------------------------------------------------------
+ Seq Scan on test_prep_t1  (cost=0.00..12.62 rows=70 width=344)
+   Filter: (salary > 50000)
+(2 rows)
+
+PREPARE
+                          QUERY PLAN                           
+---------------------------------------------------------------
+ Seq Scan on test_prep_t1  (cost=0.00..12.62 rows=1 width=344)
+   Filter: (id = 1)
+(2 rows)
+
+DEALLOCATE
+DROP TABLE
+           ?column?            
+-------------------------------
+ === 2 PREPARE + Encrypted ===
+(1 row)
+
+CREATE TABLE
+PREPARE
+INSERT 0 1
+    ?column?     | id | name  
+-----------------+----+-------
+ 2a_insert_const |  1 | Alice
+(1 row)
+
+DEALLOCATE
+PREPARE
+ id | name  
+----+-------
+  1 | Alice
+(1 row)
+
+DEALLOCATE
+PREPARE
+UPDATE 1
+    ?column?     | id | salary 
+-----------------+----+--------
+ 2b_update_const |  1 | 55000
+(1 row)
+
+DEALLOCATE
+PREPARE
+DELETE 1
+   ?column?    | count 
+---------------+-------
+ 2c_delete_cnt |     0
+(1 row)
+
+CREATE TABLE
+PREPARE
+INSERT 0 1
+   ?column?   | id | name  
+--------------+----+-------
+ 2d_multi_enc |  1 | Carol
+(1 row)
+
+DEALLOCATE
+PREPARE
+INSERT 0 1
+  ?column?   | id | name 
+-------------+----+------
+ 2e_enc_null |  2 | Dave
+(1 row)
+
+DEALLOCATE
+PREPARE
+UPDATE 1
+       ?column?        | id | name 
+-----------------------+----+------
+ 2f_update_varchar_enc |  1 | Eve
+(1 row)
+
+DEALLOCATE
+PREPARE
+PREPARE
+DEALLOCATE ALL
+DROP TABLE
+DROP TABLE
+          ?column?           
+-----------------------------
+ === 3 PBE Parameterized ===
+(1 row)
+
+CREATE TABLE
+PREPARE
+INSERT 0 1
+    ?column?     | id | name  | salary 
+-----------------+----+-------+--------
+ 3a_insert_param |  1 | Alice | 50000
+(1 row)
+
+DEALLOCATE
+PREPARE
+ id | name  | salary | dept 
+----+-------+--------+------
+  1 | Alice | 50000  | IT
+(1 row)
+
+DEALLOCATE
+PREPARE
+ id | name  | salary | dept 
+----+-------+--------+------
+  1 | Alice | 50000  | IT
+(1 row)
+
+DEALLOCATE
+PREPARE
+ id | name  | salary | dept 
+----+-------+--------+------
+  1 | Alice | 50000  | IT
+(1 row)
+
+DEALLOCATE
+PREPARE
+    ?column?     | id | salary 
+-----------------+----+--------
+ 3b_update_param |  1 | 50000
+(1 row)
+
+DEALLOCATE
+INSERT 0 1
+PREPARE
+      ?column?       | count 
+---------------------+-------
+ 3c_delete_param_cnt |     1
+(1 row)
+
+DEALLOCATE
+CREATE TABLE
+PREPARE
+ ?column? | id | name | age | score 
+----------+----+------+-----+-------
+(0 rows)
+
+DEALLOCATE
+PREPARE
+DEALLOCATE
+PREPARE
+ id | name | age 
+----+------+-----
+(0 rows)
+
+DEALLOCATE
+PREPARE
+ id | name | bio 
+----+------+-----
+(0 rows)
+
+DEALLOCATE
+PREPARE
+UPDATE 0
+ ?column? | id | age | score 
+----------+----+-----+-------
+(0 rows)
+
+DEALLOCATE
+PREPARE
+INSERT 0 1
+   ?column?    | id |   name   | salary 
+---------------+----+----------+--------
+ 3f_null_param | 10 | NullTest | 
+(1 row)
+
+DEALLOCATE
+PREPARE
+INSERT 0 1
+    ?column?     | id | name  | salary 
+-----------------+----+-------+--------
+ 3g_mixed_params | 20 | Mixed | 75000
+(1 row)
+
+DEALLOCATE
+PREPARE
+ id | name | salary 
+----+------+--------
+(0 rows)
+
+DEALLOCATE
+CREATE TABLE
+PREPARE
+INSERT 0 1
+   ?column?    | id |   code    |    label    
+---------------+----+-----------+-------------
+ 3h_bpchar_enc |  1 | 'CODE001' | Test code 1
+(1 row)
+
+DEALLOCATE
+PREPARE
+ id |   code    |    label    
+----+-----------+-------------
+  1 | 'CODE001' | Test code 1
+(1 row)
+
+DEALLOCATE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+       ?column?       
+----------------------
+ === 4 Simple PBE ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+PREPARE
+INSERT 0 1
+INSERT 0 1
+DEALLOCATE
+PREPARE
+ id | name  | salary 
+----+-------+--------
+  1 | Alice | 50000
+(1 row)
+
+DEALLOCATE
+DROP TABLE
+    ?column?     
+-----------------
+ === Cleanup ===
+(1 row)
+
+DROP KEK
+psql:/.../pbe.sql:10: NOTICE:  key encryption key "kek_pbe" does not exist, skipping
+psql:/.../pbe.sql:19: NOTICE:  table "test_prep_t1" does not exist, skipping
+psql:/.../pbe.sql:138: ERROR:  operator does not exist: int4_enc > integer
+LINE 1: ... d1 AS SELECT id, name FROM test_pe_t1 WHERE salary > 50000;
+                                                               ^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+psql:/.../pbe.sql:139: ERROR:  prepared statement "d1" does not exist
+psql:/.../pbe.sql:182: ERROR:  parameter $1 of type integer cannot be coerced to the expected type int4_enc
+LINE 1: EXECUTE c1(55000, 1);
+                   ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../pbe.sql:189: ERROR:  parameter $1 of type integer cannot be coerced to the expected type int4_enc
+LINE 1: EXECUTE d1(70000);
+                   ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../pbe.sql:205: ERROR:  invalid hex string: "Alice"
+LINE 1: EXECUTE e1(1, 'Alice', 30, 95.5, 'Alice bio', 'IT');
+                      ^
+DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
+psql:/.../pbe.sql:206: ERROR:  invalid hex string: "Bob"
+LINE 1: EXECUTE e1(2, 'Bob', 25, 88.0, 'Bob bio', 'HR');
+                      ^
+DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
+psql:/.../pbe.sql:212: ERROR:  parameter $1 of type integer cannot be coerced to the expected type int4_enc
+LINE 1: EXECUTE e2(28, 90.0);
+                   ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../pbe.sql:268: NOTICE:  table "t1" does not exist, skipping
+psql:/.../pbe.sql:286: NOTICE:  drop cascades to data encryption key dek_pbe

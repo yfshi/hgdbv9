@@ -648,6 +648,8 @@ MSGFMT
 PG_CRC32C_OBJS
 CFLAGS_ARMV8_CRC32C
 CFLAGS_SSE42
+ICU_LIBS
+ICU_CFLAGS
 have_win32_dbghelp
 LIBOBJS
 UUID_LIBS
@@ -728,8 +730,8 @@ with_gssapi
 with_python
 with_perl
 with_tcl
-ICU_LIBS
-ICU_CFLAGS
+swxa_sdf_libdir
+tzwy_sdf_libdir
 with_icu
 enable_internal_guc
 enable_numa
@@ -837,6 +839,8 @@ enable_option_checking
 with_extra_version
 with_template
 with_includes
+with_tzwy_sdf
+with_swxa_sdf
 with_libraries
 with_libs
 with_hg_product_name
@@ -922,8 +926,6 @@ CPP
 PKG_CONFIG
 PKG_CONFIG_PATH
 PKG_CONFIG_LIBDIR
-ICU_CFLAGS
-ICU_LIBS
 XML2_CONFIG
 XML2_CFLAGS
 XML2_LIBS
@@ -933,6 +935,8 @@ LDFLAGS_EX
 LDFLAGS_SL
 PERL
 PYTHON
+ICU_CFLAGS
+ICU_LIBS
 MSGFMT
 TCLSH'
 
@@ -1582,6 +1586,8 @@ Optional Packages:
                           append STRING to version
   --with-template=NAME    override operating system template
   --with-includes=DIRS    look for additional header files in DIRS
+  --with-tzwy-sdf=DIR     directory containing libsdf.client.so
+  --with-swxa-sdf=DIR     directory containing libswsds.so
   --with-libraries=DIRS   look for additional libraries in DIRS
   --with-libs=DIRS        alternative spelling of --with-libraries
   --with-hg_product_name=STRING
@@ -1659,8 +1665,6 @@ Some influential environment variables:
               directories to add to pkg-config's search path
   PKG_CONFIG_LIBDIR
               path overriding pkg-config's built-in search path
-  ICU_CFLAGS  C compiler flags for ICU, overriding pkg-config
-  ICU_LIBS    linker flags for ICU, overriding pkg-config
   XML2_CONFIG path to xml2-config utility
   XML2_CFLAGS C compiler flags for XML2, overriding pkg-config
   XML2_LIBS   linker flags for XML2, overriding pkg-config
@@ -1670,6 +1674,8 @@ Some influential environment variables:
   LDFLAGS_SL  extra linker flags for linking shared libraries only
   PERL        Perl program
   PYTHON      Python program
+  ICU_CFLAGS  C compiler flags for ICU, overriding pkg-config
+  ICU_LIBS    linker flags for ICU, overriding pkg-config
   MSGFMT      msgfmt program for NLS
   TCLSH       Tcl interpreter program (tclsh)
 
@@ -3107,6 +3113,56 @@ if test "${with_includes+set}" = set; then :
       ;;
     *)
 
+      ;;
+  esac
+
+fi
+
+
+
+#
+# TZWY-SDF client library (HSM encryption device driver)
+#
+
+
+
+# Check whether --with-tzwy-sdf was given.
+if test "${with_tzwy_sdf+set}" = set; then :
+  withval=$with_tzwy_sdf;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-tzwy-sdf option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-tzwy-sdf option" "$LINENO" 5
+      ;;
+    *)
+      tzwy_sdf_libdir=$withval
+      ;;
+  esac
+
+fi
+
+
+
+#
+# SWXA-SDF client library (SanWeiXinAn encryption device driver)
+#
+
+
+
+# Check whether --with-swxa-sdf was given.
+if test "${with_swxa_sdf+set}" = set; then :
+  withval=$with_swxa_sdf;
+  case $withval in
+    yes)
+      as_fn_error $? "argument required for --with-swxa-sdf option" "$LINENO" 5
+      ;;
+    no)
+      as_fn_error $? "argument required for --with-swxa-sdf option" "$LINENO" 5
+      ;;
+    *)
+      swxa_sdf_libdir=$withval
       ;;
   esac
 
@@ -8524,6 +8580,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 #
 # Set up TAS assembly code if needed; the template file has now had its
 # chance to request this.
@@ -8965,99 +9022,64 @@ fi
 $as_echo "$with_icu" >&6; }
 
 
-if test "$with_icu" = yes; then
 
-pkg_failed=no
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for icu-uc icu-i18n" >&5
-$as_echo_n "checking for icu-uc icu-i18n... " >&6; }
-
-if test -n "$ICU_CFLAGS"; then
-    pkg_cv_ICU_CFLAGS="$ICU_CFLAGS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"icu-uc icu-i18n\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "icu-uc icu-i18n") 2>&5
-  ac_status=$?
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_ICU_CFLAGS=`$PKG_CONFIG --cflags "icu-uc icu-i18n" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
+#
+# TZWY-SDF auto-detection
+#
+if test -z "$tzwy_sdf_libdir"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libsdf.client.so" >&5
+$as_echo_n "checking for libsdf.client.so... " >&6; }
+  for dir in /usr/lib64 /usr/local/lib64; do
+    if test -f "$dir/libsdf.client.so"; then
+      tzwy_sdf_libdir=$dir
+      break
+    fi
+  done
+  if test -n "$tzwy_sdf_libdir"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $tzwy_sdf_libdir" >&5
+$as_echo "$tzwy_sdf_libdir" >&6; }
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
+$as_echo "not found" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libsdf.client.so not found; HSM encryption features will be disabled." >&5
+$as_echo "$as_me: WARNING: libsdf.client.so not found; HSM encryption features will be disabled." >&2;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use --with-tzwy-sdf=DIR to specify the library path." >&5
+$as_echo "$as_me: WARNING: Use --with-tzwy-sdf=DIR to specify the library path." >&2;}
+  fi
 fi
- else
-    pkg_failed=untried
-fi
-if test -n "$ICU_LIBS"; then
-    pkg_cv_ICU_LIBS="$ICU_LIBS"
- elif test -n "$PKG_CONFIG"; then
-    if test -n "$PKG_CONFIG" && \
-    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"icu-uc icu-i18n\""; } >&5
-  ($PKG_CONFIG --exists --print-errors "icu-uc icu-i18n") 2>&5
-  ac_status=$?
-  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
-  test $ac_status = 0; }; then
-  pkg_cv_ICU_LIBS=`$PKG_CONFIG --libs "icu-uc icu-i18n" 2>/dev/null`
-		      test "x$?" != "x0" && pkg_failed=yes
-else
-  pkg_failed=yes
-fi
- else
-    pkg_failed=untried
+if test -n "$tzwy_sdf_libdir"; then
+  LIBRARY_DIRS="$LIBRARY_DIRS $tzwy_sdf_libdir"
 fi
 
 
-
-if test $pkg_failed = yes; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-
-if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
-        _pkg_short_errors_supported=yes
-else
-        _pkg_short_errors_supported=no
+#
+# SWXA-SDF auto-detection
+#
+if test -z "$swxa_sdf_libdir"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libswsds.so" >&5
+$as_echo_n "checking for libswsds.so... " >&6; }
+  for dir in /usr/lib64 /usr/local/lib64 /usr/local/lib; do
+    if test -f "$dir/libswsds.so"; then
+      swxa_sdf_libdir=$dir
+      break
+    fi
+  done
+  if test -n "$swxa_sdf_libdir"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $swxa_sdf_libdir" >&5
+$as_echo "$swxa_sdf_libdir" >&6; }
+  else
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: not found" >&5
+$as_echo "not found" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libswsds.so not found; SWXA HSM features will be disabled at runtime." >&5
+$as_echo "$as_me: WARNING: libswsds.so not found; SWXA HSM features will be disabled at runtime." >&2;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Use --with-swxa-sdf=DIR to specify the library path." >&5
+$as_echo "$as_me: WARNING: Use --with-swxa-sdf=DIR to specify the library path." >&2;}
+  fi
 fi
-        if test $_pkg_short_errors_supported = yes; then
-	        ICU_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "icu-uc icu-i18n" 2>&1`
-        else
-	        ICU_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "icu-uc icu-i18n" 2>&1`
-        fi
-	# Put the nasty error message in config.log where it belongs
-	echo "$ICU_PKG_ERRORS" >&5
-
-	as_fn_error $? "Package requirements (icu-uc icu-i18n) were not met:
-
-$ICU_PKG_ERRORS
-
-Consider adjusting the PKG_CONFIG_PATH environment variable if you
-installed software in a non-standard prefix.
-
-Alternatively, you may set the environment variables ICU_CFLAGS
-and ICU_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details." "$LINENO" 5
-elif test $pkg_failed = untried; then
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
-$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
-as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
-is in your PATH or set the PKG_CONFIG environment variable to the full
-path to pkg-config.
-
-Alternatively, you may set the environment variables ICU_CFLAGS
-and ICU_LIBS to avoid the need to call pkg-config.
-See the pkg-config man page for more details.
-
-To get pkg-config, see <http://pkg-config.freedesktop.org/>.
-See \`config.log' for more details" "$LINENO" 5; }
-else
-	ICU_CFLAGS=$pkg_cv_ICU_CFLAGS
-	ICU_LIBS=$pkg_cv_ICU_LIBS
-        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-
+if test -n "$swxa_sdf_libdir"; then
+  LIBRARY_DIRS="$LIBRARY_DIRS $swxa_sdf_libdir"
 fi
-fi
+
 
 #
 # Optionally build Tcl modules (PL/Tcl)
@@ -13972,6 +13994,10 @@ if test "$with_openssl" = yes ; then
   with_ssl=openssl
 fi
 
+if test "$with_ssl" != openssl; then
+  as_fn_error $? "TECC requires --with-openssl (--with-ssl=openssl). Please reconfigure with --with-ssl=openssl" "$LINENO" 5
+fi
+
 if test "$with_ssl" = openssl ; then
     # Minimum required OpenSSL version is 1.0.1
 
@@ -18582,7 +18608,128 @@ cat >>confdefs.h <<_ACEOF
 _ACEOF
 
 
+if test "$with_icu" != yes; then
+  as_fn_error $? "TECC requires --with-icu. Please reconfigure with --with-icu" "$LINENO" 5
+fi
+
 if test "$with_icu" = yes; then
+
+pkg_failed=no
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for icu-uc icu-i18n" >&5
+$as_echo_n "checking for icu-uc icu-i18n... " >&6; }
+
+if test -n "$ICU_CFLAGS"; then
+    pkg_cv_ICU_CFLAGS="$ICU_CFLAGS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"icu-uc icu-i18n\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "icu-uc icu-i18n") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_ICU_CFLAGS=`$PKG_CONFIG --cflags "icu-uc icu-i18n" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+if test -n "$ICU_LIBS"; then
+    pkg_cv_ICU_LIBS="$ICU_LIBS"
+ elif test -n "$PKG_CONFIG"; then
+    if test -n "$PKG_CONFIG" && \
+    { { $as_echo "$as_me:${as_lineno-$LINENO}: \$PKG_CONFIG --exists --print-errors \"icu-uc icu-i18n\""; } >&5
+  ($PKG_CONFIG --exists --print-errors "icu-uc icu-i18n") 2>&5
+  ac_status=$?
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; }; then
+  pkg_cv_ICU_LIBS=`$PKG_CONFIG --libs "icu-uc icu-i18n" 2>/dev/null`
+		      test "x$?" != "x0" && pkg_failed=yes
+else
+  pkg_failed=yes
+fi
+ else
+    pkg_failed=untried
+fi
+
+
+
+if test $pkg_failed = yes; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+if $PKG_CONFIG --atleast-pkgconfig-version 0.20; then
+        _pkg_short_errors_supported=yes
+else
+        _pkg_short_errors_supported=no
+fi
+        if test $_pkg_short_errors_supported = yes; then
+	        ICU_PKG_ERRORS=`$PKG_CONFIG --short-errors --print-errors --cflags --libs "icu-uc icu-i18n" 2>&1`
+        else
+	        ICU_PKG_ERRORS=`$PKG_CONFIG --print-errors --cflags --libs "icu-uc icu-i18n" 2>&1`
+        fi
+	# Put the nasty error message in config.log where it belongs
+	echo "$ICU_PKG_ERRORS" >&5
+
+	as_fn_error $? "Package requirements (icu-uc icu-i18n) were not met:
+
+$ICU_PKG_ERRORS
+
+Consider adjusting the PKG_CONFIG_PATH environment variable if you
+installed software in a non-standard prefix.
+
+Alternatively, you may set the environment variables ICU_CFLAGS
+and ICU_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details." "$LINENO" 5
+elif test $pkg_failed = untried; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+	{ { $as_echo "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+$as_echo "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "The pkg-config script could not be found or is too old.  Make sure it
+is in your PATH or set the PKG_CONFIG environment variable to the full
+path to pkg-config.
+
+Alternatively, you may set the environment variables ICU_CFLAGS
+and ICU_LIBS to avoid the need to call pkg-config.
+See the pkg-config man page for more details.
+
+To get pkg-config, see <http://pkg-config.freedesktop.org/>.
+See \`config.log' for more details" "$LINENO" 5; }
+else
+	ICU_CFLAGS=$pkg_cv_ICU_CFLAGS
+	ICU_LIBS=$pkg_cv_ICU_LIBS
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+fi
+
+  # When multiple ICU versions are installed, pkg-config reports one
+  # version's flags but the compiler/linker may pick up headers or
+  # libraries from another version via default search paths, causing
+  # link errors with versioned symbols (e.g. ucol_open_72 vs _50).
+  # Fix: if ICU_CFLAGS/LIBS lack explicit -I/-L paths, add them from
+  # pkg-config so the SAME ICU installation is used consistently.
+  case $ICU_CFLAGS in
+    *-I*) ;;
+    *)
+      icu_incdir=$(pkg-config --variable=includedir icu-uc 2>/dev/null)
+      if test -n "$icu_incdir" && test -d "$icu_incdir"; then
+        ICU_CFLAGS="-I$icu_incdir $ICU_CFLAGS"
+      fi
+      ;;
+  esac
+  case $ICU_LIBS in
+    *-L*) ;;
+    *)
+      icu_libdir=$(pkg-config --variable=libdir icu-uc 2>/dev/null)
+      if test -n "$icu_libdir" && test -d "$icu_libdir"; then
+        ICU_LIBS="-L$icu_libdir $ICU_LIBS"
+      fi
+      ;;
+  esac
+
   ac_save_CPPFLAGS=$CPPFLAGS
   CPPFLAGS="$CPPFLAGS $ICU_CFLAGS"
 

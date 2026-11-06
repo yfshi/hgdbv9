@@ -713,6 +713,11 @@ extern PQsslKeyPassHook_OpenSSL_type PQgetSSLKeyPassHook_OpenSSL(void);
 extern void PQsetSSLKeyPassHook_OpenSSL(PQsslKeyPassHook_OpenSSL_type hook);
 extern int	PQdefaultSSLKeyPassHook_OpenSSL(char *buf, int size, PGconn *conn);
 
+/* === TECC cache manual refresh === */
+
+/* Manually refresh the TECC metadata cache for the current connection */
+extern int	PQteccRefreshCache(PGconn *conn);
+
 #ifdef __cplusplus
 }
 #endif

@@ -1,0 +1,8 @@
+TECC Frontend Parser Performance Baseline
+Date: Apr 24 2026
+Time: 10:26:15
+SQL: SELECT * FROM baseline_table WHERE id = 123;
+Iterations: 1000
+Total time: 3.20 ms
+Average time: 0.0032 ms
+Operations/sec: 312697

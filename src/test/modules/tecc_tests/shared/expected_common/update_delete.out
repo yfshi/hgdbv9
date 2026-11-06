@@ -1,0 +1,95 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 Basic UPDATE/DELETE ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+UPDATE 1
+1a_update_basic|1|Alice|55000
+(1 row)
+1b_where_enc|2|Bob
+1b_where_enc|3|Charlie
+1b_where_enc|4|Diana
+(3 rows)
+UPDATE 1
+UPDATE 1
+1c_update_alias|1|52000
+1c_update_alias|2|53000
+(2 rows)
+UPDATE 1
+UPDATE 1
+CREATE TABLE
+INSERT 0 3
+UPDATE 1
+1d_update_from|1|58000
+(1 row)
+CREATE TABLE
+INSERT 0 2
+UPDATE 1
+1e_update_from_enc|1|62000
+(1 row)
+UPDATE 1
+1f_update_join_enc|2|65000
+(1 row)
+UPDATE 1
+UPDATE 1
+1|72000
+(1 row)
+UPDATE 1
+UPDATE 1
+1g_where_enc_ctrl|4|Diana
+(1 row)
+DELETE 0
+1h_delete_alias|4
+(1 row)
+INSERT 0 1
+DELETE 0
+1i_delete_using|1
+(1 row)
+INSERT 0 1
+DELETE 0
+1j_delete_using_enc|1
+(1 row)
+INSERT 0 1
+DELETE 0
+1k_delete_using_join|1
+(1 row)
+DELETE 3
+1l_cleanup_extra|4
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 2 INSERT...ON CONFLICT ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+2a_on_conflict|1|updated|20000
+(1 row)
+INSERT 0 1
+2b_on_conflict_multi|1|updated_again|30000
+(1 row)
+INSERT 0 0
+2c_on_conflict_nothing|1|updated_again|30000
+(1 row)
+DROP TABLE
+=== 3 UPDATE ROW() ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+UPDATE 1
+3a_row_update|1|72000|multi_col_test
+(1 row)
+DROP TABLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+NOTICE: key encryption key "kek_ud" does not exist, skipping
+NOTICE: table "test_ud_conflict" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_ud

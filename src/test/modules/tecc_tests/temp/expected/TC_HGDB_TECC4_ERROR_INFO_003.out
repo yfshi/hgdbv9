@@ -1,0 +1,24 @@
+>>> 1
+SELECT update_metadata();
+
+错误: 函数 update_metadata() 不存在
+  建议：没有匹配指定名称和参数类型的函数. 您也许需要增加明确的类型转换.
+  位置：8
+>>> 2
+SELECT update_meta(1);
+
+错误: 函数 update_meta(integer) 不存在
+  建议：没有匹配指定名称和参数类型的函数. 您也许需要增加明确的类型转换.
+  位置：8
+>>> 3
+SELECT update_meta('abc');
+
+错误: 函数 update_meta(unknown) 不存在
+  建议：没有匹配指定名称和参数类型的函数. 您也许需要增加明确的类型转换.
+  位置：8
+>>> 4
+SELECT update_meta(1,2,3);
+
+错误: 函数 update_meta(integer, integer, integer) 不存在
+  建议：没有匹配指定名称和参数类型的函数. 您也许需要增加明确的类型转换.
+  位置：8

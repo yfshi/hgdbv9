@@ -1,0 +1,63 @@
+# Master Makefile for all TECC tests
+# Authored by <wangxp@highgo.com>, 20260413
+# Updated by <wanghaoyan@highgo.com>, 20260413 - Added key_manager tests
+
+# Default target
+all: algorithm processor formatter parser key_manager
+
+# Build algorithm tests
+algorithm:
+	@echo "Building algorithm tests..."
+	$(MAKE) -C test_algorithm
+
+# Build processor tests
+processor:
+	@echo "Building processor tests..."
+	$(MAKE) -C test_processor
+
+# Build formatter tests
+formatter:
+	@echo "Building formatter tests..."
+	$(MAKE) -C test_formatter
+
+# Build parser tests
+parser:
+	@echo "Building parser tests..."
+	$(MAKE) -C test_parser
+
+# Build key manager tests
+key_manager:
+	@echo "Building key manager tests..."
+	$(MAKE) -C test_key_manager
+
+# Run all tests
+test: all
+	@echo "Running algorithm tests..."
+	$(MAKE) -C test_algorithm test
+	@echo ""
+	@echo "Running processor tests..."
+	$(MAKE) -C test_processor test
+	@echo ""
+	@echo "Running formatter tests..."
+	$(MAKE) -C test_formatter test
+	@echo ""
+	@echo "Running parser tests..."
+	$(MAKE) -C test_parser test
+	@echo ""
+	@echo "Running key manager tests..."
+	$(MAKE) -C test_key_manager test
+
+# Clean all
+clean:
+	@echo "Cleaning algorithm tests..."
+	$(MAKE) -C test_algorithm clean
+	@echo "Cleaning processor tests..."
+	$(MAKE) -C test_processor clean
+	@echo "Cleaning formatter tests..."
+	$(MAKE) -C test_formatter clean
+	@echo "Cleaning parser tests..."
+	$(MAKE) -C test_parser clean
+	@echo "Cleaning key manager tests..."
+	$(MAKE) -C test_key_manager clean
+
+.PHONY: all algorithm processor formatter parser key_manager test clean

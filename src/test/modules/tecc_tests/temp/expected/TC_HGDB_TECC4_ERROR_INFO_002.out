@@ -1,0 +1,64 @@
+>>> 1
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_test CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_test CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_test.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_test WITH VALUES(KEK = kek_test);
+
+rows: 0
+>>> 6
+CREATE TABLE tb1(id int, col test_enc ENCRYPTED WITH (dek=dek_test));
+
+错误: 类型 "test_enc" 不存在
+  位置：30
+>>> 7
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 8
+CREATE TABLE tb1(id int, col text_enc ENCRYPTED WITH dek=dek_test);
+
+错误: 语法错误 在 "dek" 或附近的
+  位置：54
+>>> 9
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 10
+CREATE TABLE tb1(id int, col text_enc ENCRYPTED WITH (dek=dek_xxx));
+
+错误: DEK "dek_xxx" not found, cannot create encrypted column "col"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 11
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 12
+CREATE TABLE tb1(id int, col text_enc ENCRYPTED WITH (dek=dek_test, support_algo='test'));
+
+错误: invalid encryption algorithm in SUPPORT_ALGO: "test"
+  建议：Valid algorithms are: det, ope, search
+>>> 13
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_test CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_test CASCADE;
+
+rows: 0

@@ -1,0 +1,98 @@
+>>> 1
+DROP TABLE IF EXISTS tecc_data_type_test2 CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS tecc_tecc_data_type_test2 CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP DEK IF EXISTS dek_t2 CASCADE;
+
+rows: 0
+>>> 5
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 6
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 7
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 8
+CREATE DEK dek_t2 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 9
+CREATE TABLE tecc_data_type_test2 (id SERIAL PRIMARY KEY, text_col text_enc encrypted with (dek = dek_t1), varchar_col varchar_enc encrypted with (dek = dek_t1), bpchar_col bpchar_enc encrypted with (dek = dek_t1), int2_col int2_enc encrypted with (dek = dek_t1), int4_col int4_enc encrypted with (dek = dek_t1), int8_col int8_enc encrypted with (dek = dek_t1), numeric_col numeric_enc encrypted with (dek = dek_t1), float4_col float4_enc encrypted with (dek = dek_t1), float8_col float8_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 10
+CREATE TABLE tecc_tecc_data_type_test2 (id SERIAL PRIMARY KEY, text_col text_enc encrypted with (dek = dek_t2), varchar_col varchar_enc encrypted with (dek = dek_t2), bpchar_col bpchar_enc encrypted with (dek = dek_t2), int2_col int2_enc encrypted with (dek = dek_t2), int4_col int4_enc encrypted with (dek = dek_t2), int8_col int8_enc encrypted with (dek = dek_t2), numeric_col numeric_enc encrypted with (dek = dek_t2), float4_col float4_enc encrypted with (dek = dek_t2), float8_col float8_enc encrypted with (dek = dek_t2));
+
+rows: 0
+>>> 11
+INSERT INTO tecc_data_type_test2 VALUES (1,'test数据','test文本','test',1,100,1000,123.45,1.23,12.34),(2,'测试数据','测试文本','测试',2,200,2000,234.56,2.34,23.45);
+
+rows: 2
+>>> 12
+INSERT INTO tecc_tecc_data_type_test2 VALUES (1,'test数据','test文本','test',1,100,1000,123.45,1.23,12.34),(2,'测试数据','测试文本','测试',2,200,2000,234.56,2.34,23.45);
+
+rows: 2
+>>> 13
+SELECT a.id, b.id FROM tecc_tecc_data_type_test2 a, tecc_data_type_test2 b WHERE a.int2_col = b.int2_col AND a.int4_col = b.int4_col AND a.int8_col = b.int8_col AND a.numeric_col = b.numeric_col AND a.float4_col = b.float4_col AND a.float8_col = b.float8_col AND a.text_col = b.text_col AND a.varchar_col = b.varchar_col AND a.bpchar_col = b.bpchar_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support ordering and range comparisons.
+>>> 14
+SELECT a.id, a.int4_col, a.int8_col, b.id, b.int4_col, b.int8_col FROM tecc_tecc_data_type_test2 a, tecc_data_type_test2 b WHERE a.int4_col > b.int4_col AND a.int8_col < b.int8_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support range comparison.
+>>> 15
+SELECT a.id, a.numeric_col, a.float4_col, b.id, b.numeric_col, b.float4_col FROM tecc_tecc_data_type_test2 a, tecc_data_type_test2 b WHERE a.numeric_col >= b.numeric_col AND a.float4_col <= b.float4_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support range comparison.
+>>> 16
+SELECT a.id, a.text_col, a.int2_col, b.id, b.text_col, b.int2_col FROM tecc_tecc_data_type_test2 a, tecc_data_type_test2 b WHERE a.text_col = b.text_col AND a.int2_col > b.int2_col;
+
+错误: cannot hash encrypted value without DET or OPE ciphertext
+  建议：Enable DET or OPE encryption for the column to support Hash indexes.
+>>> 17
+SELECT a.id, a.varchar_col, a.int4_col, b.id, b.varchar_col, b.int4_col FROM tecc_tecc_data_type_test2 a, tecc_data_type_test2 b WHERE a.varchar_col = b.varchar_col AND a.int4_col < b.int4_col;
+
+错误: cannot hash encrypted value without DET or OPE ciphertext
+  建议：Enable DET or OPE encryption for the column to support Hash indexes.
+>>> 18
+SELECT a.id, a.bpchar_col, a.int8_col, b.id, b.bpchar_col, b.int8_col FROM tecc_tecc_data_type_test2 a, tecc_data_type_test2 b WHERE a.bpchar_col = b.bpchar_col AND a.int8_col >= b.int8_col;
+
+错误: cannot hash encrypted value without DET or OPE ciphertext
+  建议：Enable DET or OPE encryption for the column to support Hash indexes.
+>>> 19
+DROP TABLE IF EXISTS tecc_data_type_test2 CASCADE;
+
+rows: 0
+>>> 20
+DROP TABLE IF EXISTS tecc_tecc_data_type_test2 CASCADE;
+
+rows: 0
+>>> 21
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 22
+DROP DEK IF EXISTS dek_t2 CASCADE;
+
+rows: 0
+>>> 23
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

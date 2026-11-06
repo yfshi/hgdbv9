@@ -5195,6 +5195,19 @@ check_search_path(char **newval, void **extra, GucSource source)
 	return true;
 }
 
+/*
+ * GetActiveCreationNamespace - returns the OID of the active creation namespace
+ *
+ * This is the namespace where new objects will be created when no explicit
+ * schema is specified. Used by KEK/DEK creation code.
+ */
+Oid
+GetActiveCreationNamespace(void)
+{
+    recomputeNamespacePath();
+    return activeCreationNamespace;
+}
+
 /* assign_hook: do extra actions as needed */
 void
 assign_search_path(const char *newval, void *extra)
@@ -5832,10 +5845,3 @@ is_mysql_format_collation(Oid collid)
 }
 /* End - Req:SRS-MYSQL-CHARSET */
 
-/* Begin - BUG#Z4433 */
-Oid
-GetActiveCreationNamespace(void)
-{
-	return activeCreationNamespace;
-}
-/* End - BUG#Z4433 */

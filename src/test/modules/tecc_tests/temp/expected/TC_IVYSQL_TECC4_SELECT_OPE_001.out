@@ -1,0 +1,129 @@
+5月 23, 2026 2:04:35 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 2:04:35 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 2:04:35 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE text_col > 'apple' AND text_col < 'cherry' ORDER BY text_col;
+
+2|application|application|application                                                                                         
+7|b|b|b                                                                                                   
+3|banana|banana|banana                                                                                              
+4|berry|berry|berry                                                                                               
+8|c|c|c                                                                                                   
+rows: -1
+>>> 2
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE text_col > 'apple' AND text_col < 'cherry' ORDER BY text_col;
+
+2|application|application|application
+7|b|b|b
+3|banana|banana|banana
+4|berry|berry|berry
+8|c|c|c
+rows: -1
+>>> 3
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE varchar_col >= 'apple' AND varchar_col <= 'cherry' ORDER BY varchar_col;
+
+1|apple|apple|apple                                                                                               
+2|application|application|application                                                                                         
+7|b|b|b                                                                                                   
+3|banana|banana|banana                                                                                              
+4|berry|berry|berry                                                                                               
+8|c|c|c                                                                                                   
+5|cherry|cherry|cherry                                                                                              
+rows: -1
+>>> 4
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE varchar_col >= 'apple' AND varchar_col <= 'cherry' ORDER BY varchar_col;
+
+1|apple|apple|apple
+2|application|application|application
+7|b|b|b
+3|banana|banana|banana
+4|berry|berry|berry
+8|c|c|c
+5|cherry|cherry|cherry
+rows: -1
+>>> 5
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE bpchar_col >= 'banana' AND bpchar_col < 'cherry' ORDER BY bpchar_col;
+
+3|banana|banana|banana                                                                                              
+4|berry|berry|berry                                                                                               
+8|c|c|c                                                                                                   
+rows: -1
+>>> 6
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE bpchar_col >= 'banana' AND bpchar_col < 'cherry' ORDER BY bpchar_col;
+
+3|banana|banana|banana
+4|berry|berry|berry
+8|c|c|c
+rows: -1
+>>> 7
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE (text_col > 'a' AND text_col < 'b') OR (text_col >= 'banana' AND text_col <= 'cherry') ORDER BY text_col;
+
+1|apple|apple|apple                                                                                               
+2|application|application|application                                                                                         
+3|banana|banana|banana                                                                                              
+4|berry|berry|berry                                                                                               
+8|c|c|c                                                                                                   
+5|cherry|cherry|cherry                                                                                              
+rows: -1
+>>> 8
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE (text_col > 'a' AND text_col < 'b') OR (text_col >= 'banana' AND text_col <= 'cherry') ORDER BY text_col;
+
+1|apple|apple|apple
+2|application|application|application
+3|banana|banana|banana
+4|berry|berry|berry
+8|c|c|c
+5|cherry|cherry|cherry
+rows: -1
+>>> 9
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE varchar_col > 'apple' AND (varchar_col < 'berry' OR varchar_col > 'cherry') ORDER BY varchar_col;
+
+2|application|application|application                                                                                         
+7|b|b|b                                                                                                   
+3|banana|banana|banana                                                                                              
+rows: -1
+>>> 10
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE varchar_col > 'apple' AND (varchar_col < 'berry' OR varchar_col > 'cherry') ORDER BY varchar_col;
+
+2|application|application|application
+7|b|b|b
+3|banana|banana|banana
+rows: -1
+>>> 11
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE text_col > '' AND text_col < 'c' ORDER BY text_col;
+
+6|a|a|a                                                                                                   
+1|apple|apple|apple                                                                                               
+2|application|application|application                                                                                         
+7|b|b|b                                                                                                   
+3|banana|banana|banana                                                                                              
+4|berry|berry|berry                                                                                               
+rows: -1
+>>> 12
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE text_col > '' AND text_col < 'c' ORDER BY text_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support range comparison.
+>>> 13
+SELECT id, text_col, varchar_col, bpchar_col FROM text_type_test WHERE bpchar_col >= 'apple' AND bpchar_col <= 'cherry' AND bpchar_col != 'banana' ORDER BY bpchar_col;
+
+1|apple|apple|apple                                                                                               
+2|application|application|application                                                                                         
+7|b|b|b                                                                                                   
+4|berry|berry|berry                                                                                               
+8|c|c|c                                                                                                   
+5|cherry|cherry|cherry                                                                                              
+rows: -1
+>>> 14
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_type_test WHERE bpchar_col >= 'apple' AND bpchar_col <= 'cherry' AND bpchar_col != 'banana' ORDER BY bpchar_col;
+
+1|apple|apple|apple
+2|application|application|application
+7|b|b|b
+4|berry|berry|berry
+8|c|c|c
+5|cherry|cherry|cherry
+rows: -1

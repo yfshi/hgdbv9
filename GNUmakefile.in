@@ -19,6 +19,58 @@ else
 $(call recurse,all install,src config contrib/gb18030_2022 contrib/ivorysql_ora contrib/pg_object contrib/postgres_fdw contrib/ivorysql_my contrib/uuid-ossp contrib/restricted_dba contrib/pg_audit contrib/pg_track_settings contrib/credcheck contrib/ora_synonym contrib/hg_sysmac contrib/hg_antitamper contrib/hg_rolstatus contrib/hg_integrity_check contrib/diskquota contrib/sql_sentinel)    # SRS-MISC-GB18030      # BUGM0000266 # ReqID:SRS-MISC-MYSQL-FRAME #BUGM59  #ReqID:SRS-SECURITY-AUDIT #ReqID:SRS-SECURITY-IDENTITYAUTH # /* ReqID:SRS-SQL-SYNONYM */ #ReqID:SRS-SECURITY-RESOURCEMANAGEMENT-DISK #SRS-SECURITY-SQL-SENTINEL
 endif
 
+# TECC全密态测试一键入口
+check-tecc: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/regress check \
+       TESTS="tecc_system_tables tecc_permissions tecc_acl_queries tecc_acl_edge_cases tecc_frontend_processor tecc_integration"
+       $(MAKE) -C src/test/modules/tecc_tests check
+
+check-tecc-libpq: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/001_tecc_libpq_test.pl
+
+check-tecc-libpq-raw: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/001_tecc_libpq_test.pl MODE=raw
+
+check-tecc-libpq-common: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/001_tecc_libpq_test.pl MODE=common
+
+check-tecc-jdbc: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/002_tecc_jdbc_test.pl
+
+check-tecc-jdbc-raw: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/002_tecc_jdbc_test.pl MODE=raw
+
+check-tecc-jdbc-common: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/002_tecc_jdbc_test.pl MODE=common
+
+check-tecc-cross: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/003_tecc_cross_test.pl
+
+# TECC performance tests
+check-tecc-perf-libpq: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/perf/004_tecc_libpq_perf.pl
+
+check-tecc-perf-jdbc: | submake-generated-headers temp-install
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-jar
+       $(MAKE) -C src/test/modules/tecc_tests jdbc-compile
+       $(MAKE) -C src/test/modules/tecc_tests check \
+       PROVE_TESTS=t/perf/005_tecc_jdbc_perf.pl
+
+
 # hg_alarm is only built when --enable-compatible-ak is enabled, so it is
 # added to the top-level build separately from the fixed list above.
 ifeq ($(enable_compatible_ak), yes)
@@ -244,8 +296,8 @@ headerscheck: submake-generated-headers
 cpluspluscheck: submake-generated-headers
 	$(top_srcdir)/src/tools/pginclude/cpluspluscheck $(top_srcdir) $(abs_top_builddir)
 
-#.PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world headerscheck cpluspluscheck
+#.PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world headerscheck cpluspluscheck check-tecc check-tecc-libpq check-tecc-libpq-raw check-tecc-libpq-common check-tecc-jdbc check-tecc-jdbc-raw check-tecc-jdbc-common check-tecc-cross check-tecc-perf-libpq check-tecc-perf-jdbc
 #BEGIN - SQL PARSER
 .PHONY: dist distdir distcheck docs install-docs world check-world install-world installcheck-world headerscheck cpluspluscheck oracle-pg-check-world oracle-check-world oracle-installcheck-world \
-mysql-pg-check-world mysql-check-world mysql-installcheck-world all-check all-check-world all-installcheck-world
+mysql-pg-check-world mysql-check-world mysql-installcheck-world all-check all-check-world all-installcheck-world  check-tecc check-tecc-libpq check-tecc-libpq-raw check-tecc-libpq-common check-tecc-jdbc check-tecc-jdbc-raw check-tecc-jdbc-common check-tecc-cross check-tecc-perf-libpq check-tecc-perf-jdbc
 #END - SQL PARSER

@@ -56,6 +56,11 @@
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
+#include "catalog/hg_kek.h"
+#include "catalog/hg_dek.h"
+#include "catalog/hg_kek_args.h"
+#include "catalog/hg_dek_args.h"
+#include "catalog/hg_encrypted_columns.h"
 #include "catalog/pg_ora_part_tables.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "catalog/pg_ora_tab_partitions.h" /* ReqID:SRS-SQL-PARTITION-TABLE */
 #include "catalog/pg_partitioned_table.h"
@@ -1428,7 +1433,6 @@ static const struct cachedesc cacheinfo[] = {
 		},
 		2
 	},
-	/* intentionally out of alphabetical order, to avoid an ABI break: */
 	{ExtensionRelationId,		/* EXTENSIONOID */
 		ExtensionOidIndexId,
 		1,
@@ -1439,6 +1443,62 @@ static const struct cachedesc cacheinfo[] = {
 			0
 		},
 		2
+	},
+	/* intentionally out of alphabetical order, to avoid an ABI break: */
+	{HgKekRelationId,			/* HGKEKNAME */
+		HgKekKekNameIndexId,
+		2,
+		{
+			Anum_hg_kek_kek_name,
+			Anum_hg_kek_key_namespace,
+			0,
+			0
+		},
+		16
+	},
+	{HgKekRelationId,			/* HGKEKOID */
+		HgKekOidIndexId,
+		1,
+		{
+			Anum_hg_kek_oid,
+			0,
+			0,
+			0
+		},
+		16
+	},
+	{HgDekRelationId,			/* HGDEKNAME */
+		HgDekDekNameIndexId,
+		2,
+		{
+			Anum_hg_dek_dek_name,
+			Anum_hg_dek_key_namespace,
+			0,
+			0
+		},
+		16
+	},
+	{HgDekRelationId,			/* HGDEKOID */
+		HgDekOidIndexId,
+		1,
+		{
+			Anum_hg_dek_oid,
+			0,
+			0,
+			0
+		},
+		16
+	},
+	{HgEncryptedColumnsRelationId,	/* HGENCRYPTEDCOLUMNSTABLEATTNUM */
+		HgEncryptedColumnsPkeyIndexId,
+		2,
+		{
+			Anum_hg_encrypted_columns_table_oid,
+			Anum_hg_encrypted_columns_column_attnum,
+			0,
+			0
+		},
+		16
 	}
 };
 

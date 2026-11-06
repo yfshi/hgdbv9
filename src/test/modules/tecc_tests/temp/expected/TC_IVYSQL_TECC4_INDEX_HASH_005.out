@@ -1,0 +1,66 @@
+>>> 1
+DROP TABLE IF EXISTS test_int4_indexes_hash CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE test_int4_indexes_hash (id SERIAL PRIMARY KEY,int4_col int4_enc encrypted with (dek = dek_t1,support_algo='ope') NOT NULL,category VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+rows: 0
+>>> 7
+INSERT INTO test_int4_indexes_hash (int4_col, category) SELECT 2 * 100::int4,i % 100 FROM generate_series(1, 5000) i;
+
+错误: 字段 "int4_col" 的类型为 int4_enc, 但表达式的类型为 integer
+  建议：你需要重写或转换表达式
+  位置：64
+>>> 8
+CREATE INDEX idx_int4_hash ON test_int4_indexes_hash USING hash (int4_col);
+
+rows: 0
+>>> 9
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_int4_indexes_hash WHERE int4_col = 1000;
+
+Bitmap Heap Scan on test_int4_indexes_hash  (cost=4.02..9.36 rows=2 width=162) (actual time=0.007..0.008 rows=0 loops=1)
+  Recheck Cond: (int4_col = '\x7000000000000100b96f306500000000000000000000000000000000'::int4_enc)
+  Buffers: shared hit=2
+  ->  Bitmap Index Scan on idx_int4_hash  (cost=0.00..4.01 rows=2 width=0) (actual time=0.006..0.006 rows=0 loops=1)
+        Index Cond: (int4_col = '\x7000000000000100b96f306500000000000000000000000000000000'::int4_enc)
+        Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=29 read=1
+Planning Time: 0.283 ms
+Execution Time: 0.030 ms
+rows: -1
+>>> 10
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_int4_indexes_hash';
+
+test_int4_indexes_hash_pkey|CREATE UNIQUE INDEX test_int4_indexes_hash_pkey ON public.test_int4_indexes_hash USING btree (id)|8192 bytes
+idx_int4_hash|CREATE INDEX idx_int4_hash ON public.test_int4_indexes_hash USING hash (int4_col)|32 kB
+rows: -1
+>>> 11
+DROP TABLE IF EXISTS test_int4_indexes_hash CASCADE;
+
+rows: 0
+>>> 12
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 13
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

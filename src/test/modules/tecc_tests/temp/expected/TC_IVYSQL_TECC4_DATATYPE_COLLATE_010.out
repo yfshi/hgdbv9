@@ -1,0 +1,66 @@
+5月 23, 2026 1:43:25 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:43:25 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:43:25 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS tb_test_tecc CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS tb_test_tecc2 CASCADE;
+
+rows: 0
+>>> 3
+DROP TABLE IF EXISTS tb_test_tecc3 CASCADE;
+
+rows: 0
+>>> 4
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 5
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 6
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 7
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 8
+create table tb_test_tecc(id SERIAL PRIMARY KEY, col_text text_enc encrypted with (dek = dek_t1) collate "C", col_varchar varchar_enc encrypted with (dek = dek_t1) collate "C",col_bpchar bpchar_enc encrypted with (dek = dek_t1) collate "C");
+
+rows: 0
+>>> 9
+create table tb_test_tecc2(id SERIAL PRIMARY KEY, col_text text_enc encrypted with (dek = dek_t1,support_algo='det') collate "C", col_varchar varchar_enc encrypted with (dek = dek_t1,support_algo='det') collate "C",col_bpchar bpchar_enc encrypted with (dek = dek_t1,support_algo='det') collate "C");
+
+rows: 0
+>>> 10
+create table tb_test_tecc3(id SERIAL PRIMARY KEY, col_text text_enc encrypted with (dek = dek_t1,support_algo='search') collate "C", col_varchar varchar_enc encrypted with (dek = dek_t1,support_algo='search') collate "C",col_bpchar bpchar_enc encrypted with (dek = dek_t1,support_algo='search') collate "C");
+
+rows: 0
+>>> 11
+DROP TABLE IF EXISTS tb_test_tecc CASCADE;
+
+rows: 0
+>>> 12
+DROP TABLE IF EXISTS tb_test_tecc2 CASCADE;
+
+rows: 0
+>>> 13
+DROP TABLE IF EXISTS tb_test_tecc3 CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

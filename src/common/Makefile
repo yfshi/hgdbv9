@@ -28,6 +28,10 @@ subdir = src/common
 top_builddir = ../..
 include $(top_builddir)/src/Makefile.global
 
+# Ensure DEPDIR is always defined (src/Makefile.global only sets it
+# inside ifeq ($(autodepend),yes), but our subdirectory rules use it).
+DEPDIR ?= .deps
+
 # don't include subdirectory-path-dependent -I and -L switches
 STD_CPPFLAGS := $(filter-out -I$(top_srcdir)/src/include -I$(top_builddir)/src/include,$(CPPFLAGS))
 STD_LDFLAGS := $(filter-out -L$(top_builddir)/src/common -L$(top_builddir)/src/port,$(LDFLAGS))
@@ -83,7 +87,27 @@ OBJS_COMMON = \
 	hkdf.o	\
 	pass_crypt.o \
 	hex.o \
-	plsqlwrap_crypto.o
+	plsqlwrap_crypto.o \
+	wchar.o \
+	tecc_algorithm/tecc_hkdf_sm3.o \
+	tecc_algorithm/tecc_sm4_rnd.o \
+	tecc_algorithm/tecc_det_sm4.o \
+	sm4_adapter.o \
+	tecc_algorithm/tecc_sm4_ope.o \
+	tecc_algorithm/tecc_search_sm4.o \
+	tecc_algorithm/tecc_sm3_internal.o \
+	tecc_algorithm/tecc_sm4_internal.o \
+	tecc_algorithm/tecc_pattern.o \
+	tecc_algorithm/tecc_algorithm_api.o \
+	tecc_algorithm/tecc_byteorder.o \
+	tecc_key/high_level_api.o \
+	tecc_key/key_manager.o \
+	tecc_key/kms_adapter.o \
+	tecc_key/server_interface.o \
+	tecc_key/security.o \
+	tecc_key/config.o \
+	tecc_key/utils.o
+
 
 ifeq ($(with_gmssl),yes)
 OBJS_COMMON += sm3_common.o
@@ -197,10 +221,38 @@ RYU_OBJS = $(RYU_FILES) $(RYU_FILES:%.o=%_shlib.o) $(RYU_FILES:%.o=%_srv.o)
 
 $(RYU_OBJS): CFLAGS += $(PERMIT_DECLARATION_AFTER_STATEMENT)
 
+# Compile tecc_key files
+tecc_algorithm/%.o: tecc_algorithm/%.c
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F).Po
+
+tecc_algorithm/%_shlib.o: tecc_algorithm/%.c tecc_algorithm/%.o
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(CFLAGS_SL) $(CPPFLAGS) -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F)_shlib.Po
+ 
+tecc_algorithm/%_srv.o: tecc_algorithm/%.c
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(filter-out -DFRONTEND,$(CPPFLAGS)) -DFRONTEND=0 -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F)_srv.Po
+
+# Compile tecc_key files
+tecc_key/%.o: tecc_key/%.c
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F).Po
+
+tecc_key/%_shlib.o: tecc_key/%.c tecc_key/%.o
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(CFLAGS_SL) $(CPPFLAGS) -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F)_shlib.Po
+
+tecc_key/%_srv.o: tecc_key/%.c
+	@if test ! -d $(DEPDIR); then mkdir -p $(DEPDIR); fi
+	$(CC) $(CFLAGS) $(filter-out -DFRONTEND,$(CPPFLAGS)) -DFRONTEND=0 -c $< -o $@ -MMD -MP -MF $(DEPDIR)/$(*F)_srv.Po
+
 # kwlist_d.h is in the distribution tarball, so it is not cleaned here.
 clean distclean:
 	rm -f libpgcommon.a libpgcommon_shlib.a libpgcommon_srv.a
 	rm -f $(OBJS_FRONTEND) $(OBJS_SHLIB) $(OBJS_SRV)
+	rm -f tecc_algorithm/*.o tecc_algorithm/*_shlib.o tecc_algorithm/*_srv.o
+	rm -f tecc_key/*.o tecc_key/*_shlib.o tecc_key/*_srv.o
 
 maintainer-clean: distclean
 	rm -f kwlist_d.h

@@ -144,6 +144,12 @@ sub copyFile
 {
 	my ($src, $dest) = @_;
 	open(my $i, '<', $src)  || croak "Could not open $src";
+	# On Windows the destination may be read-only (e.g. pg_config_os.h
+	# from a prior build or checked into VCS with +r).  Remove it first
+	# so that open(..., '>', ...) does not fail.  chmod 0777 before
+	# unlinking in case the filesystem permissions prevent deletion.
+	chmod 0777, $dest;
+	unlink $dest;
 	open(my $o, '>', $dest) || croak "Could not open $dest";
 	while (<$i>)
 	{

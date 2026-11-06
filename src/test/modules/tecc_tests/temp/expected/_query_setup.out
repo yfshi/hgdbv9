@@ -1,0 +1,190 @@
+5月 23, 2026 2:03:04 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 2:03:04 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 2:03:04 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS string_type_test CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS tecc_string_type_test CASCADE;
+
+rows: 0
+>>> 3
+DROP TABLE IF EXISTS int_type_test CASCADE;
+
+rows: 0
+>>> 4
+DROP TABLE IF EXISTS tecc_int_type_test CASCADE;
+
+rows: 0
+>>> 5
+DROP TABLE IF EXISTS float_type_test CASCADE;
+
+rows: 0
+>>> 6
+DROP TABLE IF EXISTS tecc_float_type_test CASCADE;
+
+rows: 0
+>>> 7
+DROP TABLE IF EXISTS text_type_test CASCADE;
+
+rows: 0
+>>> 8
+DROP TABLE IF EXISTS tecc_text_type_test CASCADE;
+
+rows: 0
+>>> 9
+DROP TABLE IF EXISTS text_like_test CASCADE;
+
+rows: 0
+>>> 10
+DROP TABLE IF EXISTS tecc_text_like_test CASCADE;
+
+rows: 0
+>>> 11
+DROP TABLE IF EXISTS text_not_like_test CASCADE;
+
+rows: 0
+>>> 12
+DROP TABLE IF EXISTS tecc_text_not_like_test CASCADE;
+
+rows: 0
+>>> 13
+DROP TABLE IF EXISTS data_type_test CASCADE;
+
+rows: 0
+>>> 14
+DROP TABLE IF EXISTS tecc_data_type_test CASCADE;
+
+rows: 0
+>>> 15
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 16
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 17
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 18
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 19
+create table string_type_test(id SERIAL, txt_col TEXT, vc_col VARCHAR(100), bp_col BPCHAR(100));
+
+rows: 0
+>>> 20
+create table tecc_string_type_test(id SERIAL, txt_col text_enc encrypted with (dek = dek_t1,support_algo='det'), vc_col varchar_enc encrypted with (dek = dek_t1,support_algo='det'), bp_col bpchar_enc encrypted with (dek = dek_t1,support_algo='det'));
+
+rows: 0
+>>> 21
+create table int_type_test(id SERIAL, int2_col INT2, int4_col INT4, int8_col INT8);
+
+rows: 0
+>>> 22
+create table tecc_int_type_test(id SERIAL, int2_col int2_enc encrypted with (dek = dek_t1,support_algo='det'), int4_col int4_enc encrypted with (dek = dek_t1,support_algo='det'), int8_col int8_enc encrypted with (dek = dek_t1,support_algo='det'));
+
+rows: 0
+>>> 23
+create table float_type_test(id SERIAL, num_col NUMERIC, f4_col FLOAT4, f8_col FLOAT8);
+
+rows: 0
+>>> 24
+create table tecc_float_type_test(id SERIAL, num_col numeric_enc encrypted with (dek = dek_t1,support_algo='det'), f4_col float4_enc encrypted with (dek = dek_t1,support_algo='det'), f8_col float8_enc encrypted with (dek = dek_t1,support_algo='det'));
+
+rows: 0
+>>> 25
+create table text_type_test(id SERIAL, text_col TEXT, varchar_col VARCHAR(100), bpchar_col BPCHAR(100));
+
+rows: 0
+>>> 26
+create table tecc_text_type_test(id SERIAL, text_col text_enc encrypted with (dek = dek_t1,support_algo='ope'), varchar_col varchar_enc encrypted with (dek = dek_t1,support_algo='ope'), bpchar_col bpchar_enc encrypted with (dek = dek_t1,support_algo='ope'));
+
+rows: 0
+>>> 27
+create table text_like_test(id SERIAL, text_col TEXT, varchar_col VARCHAR(100), bpchar_col BPCHAR(100));
+
+rows: 0
+>>> 28
+create table tecc_text_like_test(id SERIAL, text_col text_enc encrypted with (dek = dek_t1,support_algo='search'), varchar_col varchar_enc encrypted with (dek = dek_t1,support_algo='search'), bpchar_col bpchar_enc encrypted with (dek = dek_t1,support_algo='search'));
+
+rows: 0
+>>> 29
+create table text_not_like_test(id SERIAL, text_col TEXT, varchar_col VARCHAR(100), bpchar_col BPCHAR(100));
+
+rows: 0
+>>> 30
+create table tecc_text_not_like_test(id SERIAL, text_col text_enc encrypted with (dek = dek_t1,support_algo='search'), varchar_col varchar_enc encrypted with (dek = dek_t1,support_algo='search'), bpchar_col bpchar_enc encrypted with (dek = dek_t1,support_algo='search'));
+
+rows: 0
+>>> 31
+create table data_type_test(id SERIAL, text_col TEXT, varchar_col VARCHAR(100), bpchar_col BPCHAR(100), int2_col INT2, int4_col INT4, int8_col INT8, numeric_col NUMERIC, float4_col FLOAT4, float8_col FLOAT8);
+
+rows: 0
+>>> 32
+create table tecc_data_type_test(id SERIAL, text_col text_enc encrypted with (dek = dek_t1,support_algo='det'), varchar_col varchar_enc encrypted with (dek = dek_t1,support_algo='det'), bpchar_col bpchar_enc encrypted with (dek = dek_t1,support_algo='det'), int2_col int2_enc encrypted with (dek = dek_t1,support_algo='det'), int4_col int4_enc encrypted with (dek = dek_t1,support_algo='det'), int8_col int8_enc encrypted with (dek = dek_t1,support_algo='det'), numeric_col numeric_enc encrypted with (dek = dek_t1,support_algo='det'), float4_col float4_enc encrypted with (dek = dek_t1,support_algo='det'), float8_col float8_enc encrypted with (dek = dek_t1,support_algo='det'));
+
+rows: 0
+>>> 33
+INSERT INTO string_type_test (txt_col, vc_col, bp_col) VALUES ('hello','hello','hello'),('Hello','Hello','Hello'),('world','world','world'),('test','test','test'),('  hello  ','  hello  ','  hello  '),(NULL,NULL,NULL),('','',''),('apple','apple','apple'),('application','application','application');
+
+rows: 9
+>>> 34
+INSERT INTO tecc_string_type_test (txt_col, vc_col, bp_col) VALUES ('hello','hello','hello'),('Hello','Hello','Hello'),('world','world','world'),('test','test','test'),('  hello  ','  hello  ','  hello  '),(NULL,NULL,NULL),('','',''),('apple','apple','apple'),('application','application','application');
+
+rows: 9
+>>> 35
+INSERT INTO int_type_test (int2_col,int4_col,int8_col) VALUES (100,100,100),(200,200,200),(300,300,300),(32767,2147483647,9223372036854775807),(NULL,NULL,NULL),(10,20,30),(40,50,60),(15,25,35),(1,1,1),(2,2,2);
+
+rows: 10
+>>> 36
+INSERT INTO tecc_int_type_test (int2_col,int4_col,int8_col) VALUES (100,100,100),(200,200,200),(300,300,300),(32767,2147483647,9223372036854775807),(NULL,NULL,NULL),(10,20,30),(40,50,60),(15,25,35),(1,1,1),(2,2,2);
+
+rows: 10
+>>> 37
+INSERT INTO float_type_test (num_col,f4_col,f8_col) VALUES (1.0,1.0,1.0),(2.0,2.0,2.0),(3.0,3.0,3.0),(1234567890.12345678901234567890,1.23,1.23),(NULL,NULL,NULL);
+
+rows: 5
+>>> 38
+INSERT INTO tecc_float_type_test (num_col,f4_col,f8_col) VALUES (1.0,1.0,1.0),(2.0,2.0,2.0),(3.0,3.0,3.0),(1234567890.12345678901234567890,1.23,1.23),(NULL,NULL,NULL);
+
+rows: 5
+>>> 39
+INSERT INTO text_type_test (text_col, varchar_col, bpchar_col) VALUES ('apple','apple','apple'),('application','application','application'),('banana','banana','banana'),('berry','berry','berry'),('cherry','cherry','cherry'),('a','a','a'),('b','b','b'),('c','c','c');
+
+rows: 8
+>>> 40
+INSERT INTO tecc_text_type_test (text_col, varchar_col, bpchar_col) VALUES ('apple','apple','apple'),('application','application','application'),('banana','banana','banana'),('berry','berry','berry'),('cherry','cherry','cherry'),('a','a','a'),('b','b','b'),('c','c','c');
+
+rows: 8
+>>> 41
+INSERT INTO text_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple','apple','apple'),('application','application','application'),('app123','app123','app123'),('banana','banana','banana'),('cherry','cherry','cherry'),('test123','test123','test123'),('123test','123test','123test');
+
+rows: 7
+>>> 42
+INSERT INTO tecc_text_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple','apple','apple'),('application','application','application'),('app123','app123','app123'),('banana','banana','banana'),('cherry','cherry','cherry'),('test123','test123','test123'),('123test','123test','123test');
+
+rows: 7
+>>> 43
+INSERT INTO text_not_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple','apple','apple'),('application','application','application'),('banana','banana','banana'),('cherry','cherry','cherry'),('test','test','test');
+
+rows: 5
+>>> 44
+INSERT INTO tecc_text_not_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple','apple','apple'),('application','application','application'),('banana','banana','banana'),('cherry','cherry','cherry'),('test','test','test');
+
+rows: 5
+>>> 45
+INSERT INTO data_type_test (text_col, varchar_col, bpchar_col, int2_col, int4_col, int8_col, numeric_col, float4_col, float8_col) VALUES ('test数据','test文本','test文本',1,100,1000,123.45,1.23,50.0),('test数据2','测试文本','测试文本',3,200,20000,345.67,3.45,70.0),('hello','world','test',5,300,30000,567.89,5.67,90.0),(NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+
+rows: 4
+>>> 46
+INSERT INTO tecc_data_type_test (text_col, varchar_col, bpchar_col, int2_col, int4_col, int8_col, numeric_col, float4_col, float8_col) VALUES ('test数据','test文本','test文本',1,100,1000,123.45,1.23,50.0),('test数据2','测试文本','测试文本',3,200,20000,345.67,3.45,70.0),('hello','world','test',5,300,30000,567.89,5.67,90.0),(NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL);
+
+rows: 4

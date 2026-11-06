@@ -145,11 +145,16 @@ typedef enum ObjectClass
 	OCLASS_OBJECT_TYPE_BODY,		/* pg_object_type_body */
 	/* End - ReqID:SRS-SQL-CustomObject */
 	/* Begin - ReqID:SRS-SQL-SYNONYM */
-	OCLASS_SYNONYM				/* pg_synonym */
+	OCLASS_SYNONYM,				/* pg_synonym */
 	/* End - ReqID:SRS-SQL-SYNONYM */
+	OCLASS_KEK,					/* hg_kek */
+	OCLASS_DEK,					/* hg_dek */
+	OCLASS_ENCRYPTED_COLUMN,	/* hg_encrypted_columns */
+	OCLASS_KEK_ARGS,			/* hg_kek_args */
+	OCLASS_DEK_ARGS				/* hg_dek_args */
 } ObjectClass;
 
-#define LAST_OCLASS		OCLASS_SYNONYM
+#define LAST_OCLASS		OCLASS_DEK_ARGS
 
 /* flag bits for performDeletion/performMultipleDeletions: */
 #define PERFORM_DELETION_INTERNAL			0x0001	/* internal action */

@@ -1,0 +1,76 @@
+5月 23, 2026 1:54:07 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:54:07 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:54:07 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS partition_int8_main CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE partition_int8_main (id SERIAL, value int8_enc encrypted with (dek = dek_t1),category CHAR(1),PRIMARY KEY (id, value)) PARTITION BY RANGE (value);
+
+rows: 0
+>>> 7
+CREATE TABLE partition_int8_level_a PARTITION OF partition_int8_main FOR VALUES FROM (-9223372036854775808) TO (-1000000000000000);
+
+5月 23, 2026 1:54:08 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_int8_main.value' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_int8_main.value' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 8
+CREATE TABLE partition_int8_level_b PARTITION OF partition_int8_main FOR VALUES FROM (-1000000000000000) TO (0);
+
+5月 23, 2026 1:54:08 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_int8_main.value' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_int8_main.value' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 9
+CREATE TABLE partition_int8_level_c PARTITION OF partition_int8_main FOR VALUES FROM (0) TO (1000000000000000);
+
+5月 23, 2026 1:54:08 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_int8_main.value' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_int8_main.value' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 10
+CREATE TABLE partition_int8_level_d PARTITION OF partition_int8_main FOR VALUES FROM (1000000000000000) TO (9223372036854775807);
+
+5月 23, 2026 1:54:08 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: RANGE partition key column 'null.partition_int8_main.value' requires OPE encryption for ordering. DET-only is not supported. Available: DET=false, OPE=false
+RANGE partition key column 'null.partition_int8_main.value' must use OPE encryption for ordering. DET-only encryption does not preserve plaintext order. Set support_algo = 'ope' for this column.
+>>> 11
+INSERT INTO partition_int8_main (value, category) VALUES (-2000000000000000, 'A'), (-500000, 'B'), (500000, 'C'), (2000000000000000, 'D');
+
+错误: 没有为行找到关系"partition_int8_main"的分区
+  详情：失败行的分区键包含(value) = (\x2002000000000100b96f30656c000000000000000000000000000000000100...).
+>>> 12
+SELECT int8_enc as table_type, tableoid::regclass as partition_name, COUNT(*) FROM partition_int8_main GROUP BY tableoid;
+
+错误: 字段 "int8_enc" 不存在
+  位置：8
+>>> 13
+DROP TABLE IF EXISTS partition_int8_main CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

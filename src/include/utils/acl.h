@@ -33,6 +33,7 @@
 #define ACL_H
 
 #include "access/htup.h"
+#include "fmgr.h"
 #include "nodes/parsenodes.h"
 #include "parser/parse_node.h"
 #include "utils/snapshot.h"
@@ -166,6 +167,8 @@ typedef struct ArrayType Acl;
 #define ACL_ALL_RIGHTS_SCHEMA		(ACL_USAGE|ACL_CREATE)
 #define ACL_ALL_RIGHTS_TABLESPACE	(ACL_CREATE)
 #define ACL_ALL_RIGHTS_TYPE			(ACL_USAGE)
+#define ACL_ALL_RIGHTS_KEK			(ACL_USAGE)
+#define ACL_ALL_RIGHTS_DEK			(ACL_USAGE)
 
 /* operation codes for pg_*_aclmask */
 typedef enum
@@ -277,6 +280,10 @@ extern AclMode pg_foreign_server_aclmask(Oid srv_oid, Oid roleid,
 										 AclMode mask, AclMaskHow how);
 extern AclMode pg_type_aclmask(Oid type_oid, Oid roleid,
 							   AclMode mask, AclMaskHow how);
+extern AclMode hg_kek_aclmask(Oid kek_oid, Oid roleid, AclMode mask, AclMaskHow how);
+extern AclMode hg_dek_aclmask(Oid dek_oid, Oid roleid, AclMode mask, AclMaskHow how);
+extern AclResult hg_kek_aclcheck(Oid kek_oid, Oid roleid, AclMode mode);
+extern AclResult hg_dek_aclcheck(Oid dek_oid, Oid roleid, AclMode mode);
 
 extern AclResult pg_attribute_aclcheck(Oid table_oid, AttrNumber attnum,
 									   Oid roleid, AclMode mode);
@@ -337,6 +344,10 @@ extern bool pg_extension_ownercheck(Oid ext_oid, Oid roleid);
 extern bool pg_publication_ownercheck(Oid pub_oid, Oid roleid);
 extern bool pg_subscription_ownercheck(Oid sub_oid, Oid roleid);
 extern bool pg_statistics_object_ownercheck(Oid stat_oid, Oid roleid);
+/*Begin: ReqId: TECC-v4.0*/
+extern bool pg_kek_ownercheck(Oid kek_oid, Oid roleid);
+extern bool pg_dek_ownercheck(Oid dek_oid, Oid roleid);
+/*End: ReqId: TECC-v4.0*/
 extern bool has_createrole_privilege(Oid roleid);
 extern bool has_bypassrls_privilege(Oid roleid);
 extern bool is_instanceuser(Oid userid);

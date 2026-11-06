@@ -435,6 +435,9 @@ extern int	_pglstat64(const char *name, struct stat *buf);
 #define wcscoll_l _wcscoll_l
 #define wcstombs_l _wcstombs_l
 #define mbstowcs_l _mbstowcs_l
+#define strtok_r strtok_s
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
 
 /*
  * Versions of libintl >= 0.18? try to replace setlocale() with a macro
@@ -537,6 +540,8 @@ typedef unsigned short mode_t;
 #define F_OK 0
 #define W_OK 2
 #define R_OK 4
+/* Windows has no execute permission bit; use 0 (same as F_OK/existence check) */
+#define X_OK 0
 
 /* Pulled from Makefile.port in MinGW */
 #define DLSUFFIX ".dll"

@@ -687,6 +687,18 @@ WHERE p1.rngmultitypid IS NULL OR p1.rngmultitypid = 0;
 
 -- Create a table that holds all the known in-core data types and leave it
 -- around so as pg_upgrade is able to test their binary compatibility.
+-- Setup KEK and DEK for TECC encrypted type testing
+CREATE KEK type_sanity_kek WITH (
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/tecc_type_sanity_kek.key'
+);
+ERROR:  CREATE KEK requires TECC encryption mode to be enabled
+DETAIL:  Use psql -k on or enable encryption mode to create KEKs.
+CREATE DEK type_sanity_dek WITH VALUES(
+    KEK = type_sanity_kek
+);
+ERROR:  CREATE DEK requires TECC encryption mode to be enabled
+DETAIL:  Use psql -k on or enable encryption mode to create DEKs.
 CREATE TABLE tab_core_types AS SELECT
   '(11,12)'::point,
   '(1,1),(2,2)'::line,
@@ -757,7 +769,19 @@ CREATE TABLE tab_core_types AS SELECT
   '(2020-01-02 03:04:05, 2021-02-03 06:07:08)'::tstzrange,
   '{(2020-01-02 03:04:05, 2021-02-03 06:07:08)}'::tstzmultirange,
   arrayrange(ARRAY[1,2], ARRAY[2,1]),
-  arraymultirange(arrayrange(ARRAY[1,2], ARRAY[2,1]));
+  arraymultirange(arrayrange(ARRAY[1,2], ARRAY[2,1])),
+  42::int2_enc ENCRYPTED WITH (DEK = type_sanity_dek),
+  12345::int4_enc ENCRYPTED WITH (DEK = type_sanity_dek, SUPPORT_ALGO = 'det'),
+  123456789::int8_enc ENCRYPTED WITH (DEK = type_sanity_dek, SUPPORT_ALGO = 'ope'),
+  3.14::float4_enc ENCRYPTED WITH (DEK = type_sanity_dek),
+  3.1415926535::float8_enc ENCRYPTED WITH (DEK = type_sanity_dek, SUPPORT_ALGO = 'det'),
+  123.456::numeric_enc ENCRYPTED WITH (DEK = type_sanity_dek),
+  'hello'::varchar_enc ENCRYPTED WITH (DEK = type_sanity_dek, SUPPORT_ALGO = 'det,search'),
+  'c'::bpchar_enc ENCRYPTED WITH (DEK = type_sanity_dek),
+  'text'::text_enc ENCRYPTED WITH (DEK = type_sanity_dek, SUPPORT_ALGO = 'ope,search');
+ERROR:  cannot cast type integer to int2_enc
+LINE 72:   42::int2_enc ENCRYPTED WITH (DEK = type_sanity_dek),
+             ^
 -- Sanity check on the previous table, checking that all core types are
 -- included in this table.
 SELECT oid, typname, typtype, typelem, typarray, typarray
@@ -785,7 +809,6 @@ SELECT oid, typname, typtype, typelem, typarray, typarray
                     WHERE a.atttypid=t.oid AND
                           a.attnum > 0 AND
                           a.attrelid='tab_core_types'::regclass);
- oid | typname | typtype | typelem | typarray | typarray 
------+---------+---------+---------+----------+----------
-(0 rows)
-
+ERROR:  relation "tab_core_types" does not exist
+LINE 25:                           a.attrelid='tab_core_types'::regcl...
+                                              ^

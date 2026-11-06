@@ -85,6 +85,7 @@
 #include "utils/catcache.h"
 #include "catalog/pg_proc.h"
 /* End - ReqID:SRS-SQL-TRIGGER */
+#include "utils/tecc/tecc_index.h"
 
 /* non-export function prototypes */
 static bool CompareOpclassOptions(Datum *opts1, Datum *opts2, int natts);
@@ -1144,6 +1145,28 @@ DefineIndex(Oid relationId,
 											 relationId,
 											 root_save_userid);
 	}
+
+	/* Begin - ReqID:TECC4.0 */
+	/*
+	 * Verify encrypted column support for the index.
+	 * For each indexed column, check that the required encryption algorithm
+	 * is enabled (OPE for B-Tree, DET for Hash).
+	 */
+	if (!partitioned)
+	{
+		for (i = 0; i < indexInfo->ii_NumIndexAttrs; i++)
+		{
+			AttrNumber	attno = indexInfo->ii_IndexAttrNumbers[i];
+
+			/* Skip expression-based index columns (attno == 0) */
+			if (attno == 0)
+				continue;
+
+			check_index_support_for_encrypted_column(relationId, attno,
+													 accessMethodId);
+		}
+	}
+	/* End - ReqID:TECC4.0 */
 
 	/*
 	 * Extra checks when creating a PRIMARY KEY index.

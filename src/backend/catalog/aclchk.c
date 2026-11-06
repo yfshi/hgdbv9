@@ -48,6 +48,7 @@
 #include "catalog/pg_opclass.h"
 #include "catalog/pg_operator.h"
 #include "catalog/pg_opfamily.h"
+#include "utils/hg_key_utils.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_subscription.h"
@@ -85,6 +86,7 @@
 #include "utils/packagecache.h"
 /* End - ReqID:SRS-SQL-PACKAGE */
 #include "utils/guc.h"
+#include "utils/hg_key_utils.h"
 #include "utils/ora_compatible.h"
 /* Begin - ReqID:SRS-SECURITY-POWERS */
 #include "se_features_interface.h"
@@ -129,6 +131,8 @@ static void ExecGrant_Largeobject(InternalGrant *grantStmt);
 static void ExecGrant_Namespace(InternalGrant *grantStmt);
 static void ExecGrant_Tablespace(InternalGrant *grantStmt);
 static void ExecGrant_Type(InternalGrant *grantStmt);
+static void ExecGrant_Kek(InternalGrant *grantStmt);
+static void ExecGrant_Dek(InternalGrant *grantStmt);
 
 static void SetDefaultACLsInSchemas(InternalDefaultACL *iacls, List *nspnames);
 static void SetDefaultACL(InternalDefaultACL *iacls);
@@ -280,6 +284,12 @@ restrict_and_check_grant(bool is_grant, AclMode avail_goptions, bool all_privs,
 			return ACL_NO_RIGHTS;
 		case OBJECT_TYPE:
 			whole_mask = ACL_ALL_RIGHTS_TYPE;
+			break;
+		case OBJECT_KEK:
+			whole_mask = ACL_ALL_RIGHTS_KEK;
+			break;
+		case OBJECT_DEK:
+			whole_mask = ACL_ALL_RIGHTS_DEK;
 			break;
 		default:
 			elog(ERROR, "unrecognized object type: %d", objtype);
@@ -518,6 +528,14 @@ ExecuteGrantStmt(GrantStmt *stmt)
 			all_privileges = ACL_ALL_RIGHTS_TYPE;
 			errormsg = gettext_noop("invalid privilege type %s for type");
 			break;
+		case OBJECT_KEK:
+			all_privileges = ACL_ALL_RIGHTS_KEK;
+			errormsg = gettext_noop("invalid privilege type %s for key encryption key");
+			break;
+		case OBJECT_DEK:
+			all_privileges = ACL_ALL_RIGHTS_DEK;
+			errormsg = gettext_noop("invalid privilege type %s for data encryption key");
+			break;
 		case OBJECT_FDW:
 			all_privileges = ACL_ALL_RIGHTS_FDW;
 			errormsg = gettext_noop("invalid privilege type %s for foreign-data wrapper");
@@ -604,6 +622,12 @@ ExecGrantStmt_oids(InternalGrant *istmt)
 		case OBJECT_DOMAIN:
 		case OBJECT_TYPE:
 			ExecGrant_Type(istmt);
+			break;
+		case OBJECT_KEK:
+			ExecGrant_Kek(istmt);
+			break;
+		case OBJECT_DEK:
+			ExecGrant_Dek(istmt);
 			break;
 		case OBJECT_FDW:
 			ExecGrant_Fdw(istmt);
@@ -698,6 +722,58 @@ objectNamesToOids(ObjectType objtype, List *objnames)
 
 				oid = typenameTypeId(NULL, makeTypeNameFromNameList(typname));
 				objects = lappend_oid(objects, oid);
+			}
+			break;
+		case OBJECT_KEK:
+			foreach(cell, objnames)
+			{
+				List	   *names = (List *) lfirst(cell);
+				char	   *kekname;
+				Oid			kekid;
+
+				if (list_length(names) == 1)
+				{
+					kekname = strVal(linitial(names));
+					kekid = get_kek_oid(kekname, false);
+				}
+				else if (list_length(names) == 2)
+				{
+					char   *nspname = strVal(linitial(names));
+					Oid		nspid = get_namespace_oid(nspname, false);
+					kekname = strVal(lsecond(names));
+					kekid = get_kek_oid_ext(kekname, nspid, false);
+				}
+				else
+					 ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("invalid KEK name")));
+				objects = lappend_oid(objects, kekid);
+			}
+			break;
+		case OBJECT_DEK:
+			foreach(cell, objnames)
+			{
+				List	   *names = (List *) lfirst(cell);
+				char	   *dekname;
+				Oid			dekid;
+
+				if (list_length(names) == 1)
+				{
+					dekname = strVal(linitial(names));
+					dekid = get_dek_oid(dekname, false);
+				}
+				else if (list_length(names) == 2)
+				{
+					char   *nspname = strVal(linitial(names));
+					Oid		nspid = get_namespace_oid(nspname, false);
+					dekname = strVal(lsecond(names));
+					dekid = get_dek_oid_ext(dekname, nspid, false);
+				}
+				else
+					 ereport(ERROR,
+							(errcode(ERRCODE_SYNTAX_ERROR),
+							 errmsg("invalid DEK name")));
+				objects = lappend_oid(objects, dekid);
 			}
 			break;
 		case OBJECT_FUNCTION:
@@ -1109,6 +1185,14 @@ ExecAlterDefaultPrivilegesStmt(ParseState *pstate, AlterDefaultPrivilegesStmt *s
 		case OBJECT_TYPE:
 			all_privileges = ACL_ALL_RIGHTS_TYPE;
 			errormsg = gettext_noop("invalid privilege type %s for type");
+			break;
+		case OBJECT_KEK:
+			all_privileges = ACL_ALL_RIGHTS_KEK;
+			errormsg = gettext_noop("invalid privilege type %s for key encryption key");
+			break;
+		case OBJECT_DEK:
+			all_privileges = ACL_ALL_RIGHTS_DEK;
+			errormsg = gettext_noop("invalid privilege type %s for data encryption key");
 			break;
 		case OBJECT_SCHEMA:
 			all_privileges = ACL_ALL_RIGHTS_SCHEMA;
@@ -3680,6 +3764,12 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 					case OBJECT_TYPE:
 						msg = gettext_noop("permission denied for type %s");
 						break;
+					case OBJECT_KEK:
+						msg = gettext_noop("permission denied for key encryption key %s");
+						break;
+					case OBJECT_DEK:
+						msg = gettext_noop("permission denied for data encryption key %s");
+						break;
 					case OBJECT_VIEW:
 						msg = gettext_noop("permission denied for view %s");
 						break;
@@ -3810,6 +3900,12 @@ aclcheck_error(AclResult aclerr, ObjectType objtype,
 						break;
 					case OBJECT_TYPE:
 						msg = gettext_noop("must be owner of type %s");
+						break;
+					case OBJECT_KEK:
+						msg = gettext_noop("must be owner of key encryption key %s");
+						break;
+					case OBJECT_DEK:
+						msg = gettext_noop("must be owner of data encryption key %s");
 						break;
 					case OBJECT_VIEW:
 						msg = gettext_noop("must be owner of view %s");
@@ -3980,6 +4076,10 @@ pg_aclmask(ObjectType objtype, Oid table_oid, AttrNumber attnum, Oid roleid,
 			return ACL_NO_RIGHTS;
 		case OBJECT_TYPE:
 			return pg_type_aclmask(table_oid, roleid, mask, how);
+		case OBJECT_KEK:
+			return hg_kek_aclmask(table_oid, roleid, mask, how);
+		case OBJECT_DEK:
+			return hg_dek_aclmask(table_oid, roleid, mask, how);
 		default:
 			elog(ERROR, "unrecognized objtype: %d",
 				 (int) objtype);
@@ -5951,7 +6051,7 @@ get_user_default_acl(ObjectType objtype, Oid ownerId, Oid nsp_oid)
 			break;
 
 		case OBJECT_TYPE:
-			defaclobjtype = DEFACLOBJ_TYPE;
+		defaclobjtype = DEFACLOBJ_TYPE;
 			break;
 
 		case OBJECT_SCHEMA:
@@ -6560,3 +6660,474 @@ recordExtensionInitPrivWorker(Oid objoid, Oid classoid, int objsubid, Acl *new_a
 
 	table_close(relation, RowExclusiveLock);
 }
+
+
+/* Begin - ReqID:TECC4.0*/
+/*
+ * Ownership check for a key encryption key (specified by OID).
+ */
+/*Begin: ReqId: TECC-v4.0*/
+bool
+pg_kek_ownercheck(Oid kek_oid, Oid roleid)
+{
+       HeapTuple       tuple;
+       Oid                     ownerId;
+
+       /* Superusers bypass all permission checking. */
+       if (superuser_arg(roleid))
+               return true;
+
+       tuple = SearchSysCache1(HGKEKOID, ObjectIdGetDatum(kek_oid));
+       if (!HeapTupleIsValid(tuple))
+               ereport(ERROR,
+                               (errcode(ERRCODE_UNDEFINED_OBJECT),
+                                errmsg("KEK with OID %u does not exist", kek_oid)));
+
+       ownerId = ((Form_hg_kek) GETSTRUCT(tuple))->key_owner;
+
+       ReleaseSysCache(tuple);
+
+       return has_privs_of_role(roleid, ownerId);
+}
+/*
+ * Ownership check for a data encryption key (specified by OID).
+ */
+bool
+pg_dek_ownercheck(Oid dek_oid, Oid roleid)
+{
+       HeapTuple       tuple;
+       Oid                     ownerId;
+
+       /* Superusers bypass all permission checking. */
+       if (superuser_arg(roleid))
+               return true;
+
+       tuple = SearchSysCache1(HGDEKOID, ObjectIdGetDatum(dek_oid));
+       if (!HeapTupleIsValid(tuple))
+               ereport(ERROR,
+                               (errcode(ERRCODE_UNDEFINED_OBJECT),
+                                errmsg("DEK with OID %u does not exist", dek_oid)));
+
+       ownerId = ((Form_hg_dek) GETSTRUCT(tuple))->key_owner;
+
+       ReleaseSysCache(tuple);
+
+       return has_privs_of_role(roleid, ownerId);
+}
+
+/*
+ * hg_kek_aclmask - check access permissions for a KEK
+ *
+ * This is called to check access permissions for a Key Encryption Key.
+ */
+AclMode
+hg_kek_aclmask(Oid kek_oid, Oid roleid, AclMode mask, AclMaskHow how)
+{
+	AclMode		result;
+	HeapTuple	tuple;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	/* Superusers bypass all permission checking. */
+	if (superuser_arg(roleid))
+		return mask;
+
+	/*
+	 * Get the KEK's ACL from hg_kek
+	 */
+	tuple = SearchSysCache1(HGKEKOID, ObjectIdGetDatum(kek_oid));
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("KEK with OID %u does not exist", kek_oid)));
+
+	ownerId = ((Form_hg_kek) GETSTRUCT(tuple))->key_owner;
+
+	aclDatum = SysCacheGetAttr(HGKEKOID, tuple,
+							   Anum_hg_kek_key_acl, &isNull);
+	if (isNull)
+	{
+		/* No ACL, so build default ACL */
+		acl = acldefault(OBJECT_KEK, ownerId);
+		aclDatum = (Datum) 0;
+	}
+	else
+	{
+		/* detoast ACL if necessary */
+		acl = DatumGetAclP(aclDatum);
+	}
+
+	result = aclmask(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(tuple);
+
+	return result;
+}
+
+/*
+ * hg_dek_aclmask - check access permissions for a DEK
+ *
+ * This is called to check access permissions for a Data Encryption Key.
+ */
+AclMode
+hg_dek_aclmask(Oid dek_oid, Oid roleid, AclMode mask, AclMaskHow how)
+{
+	AclMode		result;
+	HeapTuple	tuple;
+	Datum		aclDatum;
+	bool		isNull;
+	Acl		   *acl;
+	Oid			ownerId;
+
+	/* Superusers bypass all permission checking. */
+	if (superuser_arg(roleid))
+		return mask;
+
+	/*
+	 * Get the DEK's ACL from hg_dek
+	 */
+	tuple = SearchSysCache1(HGDEKOID, ObjectIdGetDatum(dek_oid));
+	if (!HeapTupleIsValid(tuple))
+		ereport(ERROR,
+				(errcode(ERRCODE_UNDEFINED_OBJECT),
+				 errmsg("DEK with OID %u does not exist", dek_oid)));
+
+	ownerId = ((Form_hg_dek) GETSTRUCT(tuple))->key_owner;
+
+	aclDatum = SysCacheGetAttr(HGDEKOID, tuple,
+							   Anum_hg_dek_key_acl, &isNull);
+	if (isNull)
+	{
+		/* No ACL, so build default ACL */
+		acl = acldefault(OBJECT_DEK, ownerId);
+		aclDatum = (Datum) 0;
+	}
+	else
+	{
+		/* detoast ACL if necessary */
+		acl = DatumGetAclP(aclDatum);
+	}
+
+	result = aclmask(acl, roleid, ownerId, mask, how);
+
+	/* if we have a detoasted copy, free it */
+	if (acl && (Pointer) acl != DatumGetPointer(aclDatum))
+		pfree(acl);
+
+	ReleaseSysCache(tuple);
+
+	return result;
+}
+
+/*
+ * hg_kek_aclcheck - check access permissions for a KEK with error reporting
+ */
+AclResult
+hg_kek_aclcheck(Oid kek_oid, Oid roleid, AclMode mode)
+{
+	if (hg_kek_aclmask(kek_oid, roleid, mode, ACLMASK_ANY) != mode)
+		return ACLCHECK_NO_PRIV;
+	else
+		return ACLCHECK_OK;
+}
+
+/*
+ * hg_dek_aclcheck - check access permissions for a DEK with error reporting
+ */
+AclResult
+hg_dek_aclcheck(Oid dek_oid, Oid roleid, AclMode mode)
+{
+	if (hg_dek_aclmask(dek_oid, roleid, mode, ACLMASK_ANY) != mode)
+		return ACLCHECK_NO_PRIV;
+	else
+		return ACLCHECK_OK;
+}
+
+/*
+ * ExecGrant_Kek - handle GRANT/REVOKE on KEK
+ *
+ * Based on openGauss ExecGrant_Cmk function
+ */
+static void
+ExecGrant_Kek(InternalGrant *istmt)
+{
+	Relation	rel;
+	ListCell   *cell;
+
+	/*
+	 * If all_privs is set, set privileges to the full set of rights for KEK.
+	 */
+	if (istmt->all_privs && istmt->privileges == ACL_NO_RIGHTS)
+		istmt->privileges = ACL_ALL_RIGHTS_KEK;
+
+	rel = table_open(HgKekRelationId, RowExclusiveLock);
+
+	foreach(cell, istmt->objects)
+	{
+		Oid			kekId = lfirst_oid(cell);
+		Form_hg_kek	kek_tuple;
+		Datum		aclDatum;
+		bool		isNull;
+		AclMode		avail_goptions;
+		AclMode		this_privileges;
+		Acl		   *old_acl;
+		Acl		   *new_acl;
+		Oid			grantorId;
+		Oid			ownerId;
+		HeapTuple	tuple;
+		HeapTuple	newtuple;
+		Datum		values[Natts_hg_kek];
+		bool		nulls[Natts_hg_kek];
+		bool		replaces[Natts_hg_kek];
+		int			noldmembers;
+		int			nnewmembers;
+		Oid		   *oldmembers;
+		Oid		   *newmembers;
+
+		/* Get the KEK tuple */
+		tuple = SearchSysCache1(HGKEKOID, ObjectIdGetDatum(kekId));
+		if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for key encryption key %u", kekId);
+
+		kek_tuple = (Form_hg_kek) GETSTRUCT(tuple);
+
+		/*
+		 * Get owner ID and working copy of existing ACL. If there's no ACL,
+		 * substitute the proper default.
+		 */
+		ownerId = kek_tuple->key_owner;
+		aclDatum = SysCacheGetAttr(HGKEKOID, tuple,
+								   Anum_hg_kek_key_acl, &isNull);
+		if (isNull)
+		{
+			old_acl = acldefault(OBJECT_KEK, ownerId);
+			/* There are no old member roles according to the catalogs */
+			noldmembers = 0;
+			oldmembers = NULL;
+		}
+		else
+		{
+			old_acl = DatumGetAclPCopy(aclDatum);
+			/* Get the roles mentioned in the existing ACL */
+			noldmembers = aclmembers(old_acl, &oldmembers);
+		}
+
+		/* Determine ID to do the grant as, and available grant options */
+		select_best_grantor(GetUserId(), istmt->privileges,
+							old_acl, ownerId,
+							&grantorId, &avail_goptions);
+
+		/*
+		 * Restrict the privileges to what we can actually grant, and emit the
+		 * standards-mandated warning and error messages.
+		 */
+		this_privileges =
+			restrict_and_check_grant(istmt->is_grant,
+									 avail_goptions,
+									 istmt->all_privs,
+									 istmt->privileges,
+									 kekId, grantorId,
+									 OBJECT_KEK,
+									 NameStr(kek_tuple->kek_name),
+									 0, NULL);
+
+		/*
+		 * Generate new ACL.
+		 */
+		new_acl = merge_acl_with_grant(old_acl,
+									   istmt->is_grant,
+									   istmt->grant_option,
+									   istmt->behavior,
+									   istmt->grantees,
+									   this_privileges,
+									   grantorId,
+									   ownerId);
+
+		/*
+		 * We need the members of both old and new ACLs so we can correct the
+		 * shared dependency information.
+		 */
+		nnewmembers = aclmembers(new_acl, &newmembers);
+
+		/* finished building new ACL value, now insert it */
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, false, sizeof(nulls));
+		MemSet(replaces, false, sizeof(replaces));
+
+		replaces[Anum_hg_kek_key_acl - 1] = true;
+		values[Anum_hg_kek_key_acl - 1] = PointerGetDatum(new_acl);
+
+		newtuple = heap_modify_tuple(tuple, RelationGetDescr(rel),
+									 values, nulls, replaces);
+
+		CatalogTupleUpdate(rel, &newtuple->t_self, newtuple);
+
+		/* Update the shared dependency ACL info */
+		updateAclDependencies(HgKekRelationId, kekId, 0,
+							  ownerId,
+							  noldmembers, oldmembers,
+							  nnewmembers, newmembers);
+
+		ReleaseSysCache(tuple);
+		heap_freetuple(newtuple);
+
+		if (new_acl != NULL)
+			pfree(new_acl);
+
+		/* prevent error when processing duplicate objects */
+		CommandCounterIncrement();
+	}
+
+	table_close(rel, RowExclusiveLock);
+
+	/* End - ReqID:TECC4.0 */
+}
+
+/*
+ * ExecGrant_Dek - handle GRANT/REVOKE on DEK
+ *
+ * Based on openGauss ExecGrant_Cek function
+ */
+static void
+ExecGrant_Dek(InternalGrant *istmt)
+{
+	Relation	rel;
+	ListCell   *cell;
+
+	/* Begin - ReqID:TECC4.0 */
+
+	/*
+	 * If all_privs is set, set privileges to the full set of rights for DEK.
+	 */
+	if (istmt->all_privs && istmt->privileges == ACL_NO_RIGHTS)
+		istmt->privileges = ACL_ALL_RIGHTS_DEK;
+
+	rel = table_open(HgDekRelationId, RowExclusiveLock);
+
+	foreach(cell, istmt->objects)
+	{
+		Oid			dekId = lfirst_oid(cell);
+		Form_hg_dek	dek_tuple;
+		Datum		aclDatum;
+		bool		isNull;
+		AclMode		avail_goptions;
+		AclMode		this_privileges;
+		Acl		   *old_acl;
+		Acl		   *new_acl;
+		Oid			grantorId;
+		Oid			ownerId;
+		HeapTuple	tuple;
+		HeapTuple	newtuple;
+		Datum		values[Natts_hg_dek];
+		bool		nulls[Natts_hg_dek];
+		bool		replaces[Natts_hg_dek];
+		int			noldmembers;
+		int			nnewmembers;
+		Oid		   *oldmembers;
+		Oid		   *newmembers;
+
+		/* Get the DEK tuple */
+		tuple = SearchSysCache1(HGDEKOID, ObjectIdGetDatum(dekId));
+		if (!HeapTupleIsValid(tuple))
+			elog(ERROR, "cache lookup failed for data encryption key %u", dekId);
+
+		dek_tuple = (Form_hg_dek) GETSTRUCT(tuple);
+
+		/*
+		 * Get owner ID and working copy of existing ACL. If there's no ACL,
+		 * substitute the proper default.
+		 */
+		ownerId = dek_tuple->key_owner;
+		aclDatum = SysCacheGetAttr(HGDEKOID, tuple,
+								   Anum_hg_dek_key_acl, &isNull);
+		if (isNull)
+		{
+			old_acl = acldefault(OBJECT_DEK, ownerId);
+			/* There are no old member roles according to the catalogs */
+			noldmembers = 0;
+			oldmembers = NULL;
+		}
+		else
+		{
+			old_acl = DatumGetAclPCopy(aclDatum);
+			/* Get the roles mentioned in the existing ACL */
+			noldmembers = aclmembers(old_acl, &oldmembers);
+		}
+
+		/* Determine ID to do the grant as, and available grant options */
+		select_best_grantor(GetUserId(), istmt->privileges,
+							old_acl, ownerId,
+							&grantorId, &avail_goptions);
+
+		/*
+		 * Restrict the privileges to what we can actually grant, and emit the
+		 * standards-mandated warning and error messages.
+		 */
+		this_privileges =
+			restrict_and_check_grant(istmt->is_grant,
+									 avail_goptions,
+									 istmt->all_privs,
+									 istmt->privileges,
+									 dekId, grantorId,
+									 OBJECT_DEK,
+									 NameStr(dek_tuple->dek_name),
+									 0, NULL);
+
+		/*
+		 * Generate new ACL.
+		 */
+		new_acl = merge_acl_with_grant(old_acl,
+									   istmt->is_grant,
+									   istmt->grant_option,
+									   istmt->behavior,
+									   istmt->grantees,
+									   this_privileges,
+									   grantorId,
+									   ownerId);
+
+		/*
+		 * We need the members of both old and new ACLs so we can correct the
+		 * shared dependency information.
+		 */
+		nnewmembers = aclmembers(new_acl, &newmembers);
+
+		/* finished building new ACL value, now insert it */
+		MemSet(values, 0, sizeof(values));
+		MemSet(nulls, false, sizeof(nulls));
+		MemSet(replaces, false, sizeof(replaces));
+
+		replaces[Anum_hg_dek_key_acl - 1] = true;
+		values[Anum_hg_dek_key_acl - 1] = PointerGetDatum(new_acl);
+
+		newtuple = heap_modify_tuple(tuple, RelationGetDescr(rel),
+									 values, nulls, replaces);
+
+		CatalogTupleUpdate(rel, &newtuple->t_self, newtuple);
+
+		/* Update the shared dependency ACL info */
+		updateAclDependencies(HgDekRelationId, dekId, 0,
+							  ownerId,
+							  noldmembers, oldmembers,
+							  nnewmembers, newmembers);
+
+		ReleaseSysCache(tuple);
+		heap_freetuple(newtuple);
+
+		if (new_acl != NULL)
+			pfree(new_acl);
+
+		/* prevent error when processing duplicate objects */
+		CommandCounterIncrement();
+	}
+
+	table_close(rel, RowExclusiveLock);
+
+	/* End - ReqID:TECC4.0 */
+}
+/* End - ReqID:TECC4.0 */

@@ -34,6 +34,10 @@ modules/
   Extensions used only or mainly for test purposes, generally not suitable
   for installing in production databases
 
+  tecc_tests/ in modules provides TECC (Transparent Encryption) regression
+  tests covering libpq and JDBC full-stack encryption paths.
+  See src/test/modules/tecc_tests/README for details.
+
 perl/
   Infrastructure for Perl-based TAP tests
 

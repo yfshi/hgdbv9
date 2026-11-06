@@ -1728,6 +1728,11 @@ varstr_cmp(const char *arg1, int len1, const char *arg2, int len2, Oid collid)
 
 		if (collid != DEFAULT_COLLATION_OID)
 			mylocale = pg_newlocale_from_collation(collid);
+#ifdef USE_ICU
+		/* ReqID:TECC4.0 - Force ICU for default collation */
+		else
+			mylocale = pg_newlocale_from_collation(collid);
+#endif
 
 		/*
 		 * memcmp() can't tell us which of two unequal strings sorts first,
@@ -2290,6 +2295,11 @@ varstr_sortsupport(SortSupport ssup, Oid typid, Oid collid)
 		 */
 		if (collid != DEFAULT_COLLATION_OID)
 			locale = pg_newlocale_from_collation(collid);
+#ifdef USE_ICU
+		/* ReqID:TECC4.0 - Force ICU for default collation in sort support */
+		else
+			locale = pg_newlocale_from_collation(collid);
+#endif
 
 		/*
 		 * There is a further exception on Windows.  When the database

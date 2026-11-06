@@ -55,4 +55,7 @@ extern void HandleGetData(void); /* ReqID: SRS-SESSION-VIEWS */
 /* freeze old transaction IDs in notify queue (called by VACUUM) */
 extern void AsyncNotifyFreezeXids(TransactionId newFrozenXid);
 
+/* freeze old transaction IDs in notify queue (called by VACUUM) */
+extern void AsyncNotifyFreezeXids(TransactionId newFrozenXid);
+
 #endif							/* ASYNC_H */

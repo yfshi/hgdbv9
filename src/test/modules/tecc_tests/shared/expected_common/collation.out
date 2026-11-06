@@ -1,0 +1,213 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 COLLATE in SELECT ===
+(1 row)
+1a_text_ope_collate_C|test
+(1 row)
+1b_text_det_ope_collate_C|test
+(1 row)
+1c_text_det_collate_C|test
+(1 row)
+1d_varchar_collate_C|hello
+(1 row)
+1e_varchar_typmod_collate_C|test
+(1 row)
+1f_text_ope_collate_POSIX|test
+(1 row)
+1g_multi_collate|a|b
+(1 row)
+1h_no_collate_ctrl|test
+(1 row)
+=== 2 ORDER BY with COLLATION ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+2a_tag_asc|2|apple
+2a_tag_asc|1|Apple
+2a_tag_asc|4|banana
+2a_tag_asc|3|Banana
+2a_tag_asc|5|cafe
+2a_tag_asc|6|Cafe
+2a_tag_asc|8|zebra
+2a_tag_asc|7|Zebra
+(8 rows)
+2b_tag_desc|7|Zebra
+2b_tag_desc|8|zebra
+2b_tag_desc|6|Cafe
+2b_tag_desc|5|cafe
+2b_tag_desc|3|Banana
+2b_tag_desc|4|banana
+2b_tag_desc|1|Apple
+2b_tag_desc|2|apple
+(8 rows)
+2c_vc_asc|4|apfel
+2c_vc_asc|3|Apfel
+2c_vc_asc|7|cafe
+2c_vc_asc|8|Cafe
+2c_vc_asc|1|hello
+2c_vc_asc|2|HELLO
+2c_vc_asc|6|zebra
+2c_vc_asc|5|Zebra
+(8 rows)
+2d_vc_desc|5|Zebra
+2d_vc_desc|6|zebra
+2d_vc_desc|2|HELLO
+2d_vc_desc|1|hello
+2d_vc_desc|8|Cafe
+2d_vc_desc|7|cafe
+2d_vc_desc|3|Apfel
+2d_vc_desc|4|apfel
+(8 rows)
+2e_tag_eq_case|2|apple
+(1 row)
+2f_tag_gt|5|cafe
+2f_tag_gt|6|Cafe
+2f_tag_gt|8|zebra
+2f_tag_gt|7|Zebra
+(4 rows)
+2g_tag_between|1|Apple
+2g_tag_between|4|banana
+2g_tag_between|3|Banana
+2g_tag_between|5|cafe
+2g_tag_between|6|Cafe
+2g_tag_between|8|zebra
+(6 rows)
+2h_tag_vc_asc|2|apple|HELLO
+2h_tag_vc_asc|1|Apple|hello
+2h_tag_vc_asc|4|banana|apfel
+2h_tag_vc_asc|3|Banana|Apfel
+2h_tag_vc_asc|5|cafe|Zebra
+2h_tag_vc_asc|6|Cafe|zebra
+2h_tag_vc_asc|8|zebra|Cafe
+2h_tag_vc_asc|7|Zebra|cafe
+(8 rows)
+INSERT 0 1
+2i_tag_asc_nulls_first|11|
+2i_tag_asc_nulls_first|2|apple
+2i_tag_asc_nulls_first|1|Apple
+2i_tag_asc_nulls_first|4|banana
+2i_tag_asc_nulls_first|3|Banana
+2i_tag_asc_nulls_first|5|cafe
+2i_tag_asc_nulls_first|6|Cafe
+2i_tag_asc_nulls_first|8|zebra
+2i_tag_asc_nulls_first|7|Zebra
+(9 rows)
+2j_tag_asc_nulls_last|2|apple
+2j_tag_asc_nulls_last|1|Apple
+2j_tag_asc_nulls_last|4|banana
+2j_tag_asc_nulls_last|3|Banana
+2j_tag_asc_nulls_last|5|cafe
+2j_tag_asc_nulls_last|6|Cafe
+2j_tag_asc_nulls_last|8|zebra
+2j_tag_asc_nulls_last|7|Zebra
+2j_tag_asc_nulls_last|11|
+(9 rows)
+DROP TABLE
+=== 3 COLLATE in WHERE ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+DROP TABLE
+=== 4 zh_CN.utf8 ORDER BY ===
+(1 row)
+DROP TABLE
+DROP TABLE
+=== 5 Plain ORDER BY COLLATE ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+5a_plain_collate_c|2|Apple
+5a_plain_collate_c|4|Banana
+5a_plain_collate_c|1|apple
+5a_plain_collate_c|3|banana
+5a_plain_collate_c|5|cherry
+(5 rows)
+5b_plain_no_collate|1|apple
+5b_plain_no_collate|2|Apple
+5b_plain_no_collate|3|banana
+5b_plain_no_collate|4|Banana
+5b_plain_no_collate|5|cherry
+(5 rows)
+DROP TABLE
+=== 6 collation fix + consistency check ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+6a_default_coll|1|Alice|Bob|Charlie
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+6e_plain_order|2|Apple
+6e_plain_order|1|apple
+6e_plain_order|3|banana
+(3 rows)
+6e_plain_where|1|apple
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+6f_numeric|1|100
+(1 row)
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 1
+6g_alter|1|test
+(1 row)
+DROP TABLE
+DROP TABLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+NOTICE: key encryption key "kek_coll" does not exist, skipping
+NOTICE: table "test_ope_coll" does not exist, skipping
+NOTICE: table "test_coll" does not exist, skipping
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT '3a_select_collate', name COLLATE "POSIX" FROM test_c...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: ...b_where_collate_eq', id FROM test_coll WHERE name COLLATE "C...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: ...ere_collate_paren', id FROM test_coll WHERE (name COLLATE "C...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: ...T '3d_collate_like', id FROM test_coll WHERE name COLLATE "C...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT '3e_collate_multi_col', name COLLATE "POSIX", val FRO...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: ...ECT '3f_collate_or', id FROM test_coll WHERE name COLLATE "C...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: ...ECT '3g_collate_ne', id FROM test_coll WHERE name COLLATE "C...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+NOTICE: table "tb_7860_plain" does not exist, skipping
+NOTICE: table "tb_7860_enc" does not exist, skipping
+NOTICE: table "tb_plain_coll" does not exist, skipping
+NOTICE: table "tb_coll_fix" does not exist, skipping
+ERROR: COLLATE "en_US.utf8" does not match encrypted column "txt" collation "zh_CN.utf8"
+LINE 1: ...onsistent', id, txt FROM tb_coll_fix ORDER BY txt COLLATE "e...
+^
+ERROR: COLLATE "C" does not match encrypted column "txt" collation "zh_CN.utf8"
+LINE 1: ...ent_order', id, txt FROM tb_coll_fix ORDER BY txt COLLATE "C...
+^
+ERROR: COLLATE "C" does not match encrypted column "txt" collation "zh_CN.utf8"
+LINE 1: ...nconsistent_where', id FROM tb_coll_fix WHERE txt COLLATE "C...
+^
+NOTICE: table "tb_plain_coll2" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_coll

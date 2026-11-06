@@ -1,0 +1,56 @@
+>>> 1
+DROP TABLE IF EXISTS tb_all CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek1 WITH VALUES(KEK = kek1);
+
+rows: 0
+>>> 6
+CREATE TABLE tb_all (id INT, col_text TEXT_ENC ENCRYPTED WITH (DEK = dek1), col_varchar VARCHAR_ENC ENCRYPTED WITH (DEK = dek1), col_bpchar BPCHAR_ENC ENCRYPTED WITH (DEK = dek1), col_int2 INT2_ENC ENCRYPTED WITH (DEK = dek1), col_int4 INT4_ENC ENCRYPTED WITH (DEK = dek1), col_int8 INT8_ENC ENCRYPTED WITH (DEK = dek1), col_numeric NUMERIC_ENC ENCRYPTED WITH (DEK = dek1), col_float4 FLOAT4_ENC ENCRYPTED WITH (DEK = dek1), col_float8 FLOAT8_ENC ENCRYPTED WITH (DEK = dek1));
+
+rows: 0
+>>> 7
+INSERT INTO tb_all VALUES (1, 'text_value', 'varchar_value', 'bpchar_val', 123, 456789, 9876543210, 12345.67, 3.14, 2.718281828);
+
+TECC: RND normalize for numeric type (OPE-only) failed: TECC normalize failed for DET: TEXT_NORMALIZE_FAILED
+>>> 8
+COPY tb_all TO '/tmp/copy_all_enc.csv';
+
+rows: 0
+>>> 9
+DELETE FROM tb_all;
+
+rows: 0
+>>> 10
+COPY tb_all FROM '/tmp/copy_all_enc.csv';
+
+rows: 0
+>>> 11
+SELECT * FROM tb_all;
+
+rows: -1
+>>> 12
+DROP TABLE IF EXISTS tb_all CASCADE;
+
+rows: 0
+>>> 13
+DROP DEK IF EXISTS dek1 CASCADE;
+
+rows: 0
+>>> 14
+DROP KEK IF EXISTS kek1 CASCADE;
+
+rows: 0

@@ -1,0 +1,24 @@
+>>> 1
+DROP KEK IF EXISTS "NULL" CASCADE;
+
+rows: 0
+>>> 2
+DROP KEK IF EXISTS "NONE" CASCADE;
+
+rows: 0
+>>> 3
+CREATE KEK "NULL" WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+
+rows: 0
+>>> 4
+DROP KEK "NULL" CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK "NONE" WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+
+rows: 0
+>>> 6
+DROP KEK "NONE" CASCADE;
+
+rows: 0

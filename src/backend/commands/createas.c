@@ -62,12 +62,17 @@
 #include "commands/sequence.h"
 /* End - BUG#M0000401 */
 
+#include "commands/encrypted_column.h"         /* ReqID:TECC4.0 - CTAS encryption metadata */
+
 #include "utils/resgroup.h" /* ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
 
 typedef struct
 {
 	DestReceiver pub;			/* publicly-known function pointers */
 	IntoClause *into;			/* target relation specification */
+       List            *source_tlist;          /* ReqID:TECC4.0 - source target list for encryption metadata */
+       List            *source_rtable;         /* ReqID:TECC4.0 - source range table for encryption metadata */
+
 	/* These fields are filled by intorel_startup: */
 	Relation	rel;			/* relation to write to */
 	ObjectAddress reladdr;		/* address of rel, for ExecCreateTableAs */
@@ -78,7 +83,7 @@ typedef struct
 
 /* utility functions for CTAS definition creation */
 static ObjectAddress create_ctas_internal(List *attrList, IntoClause *into);
-static ObjectAddress create_ctas_nodata(List *tlist, IntoClause *into);
+static ObjectAddress create_ctas_nodata(Query *query, IntoClause *into);               /* ReqID:TECC4.0 - changed to accept Query for encryption metadata */
 
 /* DestReceiver routines for collecting data */
 static void intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo);
@@ -160,6 +165,7 @@ create_ctas_internal(List *attrList, IntoClause *into)
 	create->oncommit = into->onCommit;
 	create->tablespacename = into->tableSpaceName;
 	create->if_not_exists = false;
+	create->is_ctas = true;         /* ReqID:TECC4.0 - flag for DefineRelation */
 	create->accessMethod = into->accessMethod;
 	create->nestdtableCols = NIL; /* ReqID:SRS-SQL-Collection */
 
@@ -218,7 +224,7 @@ create_ctas_internal(List *attrList, IntoClause *into)
 	return intoRelationAddr;
 }
 
-
+/* Begin - ReqID:TECC4.0 - iterator for encrypted_with_list */
 /*
  * create_ctas_nodata
  *
@@ -226,9 +232,12 @@ create_ctas_internal(List *attrList, IntoClause *into)
  * the targetlist of the SELECT or view definition.
  */
 static ObjectAddress
-create_ctas_nodata(List *tlist, IntoClause *into)
+create_ctas_nodata(Query *ctas_query, IntoClause *into)
 {
 	List	   *attrList;
+        List            *tlist = ctas_query->targetList;
+        List            *rtable = ctas_query->rtable;
+
 	ListCell   *t,
 			   *lc;
 
@@ -237,46 +246,57 @@ create_ctas_nodata(List *tlist, IntoClause *into)
 	 * column name list was specified in CREATE TABLE AS, override the column
 	 * names in the query.  (Too few column names are OK, too many are not.)
 	 */
-	attrList = NIL;
-	lc = list_head(into->colNames);
-	foreach(t, tlist)
 	{
-		TargetEntry *tle = (TargetEntry *) lfirst(t);
+		ListCell   *enc_lc;
 
-		if (!tle->resjunk)
+		enc_lc = list_head(into->encrypted_with_list);
+		attrList = NIL;
+		lc = list_head(into->colNames);
+		foreach(t, tlist)
 		{
-			ColumnDef  *col;
-			char	   *colname;
+			TargetEntry *tle = (TargetEntry *) lfirst(t);
 
-			if (lc)
+			if (!tle->resjunk)
 			{
-				colname = strVal(lfirst(lc));
-				lc = lnext(into->colNames, lc);
+				ColumnDef  *col;
+				char	   *colname;
+
+				if (lc)
+				{
+					colname = strVal(lfirst(lc));
+					lc = lnext(into->colNames, lc);
+				}
+				else
+					colname = tle->resname;
+
+				col = makeColumnDef(colname,
+									exprType((Node *) tle->expr),
+									exprTypmod((Node *) tle->expr),
+									exprCollation((Node *) tle->expr));
+
+				if (enc_lc != NULL)
+				{
+					col->encrypted_with = (List *) lfirst(enc_lc);
+					enc_lc = lnext(into->encrypted_with_list, enc_lc);
+				}
+
+				/*
+				 * It's possible that the column is of a collatable type but the
+				 * collation could not be resolved, so double-check.  (We must
+				 * check this here because DefineRelation would adopt the type's
+				 * default collation rather than complaining.)
+				 */
+				if (!OidIsValid(col->collOid) &&
+					type_is_collatable(col->typeName->typeOid))
+					ereport(ERROR,
+							(errcode(ERRCODE_INDETERMINATE_COLLATION),
+							 errmsg("no collation was derived for column \"%s\" with collatable type %s",
+									col->colname,
+									format_type_be(col->typeName->typeOid)),
+							 errhint("Use the COLLATE clause to set the collation explicitly.")));
+
+				attrList = lappend(attrList, col);
 			}
-			else
-				colname = tle->resname;
-
-			col = makeColumnDef(colname,
-								exprType((Node *) tle->expr),
-								exprTypmod((Node *) tle->expr),
-								exprCollation((Node *) tle->expr));
-
-			/*
-			 * It's possible that the column is of a collatable type but the
-			 * collation could not be resolved, so double-check.  (We must
-			 * check this here because DefineRelation would adopt the type's
-			 * default collation rather than complaining.)
-			 */
-			if (!OidIsValid(col->collOid) &&
-				type_is_collatable(col->typeName->typeOid))
-				ereport(ERROR,
-						(errcode(ERRCODE_INDETERMINATE_COLLATION),
-						 errmsg("no collation was derived for column \"%s\" with collatable type %s",
-								col->colname,
-								format_type_be(col->typeName->typeOid)),
-						 errhint("Use the COLLATE clause to set the collation explicitly.")));
-
-			attrList = lappend(attrList, col);
 		}
 	}
 
@@ -286,9 +306,14 @@ create_ctas_nodata(List *tlist, IntoClause *into)
 				 errmsg("too many column names were specified")));
 
 	/* Create the relation definition using the ColumnDef list */
-	return create_ctas_internal(attrList, into);
-}
+       {
+               ObjectAddress addr = create_ctas_internal(attrList, into);
+               populate_ctas_encryption_metadata(addr.objectId, attrList, tlist, rtable);
+               return addr;
+       }
 
+}
+/* End - ReqID:TECC4.0 */
 
 /*
  * ExecCreateTableAs -- execute a CREATE TABLE AS command
@@ -361,7 +386,7 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 		 * similar to CREATE VIEW.  This avoids dump/restore problems stemming
 		 * from running the planner before all dependencies are set up.
 		 */
-		address = create_ctas_nodata(query->targetList, into);
+		address = create_ctas_nodata(query, into);
 	}
 	else
 	{
@@ -402,6 +427,20 @@ ExecCreateTableAs(ParseState *pstate, CreateTableAsStmt *stmt,
 		/* Begin - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */	
 		check_and_unassign_from_resgroup(queryDesc->plannedstmt);
 		/* End - ReqID:SRS-SECURITY-RESOURCEMANAGEMENT */
+               /* ReqID:TECC4.0 - set source plan info for encryption metadata propagation */
+               {
+                       DR_intorel *dr = (DR_intorel *) dest;
+                       dr->source_tlist = plan->planTree->targetlist;
+                       dr->source_rtable = plan->rtable;
+               }
+
+
+		/* ReqID:TECC4.0 - set source plan info for encryption metadata propagation */
+		{
+			DR_intorel *dr = (DR_intorel *) dest;
+			dr->source_tlist = plan->planTree->targetlist;
+			dr->source_rtable = plan->rtable;
+		}
 		/* call ExecutorStart to prepare the plan for execution */
 		ExecutorStart(queryDesc, GetIntoRelEFlags(into));
 
@@ -593,36 +632,50 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 	 * column names derived from the query.  (Too few column names are OK, too
 	 * many are not.)
 	 */
-	attrList = NIL;
-	lc = list_head(into->colNames);
-	for (attnum = 0; attnum < typeinfo->natts; attnum++)
+	/* Begin - ReqID:TECC4.0 - iterator for encrypted_with_list */
 	{
-		Form_pg_attribute attribute = TupleDescAttr(typeinfo, attnum);
-		ColumnDef  *col;
-		char	   *colname;
+		ListCell   *enc_lc;
 
-		if (lc)
+		enc_lc = list_head(into->encrypted_with_list);
+	/* End - ReqID:TECC4.0 */
+		attrList = NIL;
+		lc = list_head(into->colNames);
+		for (attnum = 0; attnum < typeinfo->natts; attnum++)
 		{
-			colname = strVal(lfirst(lc));
-			lc = lnext(into->colNames, lc);
-		}
-		else
-			colname = NameStr(attribute->attname);
+			Form_pg_attribute attribute = TupleDescAttr(typeinfo, attnum);
+			ColumnDef  *col;
+			char	   *colname;
 
-		col = makeColumnDef(colname,
-							attribute->atttypid,
-							attribute->atttypmod,
-							attribute->attcollation);
+			if (lc)
+			{
+				colname = strVal(lfirst(lc));
+				lc = lnext(into->colNames, lc);
+			}
+			else
+				colname = NameStr(attribute->attname);
 
-		/*
-		 * It's possible that the column is of a collatable type but the
-		 * collation could not be resolved, so double-check.  (We must check
-		 * this here because DefineRelation would adopt the type's default
-		 * collation rather than complaining.)
-		 */
-		if (!OidIsValid(col->collOid) &&
-			type_is_collatable(col->typeName->typeOid))
-			ereport(ERROR,
+			col = makeColumnDef(colname,
+								attribute->atttypid,
+								attribute->atttypmod,
+								attribute->attcollation);
+
+			/* Begin - ReqID:TECC4.0 - carry ENCRYPTED WITH */
+			if (enc_lc != NULL)
+			{
+				col->encrypted_with = (List *) lfirst(enc_lc);
+				enc_lc = lnext(into->encrypted_with_list, enc_lc);
+			}
+			/* End - ReqID:TECC4.0 */
+
+			/*
+			 * It's possible that the column is of a collatable type but the
+			 * collation could not be resolved, so double-check.  (We must check
+			 * this here because DefineRelation would adopt the type's default
+			 * collation rather than complaining.)
+			 */
+			if (!OidIsValid(col->collOid) &&
+				type_is_collatable(col->typeName->typeOid))
+				ereport(ERROR,
 					(errcode(ERRCODE_INDETERMINATE_COLLATION),
 					 errmsg("no collation was derived for column \"%s\" with collatable type %s",
 							col->colname,
@@ -631,16 +684,30 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 
 		attrList = lappend(attrList, col);
 	}
+	/* Begin - ReqID:TECC4.0 */
+	}
+	/* End - ReqID:TECC4.0 */
 
 	if (lc != NULL)
 		ereport(ERROR,
 				(errcode(ERRCODE_SYNTAX_ERROR),
 				 errmsg("too many column names were specified")));
 
+	/* ReqID:TECC4.0 - populate encryption metadata for encrypted columns */
+	if (myState->source_tlist != NIL || myState->source_rtable != NIL)
+		populate_ctas_encryption_metadata(intoRelationAddr.objectId,
+			attrList, myState->source_tlist, myState->source_rtable);
+
 	/*
 	 * Actually create the target table
 	 */
 	intoRelationAddr = create_ctas_internal(attrList, into);
+
+        /* ReqID:TECC4.0 - populate encryption metadata for encrypted columns */
+        if (myState->source_tlist != NIL || myState->source_rtable != NIL)
+               populate_ctas_encryption_metadata(intoRelationAddr.objectId,
+                       attrList, myState->source_tlist, myState->source_rtable);
+
 
 	/*
 	 * Finally we can open the target table
@@ -689,6 +756,25 @@ intorel_startup(DestReceiver *self, int operation, TupleDesc typeinfo)
 	 * This may be harmless, but this function hasn't planned for it.
 	 */
 	Assert(RelationGetTargetBlock(intoRelationDesc) == InvalidBlockNumber);
+}
+
+/*
+ * SetCTASSourceInfo - set source plan info on CTAS DestReceiver
+ *
+ * ReqID:TECC4.0 - Called from ExecuteQuery() for the EXECUTE path, and
+ * from ExecCreateTableAs() for the SELECT path.  Stores the target list
+ * and range table so intorel_startup can later populate encryption
+ * metadata for encrypted columns.
+ */
+void
+SetCTASSourceInfo(DestReceiver *dest, List *tlist, List *rtable)
+{
+       if (dest->mydest == DestIntoRel)
+       {
+               DR_intorel *myState = (DR_intorel *) dest;
+               myState->source_tlist = tlist;
+               myState->source_rtable = rtable;
+       }
 }
 
 /*
@@ -750,3 +836,4 @@ intorel_destroy(DestReceiver *self)
 {
 	pfree(self);
 }
+

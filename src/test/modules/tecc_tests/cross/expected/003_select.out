@@ -1,0 +1,36 @@
+=== RND ALL ===
+1|1|100|10000|hello rnd
+2|-1|-100|-10000|negative vals
+3|0|0|0|
+4|32767|2147483647|9223372036854775807|特大值测试
+1|1.5|1.23456789012345|123.45
+2|-1.5|-1.23456789012345|-123.45
+3|0|0|0.0
+4|3.14|3.14159265358979|999999.99
+1|varchar rnd|bpchar rnd
+2|neg varchar|neg bpchar
+3||
+4|varchar特|bpchar特
+=== DET EQUAL ===
+1|100|1.11|det_alpha|det_varchar_alpha
+3|100|3.33|det_gamma|det_varchar_gamma
+1|100|1.11|det_alpha|det_varchar_alpha
+4|300|4.44|det_alpha|det_varchar_alpha
+=== OPE RANGE ===
+3|25|30.5|ope_cc
+4|35|40.5|ope_dd
+5|45|50.5|op_ee
+6|55|60.5|ope_ff
+=== OPE ORDER ===
+7|65|70.5|opeg
+6|55|60.5|ope_ff
+5|45|50.5|op_ee
+4|35|40.5|ope_dd
+3|25|30.5|ope_cc
+2|15|20.5|ope_bb
+1|5|10.5|ope_aa
+=== SEARCH LIKE ===
+1|apple|apple
+2|application|application
+3|pineapple|pineapple
+6|banana|banana

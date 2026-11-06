@@ -1,0 +1,279 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+          ?column?           
+-----------------------------
+ === 1 COLLATE in SELECT ===
+(1 row)
+
+       ?column?        | text_enc 
+-----------------------+----------
+ 1a_text_ope_collate_C | test
+(1 row)
+
+         ?column?          | text_enc 
+---------------------------+----------
+ 1b_text_det_ope_collate_C | test
+(1 row)
+
+       ?column?        | text_enc 
+-----------------------+----------
+ 1c_text_det_collate_C | test
+(1 row)
+
+       ?column?       | varchar_enc 
+----------------------+-------------
+ 1d_varchar_collate_C | hello
+(1 row)
+
+          ?column?           | varchar_enc 
+-----------------------------+-------------
+ 1e_varchar_typmod_collate_C | test
+(1 row)
+
+         ?column?          | text_enc 
+---------------------------+----------
+ 1f_text_ope_collate_POSIX | test
+(1 row)
+
+     ?column?     | text_enc | text_enc 
+------------------+----------+----------
+ 1g_multi_collate | a        | b
+(1 row)
+
+      ?column?      | text_enc 
+--------------------+----------
+ 1h_no_collate_ctrl | test
+(1 row)
+
+             ?column?              
+-----------------------------------
+ === 2 ORDER BY with COLLATION ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+  ?column?  | id |  tag   
+------------+----+--------
+ 2a_tag_asc | 4  | banana
+ 2a_tag_asc | 5  | cafe
+ 2a_tag_asc | 2  | apple
+ 2a_tag_asc | 8  | zebra
+ 2a_tag_asc | 1  | Apple
+ 2a_tag_asc | 3  | Banana
+ 2a_tag_asc | 6  | Cafe
+ 2a_tag_asc | 7  | Zebra
+(8 rows)
+
+  ?column?   | id |  tag   
+-------------+----+--------
+ 2b_tag_desc | 7  | Zebra
+ 2b_tag_desc | 6  | Cafe
+ 2b_tag_desc | 3  | Banana
+ 2b_tag_desc | 1  | Apple
+ 2b_tag_desc | 8  | zebra
+ 2b_tag_desc | 2  | apple
+ 2b_tag_desc | 5  | cafe
+ 2b_tag_desc | 4  | banana
+(8 rows)
+
+ ?column?  | id |  vc   
+-----------+----+-------
+ 2c_vc_asc | 7  | cafe
+ 2c_vc_asc | 4  | apfel
+ 2c_vc_asc | 6  | zebra
+ 2c_vc_asc | 1  | hello
+ 2c_vc_asc | 3  | Apfel
+ 2c_vc_asc | 8  | Cafe
+ 2c_vc_asc | 2  | HELLO
+ 2c_vc_asc | 5  | Zebra
+(8 rows)
+
+  ?column?  | id |  vc   
+------------+----+-------
+ 2d_vc_desc | 5  | Zebra
+ 2d_vc_desc | 2  | HELLO
+ 2d_vc_desc | 8  | Cafe
+ 2d_vc_desc | 3  | Apfel
+ 2d_vc_desc | 1  | hello
+ 2d_vc_desc | 6  | zebra
+ 2d_vc_desc | 4  | apfel
+ 2d_vc_desc | 7  | cafe
+(8 rows)
+
+    ?column?    | id |  tag  
+----------------+----+-------
+ 2e_tag_eq_case | 2  | apple
+(1 row)
+
+ ?column?  | id |  tag  
+-----------+----+-------
+ 2f_tag_gt | 6  | Cafe
+ 2f_tag_gt | 7  | Zebra
+(2 rows)
+
+ ?column? | id | tag 
+----------+----+-----
+(0 rows)
+
+   ?column?    | id |  tag   |  vc   
+---------------+----+--------+-------
+ 2h_tag_vc_asc | 4  | banana | apfel
+ 2h_tag_vc_asc | 5  | cafe   | Zebra
+ 2h_tag_vc_asc | 2  | apple  | HELLO
+ 2h_tag_vc_asc | 8  | zebra  | Cafe
+ 2h_tag_vc_asc | 1  | Apple  | hello
+ 2h_tag_vc_asc | 3  | Banana | Apfel
+ 2h_tag_vc_asc | 6  | Cafe   | zebra
+ 2h_tag_vc_asc | 7  | Zebra  | cafe
+(8 rows)
+
+INSERT 0 1
+        ?column?        | id |  tag   
+------------------------+----+--------
+ 2i_tag_asc_nulls_first | 11 | 
+ 2i_tag_asc_nulls_first | 4  | banana
+ 2i_tag_asc_nulls_first | 5  | cafe
+ 2i_tag_asc_nulls_first | 2  | apple
+ 2i_tag_asc_nulls_first | 8  | zebra
+ 2i_tag_asc_nulls_first | 1  | Apple
+ 2i_tag_asc_nulls_first | 3  | Banana
+ 2i_tag_asc_nulls_first | 6  | Cafe
+ 2i_tag_asc_nulls_first | 7  | Zebra
+(9 rows)
+
+       ?column?        | id |  tag   
+-----------------------+----+--------
+ 2j_tag_asc_nulls_last | 4  | banana
+ 2j_tag_asc_nulls_last | 5  | cafe
+ 2j_tag_asc_nulls_last | 2  | apple
+ 2j_tag_asc_nulls_last | 8  | zebra
+ 2j_tag_asc_nulls_last | 1  | Apple
+ 2j_tag_asc_nulls_last | 3  | Banana
+ 2j_tag_asc_nulls_last | 6  | Cafe
+ 2j_tag_asc_nulls_last | 7  | Zebra
+ 2j_tag_asc_nulls_last | 11 | 
+(9 rows)
+
+DROP TABLE
+          ?column?          
+----------------------------
+ === 3 COLLATE in WHERE ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+     ?column?      | name  
+-------------------+-------
+ 3a_select_collate | Alice
+(1 row)
+
+      ?column?       | id 
+---------------------+----
+ 3b_where_collate_eq |  1
+(1 row)
+
+        ?column?        | id 
+------------------------+----
+ 3c_where_collate_paren |  2
+(1 row)
+
+    ?column?     | id 
+-----------------+----
+ 3d_collate_like |  1
+(1 row)
+
+       ?column?       | name  | val 
+----------------------+-------+-----
+ 3e_collate_multi_col | Alice | 100
+ 3e_collate_multi_col | Bob   | 200
+(2 rows)
+
+   ?column?    | id 
+---------------+----
+ 3f_collate_or |  1
+ 3f_collate_or |  2
+(2 rows)
+
+   ?column?    | id 
+---------------+----
+ 3g_collate_ne |  1
+ 3g_collate_ne |  3
+(2 rows)
+
+DROP TABLE
+           ?column?            
+-------------------------------
+ === 4 zh_CN.utf8 ORDER BY ===
+(1 row)
+
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 8
+CREATE TABLE
+INSERT 0 8
+   ?column?    | id |     text_col      
+---------------+----+-------------------
+ 4a_text_plain |  7 | 
+ 4a_text_plain |  4 | 123测试
+ 4a_text_plain |  1 | 测试
+ 4a_text_plain |  5 | 测试123
+ 4a_text_plain |  8 | 排序规则测试 data
+ 4a_text_plain |  6 | a
+ 4a_text_plain |  2 | application
+ 4a_text_plain |  3 | banana
+(8 rows)
+
+  ?column?   | id |     text_col      
+-------------+----+-------------------
+ 4b_text_enc |  7 | 
+ 4b_text_enc |  4 | 123测试
+ 4b_text_enc |  1 | 测试
+ 4b_text_enc |  5 | 测试123
+ 4b_text_enc |  8 | 排序规则测试 data
+ 4b_text_enc |  6 | a
+ 4b_text_enc |  2 | application
+ 4b_text_enc |  3 | banana
+(8 rows)
+
+     ?column?     | id |    varchar_col    
+------------------+----+-------------------
+ 4c_varchar_plain |  7 | 
+ 4c_varchar_plain |  4 | 123测试
+ 4c_varchar_plain |  1 | 测试
+ 4c_varchar_plain |  5 | 测试123
+ 4c_varchar_plain |  8 | 排序规则测试 data
+ 4c_varchar_plain |  6 | a
+ 4c_varchar_plain |  2 | application
+ 4c_varchar_plain |  3 | banana
+(8 rows)
+
+    ?column?    | id |    varchar_col    
+----------------+----+-------------------
+ 4d_varchar_enc |  7 | 
+ 4d_varchar_enc |  4 | 123测试
+ 4d_varchar_enc |  1 | 测试
+ 4d_varchar_enc |  5 | 测试123
+ 4d_varchar_enc |  8 | 排序规则测试 data
+ 4d_varchar_enc |  6 | a
+ 4d_varchar_enc |  2 | application
+ 4d_varchar_enc |  3 | banana
+(8 rows)
+
+DROP TABLE
+DROP TABLE
+    ?column?     
+-----------------
+ === Cleanup ===
+(1 row)
+
+DROP KEK
+psql:/.../collation.sql:11: NOTICE:  key encryption key "kek_coll" does not exist, skipping
+psql:/.../collation.sql:35: NOTICE:  table "test_ope_coll" does not exist, skipping
+psql:/.../collation.sql:78: NOTICE:  table "test_coll" does not exist, skipping
+psql:/.../collation.sql:102: NOTICE:  table "tb_7860_plain" does not exist, skipping
+psql:/.../collation.sql:103: NOTICE:  table "tb_7860_enc" does not exist, skipping
+psql:/.../collation.sql:151: NOTICE:  drop cascades to data encryption key dek_coll

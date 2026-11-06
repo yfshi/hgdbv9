@@ -42,6 +42,7 @@
 #include "utils/ora_compatible.h"	/* ReqID:SRS-GKC-DATATYPE_001 */
 #include "utils/syscache.h"
 #include "utils/typcache.h"
+#include "utils/tecc/tecc_type_mapping.h"
 
 /* Begin - ReqID:SRS-MYSQL-DATETYPE */
 typedef enum datetime
@@ -403,6 +404,10 @@ Str2Mysdate(Const *con, Const *newcon)
 						date = MYSQL_ZERO_DATE;
 					}
 				}
+
+/* Begin - ReqID:TECC4.0 - Bug 7897 */
+#include "utils/tecc/tecc_type_mapping.h"
+/* End - ReqID:TECC4.0 */
 
 
 			}
@@ -6318,10 +6323,22 @@ find_coercion_pathway(Oid targetTypeId, Oid sourceTypeId,
 		{
 			if (ccontext >= COERCION_ASSIGNMENT &&
 				TypeCategory(targetTypeId) == TYPCATEGORY_STRING)
-				result = COERCION_PATH_COERCEVIAIO;
+			{
+				/* Begin - ReqID:TECC4.0 - Bug 7897 */
+				if (!is_encrypted_type(sourceTypeId) &&
+					!is_encrypted_type(targetTypeId))
+				/* End - ReqID:TECC4.0 */
+					result = COERCION_PATH_COERCEVIAIO;
+			}
 			else if (ccontext >= COERCION_EXPLICIT &&
 					 TypeCategory(sourceTypeId) == TYPCATEGORY_STRING)
-				result = COERCION_PATH_COERCEVIAIO;
+			{
+				/* Begin - ReqID:TECC4.0 - Bug 7897 */
+				if (!is_encrypted_type(sourceTypeId) &&
+					!is_encrypted_type(targetTypeId))
+				/* End - ReqID:TECC4.0 */
+					result = COERCION_PATH_COERCEVIAIO;
+			}
 		}
 	}
 

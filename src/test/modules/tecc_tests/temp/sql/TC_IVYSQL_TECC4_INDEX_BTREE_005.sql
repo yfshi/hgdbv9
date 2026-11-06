@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_int4_indexes CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE test_int4_indexes (id SERIAL PRIMARY KEY,int4_col int4_enc encrypted with (dek = dek_t1,support_algo='ope') NOT NULL,category VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_int4_indexes (int4_col, group_id) SELECT 12345::int4,i % 100 FROM generate_series(1, 5000) i;
+CREATE INDEX idx_int4_btree ON test_int4_indexes USING btree (int4_col);
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_int4_indexes WHERE int4_col = 1000;
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_int4_indexes';
+DROP TABLE IF EXISTS test_int4_indexes CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

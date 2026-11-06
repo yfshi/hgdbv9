@@ -1,0 +1,401 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+             ?column?             
+----------------------------------
+ === 1 CREATE TABLE (9 types) ===
+(1 row)
+
+CREATE TABLE
+        ?column?        
+------------------------
+ === 2 INSERT row 1 ===
+(1 row)
+
+INSERT 0 1
+        ?column?        
+------------------------
+ === 2 INSERT row 2 ===
+(1 row)
+
+INSERT 0 1
+        ?column?        
+------------------------
+ === 2 INSERT row 3 ===
+(1 row)
+
+INSERT 0 1
+          ?column?          
+----------------------------
+ === 3 SELECT all types ===
+(1 row)
+
+ id | c_int2 | c_int4 | c_int8 | c_float4 | c_float8 | c_numeric | c_varchar | c_bpchar | c_text 
+----+--------+--------+--------+----------+----------+-----------+-----------+----------+--------
+  1 | 10     | 100    | 1000   | 1.5      | 3.14159  | 123.45    | hello     | bpchar1  | text1
+  2 | 20     | 200    | 2000   | 2.5      | 6.28318  | 678.90    | world     | bpchar2  | text2
+  3 | 30     | 300    | 3000   | 3.5      | 9.42477  | 111.22    | abc       | bpchar3  | text3
+(3 rows)
+
+            ?column?            
+--------------------------------
+ === 3 SELECT numeric types ===
+(1 row)
+
+ c_int2 | c_int4 | c_int8 | c_float4 | c_float8 | c_numeric 
+--------+--------+--------+----------+----------+-----------
+ 10     | 100    | 1000   | 1.5      | 3.14159  | 123.45
+ 20     | 200    | 2000   | 2.5      | 6.28318  | 678.90
+ 30     | 300    | 3000   | 3.5      | 9.42477  | 111.22
+(3 rows)
+
+           ?column?            
+-------------------------------
+ === 3 SELECT string types ===
+(1 row)
+
+ c_varchar | c_bpchar | c_text 
+-----------+----------+--------
+ hello     | bpchar1  | text1
+ world     | bpchar2  | text2
+ abc       | bpchar3  | text3
+(3 rows)
+
+         ?column?          
+---------------------------
+ === 4 UPDATE int4_enc ===
+(1 row)
+
+UPDATE 1
+ id | c_int4 
+----+--------
+  1 | 999
+(1 row)
+
+         ?column?          
+---------------------------
+ === 4 UPDATE text_enc ===
+(1 row)
+
+UPDATE 1
+ id | c_text  
+----+---------
+  2 | updated
+(1 row)
+
+     ?column?     
+------------------
+ === 5 DELETE ===
+(1 row)
+
+INSERT 0 1
+DELETE 1
+ cnt 
+-----
+   3
+(1 row)
+
+          ?column?          
+----------------------------
+ === 6 DEFAULT int4_enc ===
+(1 row)
+
+CREATE TABLE
+INSERT 0 1
+ id | val | name 
+----+-----+------
+  1 | 100 | row1
+(1 row)
+
+DROP TABLE
+          ?column?          
+----------------------------
+ === 6 DEFAULT text_enc ===
+(1 row)
+
+CREATE TABLE
+ val | note 
+-----+------
+(0 rows)
+
+DROP TABLE
+        ?column?        
+------------------------
+ === 7 int2 -> int4 ===
+(1 row)
+
+ int4_enc 
+----------
+ 1
+(1 row)
+
+        ?column?        
+------------------------
+ === 7 int2 -> int8 ===
+(1 row)
+
+ int8_enc 
+----------
+ 1
+(1 row)
+
+         ?column?          
+---------------------------
+ === 7 text -> varchar ===
+(1 row)
+
+ varchar_enc 
+-------------
+ hello
+(1 row)
+
+         ?column?         
+--------------------------
+ === 7 text -> bpchar ===
+(1 row)
+
+ bpchar_enc 
+------------
+ hello
+(1 row)
+
+         ?column?          
+---------------------------
+ === 7 varchar -> text ===
+(1 row)
+
+ text_enc 
+----------
+ hello
+(1 row)
+
+          ?column?           
+-----------------------------
+ === 7 varchar -> bpchar ===
+(1 row)
+
+ bpchar_enc 
+------------
+ hello
+(1 row)
+
+                      ?column?                      
+----------------------------------------------------
+ === 8 Illegal chain TypeCast (expected errors) ===
+(1 row)
+
+    ?column?     
+-----------------
+ 8a_text_to_int2
+(1 row)
+
+    ?column?     
+-----------------
+ 8b_text_to_int4
+(1 row)
+
+    ?column?     
+-----------------
+ 8c_text_to_int8
+(1 row)
+
+      ?column?      
+--------------------
+ 8d_varchar_to_int2
+(1 row)
+
+      ?column?      
+--------------------
+ 8e_varchar_to_int4
+(1 row)
+
+      ?column?      
+--------------------
+ 8f_varchar_to_int8
+(1 row)
+
+     ?column?      
+-------------------
+ 8g_bpchar_to_int2
+(1 row)
+
+     ?column?      
+-------------------
+ 8h_bpchar_to_int4
+(1 row)
+
+     ?column?      
+-------------------
+ 8i_bpchar_to_int8
+(1 row)
+
+     ?column?      
+-------------------
+ 8j_text_to_float4
+(1 row)
+
+     ?column?      
+-------------------
+ 8k_text_to_float8
+(1 row)
+
+       ?column?       
+----------------------
+ 8l_varchar_to_float4
+(1 row)
+
+       ?column?       
+----------------------
+ 8m_varchar_to_float8
+(1 row)
+
+      ?column?       
+---------------------
+ 8n_bpchar_to_float4
+(1 row)
+
+      ?column?       
+---------------------
+ 8o_bpchar_to_float8
+(1 row)
+
+     ?column?     
+------------------
+ 8p_int2_to_plain
+(1 row)
+
+     ?column?     
+------------------
+ 8q_int4_to_plain
+(1 row)
+
+     ?column?     
+------------------
+ 8r_int8_to_plain
+(1 row)
+
+      ?column?      
+--------------------
+ 8s_float4_to_plain
+(1 row)
+
+      ?column?      
+--------------------
+ 8t_float8_to_plain
+(1 row)
+
+      ?column?       
+---------------------
+ 8u_numeric_to_plain
+(1 row)
+
+      ?column?       
+---------------------
+ 8v_varchar_to_plain
+(1 row)
+
+      ?column?      
+--------------------
+ 8w_bpchar_to_plain
+(1 row)
+
+     ?column?     
+------------------
+ 8x_text_to_plain
+(1 row)
+
+    ?column?    
+----------------
+ === 9 VIEW ===
+(1 row)
+
+    ?column?     
+-----------------
+ === cleanup ===
+(1 row)
+
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../enc_types.sql:6: NOTICE:  table "enc_types_t" does not exist, skipping
+psql:/.../enc_types.sql:7: NOTICE:  table "enc_types_def" does not exist, skipping
+psql:/.../enc_types.sql:8: NOTICE:  data encryption key "dek_enc_types" does not exist, skipping
+psql:/.../enc_types.sql:9: NOTICE:  key encryption key "kek_enc_types" does not exist, skipping
+psql:/.../enc_types.sql:99: ERROR:  column "val" is of type int4_enc but expression is of type integer
+LINE 1: INSERT INTO enc_types_def (val, name) VALUES (200, 'row2');
+                                                      ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../enc_types.sql:108: ERROR:  column "val" is of type int4_enc but expression is of type integer
+LINE 1: INSERT INTO enc_types_def (val, note) VALUES (100, 'world');
+                                                      ^
+HINT:  You will need to rewrite or cast the expression.
+psql:/.../enc_types.sql:109: ERROR:  invalid hex string: "only_default"
+LINE 1: INSERT INTO enc_types_def (note) VALUES ('only_default');
+                                                 ^
+DETAIL:  Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:141: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int2_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:143: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int4_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:145: TECC query preprocessing failed: Cannot cast encrypted type text_enc to int8_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:148: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int2_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:150: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int4_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:152: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to int8_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:155: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int2_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:157: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int4_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:159: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to int8_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:163: TECC query preprocessing failed: Cannot cast encrypted type text_enc to float4_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:165: TECC query preprocessing failed: Cannot cast encrypted type text_enc to float8_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:168: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to float4_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:170: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to float8_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:173: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to float4_enc: incompatible encrypted types
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../enc_types.sql:175: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to float8_enc: incompatible encrypted types
+psql:/.../enc_types.sql:179: ERROR:  cannot cast type int2_enc to smallint
+LINE 1: ...E'\\x被隐藏的HEX输出'::int2_enc::int2;
+                                                                ^
+psql:/.../enc_types.sql:182: ERROR:  cannot cast type int4_enc to integer
+LINE 1: ...E'\\x被隐藏的HEX输出'::int4_enc::int4;
+                                                                ^
+psql:/.../enc_types.sql:185: ERROR:  cannot cast type int8_enc to bigint
+LINE 1: ...E'\\x被隐藏的HEX输出'::int8_enc::int8;
+                                                                ^
+psql:/.../enc_types.sql:188: ERROR:  cannot cast type float4_enc to real
+LINE 1: ...E'\\x被隐藏的HEX输出'::float4_enc::float4;
+                                                              ^
+psql:/.../enc_types.sql:191: ERROR:  cannot cast type float8_enc to double precision
+LINE 1: ...E'\\x被隐藏的HEX输出'::float8_enc::float8;
+                                                              ^
+psql:/.../enc_types.sql:194: ERROR:  cannot cast type numeric_enc to numeric
+LINE 1: ...E'\\x被隐藏的HEX输出'::numeric_enc::numeric;
+                                                             ^
+psql:/.../enc_types.sql:197: ERROR:  cannot cast type varchar_enc to character varying
+LINE 1: ...E'\\x被隐藏的HEX输出'::varchar_enc::varchar;
+                                                             ^
+psql:/.../enc_types.sql:200: ERROR:  cannot cast type bpchar_enc to character
+LINE 1: ...E'\\x被隐藏的HEX输出'::bpchar_enc::bpchar;
+                                                              ^
+psql:/.../enc_types.sql:203: ERROR:  cannot cast type text_enc to text
+LINE 1: ...E'\\x被隐藏的HEX输出'::text_enc::text;
+                                                                ^
+psql:/.../enc_types.sql:210: ERROR:  encrypted data type "int2_enc" requires ENCRYPTED WITH clause
+HINT:  Add ENCRYPTED WITH (dek = dek_name) to the column definition
+psql:/.../enc_types.sql:211: ERROR:  relation "enc_types_v" does not exist
+LINE 1: SELECT id, c_int2, c_int4 FROM enc_types_v ORDER BY id;
+                                       ^
+psql:/.../enc_types.sql:212: ERROR:  view "enc_types_v" does not exist

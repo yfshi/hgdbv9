@@ -1,0 +1,69 @@
+5月 23, 2026 1:57:45 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:57:46 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:57:46 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS tb_int4 CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS tb_int8 CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+create table tb_int4 (id int4_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 8
+create table tb_int8 (id int8_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 9
+insert into tb_int4(id) select 1::int2_enc encrypted with (dek = dek_t1);
+
+错误: 无法把类型 integer 转换为 int2_enc
+  位置：33
+>>> 10
+insert into tb_int8(id) select 1::int2_enc encrypted with (dek = dek_t1);
+
+错误: 无法把类型 integer 转换为 int2_enc
+  位置：33
+>>> 11
+insert into tb_int8(id) select 1::int4_enc encrypted with (dek = dek_t1);
+
+错误: 无法把类型 integer 转换为 int4_enc
+  位置：33
+>>> 12
+DROP TABLE IF EXISTS tb_int4 CASCADE;
+
+rows: 0
+>>> 13
+DROP TABLE IF EXISTS tb_int8 CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

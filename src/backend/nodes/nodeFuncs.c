@@ -300,6 +300,11 @@ exprType(const Node *expr)
 		case T_PlaceHolderVar:
 			type = exprType((Node *) ((const PlaceHolderVar *) expr)->phexpr);
 			break;
+		case T_CreateKekStmt:
+		case T_CreateDekStmt:
+			/* These are statement nodes, not expression nodes */
+			type = InvalidOid;
+		break;
 		/* Begin - ReqID:SRS-SQL-FUNCOUT */
 		case T_NonDefValNode:
 			type = UNKNOWNOID;
@@ -1080,6 +1085,11 @@ exprCollation(const Node *expr)
 			coll = InvalidOid;	/* ... so it has no collation */
 			break;
 		/* End - BUG#7712 */
+		case T_CreateKekStmt:
+		case T_CreateDekStmt:
+			/* These are statement nodes, not expression nodes */
+			coll = InvalidOid;
+			break;
 		/* Begin - ReqID:SRS-SQL-PIVOT */
 		case T_CaseWhen:
 			coll = InvalidOid;
@@ -1317,6 +1327,11 @@ exprSetCollation(Node *expr, Oid collation)
 			Assert(!OidIsValid(collation)); /* ... so never set a collation */
 			break;
 		/* End - BUG#7712 */
+                case T_CreateKekStmt:
+                case T_CreateDekStmt:
+                        /* These are statement nodes, not expression nodes */
+                        Assert(!OidIsValid(collation));
+                        break;
 		default:
 			elog(ERROR, "unrecognized node type: %d", (int) nodeTag(expr));
 			break;

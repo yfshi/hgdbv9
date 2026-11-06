@@ -57,6 +57,14 @@ endif
 
 $(recurse)
 
+# interfaces depends on common (libpq links libpgcommon_shlib.a which
+# includes tecc_key objects). Ensure common builds before interfaces
+# even in serial mode — .NOTPARALLEL prevents parallel execution but
+# doesn't guarantee ordering.
+all-interfaces-recurse: all-common-recurse
+install-interfaces-recurse: install-common-recurse
+check-interfaces-recurse: check-common-recurse
+
 install: install-local
 
 install-local: installdirs-local

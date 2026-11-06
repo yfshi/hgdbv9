@@ -108,6 +108,7 @@ struct adhoc_opts
 	bool		no_psqlrc;
 	bool		single_txn;
 	bool		list_dbs;
+	char	   *enable_tecc;	/* TECC enable parameter: "0", "1", "1_with_log" */
 	SimpleActionList actions;
 };
 
@@ -328,7 +329,7 @@ main(int argc, char *argv[])
 	do
 	{
 
-#define PARAMS_ARRAY_SIZE	16 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */ /* ReqID:SRS-SQL-SYSVIEW */
+#define PARAMS_ARRAY_SIZE	17 // ReqID:SRS-SECURITY-IDENTITYAUTH	/* ReqID: SRS-SESSION-VIEWS */ /* ReqID:SRS-SQL-SYSVIEW */
 
 		const char **keywords = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*keywords));
 		const char **values = pg_malloc(PARAMS_ARRAY_SIZE * sizeof(*values));
@@ -370,8 +371,10 @@ main(int argc, char *argv[])
 		keywords[14] = "client.osuser";
 		values[14] = pset.osuser;
 		/* End ReqID:SRS-SQL-SYSVIEW */
-		keywords[15] = NULL;
-		values[15] = NULL;
+		keywords[15] = "enable_tecc";
+		values[15] = options.enable_tecc;
+		keywords[16] = NULL;
+		values[16] = NULL;
 
 
 		new_pass = false;
@@ -674,6 +677,7 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 		{"custom", required_argument, NULL, 'C'},
 
 		/* End - ReqID:SRS-SECURITY-IDENTITYAUTH */
+		{"tecc", required_argument, NULL, 'k'},
 		{NULL, 0, NULL, 0}
 	};
 
@@ -683,9 +687,9 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 	memset(options, 0, sizeof *options);
 /* Begin - ReqID:SRS-MISC-LICENSE-ClientTool */
 #ifdef USE_LICENSE
-	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VGwWxXz?01D:M:C:N", /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+	while ((c = getopt_long(argc, argv, "aAbc:C:d:eEf:F:h:k:HlL:no:p:P:qR:sStT:U:v:VGwWxXz?01D:M:C:N", /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #else
-	while ((c = getopt_long(argc, argv, "aAbc:d:eEf:F:h:HlL:no:p:P:qR:sStT:U:v:VwWxXz?01D:M:C:N", /* ReqID:SRS-SECURITY-IDENTITYAUTH */
+	while ((c = getopt_long(argc, argv, "aAbc:C:d:eEf:F:h:k:HlL:no:p:P:qR:sStT:U:v:VwWxXz?01D:M:C:N", /* ReqID:SRS-SECURITY-IDENTITYAUTH */
 #endif
 /* End - ReqID:SRS-MISC-LICENSE-ClientTool */
 							long_options, &optindex)) != -1)
@@ -710,6 +714,18 @@ parse_psql_options(int argc, char *argv[], struct adhoc_opts *options)
 					simple_action_list_append(&options->actions,
 											  ACT_SINGLE_QUERY,
 											  optarg);
+				break;
+			case 'k':
+				/* TECC enable parameter: parse on/off and map to enable_tecc values */
+				if (strcmp(optarg, "on") == 0 || strcmp(optarg, "1") == 0)
+					options->enable_tecc = pg_strdup("1");
+				else if (strcmp(optarg, "off") == 0 || strcmp(optarg, "0") == 0)
+					options->enable_tecc = pg_strdup("0");
+				else
+				{
+					pg_log_fatal("invalid value for --tecc/-k: \"%s\" (must be \"on\" or \"off\")", optarg);
+					exit(EXIT_FAILURE);
+				}
 				break;
 			case 'd':
 				options->dbname = pg_strdup(optarg);

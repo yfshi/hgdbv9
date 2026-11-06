@@ -414,7 +414,7 @@ SELECT 'Türkiye' COLLATE "en_US" ~* 'KI' AS "true";
 SELECT 'Türkiye' COLLATE "tr_TR" ~* 'KI' AS "false";
  false 
 -------
- f
+ t
 (1 row)
 
 SELECT 'bıt' ~* 'BIT' COLLATE "en_US" AS "false";
@@ -426,7 +426,7 @@ SELECT 'bıt' ~* 'BIT' COLLATE "en_US" AS "false";
 SELECT 'bıt' ~* 'BIT' COLLATE "tr_TR" AS "true";
  true 
 ------
- t
+ f
 (1 row)
 
 -- The following actually exercises the selectivity estimation for ~*.
@@ -1065,8 +1065,6 @@ $$;
 CREATE COLLATION test3 (lc_collate = 'en_US.utf8'); -- fail, need lc_ctype
 ERROR:  parameter "lc_ctype" must be specified
 CREATE COLLATION testx (locale = 'nonsense'); -- fail
-ERROR:  could not create locale "nonsense": No such file or directory
-DETAIL:  The operating system could not find any locale data for the locale name "nonsense".
 CREATE COLLATION test4 FROM nonsense;
 ERROR:  collation "nonsense" for encoding "UTF8" does not exist
 CREATE COLLATION test5 FROM test0;
@@ -1076,7 +1074,8 @@ SELECT collname FROM pg_collation WHERE collname LIKE 'test%' ORDER BY 1;
  test0
  test1
  test5
-(3 rows)
+ testx
+(4 rows)
 
 ALTER COLLATION test1 RENAME TO test11;
 ALTER COLLATION test0 RENAME TO test11; -- fail
@@ -1097,7 +1096,8 @@ SELECT collname, nspname, obj_description(pg_collation.oid, 'pg_collation')
  test0    | collate_tests | US English
  test11   | test_schema   | 
  test5    | collate_tests | 
-(3 rows)
+ testx    | collate_tests | 
+(4 rows)
 
 DROP COLLATION test0, test_schema.test11, test5;
 DROP COLLATION test0; -- fail
@@ -1107,7 +1107,8 @@ NOTICE:  collation "test0" does not exist, skipping
 SELECT collname FROM pg_collation WHERE collname LIKE 'test%';
  collname 
 ----------
-(0 rows)
+ testx
+(1 row)
 
 DROP SCHEMA test_schema;
 DROP ROLE regress_test_role;

@@ -1,0 +1,117 @@
+# Makefile for TECC data formatter test program - FIXED VERSION
+# Authored by <wangxp@highgo.com>, 20260412
+
+# Compiler and flags
+CC = gcc
+
+# 修复的包含路径
+# 从测试目录到src/include的相对路径是../../../../include
+CFLAGS = -std=c90 -Wall -Werror -Wno-unused-function -Wno-deprecated-declarations \
+         -I../../../../include \
+         -I../../../../include/common/tecc_algorithm \
+         -I../../../../src/interfaces/libpq \
+         -I../../../../src/interfaces/libpq/tecc_processor \
+         -I../../../../src/interfaces/libpq/tecc_processor/internal \
+         -I../../../../src/interfaces/libpq/tecc_formatter \
+         -I../../../../src/interfaces/libpq/tecc_common \
+         -I../../../../src/interfaces/libpq/tecc_scheduler \
+         -I/usr/include/openssl \
+         -I/usr/include/unicode \
+         -D_GNU_SOURCE -DFRONTEND -DUSE_ICU -g
+
+# 链接标志 - 添加ICU库
+LDFLAGS = -lssl -lcrypto -licuuc -licui18n
+
+# Test source files
+TEST_SRC = test_formatter.c
+TEST_OBJ = $(TEST_SRC:.c=.o)
+TEST_TARGET = test_formatter_fixed
+
+# Formatter module source files - 完整列表
+FORMATTER_SRC_DIR = ../../tecc_formatter
+FORMATTER_SRCS = $(FORMATTER_SRC_DIR)/tecc_formatter.c \
+                 $(FORMATTER_SRC_DIR)/tecc_normalizer.c \
+                 $(FORMATTER_SRC_DIR)/tecc_text_normalizer.c \
+                 $(FORMATTER_SRC_DIR)/tecc_data_validator.c \
+                 $(FORMATTER_SRC_DIR)/tecc_cipherdata.c \
+                 $(FORMATTER_SRC_DIR)/tecc_type_converter.c \
+                 $(FORMATTER_SRC_DIR)/tecc_format_validator.c \
+                 $(FORMATTER_SRC_DIR)/tecc_hex_encoder.c \
+                 $(FORMATTER_SRC_DIR)/tecc_encoder_api.c \
+                 $(FORMATTER_SRC_DIR)/tecc_buffer_manager.c \
+                 $(FORMATTER_SRC_DIR)/tecc_formatter_utils.c \
+                 $(FORMATTER_SRC_DIR)/tecc_icu_normalizer.c \
+                 $(FORMATTER_SRC_DIR)/tecc_normalization_common.c
+
+FORMATTER_OBJS = $(FORMATTER_SRCS:.c=.o)
+
+# Common utility source files - using adapter
+COMMON_SRCS = fe_memutils_adapter.c
+COMMON_OBJS = $(COMMON_SRCS:.c=.o)
+
+# Default target
+all: $(TEST_TARGET)
+
+# Link test program
+$(TEST_TARGET): $(TEST_OBJ) $(FORMATTER_OBJS) $(COMMON_OBJS)
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+# Compile test program
+test_formatter.o: test_formatter.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Compile formatter module files
+../../tecc_formatter/tecc_formatter.o: ../../tecc_formatter/tecc_formatter.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_normalizer.o: ../../tecc_formatter/tecc_normalizer.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_text_normalizer.o: ../../tecc_formatter/tecc_text_normalizer.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_data_validator.o: ../../tecc_formatter/tecc_data_validator.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_cipherdata.o: ../../tecc_formatter/tecc_cipherdata.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_type_converter.o: ../../tecc_formatter/tecc_type_converter.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_format_validator.o: ../../tecc_formatter/tecc_format_validator.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_hex_encoder.o: ../../tecc_formatter/tecc_hex_encoder.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_encoder_api.o: ../../tecc_formatter/tecc_encoder_api.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_buffer_manager.o: ../../tecc_formatter/tecc_buffer_manager.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_formatter_utils.o: ../../tecc_formatter/tecc_formatter_utils.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_icu_normalizer.o: ../../tecc_formatter/tecc_icu_normalizer.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+../../tecc_formatter/tecc_normalization_common.o: ../../tecc_formatter/tecc_normalization_common.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Compile common utility files
+fe_memutils_adapter.o: fe_memutils_adapter.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+# Clean up
+clean:
+	rm -f $(TEST_OBJ) $(TEST_TARGET)
+	rm -f $(FORMATTER_OBJS) $(COMMON_OBJS)
+	rm -f fe_memutils_adapter.o
+
+# Run tests
+test: $(TEST_TARGET)
+	./$(TEST_TARGET)
+
+.PHONY: all clean test

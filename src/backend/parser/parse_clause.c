@@ -53,6 +53,7 @@
 #include "parser/parsetree.h"
 #include "parser/scansup.h"
 #include "rewrite/rewriteManip.h"
+#include "utils/lsyscache.h"
 #include "utils/builtins.h"
 #include "utils/catcache.h"
 #include "utils/guc.h"
@@ -164,7 +165,6 @@ typedef struct outer_join_vars{
 	 List	 *var_list;		/* inner join'var list */
 	 Node	 *qual;			/* the origin qual */
 } outer_join_vars;
-
 
 typedef struct outer_joinVar_item
 {
@@ -5255,6 +5255,7 @@ transformOnConflictArbiter(ParseState *pstate,
 	 * post parse analysis query tree inference clause representation.
 	 */
 }
+
 
 /*
  * addTargetToSortList

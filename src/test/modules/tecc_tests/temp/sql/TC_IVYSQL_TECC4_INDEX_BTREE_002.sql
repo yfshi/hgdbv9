@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_varchar_indexes CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE test_varchar_indexes(id SERIAL PRIMARY KEY, varchar_col varchar_enc encrypted with (dek = dek_t1,support_algo='ope'),category VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_varchar_indexes (varchar_col, category) SELECT '这是测试文本数据', 'Category_' || (i % 10) FROM generate_series(1, 5000) i;
+CREATE INDEX idx_varchar_btree ON test_varchar_indexes USING btree (varchar_col);
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_varchar_indexes WHERE varchar_col = '这是测试文本数据100';
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_varchar_indexes';
+DROP TABLE IF EXISTS test_varchar_indexes CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

@@ -1,0 +1,22 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+Setting up SWXA KEK: swxa_cross_kek (key index: 1)
+SUCCESS: Key found in SWXA password machine at index 1
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+=== SWXA CROSS: 全表解密 ===
+1|10|1000|100000|10.5|100.5|1000.55|swxa cross text|cross_varchar|CROSS_BP|cross_r1
+2|20|2000|200000|20.5|200.5|2000.55|swxa cross 2nd|cross_vc_2|CROSS_2|cross_r2
+=== SWXA CROSS: DET查询 ===
+cross_r1
+cross_r2
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:src/test/modules/tecc_tests/cross/sql/005_swxa_cross.sql:8: NOTICE:  table "swxa_cross_t" does not exist, skipping
+psql:src/test/modules/tecc_tests/cross/sql/005_swxa_cross.sql:9: NOTICE:  data encryption key "swxa_cross_dek" does not exist, skipping
+psql:src/test/modules/tecc_tests/cross/sql/005_swxa_cross.sql:10: NOTICE:  key encryption key "swxa_cross_kek" does not exist, skipping

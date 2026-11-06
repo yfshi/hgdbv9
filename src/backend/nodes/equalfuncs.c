@@ -175,6 +175,9 @@ _equalIntoClause(const IntoClause *a, const IntoClause *b)
 	COMPARE_STRING_FIELD(tableSpaceName);
 	COMPARE_NODE_FIELD(viewQuery);
 	COMPARE_SCALAR_FIELD(skipData);
+	/* Begin - ReqID:TECC4.0 */
+	COMPARE_NODE_FIELD(encrypted_with_list);
+	/* End - ReqID:TECC4.0 */
 
 	return true;
 }
@@ -1564,6 +1567,7 @@ _equalCreateStmt(const CreateStmt *a, const CreateStmt *b)
 	COMPARE_NODE_FIELD(ora_partspec);
 	COMPARE_NODE_FIELD(ora_partsup);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	COMPARE_SCALAR_FIELD(is_ctas);
 	COMPARE_NODE_FIELD(nestdtableCols); /* ReqID:SRS-SQL-Collection */
 
 	return true;
@@ -2333,6 +2337,28 @@ _equalAlterExtensionContentsStmt(const AlterExtensionContentsStmt *a, const Alte
 
 	return true;
 }
+
+/* Begin - ReqID:TECC4.0 */
+static bool
+_equalCreateKekStmt(const CreateKekStmt *a, const CreateKekStmt *b)
+{
+	COMPARE_NODE_FIELD(names);
+	COMPARE_SCALAR_FIELD(if_not_exists);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
+
+static bool
+_equalCreateDekStmt(const CreateDekStmt *a, const CreateDekStmt *b)
+{
+	COMPARE_NODE_FIELD(names);
+	COMPARE_SCALAR_FIELD(if_not_exists);
+	COMPARE_NODE_FIELD(options);
+
+	return true;
+}
+/* End - ReqID:TECC4.0 */
 
 static bool
 _equalCreateFdwStmt(const CreateFdwStmt *a, const CreateFdwStmt *b)
@@ -3107,6 +3133,9 @@ _equalTypeName(const TypeName *a, const TypeName *b)
 	COMPARE_NODE_FIELD(typmods);
 	COMPARE_SCALAR_FIELD(typemod);
 	COMPARE_NODE_FIELD(arrayBounds);
+	/* Begin - ReqID:TECC4.0 */
+	COMPARE_NODE_FIELD(encrypted_with);
+	/* End - ReqID:TECC4.0 */
 	COMPARE_LOCATION_FIELD(location);
 
 	return true;
@@ -3273,6 +3302,7 @@ _equalColumnDef(const ColumnDef *a, const ColumnDef *b)
 	COMPARE_NODE_FIELD(constraints);
 	COMPARE_NODE_FIELD(fdwoptions);
 	COMPARE_LOCATION_FIELD(location);
+	COMPARE_NODE_FIELD(encrypted_with);
 	COMPARE_SCALAR_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	COMPARE_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
 
@@ -4993,6 +5023,14 @@ equal(const void *a, const void *b)
 			retval = _equalPivotInItem(a, b);
 			break;
 		/* End - ReqID:SRS-SQL-PIVOT */
+		/* Begin - ReqID:TECC4.0 */
+		case T_CreateKekStmt:
+			retval = _equalCreateKekStmt(a, b);
+			break;
+		case T_CreateDekStmt:
+			retval = _equalCreateDekStmt(a, b);
+			break;
+		/* End - ReqID:TECC4.0 */
 		/* Begin - ReqID:SRS-SQL-Collection */
 		case T_CreateCollectionTypeStmt:
 			retval = _equalCreateCollectionTypeStmt(a, b);

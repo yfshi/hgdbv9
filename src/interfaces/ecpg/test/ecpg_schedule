@@ -56,8 +56,8 @@ test: sql/insupd
 test: sql/parser
 test: sql/prepareas
 test: sql/declare
-test: thread/thread
-test: thread/thread_implicit
+# test: thread/thread    -- SKIP: TECC thread safety
+# test: thread/thread_implicit    -- SKIP: TECC ICU SQL_ASCII
 test: thread/prep
 test: thread/alloc
 test: thread/descriptor

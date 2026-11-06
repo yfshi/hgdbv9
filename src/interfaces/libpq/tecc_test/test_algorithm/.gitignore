@@ -1,0 +1,12 @@
+# Local test binaries
+/test_algorithms
+/test_algorithms_extended
+/test_hkdf
+/test_hmac
+/test_openssl_init
+/test_search_pattern
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

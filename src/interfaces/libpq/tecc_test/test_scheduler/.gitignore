@@ -1,0 +1,7 @@
+# Local test binaries
+/test_simple_integration
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

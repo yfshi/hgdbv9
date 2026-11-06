@@ -1,0 +1,18 @@
+DROP TABLE IF EXISTS example_table CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE example_table (id SERIAL PRIMARY KEY, col_text text_enc encrypted with (dek = dek_t1,support_algo='det'), col_varchar varchar_enc encrypted with (dek = dek_t1,support_algo='det'), col_bpchar bpchar_enc encrypted with (dek = dek_t1,support_algo='det'), col_int2 int2_enc encrypted with (dek = dek_t1,support_algo='det'), col_int4 int4_enc encrypted with (dek = dek_t1,support_algo='det'), col_int8 int8_enc encrypted with (dek = dek_t1,support_algo='det'), col_numeric numeric_enc encrypted with (dek = dek_t1,support_algo='det'),col_float4 float4_enc encrypted with (dek = dek_t1,support_algo='det'),col_float8 float8_enc encrypted with (dek = dek_t1,support_algo='det'));
+CREATE INDEX idx_btree_text ON example_table USING btree (col_text);
+CREATE INDEX idx_btree_varchar ON example_table USING btree (col_varchar);
+CREATE INDEX idx_btree_bpchar ON example_table USING btree (col_bpchar);
+CREATE INDEX idx_btree_int2 ON example_table USING btree (col_int2);
+CREATE INDEX idx_btree_int4 ON example_table USING btree (col_int4);
+CREATE INDEX idx_btree_int8 ON example_table USING btree (col_int8);
+CREATE INDEX idx_btree_numeric ON example_table USING btree (col_numeric);
+CREATE INDEX idx_btree_float4 ON example_table USING btree (col_float4);
+CREATE INDEX idx_btree_float8 ON example_table USING btree (col_float8);
+DROP TABLE IF EXISTS example_table CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

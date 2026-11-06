@@ -1,0 +1,21 @@
+>>> 1
+DROP TABLE IF EXISTS test CASCADE;
+
+rows: 0
+>>> 2
+create table test(id int);
+
+rows: 0
+>>> 3
+insert into test values(1);
+
+rows: 1
+>>> 4
+select * from test;
+
+1
+rows: -1
+>>> 5
+DROP TABLE IF EXISTS test CASCADE;
+
+rows: 0

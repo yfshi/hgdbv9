@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_float4_indexes_hash CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE test_float4_indexes_hash (id SERIAL PRIMARY KEY,float4_col float4_enc encrypted with (dek = dek_t1,support_algo='det') NOT NULL,sensor_id VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_float4_indexes_hash (float4_col, sensor_id) SELECT (2 * 12.3456)::float4,'SENSOR_' || (i % 50)::text FROM generate_series(1, 5000) i;
+CREATE INDEX idx_float4_det_hash ON test_float4_indexes_hash USING hash (float4_col);
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_float4_indexes_hash WHERE float4_col = 6172.8;
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_float4_indexes_hash';
+DROP TABLE IF EXISTS test_float4_indexes_hash CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

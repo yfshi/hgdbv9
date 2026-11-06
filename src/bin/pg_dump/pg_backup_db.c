@@ -385,9 +385,12 @@ ConnectDatabasePg(Archive *AHX,
 	 */
 	do
 	{
-		const char *keywords[8];
-		const char *values[8];
+		const char *keywords[9];
+		const char *values[9];
 		int			i = 0;
+
+		const char *tecc_val = NULL;
+		tecc_val = pg_strdup("true");
 
 		/*
 		 * If dbname is a connstring, its entries can override the other
@@ -411,6 +414,14 @@ ConnectDatabasePg(Archive *AHX,
 		}
 		keywords[i] = "fallback_application_name";
 		values[i++] = progname;
+
+		/* Pass enable_tecc through if explicitly set in connstring */
+		if (tecc_val)
+		{
+			keywords[i] = "enable_tecc";
+			values[i++] = tecc_val;
+		}
+
 		keywords[i] = NULL;
 		values[i++] = NULL;
 		Assert(i <= lengthof(keywords));

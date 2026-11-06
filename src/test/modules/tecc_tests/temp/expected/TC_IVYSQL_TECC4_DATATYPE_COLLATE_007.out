@@ -1,0 +1,61 @@
+5月 23, 2026 1:54:46 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:54:46 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:54:46 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS tb_test_tecc CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+create table tb_test_tecc(id SERIAL PRIMARY KEY, col_text text_enc encrypted with (dek = dek_t1,support_algo='ope'), col_varchar varchar_enc encrypted with (dek = dek_t1,support_algo='ope'),col_bpchar bpchar_enc encrypted with (dek = dek_t1,support_algo='ope'));
+
+rows: 0
+>>> 7
+INSERT INTO tb_test_tecc (col_text, col_varchar, col_bpchar) VALUES ('apple', 'apple', 'apple'),('application', 'application', 'application'),('banana', 'banana', 'banana'),('berry', 'berry', 'berry'),('cherry', 'cherry', 'cherry'),('Apple', 'Apple', 'Apple'),('APPLE', 'APPLE', 'APPLE'),('123apple', '123apple', '123apple'),('apple123', 'apple123', 'apple123'),('pineapple', 'pineapple', 'pineapple'),('grape fruit', 'grape fruit', 'grape fruit'),('red apple', 'red apple', 'red apple'),('green apple', 'green apple', 'green apple'),('', '', ''),('a', 'a', 'a'),('test data', 'test data', 'test data'),('data test', 'data test', 'data test'),('test', 'test', 'test'),('TEST', 'TEST', 'TEST'),('Test', 'Test', 'Test'),(NULL, NULL, NULL);
+
+rows: 21
+>>> 8
+alter table tb_test_tecc alter column col_text set data type text_enc encrypted with (dek = dek_t1,support_algo='ope') collate "C";
+
+错误: cannot alter type of an encrypted column
+  详情：ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. Column "col_text" is encrypted and cannot be altered.
+>>> 9
+alter table tb_test_tecc alter column col_varchar set data type varchar_enc encrypted with (dek = dek_t1,support_algo='ope') collate "ucs_basic";
+
+错误: cannot alter type of an encrypted column
+  详情：ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. Column "col_varchar" is encrypted and cannot be altered.
+>>> 10
+alter table tb_test_tecc alter column col_bpchar set data type bpchar_enc encrypted with (dek = dek_t1,support_algo='ope') collate "zh_CN.utf8";
+
+错误: cannot alter type of an encrypted column
+  详情：ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. Column "col_bpchar" is encrypted and cannot be altered.
+>>> 11
+DROP TABLE IF EXISTS tb_test_tecc CASCADE;
+
+rows: 0
+>>> 12
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 13
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

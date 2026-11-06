@@ -1,0 +1,17 @@
+>>> 1
+select name from tb1 where id=1;
+
+错误: 关系 "tb1" 不存在
+  位置：18
+>>> 2
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_test CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_test CASCADE;
+
+rows: 0

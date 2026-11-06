@@ -1,0 +1,104 @@
+5月 23, 2026 1:58:59 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:58:59 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:58:59 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS test_text_indexes CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+create table test_text_indexes(id SERIAL PRIMARY KEY, text_col text_enc encrypted with (dek = dek_t1,support_algo='ope'),category VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+rows: 0
+>>> 7
+INSERT INTO test_text_indexes (text_col, category) SELECT '这是测试文本数据', 'Category_' || (i % 10) FROM generate_series(1, 5000) i;
+
+错误: invalid hex string: "这是测试文本数据"
+  详情：Hex string must contain only 0-9, a-f, A-F characters and may have \x prefix.
+  位置：59
+>>> 8
+CREATE INDEX idx_text_btree ON test_text_indexes USING btree (text_col);
+
+rows: 0
+>>> 9
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_text_indexes WHERE text_col = '这是测试文本数据100';
+
+5月 23, 2026 1:59:00 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..QUERY PLAN
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+Bitmap Heap Scan on test_text_indexes  (cost=4.16..9.50 rows=2 width=162) (actual time=0.004..0.005 rows=0 loops=1)
+  Recheck Cond: (text_col = '\x7000000000000100b96f306500000000000000000000000000000000'::text_enc)
+  Buffers: shared hit=2
+  ->  Bitmap Index Scan on idx_text_btree  (cost=0.00..4.16 rows=2 width=0) (actual time=0.003..0.003 rows=0 loops=1)
+        Index Cond: (text_col = '\x7000000000000100b96f306500000000000000000000000000000000'::text_enc)
+        Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=28 read=3
+Planning Time: 0.314 ms
+Execution Time: 0.052 ms
+rows: -1
+>>> 10
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_text_indexes';
+
+test_text_indexes_pkey|CREATE UNIQUE INDEX test_text_indexes_pkey ON public.test_text_indexes USING btree (id)5月 23, 2026 1:59:00 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..index_size
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+|8192 bytes
+idx_text_btree|CREATE INDEX idx_text_btree ON public.test_text_indexes USING btree (text_col)|8192 bytes
+rows: -1
+>>> 11
+DROP TABLE IF EXISTS test_text_indexes CASCADE;
+
+rows: 0
+>>> 12
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 13
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

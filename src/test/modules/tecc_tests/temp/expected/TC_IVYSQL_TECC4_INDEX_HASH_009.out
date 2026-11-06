@@ -1,0 +1,66 @@
+>>> 1
+DROP TABLE IF EXISTS test_numeric_indexes_hash CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE test_numeric_indexes_hash (id SERIAL PRIMARY KEY,numeric_col numeric_enc encrypted with (dek = dek_t1,support_algo='ope') NOT NULL,sensor_id VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+rows: 0
+>>> 7
+INSERT INTO test_numeric_indexes_hash (numeric_col, sensor_id) SELECT (2 * 123.4567)::numeric(15,4),CASE WHEN i % 3 = 0 THEN 'USD' WHEN i % 3 = 1 THEN 'EUR' ELSE 'GBP' END FROM generate_series(1, 5000) i;
+
+错误: 字段 "numeric_col" 的类型为 numeric_enc, 但表达式的类型为 numeric
+  建议：你需要重写或转换表达式
+  位置：72
+>>> 8
+CREATE INDEX idx_numeric_hash ON test_numeric_indexes_hash USING hash (numeric_col);
+
+rows: 0
+>>> 9
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_numeric_indexes_hash WHERE numeric_col = 6172.8;
+
+Bitmap Heap Scan on test_numeric_indexes_hash  (cost=4.02..9.36 rows=2 width=162) (actual time=0.014..0.014 rows=0 loops=1)
+  Recheck Cond: (numeric_col = '\x7000000000000100b96f306500000000000000000000000000000000'::numeric_enc)
+  Buffers: shared hit=2
+  ->  Bitmap Index Scan on idx_numeric_hash  (cost=0.00..4.01 rows=2 width=0) (actual time=0.011..0.011 rows=0 loops=1)
+        Index Cond: (numeric_col = '\x7000000000000100b96f306500000000000000000000000000000000'::numeric_enc)
+        Buffers: shared hit=2
+Planning:
+  Buffers: shared hit=30 read=1
+Planning Time: 0.560 ms
+Execution Time: 0.095 ms
+rows: -1
+>>> 10
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_numeric_indexes_hash';
+
+test_numeric_indexes_hash_pkey|CREATE UNIQUE INDEX test_numeric_indexes_hash_pkey ON public.test_numeric_indexes_hash USING btree (id)|8192 bytes
+idx_numeric_hash|CREATE INDEX idx_numeric_hash ON public.test_numeric_indexes_hash USING hash (numeric_col)|32 kB
+rows: -1
+>>> 11
+DROP TABLE IF EXISTS test_numeric_indexes_hash CASCADE;
+
+rows: 0
+>>> 12
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 13
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

@@ -1,0 +1,34 @@
+# Simple Makefile for parser-processor compatibility tests
+# Usage: make -f Makefile.compatibility
+
+CC = gcc
+CFLAGS = -I../../../../../src/include -I../../frontend_parser -I. -DFRONTEND=1 -DFRONTEND_PARSER=1 -g -O0 -I../../../../src/interfaces/libpq
+LDFLAGS =
+
+# Source files
+SRCS = test_simple_compatibility.c
+OBJS = $(SRCS:.c=.o)
+TARGET = test_simple_compatibility
+
+# Parser source files
+PARSER_SRCS = ../../frontend_parser/fe_adapter.c \
+              ../../frontend_parser/tecc_nodes.c \
+              ../../frontend_parser/feparser_memutils.c
+
+PARSER_OBJS = $(PARSER_SRCS:.c=.o)
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS) $(PARSER_OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) -lm
+
+%.o: %.c
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+clean:
+	rm -f $(OBJS) $(PARSER_OBJS) $(TARGET)
+
+test: $(TARGET)
+	./$(TARGET)
+
+.PHONY: all clean test

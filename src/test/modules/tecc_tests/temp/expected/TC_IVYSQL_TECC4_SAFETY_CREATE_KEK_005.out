@@ -1,0 +1,16 @@
+>>> 1
+DROP KEK IF EXISTS kek_test CASCADE;
+
+rows: 0
+>>> 2
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+
+rows: 0
+>>> 3
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+
+错误: KEK "kek_test" already exists
+>>> 4
+DROP KEK kek_test CASCADE;
+
+rows: 0

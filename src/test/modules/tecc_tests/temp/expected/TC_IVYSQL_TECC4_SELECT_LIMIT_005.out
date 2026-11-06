@@ -1,0 +1,128 @@
+>>> 1
+DROP TABLE IF EXISTS tecc_data_type_test CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS data_type_test CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+CREATE TABLE data_type_test (id SERIAL PRIMARY KEY, text_col text, varchar_col varchar, bpchar_col bpchar, int2_col int2, int4_col int4, int8_col int8, numeric_col numeric, float4_col float4, float8_col float8);
+
+rows: 0
+>>> 8
+CREATE TABLE tecc_data_type_test (id SERIAL PRIMARY KEY, text_col text_enc encrypted with (dek = dek_t1), varchar_col varchar_enc encrypted with (dek = dek_t1), bpchar_col bpchar_enc encrypted with (dek = dek_t1), int2_col int2_enc encrypted with (dek = dek_t1), int4_col int4_enc encrypted with (dek = dek_t1), int8_col int8_enc encrypted with (dek = dek_t1), numeric_col numeric_enc encrypted with (dek = dek_t1), float4_col float4_enc encrypted with (dek = dek_t1), float8_col float8_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 9
+INSERT INTO data_type_test VALUES (1,'test数据','test文本','test',1,100,1000,123.45,1.23,12.34),(2,'测试数据','测试文本','测试',2,200,2000,234.56,2.34,23.45),(3,'test数据2','测试文本2','test2',3,300,3000,345.67,3.45,34.56),(4,'测试test','test文本3','test3',4,400,4000,456.78,4.56,45.67),(5,'hello测试','hello文本','hello',5,500,5000,567.89,5.67,56.78);
+
+rows: 5
+>>> 10
+INSERT INTO tecc_data_type_test VALUES (1,'test数据','test文本','test',1,100,1000,123.45,1.23,12.34),(2,'测试数据','测试文本','测试',2,200,2000,234.56,2.34,23.45),(3,'test数据2','测试文本2','test2',3,300,3000,345.67,3.45,34.56),(4,'测试test','test文本3','test3',4,400,4000,456.78,4.56,45.67),(5,'hello测试','hello文本','hello',5,500,5000,567.89,5.67,56.78);
+
+rows: 5
+>>> 11
+SELECT a.id, b.id FROM tecc_data_type_test a, data_type_test b WHERE a.int2_col = b.int2_col AND a.int4_col = b.int4_col AND a.int8_col = b.int8_col AND a.numeric_col = b.numeric_col AND a.float4_col = b.float4_col AND a.float8_col = b.float8_col AND a.text_col = b.text_col AND a.varchar_col = b.varchar_col AND a.bpchar_col = b.bpchar_col;
+
+错误: 操作符不存在: int2_enc = smallint
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：81
+>>> 12
+SELECT a.id, b.id FROM tecc_data_type_test a, data_type_test b WHERE a.int2_col = b.int2_col AND a.int4_col = b.int4_col AND a.int8_col = b.int8_col AND a.numeric_col = b.numeric_col AND a.float4_col = b.float4_col AND a.float8_col = b.float8_col AND a.text_col = b.text_col AND a.varchar_col = b.varchar_col AND a.bpchar_col = b.bpchar_col;
+
+错误: 操作符不存在: int2_enc = smallint
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：81
+>>> 13
+SELECT a.id, a.int4_col, a.int8_col, b.id, b.int4_col, b.int8_col FROM tecc_data_type_test a, data_type_test b WHERE a.int4_col > b.int4_col AND a.int8_col < b.int8_col;
+
+错误: 操作符不存在: int4_enc > integer
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：129
+>>> 14
+SELECT a.id, a.int4_col, a.int8_col, b.id, b.int4_col, b.int8_col FROM tecc_data_type_test a, data_type_test b WHERE a.int4_col > b.int4_col AND a.int8_col < b.int8_col;
+
+错误: 操作符不存在: int4_enc > integer
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：129
+>>> 15
+SELECT a.id, a.numeric_col, a.float4_col, b.id, b.numeric_col, b.float4_col FROM tecc_data_type_test a, data_type_test b WHERE a.numeric_col >= b.numeric_col AND a.float4_col <= b.float4_col;
+
+错误: 操作符不存在: numeric_enc >= numeric
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：142
+>>> 16
+SELECT a.id, a.numeric_col, a.float4_col, b.id, b.numeric_col, b.float4_col FROM tecc_data_type_test a, data_type_test b WHERE a.numeric_col >= b.numeric_col AND a.float4_col <= b.float4_col;
+
+错误: 操作符不存在: numeric_enc >= numeric
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：142
+>>> 17
+SELECT a.id, a.text_col, a.int2_col, b.id, b.text_col, b.int2_col FROM tecc_data_type_test a, data_type_test b WHERE a.text_col = b.text_col AND a.int2_col > b.int2_col;
+
+错误: 操作符不存在: text_enc = text
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：129
+>>> 18
+SELECT a.id, a.text_col, a.int2_col, b.id, b.text_col, b.int2_col FROM tecc_data_type_test a, data_type_test b WHERE a.text_col = b.text_col AND a.int2_col > b.int2_col;
+
+错误: 操作符不存在: text_enc = text
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：129
+>>> 19
+SELECT a.id, a.varchar_col, a.int4_col, b.id, b.varchar_col, b.int4_col FROM tecc_data_type_test a, data_type_test b WHERE a.varchar_col = b.varchar_col AND a.int4_col < b.int4_col;
+
+错误: 操作符不存在: varchar_enc = character varying
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：138
+>>> 20
+SELECT a.id, a.varchar_col, a.int4_col, b.id, b.varchar_col, b.int4_col FROM tecc_data_type_test a, data_type_test b WHERE a.varchar_col = b.varchar_col AND a.int4_col < b.int4_col;
+
+错误: 操作符不存在: varchar_enc = character varying
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：138
+>>> 21
+SELECT a.id, a.bpchar_col, a.int8_col, b.id, b.bpchar_col, b.int8_col FROM tecc_data_type_test a, data_type_test b WHERE a.bpchar_col = b.bpchar_col AND a.int8_col >= b.int8_col;
+
+错误: 操作符不存在: bpchar_enc = character
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：135
+>>> 22
+SELECT a.id, a.bpchar_col, a.int8_col, b.id, b.bpchar_col, b.int8_col FROM tecc_data_type_test a, data_type_test b WHERE a.bpchar_col = b.bpchar_col AND a.int8_col >= b.int8_col;
+
+错误: 操作符不存在: bpchar_enc = character
+  建议：没有匹配指定名称和参数类型的操作符. 您也许需要增加明确的类型转换.
+  位置：135
+>>> 23
+DROP TABLE IF EXISTS tecc_data_type_test CASCADE;
+
+rows: 0
+>>> 24
+DROP TABLE IF EXISTS data_type_test CASCADE;
+
+rows: 0
+>>> 25
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 26
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

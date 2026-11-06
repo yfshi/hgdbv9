@@ -335,7 +335,7 @@ sub WriteItemDefinitionGroup
       <StringPooling>$p->{strpool}</StringPooling>
       <RuntimeLibrary>$p->{runtime}</RuntimeLibrary>
       <DisableSpecificWarnings>$self->{disablewarnings};\%(DisableSpecificWarnings)</DisableSpecificWarnings>
-      <AdditionalOptions>/MP \%(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/MP /utf-8 \%(AdditionalOptions)</AdditionalOptions>
       <AssemblerOutput>
       </AssemblerOutput>
       <AssemblerListingLocation>.\\$cfgname\\$self->{name}\\</AssemblerListingLocation>

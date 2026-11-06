@@ -1,0 +1,49 @@
+>>> 1
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_test.key');
+
+错误: CREATE KEK requires TECC encryption mode to be enabled
+  详情：Use psql -k on or enable encryption mode to create KEKs.
+>>> 2
+CREATE DEK dek_test WITH VALUES(KEK = kek_test);
+
+错误: CREATE DEK requires TECC encryption mode to be enabled
+  详情：Use psql -k on or enable encryption mode to create DEKs.
+>>> 3
+CREATE TABLE tb1(id int, name text_enc encrypted with (dek=dek_test));
+
+错误: DEK "dek_test" not found, cannot create encrypted column "name"
+  建议：Create the DEK first with CREATE DEK in TECC encryption mode (psql -k on).
+>>> 4
+GRANT ALL ON TABLE tb1 TO PUBLIC;
+
+错误: 关系 "tb1" 不存在
+>>> 5
+GRANT USAGE ON KEK kek_test TO PUBLIC;
+
+错误: KEK "kek_test" does not exist
+>>> 6
+GRANT USAGE ON DEK dek_test TO PUBLIC;
+
+错误: DEK "dek_test" does not exist
+>>> 7
+INSERT INTO tb1 VALUES (1, '\x7000000000000100b96f306500000000000000000000000000000000'::text_enc encrypted with (dek=dek_test));
+
+错误: 关系 "tb1" 不存在
+  位置：13
+>>> 8
+SELECT name FROM tb1;
+
+错误: 关系 "tb1" 不存在
+  位置：18
+>>> 9
+DROP TABLE IF EXISTS tb1 CASCADE;
+
+rows: 0
+>>> 10
+DROP DEK IF EXISTS dek_test CASCADE;
+
+rows: 0
+>>> 11
+DROP KEK IF EXISTS kek_test CASCADE;
+
+rows: 0

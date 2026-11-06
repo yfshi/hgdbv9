@@ -831,6 +831,9 @@ AlterObjectNamespace_oid(Oid classId, Oid objid, Oid nspOid,
 		/* Begin - ReqID:SRS-SQL-PACKAGE */
 		case OCLASS_PACKAGE_BODY:
 		/* End - ReqID:SRS-SQL-PACKAGE */
+		case OCLASS_KEK:			/* ReqID:TECC4.0 */
+		case OCLASS_DEK:			/* ReqID:TECC4.0 */
+		case OCLASS_ENCRYPTED_COLUMN:			/* ReqID:TECC4.0 */
 		/* Begin - ReqID:SRS-SRS-SQL-CustomObject */
 		case OCLASS_OBJECT_TYPE_BODY:
 		/* End - ReqID:SRS-SRS-SQL-CustomObject */

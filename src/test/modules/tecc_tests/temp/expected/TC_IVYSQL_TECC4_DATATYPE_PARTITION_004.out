@@ -1,0 +1,55 @@
+5月 23, 2026 1:39:12 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:39:12 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:39:12 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS partition_int2_main CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE partition_int2_main (id SERIAL, value int2_enc encrypted with (dek = dek_t1),category CHAR(1),PRIMARY KEY (id, value)) PARTITION BY RANGE (value);
+
+rows: 0
+>>> 7
+CREATE TABLE partition_int2_range1 PARTITION OF partition_int2_main FOR VALUES FROM (-32767::int2) TO (-10000::int2);
+
+Exception in thread "main" java.lang.OutOfMemoryError: Java heap space
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3512)
+	at java.base/java.util.Arrays.copyOf(Arrays.java:3481)
+	at java.base/java.util.ArrayList.grow(ArrayList.java:237)
+	at java.base/java.util.ArrayList.grow(ArrayList.java:244)
+	at java.base/java.util.ArrayList.add(ArrayList.java:454)
+	at java.base/java.util.ArrayList.add(ArrayList.java:467)
+	at org.postgresql.tecc.parser.impl.DdlSqlParser.parseParenthesizedValueList(DdlSqlParser.java:524)
+	at org.postgresql.tecc.parser.impl.DdlSqlParser.parseForValuesClause(DdlSqlParser.java:441)
+	at org.postgresql.tecc.parser.impl.DdlSqlParser.parsePartitionDdl(DdlSqlParser.java:349)
+	at org.postgresql.tecc.parser.impl.DdlSqlParser.parse(DdlSqlParser.java:636)
+	at org.postgresql.tecc.parser.impl.JsqlParserImpl.parse(JsqlParserImpl.java:132)
+	at org.postgresql.tecc.TeccContext.getOrParse(TeccContext.java:824)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.rewriteSqlIfNeeded(DefaultTeccJdbcService.java:199)
+	at org.postgresql.jdbc.PgStatement.replaceQueryForTecc(PgStatement.java:656)
+	at org.postgresql.jdbc.PgStatement.executeInternal(PgStatement.java:477)
+	at org.postgresql.jdbc.PgStatement.execute(PgStatement.java:449)
+	at org.postgresql.jdbc.PgStatement.executeWithFlags(PgStatement.java:369)
+	at org.postgresql.jdbc.PgStatement.executeCachedSql(PgStatement.java:355)
+	at org.postgresql.jdbc.PgStatement.executeWithFlags(PgStatement.java:309)
+	at org.postgresql.jdbc.PgStatement.execute(PgStatement.java:304)
+	at RawRunner.main(RawRunner.java:26)

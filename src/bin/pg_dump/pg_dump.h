@@ -424,6 +424,13 @@ typedef struct _tableInfo
 	bool		needs_override; /* has GENERATED ALWAYS AS IDENTITY */
 	char	   *amname;			/* relation access method */
 
+	/* ReqID:TECC4.0 - TECC encrypted column metadata */
+	Oid		   *atttypid;			/* pg_attribute.atttypid */
+	bool	   *att_is_encrypted;	/* true if encrypted data type */
+	char	  **att_enc_dek_name;	/* DEK name from hg_dek */
+	char	  **att_enc_dek_namespace; /* DEK namespace (schema) from hg_dek */
+	char	  **att_enc_support_algo;	/* algo string e.g. "det,search" */
+
 	/*
 	 * Stuff computed only for dumpable tables.
 	 */

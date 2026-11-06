@@ -1,0 +1,793 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 2
+INSERT 0 5
+INSERT 0 2
+INSERT 0 5
+INSERT 0 2
+     ?column?     
+------------------
+ === Setup OK ===
+(1 row)
+
+         ?column?          
+---------------------------
+ === A: 同类型等值比较 ===
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ A1_bp_eq_bp | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ A1_bp_eq_bp_enc | t
+(1 row)
+
+    ?column?    | ?column? 
+----------------+----------
+ A2_bp_eq_bp_sp | t
+(1 row)
+
+      ?column?      | ?column? 
+--------------------+----------
+ A2_bp_eq_bp_sp_enc | t
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ A3_tx_eq_tx | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ A3_tx_eq_tx_enc | t
+(1 row)
+
+    ?column?    | ?column? 
+----------------+----------
+ A4_tx_eq_tx_sp | f
+(1 row)
+
+      ?column?      | ?column? 
+--------------------+----------
+ A4_tx_eq_tx_sp_enc | f
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ A5_tx_eq_tx_spsp | t
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ A5_tx_eq_tx_spsp_enc | t
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ A6_vc_eq_vc | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ A6_vc_eq_vc_enc | t
+(1 row)
+
+    ?column?    | ?column? 
+----------------+----------
+ A7_vc_eq_vc_sp | f
+(1 row)
+
+      ?column?      | ?column? 
+--------------------+----------
+ A7_vc_eq_vc_sp_enc | f
+(1 row)
+
+    ?column?    |     bp     
+----------------+------------
+ A8_bp_eq_const | abc       
+ A8_bp_eq_const | abc       
+(2 rows)
+
+      ?column?      |   bp   
+--------------------+--------
+ A8_bp_eq_const_enc | abc
+ A8_bp_eq_const_enc | abc   
+(2 rows)
+
+     ?column?      |     bp     
+-------------------+------------
+ A9_bp_eq_const_sp | abc       
+ A9_bp_eq_const_sp | abc       
+(2 rows)
+
+       ?column?        |   bp   
+-----------------------+--------
+ A9_bp_eq_const_sp_enc | abc
+ A9_bp_eq_const_sp_enc | abc   
+(2 rows)
+
+              ?column?               
+-------------------------------------
+ === B: 跨类型等值比较（全排列） ===
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ B1_bp_eq_tx | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ B1_bp_eq_tx_enc | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B2_bp_eq_tx_tail | f
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ B2_bp_eq_tx_tail_enc | f
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B3_bp_tail_eq_tx | t
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ B3_bp_tail_eq_tx_enc | t
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ B4_bp_eq_vc | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ B4_bp_eq_vc_enc | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B5_bp_eq_vc_tail | t
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ B5_bp_eq_vc_tail_enc | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B6_bp_tail_eq_vc | t
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ B6_bp_tail_eq_vc_enc | t
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ B7_tx_eq_bp | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ B7_tx_eq_bp_enc | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B8_tx_tail_eq_bp | f
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ B8_tx_tail_eq_bp_enc | f
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B9_tx_eq_bp_tail | t
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ B9_tx_eq_bp_tail_enc | t
+(1 row)
+
+   ?column?   | ?column? 
+--------------+----------
+ B10_vc_eq_bp | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B10_vc_eq_bp_enc | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ B11_vc_tail_eq_bp | t
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ B11_vc_tail_eq_bp_enc | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ B12_vc_eq_bp_tail | t
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ B12_vc_eq_bp_tail_enc | t
+(1 row)
+
+   ?column?   | ?column? 
+--------------+----------
+ B13_tx_eq_vc | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B13_tx_eq_vc_enc | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ B14_tx_tail_eq_vc | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ B14_tx_tail_eq_vc_enc | f
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ B15_tx_eq_vc_tail | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ B15_tx_eq_vc_tail_enc | f
+(1 row)
+
+   ?column?   | ?column? 
+--------------+----------
+ B16_vc_eq_tx | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ B16_vc_eq_tx_enc | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ B17_vc_tail_eq_tx | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ B17_vc_tail_eq_tx_enc | f
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ B18_vc_eq_tx_tail | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ B18_vc_eq_tx_tail_enc | f
+(1 row)
+
+           ?column?            
+-------------------------------
+ === C: 范围比较（全排列） ===
+(1 row)
+
+ ?column? | id | bp 
+----------+----+----
+(0 rows)
+
+ ?column? | id | bp 
+----------+----+----
+(0 rows)
+
+ ?column? | id | bp 
+----------+----+----
+(0 rows)
+
+ ?column? | id | bp 
+----------+----+----
+(0 rows)
+
+   ?column?   | id |  txt   
+--------------+----+--------
+ C3_tx_gt_abc |  2 | abc   
+(1 row)
+
+     ?column?     | id |  txt   
+------------------+----+--------
+ C3_tx_gt_abc_ope |  2 | abc   
+(1 row)
+
+   ?column?    | ?column? 
+---------------+----------
+ C4_tx_gt_tail | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ C4_tx_gt_tail_ope | t
+(1 row)
+
+     ?column?     | ?column? 
+------------------+----------
+ C5_bp_gt_bp_tail | f
+(1 row)
+
+       ?column?       | ?column? 
+----------------------+----------
+ C5_bp_gt_bp_tail_ope | f
+(1 row)
+
+   ?column?   | id |     bp     
+--------------+----+------------
+ C6_bp_lt_abc |  3 |           
+ C6_bp_lt_abc |  5 |           
+(2 rows)
+
+     ?column?     | id | bp  
+------------------+----+-----
+ C6_bp_lt_abc_ope |  3 | 
+ C6_bp_lt_abc_ope |  5 |    
+(2 rows)
+
+  ?column?   | ?column? 
+-------------+----------
+ C7_bp_gt_tx | f
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ C7_bp_gt_tx_ope | f
+(1 row)
+
+  ?column?   | ?column? 
+-------------+----------
+ C8_tx_gt_bp | f
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ C8_tx_gt_bp_ope | f
+(1 row)
+
+   ?column?    | id |     bp     
+---------------+----+------------
+ C9_bp_between |  1 | abc       
+ C9_bp_between |  2 | abc       
+(2 rows)
+
+     ?column?      | id |   bp   
+-------------------+----+--------
+ C9_bp_between_ope |  1 | abc
+ C9_bp_between_ope |  2 | abc   
+(2 rows)
+
+         ?column?         
+--------------------------
+ === D: 纯空格/边界值 ===
+(1 row)
+
+    ?column?    |     bp     
+----------------+------------
+ D1_sp_vs_empty |           
+ D1_sp_vs_empty |           
+(2 rows)
+
+      ?column?      | bp  
+--------------------+-----
+ D1_sp_vs_empty_enc | 
+ D1_sp_vs_empty_enc |    
+(2 rows)
+
+  ?column?   | ?column? 
+-------------+----------
+ D2_sp_eq_sp | t
+(1 row)
+
+    ?column?     | ?column? 
+-----------------+----------
+ D2_sp_eq_sp_enc | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ D3_bp_sp_eq_tx_sp | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ D3_bp_sp_eq_tx_sp_enc | f
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ D4_bp_sp_eq_vc_sp | t
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ D4_bp_sp_eq_vc_sp_enc | t
+(1 row)
+
+     ?column?      | vc 
+-------------------+----
+ D5_vc_sp_eq_empty | 
+(1 row)
+
+       ?column?        | vc 
+-----------------------+----
+ D5_vc_sp_eq_empty_enc | 
+(1 row)
+
+    ?column?     | id 
+-----------------+----
+ D6_tx_sp_gt_abc |  2
+(1 row)
+
+      ?column?       | id 
+---------------------+----
+ D6_tx_sp_gt_abc_ope |  2
+(1 row)
+
+ ?column? | id 
+----------+----
+(0 rows)
+
+ ?column? | id 
+----------+----
+(0 rows)
+
+    ?column?    | ?column? 
+----------------+----------
+ D8_sp_gt_empty | t
+(1 row)
+
+      ?column?      | ?column? 
+--------------------+----------
+ D8_sp_gt_empty_ope | t
+(1 row)
+
+     ?column?      | ?column? 
+-------------------+----------
+ D9_tx_sp_eq_bp_sp | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ D9_tx_sp_eq_bp_sp_enc | f
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ D10_bp_empty_eq_bp_sp | t
+(1 row)
+
+         ?column?          | ?column? 
+---------------------------+----------
+ D10_bp_empty_eq_bp_sp_enc | t
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ D11_bp_empty_eq_vc_sp | t
+(1 row)
+
+         ?column?          | ?column? 
+---------------------------+----------
+ D11_bp_empty_eq_vc_sp_enc | t
+(1 row)
+
+         ?column?          | ?column? 
+---------------------------+----------
+ D12_bp_empty_eq_vc_sp_ope | f
+(1 row)
+
+            ?column?             | ?column? 
+---------------------------------+----------
+ D12_bp_empty_eq_vc_sp_ope_plain | t
+(1 row)
+
+      ?column?       
+---------------------
+ === E: 常量比较 ===
+(1 row)
+
+    ?column?    |     bp     
+----------------+------------
+ E1_bp_eq_const | abc       
+ E1_bp_eq_const | abc       
+(2 rows)
+
+      ?column?      |   bp   
+--------------------+--------
+ E1_bp_eq_const_enc | abc
+ E1_bp_eq_const_enc | abc   
+(2 rows)
+
+     ?column?      |     bp     
+-------------------+------------
+ E2_bp_eq_const_sp | abc       
+ E2_bp_eq_const_sp | abc       
+(2 rows)
+
+       ?column?        |   bp   
+-----------------------+--------
+ E2_bp_eq_const_sp_enc | abc
+ E2_bp_eq_const_sp_enc | abc   
+(2 rows)
+
+    ?column?    | txt 
+----------------+-----
+ E3_tx_eq_const | abc
+(1 row)
+
+      ?column?      | txt 
+--------------------+-----
+ E3_tx_eq_const_enc | abc
+(1 row)
+
+     ?column?      |  txt   
+-------------------+--------
+ E4_tx_eq_const_sp | abc   
+(1 row)
+
+       ?column?        |  txt   
+-----------------------+--------
+ E4_tx_eq_const_sp_enc | abc   
+(1 row)
+
+     ?column?      |   vc   
+-------------------+--------
+ E5_vc_eq_const_sp | abc   
+(1 row)
+
+       ?column?        |   vc   
+-----------------------+--------
+ E5_vc_eq_const_sp_enc | abc   
+(1 row)
+
+    ?column?    |     bp     
+----------------+------------
+ E6_const_eq_bp | abc       
+ E6_const_eq_bp | abc       
+(2 rows)
+
+      ?column?      |   bp   
+--------------------+--------
+ E6_const_eq_bp_enc | abc
+ E6_const_eq_bp_enc | abc   
+(2 rows)
+
+       ?column?       |     bp     
+----------------------+------------
+ E7_bp_eq_plain_const | abc       
+ E7_bp_eq_plain_const | abc       
+(2 rows)
+
+         ?column?         |   bp   
+--------------------------+--------
+ E7_bp_eq_plain_const_enc | abc
+ E7_bp_eq_plain_const_enc | abc   
+(2 rows)
+
+    ?column?    |  txt   
+----------------+--------
+ E8_tx_gt_const | abc   
+(1 row)
+
+      ?column?      |  txt   
+--------------------+--------
+ E8_tx_gt_const_ope | abc   
+(1 row)
+
+          ?column?           
+-----------------------------
+ === F: SELECT表达式比较 ===
+(1 row)
+
+   ?column?   | eq_a | eq_a_sp 
+--------------+------+---------
+ F1_bp_cmp_eq | t    | t
+(1 row)
+
+     ?column?     | eq_a | eq_a_sp 
+------------------+------+---------
+ F1_bp_cmp_eq_enc | t    | t
+(1 row)
+
+   ?column?   | eq_a | eq_a_sp 
+--------------+------+---------
+ F2_tx_cmp_eq | t    | f
+(1 row)
+
+     ?column?     | eq_a | eq_a_sp 
+------------------+------+---------
+ F2_tx_cmp_eq_enc | t    | f
+(1 row)
+
+   ?column?   | eq_a | eq_a_sp 
+--------------+------+---------
+ F3_vc_cmp_eq | t    | f
+(1 row)
+
+     ?column?     | eq_a | eq_a_sp 
+------------------+------+---------
+ F3_vc_cmp_eq_enc | t    | f
+(1 row)
+
+       ?column?       
+----------------------
+ === G: NULL/空串 ===
+(1 row)
+
+ ?column? | id 
+----------+----
+ G1_null  |  4
+(1 row)
+
+  ?column?   | id 
+-------------+----
+ G1_null_enc |  4
+(1 row)
+
+  ?column?   | id 
+-------------+----
+ G2_empty_bp |  3
+ G2_empty_bp |  5
+(2 rows)
+
+    ?column?     | id 
+-----------------+----
+ G2_empty_bp_enc |  3
+ G2_empty_bp_enc |  5
+(2 rows)
+
+  ?column?   | id 
+-------------+----
+ G3_empty_tx |  3
+(1 row)
+
+    ?column?     | id 
+-----------------+----
+ G3_empty_tx_enc |  3
+(1 row)
+
+          ?column?           
+-----------------------------
+ === H: UPDATE跨类型赋值 ===
+(1 row)
+
+UPDATE 1
+     ?column?      | txt 
+-------------------+-----
+ H1_enc_tx_from_bp | abc
+(1 row)
+
+UPDATE 1
+     ?column?      |   bp   
+-------------------+--------
+ H2_enc_bp_from_tx | abc   
+(1 row)
+
+       ?column?        | ?column? 
+-----------------------+----------
+ H3_cross_after_update | t
+(1 row)
+
+UPDATE 1
+UPDATE 1
+UPDATE 1
+    ?column?    | txt 
+----------------+-----
+ H1p_tx_from_bp | abc
+(1 row)
+
+UPDATE 1
+    ?column?    |     bp     
+----------------+------------
+ H2p_bp_from_tx | abc       
+(1 row)
+
+        ?column?        | ?column? 
+------------------------+----------
+ H3p_cross_after_update | t
+(1 row)
+
+UPDATE 1
+UPDATE 1
+         ?column?          
+---------------------------
+ === I: INSERT隐式转换 ===
+(1 row)
+
+   ?column?   |     bp     
+--------------+------------
+ I1_insert_bp | abc       
+ I1_insert_bp | abc       
+(2 rows)
+
+     ?column?     |   bp   
+------------------+--------
+ I1_insert_bp_enc | abc
+ I1_insert_bp_enc | abc   
+(2 rows)
+
+    ?column?     |     bp     
+-----------------+------------
+ I2_insert_bp_sp | abc       
+ I2_insert_bp_sp | abc       
+(2 rows)
+
+      ?column?       |   bp   
+---------------------+--------
+ I2_insert_bp_sp_enc | abc
+ I2_insert_bp_sp_enc | abc   
+(2 rows)
+
+    ?column?     
+-----------------
+ === Cleanup ===
+(1 row)
+
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP DEK
+DROP KEK
+psql:/.../bpchar_trailing_space.sql:50: NOTICE:  table "bpchar_plain" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:51: NOTICE:  table "cross_plain" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:52: NOTICE:  table "bpchar_enc" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:53: NOTICE:  table "cross_enc" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:54: NOTICE:  table "bpchar_enc_ope" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:55: NOTICE:  table "cross_enc_ope" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:56: NOTICE:  data encryption key "dek_bpchar_ts" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:57: NOTICE:  data encryption key "dek_bpchar_ope" does not exist, skipping
+psql:/.../bpchar_trailing_space.sql:58: NOTICE:  key encryption key "kek_bpchar_ts" does not exist, skipping

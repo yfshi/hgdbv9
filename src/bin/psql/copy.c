@@ -24,6 +24,9 @@
 #include "settings.h"
 #include "stringutils.h"
 
+/* TECC integration headers */
+#include "../../interfaces/libpq/tecc_libpq_integration/fe-tecc-integration.h"
+
 /*
  * parse_slash_copy
  * -- parses \copy command line
@@ -58,6 +61,12 @@ struct copy_options
 	bool		program;		/* is 'file' a program to popen? */
 	bool		psql_inout;		/* true = use psql stdin/stdout */
 	bool		from;			/* true = FROM, false = TO */
+
+	/* TECC batch processing options */
+	bool		batch_processing;	/* enable batch processing */
+	int			batch_size;			/* batch size (rows per batch) */
+	int			max_errors;			/* maximum errors allowed */
+	bool		stop_on_error;		/* stop processing on error */
 };
 
 
@@ -82,6 +91,91 @@ xstrcat(char **var, const char *more)
 	newvar = psprintf("%s%s", *var, more);
 	free(*var);
 	*var = newvar;
+}
+
+/* Parse TECC batch processing options from COPY command string */
+static void
+parse_tecc_batch_options(struct copy_options *options, const char *options_str)
+{
+	char	   *token;
+	char	   *rest;
+	const char *whitespace = " \t\n\r";
+	const char *delimiters = " \t\n\r()";  /* COPY选项分隔符包括括号 */
+
+	if (!options_str || !*options_str)
+		return;
+
+	/* Make a copy for tokenization */
+	rest = pg_strdup(options_str);
+	token = strtokx(rest, whitespace, delimiters, "\"'",
+					0, false, false, pset.encoding);
+
+	while (token != NULL)
+	{
+		if (pg_strcasecmp(token, "BATCH") == 0)
+		{
+			/* Get batch size value */
+			token = strtokx(NULL, whitespace, delimiters, "\"'",
+							0, false, false, pset.encoding);
+			if (token)
+			{
+				char *endptr;
+				long batch_size = strtol(token, &endptr, 10);
+
+				if (endptr != token && *endptr == '\0' && batch_size > 0)
+				{
+					options->batch_processing = true;
+					options->batch_size = (int)batch_size;
+				}
+				else
+				{
+					/* Invalid batch size */
+					pg_log_warning("invalid batch size value: \"%s\", ignoring BATCH option", token);
+				}
+			}
+			else
+			{
+				/* Missing batch size value */
+				pg_log_warning("missing batch size value for BATCH option");
+			}
+		}
+		else if (pg_strcasecmp(token, "MAX_ERRORS") == 0)
+		{
+			/* Get max errors value */
+			token = strtokx(NULL, whitespace, delimiters, "\"'",
+							0, false, false, pset.encoding);
+			if (token)
+			{
+				char *endptr;
+				long max_errors = strtol(token, &endptr, 10);
+
+				if (endptr != token && *endptr == '\0' && max_errors >= 0)
+				{
+					options->max_errors = (int)max_errors;
+				}
+				else
+				{
+					/* Invalid max errors value */
+					pg_log_warning("invalid max errors value: \"%s\", ignoring MAX_ERRORS option", token);
+				}
+			}
+			else
+			{
+				/* Missing max errors value */
+				pg_log_warning("missing max errors value for MAX_ERRORS option");
+			}
+		}
+		else if (pg_strcasecmp(token, "STOP_ON_ERROR") == 0)
+		{
+			options->stop_on_error = true;
+		}
+
+		/* Get next token */
+		token = strtokx(NULL, whitespace, delimiters, "\"'",
+						0, false, false, pset.encoding);
+	}
+
+	free(rest);
 }
 
 
@@ -246,6 +340,10 @@ parse_slash_copy(const char *args)
 	if (token)
 		result->after_tofrom = pg_strdup(token);
 
+	/* Parse TECC batch processing options from after_tofrom string */
+	if (result->after_tofrom)
+		parse_tecc_batch_options(result, result->after_tofrom);
+
 	return result;
 
 error:
@@ -367,6 +465,73 @@ do_copy(const char *args)
 	if (options->after_tofrom)
 		appendPQExpBufferStr(&query, options->after_tofrom);
 
+	/* TECC integration: preprocess COPY command */
+	if (pset.db != NULL)
+	{
+		TeccCopyState *copy_state = tecc_preprocess_copy(pset.db, query.data);
+		if (copy_state != NULL)
+		{
+			/* COPY preprocessing successful, TECC will handle data processing */
+			tecc_record_debug(tecc_get_state(pset.db), "TECC COPY preprocessing successful for command: %s", query.data);
+
+			/* Enable batch processing if configured */
+			if (options->batch_processing && options->batch_size > 0)
+			{
+				int ret = tecc_copy_enable_batch_processing(pset.db, options->batch_size);
+				if (ret == 0)
+				{
+					tecc_record_debug(tecc_get_state(pset.db), "TECC batch processing enabled with batch size: %d", options->batch_size);
+
+					/* Set additional batch processing options */
+					if (options->max_errors > 0)
+					{
+						ret = tecc_copy_set_max_errors(pset.db, options->max_errors);
+						if (ret != 0)
+						{
+							tecc_record_debug(tecc_get_state(pset.db), "Failed to set max errors: %d", ret);
+						}
+					}
+
+					if (options->stop_on_error)
+					{
+						ret = tecc_copy_set_stop_on_error(pset.db, true);
+						if (ret != 0)
+						{
+							tecc_record_debug(tecc_get_state(pset.db), "Failed to set stop on error: %d", ret);
+						}
+					}
+				}
+				else
+				{
+					/* Log warning if batch processing was requested but cannot be enabled */
+					if (options->batch_processing)
+					{
+						pg_log_warning("TECC batch processing requested but cannot be enabled (error: %d)", ret);
+					}
+					tecc_record_debug(tecc_get_state(pset.db), "Failed to enable TECC batch processing, error: %d", ret);
+				}
+			}
+		}
+		else
+		{
+			/* COPY preprocessing failed or TECC not enabled, continue normally */
+			tecc_record_debug(tecc_get_state(pset.db), "TECC COPY preprocessing not applicable for command: %s", query.data);
+
+			/* If batch processing was requested but TECC is not enabled, log a warning */
+			if (options->batch_processing)
+			{
+				pg_log_warning("TECC batch processing options ignored (BATCH, MAX_ERRORS, STOP_ON_ERROR) because TECC is not enabled for this connection");
+			}
+		}
+	}
+
+	/* Check if batch processing was requested but no database connection is available */
+	if (pset.db == NULL && options->batch_processing)
+	{
+		/* No database connection but batch processing was requested */
+		pg_log_warning("TECC batch processing options ignored (BATCH, MAX_ERRORS, STOP_ON_ERROR) because no database connection is available");
+	}
+
 	/* run it like a user command, but with copystream as data source/sink */
 	pset.copyStream = copystream;
 	success = SendQuery(query.data, options->from ? 1 : 0);
@@ -448,10 +613,10 @@ handleCopyOut(PGconn *conn, FILE *copystream, PGresult **res)
 
 		if (buf)
 		{
+			/* TECC: data already decrypted by libpq (pqGetCopyData3 hook) */
 			if (OK && copystream && fwrite(buf, 1, ret, copystream) != ret)
 			{
 				pg_log_error("could not write COPY data: %m");
-				/* complain only once, keep reading data from server */
 				OK = false;
 			}
 			PQfreemem(buf);

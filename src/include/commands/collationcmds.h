@@ -21,7 +21,6 @@
 extern ObjectAddress DefineCollation(ParseState *pstate, List *names, List *parameters, bool if_not_exists);
 extern void IsThereCollationInNamespace(const char *collname, Oid nspOid);
 extern ObjectAddress AlterCollation(AlterCollationStmt *stmt);
-
 /* Begin - Req:SRS-MYSQL-CHARSET */
 typedef void (*import_mysql_collation_hook_type)(void);
 extern PGDLLIMPORT import_mysql_collation_hook_type import_mysql_collation_hook;

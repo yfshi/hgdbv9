@@ -1,0 +1,16 @@
+-- SQL test for TECC normalizer
+-- ReqID:TECC4.0
+
+-- Load the test module
+LOAD 'test_normalizer';
+
+-- Create the test function
+CREATE OR REPLACE FUNCTION test_normalizer_all() RETURNS text
+AS 'test_normalizer', 'test_normalizer_all'
+LANGUAGE C STRICT;
+
+-- Test the main test function
+SELECT test_normalizer_all();
+
+-- Test individual functions if needed
+-- (These would be added as separate test functions in the C code)

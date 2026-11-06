@@ -205,6 +205,9 @@ static char *features_file;
 static char *system_constraints_file;
 static char *system_functions_file;
 static char *system_views_file;
+/*Begin: ReqId: TECC-v4.0*/
+static char *hg_metadata_views_file;
+/*End: ReqId: TECC-v4.0*/
 static bool success = false;
 static bool made_new_pgdata = false;
 static bool found_existing_pgdata = false;
@@ -3419,6 +3422,9 @@ setup_data_file_paths(void)
 	set_input(&system_constraints_file, "system_constraints.sql");
 	set_input(&system_functions_file, "system_functions.sql");
 	set_input(&system_views_file, "system_views.sql");
+	/*Begin: ReqId: TECC-v4.0*/
+	set_input(&hg_metadata_views_file, "hg_metadata_views.sql");
+	/*End: ReqId: TECC-v4.0*/
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
@@ -3460,6 +3466,9 @@ setup_data_file_paths(void)
 	check_input(system_constraints_file);
 	check_input(system_functions_file);
 	check_input(system_views_file);
+	/*Begin: ReqId: TECC-v4.0*/
+	check_input(hg_metadata_views_file);
+	/*End: ReqId: TECC-v4.0*/
 	/* BEGIN - SQL PARSER */
 	if (database_mode == DB_ORACLE)
 	{
@@ -3937,6 +3946,10 @@ initialize_data_directory(void)
 	 */
 
 	setup_run_file(cmdfd, system_views_file);
+
+	/*Begin: ReqId: TECC-v4.0*/
+	setup_run_file(cmdfd, hg_metadata_views_file);
+	/*End: ReqId: TECC-v4.0*/
 
 	setup_description(cmdfd);
 

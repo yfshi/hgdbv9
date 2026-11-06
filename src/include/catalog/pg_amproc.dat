@@ -1979,4 +1979,87 @@
 { amprocfamily => 'brin/box_inclusion_ops', amproclefttype => 'box',
   amprocrighttype => 'box', amprocnum => '13', amproc => 'box_contain' },
 
-]
+
+# B-tree support functions for encrypted data types
+# int2_enc support functions
+{ oid => '6500', amprocfamily => 'btree/int2_enc_ops', amproclefttype => 'int2_enc',
+  amprocrighttype => 'int2_enc', amprocnum => '1', amproc => 'int2_enc_cmp' },
+{ amprocfamily => 'btree/int2_enc_ops', amproclefttype => 'int2_enc',
+  amprocrighttype => 'int2_enc', amprocnum => '4', amproc => 'btequalimage' },
+
+# int4_enc support functions
+{ oid => '6501', amprocfamily => 'btree/int4_enc_ops', amproclefttype => 'int4_enc',
+  amprocrighttype => 'int4_enc', amprocnum => '1', amproc => 'int4_enc_cmp' },
+{ amprocfamily => 'btree/int4_enc_ops', amproclefttype => 'int4_enc',
+  amprocrighttype => 'int4_enc', amprocnum => '4', amproc => 'btequalimage' },
+
+# int8_enc support functions
+{ oid => '6502', amprocfamily => 'btree/int8_enc_ops', amproclefttype => 'int8_enc',
+  amprocrighttype => 'int8_enc', amprocnum => '1', amproc => 'int8_enc_cmp' },
+{ amprocfamily => 'btree/int8_enc_ops', amproclefttype => 'int8_enc',
+  amprocrighttype => 'int8_enc', amprocnum => '4', amproc => 'btequalimage' },
+
+# float4_enc support functions
+{ oid => '6503', amprocfamily => 'btree/float4_enc_ops', amproclefttype => 'float4_enc',
+  amprocrighttype => 'float4_enc', amprocnum => '1', amproc => 'float4_enc_cmp' },
+{ amprocfamily => 'btree/float4_enc_ops', amproclefttype => 'float4_enc',
+  amprocrighttype => 'float4_enc', amprocnum => '4', amproc => 'btequalimage' },
+
+# float8_enc support functions
+{ oid => '6504', amprocfamily => 'btree/float8_enc_ops', amproclefttype => 'float8_enc',
+  amprocrighttype => 'float8_enc', amprocnum => '1', amproc => 'float8_enc_cmp' },
+{ amprocfamily => 'btree/float8_enc_ops', amproclefttype => 'float8_enc',
+  amprocrighttype => 'float8_enc', amprocnum => '4', amproc => 'btequalimage' },
+
+# numeric_enc support functions
+{ oid => '6505', amprocfamily => 'btree/numeric_enc_ops', amproclefttype => 'numeric_enc',
+  amprocrighttype => 'numeric_enc', amprocnum => '1', amproc => 'numeric_enc_cmp' },
+{ amprocfamily => 'btree/numeric_enc_ops', amproclefttype => 'numeric_enc',
+  amprocrighttype => 'numeric_enc', amprocnum => '4', amproc => 'btequalimage' },
+
+# varchar_enc support functions
+{ oid => '6506', amprocfamily => 'btree/varchar_enc_ops', amproclefttype => 'varchar_enc',
+  amprocrighttype => 'varchar_enc', amprocnum => '1', amproc => 'varchar_enc_cmp' },
+{ amprocfamily => 'btree/varchar_enc_ops', amproclefttype => 'varchar_enc',
+  amprocrighttype => 'varchar_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
+
+# bpchar_enc support functions
+{ oid => '6507', amprocfamily => 'btree/bpchar_enc_ops', amproclefttype => 'bpchar_enc',
+  amprocrighttype => 'bpchar_enc', amprocnum => '1', amproc => 'bpchar_enc_cmp' },
+{ amprocfamily => 'btree/bpchar_enc_ops', amproclefttype => 'bpchar_enc',
+  amprocrighttype => 'bpchar_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
+
+# text_enc support functions
+{ oid => '6508', amprocfamily => 'btree/text_enc_ops', amproclefttype => 'text_enc',
+  amprocrighttype => 'text_enc', amprocnum => '1', amproc => 'text_enc_cmp' },
+{ amprocfamily => 'btree/text_enc_ops', amproclefttype => 'text_enc',
+  amprocrighttype => 'text_enc', amprocnum => '4', amproc => 'tecc_equalimage' },
+# Hash procedure families for encrypted data types
+# int2_enc hash proc (procnum 1 = standard hash)
+{ amprocfamily => 'hash/int2_enc_ops', amproclefttype => 'int2_enc',
+  amprocrighttype => 'int2_enc', amprocnum => '1', amproc => 'hashint2_enc' },
+# int4_enc hash proc
+{ amprocfamily => 'hash/int4_enc_ops', amproclefttype => 'int4_enc',
+  amprocrighttype => 'int4_enc', amprocnum => '1', amproc => 'hashint4_enc' },
+# int8_enc hash proc
+{ amprocfamily => 'hash/int8_enc_ops', amproclefttype => 'int8_enc',
+  amprocrighttype => 'int8_enc', amprocnum => '1', amproc => 'hashint8_enc' },
+# float4_enc hash proc
+{ amprocfamily => 'hash/float4_enc_ops', amproclefttype => 'float4_enc',
+  amprocrighttype => 'float4_enc', amprocnum => '1', amproc => 'hashfloat4_enc' },
+# float8_enc hash proc
+{ amprocfamily => 'hash/float8_enc_ops', amproclefttype => 'float8_enc',
+  amprocrighttype => 'float8_enc', amprocnum => '1', amproc => 'hashfloat8_enc' },
+# numeric_enc hash proc
+{ amprocfamily => 'hash/numeric_enc_ops', amproclefttype => 'numeric_enc',
+  amprocrighttype => 'numeric_enc', amprocnum => '1', amproc => 'hashnumeric_enc' },
+# varchar_enc hash proc
+{ amprocfamily => 'hash/varchar_enc_ops', amproclefttype => 'varchar_enc',
+  amprocrighttype => 'varchar_enc', amprocnum => '1', amproc => 'hashvarchar_enc' },
+# bpchar_enc hash proc
+{ amprocfamily => 'hash/bpchar_enc_ops', amproclefttype => 'bpchar_enc',
+  amprocrighttype => 'bpchar_enc', amprocnum => '1', amproc => 'hashbpchar_enc' },
+# text_enc hash proc
+{ amprocfamily => 'hash/text_enc_ops', amproclefttype => 'text_enc',
+  amprocrighttype => 'text_enc', amprocnum => '1', amproc => 'hashtext_enc' },
+

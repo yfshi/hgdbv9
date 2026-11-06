@@ -6083,6 +6083,36 @@ transformCreateTableAsStmt(ParseState *pstate, CreateTableAsStmt *stmt)
 	if (compatible_mode == MYS_MODE)
 		pstate->p_createastmt = true;
 
+	/* Begin - ReqID:TECC4.0 - Extract ENCRYPTED WITH from raw SELECT
+	 * target list before transformStmt converts TypeCast nodes. */
+	if (IsA(stmt->query, SelectStmt))
+	{
+		SelectStmt *raw = (SelectStmt *) stmt->query;
+		List	   *enc_list = NIL;
+		ListCell   *lc;
+
+		foreach(lc, raw->targetList)
+		{
+			ResTarget  *rt = (ResTarget *) lfirst(lc);
+			List	   *enc_opts = NIL;
+
+			if (rt->val != NULL && IsA(rt->val, TypeCast))
+			{
+				TypeCast   *tc = (TypeCast *) rt->val;
+
+				if (tc->typeName != NULL)
+					enc_opts = tc->typeName->encrypted_with;
+			}
+
+			enc_list = lappend(enc_list, enc_opts);
+		}
+
+		stmt->into->encrypted_with_list = enc_list;
+	}
+	else
+		stmt->into->encrypted_with_list = NIL;
+	/* End - ReqID:TECC4.0 */
+
 	/* transform contained query, not allowing SELECT INTO */
 	query = transformStmt(pstate, stmt->query);
 	stmt->query = (Node *) query;

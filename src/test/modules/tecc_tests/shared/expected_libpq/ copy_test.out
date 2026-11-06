@@ -1,0 +1,64 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ id |  name   
+----+---------
+ 1  | Alice
+ 2  | Bob
+ 3  | Charlie
+(3 rows)
+
+COPY 3
+COPY 3
+TRUNCATE TABLE
+COPY 3
+ id |  name   
+----+---------
+ 1  | Alice
+ 2  | Bob
+ 3  | Charlie
+(3 rows)
+
+TRUNCATE TABLE
+COPY 3
+ id |  name   
+----+---------
+ 1  | Alice
+ 2  | Bob
+ 3  | Charlie
+(3 rows)
+
+              ?column?               
+-------------------------------------
+ === COPY (SELECT ...) TO STDOUT ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1	Alice
+2	Bob
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../copy_test.sql:2: NOTICE:  table "test_copy_enc" does not exist, skipping
+psql:/.../copy_test.sql:3: NOTICE:  data encryption key "dek_copy_enc" does not exist, skipping
+psql:/.../copy_test.sql:4: NOTICE:  key encryption key "kek_copy_enc" does not exist, skipping
+DEBUG PREPROCESS_COPY: entered, command=[COPY test_copy_enc TO '/tmp/copy_enc_server.txt';]
+DEBUG PREPROCESS_COPY: create_copy_state returned NULL
+DEBUG PREPROCESS_COPY: entered, command=[COPY  test_copy_enc TO STDOUT ]
+DEBUG PREPROCESS_COPY: entered, command=[COPY  test_copy_enc TO STDOUT ]
+DEBUG PREPROCESS_COPY: entered, command=[COPY test_copy_enc FROM '/tmp/copy_enc_server.txt';]
+DEBUG PREPROCESS_COPY: create_copy_state returned NULL
+DEBUG PREPROCESS_COPY: entered, command=[COPY  test_copy_enc FROM STDIN ]
+DEBUG PREPROCESS_COPY: entered, command=[COPY  test_copy_enc FROM STDIN ]
+psql:/.../copy_test.sql:53: NOTICE:  table "test_cp_select" does not exist, skipping
+DEBUG PREPROCESS_COPY: entered, command=[COPY (SELECT id, name FROM test_cp_select ORDER BY id) TO STDOUT;]

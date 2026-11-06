@@ -1,0 +1,283 @@
+-- TECC ACL Edge Cases Regression Test
+-- Test edge cases and error conditions for ACL permission system
+-- Setup: Create test users
+CREATE USER tecc_edge_user1;
+CREATE USER tecc_edge_user2;
+CREATE USER tecc_edge_user3;
+-- Create test KEK and DEK
+CREATE KEK test_edge_kek WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_edge_key'
+);
+CREATE DEK test_edge_dek WITH VALUES (
+    _TECC_PROCESSED = '1',
+    ENCRYPTED_VALUE = 'deadbeef12345678abcdef00',
+    KEK = 'test_edge_kek'
+);
+-- Get OIDs for testing
+\set kek_oid '(SELECT oid FROM hg_kek WHERE kek_name = ''test_edge_kek'')'
+\set dek_oid '(SELECT oid FROM hg_dek WHERE dek_name = ''test_edge_dek'')'
+\set user1_oid '(SELECT oid FROM pg_authid WHERE rolname = ''tecc_edge_user1'')'
+\set user2_oid '(SELECT oid FROM pg_authid WHERE rolname = ''tecc_edge_user2'')'
+-- Test 1: Empty key name
+SELECT has_kek_privilege('', 'USAGE') AS empty_key_name_kek;
+ERROR:  KEK "" does not exist
+SELECT has_dek_privilege('', 'USAGE') AS empty_key_name_dek;
+ERROR:  DEK "" does not exist
+-- Test 2: NULL key name (should return NULL)
+SELECT has_kek_privilege(NULL, 'USAGE') AS null_key_name_kek;
+ null_key_name_kek 
+-------------------
+ 
+(1 row)
+
+SELECT has_dek_privilege(NULL, 'USAGE') AS null_key_name_dek;
+ null_key_name_dek 
+-------------------
+ 
+(1 row)
+
+-- Test 3: Empty privilege string
+SELECT has_kek_privilege('test_edge_kek', '') AS empty_priv_kek;
+ERROR:  unrecognized privilege type: ""
+SELECT has_dek_privilege('test_edge_dek', '') AS empty_priv_dek;
+ERROR:  unrecognized privilege type: ""
+-- Test 4: NULL privilege (should return NULL)
+SELECT has_kek_privilege('test_edge_kek', NULL) AS null_priv_kek;
+ null_priv_kek 
+---------------
+ 
+(1 row)
+
+SELECT has_dek_privilege('test_edge_dek', NULL) AS null_priv_dek;
+ null_priv_dek 
+---------------
+ 
+(1 row)
+
+-- Test 5: Invalid privilege names
+SELECT has_kek_privilege('test_edge_kek', 'SELECT') AS invalid_priv_select_kek;
+ERROR:  unrecognized privilege type: "SELECT"
+SELECT has_kek_privilege('test_edge_kek', 'INSERT') AS invalid_priv_insert_kek;
+ERROR:  unrecognized privilege type: "INSERT"
+SELECT has_kek_privilege('test_edge_kek', 'UPDATE') AS invalid_priv_update_kek;
+ERROR:  unrecognized privilege type: "UPDATE"
+SELECT has_kek_privilege('test_edge_kek', 'DELETE') AS invalid_priv_delete_kek;
+ERROR:  unrecognized privilege type: "DELETE"
+SELECT has_kek_privilege('test_edge_kek', 'ALL') AS invalid_priv_all_kek;
+ERROR:  unrecognized privilege type: "ALL"
+SELECT has_dek_privilege('test_edge_dek', 'SELECT') AS invalid_priv_select_dek;
+ERROR:  unrecognized privilege type: "SELECT"
+SELECT has_dek_privilege('test_edge_dek', 'INSERT') AS invalid_priv_insert_dek;
+ERROR:  unrecognized privilege type: "INSERT"
+SELECT has_dek_privilege('test_edge_dek', 'UPDATE') AS invalid_priv_update_dek;
+ERROR:  unrecognized privilege type: "UPDATE"
+SELECT has_dek_privilege('test_edge_dek', 'DELETE') AS invalid_priv_delete_dek;
+ERROR:  unrecognized privilege type: "DELETE"
+SELECT has_dek_privilege('test_edge_dek', 'ALL') AS invalid_priv_all_dek;
+ERROR:  unrecognized privilege type: "ALL"
+-- Test 6: Case sensitivity test
+SELECT has_kek_privilege('TEST_EDGE_KEK', 'USAGE') AS case_insensitive_kek;
+ERROR:  KEK "TEST_EDGE_KEK" does not exist
+SELECT has_kek_privilege('test_edge_kek', 'usage') AS lowercase_priv_kek;
+ lowercase_priv_kek 
+--------------------
+ t
+(1 row)
+
+SELECT has_kek_privilege('test_edge_kek', 'Usage') AS mixedcase_priv_kek;
+ mixedcase_priv_kek 
+--------------------
+ t
+(1 row)
+
+SELECT has_dek_privilege('TEST_EDGE_DEK', 'USAGE') AS case_insensitive_dek;
+ERROR:  DEK "TEST_EDGE_DEK" does not exist
+SELECT has_dek_privilege('test_edge_dek', 'usage') AS lowercase_priv_dek;
+ lowercase_priv_dek 
+--------------------
+ t
+(1 row)
+
+SELECT has_dek_privilege('test_edge_dek', 'Usage') AS mixedcase_priv_dek;
+ mixedcase_priv_dek 
+--------------------
+ t
+(1 row)
+
+-- Test 7: Grant to non-existent user (should fail)
+-- Note: This will cause an error, so we need to handle it carefully
+-- We'll test this by trying to grant and catching the error
+-- Test 8: Revoke from user without permission (should fail)
+GRANT USAGE ON KEK test_edge_kek TO tecc_edge_user1;
+GRANT USAGE ON DEK test_edge_dek TO tecc_edge_user1;
+-- Switch to user1 and try to revoke from user2 (should fail)
+SET SESSION AUTHORIZATION tecc_edge_user1;
+-- This should fail with permission error
+-- REVOKE USAGE ON KEK test_edge_kek FROM tecc_edge_user2;
+-- REVOKE USAGE ON DEK test_edge_dek FROM tecc_edge_user2;
+RESET SESSION AUTHORIZATION;
+-- Test 9: Grant with GRANT OPTION and test cascading revoke
+GRANT USAGE ON KEK test_edge_kek TO tecc_edge_user2 WITH GRANT OPTION;
+GRANT USAGE ON DEK test_edge_dek TO tecc_edge_user2 WITH GRANT OPTION;
+-- User2 grants to user3
+SET SESSION AUTHORIZATION tecc_edge_user2;
+GRANT USAGE ON KEK test_edge_kek TO tecc_edge_user3;
+GRANT USAGE ON DEK test_edge_dek TO tecc_edge_user3;
+RESET SESSION AUTHORIZATION;
+-- Check user3 has permission
+SELECT has_kek_privilege('tecc_edge_user3', 'test_edge_kek', 'USAGE') AS user3_has_kek_before;
+ user3_has_kek_before 
+----------------------
+ t
+(1 row)
+
+SELECT has_dek_privilege('tecc_edge_user3', 'test_edge_dek', 'USAGE') AS user3_has_dek_before;
+ user3_has_dek_before 
+----------------------
+ t
+(1 row)
+
+-- Revoke GRANT OPTION from user2 with CASCADE
+REVOKE GRANT OPTION FOR USAGE ON KEK test_edge_kek FROM tecc_edge_user2 CASCADE;
+REVOKE GRANT OPTION FOR USAGE ON DEK test_edge_dek FROM tecc_edge_user2 CASCADE;
+-- Check user3 still has permission (CASCADE should not revoke)
+SELECT has_kek_privilege('tecc_edge_user3', 'test_edge_kek', 'USAGE') AS user3_has_kek_after;
+ user3_has_kek_after 
+---------------------
+ f
+(1 row)
+
+SELECT has_dek_privilege('tecc_edge_user3', 'test_edge_dek', 'USAGE') AS user3_has_dek_after;
+ user3_has_dek_after 
+---------------------
+ f
+(1 row)
+
+-- Test 10: Test with very long key names
+-- Create KEK with long name
+CREATE KEK test_edge_kek_with_very_very_very_long_name_that_exceeds_normal_length WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_long_key'
+);
+NOTICE:  identifier "test_edge_kek_with_very_very_very_long_name_that_exceeds_normal_length" will be truncated to "test_edge_kek_with_very_very_very_long_name_that_exceeds_normal"
+-- Test permission check with long name
+SELECT has_kek_privilege('test_edge_kek_with_very_very_very_long_name_that_exceeds_normal_length', 'USAGE') AS long_name_kek;
+ERROR:  KEK "test_edge_kek_with_very_very_very_long_name_that_exceeds_normal_length" does not exist
+-- Test 11: Test with special characters in key names
+-- Note: PostgreSQL identifiers have restrictions, so we'll test with allowed special characters
+CREATE KEK "test-edge-kek-special" WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_special_key'
+);
+-- Test permission check with special characters
+SELECT has_kek_privilege('test-edge-kek-special', 'USAGE') AS special_chars_kek;
+ special_chars_kek 
+-------------------
+ t
+(1 row)
+
+-- Test 12: Test concurrent permission checks
+-- This would require multiple sessions, so we'll just document the need
+-- Test 13: Test permission after key is dropped
+DROP KEK "test-edge-kek-special";
+-- This should return false or NULL
+SELECT has_kek_privilege('test-edge-kek-special', 'USAGE') AS dropped_key_kek;
+ERROR:  KEK "test-edge-kek-special" does not exist
+-- Test 14: Test with invalid OIDs
+SELECT has_kek_privilege(0, 'USAGE') AS invalid_oid_kek;
+ invalid_oid_kek 
+-----------------
+ 
+(1 row)
+
+SELECT has_dek_privilege(0, 'USAGE') AS invalid_oid_dek;
+ invalid_oid_dek 
+-----------------
+ 
+(1 row)
+
+SELECT has_kek_privilege(:user1_oid, 0, 'USAGE') AS invalid_key_oid_kek;
+ invalid_key_oid_kek 
+---------------------
+ 
+(1 row)
+
+SELECT has_dek_privilege(:user1_oid, 0, 'USAGE') AS invalid_key_oid_dek;
+ invalid_key_oid_dek 
+---------------------
+ 
+(1 row)
+
+-- Test 15: Test all function variants with edge cases
+-- Variant 1: username, keyname, privilege (with empty strings)
+SELECT has_kek_privilege('', 'test_edge_kek', 'USAGE') AS empty_user_kek;
+ERROR:  role "" does not exist
+SELECT has_dek_privilege('', 'test_edge_dek', 'USAGE') AS empty_user_dek;
+ERROR:  role "" does not exist
+-- Variant 2: username, key OID, privilege (with invalid OID)
+SELECT has_kek_privilege('tecc_edge_user1', 0, 'USAGE') AS invalid_key_oid_user_kek;
+ invalid_key_oid_user_kek 
+--------------------------
+ 
+(1 row)
+
+SELECT has_dek_privilege('tecc_edge_user1', 0, 'USAGE') AS invalid_key_oid_user_dek;
+ invalid_key_oid_user_dek 
+--------------------------
+ 
+(1 row)
+
+-- Variant 3: user OID, keyname, privilege (with invalid user OID)
+SELECT has_kek_privilege(0, 'test_edge_kek', 'USAGE') AS invalid_user_oid_kek;
+ invalid_user_oid_kek 
+----------------------
+ f
+(1 row)
+
+SELECT has_dek_privilege(0, 'test_edge_dek', 'USAGE') AS invalid_user_oid_dek;
+ invalid_user_oid_dek 
+----------------------
+ f
+(1 row)
+
+-- Variant 4: user OID, key OID, privilege (with invalid OIDs)
+SELECT has_kek_privilege(0, 0, 'USAGE') AS invalid_both_oids_kek;
+ invalid_both_oids_kek 
+-----------------------
+ 
+(1 row)
+
+SELECT has_dek_privilege(0, 0, 'USAGE') AS invalid_both_oids_dek;
+ invalid_both_oids_dek 
+-----------------------
+ 
+(1 row)
+
+-- Variant 5: keyname, privilege (current user) - already tested above
+-- Variant 6: key OID, privilege (current user) - with invalid OID
+SELECT has_kek_privilege(0, 'USAGE') AS invalid_oid_current_kek;
+ invalid_oid_current_kek 
+-------------------------
+ 
+(1 row)
+
+SELECT has_dek_privilege(0, 'USAGE') AS invalid_oid_current_dek;
+ invalid_oid_current_dek 
+-------------------------
+ 
+(1 row)
+
+-- Cleanup
+REVOKE ALL ON KEK test_edge_kek FROM tecc_edge_user1, tecc_edge_user2, tecc_edge_user3;
+REVOKE ALL ON DEK test_edge_dek FROM tecc_edge_user1, tecc_edge_user2, tecc_edge_user3;
+DROP DEK test_edge_dek;
+DROP KEK test_edge_kek_with_very_very_very_long_name_that_exceeds_normal_length;
+NOTICE:  identifier "test_edge_kek_with_very_very_very_long_name_that_exceeds_normal_length" will be truncated to "test_edge_kek_with_very_very_very_long_name_that_exceeds_normal"
+DROP KEK test_edge_kek;
+DROP USER tecc_edge_user1;
+DROP USER tecc_edge_user2;
+DROP USER tecc_edge_user3;

@@ -70,7 +70,7 @@
 #include "utils/timestamp.h"
 #include "rewrite/rewriteHandler.h"	/* ReqID:SRS-SQL-VIRTUALCOL */
 #include "utils/ora_compatible.h"	/* Bug#m0000421 */
-
+#include "utils/tecc/tecc_index.h"
 
 /* Per-index data for ANALYZE */
 typedef struct AnlIndexData
@@ -1950,6 +1950,12 @@ std_typanalyze(VacAttrStats *stats)
 							 false, false, false,
 							 &ltopr, &eqopr, NULL,
 							 NULL);
+
+	/* ReqID:TECC4.0 - Encrypted columns without OPE cannot be sorted */
+	if (OidIsValid(ltopr) &&
+		!tecc_column_supports_ordering(stats->attr->attrelid,
+					       stats->attr->attnum))
+		ltopr = InvalidOid;
 
 	/* Save the operator info for compute_stats routines */
 	mystats = (StdAnalyzeData *) palloc(sizeof(StdAnalyzeData));

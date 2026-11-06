@@ -378,6 +378,15 @@ typedef void (*pg_funcptr_t) (void);
 #endif
 
 /*
+ * Older MSVC versions (before VS 2015) do not support __func__.
+ * Provide a fallback mapping to __FUNCTION__ for any code that uses
+ * __func__ directly rather than PG_FUNCNAME_MACRO.
+ */
+#if defined(_MSC_VER) && _MSC_VER < 1900
+#define __func__ __FUNCTION__
+#endif
+
+/*
  * Does the compiler support #pragma GCC system_header? We optionally use it
  * to avoid warnings that we can't fix (e.g. in the perl headers).
  * See https://gcc.gnu.org/onlinedocs/cpp/System-Headers.html

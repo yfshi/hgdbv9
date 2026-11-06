@@ -1,0 +1,10 @@
+# Local test binaries (derived from PROCESSOR_TEST_SRCS)
+/test_raw_value
+/test_column_ref_data
+/test_func_hardcoded_values
+/test_processor_error_handling
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

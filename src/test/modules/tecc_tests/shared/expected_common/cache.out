@@ -1,0 +1,124 @@
+DROP KEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE KEK
+CREATE DEK
+=== 1 Cache Refresh ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+1a_cache_refresh|1
+(1 row)
+DROP TABLE
+=== 2 Cross-DEK Rejection ===
+(1 row)
+2a_text_t2_via_dek1_dek2_err
+(1 row)
+2b_text_to_bpchar_diff_dek_err
+(1 row)
+2c_varchar_to_text_diff_dek_err
+(1 row)
+2d_varchar_to_bpchar_diff_dek_err
+(1 row)
+2e_bpchar_to_text_diff_dek_err
+(1 row)
+2f_bpchar_to_varchar_diff_dek_err
+(1 row)
+=== 3 Cross-DEK Insert Rejection ===
+(1 row)
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+3a_insert_int2_diff_dek_err
+(1 row)
+3b_insert_int8_diff_dek_err
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+3c_same_dek_insert|2
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 4 DEK Permission ===
+(1 row)
+DROP TABLE
+DROP ROLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+4a_superuser_select|1|Alice|50000|5000
+4a_superuser_select|2|Bob|60000|6000
+(2 rows)
+CREATE ROLE
+GRANT
+GRANT
+DROP ROLE
+CREATE ROLE
+You are now connected to database "postgres" as user "test_noperm_user".
+4b_noperm_select|1|Alice
+4b_noperm_select|2|Bob
+(2 rows)
+You are now connected to database "postgres" as user "test_postgres".
+4e_superuser_still_works|1|Alice|50000|5000
+4e_superuser_still_works|2|Bob|60000|6000
+(2 rows)
+4f_superuser_where|1|Alice|50000|5000
+4f_superuser_where|2|Bob|60000|6000
+(2 rows)
+You are now connected to database "postgres" as user "test_noperm_user".
+4g_noperm_create_table_before
+(1 row)
+4g_noperm_create_table_after
+(1 row)
+You are now connected to database "postgres" as user "test_postgres".
+DROP TABLE
+DROP TABLE
+REVOKE
+DROP ROLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+DROP KEK
+NOTICE: key encryption key "kek_cache" does not exist, skipping
+NOTICE: key encryption key "kek_cache2" does not exist, skipping
+NOTICE: table "test_cr" does not exist, skipping
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../cache.sql:41: TECC query preprocessing failed: Cannot cast encrypted type text_enc to varchar_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../cache.sql:44: TECC query preprocessing failed: Cannot cast encrypted type text_enc to bpchar_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../cache.sql:47: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to text_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../cache.sql:50: TECC query preprocessing failed: Cannot cast encrypted type varchar_enc to bpchar_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../cache.sql:53: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to text_enc with different DEKs (dek_cache vs dek_cache2)
+TECC ERROR: SELECT TypeCast processing failed: -1
+psql:/.../cache.sql:56: TECC query preprocessing failed: Cannot cast encrypted type bpchar_enc to varchar_enc with different DEKs (dek_cache vs dek_cache2)
+NOTICE: table "tb_int4" does not exist, skipping
+NOTICE: table "tb_int8" does not exist, skipping
+psql:/.../cache.sql:70: TECC query preprocessing failed: cannot assign encrypted value with DEK dek_cache2 to column id which uses DEK dek_cache
+psql:/.../cache.sql:72: TECC query preprocessing failed: cannot assign encrypted value with DEK dek_cache2 to column id which uses DEK dek_cache
+NOTICE: table "tb_v" does not exist, skipping
+NOTICE: table "test_perm_table" does not exist, skipping
+NOTICE: role "test_noperm_user" does not exist, skipping
+NOTICE: role "test_postgres" does not exist, skipping
+TECC ERROR: tecc_values_processor_get_column_key_with_state: no key found for column 'salary', table 'test_perm_table'
+TECC ERROR: Missing algorithm or key for column salary
+psql:/.../cache.sql:120: TECC query preprocessing failed: Failed to process statement 1
+TECC ERROR: where_get_column_kek_name: DEK 'dek_cache' not found in cache (dek_name from column cache: dek_cache)
+TECC ERROR: Cannot encrypt WHERE clause value: DEK/KEK names not resolved for column test_perm_table.salary
+psql:/.../cache.sql:123: TECC query preprocessing failed: WHERE clause processing failed
+TECC ERROR: where_get_column_kek_name: DEK 'dek_cache' not found in cache (dek_name from column cache: dek_cache)
+TECC ERROR: Cannot encrypt WHERE clause value: DEK/KEK names not resolved for column test_perm_table.salary
+psql:/.../cache.sql:124: TECC query preprocessing failed: WHERE clause processing failed
+ERROR: permission denied for DEK "dek_cache"
+DETAIL:  You do not have USAGE privilege on DEK "dek_cache".
+HINT:  Grant USAGE on the DEK to proceed.
+NOTICE: table "test_noperm_create_table" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_cache
+NOTICE: drop cascades to data encryption key dek_cache2

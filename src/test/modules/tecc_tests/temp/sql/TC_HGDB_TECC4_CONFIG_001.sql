@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS tb_test CASCADE;
+DROP DEK IF EXISTS dek_test CASCADE;
+DROP KEK IF EXISTS kek_test CASCADE;
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+CREATE DEK dek_test WITH VALUES(KEK = kek_test);
+CREATE TABLE tb_test(id int);
+ALTER TABLE tb_test ADD COLUMN name text_enc encrypted with (dek = dek_test, support_algo='det');
+INSERT INTO tb_test VALUES (1, 'test');
+SELECT * FROM tb_test;
+DROP TABLE IF EXISTS tb_test CASCADE;
+DROP DEK IF EXISTS dek_test CASCADE;
+DROP KEK IF EXISTS kek_test CASCADE;

@@ -1,0 +1,790 @@
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== Part 2.1: 创建全覆盖表 ===
+CREATE TABLE
+=== Part 2.2: 创建DET专项表 ===
+CREATE TABLE
+=== Part 2.3: 创建OPE专项表 ===
+CREATE TABLE
+=== Part 2.4: 创建SEARCH专项表 ===
+CREATE TABLE
+=== Part 2.5: 创建DEFAULT值测试表 ===
+CREATE TABLE
+=== Part 3.1: 全覆盖表单行INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 3.2: 全覆盖表多行INSERT ===
+INSERT 0 5
+=== Part 3.3: 全覆盖表省略列名多行INSERT ===
+INSERT 0 2
+=== Part 3.4: DET专项表INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 2
+=== Part 3.5: OPE专项表INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 5
+=== Part 3.6: SEARCH专项表INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 3.7: NULL和边界值INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 3.8: DEFAULT值表INSERT ===
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+=== Part 4.1: 全表解密 SELECT * ===
+ id | c_int2 | c_int4 | c_int8 | c_f4_det | c_f8_ope | c_num_ope | c_vc_det | c_bp_srch |        c_txt_all         |  tag
+----+--------+--------+--------+----------+----------+-----------+----------+-----------+--------------------------+-------
+  1 |      1 |    100 |  10000 |      1.5 |     3.14 |    999.99 | Alice    | ENGINEER  | Software Engineer Alice  | row1
+(1 row)
+
+ id | c_int2 | c_int4 | c_int8 | c_f4_det | c_f8_ope | c_num_ope | c_vc_det | c_bp_srch |        c_txt_all         |  tag
+----+--------+--------+--------+----------+----------+-----------+----------+-----------+--------------------------+-------
+  1 |      1 |    100 |  10000 |      1.5 |     3.14 |    999.99 | Alice    | ENGINEER  | Software Engineer Alice  | row1
+  2 |      2 |    200 |  20000 |      2.5 |     2.71 |    500.50 | Bob      | MANAGER   | Product Manager Bob      | row2
+  3 |      3 |    300 |  30000 |      3.5 |     1.41 |      0.01 | Charlie  | ANALYST   | Data Analyst Charlie     | row3
+  4 |     10 |   1000 | 100000 |     10.1 |    10.01 |    111.11 | Diana    | DESIGNER  | UX Designer Diana        | row4
+  5 |     20 |   2000 | 200000 |     20.2 |    20.02 |    222.22 | Eve      | DEVOPS    | DevOps Eve               | row5
+  6 |     30 |   3000 | 300000 |     30.3 |    30.03 |    333.33 | Frank    | TESTER    | QA Tester Frank          | row6
+  7 |     40 |   4000 | 400000 |     40.4 |    40.04 |    444.44 | Grace    | ARCHITECT | Architect Grace          | row7
+  8 |     50 |   5000 | 500000 |     50.5 |    50.05 |    555.55 | Henry    | DBA       | Database Admin Henry     | row8
+  9 |     60 |   6000 | 600000 |     60.6 |    60.06 |    666.66 | Ivan     | SRE       | SRE Ivan                 | row9
+ 10 |     70 |   7000 | 700000 |     70.7 |    70.07 |    777.77 | Julia    | SUPPORT   | Support Julia            | row10
+(10 rows)
+
+=== Part 4.2: DET等值查询 ===
+DET: int2 = 11
+  tag
+--------
+ det_r1
+(1 row)
+
+DET: int4 = 222
+  tag
+--------
+ det_r2
+(1 row)
+
+DET: int8 = 3333
+  tag
+--------
+ det_r3
+(1 row)
+
+DET: float4 = 44.4
+  tag
+--------
+ det_r4
+(1 row)
+
+DET: float8 = 55.55
+  tag
+--------
+ det_r5
+(1 row)
+
+DET: numeric = 22.222
+  tag
+--------
+ det_r2
+(1 row)
+
+DET: varchar = 'alpha'
+  tag
+--------
+ det_r1
+ det_r4
+(2 rows)
+
+DET: bpchar = 'C3'
+  tag
+--------
+ det_r3
+(1 row)
+
+DET: text = 'DET text delta'
+  tag
+--------
+ det_r5
+(1 row)
+
+=== Part 4.3: DET IN 多值匹配 ===
+DET: det_i4 IN (111, 333, 555)
+  tag   | det_i4
+--------+--------
+ det_r1 |    111
+ det_r3 |    333
+ det_r5 |    555
+(3 rows)
+
+DET: det_vc IN ('alpha', 'gamma')
+  tag   | det_vc
+--------+--------
+ det_r1 | alpha
+ det_r3 | gamma
+ det_r4 | alpha
+(3 rows)
+
+=== Part 4.4: DET不等值查询 ===
+DET: det_i4 <> 222
+  tag   | det_i4
+--------+--------
+ det_r1 |    111
+ det_r3 |    333
+ det_r4 |    444
+ det_r5 |    555
+(4 rows)
+
+DET: det_vc != 'beta'
+  tag   | det_vc
+--------+--------
+ det_r1 | alpha
+ det_r3 | gamma
+ det_r4 | alpha
+ det_r5 | delta
+(4 rows)
+
+=== Part 4.5: DET AND组合条件 ===
+DET: det_i4 = 111 AND det_vc = 'alpha'
+  tag
+--------
+ det_r1
+(1 row)
+
+DET: det_i2 = 44 AND det_txt = 'DET text alpha2'
+  tag
+--------
+ det_r4
+(1 row)
+
+=== Part 4.6: DET OR条件 ===
+DET: det_vc = 'alpha' OR det_vc = 'gamma'
+  tag   | det_vc
+--------+--------
+ det_r1 | alpha
+ det_r3 | gamma
+ det_r4 | alpha
+(3 rows)
+
+=== Part 4.7: OPE范围查询 ===
+OPE: ope_i2 > 10
+ ope_i2
+--------
+     20
+     30
+     40
+     50
+(4 rows)
+
+OPE: ope_i2 < 0
+ ope_i2
+--------
+    -50
+(1 row)
+
+OPE: ope_i2 >= 20
+ ope_i2
+--------
+     20
+     30
+     40
+     50
+(4 rows)
+
+OPE: ope_i2 <= 10
+ ope_i2
+--------
+    -50
+      0
+     10
+(3 rows)
+
+OPE: ope_i4 > 200
+ ope_i4
+--------
+    300
+    400
+    500
+(3 rows)
+
+OPE: ope_i4 < 200
+ ope_i4
+--------
+   -500
+      0
+    100
+(3 rows)
+
+OPE: ope_i8 >= 3000
+ ope_i8
+--------
+   3000
+   4000
+   5000
+(3 rows)
+
+OPE: ope_i8 <= 1000
+ ope_i8
+--------
+  -5000
+      0
+   1000
+(3 rows)
+
+OPE: ope_f4 > 20.5
+ ope_f4
+--------
+   30.5
+   40.5
+   50.5
+(3 rows)
+
+OPE: ope_f8 >= 300.5
+ ope_f8
+--------
+  300.5
+  400.5
+  500.5
+(3 rows)
+
+OPE: ope_num < 200.55
+ ope_num
+---------
+ -555.55
+    0.00
+  100.55
+(3 rows)
+
+OPE: ope_vc > 'CCC'
+ ope_vc
+--------
+ DDD
+ EEE
+ FFF
+ GGG
+(4 rows)
+
+OPE: ope_vc >= 'EEE'
+ ope_vc
+--------
+ EEE
+ FFF
+ GGG
+(3 rows)
+
+OPE: ope_txt >= 'ope_medium'
+   ope_txt
+--------------
+ ope_medium
+ ope_large
+ ope_xlarge
+ ope_max
+(4 rows)
+
+=== Part 4.8: OPE BETWEEN 范围查询 ===
+OPE: ope_i4 BETWEEN 100 AND 400
+ ope_i4
+--------
+    100
+    200
+    300
+    400
+(4 rows)
+
+OPE: ope_f8 BETWEEN 100.5 AND 400.5
+ ope_f8
+--------
+  100.5
+  200.5
+  300.5
+  400.5
+(4 rows)
+
+OPE: ope_vc BETWEEN 'BBB' AND 'EEE'
+ ope_vc
+--------
+ BBB
+ CCC
+ DDD
+ EEE
+(4 rows)
+
+=== Part 4.9: OPE ORDER BY 保序验证 ===
+OPE: ORDER BY ope_i4 ASC
+ ope_i4
+--------
+   -500
+      0
+    100
+    200
+    300
+    400
+    500
+(7 rows)
+
+OPE: ORDER BY ope_i4 DESC
+ ope_i4
+--------
+    500
+    400
+    300
+    200
+    100
+      0
+   -500
+(7 rows)
+
+OPE: ORDER BY ope_f8 ASC
+ ope_f8
+--------
+ -500.5
+    0.0
+  100.5
+  200.5
+  300.5
+  400.5
+  500.5
+(7 rows)
+
+OPE: ORDER BY ope_f8 DESC
+ ope_f8
+--------
+  500.5
+  400.5
+  300.5
+  200.5
+  100.5
+    0.0
+ -500.5
+(7 rows)
+
+OPE: ORDER BY ope_num ASC
+ ope_num
+---------
+ -555.55
+    0.00
+  100.55
+  200.55
+  300.55
+  400.55
+  500.55
+(7 rows)
+
+OPE: ORDER BY ope_vc ASC
+ ope_vc
+--------
+ AAA
+ BBB
+ CCC
+ DDD
+ EEE
+ FFF
+ GGG
+(7 rows)
+
+OPE: ORDER BY ope_vc DESC
+ ope_vc
+--------
+ GGG
+ FFF
+ EEE
+ DDD
+ CCC
+ BBB
+ AAA
+(7 rows)
+
+OPE: ORDER BY ope_txt ASC
+   ope_txt
+--------------
+ ope_large
+ ope_max
+ ope_medium
+ ope_minus
+ ope_small
+ ope_xlarge
+ ope_zero
+(7 rows)
+
+=== Part 4.10: OPE范围 + ORDER BY 组合 ===
+OPE: ope_i4 > 100 ORDER BY ope_i4 DESC
+ ope_i4
+--------
+    500
+    400
+    300
+    200
+(4 rows)
+
+OPE: ope_f8 BETWEEN 0 AND 400 ORDER BY ope_f8 ASC
+ ope_f8
+--------
+    0.0
+  100.5
+  200.5
+  300.5
+  400.5
+(5 rows)
+
+=== Part 4.11: SEARCH LIKE 包含匹配 ===
+SEARCH: LIKE '%eng%'
+               srch_txt
+--------------------------------------
+ Alice Wang is a software engineer
+ Bob Chen is a product manager
+ David Liu is a DevOps engineer
+(3 rows)
+
+SEARCH: LIKE '%manager%'
+            srch_txt
+--------------------------------
+ Bob Chen is a product manager
+(1 row)
+
+SEARCH: LIKE 'Alice%'
+  srch_vc
+------------
+ Alice Wang
+(1 row)
+
+SEARCH: LIKE 'Bob%'
+            srch_txt
+--------------------------------
+ Bob Chen is a product manager
+(1 row)
+
+SEARCH: LIKE '%test.com'
+    srch_bp
+----------------
+ alice@test.com
+ charlie@test.com
+ eve@test.com
+(3 rows)
+
+SEARCH: LIKE '%engineer'
+               srch_txt
+--------------------------------------
+ Alice Wang is a software engineer
+ David Liu is a DevOps engineer
+(2 rows)
+
+SEARCH: srch_vc LIKE '%Zhang%'
+    srch_vc
+----------------
+ Charlie Zhang
+(1 row)
+
+SEARCH: srch_bp LIKE '%example%'
+     srch_bp
+------------------
+ bob@example.org
+(1 row)
+
+=== Part 4.12: SEARCH NOT LIKE ===
+SEARCH: srch_txt NOT LIKE '%engineer%'
+              srch_txt
+------------------------------------
+ Charlie Zhang is a data analyst
+ Eve Zhao is a QA tester
+(2 rows)
+
+SEARCH: srch_vc NOT LIKE '%Zhao%'
+    srch_vc
+----------------
+ Alice Wang
+ Bob Chen
+ Charlie Zhang
+ David Liu
+(4 rows)
+
+=== Part 4.13: SEARCH LIKE + AND 组合 ===
+SEARCH: srch_txt LIKE '%is a%' AND srch_bp LIKE '%test.com%'
+  srch_vc
+------------
+ Alice Wang
+ Charlie Zhang
+(2 rows)
+
+=== Part 4.14: 密态列 + 普通列 组合条件 ===
+MIXED: tag = 'row1' AND c_vc_det = 'Alice'
+ tag  | c_vc_det
+------+----------
+ row1 | Alice
+(1 row)
+
+MIXED: c_f8_ope > 10 AND tag LIKE 'row%'
+  tag   | c_f8_ope
+--------+----------
+ row1   |     3.14
+ row2   |     2.71
+ row4   |    10.01
+ row5   |    20.02
+ row6   |    30.03
+ row7   |    40.04
+ row8   |    50.05
+ row9   |    60.06
+ row10  |    70.07
+(9 rows)
+
+=== Part 4.15: NULL值查询 ===
+NULL: c_int4 IS NULL
+    tag    | c_int4
+-----------+--------
+ null_row |
+(1 row)
+
+NULL: c_vc_det IS NOT NULL AND c_int4 IS NULL
+(0 rows)
+
+=== Part 4.16: 边界值查询 ===
+BOUNDARY: tag = 'boundary_min'
+     tag      |   c_int4
+--------------+------------
+ boundary_min | -2147483648
+(1 row)
+
+BOUNDARY: tag = 'boundary_max'
+     tag      |   c_int4
+--------------+------------
+ boundary_max | 2147483647
+(1 row)
+
+BOUNDARY: tag = 'boundary_zero'
+     tag      | c_int4
+--------------+--------
+ boundary_zero |      0
+(1 row)
+
+BOUNDARY: tag = 'boundary_neg1'
+      tag      | c_int4
+---------------+--------
+ boundary_neg1 |     -1
+(1 row)
+
+=== Part 4.17: DEFAULT值验证 ===
+DEFAULT: 全部默认值
+ id | def_i4 |   def_vc    |   def_txt    |      note
+----+--------+-------------+--------------+----------------
+  1 |    100 | hello_default | default_text | all defaults
+(1 row)
+
+DEFAULT: 全部显式值
+ id | def_i4 |    def_vc     |    def_txt     |      note
+----+--------+---------------+---------------+----------------
+  2 |    200 | explicit_val | explicit_text | explicit all
+(1 row)
+
+DEFAULT: 部分默认
+ id | def_i4 |   def_vc    |     def_txt     |       note
+----+--------+-------------+-----------------+-------------------
+  3 |    100 | hello_default | only_text_set   | partial default
+(1 row)
+
+DEFAULT: 等值查询 def_i4 = 100
+ id | def_i4
+----+--------
+  1 |    100
+  3 |    100
+(2 rows)
+
+DEFAULT: LIKE查询 def_txt LIKE '%default%'
+ id |   def_txt
+----+--------------
+  1 | default_text
+(1 row)
+
+=== Part 4.18: 聚合函数查询 ===
+AGG: COUNT(*)
+ total_rows
+------------
+         16
+(1 row)
+
+AGG: COUNT(c_int4)
+ non_null_count
+----------------
+             15
+(1 row)
+
+AGG: MIN/MAX OPE
+ min_val | max_val
+---------+---------
+    -500 |     500
+(1 row)
+
+=== Part 4.19: DET JOIN ===
+DET JOIN: a.det_vc = b.det_vc
+  tag   |  tag
+--------+--------
+ det_r1 | det_r1
+ det_r1 | det_r4
+(2 rows)
+
+=== Part 4.20: 子查询 ===
+SUBQUERY: WHERE c_vc_det IN (SELECT det_vc FROM jdbc_soft_det_tbl WHERE det_i4 = 111)
+ tag  | c_vc_det
+------+----------
+ row1 | Alice
+(1 row)
+
+=== Part 5.1: UPDATE by plaintext condition ===
+UPDATE 1
+  tag  |  c_vc_det
+-------+---------------
+ row1 | Alice_Updated
+(1 row)
+
+=== Part 5.2: UPDATE by DET condition ===
+UPDATE 1
+  tag   |     det_vc
+--------+-----------------
+ det_r1 | alpha_modified
+(1 row)
+
+=== Part 5.3: UPDATE by OPE range ===
+UPDATE 3
+ ope_i4 |     tag
+--------+-------------
+    400 | ope_updated
+    500 | ope_updated
+(2 rows)
+
+=== Part 5.4: UPDATE by SEARCH LIKE ===
+UPDATE 2
+  srch_vc   |     tag
+------------+--------------
+ Alice Wang | srch_updated
+ David Liu  | srch_updated
+(2 rows)
+
+=== Part 5.5: UPDATE 多列 ===
+UPDATE 1
+  tag  | c_int4 | c_f8_ope |     c_txt_all
+-------+--------+----------+--------------------
+ row5 |  99999 |    99.99 | multi_update_test
+(1 row)
+
+=== Part 6.1: DELETE by plaintext ===
+INSERT 0 1
+DELETE 1
+DELETE plaintext: row deleted, count check
+ count
+-------
+     0
+(1 row)
+
+=== Part 6.2: DELETE by DET ===
+INSERT 0 1
+DELETE 1
+DELETE DET: row deleted, count check
+ count
+-------
+     0
+(1 row)
+
+=== Part 6.3: DELETE by OPE range ===
+INSERT 0 1
+DELETE 3
+DELETE OPE: rows > 500 deleted
+ count
+-------
+     0
+(1 row)
+
+=== Part 6.4: DELETE by SEARCH LIKE ===
+INSERT 0 1
+DELETE 1
+DELETE SEARCH: row deleted by LIKE
+ count
+-------
+     0
+(1 row)
+
+=== Part 7: 最终全表验证 ===
+All enc table final state
+ id |  tag
+----+-------
+  1 | row1
+  2 | row2
+  3 | row3
+  4 | row4
+  5 | row5
+  6 | row6
+  7 | row7
+  8 | row8
+  9 | row9
+ 10 | row10
+ 11 | null_row
+ 12 | boundary_min
+ 13 | boundary_max
+ 14 | boundary_neg1
+ 15 | boundary_zero
+ 16 | boundary_one
+(16 rows)
+
+DET table final state
+ id |   tag    |     det_vc
+----+----------+-----------------
+  1 | det_r1   | alpha_modified
+  2 | det_r2   | beta
+  3 | det_r3   | gamma
+  4 | det_r4   | alpha
+  5 | det_r5   | delta
+(5 rows)
+
+OPE table final state
+ id | ope_i4 |     tag
+----+--------+-------------
+  1 |   -500 | ope_r1
+  2 |      0 | ope_r2
+  3 |    100 | ope_r3
+  4 |    200 | ope_r4
+  5 |    300 | ope_r5
+  6 |    400 | ope_updated
+  7 |    500 | ope_updated
+(7 rows)
+
+SEARCH table final state
+ id |    srch_vc     |     tag
+----+----------------+--------------
+  1 | Alice Wang     | srch_updated
+  2 | Bob Chen       | srch_r2
+  3 | Charlie Zhang  | srch_r3
+  4 | David Liu      | srch_updated
+  5 | Eve Zhao       | srch_r5
+(5 rows)
+
+DEFAULT table final state
+ id | def_i4 |    def_vc     |    def_txt     |       note
+----+--------+---------------+---------------+-------------------
+  1 |    100 | hello_default | default_text  | all defaults
+  2 |    200 | explicit_val  | explicit_text | explicit all
+  3 |    100 | hello_default | only_text_set | partial default
+(3 rows)
+
+=== Part 8: 清理 ===
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

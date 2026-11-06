@@ -1,0 +1,36 @@
+# Makefile for WHERE clause test program
+CC = gcc
+CFLAGS = -std=c99 -Wall -Wextra -g -O0 -fPIC \
+         -DFRONTEND -DTECC_TEST_INTEGRATION \
+         -I../../../../../src/include \
+         -I../../../../../src/interfaces/libpq \
+         -I../../../../../src/interfaces/libpq/tecc_processor \
+         -I../../../../../src/interfaces/libpq/frontend_parser \
+         -I../../../../../src/interfaces/libpq/tecc_libpq_integration \
+         -I../../../../../src/interfaces/libpq/tecc_cache \
+         -I../../../../../src/interfaces/libpq/tecc_common
+
+# Target executable
+TARGET = test_where_clause
+
+# Default target
+all: $(TARGET)
+
+# Build executable
+$(TARGET): test_where_clause.o
+	$(CC) -o $@ $^ -lm
+
+# Compile source file
+test_where_clause.o: test_where_clause.c
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Clean build artifacts
+clean:
+	rm -f test_where_clause.o $(TARGET)
+
+# Run test
+run: all
+	@echo "Running WHERE clause test..."
+	./$(TARGET)
+
+.PHONY: all clean run

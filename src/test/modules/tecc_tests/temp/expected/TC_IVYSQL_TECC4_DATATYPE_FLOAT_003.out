@@ -1,0 +1,50 @@
+5月 23, 2026 1:32:58 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:32:58 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:32:58 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS test_float8 CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE test_float8 (id SERIAL PRIMARY KEY,float8_col float8_enc encrypted with (dek = dek_t1,support_algo='ope'),description TEXT,created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+
+rows: 0
+>>> 7
+INSERT INTO test_float8 (float8_col, description) VALUES (0.0, '零值'),(1.0, '正一'),(-1.0, '负一'),(3.141592653589793, '圆周率π-高精度'),(2.718281828459045, '自然常数e-高精度'),(123.456789, '普通小数'),(-123.456789, '负小数'),(0.000000000000001, '极小正数'),(-0.000000000000001, '极小负数'),('NaN', '非数字'),('Infinity', '正无穷'),('-Infinity', '负无穷'),(1.0e308, '极大科学计数法'),(1.0e-308, '极小科学计数法'),(1.7976931348623157e+308, '接近float8最大值'),(-1.7976931348623157e+308, '接近float8最小值');
+
+rows: 16
+>>> 8
+SELECT float8_col, description, pg_typeof(float8_col) as data_type FROM test_float8 ORDER BY float8_col NULLS FIRST;
+
+TECC strict: function 'pg_typeof' is not in the encryption-safe whitelist but references encrypted column [test_float8.float8_col]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, min, max, coalesce).
+>>> 9
+DROP TABLE IF EXISTS test_float8 CASCADE;
+
+rows: 0
+>>> 10
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 11
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

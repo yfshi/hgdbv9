@@ -1,0 +1,51 @@
+>>> 1
+DROP TABLE IF EXISTS tb_numeric CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+create table tb_numeric (id numeric_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 7
+insert into tb_numeric(id) select 1::int2_enc encrypted with (dek = dek_t1);
+
+错误: 无法把类型 integer 转换为 int2_enc
+  位置：36
+>>> 8
+insert into tb_numeric(id) select 1::int4_enc encrypted with (dek = dek_t1);
+
+错误: 无法把类型 integer 转换为 int4_enc
+  位置：36
+>>> 9
+insert into tb_numeric(id) select 1::int8_enc encrypted with (dek = dek_t1);
+
+错误: 无法把类型 integer 转换为 int8_enc
+  位置：36
+>>> 10
+DROP TABLE IF EXISTS tb_numeric CASCADE;
+
+rows: 0
+>>> 11
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 12
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

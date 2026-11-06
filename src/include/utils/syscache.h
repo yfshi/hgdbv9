@@ -156,9 +156,15 @@ enum SysCacheIdentifier
 	USERMAPPINGOID,
 	USERMAPPINGUSERSERVER,
 	/* intentionally out of alphabetical order, to avoid an ABI break: */
-	EXTENSIONOID
+	EXTENSIONOID,
+	/* TECC system table caches */
+	HGKEKNAME,
+	HGKEKOID,
+	HGDEKNAME,
+	HGDEKOID,
+	HGENCRYPTEDCOLUMNSTABLEATTNUM
 
-#define SysCacheSize (EXTENSIONOID + 1)
+#define SysCacheSize (HGENCRYPTEDCOLUMNSTABLEATTNUM + 1)
 };
 
 extern void InitCatalogCache(void);

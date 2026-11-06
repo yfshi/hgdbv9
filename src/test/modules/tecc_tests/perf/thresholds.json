@@ -1,0 +1,58 @@
+{
+  "int4_scan": {
+    "threshold_ms": 8000,
+    "desc": "int4 full scan"
+  },
+  "int4_eq": {
+    "threshold_ms": 120,
+    "desc": "int4 equi query"
+  },
+  "int4_range_small": {
+    "threshold_ms": 40,
+    "desc": "int4 range small"
+  },
+  "int4_range_large": {
+    "threshold_ms": 220,
+    "desc": "int4 range large"
+  },
+  "float8_scan": {
+    "threshold_ms": 8000,
+    "desc": "float8 full scan"
+  },
+  "float8_eq": {
+    "threshold_ms": 120,
+    "desc": "float8 equi query"
+  },
+  "float8_range_small": {
+    "threshold_ms": 40,
+    "desc": "float8 range small"
+  },
+  "float8_range_large": {
+    "threshold_ms": 220,
+    "desc": "float8 range large"
+  },
+  "text_scan": {
+    "threshold_ms": 8000,
+    "desc": "text full scan"
+  },
+  "text_eq": {
+    "threshold_ms": 120,
+    "desc": "text equi query"
+  },
+  "text_range_small": {
+    "threshold_ms": 120,
+    "desc": "text range small"
+  },
+  "text_range_large": {
+    "threshold_ms": 290,
+    "desc": "text range large"
+  },
+  "text_like_small": {
+    "threshold_ms": 320,
+    "desc": "text like small"
+  },
+  "text_like_large": {
+    "threshold_ms": 420,
+    "desc": "text like large"
+  }
+}

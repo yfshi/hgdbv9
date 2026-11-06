@@ -1,0 +1,411 @@
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+CREATE TABLE
+INSERT 0 15
+INSERT 0 15
+                ?column?                 
+-----------------------------------------
+ === 1a bpchar_ope > '测试' ORDER BY ===
+(1 row)
+
+ id |        c_bpchar        
+----+------------------------
+  1 | 王五                  
+(1 row)
+
+ id | c_bpchar_ope 
+----+--------------
+  1 | 王五
+(1 row)
+
+                 ?column?                 
+------------------------------------------
+ === 1b bpchar_ope >= '王五' ORDER BY ===
+(1 row)
+
+ id |        c_bpchar        
+----+------------------------
+  1 | 王五                  
+(1 row)
+
+ id | c_bpchar_ope 
+----+--------------
+  1 | 王五
+(1 row)
+
+                         ?column?                         
+----------------------------------------------------------
+ === 1c bpchar_ope >= 'apple' AND < 'cherry' ORDER BY ===
+(1 row)
+
+ id |       c_bpchar       
+----+----------------------
+  2 | Charlie             
+(1 row)
+
+ id | c_bpchar_ope 
+----+--------------
+  2 | Charlie
+(1 row)
+
+            ?column?            
+--------------------------------
+ === 1d bpchar_ope = '测试' ===
+(1 row)
+
+ id |        c_bpchar        
+----+------------------------
+ 14 | 测试                  
+(1 row)
+
+ id | c_bpchar_ope 
+----+--------------
+ 14 | 测试
+(1 row)
+
+                                 ?column?                                  
+---------------------------------------------------------------------------
+ === 1e bpchar_ope >= 'apple' AND <= 'cherry' AND != 'banana' ORDER BY ===
+(1 row)
+
+ id |       c_bpchar       
+----+----------------------
+  2 | Charlie             
+(1 row)
+
+ id | c_bpchar_ope 
+----+--------------
+  2 | Charlie
+(1 row)
+
+                      ?column?                       
+-----------------------------------------------------
+ === 2a text_ope >= '张三' AND < '赵六' ORDER BY ===
+(1 row)
+
+ id | c_text 
+----+--------
+  1 | 张三
+  4 | 张三丰
+  7 | 张三丰
+ 14 | 测试
+(4 rows)
+
+ id | c_text_ope 
+----+------------
+  1 | 张三
+  4 | 张三丰
+  7 | 张三丰
+ 14 | 测试
+(4 rows)
+
+                       ?column?                        
+-------------------------------------------------------
+ === 2b text_ope > 'apple' AND < 'cherry' ORDER BY ===
+(1 row)
+
+ id | c_text 
+----+--------
+(0 rows)
+
+ id | c_text_ope 
+----+------------
+(0 rows)
+
+                         ?column?                         
+----------------------------------------------------------
+ === 2c text_ope 'apple'~'cherry' OR 'a'~'b' ORDER BY ===
+(1 row)
+
+ id | c_text  
+----+---------
+  9 | abc_def
+  6 | alice
+  2 | Alice
+(3 rows)
+
+ id | c_text_ope 
+----+------------
+  9 | abc_def
+  6 | alice
+  2 | Alice
+(3 rows)
+
+            ?column?            
+--------------------------------
+ === 2d text_ope = '张三丰' ===
+(1 row)
+
+ id | c_text 
+----+--------
+  4 | 张三丰
+  7 | 张三丰
+(2 rows)
+
+ id | c_text_ope 
+----+------------
+  4 | 张三丰
+  7 | 张三丰
+(2 rows)
+
+                          ?column?                          
+------------------------------------------------------------
+ === 3a varchar_ope >= 'apple' AND <= 'cherry' ORDER BY ===
+(1 row)
+
+ id | c_varchar 
+----+-----------
+  2 | Bob
+(1 row)
+
+ id | c_varchar_ope 
+----+---------------
+  2 | Bob
+(1 row)
+
+                        ?column?                         
+---------------------------------------------------------
+ === 3b varchar_ope > 'David' AND < 'World' ORDER BY ===
+(1 row)
+
+ id |  c_varchar  
+----+-------------
+  7 | David2
+ 10 | test_like
+ 11 | under_score
+  5 | world
+(4 rows)
+
+ id | c_varchar_ope 
+----+---------------
+  7 | David2
+ 10 | test_like
+ 11 | under_score
+  5 | world
+(4 rows)
+
+                                 ?column?                                 
+--------------------------------------------------------------------------
+ === 3c varchar_ope > 'apple' AND ( < 'berry' OR > 'cherry') ORDER BY ===
+(1 row)
+
+ id |  c_varchar  
+----+-------------
+  4 | David
+  7 | David2
+ 10 | test_like
+ 11 | under_score
+  5 | world
+  8 | World
+  9 | xyz_123
+  3 | 孙七
+  1 | 李四
+ 14 | 测试
+(10 rows)
+
+ id | c_varchar_ope 
+----+---------------
+  4 | David
+  7 | David2
+ 10 | test_like
+ 11 | under_score
+  5 | world
+  8 | World
+  9 | xyz_123
+  3 | 孙七
+  1 | 李四
+ 14 | 测试
+(10 rows)
+
+            ?column?             
+---------------------------------
+ === 3d varchar_ope = '测试' ===
+(1 row)
+
+ id | c_varchar 
+----+-----------
+ 14 | 测试
+(1 row)
+
+ id | c_varchar_ope 
+----+---------------
+ 14 | 测试
+(1 row)
+
+            ?column?            
+--------------------------------
+ === 4a ORDER BY bpchar_ope ===
+(1 row)
+
+ id |        c_bpchar        
+----+------------------------
+ 13 |                     
+ 11 | _start              
+  6 | alice               
+  2 | Charlie             
+  4 | Eve                 
+  7 | Eve2                
+  9 | foo_bar             
+ 15 | mixCase             
+ 10 | pct_sign            
+  5 | test                
+  8 | TEST                
+  3 | 周八                  
+ 14 | 测试                  
+  1 | 王五                  
+ 12 | 
+(15 rows)
+
+ id | c_bpchar_ope 
+----+--------------
+ 13 | 
+ 11 | _start
+  6 | alice
+  2 | Charlie
+  4 | Eve
+  7 | Eve2
+  9 | foo_bar
+ 15 | mixCase
+ 10 | pct_sign
+  5 | test
+  8 | TEST
+  3 | 周八
+ 14 | 测试
+  1 | 王五
+ 12 | 
+(15 rows)
+
+           ?column?           
+------------------------------
+ === 4b ORDER BY text_ope ===
+(1 row)
+
+ id |   c_text   
+----+------------
+ 13 | 
+ 11 | %%percent
+  9 | abc_def
+  6 | alice
+  2 | Alice
+  5 | hello
+  8 | Hello
+ 10 | test%%like
+ 15 | test123
+  1 | 张三
+  7 | 张三丰
+  4 | 张三丰
+ 14 | 测试
+  3 | 赵六
+ 12 | 
+(15 rows)
+
+ id | c_text_ope 
+----+------------
+ 13 | 
+ 11 | %%percent
+  9 | abc_def
+  6 | alice
+  2 | Alice
+  5 | hello
+  8 | Hello
+ 10 | test%%like
+ 15 | test123
+  1 | 张三
+  7 | 张三丰
+  4 | 张三丰
+ 14 | 测试
+  3 | 赵六
+ 12 | 
+(15 rows)
+
+            ?column?             
+---------------------------------
+ === 4c ORDER BY varchar_ope ===
+(1 row)
+
+ id |  c_varchar  
+----+-------------
+ 13 | 
+ 15 | abcXYZ
+  6 | ALICE
+  2 | Bob
+  4 | David
+  7 | David2
+ 10 | test_like
+ 11 | under_score
+  5 | world
+  8 | World
+  9 | xyz_123
+  3 | 孙七
+  1 | 李四
+ 14 | 测试
+ 12 | 
+(15 rows)
+
+ id | c_varchar_ope 
+----+---------------
+ 13 | 
+ 15 | abcXYZ
+  6 | ALICE
+  2 | Bob
+  4 | David
+  7 | David2
+ 10 | test_like
+ 11 | under_score
+  5 | world
+  8 | World
+  9 | xyz_123
+  3 | 孙七
+  1 | 李四
+ 14 | 测试
+ 12 | 
+(15 rows)
+
+              ?column?               
+-------------------------------------
+ === 5a bpchar_ope > '' ORDER BY ===
+(1 row)
+
+ id |        c_bpchar        
+----+------------------------
+ 11 | _start              
+  6 | alice               
+  2 | Charlie             
+  4 | Eve                 
+  7 | Eve2                
+  9 | foo_bar             
+ 15 | mixCase             
+ 10 | pct_sign            
+  5 | test                
+  8 | TEST                
+  3 | 周八                  
+ 14 | 测试                  
+  1 | 王五                  
+(13 rows)
+
+ id | c_bpchar_ope 
+----+--------------
+ 11 | _start
+  6 | alice
+  2 | Charlie
+  4 | Eve
+  7 | Eve2
+  9 | foo_bar
+ 15 | mixCase
+ 10 | pct_sign
+  5 | test
+  8 | TEST
+  3 | 周八
+ 14 | 测试
+  1 | 王五
+(13 rows)
+
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK

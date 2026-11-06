@@ -1,0 +1,226 @@
+Null display is "(null)".
+=== 1. 准备 KEK/DEK ===
+CREATE KEK
+CREATE DEK
+=== Test 1: text_enc LIST — 边界/大小写/特殊字符 ===
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 9行 → 期望: 3行A区 + 3行X区 + 3行other
+stress_text_a|3
+stress_text_x|3
+stress_text_other|3
+(3 rows)
+WHERE空字符串匹配 → 期望: empty_string
+empty_string
+(1 row)
+WHERE中文匹配 → 期望: B
+中文Unicode
+(1 row)
+WHERE特殊字符匹配
+special_chars!@#
+(1 row)
+ORDER BY tag
+|1
+A|2
+B|3
+C|4
+M|8
+N|9
+X|5
+Y|6
+Z|7
+(9 rows)
+UPDATE跨分区: tag=C→X
+UPDATE 1
+stress_text_a|2
+stress_text_x|4
+stress_text_other|3
+(3 rows)
+DELETE: tag=空字符串
+DELETE 1
+8
+(1 row)
+=== Test 2: int2_enc RANGE — 边界值 ===
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 10行 → 期望: neg=4(pos边界), pos=6
+stress_int2_neg|2
+stress_int2_pos|8
+(2 rows)
+WHERE val=0 → 1行
+3|0|Z
+(1 row)
+WHERE val范围 [0, 10]
+5
+(1 row)
+ORDER BY val DESC
+32766|H
+50|B
+20|B
+10|B
+5|B
+(5 rows)
+UPDATE跨分区: val = -1 → val = 100
+UPDATE 1
+stress_int2_neg|1
+stress_int2_pos|9
+(2 rows)
+DELETE: 删除所有正数
+DELETE 8
+stress_int2_neg|1
+stress_int2_pos|1
+(2 rows)
+=== Test 3: numeric_enc RANGE — 高精度 ===
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 7行 → 期望: neg=3, pos=4
+stress_num_neg|2
+stress_num_pos|5
+(2 rows)
+WHERE val=0.00精确匹配
+0.00|B
+(1 row)
+WHERE高精度0.123456789匹配
+0.123456789|F
+(1 row)
+ORDER BY val
+-999999.99|G
+-0.01|A
+0.00|B
+0.01|C
+0.123456789|F
+123.456|D
+999999.98|E
+(7 rows)
+UPDATE跨分区: val = 0.01 → -100
+UPDATE 1
+stress_num_neg|3
+stress_num_pos|4
+(2 rows)
+DELETE: val < -500
+DELETE 1
+6
+(1 row)
+=== Test 4: 多表JOIN + 子查询 ===
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 6
+分区分布
+stress_order_east|2
+stress_order_west|2
+stress_order_other|2
+(3 rows)
+JOIN自关联
+2|2
+(1 row)
+金额排序
+1006|0.01|SOUTH
+1001|50.00|EAST
+1002|150.00|EAST
+1003|200.00|WEST
+1004|300.00|WEST
+1005|999.99|NORTH
+(6 rows)
+=== Test 5: 数据验证 ===
+stress_order_east|2
+stress_order_west|2
+stress_order_other|2
+(3 rows)
+=== Test 6: 批量插入+清空 ===
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+INSERT 0 5
+20行 → 期望: neg=10, pos=10
+stress_bulk_neg|10
+stress_bulk_pos|10
+(2 rows)
+TRUNCATE分区表
+TRUNCATE TABLE
+0
+(1 row)
+=== Test 7: 回归验证 — 之前修过的BUG ===
+1) AAD一致: tag=value作为列名
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 1
+reg_aad_ok|1
+(1 row)
+2) ::int2 分区边界
+DROP TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 3
+reg_int2_low|1
+reg_int2_high|2
+(2 rows)
+3) WHERE条件 = 加密列值
+2|0
+(1 row)
+4) UPDATE SET负数
+UPDATE 1
+reg_int2_low|2
+reg_int2_high|1
+(2 rows)
+5) Infinity边界float4, float8 (已在partition_types_test中验证分区版本)
+=== 清理 ===
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+=== 全部测试完成 ===
+NOTICE: table "stress_text" does not exist, skipping
+NOTICE: table "stress_int2" does not exist, skipping
+NOTICE: table "stress_num" does not exist, skipping
+NOTICE: table "stress_order" does not exist, skipping
+NOTICE: table "stress_bulk" does not exist, skipping
+NOTICE: table "reg_aad" does not exist, skipping
+NOTICE: table "reg_int2" does not exist, skipping

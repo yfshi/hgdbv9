@@ -1,0 +1,12 @@
+DROP KEK IF EXISTS kek_test CASCADE;
+DROP DEK IF EXISTS dek_test1 CASCADE;
+DROP DEK IF EXISTS dek_test2 CASCADE;
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+CREATE DEK dek_test1 WITH VALUES(KEK = kek_test);
+CREATE DEK dek_test2 WITH VALUES(KEK = kek_test);
+CREATE DEK dek_test3 WITH VALUES(KEK = kek_test);
+SELECT dek_name FROM hg_dek WHERE dek_name LIKE 'dek_test%';
+DROP DEK dek_test1 CASCADE;
+DROP DEK dek_test2 CASCADE;
+DROP DEK dek_test3 CASCADE;
+DROP KEK kek_test CASCADE;

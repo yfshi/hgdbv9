@@ -49,6 +49,10 @@
 #include "catalog/pg_policy.h"
 #include "catalog/pg_proc.h"
 #include "catalog/pg_publication.h"
+#include "catalog/hg_kek.h"
+#include "catalog/hg_dek.h"
+#include "catalog/hg_encrypted_columns.h"
+#include "utils/hg_key_utils.h"
 #include "catalog/pg_publication_rel.h"
 #include "catalog/pg_rewrite.h"
 #include "catalog/pg_statistic_ext.h"
@@ -734,6 +738,34 @@ static const ObjectPropertyType ObjectProperty[] =
 		true
 	},
 	/* End - ReqID:SRS-SQL-Collection */
+	{
+		"key encryption key",
+		HgKekRelationId,
+		HgKekOidIndexId,
+		HGKEKOID,
+		-1,
+		Anum_hg_kek_oid,
+		Anum_hg_kek_kek_name,
+		Anum_hg_kek_key_namespace,
+		Anum_hg_kek_key_owner,
+		Anum_hg_kek_key_acl,
+		OBJECT_KEK,
+		true
+	},
+	{
+		"data encryption key",
+		HgDekRelationId,
+		HgDekOidIndexId,
+		HGDEKOID,
+		-1,
+		Anum_hg_dek_oid,
+		Anum_hg_dek_dek_name,
+		Anum_hg_dek_key_namespace,
+		Anum_hg_dek_key_owner,
+		Anum_hg_dek_key_acl,
+		OBJECT_DEK,
+		true
+	},
 };
 
 /*
@@ -1298,7 +1330,10 @@ get_object_address(ObjectType objtype, Node *object,
 				address.objectSubId = 0;
 				break;
 			/* End - ReqID:SRS-SQL-SYNONYM */
-
+			case OBJECT_KEK:
+			case OBJECT_DEK:
+				address = get_object_address_unqualified(objtype,
+														 (Value *) object, missing_ok);
 			default:
 				elog(ERROR, "unrecognized objtype: %d", (int) objtype);
 				/* placate compiler, in case it thinks elog might return */
@@ -1483,6 +1518,16 @@ get_object_address_unqualified(ObjectType objtype,
 		case OBJECT_SUBSCRIPTION:
 			address.classId = SubscriptionRelationId;
 			address.objectId = get_subscription_oid(name, missing_ok);
+			address.objectSubId = 0;
+			break;
+		case OBJECT_KEK:
+			address.classId = HgKekRelationId;
+			address.objectId = get_kek_oid(name, missing_ok);
+			address.objectSubId = 0;
+			break;
+		case OBJECT_DEK:
+			address.classId = HgDekRelationId;
+			address.objectId = get_dek_oid(name, missing_ok);
 			address.objectSubId = 0;
 			break;
 		default:
@@ -2500,6 +2545,8 @@ pg_get_object_address(PG_FUNCTION_ARGS)
 		case OBJECT_SCHEMA:
 		case OBJECT_SUBSCRIPTION:
 		case OBJECT_TABLESPACE:
+		case OBJECT_KEK:
+		case OBJECT_DEK:
 			if (list_length(name) != 1)
 				ereport(ERROR,
 						(errcode(ERRCODE_INVALID_PARAMETER_VALUE),
@@ -2766,6 +2813,17 @@ check_object_ownership(Oid roleid, ObjectType objtype, ObjectAddress address,
 			if (!pg_ts_config_ownercheck(address.objectId, roleid))
 				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
 							   NameListToString(castNode(List, object)));
+			break;
+		case OBJECT_KEK:
+			if (!pg_kek_ownercheck(address.objectId, roleid))
+				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
+							   strVal((Value *) object));
+			break;
+
+		case OBJECT_DEK:
+			if (!pg_dek_ownercheck(address.objectId, roleid))
+				aclcheck_error(ACLCHECK_NOT_OWNER, objtype,
+							   strVal((Value *) object));
 			break;
 		case OBJECT_ROLE:
 
@@ -4318,6 +4376,69 @@ getObjectDescription(const ObjectAddress *object, bool missing_ok)
 				break;
 			}
 		/* End - ReqID:SRS-SQL-SYNONYM */
+		/* Begin - ReqID:TECC4.0 */
+		case OCLASS_KEK:
+			{
+				char	   *kekname = get_kek_name(object->objectId);
+				if (kekname)
+					appendStringInfo(&buffer, _("key encryption key %s"), kekname);
+				break;
+			}
+		case OCLASS_DEK:
+			{
+				char	   *dekname = get_dek_name(object->objectId);
+				if (dekname)
+					appendStringInfo(&buffer, _("data encryption key %s"), dekname);
+				break;
+			}
+		/* End - ReqID:TECC4.0 */
+		case OCLASS_ENCRYPTED_COLUMN:
+ 			{
+				Relation	rel;
+				SysScanDesc scan;
+				ScanKeyData skey[1];
+				HeapTuple	tup;
+				Form_hg_encrypted_columns eccForm;
+				char	   *relname;
+ 
+				rel = table_open(HgEncryptedColumnsRelationId, AccessShareLock);
+
+				ScanKeyInit(&skey[0],
+							Anum_hg_encrypted_columns_oid,
+							BTEqualStrategyNumber, F_OIDEQ,
+							ObjectIdGetDatum(object->objectId));
+
+				scan = systable_beginscan(rel, HgEncryptedColumnsOidIndexId, true,
+										  NULL, 1, skey);
+				tup = systable_getnext(scan);
+				if (!HeapTupleIsValid(tup))
+ 				{
+ 					if (!missing_ok)
+						elog(ERROR, "could not find tuple for encrypted column %u",
+ 							 object->objectId);
+					systable_endscan(scan);
+					table_close(rel, AccessShareLock);
+ 					break;
+ 				}
+ 
+				eccForm = (Form_hg_encrypted_columns) GETSTRUCT(tup);
+				relname = get_rel_name(eccForm->table_oid);
+				if (relname)
+					appendStringInfo(&buffer, _("encrypted column %s.%s"),
+									 relname, NameStr(eccForm->column_name));
+
+				systable_endscan(scan);
+				table_close(rel, AccessShareLock);
+ 				break;
+ 			}
+ 
+		case OCLASS_KEK_ARGS:
+			appendStringInfoString(&buffer, _("key encryption key args"));
+			break;
+
+		case OCLASS_DEK_ARGS:
+			appendStringInfoString(&buffer, _("data encryption key args"));
+			break;
 
 			/*
 			 * There's intentionally no default: case here; we want the
@@ -4904,11 +5025,29 @@ getObjectTypeDescription(const ObjectAddress *object, bool missing_ok)
 			appendStringInfoString(&buffer, "synonym");
 			break;
 		/* End - ReqID:SRS-SQL-SYNONYM */
+		/*Begin: ReqId: TECC-v4.0*/
+		case OCLASS_KEK:
+			appendStringInfoString(&buffer, "key encryption key");
+			break;
+		case OCLASS_DEK:
+			appendStringInfoString(&buffer, "data encryption key");
+			break;
+		case OCLASS_ENCRYPTED_COLUMN:
+			appendStringInfoString(&buffer, "encrypted column");
+			break;
 
-			/*
-			 * There's intentionally no default: case here; we want the
-			 * compiler to warn if a new OCLASS hasn't been handled above.
-			 */
+		case OCLASS_KEK_ARGS:
+			appendStringInfoString(&buffer, "key encryption key args");
+			break;
+
+		case OCLASS_DEK_ARGS:
+			appendStringInfoString(&buffer, "data encryption key args");
+			break;
+		/*End: ReqId: TECC-v4.0*/
+		/*
+		 * There's intentionally no default: case here; we want the
+		 * compiler to warn if a new OCLASS hasn't been handled above.
+		 */
 	}
 
 	/* the result can never be empty */
@@ -6286,7 +6425,128 @@ getObjectIdentityParts(const ObjectAddress *object,
 			}
 			break;
 		/* End - ReqID:SRS-SQL-SYNONYM */
+		/* Begin - ReqID:TECC4.0 */
+		case OCLASS_KEK:
+			{
+				HeapTuple	kekTup;
+				Form_hg_kek	kekForm;
+				char	   *nspname;
+				char	   *kekname;
+				kekTup = SearchSysCache1(HGKEKOID,
+										ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(kekTup))
+				{
+					if (!missing_ok)
+						elog(ERROR, "cache lookup failed for key encryption key %u",
+							object->objectId);
+					break;
+				}
+				kekForm = (Form_hg_kek) GETSTRUCT(kekTup);
+				/* Get namespace name */
+				nspname = get_namespace_name_or_temp(kekForm->key_namespace);
+				kekname = quote_qualified_identifier(nspname, NameStr(kekForm->kek_name));
+				appendStringInfoString(&buffer, kekname);
 
+				if (objname)
+					*objname = list_make2(nspname ? pstrdup(nspname) : pstrdup(""),
+										  pstrdup(NameStr(kekForm->kek_name)));
+
+				ReleaseSysCache(kekTup);
+				break;
+			}
+
+		case OCLASS_DEK:
+			{
+				HeapTuple	dekTup;
+				Form_hg_dek	dekForm;
+				char	   *nspname;
+				char	   *dekname;
+
+				dekTup = SearchSysCache1(HGDEKOID,
+										 ObjectIdGetDatum(object->objectId));
+				if (!HeapTupleIsValid(dekTup))
+				{
+					if (!missing_ok)
+						elog(ERROR, "cache lookup failed for data encryption key %u",
+							 object->objectId);
+					break;
+				}
+				dekForm = (Form_hg_dek) GETSTRUCT(dekTup);
+
+				/* Get namespace name */
+				nspname = get_namespace_name_or_temp(dekForm->key_namespace);
+				dekname = quote_qualified_identifier(nspname, NameStr(dekForm->dek_name));
+				appendStringInfoString(&buffer, dekname);
+
+				if (objname)
+					*objname = list_make2(nspname ? pstrdup(nspname) : pstrdup(""),
+										  pstrdup(NameStr(dekForm->dek_name)));
+
+				ReleaseSysCache(dekTup);
+				break;
+			}
+		
+		case OCLASS_ENCRYPTED_COLUMN:
+			{
+				Relation	rel;
+				SysScanDesc scan;
+				ScanKeyData skey[1];
+				HeapTuple	tup;
+				Form_hg_encrypted_columns eccForm;
+				char	   *relname;
+
+				rel = table_open(HgEncryptedColumnsRelationId, AccessShareLock);
+
+				ScanKeyInit(&skey[0],
+							Anum_hg_encrypted_columns_oid,
+							BTEqualStrategyNumber, F_OIDEQ,
+							ObjectIdGetDatum(object->objectId));
+
+				scan = systable_beginscan(rel, HgEncryptedColumnsOidIndexId, true,
+										  NULL, 1, skey);
+				tup = systable_getnext(scan);
+				if (!HeapTupleIsValid(tup))
+				{
+					if (!missing_ok)
+						elog(ERROR, "could not find tuple for encrypted column %u",
+							 object->objectId);
+					systable_endscan(scan);
+					table_close(rel, AccessShareLock);
+					break;
+				}
+
+				eccForm = (Form_hg_encrypted_columns) GETSTRUCT(tup);
+				relname = get_rel_name(eccForm->table_oid);
+				if (relname)
+				{
+					appendStringInfo(&buffer, _("%s.%s"),
+									 relname, NameStr(eccForm->column_name));
+					if (objname)
+						*objname = list_make2(pstrdup(relname),
+											  pstrdup(NameStr(eccForm->column_name)));
+				}
+
+				systable_endscan(scan);
+				table_close(rel, AccessShareLock);
+				break;
+			}
+
+		case OCLASS_KEK_ARGS:
+			{
+				char name_buf[32];
+				snprintf(name_buf, sizeof(name_buf), "kek_args_%u", object->objectId);
+				appendStringInfoString(&buffer, name_buf);
+			}
+				break;
+
+		case OCLASS_DEK_ARGS:
+			{
+				char name_buf[32];
+				snprintf(name_buf, sizeof(name_buf), "dek_args_%u", object->objectId);
+				appendStringInfoString(&buffer, name_buf);
+			}
+				break;
+		/* End - ReqID:TECC4.0 */
 			/*
 			 * There's intentionally no default: case here; we want the
 			 * compiler to warn if a new OCLASS hasn't been handled above.

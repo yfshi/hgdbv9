@@ -1,0 +1,206 @@
+-- TECC System Tables Regression Test
+-- Test CREATE/DROP KEK/DEK commands and system table functionality
+-- Based on the latest key management implementation
+-- Test 1: Check if system tables exist
+SELECT relname FROM pg_class
+WHERE relname IN ('hg_kek', 'hg_dek', 'hg_kek_args', 'hg_dek_args')
+ORDER BY relname;
+   relname   
+-------------
+ hg_dek
+ hg_dek_args
+ hg_kek
+ hg_kek_args
+(4 rows)
+
+-- Test 2: Create a KEK with localkms
+CREATE KEK sys_test_kek_1 WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_key_1'
+);
+-- Verify KEK was created — current hg_kek has: oid, kek_name, key_namespace, key_owner, key_acl, create_date
+SELECT kek_name, key_namespace
+FROM hg_kek
+WHERE kek_name = 'sys_test_kek_1';
+    kek_name    | key_namespace 
+----------------+---------------
+ sys_test_kek_1 |          2200
+(1 row)
+
+-- Verify KEK args were stored
+SELECT ka.key, ka.value
+FROM hg_kek_args ka
+JOIN hg_kek k ON ka.kek_id = k.oid
+WHERE k.kek_name = 'sys_test_kek_1'
+	AND ka.key != '_KEK_META'
+ORDER BY ka.key;
+    key    |              value               
+-----------+----------------------------------
+ KEY_PATH  | \x2f746d702f746573745f6b65795f31
+ KEY_STORE | \x6c6f63616c6b6d73
+(2 rows)
+
+-- Test 3: Create a DEK referencing the KEK
+CREATE DEK sys_test_dek_1 WITH VALUES (
+    _TECC_PROCESSED = '1',
+    ENCRYPTED_VALUE = 'deadbeef12345678abcdef00',
+    KEK = 'sys_test_kek_1'
+);
+-- Verify DEK was created
+SELECT d.dek_name
+FROM hg_dek d
+WHERE d.dek_name = 'sys_test_dek_1';
+    dek_name    
+----------------
+ sys_test_dek_1
+(1 row)
+
+-- Verify DEK args were stored
+SELECT da.key, encode(da.value, 'escape') as value
+FROM hg_dek_args da
+JOIN hg_dek d ON da.dek_id = d.oid
+WHERE d.dek_name = 'sys_test_dek_1'
+ORDER BY da.key;
+       key       |          value           
+-----------------+--------------------------
+ encrypted_value | deadbeef12345678abcdef00
+ kek             | sys_test_kek_1
+ key_length      | 256
+(3 rows)
+
+-- Test 4: Create another KEK with different parameters
+CREATE KEK sys_test_kek_2 WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_key_2',
+    ALGORITHM = 'SM4'
+);
+-- Test 5: Create another DEK
+CREATE DEK sys_test_dek_2 WITH VALUES (
+    _TECC_PROCESSED = '1',
+    ENCRYPTED_VALUE = 'deadbeef12345678abcdef00',
+    KEK = 'sys_test_kek_2',
+    KEY_LENGTH = '128'
+);
+-- Test 6: List all KEKs using hg_kek_info view
+SELECT kek_name, arg_key, arg_value
+FROM hg_kek_info
+WHERE kek_name LIKE 'sys_test_kek_%'
+	AND arg_key != '_KEK_META'
+ORDER BY kek_name, arg_key;
+    kek_name    |  arg_key  |            arg_value             
+----------------+-----------+----------------------------------
+ sys_test_kek_1 | KEY_PATH  | \x2f746d702f746573745f6b65795f31
+ sys_test_kek_1 | KEY_STORE | \x6c6f63616c6b6d73
+ sys_test_kek_2 | ALGORITHM | \x534d34
+ sys_test_kek_2 | KEY_PATH  | \x2f746d702f746573745f6b65795f32
+ sys_test_kek_2 | KEY_STORE | \x6c6f63616c6b6d73
+(5 rows)
+
+-- Test 7: List all DEKs using hg_dek_info view
+SELECT d.dek_name, k.kek_name as kek_name
+FROM hg_dek d
+LEFT JOIN hg_kek k ON d.kek_id = k.oid
+WHERE d.dek_name LIKE 'sys_test_dek_%'
+ORDER BY d.dek_name;
+    dek_name    |    kek_name    
+----------------+----------------
+ sys_test_dek_1 | sys_test_kek_1
+ sys_test_dek_2 | sys_test_kek_2
+(2 rows)
+
+-- Test 8: Drop a DEK
+DROP DEK sys_test_dek_2;
+-- Verify DEK was dropped
+SELECT COUNT(*) FROM hg_dek WHERE dek_name = 'sys_test_dek_2';
+ count 
+-------
+     0
+(1 row)
+
+-- Test 9: Drop a KEK (should fail if DEKs depend on it)
+-- This should fail because sys_test_dek_1 depends on sys_test_kek_1
+DROP KEK sys_test_kek_1;
+ERROR:  cannot drop key encryption key "sys_test_kek_1" because other objects depend on it
+HINT:  Use DROP KEK ... CASCADE to drop the dependent objects too.
+-- Test 10: Drop the dependent DEK first
+DROP DEK sys_test_dek_1;
+-- Verify DEK was dropped
+SELECT COUNT(*) FROM hg_dek WHERE dek_name = 'sys_test_dek_1';
+ count 
+-------
+     0
+(1 row)
+
+-- Test 11: Now drop the KEK
+DROP KEK sys_test_kek_1;
+-- Test 12: Drop the remaining KEK
+DROP KEK sys_test_kek_2;
+-- Final verification: All test objects should be gone
+SELECT COUNT(*) as remaining_kek FROM hg_kek
+WHERE kek_name LIKE 'sys_test_kek_%';
+ remaining_kek 
+---------------
+             0
+(1 row)
+
+SELECT COUNT(*) as remaining_dek FROM hg_dek
+WHERE dek_name LIKE 'sys_test_dek_%';
+ remaining_dek 
+---------------
+             0
+(1 row)
+
+-- Test 13: Test IF EXISTS variants
+DROP KEK IF EXISTS sys_test_kek_non_existent;
+NOTICE:  key encryption key "sys_test_kek_non_existent" does not exist, skipping
+DROP DEK IF EXISTS sys_test_dek_non_existent;
+NOTICE:  data encryption key "sys_test_dek_non_existent" does not exist, skipping
+-- Test 14: Test schema-qualified KEK creation
+CREATE KEK sys_test_kek_schema WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_schema_key'
+);
+-- Verify via view
+SELECT kek_name, key_namespace_name
+FROM hg_kek_info
+WHERE kek_name = 'sys_test_kek_schema';
+      kek_name       | key_namespace_name 
+---------------------+--------------------
+ sys_test_kek_schema | public
+ sys_test_kek_schema | public
+(2 rows)
+
+-- Cleanup schema test
+DROP KEK sys_test_kek_schema;
+-- Test 15: KEK with long name
+CREATE KEK sys_test_kek_with_long_name_test WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/test_long_name_key'
+);
+-- Verify
+SELECT kek_name FROM hg_kek WHERE kek_name = 'sys_test_kek_with_long_name_test';
+             kek_name             
+----------------------------------
+ sys_test_kek_with_long_name_test
+(1 row)
+
+-- Cleanup
+DROP KEK sys_test_kek_with_long_name_test;
+-- Final cleanup: ensure no leftover objects from this test
+-- (use DROP IF EXISTS to avoid errors if already cleaned)
+DROP DEK IF EXISTS sys_test_dek_1;
+NOTICE:  data encryption key "sys_test_dek_1" does not exist, skipping
+DROP DEK IF EXISTS sys_test_dek_2;
+NOTICE:  data encryption key "sys_test_dek_2" does not exist, skipping
+DROP KEK IF EXISTS sys_test_kek_1;
+NOTICE:  key encryption key "sys_test_kek_1" does not exist, skipping
+DROP KEK IF EXISTS sys_test_kek_2;
+NOTICE:  key encryption key "sys_test_kek_2" does not exist, skipping
+DROP KEK IF EXISTS sys_test_kek_schema;
+NOTICE:  key encryption key "sys_test_kek_schema" does not exist, skipping
+DROP KEK IF EXISTS sys_test_kek_with_long_name_test;
+NOTICE:  key encryption key "sys_test_kek_with_long_name_test" does not exist, skipping

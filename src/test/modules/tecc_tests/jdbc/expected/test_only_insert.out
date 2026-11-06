@@ -1,0 +1,9 @@
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+ id | name  | salary 
+----+-------+--------
+  1 | Alice |  50000
+(1 row)
+
+DROP TABLE

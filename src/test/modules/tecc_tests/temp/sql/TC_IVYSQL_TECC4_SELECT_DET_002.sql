@@ -1,0 +1,11 @@
+-- DET整型等值查询
+SELECT int2_col = int4_col as int2_eq_int4,int2_col = int8_col as int2_eq_int8,int4_col = int8_col as int4_eq_int8 FROM int_type_test WHERE int2_col = 100 AND int4_col = 100 AND int8_col = 100;
+SELECT int2_col = int4_col as int2_eq_int4,int2_col = int8_col as int2_eq_int8,int4_col = int8_col as int4_eq_int8 FROM tecc_int_type_test WHERE int2_col = 100 AND int4_col = 100 AND int8_col = 100;
+SELECT int2_col <> int4_col as int2_ne_int4,int2_col <> int8_col as int2_ne_int8,int4_col <> int8_col as int4_ne_int8 FROM int_type_test WHERE int2_col = 100 AND int4_col = 200 AND int8_col = 300;
+SELECT int2_col <> int4_col as int2_ne_int4,int2_col <> int8_col as int2_ne_int8,int4_col <> int8_col as int4_ne_int8 FROM tecc_int_type_test WHERE int2_col = 100 AND int4_col = 200 AND int8_col = 300;
+SELECT int2_col = int4_col as max_int2_vs_max_int4,int4_col = int8_col as max_int4_vs_max_int8,int2_col = int8_col as max_int2_vs_max_int8 FROM int_type_test WHERE int2_col = 32767 AND int4_col = 2147483647 AND int8_col = 9223372036854775807;
+SELECT int2_col = int4_col as max_int2_vs_max_int4,int4_col = int8_col as max_int4_vs_max_int8,int2_col = int8_col as max_int2_vs_max_int8 FROM tecc_int_type_test WHERE int2_col = 32767 AND int4_col = 2147483647 AND int8_col = 9223372036854775807;
+SELECT int2_col = int4_col as int2_eq_int4,int2_col = int8_col as int2_eq_int8,int4_col = int8_col as int4_eq_int8 FROM int_type_test WHERE int2_col IS NULL AND int4_col IS NULL AND int8_col IS NULL;
+SELECT int2_col = int4_col as int2_eq_int4,int2_col = int8_col as int2_eq_int8,int4_col = int8_col as int4_eq_int8 FROM tecc_int_type_test WHERE int2_col IS NULL AND int4_col IS NULL AND int8_col IS NULL;
+SELECT int2_col IS DISTINCT FROM int4_col as int2_safe_eq_int4,int2_col IS DISTINCT FROM int8_col as int2_safe_eq_int8,int4_col IS DISTINCT FROM int8_col as int4_safe_eq_int8 FROM int_type_test WHERE int2_col IS NULL AND int4_col IS NULL AND int8_col IS NULL;
+SELECT int2_col IS DISTINCT FROM int4_col as int2_safe_eq_int4,int2_col IS DISTINCT FROM int8_col as int2_safe_eq_int8,int4_col IS DISTINCT FROM int8_col as int4_safe_eq_int8 FROM tecc_int_type_test WHERE int2_col IS NULL AND int4_col IS NULL AND int8_col IS NULL;

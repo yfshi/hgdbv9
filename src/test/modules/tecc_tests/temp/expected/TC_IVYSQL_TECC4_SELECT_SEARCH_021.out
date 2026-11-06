@@ -1,0 +1,140 @@
+>>> 1
+DROP TABLE IF EXISTS tecc_text_like_test CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS text_like_test CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+CREATE TABLE tecc_text_like_test (id SERIAL PRIMARY KEY, text_col text_enc encrypted with (dek = dek_t1,support_algo='search'), varchar_col varchar_enc encrypted with (dek = dek_t1,support_algo='search'), bpchar_col bpchar_enc encrypted with (dek = dek_t1,support_algo='search'));
+
+rows: 0
+>>> 8
+CREATE TABLE text_like_test (id SERIAL PRIMARY KEY, text_col text, varchar_col varchar, bpchar_col bpchar);
+
+rows: 0
+>>> 9
+INSERT INTO text_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple', 'apple', 'apple'),('application', 'application', 'application'),('banana', 'banana', 'banana'),('berry', 'berry', 'berry'),('cherry', 'cherry', 'cherry'),('Apple', 'Apple', 'Apple'),('APPLE', 'APPLE', 'APPLE'),('123apple', '123apple', '123apple'),('apple123', 'apple123', 'apple123'),('pineapple', 'pineapple', 'pineapple'),('grape fruit', 'grape fruit', 'grape fruit'),('red apple', 'red apple', 'red apple'),('green apple', 'green apple', 'green apple'),('', '', ''),('a', 'a', 'a'),('test data', 'test data', 'test data'),('data test', 'data test', 'data test'),('test', 'test', 'test'),('TEST', 'TEST', 'TEST'),('Test', 'Test', 'Test'),(NULL, NULL, NULL);
+
+rows: 21
+>>> 10
+INSERT INTO tecc_text_like_test (text_col, varchar_col, bpchar_col) VALUES ('apple', 'apple', 'apple'),('application', 'application', 'application'),('banana', 'banana', 'banana'),('berry', 'berry', 'berry'),('cherry', 'cherry', 'cherry'),('Apple', 'Apple', 'Apple'),('APPLE', 'APPLE', 'APPLE'),('123apple', '123apple', '123apple'),('apple123', 'apple123', 'apple123'),('pineapple', 'pineapple', 'pineapple'),('grape fruit', 'grape fruit', 'grape fruit'),('red apple', 'red apple', 'red apple'),('green apple', 'green apple', 'green apple'),('', '', ''),('a', 'a', 'a'),('test data', 'test data', 'test data'),('data test', 'data test', 'data test'),('test', 'test', 'test'),('TEST', 'TEST', 'TEST'),('Test', 'Test', 'Test'),(NULL, NULL, NULL);
+
+rows: 21
+>>> 11
+SELECT id, text_col, varchar_col, bpchar_col FROM text_like_test WHERE text_col NOT LIKE 'app_e' ORDER BY text_col;
+
+14|||
+8|123apple|123apple|123apple
+15|a|a|a
+6|Apple|Apple|Apple
+7|APPLE|APPLE|APPLE
+9|apple123|apple123|apple123
+2|application|application|application
+3|banana|banana|banana
+4|berry|berry|berry
+5|cherry|cherry|cherry
+17|data test|data test|data test
+11|grape fruit|grape fruit|grape fruit
+13|green apple|green apple|green apple
+10|pineapple|pineapple|pineapple
+12|red apple|red apple|red apple
+18|test|test|test
+20|Test|Test|Test
+19|TEST|TEST|TEST
+16|test data|test data|test data
+rows: -1
+>>> 12
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_like_test WHERE text_col NOT LIKE 'app_e' ORDER BY text_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support ordering and range comparisons.
+>>> 13
+SELECT id, text_col, varchar_col, bpchar_col FROM text_like_test WHERE varchar_col NOT LIKE 'b_n_n_' ORDER BY varchar_col;
+
+14|||
+8|123apple|123apple|123apple
+15|a|a|a
+1|apple|apple|apple
+6|Apple|Apple|Apple
+7|APPLE|APPLE|APPLE
+9|apple123|apple123|apple123
+2|application|application|application
+4|berry|berry|berry
+5|cherry|cherry|cherry
+17|data test|data test|data test
+11|grape fruit|grape fruit|grape fruit
+13|green apple|green apple|green apple
+10|pineapple|pineapple|pineapple
+12|red apple|red apple|red apple
+18|test|test|test
+20|Test|Test|Test
+19|TEST|TEST|TEST
+16|test data|test data|test data
+rows: -1
+>>> 14
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_like_test WHERE varchar_col NOT LIKE 'b_n_n_' ORDER BY varchar_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support ordering and range comparisons.
+>>> 15
+SELECT id, text_col, varchar_col, bpchar_col FROM text_like_test WHERE bpchar_col NOT LIKE 'a%_e' ORDER BY bpchar_col;
+
+14|||
+8|123apple|123apple|123apple
+15|a|a|a
+6|Apple|Apple|Apple
+7|APPLE|APPLE|APPLE
+9|apple123|apple123|apple123
+2|application|application|application
+3|banana|banana|banana
+4|berry|berry|berry
+5|cherry|cherry|cherry
+17|data test|data test|data test
+11|grape fruit|grape fruit|grape fruit
+13|green apple|green apple|green apple
+10|pineapple|pineapple|pineapple
+12|red apple|red apple|red apple
+18|test|test|test
+20|Test|Test|Test
+19|TEST|TEST|TEST
+16|test data|test data|test data
+rows: -1
+>>> 16
+SELECT id, text_col, varchar_col, bpchar_col FROM tecc_text_like_test WHERE bpchar_col NOT LIKE 'a%_e' ORDER BY bpchar_col;
+
+错误: cannot compare encrypted values for ordering: OPE ciphertext not available
+  建议：Enable OPE encryption on the column to support ordering and range comparisons.
+>>> 17
+DROP TABLE IF EXISTS tecc_text_like_test CASCADE;
+
+rows: 0
+>>> 18
+DROP TABLE IF EXISTS text_like_test CASCADE;
+
+rows: 0
+>>> 19
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 20
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

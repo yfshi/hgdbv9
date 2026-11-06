@@ -51,11 +51,30 @@ our $config;
 do "./src/tools/msvc/config_default.pl";
 do "./src/tools/msvc/config.pl" if (-f "src/tools/msvc/config.pl");
 
+# Auto-regenerate flex/bison parser files if source changed
+# (Linux build handles this via Makefile rules; MSVC needs manual trigger)
+my @parser_src = (
+  ['src/interfaces/libpq/frontend_parser/tecc_grammar.y',
+   'src/interfaces/libpq/frontend_parser/tecc_grammar.c'],
+  ['src/interfaces/libpq/frontend_parser/tecc_scanner.l',
+   'src/interfaces/libpq/frontend_parser/lex.tecc_yy.c'],
+);
+foreach my $pair (@parser_src) {
+  my ($src, $dst) = @$pair;
+  next unless -f $src;
+  if (!-f $dst || (stat($src))[9] > (stat($dst))[9]) {
+    my $cmd = ($src =~ /\.y$/) ? "bison -d -o \"$dst\" \"$src\""
+                                : "flex -o \"$dst\" \"$src\"";
+    warn "Regenerating $dst from $src...\n";
+    system($cmd) == 0 or warn "Warning: $? — is bison/flex in PATH?\n";
+  }
+}
+
 my $vcver = Mkvcbuild::mkvcbuild($config);
 
 # check what sort of build we are doing
 my $bconf     = $ENV{CONFIG}   || "Release";
-my $msbflags  = $ENV{MSBFLAGS} || "";
+my $msbflags  = $ENV{MSBFLAGS} || "/m";
 my $buildwhat = $ARGV[1]       || "";
 
 if (defined($ARGV[0]))

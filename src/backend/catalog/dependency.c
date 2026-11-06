@@ -50,6 +50,11 @@
 #include "catalog/pg_publication.h"
 #include "catalog/pg_publication_rel.h"
 #include "catalog/pg_rewrite.h"
+#include "catalog/hg_encrypted_columns.h"
+#include "catalog/hg_kek_args.h"
+#include "catalog/hg_dek_args.h"
+#include "catalog/hg_kek.h"
+#include "catalog/hg_dek.h"
 #include "catalog/pg_statistic_ext.h"
 #include "catalog/pg_subscription.h"
 #include "catalog/pg_tablespace.h"
@@ -226,7 +231,14 @@ static const Oid object_classes[] = {
 	ObjectTypeBodyRelationId,	/* OCLASS_OBJECT_TYPE_BODY */
 	/* End - ReqID:SRS-SQL-CustomObject */
 	/* End - ReqID:SRS-SQL-PACKAGE */
-	SynonymRelationId			/* OCLASS_SYNONYM */ /* ReqID:SRS-SQL-SYNONYM */
+	SynonymRelationId,			/* OCLASS_SYNONYM */ /* ReqID:SRS-SQL-SYNONYM */
+	/* Begin - ReqID:TECC4.0 */
+	HgKekRelationId,			/* OCLASS_KEK */
+	HgDekRelationId,			/* OCLASS_DEK */
+	HgEncryptedColumnsRelationId,	/* OCLASS_ENCRYPTED_COLUMN */
+	HgKekArgsRelationId,		/* OCLASS_KEK_ARGS */
+	HgDekArgsRelationId			/* OCLASS_DEK_ARGS */
+	/* End - ReqID:TECC4.0 */
 };
 
 /*Begin - ReqID:SRS-SECURITY-DATADESENSITIZATION
@@ -1941,8 +1953,91 @@ doDeletion(const ObjectAddress *object, int flags)
 		case OCLASS_DEFACL:
 		case OCLASS_EVENT_TRIGGER:
 		case OCLASS_TRANSFORM:
+                case OCLASS_KEK:
+                case OCLASS_DEK:
 			DropObjectById(object);
 			break;
+               case OCLASS_ENCRYPTED_COLUMN:
+               {
+                       Relation        rel;
+                       SysScanDesc scan;
+                       ScanKeyData skey[1];
+                       HeapTuple       tup;
+
+                       rel = table_open(HgEncryptedColumnsRelationId, RowExclusiveLock);
+
+                       ScanKeyInit(&skey[0],
+                                               Anum_hg_encrypted_columns_oid,
+                                               BTEqualStrategyNumber, F_OIDEQ,
+                                               ObjectIdGetDatum(object->objectId));
+
+                       scan = systable_beginscan(rel, HgEncryptedColumnsOidIndexId, true,
+                                                                         NULL, 1, skey);
+                       tup = systable_getnext(scan);
+                       if (!HeapTupleIsValid(tup))
+                               elog(ERROR, "could not find tuple for encrypted column %u",
+                                        object->objectId);
+
+                       CatalogTupleDelete(rel, &tup->t_self);
+                       systable_endscan(scan);
+                       table_close(rel, RowExclusiveLock);
+                       break;
+               }
+                       break;
+               case OCLASS_KEK_ARGS:
+               {
+                       Relation        rel;
+                       SysScanDesc scan;
+                       ScanKeyData skey[1];
+                       HeapTuple       tup;
+
+                       rel = table_open(HgKekArgsRelationId, RowExclusiveLock);
+
+                       ScanKeyInit(&skey[0],
+                                               Anum_hg_kek_args_oid,
+                                               BTEqualStrategyNumber, F_OIDEQ,
+                                               ObjectIdGetDatum(object->objectId));
+
+                       scan = systable_beginscan(rel, HgKekArgsOidIndexId, true,
+                                                                         NULL, 1, skey);
+                       tup = systable_getnext(scan);
+                       if (!HeapTupleIsValid(tup))
+                               elog(ERROR, "could not find tuple for KEK args %u",
+                                        object->objectId);
+
+                       CatalogTupleDelete(rel, &tup->t_self);
+                       systable_endscan(scan);
+                       table_close(rel, RowExclusiveLock);
+                       break;
+               }
+                       break;
+               case OCLASS_DEK_ARGS:
+               {
+                       Relation        rel;
+                       SysScanDesc scan;
+                       ScanKeyData skey[1];
+                       HeapTuple       tup;
+
+                       rel = table_open(HgDekArgsRelationId, RowExclusiveLock);
+
+                       ScanKeyInit(&skey[0],
+                                               Anum_hg_dek_args_oid,
+                                               BTEqualStrategyNumber, F_OIDEQ,
+                                               ObjectIdGetDatum(object->objectId));
+
+                       scan = systable_beginscan(rel, HgDekArgsOidIndexId, true,
+                                                                         NULL, 1, skey);
+                       tup = systable_getnext(scan);
+                       if (!HeapTupleIsValid(tup))
+                               elog(ERROR, "could not find tuple for DEK args %u",
+                                        object->objectId);
+
+                       CatalogTupleDelete(rel, &tup->t_self);
+                       systable_endscan(scan);
+                       table_close(rel, RowExclusiveLock);
+                       break;
+               }
+                       break;
 
 		case OCLASS_SCHEMA:
 			RecyclebinDeleteNamespace(object->objectId);
@@ -3618,6 +3713,19 @@ getObjectClass(const ObjectAddress *object)
 		case SynonymRelationId:
 			return OCLASS_SYNONYM;
 		/* End - ReqID:SRS-SQL-SYNONYM */
+		case HgKekRelationId:
+			return OCLASS_KEK;
+		case HgDekRelationId:
+			return OCLASS_DEK;
+
+		case HgEncryptedColumnsRelationId:
+			return OCLASS_ENCRYPTED_COLUMN;
+
+		case HgKekArgsRelationId:
+			return OCLASS_KEK_ARGS;
+
+		case HgDekArgsRelationId:
+			return OCLASS_DEK_ARGS;
 	}
 
 	/* shouldn't get here */

@@ -1512,6 +1512,9 @@ _copyIntoClause(const IntoClause *from)
 	COPY_STRING_FIELD(tableSpaceName);
 	COPY_NODE_FIELD(viewQuery);
 	COPY_SCALAR_FIELD(skipData);
+	/* Begin - ReqID:TECC4.0 */
+	COPY_NODE_FIELD(encrypted_with_list);
+	/* End - ReqID:TECC4.0 */
 
 	return newnode;
 }
@@ -3170,6 +3173,9 @@ _copyTypeName(const TypeName *from)
 	COPY_NODE_FIELD(typmods);
 	COPY_SCALAR_FIELD(typemod);
 	COPY_NODE_FIELD(arrayBounds);
+	/* Begin - ReqID:TECC4.0 */
+	COPY_NODE_FIELD(encrypted_with);
+	/* End - ReqID:TECC4.0 */
 	COPY_LOCATION_FIELD(location);
 
 	return newnode;
@@ -3360,6 +3366,7 @@ _copyColumnDef(const ColumnDef *from)
 	COPY_NODE_FIELD(constraints);
 	COPY_NODE_FIELD(fdwoptions);
 	COPY_LOCATION_FIELD(location);
+	COPY_NODE_FIELD(encrypted_with);
 	COPY_SCALAR_FIELD(is_auto_increment);/* SRS-MYSQL-CREATE-TABLE-AUTO-INCREMENT */
 	COPY_NODE_FIELD(colcomment); /* SRS-MYSQL-CREATE-TABLE */
 
@@ -4031,6 +4038,7 @@ CopyCreateStmtFields(const CreateStmt *from, CreateStmt *newnode)
 	COPY_NODE_FIELD(ora_partspec);
 	COPY_NODE_FIELD(ora_partsup);
 	/* End - ReqID:SRS-SQL-PARTITION-TABLE */
+	COPY_SCALAR_FIELD(is_ctas);
 	COPY_NODE_FIELD(nestdtableCols); /* ReqID:SRS-SQL-Collection */
 }
 
@@ -4782,6 +4790,30 @@ _copyAlterTableMoveAllStmt(const AlterTableMoveAllStmt *from)
 	COPY_NODE_FIELD(roles);
 	COPY_STRING_FIELD(new_tablespacename);
 	COPY_SCALAR_FIELD(nowait);
+
+	return newnode;
+}
+
+static CreateKekStmt *
+_copyCreateKekStmt(const CreateKekStmt *from)
+{
+	CreateKekStmt *newnode = makeNode(CreateKekStmt);
+
+	COPY_NODE_FIELD(names);
+	COPY_SCALAR_FIELD(if_not_exists);
+	COPY_NODE_FIELD(options);
+
+	return newnode;
+}
+
+static CreateDekStmt *
+_copyCreateDekStmt(const CreateDekStmt *from)
+{
+	CreateDekStmt *newnode = makeNode(CreateDekStmt);
+
+	COPY_NODE_FIELD(names);
+	COPY_SCALAR_FIELD(if_not_exists);
+	COPY_NODE_FIELD(options);
 
 	return newnode;
 }
@@ -6826,6 +6858,12 @@ copyObjectImpl(const void *from)
 			break;
 		case T_AlterTableMoveAllStmt:
 			retval = _copyAlterTableMoveAllStmt(from);
+			break;
+		case T_CreateKekStmt:
+			retval = _copyCreateKekStmt(from);
+			break;
+		case T_CreateDekStmt:
+			retval = _copyCreateDekStmt(from);
 			break;
 		case T_CreateExtensionStmt:
 			retval = _copyCreateExtensionStmt(from);

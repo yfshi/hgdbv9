@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS test_int2_indexes_hash CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+CREATE TABLE test_int2_indexes_hash (id SERIAL PRIMARY KEY,int2_col int2_enc encrypted with (dek = dek_t1,support_algo='det') NOT NULL,category VARCHAR(50),created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO test_int2_indexes_hash (int2_col, category) SELECT (2 * 5000 - 2500)::int2,'Cat_' || (i % 20)::text FROM generate_series(1, 5000) i;
+CREATE INDEX idx_int2_det_hash ON test_int2_indexes_hash USING hash (int2_col);
+EXPLAIN (ANALYZE, BUFFERS) SELECT * FROM test_int2_indexes_hash WHERE int2_col = 1000;
+SELECT indexname,indexdef,pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size FROM pg_indexes WHERE tablename = 'test_int2_indexes_hash';
+DROP TABLE IF EXISTS test_int2_indexes_hash CASCADE;
+DROP DEK IF EXISTS dek_t1 CASCADE;
+DROP KEK IF EXISTS kek_t1 CASCADE;

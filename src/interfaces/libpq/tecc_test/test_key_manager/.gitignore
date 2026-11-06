@@ -1,0 +1,12 @@
+# Local test binaries (derived from KEY_MANAGER_TEST_SRCS)
+/test_key_manager_basic
+/test_key_manager_integration
+/test_key_manager_performance
+/test_key_manager_error
+/test_minimal
+/test_simple_standalone
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

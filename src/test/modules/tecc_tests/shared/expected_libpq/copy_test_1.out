@@ -1,0 +1,44 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+ id |  name   
+----+---------
+ 1  | Alice
+ 2  | Bob
+ 3  | Charlie
+(3 rows)
+
+TRUNCATE TABLE
+ id | name 
+----+------
+(0 rows)
+
+              ?column?               
+-------------------------------------
+ === COPY (SELECT ...) TO STDOUT ===
+(1 row)
+
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1	Alice
+2	Bob
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/copy_test.sql:5: 注意:  表 "test_copy_enc" 不存在
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/copy_test.sql:6: 注意:  data encryption key "dek_copy_enc" does not exist, skipping
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/copy_test.sql:7: 注意:  key encryption key "kek_copy_enc" does not exist, skipping
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/copy_test.sql:28: 错误:  为了写入, 无法打开文件 "/tmp/copy_enc_server.txt": No such file or directory
+HINT:  COPY TO指示PostgreSQL服务器进程写入文件。您可能需要客户端工具，如psql的\copy。
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/copy_test.sql:34: 错误:  为了读取, 无法打开文件 "/tmp/copy_enc_server.txt": No such file or directory
+HINT:  COPY FROM指示PostgreSQL服务器进程读取文件。您可能需要客户端工具，如psql的\copy
+psql:D:/vf2024/win_tecc4/tecc4_on_pg14/src/test/modules/tecc_tests/t/../shared/sql/copy_test.sql:42: 注意:  表 "test_cp_select" 不存在

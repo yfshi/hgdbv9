@@ -1,0 +1,356 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 LIKE Wildcard ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 21
+1a_text_like_apple_pct|1|apple
+1a_text_like_apple_pct|9|apple123
+(2 rows)
+1b_varchar_like_a_pct|1|apple
+1b_varchar_like_a_pct|2|application
+1b_varchar_like_a_pct|9|apple123
+1b_varchar_like_a_pct|15|a
+(4 rows)
+1c_bpchar_like_123_pct|8|123apple
+(1 row)
+1d_text_like_app_e|1|apple
+(1 row)
+1e_varchar_like_b_n_n_|3|banana
+(1 row)
+1f_bpchar_mod_like_a_pct_e|1|apple
+(1 row)
+(0 rows)
+1h_text_like_app_e_pct|1|apple
+1h_text_like_app_e_pct|9|apple123
+(2 rows)
+1i_text_like_pct_apple|1|apple
+1i_text_like_pct_apple|8|123apple
+1i_text_like_pct_apple|10|pineapple
+1i_text_like_pct_apple|12|red apple
+1i_text_like_pct_apple|13|green apple
+(5 rows)
+1j_text_like_pct_ana_pct|3|banana
+(1 row)
+DROP TABLE
+=== 2 NOT LIKE ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 20
+2a_text_not_like_app_pct|3|banana
+2a_text_not_like_app_pct|4|berry
+2a_text_not_like_app_pct|5|cherry
+2a_text_not_like_app_pct|6|Apple
+2a_text_not_like_app_pct|7|APPLE
+2a_text_not_like_app_pct|8|123apple
+2a_text_not_like_app_pct|10|pineapple
+2a_text_not_like_app_pct|11|grape fruit
+2a_text_not_like_app_pct|12|red apple
+2a_text_not_like_app_pct|13|green apple
+2a_text_not_like_app_pct|14|a
+2a_text_not_like_app_pct|15|test data
+2a_text_not_like_app_pct|16|data test
+2a_text_not_like_app_pct|17|test
+2a_text_not_like_app_pct|18|TEST
+2a_text_not_like_app_pct|19|Test
+(16 rows)
+2b_varchar_not_like_a_pct|3|banana
+2b_varchar_not_like_a_pct|4|berry
+2b_varchar_not_like_a_pct|5|cherry
+2b_varchar_not_like_a_pct|6|Apple
+2b_varchar_not_like_a_pct|7|APPLE
+2b_varchar_not_like_a_pct|8|123apple
+2b_varchar_not_like_a_pct|10|pineapple
+2b_varchar_not_like_a_pct|11|grape fruit
+2b_varchar_not_like_a_pct|12|red apple
+2b_varchar_not_like_a_pct|13|green apple
+2b_varchar_not_like_a_pct|15|test data
+2b_varchar_not_like_a_pct|16|data test
+2b_varchar_not_like_a_pct|17|test
+2b_varchar_not_like_a_pct|18|TEST
+2b_varchar_not_like_a_pct|19|Test
+(15 rows)
+2c_bpchar_not_like_123_pct|1|apple
+2c_bpchar_not_like_123_pct|2|application
+2c_bpchar_not_like_123_pct|3|banana
+2c_bpchar_not_like_123_pct|4|berry
+2c_bpchar_not_like_123_pct|5|cherry
+2c_bpchar_not_like_123_pct|6|Apple
+2c_bpchar_not_like_123_pct|7|APPLE
+2c_bpchar_not_like_123_pct|9|apple123
+2c_bpchar_not_like_123_pct|10|pineapple
+2c_bpchar_not_like_123_pct|11|grape fruit
+2c_bpchar_not_like_123_pct|12|red apple
+2c_bpchar_not_like_123_pct|13|green apple
+2c_bpchar_not_like_123_pct|14|a
+2c_bpchar_not_like_123_pct|15|test data
+2c_bpchar_not_like_123_pct|16|data test
+2c_bpchar_not_like_123_pct|17|test
+2c_bpchar_not_like_123_pct|18|TEST
+2c_bpchar_not_like_123_pct|19|Test
+(18 rows)
+2d_bpchar_not_like_pct_123|1|apple
+2d_bpchar_not_like_pct_123|2|application
+2d_bpchar_not_like_pct_123|3|banana
+2d_bpchar_not_like_pct_123|4|berry
+2d_bpchar_not_like_pct_123|5|cherry
+2d_bpchar_not_like_pct_123|6|Apple
+2d_bpchar_not_like_pct_123|7|APPLE
+2d_bpchar_not_like_pct_123|8|123apple
+2d_bpchar_not_like_pct_123|10|pineapple
+2d_bpchar_not_like_pct_123|11|grape fruit
+2d_bpchar_not_like_pct_123|12|red apple
+2d_bpchar_not_like_pct_123|13|green apple
+2d_bpchar_not_like_pct_123|14|a
+2d_bpchar_not_like_pct_123|15|test data
+2d_bpchar_not_like_pct_123|16|data test
+2d_bpchar_not_like_pct_123|17|test
+2d_bpchar_not_like_pct_123|18|TEST
+2d_bpchar_not_like_pct_123|19|Test
+(18 rows)
+2e_text_like_app_pct_ctrl|1|apple
+2e_text_like_app_pct_ctrl|2|application
+2e_text_like_app_pct_ctrl|9|apple123
+(3 rows)
+DROP TABLE
+=== 3 LIKE + NOT LIKE Combined ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 20
+3a_bpchar_like_a_not_like_123|1|apple
+3a_bpchar_like_a_not_like_123|2|application
+3a_bpchar_like_a_not_like_123|14|a
+(3 rows)
+3b_bpchar_like_a_pct_ctrl|1|apple
+3b_bpchar_like_a_pct_ctrl|2|application
+3b_bpchar_like_a_pct_ctrl|9|apple123
+3b_bpchar_like_a_pct_ctrl|14|a
+(4 rows)
+3c_bpchar_not_like_123_ctrl|1|apple
+3c_bpchar_not_like_123_ctrl|2|application
+3c_bpchar_not_like_123_ctrl|3|banana
+3c_bpchar_not_like_123_ctrl|4|berry
+3c_bpchar_not_like_123_ctrl|5|cherry
+3c_bpchar_not_like_123_ctrl|6|Apple
+3c_bpchar_not_like_123_ctrl|7|APPLE
+3c_bpchar_not_like_123_ctrl|8|123apple
+3c_bpchar_not_like_123_ctrl|10|pineapple
+3c_bpchar_not_like_123_ctrl|11|grape fruit
+3c_bpchar_not_like_123_ctrl|12|red apple
+3c_bpchar_not_like_123_ctrl|13|green apple
+3c_bpchar_not_like_123_ctrl|14|a
+3c_bpchar_not_like_123_ctrl|15|test data
+3c_bpchar_not_like_123_ctrl|16|data test
+3c_bpchar_not_like_123_ctrl|17|test
+3c_bpchar_not_like_123_ctrl|18|TEST
+3c_bpchar_not_like_123_ctrl|19|Test
+(18 rows)
+DROP TABLE
+=== 4 Empty String + NOT LIKE ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+4a_not_like_123|1|||
+4a_not_like_123|2|a|a|a
+4a_not_like_123|3|ab|ab|ab
+(3 rows)
+4b_not_like_b|1|
+4b_not_like_b|2|a
+4b_not_like_b|3|ab
+(3 rows)
+4c_like_pct|1|
+4c_like_pct|2|a
+4c_like_pct|3|ab
+(3 rows)
+4d_text_not_like_123|1|
+4d_text_not_like_123|2|a
+4d_text_not_like_123|3|ab
+(3 rows)
+4e_varchar_not_like_123|1|
+4e_varchar_not_like_123|2|a
+4e_varchar_not_like_123|3|ab
+(3 rows)
+DROP TABLE
+=== 5 Edge Cases ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 10
+5z1_plain: a_c LIKE ___|t
+(1 row)
+5z2_plain: a_c LIKE a_c|t
+(1 row)
+5z3_plain: abc LIKE ___|t
+(1 row)
+5z4_plain: abc LIKE a_c|t
+(1 row)
+5a___|ab|f|f
+5a___|abc|t|t
+5a___|abcd|f|f
+5a___|abcde|f|f
+5a___|axc|t|t
+5a___|a_c|t|t
+5a___|a1234|f|f
+5a___|ab234|f|f
+5a___||f|f
+5a___|a|f|f
+(10 rows)
+5b____|ab|f|f
+5b____|abc|f|f
+5b____|abcd|t|t
+5b____|abcde|f|f
+5b____|axc|f|f
+5b____|a_c|f|f
+5b____|a1234|f|f
+5b____|ab234|f|f
+5b____||f|f
+5b____|a|f|f
+(10 rows)
+5c__|ab|t|t
+5c__|abc|f|f
+5c__|abcd|f|f
+5c__|abcde|f|f
+5c__|axc|f|f
+5c__|a_c|f|f
+5c__|a1234|f|f
+5c__|ab234|f|f
+5c__||f|f
+5c__|a|f|f
+(10 rows)
+5d_a_|ab|t|t
+5d_a_|abc|f|f
+5d_a_|abcd|f|f
+5d_a_|abcde|f|f
+5d_a_|axc|f|f
+5d_a_|a_c|f|f
+5d_a_|a1234|f|f
+5d_a_|ab234|f|f
+5d_a_||f|f
+5d_a_|a|f|f
+(10 rows)
+5e_a__|ab|f|f
+5e_a__|abc|t|t
+5e_a__|abcd|f|f
+5e_a__|abcde|f|f
+5e_a__|axc|t|t
+5e_a__|a_c|t|t
+5e_a__|a1234|f|f
+5e_a__|ab234|f|f
+5e_a__||f|f
+5e_a__|a|f|f
+(10 rows)
+5f_a___|ab|f|f
+5f_a___|abc|f|f
+5f_a___|abcd|t|t
+5f_a___|abcde|f|f
+5f_a___|axc|f|f
+5f_a___|a_c|f|f
+5f_a___|a1234|f|f
+5f_a___|ab234|f|f
+5f_a___||f|f
+5f_a___|a|f|f
+(10 rows)
+5g__c|ab|f|f
+5g__c|abc|t|t
+5g__c|abcd|f|f
+5g__c|abcde|f|f
+5g__c|axc|t|t
+5g__c|a_c|t|t
+5g__c|a1234|f|f
+5g__c|ab234|f|f
+5g__c||f|f
+5g__c|a|f|f
+(10 rows)
+5h___d|ab|f|f
+5h___d|abc|f|f
+5h___d|abcd|t|t
+5h___d|abcde|f|f
+5h___d|axc|f|f
+5h___d|a_c|f|f
+5h___d|a1234|f|f
+5h___d|ab234|f|f
+5h___d||f|f
+5h___d|a|f|f
+(10 rows)
+5i_a____|ab|f|f
+5i_a____|abc|f|f
+5i_a____|abcd|f|f
+5i_a____|abcde|t|t
+5i_a____|axc|f|f
+5i_a____|a_c|f|f
+5i_a____|a1234|t|t
+5i_a____|ab234|t|t
+5i_a____||f|f
+5i_a____|a|f|f
+(10 rows)
+5j_ab___|ab|f|f
+5j_ab___|abc|f|f
+5j_ab___|abcd|f|f
+5j_ab___|abcde|t|t
+5j_ab___|axc|f|f
+5j_ab___|a_c|f|f
+5j_ab___|a1234|f|f
+5j_ab___|ab234|t|t
+5j_ab___||f|f
+5j_ab___|a|f|f
+(10 rows)
+5k_a_c|ab|f|f
+5k_a_c|abc|t|t
+5k_a_c|abcd|f|f
+5k_a_c|abcde|f|f
+5k_a_c|axc|t|t
+5k_a_c|a_c|t|t
+5k_a_c|a1234|f|f
+5k_a_c|ab234|f|f
+5k_a_c||f|f
+5k_a_c|a|f|f
+(10 rows)
+5l_a%_|ab|t|t
+5l_a%_|abc|t|t
+5l_a%_|abcd|t|t
+5l_a%_|abcde|t|t
+5l_a%_|axc|t|t
+5l_a%_|a_c|t|t
+5l_a%_|a1234|t|t
+5l_a%_|ab234|t|t
+5l_a%_||f|f
+5l_a%_|a|f|f
+(10 rows)
+5m_%c|ab|f|f
+5m_%c|abc|t|t
+5m_%c|abcd|f|f
+5m_%c|abcde|f|f
+5m_%c|axc|t|t
+5m_%c|a_c|t|t
+5m_%c|a1234|f|f
+5m_%c|ab234|f|f
+5m_%c||f|f
+5m_%c|a|f|f
+(10 rows)
+5n_%a%|ab|t|t
+5n_%a%|abc|t|t
+5n_%a%|abcd|t|t
+5n_%a%|abcde|t|t
+5n_%a%|axc|t|t
+5n_%a%|a_c|t|t
+5n_%a%|a1234|t|t
+5n_%a%|ab234|t|t
+5n_%a%||f|f
+5n_%a%|a|t|t
+(10 rows)
+DROP TABLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+NOTICE: key encryption key "kek_search" does not exist, skipping
+NOTICE: table "tecc_like_test" does not exist, skipping
+NOTICE: table "tecc_not_like_test" does not exist, skipping
+NOTICE: table "tecc_like_combined" does not exist, skipping
+NOTICE: table "tecc_empty_search" does not exist, skipping
+NOTICE: table "tecc_edge_test" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_search

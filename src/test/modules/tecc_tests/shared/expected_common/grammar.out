@@ -1,0 +1,920 @@
+DROP KEK
+CREATE KEK
+CREATE DEK
+=== 1 Basic DML ===
+(1 row)
+1a_basic_SELECT|1
+(1 row)
+CREATE TABLE
+INSERT 0 1
+1b_INSERT|1|test_filter
+(1 row)
+UPDATE 1
+1c_UPDATE|1|updated
+(1 row)
+DELETE 1
+1d_DELETE|0
+(1 row)
+DROP TABLE
+1e_DROP_OK|1
+(1 row)
+=== 2 Comments ===
+(1 row)
+2a_block_comment_before|1
+(1 row)
+2b_block_comment_after|1
+(1 row)
+2c_line_comment|1
+(1 row)
+Result  (cost=0.00..0.01 rows=1 width=36)
+(1 row)
+2e_WITH|1
+(1 row)
+=== 3 WITH CTE ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+cte1_basic|2|20
+cte1_basic|3|30
+cte1_basic|4|40
+(3 rows)
+cte2_alias|2|20
+cte2_alias|3|30
+cte2_alias|4|40
+(3 rows)
+cte3_order|4|40
+cte3_order|3|30
+cte3_order|2|20
+cte3_order|1|10
+(4 rows)
+cte4_where|3|c
+cte4_where|4|d
+(2 rows)
+cte5_multi|20|20
+(1 row)
+cte6_three|6
+(1 row)
+cte7_chain|2|40
+cte7_chain|3|60
+cte7_chain|4|80
+(3 rows)
+cte8_both|999|1|10
+cte8_both|999|2|20
+cte8_both|999|3|30
+cte8_both|999|4|40
+(4 rows)
+CREATE TABLE
+INSERT 0 2
+cte9_ins|3|30
+cte9_ins|4|40
+(2 rows)
+CREATE TABLE
+INSERT 0 3
+UPDATE 2
+cte10_upd|3|0
+cte10_upd|1|10
+cte10_upd|2|20
+(3 rows)
+CREATE TABLE
+INSERT 0 4
+DELETE 2
+cte11_del|1|10
+cte11_del|2|20
+(2 rows)
+cte12_union|1|10|low
+cte12_union|2|20|high
+cte12_union|3|30|high
+cte12_union|4|40|high
+(4 rows)
+cte13_sub|2|20
+cte13_sub|3|30
+cte13_sub|4|40
+(3 rows)
+cte14_agg|4|100
+(1 row)
+cte15_selfjoin|10|20
+cte15_selfjoin|20|30
+cte15_selfjoin|30|40
+(3 rows)
+(0 rows)
+cte17_distinct|10
+cte17_distinct|20
+cte17_distinct|30
+cte17_distinct|40
+(4 rows)
+cte18_func|A|100
+cte18_func|B|200
+cte18_func|C|300
+cte18_func|D|400
+(4 rows)
+cte19_recursive|1
+cte19_recursive|2
+cte19_recursive|3
+(3 rows)
+cte20_rec_star|999|1|10
+cte20_rec_star|999|3|20
+cte20_rec_star|999|5|40
+(3 rows)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+cte21_graph|1|2
+cte21_graph|1|5
+cte21_graph|2|3
+cte21_graph|3|4
+(4 rows)
+cte22_multi_rec|1|10
+cte22_multi_rec|1|9
+cte22_multi_rec|1|8
+cte22_multi_rec|2|10
+cte22_multi_rec|2|9
+cte22_multi_rec|2|8
+(6 rows)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 4 Constant+Star ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+cs1_const_star|1|2|3
+cs1_const_star|4|5|6
+(2 rows)
+1|2|3|cs2_star_const
+4|5|6|cs2_star_const
+(2 rows)
+cs3a|42|cs3b|1|2|3
+cs3a|42|cs3b|4|5|6
+(2 rows)
+cs4_before|1|2|3|cs4_after
+cs4_before|4|5|6|cs4_after
+(2 rows)
+1|2|3|cs5
+4|5|6|cs5
+(2 rows)
+cs6_ctrl|1|2|3
+cs6_ctrl|4|5|6
+(2 rows)
+cs7|1|2|3
+cs7|4|5|6
+(2 rows)
+cs8|4|5|6
+cs8|1|2|3
+(2 rows)
+cs9|1|2
+cs9|4|5
+(2 rows)
+cs10|10|20
+cs10|30|40
+(2 rows)
+cs11|4|5|6
+(1 row)
+cs12|4|5|6
+cs12|1|2|3
+(2 rows)
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+cs13|1|2|3
+cs13|4|5|6
+(2 rows)
+cs14|4|5
+(1 row)
+Seq Scan on test_cs_t  (cost=0.00..30.40 rows=2040 width=44)
+(1 row)
+cs16a|1|2|3
+cs16b|4|5|6
+(2 rows)
+|cs17_str|1|2|3
+|cs17_str|4|5|6
+(2 rows)
+DROP TABLE
+DROP TABLE
+=== 5 DML Complete ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|10
+2|20
+3|15
+(3 rows)
+1|10
+2|20
+1|30
+3|15
+(4 rows)
+1|10
+2|20
+1|30
+3|15
+(4 rows)
+1|10
+2|20
+1|30
+3|15
+(4 rows)
+1|10
+2|20
+1|30
+3|15
+(4 rows)
+1|10
+2|20
+1|30
+3|15
+(4 rows)
+1|10
+3|15
+2|20
+1|30
+(4 rows)
+1|10
+3|15
+2|20
+1|30
+(4 rows)
+1
+2
+3
+(3 rows)
+1|10
+1|30
+2|20
+3|15
+(4 rows)
+1|30
+2|20
+3|15
+1|10
+(4 rows)
+DROP TABLE
+=== 6 SubLink Subquery ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+6_1_scalar|3|30
+(1 row)
+6_2_exists|1|10
+6_2_exists|2|20
+6_2_exists|3|30
+(3 rows)
+6_3_in|2|20
+6_3_in|3|30
+(2 rows)
+6_4_not_in|1|10
+6_4_not_in|2|20
+(2 rows)
+6_5_eq_any|2|20
+6_5_eq_any|3|30
+(2 rows)
+(0 rows)
+6_7_scalar_select|1|30
+(1 row)
+DROP TABLE
+=== 7 Aggregate & Window ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+7_1_distinct|3
+(1 row)
+7_2_all|3
+(1 row)
+7_3_filter|2
+(1 row)
+7_4_sum_filter|60
+(1 row)
+7_5_over_part|1|10|1
+7_5_over_part|2|20|2
+7_5_over_part|3|30|1
+7_5_over_part|4||2
+(4 rows)
+7_6_over_ord|1|1
+7_6_over_ord|2|2
+7_6_over_ord|3|3
+7_6_over_ord|4|4
+(4 rows)
+7_7_over_empty|1|4
+7_7_over_empty|2|4
+7_7_over_empty|3|4
+7_7_over_empty|4|4
+(4 rows)
+7_8_window|1|10|30
+7_8_window|2|20|30
+7_8_window|3|30|30
+7_8_window|4||30
+(4 rows)
+7_9_multiwin|1|1|30
+7_9_multiwin|2|2|30
+7_9_multiwin|3|3|30
+7_9_multiwin|4|4|30
+(4 rows)
+7_10_distinct_filter|2
+(1 row)
+7_11_multi|1|1|30
+7_11_multi|2|2|30
+7_11_multi|3|3|30
+7_11_multi|4|4|30
+(4 rows)
+7_12_ref|4|1
+7_12_ref|3|2
+7_12_ref|2|3
+7_12_ref|1|4
+(4 rows)
+DROP TABLE
+=== 8 CTAS ===
+(1 row)
+SELECT 1
+hello
+(1 row)
+text_enc
+(1 row)
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+PREPARE
+SELECT 2
+1|Alice
+2|Bob
+(2 rows)
+DELETE 2
+INSERT 0 1
+INSERT 0 1
+PREPARE
+SELECT 2
+3|Charlie
+4|Diana
+(2 rows)
+CREATE TABLE AS
+3|Charlie
+4|Diana
+(2 rows)
+SELECT 2
+3|Charlie
+4|Diana
+(2 rows)
+DEALLOCATE ALL
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 9 AT TIME ZONE ===
+(1 row)
+2024-01-01 18:00:00+08
+(1 row)
+t
+(1 row)
+0
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1|100|hello
+2|200|world
+(2 rows)
+1
+(1 row)
+1|1
+2|1
+(2 rows)
+2
+(1 row)
+INSERT 0 1
+1
+(1 row)
+DROP TABLE
+=== 10 BETWEEN SYMMETRIC ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+2|15
+(1 row)
+2|15
+(1 row)
+1|5
+3|25
+4|35
+(3 rows)
+1|5
+3|25
+4|35
+(3 rows)
+2|15
+(1 row)
+(0 rows)
+2|15
+3|25
+(2 rows)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1|100
+2|200
+3|300
+(3 rows)
+1|100
+2|200
+3|300
+(3 rows)
+2|60
+(1 row)
+1|100
+3|300
+(2 rows)
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 4
+UPDATE 2
+1|5
+2|99
+3|99
+4|20
+(4 rows)
+DROP TABLE
+=== 11 IS TRUE/FALSE/UNKNOWN ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+1
+(1 row)
+2
+(1 row)
+2
+(1 row)
+(0 rows)
+(0 rows)
+1
+2
+(2 rows)
+1
+(1 row)
+1|t
+2|f
+(2 rows)
+1
+(1 row)
+(0 rows)
+DROP TABLE
+=== 12 COLLATE Expression ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+DROP TABLE
+=== 13 DEFAULT Keyword ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|default_name
+1|hello
+1|named_only
+1|test
+(4 rows)
+UPDATE 4
+UPDATE 0
+1|default_name
+1|default_name
+1|default_name
+1|default_name
+(4 rows)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|100|hello|default_note
+1|200|world|default_note
+1|300|test|default_note
+(3 rows)
+UPDATE 1
+UPDATE 1
+1|300|test|default_note
+1|100|hello|default_note
+1|200|world|default_note
+(3 rows)
+1
+(1 row)
+1
+(1 row)
+DROP TABLE
+DROP TABLE
+=== 14 Power Operator ^ ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+8
+(1 row)
+1|2|4
+2|3|9
+3|4|16
+(3 rows)
+32
+(1 row)
+4096
+(1 row)
+3|4
+(1 row)
+1|12
+2|36
+3|80
+(3 rows)
+UPDATE 1
+1|4
+2|3
+3|4
+(3 rows)
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1|10
+2|20
+3|30
+(3 rows)
+1
+2
+3
+(3 rows)
+2|20
+(1 row)
+DROP TABLE
+=== 15 Indirection ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+1|hello
+2|foo
+3|baz
+(3 rows)
+1|100|{hello,world}
+(1 row)
+1|{hello,world}
+(1 row)
+1|{hello}
+(1 row)
+1|{hello,world}
+(1 row)
+3|300
+(1 row)
+1|hello
+(1 row)
+2|200|{foo,bar}
+(1 row)
+DROP TABLE
+=== 16 SIMILAR TO ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+1|hello world
+2|test_abc
+(2 rows)
+1|hello world
+2|test_abc
+(2 rows)
+(0 rows)
+1|hello world
+2|test_abc
+3|xyz
+(3 rows)
+3|xyz
+(1 row)
+1|hello world|t
+2|test_abc|f
+3|xyz|f
+(3 rows)
+2|test_abc
+3|xyz
+(2 rows)
+DROP TABLE
+CREATE TABLE
+INSERT 0 2
+DROP TABLE
+=== 17 VARIADIC / WITHIN GROUP ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+DROP FUNCTION
+CREATE FUNCTION
+6
+(1 row)
+60
+(1 row)
+[1, 2, 3]
+(1 row)
+1|10
+2|20
+3|30
+(3 rows)
+DROP FUNCTION
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 5
+30
+(1 row)
+30
+(1 row)
+10
+(1 row)
+3
+(1 row)
+DROP TABLE
+DROP TABLE
+CREATE TABLE
+INSERT 0 3
+CREATE FUNCTION
+6|20
+(1 row)
+DROP FUNCTION
+DROP TABLE
+=== 18 P0 Expression Coverage ===
+(1 row)
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+INSERT 0 1
+(0 rows)
+1
+2
+3
+(3 rows)
+(0 rows)
+2
+3
+(2 rows)
+100
+(1 row)
+2
+3
+(2 rows)
+low
+mid
+high
+(3 rows)
+1
+(1 row)
+UPDATE 1
+1|row_update_ok
+(1 row)
+UPDATE 1
+p0_CollateClause_handler_present
+(1 row)
+p0_ARRAY_handler_via_FuncCall
+(1 row)
+2
+3
+1
+(3 rows)
+2
+3
+1
+(3 rows)
+(0 rows)
+2
+3
+1
+(3 rows)
+f
+f
+f
+(3 rows)
+1
+2
+3
+(3 rows)
+DROP TABLE
+=== 19 ALTER TABLE Restrictions ===
+(1 row)
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 1
+19a_add_enc_col_insert
+(1 row)
+DROP TABLE
+CREATE TABLE
+ALTER TABLE
+INSERT 0 1
+19b_add_enc_col_zh
+(1 row)
+DROP TABLE
+CREATE TABLE
+INSERT 0 1
+19c_enc_to_plain_rejected
+(1 row)
+19d_alter_no_encrypted_with_rejected
+(1 row)
+19e_alter_dek_rejected
+(1 row)
+DROP TABLE
+CREATE TABLE
+19f_alter_collation_check
+(1 row)
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 20 Keyword Case Sensitivity ===
+(1 row)
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+20a_lowercase|1|100
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+20b_humpcase|1|200
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+20c_cascade_lower|1|300
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== 30 Keyword Case Sensitivity ===
+(1 row)
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+30a_lowercase|1|100
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+30b_humpcase|1|200
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+30c_cascade_lower|1|300
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP TABLE
+DROP TABLE
+DROP TABLE
+=== Cleanup ===
+(1 row)
+DROP KEK
+NOTICE: key encryption key "kek_grammar" does not exist, skipping
+NOTICE: table "test_cte_t" does not exist, skipping
+NOTICE: table "test_cte_graph" does not exist, skipping
+NOTICE: table "test_cs_t" does not exist, skipping
+NOTICE: table "test_cs_t2" does not exist, skipping
+psql:/.../grammar.sql:332: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
+psql:/.../grammar.sql:337: TECC query preprocessing failed: TECC processor detected encrypted columns but failed to produce rewritten query
+NOTICE: table "test_sub" does not exist, skipping
+NOTICE: table "test_aggwin" does not exist, skipping
+NOTICE: table "test_ctas_t1" does not exist, skipping
+NOTICE: relation "test_ctas_result2" already exists, skipping
+NOTICE: table "test_tz" does not exist, skipping
+NOTICE: table "test_sym1" does not exist, skipping
+NOTICE: table "test_sym3" does not exist, skipping
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT name COLLATE "C" FROM test_collate WHERE id = 1;
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" = '310000...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT id FROM test_collate WHERE (name COLLATE "C") = '3100...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" LIKE '240...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT name COLLATE "C", val FROM test_collate WHERE id < 3;
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 2: WHERE name COLLATE "C" LIKE '2400000000000100a5c395ed0000000...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+ERROR: COLLATE cannot be used on encrypted column "name" without OPE algorithm
+LINE 1: SELECT id FROM test_collate WHERE name COLLATE "C" != '31000...
+^
+HINT:  Set support_algo = 'ope' in the ENCRYPTED WITH clause when creating the column.
+NOTICE: table "test_def1" does not exist, skipping
+NOTICE: table "test_def2" does not exist, skipping
+NOTICE: table "test_pow1" does not exist, skipping
+NOTICE: table "test_pow2" does not exist, skipping
+NOTICE: table "test_sim1" does not exist, skipping
+psql:/.../grammar.sql:763: TECC query preprocessing failed: WHERE clause processing failed
+psql:/.../grammar.sql:764: TECC query preprocessing failed: WHERE clause processing failed
+NOTICE: table "test_var1" does not exist, skipping
+NOTICE: function test_variadic_sum(int4[]) does not exist, skipping
+NOTICE: table "test_wg1" does not exist, skipping
+NOTICE: table "test_wg3" does not exist, skipping
+psql:/.../grammar.sql:843: TECC result processing error: Batch decrypt: item 0 has no RND data
+ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
+LINE 1: SELECT id FROM test_p0_expr WHERE name LIKE '2f0000000000010...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
+LINE 1: SELECT id FROM test_p0_expr WHERE name NOT LIKE '24000000000...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: operator does not exist: text_enc ~~* text_enc
+LINE 1: SELECT id FROM test_p0_expr WHERE name ILIKE '24000000000001...
+^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR: operator does not exist: text_enc !~~* text_enc
+LINE 1: SELECT id FROM test_p0_expr WHERE name NOT ILIKE '2400000000...
+^
+HINT:  No operator matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
+LINE 1: SELECT id FROM test_p0_expr WHERE name ILIKE '31000000000001...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+ERROR: function pg_catalog.like_escape(text_enc, unknown) does not exist
+LINE 1: SELECT id FROM test_p0_expr WHERE name NOT ILIKE '2400000000...
+^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+NOTICE: table "tb_alter_test" does not exist, skipping
+NOTICE: table "tb_alter_test2" does not exist, skipping
+NOTICE: table "tb_sec_test" does not exist, skipping
+ERROR: column "col_text" cannot be cast automatically to type text
+HINT:  You might need to specify "USING col_text::text".
+ERROR: cannot alter type of an encrypted column
+DETAIL:  encrypted column tb_sec_test.col_text depends on column "col_text"
+ERROR: cannot alter type of an encrypted column
+DETAIL:  ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. Column "col_text" is encrypted and cannot be altered.
+NOTICE: table "tb_collate_test" does not exist, skipping
+ERROR: cannot alter type of an encrypted column
+DETAIL:  ENCRYPTED WITH clause is not allowed in ALTER COLUMN TYPE. Column "col_text" is encrypted and cannot be altered.
+NOTICE: table "test_kw_case" does not exist, skipping
+NOTICE: table "test_kw_case2" does not exist, skipping
+NOTICE: table "test_kw_case3" does not exist, skipping
+NOTICE: table "test_kw_case" does not exist, skipping
+NOTICE: table "test_kw_case2" does not exist, skipping
+NOTICE: table "test_kw_case3" does not exist, skipping
+NOTICE: drop cascades to data encryption key dek_grammar
+=== 31 Schema-qualified DEK name ===
+CREATE SCHEMA
+NOTICE: key encryption key "kek_grammar_schema" does not exist, skipping
+DROP KEK
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+31b_bare
+31b_meta
+DROP TABLE
+CREATE TABLE
+31c_string
+DROP TABLE
+DROP DEK
+DROP KEK
+DROP SCHEMA

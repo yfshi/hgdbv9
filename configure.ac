@@ -19,10 +19,11 @@ m4_pattern_forbid(^PGAC_)dnl to catch undefined macros
 
 AC_INIT([PostgreSQL], [14.24], [pgsql-bugs@lists.postgresql.org], [], [https://www.postgresql.org/])
 
-m4_if(m4_defn([m4_PACKAGE_VERSION]), [2.69], [], [m4_fatal([Autoconf version 2.69 is required.
+m4_if(m4_defn([m4_PACKAGE_VERSION]), [2.69], [], [m4_if(m4_defn([m4_PACKAGE_VERSION]), [2.71], [],
+[m4_fatal([Autoconf version 2.69 or 2.71 is required.
 Untested combinations of 'autoconf' and PostgreSQL versions are not
 recommended.  You can remove the check from 'configure.ac' but it is then
-your responsibility whether the result works or not.])])
+your responsibility whether the result works or not.])])])
 AC_COPYRIGHT([Copyright (c) 1996-2021, PostgreSQL Global Development Group])
 AC_CONFIG_SRCDIR([src/backend/access/common/heaptuple.c])
 AC_CONFIG_AUX_DIR(config)
@@ -113,6 +114,18 @@ tas_file=dummy.s
 # Add non-standard directories to the include path
 #
 PGAC_ARG_REQ(with, includes, [DIRS], [look for additional header files in DIRS])
+
+#
+# TZWY-SDF client library (HSM encryption device driver)
+#
+PGAC_ARG_REQ(with, tzwy-sdf, [DIR], [directory containing libsdf.client.so],
+             [tzwy_sdf_libdir=$withval])
+
+#
+# SWXA-SDF client library (SanWeiXinAn encryption device driver)
+#
+PGAC_ARG_REQ(with, swxa-sdf, [DIR], [directory containing libswsds.so],
+             [swxa_sdf_libdir=$withval])
 
 
 #
@@ -916,6 +929,7 @@ AC_PROG_CPP
 AC_SUBST(GCC)
 
 
+
 #
 # Set up TAS assembly code if needed; the template file has now had its
 # chance to request this.
@@ -1047,9 +1061,54 @@ PGAC_ARG_BOOL(with, icu, no, [build with ICU support],
 AC_MSG_RESULT([$with_icu])
 AC_SUBST(with_icu)
 
-if test "$with_icu" = yes; then
-  PKG_CHECK_MODULES(ICU, icu-uc icu-i18n)
+
+#
+# TZWY-SDF auto-detection
+#
+if test -z "$tzwy_sdf_libdir"; then
+  AC_MSG_CHECKING([for libsdf.client.so])
+  for dir in /usr/lib64 /usr/local/lib64; do
+    if test -f "$dir/libsdf.client.so"; then
+      tzwy_sdf_libdir=$dir
+      break
+    fi
+  done
+  if test -n "$tzwy_sdf_libdir"; then
+    AC_MSG_RESULT([$tzwy_sdf_libdir])
+  else
+    AC_MSG_RESULT([not found])
+    AC_MSG_WARN([libsdf.client.so not found; HSM encryption features will be disabled.])
+    AC_MSG_WARN([Use --with-tzwy-sdf=DIR to specify the library path.])
+  fi
 fi
+if test -n "$tzwy_sdf_libdir"; then
+  LIBRARY_DIRS="$LIBRARY_DIRS $tzwy_sdf_libdir"
+fi
+AC_SUBST(tzwy_sdf_libdir)
+
+#
+# SWXA-SDF auto-detection
+#
+if test -z "$swxa_sdf_libdir"; then
+  AC_MSG_CHECKING([for libswsds.so])
+  for dir in /usr/lib64 /usr/local/lib64 /usr/local/lib; do
+    if test -f "$dir/libswsds.so"; then
+      swxa_sdf_libdir=$dir
+      break
+    fi
+  done
+  if test -n "$swxa_sdf_libdir"; then
+    AC_MSG_RESULT([$swxa_sdf_libdir])
+  else
+    AC_MSG_RESULT([not found])
+    AC_MSG_WARN([libswsds.so not found; SWXA HSM features will be disabled at runtime.])
+    AC_MSG_WARN([Use --with-swxa-sdf=DIR to specify the library path.])
+  fi
+fi
+if test -n "$swxa_sdf_libdir"; then
+  LIBRARY_DIRS="$LIBRARY_DIRS $swxa_sdf_libdir"
+fi
+AC_SUBST(swxa_sdf_libdir)
 
 #
 # Optionally build Tcl modules (PL/Tcl)
@@ -1623,6 +1682,10 @@ fi
 PGAC_ARG_BOOL(with, openssl, no, [obsolete spelling of --with-ssl=openssl])
 if test "$with_openssl" = yes ; then
   with_ssl=openssl
+fi
+
+if test "$with_ssl" != openssl; then
+  AC_MSG_ERROR([TECC requires --with-openssl (--with-ssl=openssl). Please reconfigure with --with-ssl=openssl])
 fi
 
 if test "$with_ssl" = openssl ; then
@@ -2345,7 +2408,38 @@ AC_CHECK_FUNCS([strtoull __strtoull strtouq], [break])
 # strto[u]ll may exist but not be declared
 AC_CHECK_DECLS([strtoll, strtoull])
 
+if test "$with_icu" != yes; then
+  AC_MSG_ERROR([TECC requires --with-icu. Please reconfigure with --with-icu])
+fi
+
 if test "$with_icu" = yes; then
+  PKG_CHECK_MODULES(ICU, icu-uc icu-i18n)
+
+  # When multiple ICU versions are installed, pkg-config reports one
+  # version's flags but the compiler/linker may pick up headers or
+  # libraries from another version via default search paths, causing
+  # link errors with versioned symbols (e.g. ucol_open_72 vs _50).
+  # Fix: if ICU_CFLAGS/LIBS lack explicit -I/-L paths, add them from
+  # pkg-config so the SAME ICU installation is used consistently.
+  case $ICU_CFLAGS in
+    *-I*) ;;
+    *)
+      icu_incdir=$(pkg-config --variable=includedir icu-uc 2>/dev/null)
+      if test -n "$icu_incdir" && test -d "$icu_incdir"; then
+        ICU_CFLAGS="-I$icu_incdir $ICU_CFLAGS"
+      fi
+      ;;
+  esac
+  case $ICU_LIBS in
+    *-L*) ;;
+    *)
+      icu_libdir=$(pkg-config --variable=libdir icu-uc 2>/dev/null)
+      if test -n "$icu_libdir" && test -d "$icu_libdir"; then
+        ICU_LIBS="-L$icu_libdir $ICU_LIBS"
+      fi
+      ;;
+  esac
+
   ac_save_CPPFLAGS=$CPPFLAGS
   CPPFLAGS="$CPPFLAGS $ICU_CFLAGS"
 

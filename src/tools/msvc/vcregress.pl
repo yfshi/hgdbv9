@@ -849,6 +849,12 @@ sub InstallTemp
 		Install("$tmp_installdir", "all", $config);
 	}
 	$ENV{PATH} = "$tmp_installdir/bin;$ENV{PATH}";
+	# Add gmssl DLL directory to PATH so pg_regress --temp-instance
+	# can load gmssl.dll (e.g. for HSM/SDF adapters).
+	if (defined($config->{gmssl}) && -d "$config->{gmssl}/bin")
+	{
+		$ENV{PATH} = "$config->{gmssl}/bin;$ENV{PATH}";
+	}
 	return;
 }
 

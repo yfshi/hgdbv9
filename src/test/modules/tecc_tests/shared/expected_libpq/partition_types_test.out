@@ -1,0 +1,348 @@
+Null display is "(null)".
+=== 创建 KEK/DEK ===
+CREATE KEK
+CREATE DEK
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+
+#####################################################################
+# 1. text_enc LIST 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |      partition_name       | count 
+------------+---------------------------+-------
+ text_enc   | partition_text_type_aa    |     1
+ text_enc   | partition_text_type_ba    |     1
+ text_enc   | partition_text_type_ca    |     1
+ text_enc   | partition_text_type_other |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE type_code=AA) ---
+ id |  content  | type_code 
+----+-----------+-----------
+  1 | 文本内容1 | AA
+(1 row)
+
+
+#####################################################################
+# 2. varchar_enc LIST 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type  |        partition_name        | count 
+-------------+------------------------------+-------
+ varchar_enc | partition_varchar_type_aa    |     1
+ varchar_enc | partition_varchar_type_ba    |     1
+ varchar_enc | partition_varchar_type_ca    |     1
+ varchar_enc | partition_varchar_type_other |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE type_code=BB) ---
+ id |  content  | type_code 
+----+-----------+-----------
+  2 | 文本内容2 | BB
+(1 row)
+
+
+#####################################################################
+# 3. bpchar_enc LIST 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |       partition_name        | count 
+------------+-----------------------------+-------
+ bpchar_enc | partition_bpchar_type_aa    |     1
+ bpchar_enc | partition_bpchar_type_ba    |     1
+ bpchar_enc | partition_bpchar_type_ca    |     1
+ bpchar_enc | partition_bpchar_type_other |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE type_code=CC) ---
+ id |  content  | type_code 
+----+-----------+-----------
+  3 | 文本内容3 | CC
+(1 row)
+
+
+#####################################################################
+# 4. int2_enc RANGE 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |    partition_name     | count 
+------------+-----------------------+-------
+ int2_enc   | partition_int2_range1 |     1
+ int2_enc   | partition_int2_range2 |     1
+ int2_enc   | partition_int2_range3 |     1
+ int2_enc   | partition_int2_range4 |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE value=5000) ---
+ id | value | category 
+----+-------+----------
+  3 | 5000  | C
+(1 row)
+
+
+#####################################################################
+# 5. int4_enc RANGE 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |      partition_name      | count 
+------------+--------------------------+-------
+ int4_enc   | partition_int4_neg_large |     1
+ int4_enc   | partition_int4_neg_small |     1
+ int4_enc   | partition_int4_pos_small |     1
+ int4_enc   | partition_int4_pos_large |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE value=-500000) ---
+ id |  value  | category 
+----+---------+----------
+  2 | -500000 | B
+(1 row)
+
+
+#####################################################################
+# 6. int8_enc RANGE 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |     partition_name     | count 
+------------+------------------------+-------
+ int8_enc   | partition_int8_level_a |     1
+ int8_enc   | partition_int8_level_b |     1
+ int8_enc   | partition_int8_level_c |     1
+ int8_enc   | partition_int8_level_d |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE value=500000) ---
+ id | value  | category 
+----+--------+----------
+  3 | 500000 | C
+(1 row)
+
+
+#####################################################################
+# 7. numeric_enc RANGE 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 5
+--- 分区数据分布 ---
+ table_type  |       partition_name        | count 
+-------------+-----------------------------+-------
+ numeric_enc | partition_numeric_range_neg |     1
+ numeric_enc | partition_numeric_range_a   |     1
+ numeric_enc | partition_numeric_range_b   |     1
+ numeric_enc | partition_numeric_range_c   |     1
+ numeric_enc | partition_numeric_range_d   |     1
+(5 rows)
+
+--- 分区裁剪验证 (WHERE amount=-500.00) ---
+ id | amount  | range_code 
+----+---------+------------
+  1 | -500.00 | N
+(1 row)
+
+
+#####################################################################
+# 8. float4_enc RANGE 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |     partition_name      | count 
+------------+-------------------------+-------
+ float4_enc | partition_float4_zone_f |     1
+ float4_enc | partition_float4_zone_c |     1
+ float4_enc | partition_float4_zone_n |     1
+ float4_enc | partition_float4_zone_w |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE temperature=10.0) ---
+ id | temperature | temp_zone 
+----+-------------+-----------
+  3 | 10          | N
+(1 row)
+
+
+#####################################################################
+# 9. float8_enc RANGE 分区
+#####################################################################
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+INSERT 0 4
+--- 分区数据分布 ---
+ table_type |      partition_name      | count 
+------------+--------------------------+-------
+ float8_enc | partition_float8_scale_n |     1
+ float8_enc | partition_float8_scale_z |     1
+ float8_enc | partition_float8_scale_p |     1
+ float8_enc | partition_float8_scale_l |     1
+(4 rows)
+
+--- 分区裁剪验证 (WHERE measurement=5.5) ---
+ id | measurement | scale_code 
+----+-------------+------------
+  3 | 5.5         | P
+(1 row)
+
+
+#####################################################################
+# 分区表测试汇总
+#####################################################################
+    t    |              p               | count 
+---------+------------------------------+-------
+ bpchar  | partition_bpchar_type_aa     |     1
+ bpchar  | partition_bpchar_type_ba     |     1
+ bpchar  | partition_bpchar_type_ca     |     1
+ bpchar  | partition_bpchar_type_other  |     1
+ float4  | partition_float4_zone_f      |     1
+ float4  | partition_float4_zone_c      |     1
+ float4  | partition_float4_zone_n      |     1
+ float4  | partition_float4_zone_w      |     1
+ float8  | partition_float8_scale_n     |     1
+ float8  | partition_float8_scale_z     |     1
+ float8  | partition_float8_scale_p     |     1
+ float8  | partition_float8_scale_l     |     1
+ int2    | partition_int2_range1        |     1
+ int2    | partition_int2_range2        |     1
+ int2    | partition_int2_range3        |     1
+ int2    | partition_int2_range4        |     1
+ int4    | partition_int4_neg_large     |     1
+ int4    | partition_int4_neg_small     |     1
+ int4    | partition_int4_pos_small     |     1
+ int4    | partition_int4_pos_large     |     1
+ int8    | partition_int8_level_a       |     1
+ int8    | partition_int8_level_b       |     1
+ int8    | partition_int8_level_c       |     1
+ int8    | partition_int8_level_d       |     1
+ numeric | partition_numeric_range_neg  |     1
+ numeric | partition_numeric_range_a    |     1
+ numeric | partition_numeric_range_b    |     1
+ numeric | partition_numeric_range_c    |     1
+ numeric | partition_numeric_range_d    |     1
+ text    | partition_text_type_aa       |     1
+ text    | partition_text_type_ba       |     1
+ text    | partition_text_type_ca       |     1
+ text    | partition_text_type_other    |     1
+ varchar | partition_varchar_type_aa    |     1
+ varchar | partition_varchar_type_ba    |     1
+ varchar | partition_varchar_type_ca    |     1
+ varchar | partition_varchar_type_other |     1
+(37 rows)
+
+
+#####################################################################
+# 测试完成
+#####################################################################
+
+-- 清理开始 --
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP TABLE
+DROP DEK
+DROP KEK
+psql:/.../partition_types_test.sql:9: NOTICE:  table "partition_text_main" does not exist, skipping
+psql:/.../partition_types_test.sql:9: NOTICE:  table "partition_text_type_aa" does not exist, skipping
+psql:/.../partition_types_test.sql:9: NOTICE:  table "partition_text_type_ba" does not exist, skipping
+psql:/.../partition_types_test.sql:9: NOTICE:  table "partition_text_type_ca" does not exist, skipping
+psql:/.../partition_types_test.sql:9: NOTICE:  table "partition_text_type_other" does not exist, skipping
+psql:/.../partition_types_test.sql:10: NOTICE:  table "partition_varchar_main" does not exist, skipping
+psql:/.../partition_types_test.sql:10: NOTICE:  table "partition_varchar_type_aa" does not exist, skipping
+psql:/.../partition_types_test.sql:10: NOTICE:  table "partition_varchar_type_ba" does not exist, skipping
+psql:/.../partition_types_test.sql:10: NOTICE:  table "partition_varchar_type_ca" does not exist, skipping
+psql:/.../partition_types_test.sql:10: NOTICE:  table "partition_varchar_type_other" does not exist, skipping
+psql:/.../partition_types_test.sql:11: NOTICE:  table "partition_bpchar_main" does not exist, skipping
+psql:/.../partition_types_test.sql:11: NOTICE:  table "partition_bpchar_type_aa" does not exist, skipping
+psql:/.../partition_types_test.sql:11: NOTICE:  table "partition_bpchar_type_ba" does not exist, skipping
+psql:/.../partition_types_test.sql:11: NOTICE:  table "partition_bpchar_type_ca" does not exist, skipping
+psql:/.../partition_types_test.sql:11: NOTICE:  table "partition_bpchar_type_other" does not exist, skipping
+psql:/.../partition_types_test.sql:12: NOTICE:  table "partition_int2_main" does not exist, skipping
+psql:/.../partition_types_test.sql:12: NOTICE:  table "partition_int2_range1" does not exist, skipping
+psql:/.../partition_types_test.sql:12: NOTICE:  table "partition_int2_range2" does not exist, skipping
+psql:/.../partition_types_test.sql:12: NOTICE:  table "partition_int2_range3" does not exist, skipping
+psql:/.../partition_types_test.sql:12: NOTICE:  table "partition_int2_range4" does not exist, skipping
+psql:/.../partition_types_test.sql:13: NOTICE:  table "partition_int4_main" does not exist, skipping
+psql:/.../partition_types_test.sql:13: NOTICE:  table "partition_int4_neg_large" does not exist, skipping
+psql:/.../partition_types_test.sql:13: NOTICE:  table "partition_int4_neg_small" does not exist, skipping
+psql:/.../partition_types_test.sql:13: NOTICE:  table "partition_int4_pos_small" does not exist, skipping
+psql:/.../partition_types_test.sql:13: NOTICE:  table "partition_int4_pos_large" does not exist, skipping
+psql:/.../partition_types_test.sql:14: NOTICE:  table "partition_int8_main" does not exist, skipping
+psql:/.../partition_types_test.sql:14: NOTICE:  table "partition_int8_level_a" does not exist, skipping
+psql:/.../partition_types_test.sql:14: NOTICE:  table "partition_int8_level_b" does not exist, skipping
+psql:/.../partition_types_test.sql:14: NOTICE:  table "partition_int8_level_c" does not exist, skipping
+psql:/.../partition_types_test.sql:14: NOTICE:  table "partition_int8_level_d" does not exist, skipping
+psql:/.../partition_types_test.sql:15: NOTICE:  table "partition_numeric_main" does not exist, skipping
+psql:/.../partition_types_test.sql:15: NOTICE:  table "partition_numeric_range_neg" does not exist, skipping
+psql:/.../partition_types_test.sql:15: NOTICE:  table "partition_numeric_range_a" does not exist, skipping
+psql:/.../partition_types_test.sql:15: NOTICE:  table "partition_numeric_range_b" does not exist, skipping
+psql:/.../partition_types_test.sql:15: NOTICE:  table "partition_numeric_range_c" does not exist, skipping
+psql:/.../partition_types_test.sql:15: NOTICE:  table "partition_numeric_range_d" does not exist, skipping
+psql:/.../partition_types_test.sql:16: NOTICE:  table "partition_float4_main" does not exist, skipping
+psql:/.../partition_types_test.sql:16: NOTICE:  table "partition_float4_zone_f" does not exist, skipping
+psql:/.../partition_types_test.sql:16: NOTICE:  table "partition_float4_zone_c" does not exist, skipping
+psql:/.../partition_types_test.sql:16: NOTICE:  table "partition_float4_zone_n" does not exist, skipping
+psql:/.../partition_types_test.sql:16: NOTICE:  table "partition_float4_zone_w" does not exist, skipping
+psql:/.../partition_types_test.sql:17: NOTICE:  table "partition_float8_main" does not exist, skipping
+psql:/.../partition_types_test.sql:17: NOTICE:  table "partition_float8_scale_n" does not exist, skipping
+psql:/.../partition_types_test.sql:17: NOTICE:  table "partition_float8_scale_z" does not exist, skipping
+psql:/.../partition_types_test.sql:17: NOTICE:  table "partition_float8_scale_p" does not exist, skipping
+psql:/.../partition_types_test.sql:17: NOTICE:  table "partition_float8_scale_l" does not exist, skipping

@@ -31,4 +31,7 @@ extern DestReceiver *CreateIntoRelDestReceiver(IntoClause *intoClause);
 
 extern bool CreateTableAsRelExists(CreateTableAsStmt *ctas);
 
+/* ReqID:TECC4.0 - set source plan info for CTAS encryption metadata propagation */
+extern void SetCTASSourceInfo(DestReceiver *dest, List *tlist, List *rtable);
+
 #endif							/* CREATEAS_H */

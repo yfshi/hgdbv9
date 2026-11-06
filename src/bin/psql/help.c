@@ -82,6 +82,7 @@ usage(unsigned short int pager)
 	if (!env)
 		env = user;
 	fprintf(output, _("  -c, --command=COMMAND    run only single command (SQL or internal) and exit\n"));
+	fprintf(output, _("  -k, --tecc=on|off        enable/disable TECC (Transparent Encryption Computing)\n"));
 	fprintf(output, _("  -d, --dbname=DBNAME      database name to connect to (default: \"%s\")\n"), env);
 	fprintf(output, _("  -f, --file=FILENAME      execute commands from file, then exit\n"));
 	fprintf(output, _("  -l, --list               list available databases, then exit\n"));

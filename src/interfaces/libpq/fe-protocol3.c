@@ -32,6 +32,8 @@
 #include "libpq-int.h"
 #include "mb/pg_wchar.h"
 #include "port/pg_bswap.h"
+/* Include TECC libpq integration module */
+#include "tecc_libpq_integration/fe-tecc-integration.h"
 
 /*
  * This macro lists the backend message types that could be "long" (more
@@ -1675,8 +1677,10 @@ getCopyDataMessage(PGconn *conn)
 					conn->asyncStatus = PGASYNC_COPY_IN;
 				else
 					conn->asyncStatus = PGASYNC_BUSY;
+			tecc_cleanup_copy_state(conn);
 				return -1;
-			default:			/* treat as end of copy */
+				tecc_cleanup_copy_state(conn);
+default:			/* treat as end of copy */
 
 				/*
 				 * Any other message terminates either COPY_IN or COPY_BOTH
@@ -1749,8 +1753,48 @@ pqGetCopyData3(PGconn *conn, char **buffer, int async)
 			memcpy(*buffer, &conn->inBuffer[conn->inCursor], msgLength);
 			(*buffer)[msgLength] = '\0';	/* Add terminating null */
 
-			/* Mark message consumed */
-			conn->inStart = conn->inCursor + msgLength;
+				int orig_msgLength = msgLength;
+			/* TECC: Process COPY data for decryption if TECC is enabled */
+			if (conn->enable_tecc && conn->tecc_copy_state != NULL)
+			{
+				char *decrypted_data = NULL;
+				int decrypted_len = 0;
+				int result = tecc_process_copy_result(conn, *buffer, msgLength,
+													 &decrypted_data, &decrypted_len);
+				if (result == 0 && decrypted_data != NULL)
+				{
+					if (decrypted_data != *buffer && decrypted_len > 0)
+					{
+						/* Decryption happened, use decrypted data */
+						free(*buffer);
+						*buffer = (char *)malloc(decrypted_len + 1);
+						if (*buffer == NULL)
+						{
+							appendPQExpBufferStr(&conn->errorMessage,
+												 libpq_gettext("out of memory\n"));
+							free(decrypted_data);
+							return -2;
+						}
+						memcpy(*buffer, decrypted_data, decrypted_len);
+						(*buffer)[decrypted_len] = '\0';
+						free(decrypted_data);
+						msgLength = decrypted_len;
+					}
+					else if (decrypted_data != *buffer)
+					{
+						/* Decryption returned new buffer but empty result, free it */
+						free(decrypted_data);
+					}
+					/* else: no decryption needed, original buffer is already correct */
+				}
+				/* If processing failed, keep original data */
+			}
+
+			/* Mark message consumed - use original msgLength (before decryption
+			 * shortened it) to properly advance past the entire raw CopyData
+			 * payload. Using the decrypted length would leave unconsumed bytes
+			 * in the input buffer, corrupting subsequent message parsing. */
+			conn->inStart = conn->inCursor + orig_msgLength;
 
 			return msgLength;
 		}

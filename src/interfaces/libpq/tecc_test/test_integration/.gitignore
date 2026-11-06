@@ -1,0 +1,16 @@
+# Local test binaries (all Makefile variants)
+/test_integration
+/test_encrypted_field
+/test_processor_simple
+/test_insert_encrypted
+/test_update_encrypted
+/test_select_encrypted
+/test_where_clause
+/test_minimal
+/test_simple
+/test_simple_main
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

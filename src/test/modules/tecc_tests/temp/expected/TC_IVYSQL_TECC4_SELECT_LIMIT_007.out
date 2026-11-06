@@ -1,0 +1,96 @@
+>>> 1
+DROP TABLE IF EXISTS tecc_data_type_test CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS data_type_test CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+CREATE TABLE data_type_test (id SERIAL PRIMARY KEY, text_col text, varchar_col varchar, bpchar_col bpchar, int2_col int2, int4_col int4, int8_col int8, numeric_col numeric, float4_col float4, float8_col float8);
+
+rows: 0
+>>> 8
+CREATE TABLE tecc_data_type_test (id SERIAL PRIMARY KEY, text_col text_enc encrypted with (dek = dek_t1), varchar_col varchar_enc encrypted with (dek = dek_t1), bpchar_col bpchar_enc encrypted with (dek = dek_t1), int2_col int2_enc encrypted with (dek = dek_t1), int4_col int4_enc encrypted with (dek = dek_t1), int8_col int8_enc encrypted with (dek = dek_t1), numeric_col numeric_enc encrypted with (dek = dek_t1), float4_col float4_enc encrypted with (dek = dek_t1), float8_col float8_enc encrypted with (dek = dek_t1));
+
+rows: 0
+>>> 9
+INSERT INTO data_type_test VALUES (1,'test数据','test文本','test',1,100,1000,123.45,1.23,12.34),(2,'测试数据','测试文本','测试',2,200,2000,234.56,2.34,23.45),(3,'test数据2','测试文本2','test2',3,300,3000,345.67,3.45,34.56);
+
+rows: 3
+>>> 10
+INSERT INTO tecc_data_type_test VALUES (1,'test数据','test文本','test',1,100,1000,123.45,1.23,12.34),(2,'测试数据','测试文本','测试',2,200,2000,234.56,2.34,23.45),(3,'test数据2','测试文本2','test2',3,300,3000,345.67,3.45,34.56);
+
+rows: 3
+>>> 11
+SELECT id, text_col, int4_col, varchar_col, numeric_col FROM tecc_data_type_test WHERE text_col = 'test数据' AND int4_col >= 100 AND int4_col <= 500;
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.text_col
+>>> 12
+SELECT id, varchar_col, int8_col, text_col, float8_col FROM tecc_data_type_test WHERE int8_col >= 2000 AND int8_col <= 40000 AND varchar_col LIKE '%测试%';
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.int8_col
+>>> 13
+SELECT id, bpchar_col, int2_col, varchar_col, float4_col FROM tecc_data_type_test WHERE bpchar_col LIKE '%test%' AND int2_col = 3;
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.bpchar_col
+>>> 14
+SELECT id, int2_col, numeric_col, float4_col, text_col FROM tecc_data_type_test WHERE int2_col = 1 AND numeric_col >= 100 AND numeric_col <= 500 AND float4_col = 1.23;
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.int2_col
+>>> 15
+SELECT id, int4_col, float8_col, varchar_col, bpchar_col FROM tecc_data_type_test WHERE int4_col = 200 AND float8_col >= 50 AND float8_col <= 100;
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.int4_col
+>>> 16
+SELECT id, int8_col, text_col, numeric_col, float4_col FROM tecc_data_type_test WHERE int8_col >= 10000 AND int8_col <= 50000 AND text_col LIKE '%test%';
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.int8_col
+>>> 17
+SELECT id, numeric_col, varchar_col, int2_col, float8_col FROM tecc_data_type_test WHERE numeric_col = 345.67 AND varchar_col LIKE '%测试%';
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.numeric_col
+>>> 18
+SELECT id, float4_col, int8_col, int2_col, text_col FROM tecc_data_type_test WHERE float4_col = 3.45 AND int8_col >= 3000 AND int8_col <= 5000 AND int2_col = 3;
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.float4_col
+>>> 19
+SELECT id, float8_col, bpchar_col, int4_col, numeric_col FROM tecc_data_type_test WHERE float8_col >= 60 AND float8_col <= 100 AND bpchar_col LIKE '%测试%';
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.float8_col
+>>> 20
+SELECT id, text_col, varchar_col, bpchar_col, int2_col, int4_col, int8_col, numeric_col, float4_col, float8_col FROM tecc_data_type_test WHERE text_col LIKE '%test%' AND varchar_col = 'test文本' AND bpchar_col LIKE '%test%' AND int2_col >= 1 AND int2_col <= 10 AND int4_col = 100 AND int8_col >= 1000 AND int8_col <= 10000 AND numeric_col >= 100 AND numeric_col <= 500 AND float4_col = 1.23 AND float8_col >= 40 AND float8_col <= 80;
+
+TECC strict: encrypted rewrite failed: public.tecc_data_type_test.text_col
+>>> 21
+DROP TABLE IF EXISTS tecc_data_type_test CASCADE;
+
+rows: 0
+>>> 22
+DROP TABLE IF EXISTS data_type_test CASCADE;
+
+rows: 0
+>>> 23
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 24
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

@@ -272,6 +272,9 @@ typedef struct TypeName
 	List	   *typmods;		/* type modifier expression(s) */
 	int32		typemod;		/* prespecified type modifier */
 	List	   *arrayBounds;	/* array bounds */
+	/* Begin - ReqID:TECC4.0 */
+	List	   *encrypted_with;	/* ENCRYPTED WITH options (list of DefElem) */
+	/* End - ReqID:TECC4.0 */
 	int			location;		/* token location, or -1 if unknown */
 } TypeName;
 
@@ -773,6 +776,9 @@ typedef struct ColumnDef
 	Oid			collOid;		/* collation OID (InvalidOid if not set) */
 	List	   *constraints;	/* other constraints on column */
 	List	   *fdwoptions;		/* per-column FDW options */
+	/*Begin: ReqId: TECC-v4.0*/
+	List	   *encrypted_with;	/* ENCRYPTED WITH options (list of DefElem) */
+	/*End: ReqId: TECC-v4.0*/
 	int			location;		/* parse location, or -1 if none/unknown */
 	/* Begin - BUG#M0000257 */
 	bool		isvisible;		/* mark whether column is visible *//* ReqID:SRS-SQL-INVISIBLECOL */
@@ -2361,7 +2367,9 @@ typedef enum ObjectType
 	OBJECT_OBJECT_TYPE,
 	OBJECT_OBJECT_TYPE_BODY,
 	/* End - ReqID:SRS-SQL-CustomObject */
-	OBJECT_SYNONYM	/* ReqID:SRS-SQL-SYNONYM */
+	OBJECT_SYNONYM,    /* ReqID:SRS-SQL-SYNONYM */
+	OBJECT_KEK,     /* Key Encryption Key */
+	OBJECT_DEK /* Data Encryption Key */
 } ObjectType;
 
 /* ----------------------
@@ -2840,6 +2848,7 @@ typedef struct CreateStmt
 	char	   *tablespacename; /* table space to use, or NULL */
 	char	   *accessMethod;	/* table access method */
 	bool		if_not_exists;	/* just do nothing if it already exists? */
+	bool            is_ctas;                /* true when invoked from CREATE TABLE AS - ReqID:TECC4.0 */
 	bool		with_rowid_seq;
 	char	   *collname;		/* ReqID:SRS-SQL-NLSSORT, table's default collation for Oracle, filled by grammer */
 	Node	   *autoIncStart;	/* SRS-MYSQL-CREATE-TABLE */
@@ -3027,6 +3036,28 @@ typedef struct CreateExtensionStmt
 	bool		if_not_exists;	/* just do nothing if it already exists? */
 	List	   *options;		/* List of DefElem nodes */
 } CreateExtensionStmt;
+
+/*
+ * CREATE KEK - Key Encryption Key
+ */
+typedef struct CreateKekStmt
+{
+	NodeTag		type;
+	List	   *names;			/* qualified KEK name as a list of strings */
+	bool		if_not_exists;	/* just do nothing if it already exists? */
+	List	   *options;		/* List of DefElem nodes */
+} CreateKekStmt;
+
+/*
+ * CREATE DEK - Data Encryption Key
+ */
+typedef struct CreateDekStmt
+{
+	NodeTag		type;
+	List	   *names;			/* qualified DEK name as a list of strings */
+	bool		if_not_exists;	/* just do nothing if it already exists? */
+	List	   *options;		/* List of DefElem nodes */
+} CreateDekStmt;
 
 /* Only used for ALTER EXTENSION UPDATE; later might need an action field */
 typedef struct AlterExtensionStmt

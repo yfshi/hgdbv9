@@ -1,0 +1,246 @@
+5月 23, 2026 2:03:23 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 2:03:23 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 2:03:23 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+select * from string_type_test where txt_col='hello' and vc_col='hello' and bp_col='hello';
+
+1|hello|hello|hello                                                                                               
+rows: -1
+>>> 2
+select * from tecc_string_type_test where txt_col='hello' and vc_col='hello' and bp_col='hello';
+
+1|hello|hello|hello
+rows: -1
+>>> 3
+select * from string_type_test where txt_col<>'llo' or vc_col<>'hlo' or bp_col<>'hel';
+
+1|hello|hello|hello                                                                                               
+2|Hello|Hello|Hello                                                                                               
+3|world|world|world                                                                                               
+4|test|test|test                                                                                                
+5|  hello  |  hello  |  hello                                                                                             
+7|||                                                                                                    
+8|apple|apple|apple                                                                                               
+9|application|application|application                                                                                         
+rows: -1
+>>> 4
+select * from tecc_string_type_test where txt_col<>'llo' or vc_col<>'hlo' or bp_col<>'hel';
+
+1|hello|hello|hello
+2|Hello|Hello|Hello
+3|world|world|world
+4|test|test|test
+5|  hello  |  hello  |  hello  
+7|||
+8|apple|apple|apple
+9|application|application|application
+rows: -1
+>>> 5
+SELECT txt_col = 'Hello' as text,vc_col = 'Hello' as varchar,bp_col = 'Hello' as bpchar FROM string_type_test WHERE txt_col IN ('hello', 'Hello');
+
+5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..text
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+f5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..varchar
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+|f5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..bpchar
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+|f
+t|t|t
+rows: -1
+>>> 6
+SELECT txt_col = 'Hello' as text,vc_col = 'Hello' as varchar,bp_col = 'Hello' as bpchar FROM tecc_string_type_test WHERE txt_col IN ('hello', 'Hello');
+
+f|f|f
+t|t|t
+rows: -1
+>>> 7
+SELECT txt_col = '  hello  ' as text,vc_col = '  hello  ' as varchar,bp_col = '  hello  ' as bpchar FROM string_type_test WHERE txt_col = '  hello  ';
+
+t|t|t
+rows: -1
+>>> 8
+SELECT txt_col = '  hello  ' as text,vc_col = '  hello  ' as varchar,bp_col = '  hello  ' as bpchar FROM tecc_string_type_test WHERE txt_col = '  hello  ';
+
+t|t|t
+rows: -1
+>>> 9
+SELECT bp_col = 'hello' as equals,bp_col = 'hello     ' as spaces FROM string_type_test WHERE bp_col = 'hello';
+
+5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..equals
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+t5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..spaces
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+|t
+rows: -1
+>>> 10
+SELECT bp_col = 'hello' as equals,bp_col = 'hello     ' as spaces FROM tecc_string_type_test WHERE bp_col = 'hello';
+
+t|t
+rows: -1
+>>> 11
+SELECT txt_col IS NULL as text,vc_col IS NULL as varchar,bp_col IS NULL as bpchar, txt_col = vc_col as te_vc, vc_col = bp_col as vc_bp FROM string_type_test WHERE txt_col IS NULL;
+
+t|t|t|NULL|NULL
+rows: -1
+>>> 12
+SELECT txt_col IS NULL as text,vc_col IS NULL as varchar,bp_col IS NULL as bpchar, txt_col = vc_col as te_vc, vc_col = bp_col as vc_bp FROM tecc_string_type_test WHERE txt_col IS NULL;
+
+t|t|t|NULL|NULL
+rows: -1
+>>> 13
+SELECT txt_col = '' as text,vc_col = '' as varchar,bp_col = '' as bpchar, txt_col = vc_col as te_vc,vc_col = bp_col as va_bp FROM string_type_test WHERE txt_col = '';
+
+t|t|t5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..te_vc
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+|t5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..va_bp
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+|t
+rows: -1
+>>> 14
+SELECT txt_col = '' as text,vc_col = '' as varchar,bp_col = '' as bpchar, txt_col = vc_col as te_vc,vc_col = bp_col as va_bp FROM tecc_string_type_test WHERE txt_col = '';
+
+t|t|t|t|t
+rows: -1
+>>> 15
+SELECT txt_col IS DISTINCT FROM vc_col as te_va,vc_col IS DISTINCT FROM bp_col as va_bp FROM string_type_test;
+
+5月 23, 2026 2:03:24 下午 org.postgresql.tecc.cache.impl.MetadataCacheManager lambda$getColumnEncryptionPolicy$8
+警告: fetchColumnByQualifiedName failed for ..te_va
+FetcherException{errorCode=ERROR_INVALID_PARAM, code=7, message='schemaName must be explicitly provided (not null or empty) to avoid search_path ambiguity'}
+	at org.postgresql.tecc.fetcher.impl.DefaultMetadataFetcher.fetchColumnByQualifiedName(DefaultMetadataFetcher.java:340)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$null$7(MetadataCacheManager.java:1523)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:67)
+	at org.postgresql.tecc.cache.impl.TeccCacheRetry.runWithRetry(TeccCacheRetry.java:111)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.lambda$getColumnEncryptionPolicy$8(MetadataCacheManager.java:1522)
+	at org.postgresql.tecc.TeccContext.runWithInternalMetadataSql(TeccContext.java:1010)
+	at org.postgresql.tecc.cache.impl.MetadataCacheManager.getColumnEncryptionPolicy(MetadataCacheManager.java:1520)
+	at org.postgresql.tecc.integration.impl.DefaultTeccJdbcService.convertDecryptedPlaintextToBinaryWireIfNeeded(DefaultTeccJdbcService.java:898)
+	at org.postgresql.jdbc.PgResultSet.teccDecryptIfNeeded(PgResultSet.java:3511)
+	at org.postgresql.jdbc.PgResultSet.getRawValue(PgResultSet.java:3298)
+	at org.postgresql.jdbc.PgResultSet.getString(PgResultSet.java:2351)
+	at RawRunner.main(RawRunner.java:34)
+
+f|f
+f|f
+f|f
+f|f
+f|f
+f|f
+f|f
+f|f
+f|f
+rows: -1
+>>> 16
+SELECT txt_col IS DISTINCT FROM vc_col as te_va,vc_col IS DISTINCT FROM bp_col as va_bp FROM tecc_string_type_test;
+
+f|f
+f|f
+f|f
+f|f
+f|t
+f|f
+f|f
+f|f
+f|f
+rows: -1

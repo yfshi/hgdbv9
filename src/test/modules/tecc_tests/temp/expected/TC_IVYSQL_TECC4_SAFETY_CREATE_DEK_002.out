@@ -1,0 +1,50 @@
+>>> 1
+DROP KEK IF EXISTS kek_test CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_test1 CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_test2 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_test1 WITH VALUES(KEK = kek_test);
+
+rows: 0
+>>> 6
+CREATE DEK dek_test2 WITH VALUES(KEK = kek_test);
+
+rows: 0
+>>> 7
+CREATE DEK dek_test3 WITH VALUES(KEK = kek_test);
+
+rows: 0
+>>> 8
+SELECT dek_name FROM hg_dek WHERE dek_name LIKE 'dek_test%';
+
+错误: 字段 "dek_name" 不存在
+  建议：也许您想要引用列"hg_dek.key_name"。
+  位置：8
+>>> 9
+DROP DEK dek_test1 CASCADE;
+
+rows: 0
+>>> 10
+DROP DEK dek_test2 CASCADE;
+
+rows: 0
+>>> 11
+DROP DEK dek_test3 CASCADE;
+
+rows: 0
+>>> 12
+DROP KEK kek_test CASCADE;
+
+rows: 0

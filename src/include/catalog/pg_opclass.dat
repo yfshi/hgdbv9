@@ -488,4 +488,45 @@
 
 # no brin opclass for the geometric types except box
 
+
+# Operator classes for encrypted data types
+# B-tree operator classes for encrypted types
+{ opcmethod => 'btree', opcname => 'int2_enc_ops',
+  opcfamily => 'btree/int2_enc_ops', opcintype => 'int2_enc' },
+{ opcmethod => 'btree', opcname => 'int4_enc_ops',
+  opcfamily => 'btree/int4_enc_ops', opcintype => 'int4_enc' },
+{ opcmethod => 'btree', opcname => 'int8_enc_ops',
+  opcfamily => 'btree/int8_enc_ops', opcintype => 'int8_enc' },
+{ opcmethod => 'btree', opcname => 'float4_enc_ops',
+  opcfamily => 'btree/float4_enc_ops', opcintype => 'float4_enc' },
+{ opcmethod => 'btree', opcname => 'float8_enc_ops',
+  opcfamily => 'btree/float8_enc_ops', opcintype => 'float8_enc' },
+{ opcmethod => 'btree', opcname => 'numeric_enc_ops',
+  opcfamily => 'btree/numeric_enc_ops', opcintype => 'numeric_enc' },
+{ opcmethod => 'btree', opcname => 'varchar_enc_ops',
+  opcfamily => 'btree/varchar_enc_ops', opcintype => 'varchar_enc' },
+{ opcmethod => 'btree', opcname => 'bpchar_enc_ops',
+  opcfamily => 'btree/bpchar_enc_ops', opcintype => 'bpchar_enc' },
+{ opcmethod => 'btree', opcname => 'text_enc_ops',
+  opcfamily => 'btree/text_enc_ops', opcintype => 'text_enc' },
+
+# Hash operator classes for encrypted types
+{ opcmethod => 'hash', opcname => 'int2_enc_ops',
+  opcfamily => 'hash/int2_enc_ops', opcintype => 'int2_enc' },
+{ opcmethod => 'hash', opcname => 'int4_enc_ops',
+  opcfamily => 'hash/int4_enc_ops', opcintype => 'int4_enc' },
+{ opcmethod => 'hash', opcname => 'int8_enc_ops',
+  opcfamily => 'hash/int8_enc_ops', opcintype => 'int8_enc' },
+{ opcmethod => 'hash', opcname => 'float4_enc_ops',
+  opcfamily => 'hash/float4_enc_ops', opcintype => 'float4_enc' },
+{ opcmethod => 'hash', opcname => 'float8_enc_ops',
+  opcfamily => 'hash/float8_enc_ops', opcintype => 'float8_enc' },
+{ opcmethod => 'hash', opcname => 'numeric_enc_ops',
+  opcfamily => 'hash/numeric_enc_ops', opcintype => 'numeric_enc' },
+{ opcmethod => 'hash', opcname => 'varchar_enc_ops',
+  opcfamily => 'hash/varchar_enc_ops', opcintype => 'varchar_enc' },
+{ opcmethod => 'hash', opcname => 'bpchar_enc_ops',
+  opcfamily => 'hash/bpchar_enc_ops', opcintype => 'bpchar_enc' },
+{ opcmethod => 'hash', opcname => 'text_enc_ops',
+  opcfamily => 'hash/text_enc_ops', opcintype => 'text_enc' },
 ]

@@ -1,0 +1,6 @@
+DROP KEK IF EXISTS abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghjk CASCADE;
+DROP KEK IF EXISTS abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk CASCADE;
+CREATE KEK abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghjk WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+DROP KEK abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghjk CASCADE;
+CREATE KEK abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+DROP KEK abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijk CASCADE;

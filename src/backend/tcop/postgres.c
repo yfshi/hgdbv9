@@ -1336,7 +1336,7 @@ exec_simple_query(const char *query_string)
 		else
 			querytree_list = pg_analyze_and_rewrite(parsetree, query_string,
 													NULL, 0, NULL);
-
+		
 		plantree_list = pg_plan_queries(querytree_list, query_string,
 										CURSOR_OPT_PARALLEL_OK, params/*ReqID:SRS-SQL-ANONYOUT */);
 
@@ -1448,6 +1448,9 @@ exec_simple_query(const char *query_string)
 		/*
 		 * Run the portal to completion, and then drop it (and the receiver).
 		 */
+		/* Begin - ReqID:TECC4.0 */
+		elog(DEBUG1, "exec_simple_query: before PortalRun, commandTag=%d", (int) commandTag);
+		/* End - ReqID:TECC4.0 */
 		(void) PortalRun(portal,
 						 FETCH_ALL,
 						 true,	/* always top level */

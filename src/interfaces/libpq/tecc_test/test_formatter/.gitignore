@@ -1,0 +1,11 @@
+# Local test binaries (all Makefile variants)
+/test_formatter
+/test_formatter_simple
+/test_formatter_fixed
+/test_formatter_standalone
+/test_icu_integration
+
+# Generated subdirectories
+/log/
+/results/
+/tmp_check/

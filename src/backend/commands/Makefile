@@ -28,10 +28,15 @@ OBJS = \
 	copyfromparse.o \
 	copyto.o \
 	createas.o \
+	createkek.o \
+	createdek.o \
 	dbcommands.o \
 	define.o \
 	discard.o \
 	dropcmds.o \
+	dropkek.o \
+	dropdek.o \
+	encrypted_column.o \
 	event_trigger.o \
 	explain.o \
 	extension.o \
@@ -54,6 +59,7 @@ OBJS = \
 	subscriptioncmds.o \
 	resgroupcmds.o \
 	tablecmds.o \
+	tecc_tabledef.o \
 	tablespace.o \
 	trigger.o \
 	tsearchcmds.o \
@@ -69,3 +75,15 @@ OBJS = \
 	objecttypecmds.o
 
 include $(top_srcdir)/src/backend/common.mk
+
+# TECC后端命令文件头文件依赖
+TECC_HEADERS = $(top_srcdir)/src/include/utils/cipherdatatype.h \
+               $(top_srcdir)/src/include/commands/keycmd.h \
+               $(top_srcdir)/src/include/commands/createkek.h \
+               $(top_srcdir)/src/include/commands/createdek.h \
+               $(top_srcdir)/src/include/commands/dropkek.h \
+               $(top_srcdir)/src/include/commands/dropdek.h \
+               $(top_srcdir)/src/include/commands/encrypted_column.h \
+               $(top_srcdir)/src/include/commands/tecc_tabledef.h
+
+createkek.o createdek.o dropkek.o dropdek.o encrypted_column.o tecc_tabledef.o: $(TECC_HEADERS)

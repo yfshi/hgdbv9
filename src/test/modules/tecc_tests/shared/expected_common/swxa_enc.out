@@ -1,0 +1,29 @@
+DROP TABLE
+DROP DEK
+DROP KEK
+Setting up SWXA KEK: swxa_kek (key index: 1)
+SUCCESS: Key found in SWXA password machine at index 1
+CREATE KEK
+CREATE DEK
+CREATE TABLE
+INSERT 0 1
+INSERT 0 1
+=== SWXA: 全表解密 ===
+(1 row)
+1|1|100|10000|1.5|3.14159|9999.99|hello swxa|varchar_val|BPCHAR_VAL|row1
+2|2|200|20000|2.5|2.71828|500.50|world swxa|varchar_2|BPCHAR_2|row2
+(2 rows)
+=== SWXA: DET等值查询 ===
+(1 row)
+row1
+(1 row)
+row1
+(1 row)
+=== SWXA: 清理 ===
+(1 row)
+DROP TABLE
+DROP DEK
+DROP KEK
+NOTICE: table "swxa_enc_t" does not exist, skipping
+NOTICE: data encryption key "swxa_dek" does not exist, skipping
+NOTICE: key encryption key "swxa_kek" does not exist, skipping

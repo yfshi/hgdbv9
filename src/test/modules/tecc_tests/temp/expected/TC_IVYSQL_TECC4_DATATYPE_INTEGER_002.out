@@ -1,0 +1,70 @@
+5月 23, 2026 1:31:51 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:31:51 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:31:51 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS tb_int4 CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+create table tb_int4( id SERIAL PRIMARY KEY, int_col int4_enc encrypted with (dek = dek_t1,support_algo='ope'), description TEXT);
+
+rows: 0
+>>> 7
+INSERT INTO tb_int4 (int_col, description) VALUES (0, '零值'),(1, '正值'),(-1, '负值'),(1000000, '百万'),(-1000000, '负百万'),(2147483647, 'int4最大值'),(-2147483648, 'int4最小值'),(2147483646, '接近int4最大值'),(-2147483647, '接近int4最小值');
+
+rows: 9
+>>> 8
+INSERT INTO tb_int4 (int_col, description) VALUES (2147483648, '超过int4最大值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 9
+INSERT INTO tb_int4 (int_col, description) VALUES (-2147483649, '超过int4最小值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 10
+INSERT INTO tb_int4 (int_col, description) VALUES (4294967295, '远超过int4最大值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 11
+INSERT INTO tb_int4 (int_col, description) VALUES (-4294967295, '远超过int4最小值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 12
+INSERT INTO tb_int4 (int_col, description) VALUES (12.34, '浮点值');
+
+TECC: OPE normalize failed: TECC normalize failed for OPE: TEXT_NORMALIZE_FAILED
+>>> 13
+SELECT int_col, description, pg_typeof(int_col) as data_type FROM tb_int4 ORDER BY int_col NULLS FIRST;
+
+TECC strict: function 'pg_typeof' is not in the encryption-safe whitelist but references encrypted column [tb_int4.int_col]. Rewrite the SQL, remove the function, or use a supported function (e.g. count, min, max, coalesce).
+>>> 14
+DROP TABLE IF EXISTS tb_int4 CASCADE;
+
+rows: 0
+>>> 15
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 16
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

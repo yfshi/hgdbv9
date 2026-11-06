@@ -24,6 +24,7 @@
 #include "access/tupdesc_details.h"
 #include "catalog/pg_collation.h"
 #include "catalog/pg_type.h"
+#include "commands/encrypted_column.h"
 #include "common/hashfn.h"
 #include "miscadmin.h"
 #include "parser/parse_coerce.h"	/* SRS-PLSQL-RECORD */
@@ -847,6 +848,11 @@ BuildDescForRelation(List *schema)
 			aclcheck_error_type(aclresult, atttypid);
 
 		attcollation = GetColumnDefCollation(NULL, entry, atttypid);
+
+		/* ReqID:TECC4.0 - Encrypted columns need fixed collation, not DEFAULT */
+		if (IsA(entry, ColumnDef) && ((ColumnDef *) entry)->encrypted_with != NIL)
+			attcollation = tecc_resolve_collation_oid(attcollation);
+
 		attdim = list_length(entry->typeName->arrayBounds);
 
 		if (entry->typeName->setof)

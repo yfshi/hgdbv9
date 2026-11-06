@@ -1,0 +1,66 @@
+-- TECC Permissions Regression Test
+-- Test GRANT/REVOKE permissions on KEK/DEK objects
+
+-- Setup: Create test users
+CREATE USER tecc_user1;
+CREATE USER tecc_user2;
+
+-- Create test KEK and DEK
+CREATE KEK test_perm_kek WITH (
+    _TECC_PROCESSED = '1',
+    KEY_STORE = 'localkms',
+    KEY_PATH = '/tmp/perm_key'
+);
+
+CREATE DEK test_perm_dek WITH VALUES (
+    _TECC_PROCESSED = '1',
+    ENCRYPTED_VALUE = 'deadbeef12345678abcdef00',
+    KEK = 'test_perm_kek'
+);
+
+-- Test 1: GRANT USAGE on KEK to user1
+GRANT USAGE ON KEK test_perm_kek TO tecc_user1;
+
+-- Test 2: GRANT USAGE on DEK to user1
+GRANT USAGE ON DEK test_perm_dek TO tecc_user1;
+
+-- Test 3: GRANT USAGE on both to user2
+GRANT USAGE ON KEK test_perm_kek TO tecc_user2;
+GRANT USAGE ON DEK test_perm_dek TO tecc_user2;
+
+-- Test 4: REVOKE from user1
+REVOKE USAGE ON KEK test_perm_kek FROM tecc_user1;
+REVOKE USAGE ON DEK test_perm_dek FROM tecc_user1;
+
+-- Test 5: REVOKE ALL from user2
+REVOKE ALL ON KEK test_perm_kek FROM tecc_user2;
+REVOKE ALL ON DEK test_perm_dek FROM tecc_user2;
+
+-- Test 6: has_kek_privilege function tests
+SELECT has_kek_privilege('test_perm_kek', 'USAGE') AS current_user_has_kek_priv;
+
+SELECT has_kek_privilege('tecc_user1', 'test_perm_kek', 'USAGE') AS user1_has_kek_priv;
+
+SELECT has_kek_privilege(oid, 'USAGE') AS oid_has_kek_priv FROM hg_kek WHERE kek_name = 'test_perm_kek';
+
+SELECT has_kek_privilege('tecc_user1', oid, 'USAGE') AS user1_oid_has_kek_priv FROM hg_kek WHERE kek_name = 'test_perm_kek';
+
+-- Test 7: has_dek_privilege function tests
+SELECT has_dek_privilege('test_perm_dek', 'USAGE') AS current_user_has_dek_priv;
+
+SELECT has_dek_privilege('tecc_user1', 'test_perm_dek', 'USAGE') AS user1_has_dek_priv;
+
+SELECT has_dek_privilege(oid, 'USAGE') AS oid_has_dek_priv FROM hg_dek WHERE dek_name = 'test_perm_dek';
+
+SELECT has_dek_privilege('tecc_user1', oid, 'USAGE') AS user1_oid_has_dek_priv FROM hg_dek WHERE dek_name = 'test_perm_dek';
+
+-- Test 8: Cleanup
+-- Drop DEK first (depends on KEK)
+DROP DEK IF EXISTS test_perm_dek;
+
+-- Drop KEK
+DROP KEK IF EXISTS test_perm_kek;
+
+-- Drop test users
+DROP USER IF EXISTS tecc_user1;
+DROP USER IF EXISTS tecc_user2;

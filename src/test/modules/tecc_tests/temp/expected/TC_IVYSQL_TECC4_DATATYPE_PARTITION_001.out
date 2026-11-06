@@ -1,0 +1,75 @@
+5月 23, 2026 1:34:00 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:34:00 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_CBC via reflection, using fallback=1026: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+5月 23, 2026 1:34:00 下午 org.postgresql.tecc.key.security.hsm.TzwyHsmDeviceManager readAlgField
+警告: Failed to read SymAlgFlag.SGD_SM4_ECB via reflection, using fallback=1025: com.tzwy.corelib.gm0006algflag.SymAlgFlag
+>>> 1
+DROP TABLE IF EXISTS partition_text_main CASCADE;
+
+rows: 0
+>>> 2
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 3
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 4
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 5
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 6
+CREATE TABLE partition_text_main (id SERIAL, content text_enc encrypted with (dek = dek_t1), type_code text_enc encrypted with (dek = dek_t1), PRIMARY KEY (id, type_code)) PARTITION BY LIST (type_code);
+
+rows: 0
+>>> 7
+CREATE TABLE partition_text_type_aa PARTITION OF partition_text_main FOR VALUES IN ('AA', 'AB', 'AC');
+
+5月 23, 2026 1:34:02 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: Partition key column 'null.partition_text_main.type_code' requires DET or OPE encryption for partition boundary. Available: DET=false, OPE=false
+Partition key column 'null.partition_text_main.type_code' must use DET or OPE encryption for partition boundary encryption
+>>> 8
+CREATE TABLE partition_text_type_ba PARTITION OF partition_text_main FOR VALUES IN ('BA', 'BB', 'BC');
+
+5月 23, 2026 1:34:02 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: Partition key column 'null.partition_text_main.type_code' requires DET or OPE encryption for partition boundary. Available: DET=false, OPE=false
+Partition key column 'null.partition_text_main.type_code' must use DET or OPE encryption for partition boundary encryption
+>>> 9
+CREATE TABLE partition_text_type_ca PARTITION OF partition_text_main FOR VALUES IN ('CA', 'CB', 'CC');
+
+5月 23, 2026 1:34:02 下午 org.postgresql.tecc.processor.impl.JsqlRewriterImpl rewritePartitionBoundsIfNeeded
+严重: Partition key column 'null.partition_text_main.type_code' requires DET or OPE encryption for partition boundary. Available: DET=false, OPE=false
+Partition key column 'null.partition_text_main.type_code' must use DET or OPE encryption for partition boundary encryption
+>>> 10
+CREATE TABLE partition_text_type_other PARTITION OF partition_text_main DEFAULT;
+
+错误: encrypted data type "text_enc" requires ENCRYPTED WITH clause
+  建议：Add ENCRYPTED WITH (dek = dek_name) to the column definition
+>>> 11
+INSERT INTO partition_text_main (content, type_code) VALUES ('文本内容1', 'AA'), ('文本内容2', 'BB'), ('文本内容3', 'CC'), ('文本内容4', 'ZZ');
+
+错误: 没有为行找到关系"partition_text_main"的分区
+  详情：失败行的分区键包含(type_code) = (\xa001000000000100b96f30654c000000000000000000000000000000000100...).
+>>> 12
+SELECT type_code as table_type, tableoid::regclass as partition_name, COUNT(*) FROM partition_text_main GROUP BY tableoid;
+
+错误: 字段 "partition_text_main.type_code" 必须出现在 GROUP BY 子句中或者在聚合函数中使用
+  位置：8
+>>> 13
+DROP TABLE IF EXISTS partition_text_main CASCADE;
+
+rows: 0
+>>> 14
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 15
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

@@ -1,0 +1,8 @@
+DROP KEK IF EXISTS kek_test CASCADE;
+DROP DEK IF EXISTS dek_err CASCADE;
+CREATE KEK kek_test WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek1.key');
+CREATE DEK dek_err WITH VALUES(kek_valid);
+DROP DEK IF EXISTS dek_err CASCADE;
+CREATE DEK dek_err WITH VALUES(KEK = );
+DROP DEK IF EXISTS dek_err CASCADE;
+DROP KEK kek_test CASCADE;

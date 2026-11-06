@@ -29,11 +29,7 @@
 #endif
 
 #ifdef ENABLE_THREAD_SAFETY
-#ifdef WIN32
-#include "pthread-win32.h"
-#else
 #include <pthread.h>
-#endif
 #include <signal.h>
 #endif
 
@@ -216,6 +212,9 @@ struct pg_result
 	int			spaceLeft;		/* number of free bytes remaining in block */
 
 	size_t		memorySize;		/* total space allocated for this PGresult */
+
+	/* ReqID:TECC4.0 - block recycling pool, lifetime independent of PGconn */
+	void	   *block_pool;		/* TeccBlockPool pointer, or NULL */
 };
 
 /* PGAsyncStatusType defines the state of the query-execution state machine */
@@ -614,6 +613,15 @@ struct pg_conn
 
 	/* Buffer for receiving various parts of messages */
 	PQExpBufferData workBuffer; /* expansible string */
+
+	/* TECC (Transparent Encrypted Column Computing) support */
+	bool		enable_tecc;	/* TECC enabled flag, default true */
+	void	   *tecc_crypto_ctx;	/* Crypto context */
+	void	   *tecc_key_mgr;	/* Key manager context */
+	void	   *tecc_metadata_mgr;	/* Metadata manager context */
+	void	   *tecc_frontend_parser;	/* Frontend parser context */
+	void	   *tecc_state;		/* TECC state object (TeccState *) */
+	void	   *tecc_copy_state;	/* COPY state object (TeccCopyState *) */
 	char       *osuser;         /* ReqID:SRS-SQL-SYSVIEW */
 };
 

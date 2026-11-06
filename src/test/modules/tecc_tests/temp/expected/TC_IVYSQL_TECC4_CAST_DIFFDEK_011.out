@@ -1,0 +1,35 @@
+>>> 1
+DROP TABLE IF EXISTS tb_float8 CASCADE; DROP TABLE IF EXISTS tb_numeric CASCADE; DROP DEK IF EXISTS dek_t1 CASCADE; DROP DEK IF EXISTS dek_t2 CASCADE; DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 2
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 3
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 4
+CREATE DEK dek_t2 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 5
+select 1.454::float4_enc encrypted with (dek = dek_t1)::float8_enc encrypted with (dek = dek_t2),pg_typeof(1.454::float4_enc encrypted with (dek = dek_t1)::float8_enc encrypted with (dek = dek_t2));
+
+错误: 无法把类型 numeric 转换为 float4_enc
+  位置：13
+>>> 6
+select 1.454::float4_enc encrypted with (dek = dek_t1)::numeric_enc encrypted with (dek = dek_t2),pg_typeof(1.454::float4_enc encrypted with (dek = dek_t1)::numeric_enc encrypted with (dek = dek_t2));
+
+错误: 无法把类型 numeric 转换为 float4_enc
+  位置：13
+>>> 7
+select 1.454::float8_enc encrypted with (dek = dek_t1)::numeric_enc encrypted with (dek = dek_t2),pg_typeof(1.454::float8_enc encrypted with (dek = dek_t1)::numeric_enc encrypted with (dek = dek_t2));
+
+错误: 无法把类型 numeric 转换为 float8_enc
+  位置：13
+>>> 8
+DROP TABLE IF EXISTS tb_float8 CASCADE; DROP TABLE IF EXISTS tb_numeric CASCADE; DROP DEK IF EXISTS dek_t1 CASCADE; DROP DEK IF EXISTS dek_t2 CASCADE; DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0

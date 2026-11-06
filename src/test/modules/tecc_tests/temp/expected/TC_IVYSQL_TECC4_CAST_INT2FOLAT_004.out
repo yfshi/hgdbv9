@@ -1,0 +1,55 @@
+>>> 1
+DROP TABLE IF EXISTS tb_float2 CASCADE;
+
+rows: 0
+>>> 2
+DROP TABLE IF EXISTS tb_float4 CASCADE;
+
+rows: 0
+>>> 3
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 4
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
+>>> 5
+CREATE KEK kek_t1 WITH (KEY_STORE=localkms, KEY_PATH='/tmp/kek_t1.key');
+
+rows: 0
+>>> 6
+CREATE DEK dek_t1 WITH VALUES (KEK=kek_t1);
+
+rows: 0
+>>> 7
+select 1::int4_enc encrypted with (dek = dek_t1)::float2_enc encrypted with (dek = dek_t1), pg_typeof(1::int4_enc encrypted with (dek = dek_t1)::float2_enc encrypted with (dek = dek_t1));
+
+错误: 类型 "float2_enc" 不存在
+  位置：51
+>>> 8
+select 1::int8_enc encrypted with (dek = dek_t1)::float2_enc encrypted with (dek = dek_t1), pg_typeof(1::int8_enc encrypted with (dek = dek_t1)::float2_enc encrypted with (dek = dek_t1));
+
+错误: 类型 "float2_enc" 不存在
+  位置：51
+>>> 9
+select 1::int8_enc encrypted with (dek = dek_t1)::float4_enc encrypted with (dek = dek_t1), pg_typeof(1::int8_enc encrypted with (dek = dek_t1)::float4_enc encrypted with (dek = dek_t1));
+
+错误: 无法把类型 integer 转换为 int8_enc
+  位置：9
+>>> 10
+DROP TABLE IF EXISTS tb_float2 CASCADE;
+
+rows: 0
+>>> 11
+DROP TABLE IF EXISTS tb_float4 CASCADE;
+
+rows: 0
+>>> 12
+DROP DEK IF EXISTS dek_t1 CASCADE;
+
+rows: 0
+>>> 13
+DROP KEK IF EXISTS kek_t1 CASCADE;
+
+rows: 0
